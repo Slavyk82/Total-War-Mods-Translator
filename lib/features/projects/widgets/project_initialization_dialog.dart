@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../services/projects/i_project_initialization_service.dart';
+import '../../../widgets/fluent/fluent_widgets.dart';
 
 /// Simplified project initialization dialog showing only extraction and import logs.
 ///
@@ -254,7 +255,7 @@ class _ProjectInitializationDialogState
         ),
         actions: [
           if (!_isInitializing)
-            _FluentDialogButton(
+            FluentDialogButton(
               icon: FluentIcons.checkmark_24_regular,
               label: 'Close',
               isPrimary: true,
@@ -305,89 +306,6 @@ class _ProjectInitializationDialogState
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Fluent Design dialog button
-class _FluentDialogButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final bool isPrimary;
-
-  const _FluentDialogButton({
-    required this.icon,
-    required this.label,
-    this.onTap,
-    this.isPrimary = false,
-  });
-
-  @override
-  State<_FluentDialogButton> createState() => _FluentDialogButtonState();
-}
-
-class _FluentDialogButtonState extends State<_FluentDialogButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isEnabled = widget.onTap != null;
-
-    return MouseRegion(
-      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: widget.isPrimary
-                ? (_isHovered && isEnabled
-                    ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                    : theme.colorScheme.primary)
-                : (_isHovered && isEnabled
-                    ? theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5)
-                    : Colors.transparent),
-            borderRadius: BorderRadius.circular(6),
-            border: widget.isPrimary
-                ? null
-                : Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: 16,
-                color: isEnabled
-                    ? (widget.isPrimary
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.onSurface)
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isEnabled
-                      ? (widget.isPrimary
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurface)
-                      : theme.colorScheme.onSurface.withValues(alpha: 0.3),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
