@@ -1,0 +1,476 @@
+import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/domain/translation_unit.dart';
+import 'package:twmt/services/llm/utils/token_calculator.dart';
+import 'package:twmt/services/translation/i_prompt_builder_service.dart';
+import 'package:twmt/services/translation/models/translation_context.dart';
+import 'package:twmt/services/translation/models/translation_exceptions.dart';
+
+/// Implementation of prompt builder service for LLM translation
+///
+/// Constructs contextual prompts with:
+/// - System instructions
+/// - Game and project context
+/// - Few-shot examples from TM
+/// - Glossary terms
+/// - Structured output format
+class PromptBuilderServiceImpl implements IPromptBuilderService {
+  final TokenCalculator _tokenCalculator;
+
+  PromptBuilderServiceImpl(this._tokenCalculator);
+
+  @override
+  Future<Result<BuiltPrompt, PromptBuildingException>> buildPrompt({
+    required List<TranslationUnit> units,
+    required TranslationContext context,
+    bool includeExamples = true,
+    int maxExamples = 3,
+  }) async {
+    try {
+      if (units.isEmpty) {
+        return Err(
+          PromptBuildingException(
+            'Cannot build prompt with empty units list',
+            error: EmptyBatchException('No translation units provided'),
+          ),
+        );
+      }
+
+      // Build all prompt components
+      final systemMessage = await buildSystemPrompt(context: context);
+
+      final gameContextText = await buildGameContext(
+        gameContext: context.gameContext,
+        category: null,
+      );
+
+      final projectContextText = await buildProjectContext(
+        projectContext: context.projectContext,
+        customInstructions: null,
+      );
+
+      final examplesText = includeExamples
+          ? await buildFewShotExamples(
+              context: context,
+              maxExamples: maxExamples,
+            )
+          : '';
+
+      final glossaryText = await buildGlossarySection(
+        glossaryTerms: context.glossaryTerms,
+      );
+
+      final formatInstructions = await buildFormatInstructions();
+
+      final userMessage = await buildUserMessage(units: units);
+
+      // Combine all sections
+      final fullSystemMessage = _combineSystemSections(
+        systemMessage,
+        gameContextText,
+        projectContextText,
+        glossaryText,
+        formatInstructions,
+      );
+
+      final fullUserMessage = _combineUserSections(
+        examplesText,
+        userMessage,
+      );
+
+      final prompt = BuiltPrompt(
+        systemMessage: fullSystemMessage,
+        userMessage: fullUserMessage,
+        unitCount: units.length,
+        metadata: PromptMetadata(
+          includesExamples: examplesText.isNotEmpty,
+          exampleCount: includeExamples ? maxExamples : 0,
+          includesGlossary: context.glossaryTerms?.isNotEmpty ?? false,
+          glossaryTermCount: context.glossaryTerms?.length ?? 0,
+          includesGameContext: gameContextText.isNotEmpty,
+          includesProjectContext: projectContextText.isNotEmpty,
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      return Ok(prompt);
+    } catch (e, stackTrace) {
+      return Err(
+        PromptBuildingException(
+          'Failed to build prompt: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<String> buildSystemPrompt({
+    required TranslationContext context,
+  }) async {
+    return '''You are a professional translator specializing in Total War games.
+
+Your task is to translate game text to ${context.targetLanguage}.
+
+CRITICAL RULES:
+1. Preserve ALL formatting tags (e.g., {{tags}}, [[tags]], <tags>)
+2. Preserve ALL variables and placeholders (e.g., %s, {0}, \$var)
+3. Maintain the same tone and style as the source
+4. Use glossary terms when provided
+5. Keep translations culturally appropriate for gaming context
+6. Preserve line breaks (\\n) and special characters
+7. Do NOT add explanations or notes
+8. Output ONLY the JSON response in the specified format
+
+QUALITY EXPECTATIONS:
+- Accurate: Convey the exact meaning
+- Natural: Sound like a native speaker
+- Consistent: Use same terminology throughout
+- Game-appropriate: Match the epic/historical/fantasy tone''';
+  }
+
+  @override
+  Future<String> buildGameContext({
+    required String? gameContext,
+    String? category,
+  }) async {
+    if (gameContext == null || gameContext.trim().isEmpty) {
+      return '';
+    }
+
+    return '\nGAME CONTEXT:\n$gameContext';
+  }
+
+  @override
+  Future<String> buildProjectContext({
+    required String? projectContext,
+    String? customInstructions,
+  }) async {
+    final sections = <String>[];
+
+    if (projectContext != null && projectContext.trim().isNotEmpty) {
+      sections.add('PROJECT CONTEXT:\n$projectContext');
+    }
+
+    if (customInstructions != null && customInstructions.trim().isNotEmpty) {
+      sections.add('CUSTOM INSTRUCTIONS:\n$customInstructions');
+    }
+
+    if (sections.isEmpty) return '';
+
+    return '\n${sections.join('\n\n')}';
+  }
+
+  @override
+  Future<String> buildFewShotExamples({
+    required TranslationContext context,
+    int maxExamples = 3,
+    String? category,
+  }) async {
+    final examples = context.fewShotExamples;
+
+    if (examples == null || examples.isEmpty) {
+      return '';
+    }
+
+    final limitedExamples = examples.take(maxExamples).toList();
+    final examplesText = StringBuffer();
+
+    examplesText.writeln('\nEXAMPLES (for reference):');
+    for (var i = 0; i < limitedExamples.length; i++) {
+      final example = limitedExamples[i];
+      final source = example['source'] ?? '';
+      final target = example['target'] ?? '';
+
+      examplesText.writeln('${i + 1}. Source: "$source"');
+      examplesText.writeln('   Target: "$target"');
+    }
+
+    return examplesText.toString();
+  }
+
+  @override
+  Future<String> buildGlossarySection({
+    required Map<String, String>? glossaryTerms,
+  }) async {
+    if (glossaryTerms == null || glossaryTerms.isEmpty) {
+      return '';
+    }
+
+    final glossaryText = StringBuffer();
+    glossaryText.writeln('\nGLOSSARY (must use these translations):');
+
+    glossaryTerms.forEach((source, target) {
+      glossaryText.writeln('- "$source" → "$target"');
+    });
+
+    return glossaryText.toString();
+  }
+
+  @override
+  Future<String> buildFormatInstructions() async {
+    return '''
+
+OUTPUT FORMAT (JSON only, no other text):
+{
+  "translations": [
+    {"key": "key1", "translation": "translated text 1"},
+    {"key": "key2", "translation": "translated text 2"}
+  ]
+}''';
+  }
+
+  @override
+  Future<String> buildUserMessage({
+    required List<TranslationUnit> units,
+  }) async {
+    if (units.isEmpty) {
+      throw InvalidContextException(
+        'Cannot build user message with empty units list',
+      );
+    }
+
+    final message = StringBuffer();
+    message.writeln('Translate the following ${units.length} text entries:\n');
+
+    for (var i = 0; i < units.length; i++) {
+      final unit = units[i];
+      message.writeln('${i + 1}. Key: "${unit.key}"');
+      message.writeln('   Source: "${unit.sourceText}"');
+
+      if (i < units.length - 1) {
+        message.writeln();
+      }
+    }
+
+    return message.toString();
+  }
+
+  @override
+  Future<Result<BuiltPrompt, PromptBuildingException>> optimizePrompt({
+    required BuiltPrompt prompt,
+    required int maxTokens,
+    required String providerCode,
+  }) async {
+    try {
+      // Calculate current token count
+      final currentTokens = _tokenCalculator.calculateTokens(
+        '${prompt.systemMessage}\n\n${prompt.userMessage}',
+      );
+
+      if (currentTokens <= maxTokens) {
+        // Already within limits
+        return Ok(prompt);
+      }
+
+      // Strategy 1: Remove examples if present
+      if (prompt.metadata.includesExamples) {
+        final optimized = await _removeExamples(prompt);
+        final newTokens = _tokenCalculator.calculateTokens(
+          '${optimized.systemMessage}\n\n${optimized.userMessage}',
+        );
+
+        if (newTokens <= maxTokens) {
+          return Ok(optimized);
+        }
+      }
+
+      // Strategy 2: Shorten contexts
+      final shortened = await _shortenContexts(prompt);
+      final shortenedTokens = _tokenCalculator.calculateTokens(
+        '${shortened.systemMessage}\n\n${shortened.userMessage}',
+      );
+
+      if (shortenedTokens <= maxTokens) {
+        return Ok(shortened);
+      }
+
+      // Cannot optimize further - prompt is too large
+      return Err(
+        PromptBuildingException(
+          'Cannot optimize prompt to fit within $maxTokens tokens '
+          '(current: $currentTokens, after optimization: $shortenedTokens)',
+        ),
+      );
+    } catch (e, stackTrace) {
+      return Err(
+        PromptBuildingException(
+          'Failed to optimize prompt: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<int> estimateTokens({
+    required BuiltPrompt prompt,
+    required String providerCode,
+  }) async {
+    return _tokenCalculator.calculateTokens(
+      '${prompt.systemMessage}\n\n${prompt.userMessage}',
+    );
+  }
+
+  @override
+  Future<List<ValidationError>> validatePrompt({
+    required BuiltPrompt prompt,
+  }) async {
+    final errors = <ValidationError>[];
+
+    // Check system message
+    if (prompt.systemMessage.trim().isEmpty) {
+      errors.add(ValidationError(
+        severity: ValidationSeverity.error,
+        field: 'systemMessage',
+        message: 'System message cannot be empty',
+      ));
+    }
+
+    // Check user message
+    if (prompt.userMessage.trim().isEmpty) {
+      errors.add(ValidationError(
+        severity: ValidationSeverity.error,
+        field: 'userMessage',
+        message: 'User message cannot be empty',
+      ));
+    }
+
+    // Check unit count
+    if (prompt.unitCount <= 0) {
+      errors.add(ValidationError(
+        severity: ValidationSeverity.error,
+        field: 'unitCount',
+        message: 'Must have at least one unit to translate',
+      ));
+    }
+
+    // Check for reasonable size limits
+    const maxSystemLength = 50000; // ~12k tokens
+    const maxUserLength = 150000; // ~37k tokens
+
+    if (prompt.systemMessage.length > maxSystemLength) {
+      errors.add(ValidationError(
+        severity: ValidationSeverity.error,
+        field: 'systemMessage',
+        message: 'System message exceeds maximum length '
+            '(${prompt.systemMessage.length} > $maxSystemLength)',
+      ));
+    }
+
+    if (prompt.userMessage.length > maxUserLength) {
+      errors.add(ValidationError(
+        severity: ValidationSeverity.error,
+        field: 'userMessage',
+        message: 'User message exceeds maximum length '
+            '(${prompt.userMessage.length} > $maxUserLength)',
+      ));
+    }
+
+    return errors;
+  }
+
+  /// Combine system message sections into full system prompt
+  String _combineSystemSections(
+    String systemMessage,
+    String gameContext,
+    String projectContext,
+    String glossary,
+    String formatInstructions,
+  ) {
+    final sections = <String>[systemMessage];
+
+    if (gameContext.isNotEmpty) sections.add(gameContext);
+    if (projectContext.isNotEmpty) sections.add(projectContext);
+    if (glossary.isNotEmpty) sections.add(glossary);
+    sections.add(formatInstructions);
+
+    return sections.join('\n');
+  }
+
+  /// Combine user message sections
+  String _combineUserSections(String examples, String userMessage) {
+    if (examples.isEmpty) return userMessage;
+    return '$examples\n\n$userMessage';
+  }
+
+  /// Remove few-shot examples from prompt
+  Future<BuiltPrompt> _removeExamples(BuiltPrompt prompt) async {
+    // Remove "EXAMPLES" section from system message
+    final systemLines = prompt.systemMessage.split('\n');
+    final filteredLines = <String>[];
+    bool inExamplesSection = false;
+
+    for (final line in systemLines) {
+      if (line.startsWith('EXAMPLES')) {
+        inExamplesSection = true;
+        continue;
+      }
+
+      if (inExamplesSection && line.trim().isEmpty) {
+        inExamplesSection = false;
+        continue;
+      }
+
+      if (!inExamplesSection) {
+        filteredLines.add(line);
+      }
+    }
+
+    return BuiltPrompt(
+      systemMessage: filteredLines.join('\n'),
+      userMessage: prompt.userMessage,
+      unitCount: prompt.unitCount,
+      metadata: PromptMetadata(
+        includesExamples: false,
+        exampleCount: 0,
+        includesGlossary: prompt.metadata.includesGlossary,
+        glossaryTermCount: prompt.metadata.glossaryTermCount,
+        includesGameContext: prompt.metadata.includesGameContext,
+        includesProjectContext: prompt.metadata.includesProjectContext,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Shorten context sections to reduce token count
+  Future<BuiltPrompt> _shortenContexts(BuiltPrompt prompt) async {
+    // Remove game and project contexts if present
+    final systemLines = prompt.systemMessage.split('\n');
+    final filteredLines = <String>[];
+    bool inContextSection = false;
+
+    for (final line in systemLines) {
+      if (line.startsWith('GAME CONTEXT:') ||
+          line.startsWith('PROJECT CONTEXT:') ||
+          line.startsWith('CUSTOM INSTRUCTIONS:')) {
+        inContextSection = true;
+        continue;
+      }
+
+      if (inContextSection && (line.trim().isEmpty || line.startsWith('GLOSSARY'))) {
+        inContextSection = false;
+      }
+
+      if (!inContextSection) {
+        filteredLines.add(line);
+      }
+    }
+
+    return BuiltPrompt(
+      systemMessage: filteredLines.join('\n'),
+      userMessage: prompt.userMessage,
+      unitCount: prompt.unitCount,
+      metadata: PromptMetadata(
+        includesExamples: prompt.metadata.includesExamples,
+        exampleCount: prompt.metadata.exampleCount,
+        includesGlossary: prompt.metadata.includesGlossary,
+        glossaryTermCount: prompt.metadata.glossaryTermCount,
+        includesGameContext: false,
+        includesProjectContext: false,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+}

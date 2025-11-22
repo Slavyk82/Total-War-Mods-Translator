@@ -1,0 +1,381 @@
+import 'package:twmt/services/validation/i_translation_validation_service.dart';
+import 'package:twmt/services/validation/models/validation_issue.dart';
+import '../../models/common/result.dart';
+import '../../models/common/service_exception.dart';
+
+/// Implementation of translation validation service
+///
+/// Performs various quality checks on translations to identify issues
+class TranslationValidationService implements ITranslationValidationService {
+  /// Regular expression to find variables in text
+  static final _variablePattern = RegExp(r'\{(\d+)\}|%[sdifgc]|\$\{[\w]+\}');
+
+  /// Regular expression to find numbers in text
+  static final _numberPattern = RegExp(r'\d+');
+
+  /// Threshold for length difference warning (30%)
+  static const _lengthDifferenceThreshold = 0.3;
+
+  @override
+  Future<Result<List<ValidationIssue>, ServiceException>>
+      validateTranslation({
+    required String sourceText,
+    required String translatedText,
+    String? context,
+  }) async {
+    try {
+      final issues = <ValidationIssue>[];
+
+      // Run all validation checks
+      issues.addAll(_checkEmpty(sourceText, translatedText));
+      issues.addAll(_checkLength(sourceText, translatedText));
+      issues.addAll(_checkSpecialCharacters(sourceText, translatedText));
+      issues.addAll(_checkWhitespace(sourceText, translatedText));
+      issues.addAll(_checkPunctuation(sourceText, translatedText));
+      issues.addAll(_checkCaseMismatch(sourceText, translatedText));
+      issues.addAll(_checkNumbers(sourceText, translatedText));
+
+      return Ok(issues);
+    } catch (e, stackTrace) {
+      return Err(
+        ServiceException(
+          'Validation failed',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<String, ServiceException>> applyAutoFix({
+    required String translatedText,
+    required ValidationIssue issue,
+  }) async {
+    try {
+      if (!issue.autoFixable || issue.autoFixValue == null) {
+        return Err(
+          ServiceException('Issue is not auto-fixable: ${issue.type}'),
+        );
+      }
+
+      return Ok(issue.autoFixValue!);
+    } catch (e, stackTrace) {
+      return Err(
+        ServiceException(
+          'Failed to apply auto-fix',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<String, ServiceException>> applyAllAutoFixes({
+    required String sourceText,
+    required String translatedText,
+    required List<ValidationIssue> issues,
+  }) async {
+    try {
+      String fixedText = translatedText;
+
+      // Apply fixes in order of priority
+      // 1. Trim whitespace
+      final whitespaceIssue = issues.firstWhere(
+        (issue) =>
+            issue.type == ValidationIssueType.whitespaceIssue &&
+            issue.autoFixable,
+        orElse: () => const ValidationIssue(
+          type: ValidationIssueType.whitespaceIssue,
+          severity: ValidationSeverity.info,
+          description: '',
+        ),
+      );
+
+      if (whitespaceIssue.autoFixable && whitespaceIssue.autoFixValue != null) {
+        fixedText = whitespaceIssue.autoFixValue!;
+      }
+
+      // 2. Add missing variables
+      final variableIssue = issues.firstWhere(
+        (issue) =>
+            issue.type == ValidationIssueType.missingVariables &&
+            issue.autoFixable,
+        orElse: () => const ValidationIssue(
+          type: ValidationIssueType.missingVariables,
+          severity: ValidationSeverity.error,
+          description: '',
+        ),
+      );
+
+      if (variableIssue.autoFixable && variableIssue.autoFixValue != null) {
+        fixedText = variableIssue.autoFixValue!;
+      }
+
+      return Ok(fixedText);
+    } catch (e, stackTrace) {
+      return Err(
+        ServiceException(
+          'Failed to apply all auto-fixes',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  /// Check if translation is empty when source has text
+  List<ValidationIssue> _checkEmpty(String sourceText, String translatedText) {
+    if (sourceText.trim().isNotEmpty && translatedText.trim().isEmpty) {
+      return [
+        const ValidationIssue(
+          type: ValidationIssueType.emptyTranslation,
+          severity: ValidationSeverity.error,
+          description: 'Translation is empty but source text is not',
+          suggestion: 'Provide a translation for this text',
+          autoFixable: false,
+        ),
+      ];
+    }
+    return [];
+  }
+
+  /// Check length difference between source and translation
+  List<ValidationIssue> _checkLength(String sourceText, String translatedText) {
+    if (sourceText.trim().isEmpty || translatedText.trim().isEmpty) {
+      return [];
+    }
+
+    final sourceLength = sourceText.length;
+    final translatedLength = translatedText.length;
+    final difference = (sourceLength - translatedLength).abs();
+    final percentDifference = difference / sourceLength;
+
+    if (percentDifference > _lengthDifferenceThreshold) {
+      final percent = (percentDifference * 100).round();
+      return [
+        ValidationIssue(
+          type: ValidationIssueType.lengthDifference,
+          severity: ValidationSeverity.warning,
+          description: 'Length difference: $percent%',
+          suggestion:
+              'Source: $sourceLength characters, Translation: $translatedLength characters. '
+              'Review for accuracy - text might be incomplete or too verbose.',
+          autoFixable: false,
+          metadata: {
+            'source_length': sourceLength,
+            'translated_length': translatedLength,
+            'difference_percent': percent,
+          },
+        ),
+      ];
+    }
+    return [];
+  }
+
+  /// Check for missing variables and special characters
+  List<ValidationIssue> _checkSpecialCharacters(
+    String sourceText,
+    String translatedText,
+  ) {
+    final sourceVariables = _variablePattern
+        .allMatches(sourceText)
+        .map((m) => m.group(0)!)
+        .toSet();
+
+    final translatedVariables = _variablePattern
+        .allMatches(translatedText)
+        .map((m) => m.group(0)!)
+        .toSet();
+
+    final missingVariables =
+        sourceVariables.difference(translatedVariables).toList();
+
+    if (missingVariables.isNotEmpty) {
+      final missingVarsStr = missingVariables.join(', ');
+
+      return [
+        ValidationIssue(
+          type: ValidationIssueType.missingVariables,
+          severity: ValidationSeverity.error,
+          description: 'Missing variables: $missingVarsStr',
+          suggestion:
+              'Ensure all variables from the source text are present in the translation. '
+              'Variables: $missingVarsStr',
+          autoFixable: true,
+          autoFixValue: '$translatedText ${missingVariables.join(' ')}',
+          metadata: {
+            'missing_variables': missingVariables,
+          },
+        ),
+      ];
+    }
+
+    return [];
+  }
+
+  /// Check for whitespace issues
+  List<ValidationIssue> _checkWhitespace(
+    String sourceText,
+    String translatedText,
+  ) {
+    final issues = <ValidationIssue>[];
+
+    // Check leading whitespace
+    final sourceLeading = sourceText.length - sourceText.trimLeft().length;
+    final translatedLeading =
+        translatedText.length - translatedText.trimLeft().length;
+
+    // Check trailing whitespace
+    final sourceTrailing = sourceText.length - sourceText.trimRight().length;
+    final translatedTrailing =
+        translatedText.length - translatedText.trimRight().length;
+
+    if (sourceLeading != translatedLeading ||
+        sourceTrailing != translatedTrailing) {
+      issues.add(
+        ValidationIssue(
+          type: ValidationIssueType.whitespaceIssue,
+          severity: ValidationSeverity.warning,
+          description: 'Leading or trailing whitespace mismatch',
+          suggestion: 'Adjust whitespace to match source text',
+          autoFixable: true,
+          autoFixValue: translatedText.trim(),
+          metadata: {
+            'source_leading': sourceLeading,
+            'translated_leading': translatedLeading,
+            'source_trailing': sourceTrailing,
+            'translated_trailing': translatedTrailing,
+          },
+        ),
+      );
+    }
+
+    // Check for double spaces
+    if (translatedText.contains('  ')) {
+      issues.add(
+        ValidationIssue(
+          type: ValidationIssueType.whitespaceIssue,
+          severity: ValidationSeverity.warning,
+          description: 'Contains double spaces',
+          suggestion: 'Replace double spaces with single spaces',
+          autoFixable: true,
+          autoFixValue: translatedText.replaceAll(RegExp(r'\s+'), ' '),
+        ),
+      );
+    }
+
+    return issues;
+  }
+
+  /// Check for punctuation mismatch
+  List<ValidationIssue> _checkPunctuation(
+    String sourceText,
+    String translatedText,
+  ) {
+    if (sourceText.trim().isEmpty || translatedText.trim().isEmpty) {
+      return [];
+    }
+
+    final sourcePunctuation = _getEndingPunctuation(sourceText);
+    final translatedPunctuation = _getEndingPunctuation(translatedText);
+
+    if (sourcePunctuation != null &&
+        translatedPunctuation != null &&
+        sourcePunctuation != translatedPunctuation) {
+      return [
+        ValidationIssue(
+          type: ValidationIssueType.punctuationMismatch,
+          severity: ValidationSeverity.info,
+          description: 'Ending punctuation mismatch',
+          suggestion:
+              'Source ends with "$sourcePunctuation" but translation ends with "$translatedPunctuation"',
+          autoFixable: false,
+          metadata: {
+            'source_punctuation': sourcePunctuation,
+            'translated_punctuation': translatedPunctuation,
+          },
+        ),
+      ];
+    }
+
+    return [];
+  }
+
+  /// Get ending punctuation of a text
+  String? _getEndingPunctuation(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return null;
+
+    final lastChar = trimmed[trimmed.length - 1];
+    if (['.', '!', '?', ',', ';', ':'].contains(lastChar)) {
+      return lastChar;
+    }
+
+    return null;
+  }
+
+  /// Check for case mismatch
+  List<ValidationIssue> _checkCaseMismatch(
+    String sourceText,
+    String translatedText,
+  ) {
+    if (sourceText.trim().isEmpty || translatedText.trim().isEmpty) {
+      return [];
+    }
+
+    final sourceFirstChar = sourceText.trim()[0];
+    final translatedFirstChar = translatedText.trim()[0];
+
+    final sourceIsUpper = sourceFirstChar == sourceFirstChar.toUpperCase();
+    final translatedIsUpper =
+        translatedFirstChar == translatedFirstChar.toUpperCase();
+
+    if (sourceIsUpper && !translatedIsUpper) {
+      return [
+        const ValidationIssue(
+          type: ValidationIssueType.caseMismatch,
+          severity: ValidationSeverity.info,
+          description: 'Source starts with uppercase, translation with lowercase',
+          suggestion: 'Consider capitalizing the first letter of the translation',
+          autoFixable: false,
+        ),
+      ];
+    }
+
+    return [];
+  }
+
+  /// Check for missing numbers
+  List<ValidationIssue> _checkNumbers(String sourceText, String translatedText) {
+    final sourceNumbers =
+        _numberPattern.allMatches(sourceText).map((m) => m.group(0)!).toSet();
+
+    final translatedNumbers = _numberPattern
+        .allMatches(translatedText)
+        .map((m) => m.group(0)!)
+        .toSet();
+
+    final missingNumbers = sourceNumbers.difference(translatedNumbers).toList();
+
+    if (missingNumbers.isNotEmpty) {
+      final missingNumStr = missingNumbers.join(', ');
+      return [
+        ValidationIssue(
+          type: ValidationIssueType.missingNumbers,
+          severity: ValidationSeverity.warning,
+          description: 'Missing numbers: $missingNumStr',
+          suggestion:
+              'Ensure all numbers from the source text are present in the translation',
+          autoFixable: false,
+          metadata: {
+            'missing_numbers': missingNumbers,
+          },
+        ),
+      ];
+    }
+
+    return [];
+  }
+}
