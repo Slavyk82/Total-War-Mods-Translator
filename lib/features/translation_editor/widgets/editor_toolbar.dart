@@ -1,0 +1,387 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import '../providers/editor_providers.dart';
+
+/// Top toolbar for the translation editor
+///
+/// Contains project breadcrumb, language selector, action buttons, and search
+class EditorToolbar extends ConsumerStatefulWidget {
+  final String projectId;
+  final String languageId;
+  final VoidCallback onTranslateAll;
+  final VoidCallback onTranslateSelected;
+  final VoidCallback onValidate;
+  final VoidCallback onExport;
+  final VoidCallback onUndo;
+  final VoidCallback onRedo;
+  final bool canUndo;
+  final bool canRedo;
+
+  const EditorToolbar({
+    super.key,
+    required this.projectId,
+    required this.languageId,
+    required this.onTranslateAll,
+    required this.onTranslateSelected,
+    required this.onValidate,
+    required this.onExport,
+    required this.onUndo,
+    required this.onRedo,
+    this.canUndo = false,
+    this.canRedo = false,
+  });
+
+  @override
+  ConsumerState<EditorToolbar> createState() => _EditorToolbarState();
+}
+
+class _EditorToolbarState extends ConsumerState<EditorToolbar> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
+    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
+    final selectionState = ref.watch(editorSelectionProvider);
+
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Breadcrumb - flexible to shrink when space is limited
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    FluentIcons.folder_24_regular,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: projectAsync.when(
+                      data: (project) => Text(
+                        project.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      loading: () => const SizedBox(
+                        width: 100,
+                        height: 16,
+                        child: LinearProgressIndicator(),
+                      ),
+                      error: (_, __) => const Text('Error'),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Icon(FluentIcons.chevron_right_24_regular, size: 16),
+                  ),
+                  Flexible(
+                    child: languageAsync.when(
+                      data: (language) => Text(
+                        language.name,
+                        style: const TextStyle(fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      loading: () => const SizedBox(
+                        width: 60,
+                        height: 16,
+                        child: LinearProgressIndicator(),
+                      ),
+                      error: (_, __) => const Text('Error'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // LLM Model selector
+          _buildModelSelector(),
+          const SizedBox(width: 16),
+
+          // Action buttons
+          _buildActionButton(
+            icon: FluentIcons.translate_24_regular,
+            label: 'Translate All',
+            onPressed: widget.onTranslateAll,
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            icon: FluentIcons.translate_24_filled,
+            label: 'Translate Selected',
+            onPressed: selectionState.hasSelection
+              ? widget.onTranslateSelected
+              : null,
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            icon: FluentIcons.checkmark_circle_24_regular,
+            label: 'Validate',
+            onPressed: widget.onValidate,
+          ),
+          const SizedBox(width: 8),
+          _buildActionButton(
+            icon: FluentIcons.arrow_export_24_regular,
+            label: 'Export',
+            onPressed: widget.onExport,
+          ),
+          const SizedBox(width: 16),
+
+          // Undo/Redo
+          _buildIconButton(
+            icon: FluentIcons.arrow_undo_24_regular,
+            tooltip: 'Undo',
+            onPressed: widget.canUndo ? widget.onUndo : null,
+          ),
+          const SizedBox(width: 4),
+          _buildIconButton(
+            icon: FluentIcons.arrow_redo_24_regular,
+            tooltip: 'Redo',
+            onPressed: widget.canRedo ? widget.onRedo : null,
+          ),
+
+          const Spacer(),
+
+          // Search field - flexible with constraints
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                minWidth: 200,
+                maxWidth: 300,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search translations...',
+                  prefixIcon: const Icon(
+                    FluentIcons.search_24_regular,
+                    size: 18,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                    ? FluentIconButton(
+                        icon: const Icon(FluentIcons.dismiss_24_regular, size: 16),
+                        onPressed: () {
+                          _searchController.clear();
+                          ref.read(editorFilterProvider.notifier)
+                            .setSearchQuery('');
+                        },
+                        tooltip: 'Clear search',
+                        size: 28,
+                        iconSize: 16,
+                      )
+                    : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  isDense: true,
+                ),
+                style: const TextStyle(fontSize: 13),
+                onChanged: (value) {
+                  ref.read(editorFilterProvider.notifier)
+                    .setSearchQuery(value);
+                },
+              ),
+            ),
+          ),
+        ),
+          const SizedBox(width: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    final isEnabled = onPressed != null;
+
+    return MouseRegion(
+      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isEnabled
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isEnabled
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isEnabled
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.grey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isEnabled
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback? onPressed,
+  }) {
+    final isEnabled = onPressed != null;
+
+    return Tooltip(
+      message: tooltip,
+      child: MouseRegion(
+        cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          onTap: onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: isEnabled ? null : Colors.grey,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModelSelector() {
+    final modelsAsync = ref.watch(availableLlmModelsProvider);
+    final selectedModelId = ref.watch(selectedLlmModelProvider);
+
+    return modelsAsync.when(
+      data: (models) {
+        if (models.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // Find the current selection or default model
+        final currentModel = selectedModelId != null
+          ? models.firstWhere(
+              (m) => m.id == selectedModelId,
+              orElse: () => models.firstWhere(
+                (m) => m.isDefault,
+                orElse: () => models.first,
+              ),
+            )
+          : models.firstWhere(
+              (m) => m.isDefault,
+              orElse: () => models.first,
+            );
+
+        // Initialize provider with default model if not set
+        if (selectedModelId == null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref.read(selectedLlmModelProvider.notifier).setModel(currentModel.id);
+          });
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: Theme.of(context).dividerColor,
+            ),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                FluentIcons.brain_circuit_24_regular,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              DropdownButton<String>(
+                value: currentModel.id,
+                underline: const SizedBox.shrink(),
+                isDense: true,
+                items: models.map((model) {
+                  return DropdownMenuItem<String>(
+                    value: model.id,
+                    child: Text(
+                      '${model.providerCode}: ${model.displayName}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    ref.read(selectedLlmModelProvider.notifier).setModel(newValue);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        width: 150,
+        height: 20,
+        child: LinearProgressIndicator(),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}

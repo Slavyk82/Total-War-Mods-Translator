@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../providers/editor_providers.dart';
+
+/// Context menu builder for DataGrid rows
+///
+/// Provides context menu items for translation editor operations
+class ContextMenuBuilder {
+  /// Show context menu for selected rows
+  static void showContextMenu({
+    required BuildContext context,
+    required Offset position,
+    required TranslationRow row,
+    required int selectionCount,
+    required VoidCallback onEdit,
+    required VoidCallback onSelectAll,
+    required Future<void> Function() onCopy,
+    required Future<void> Function() onPaste,
+    required Future<void> Function() onValidate,
+    required Future<void> Function() onClear,
+    required Future<void> Function() onViewHistory,
+    required Future<void> Function() onDelete,
+  }) {
+    final hasSelection = selectionCount > 0;
+    final isSingleSelection = selectionCount == 1;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: <PopupMenuEntry<String>>[
+        if (isSingleSelection)
+          const PopupMenuItem(
+            value: 'edit',
+            child: Row(
+              children: [
+                Icon(FluentIcons.edit_24_regular, size: 16),
+                SizedBox(width: 8),
+                Text('Edit'),
+              ],
+            ),
+          ),
+        if (isSingleSelection) const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'select_all',
+          child: Row(
+            children: [
+              Icon(FluentIcons.select_all_on_24_regular, size: 16),
+              SizedBox(width: 8),
+              Text('Select All'),
+              Spacer(),
+              Text('Ctrl+A', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'copy',
+          enabled: hasSelection,
+          child: Row(
+            children: [
+              Icon(
+                FluentIcons.copy_24_regular,
+                size: 16,
+                color: hasSelection ? null : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Copy',
+                style: TextStyle(color: hasSelection ? null : Colors.grey),
+              ),
+              const Spacer(),
+              const Text(
+                'Ctrl+C',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'paste',
+          child: Row(
+            children: [
+              Icon(FluentIcons.clipboard_paste_24_regular, size: 16),
+              SizedBox(width: 8),
+              Text('Paste'),
+              Spacer(),
+              Text('Ctrl+V', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'validate',
+          enabled: hasSelection,
+          child: Row(
+            children: [
+              Icon(
+                FluentIcons.checkmark_circle_24_regular,
+                size: 16,
+                color: hasSelection ? null : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                selectionCount > 1
+                    ? 'Mark as Reviewed ($selectionCount)'
+                    : 'Mark as Reviewed',
+                style: TextStyle(color: hasSelection ? null : Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'clear',
+          enabled: hasSelection,
+          child: Row(
+            children: [
+              Icon(
+                FluentIcons.delete_24_regular,
+                size: 16,
+                color: hasSelection ? null : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                selectionCount > 1
+                    ? 'Clear Translation ($selectionCount)'
+                    : 'Clear Translation',
+                style: TextStyle(color: hasSelection ? null : Colors.grey),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        if (isSingleSelection)
+          const PopupMenuItem(
+            value: 'history',
+            child: Row(
+              children: [
+                Icon(FluentIcons.history_24_regular, size: 16),
+                SizedBox(width: 8),
+                Text('View History'),
+              ],
+            ),
+          ),
+        if (isSingleSelection) const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'delete',
+          enabled: hasSelection,
+          child: Row(
+            children: [
+              Icon(
+                FluentIcons.delete_24_regular,
+                size: 16,
+                color: hasSelection ? Colors.red : Colors.grey,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                selectionCount > 1 ? 'Delete ($selectionCount)' : 'Delete',
+                style: TextStyle(color: hasSelection ? Colors.red : Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) async {
+      if (value == null) return;
+
+      switch (value) {
+        case 'edit':
+          onEdit();
+          break;
+        case 'select_all':
+          onSelectAll();
+          break;
+        case 'copy':
+          await onCopy();
+          break;
+        case 'paste':
+          await onPaste();
+          break;
+        case 'validate':
+          await onValidate();
+          break;
+        case 'clear':
+          await onClear();
+          break;
+        case 'history':
+          await onViewHistory();
+          break;
+        case 'delete':
+          await onDelete();
+          break;
+      }
+    });
+  }
+}
