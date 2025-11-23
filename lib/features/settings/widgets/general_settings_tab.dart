@@ -2,14 +2,12 @@ import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:file_picker/file_picker.dart';
 import '../providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/widgets/fluent/fluent_expander.dart';
-import 'package:twmt/services/steam/steam_detection_service.dart';
-import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import '../models/game_display_info.dart';
-import 'general/settings_action_button.dart';
+import 'general/game_installations_section.dart';
+import 'general/workshop_section.dart';
+import 'general/rpfm_section.dart';
 
 /// General settings tab for configuring game paths, languages, and preferences.
 ///
@@ -23,7 +21,6 @@ class GeneralSettingsTab extends ConsumerStatefulWidget {
 
 class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
   final _formKey = GlobalKey<FormState>();
-  bool _isDetecting = false;
 
   late Map<String, TextEditingController> _gamePathControllers;
   late TextEditingController _workshopPathController;
@@ -75,8 +72,6 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
       settingsKey: SettingsKeys.gamePathPharaoh,
     ),
   ];
-
-  final SteamDetectionService _detectionService = SteamDetectionService();
 
   @override
   void initState() {
@@ -415,11 +410,19 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              _buildGameInstallationsSection(),
+              GameInstallationsSection(
+                gamePathControllers: _gamePathControllers,
+                games: _games,
+              ),
               const SizedBox(height: 16),
-              _buildWorkshopSection(),
+              WorkshopSection(
+                workshopPathController: _workshopPathController,
+              ),
               const SizedBox(height: 32),
-              _buildRpfmSection(),
+              RpfmSection(
+                rpfmPathController: _rpfmPathController,
+                rpfmSchemaPathController: _rpfmSchemaPathController,
+              ),
               const SizedBox(height: 32),
               _buildLanguageSection(),
               const SizedBox(height: 32),
