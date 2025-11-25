@@ -67,6 +67,9 @@ class FtsQueryBuilder {
   /// Searches translation_versions_fts virtual table with joins to
   /// translation units, projects, and languages.
   ///
+  /// Note: Uses contentless FTS5 with version_id column for JOIN
+  /// (avoids rowid mapping issues with TEXT PRIMARY KEY)
+  ///
   /// Parameters:
   /// - [ftsQuery]: FTS5 MATCH query string
   /// - [filter]: Optional search filters
@@ -102,10 +105,10 @@ class FtsQueryBuilder {
         tv.created_at,
         tv.updated_at,
         fts.rank,
-        snippet(translation_versions_fts, 1, '<mark>', '</mark>', '...', 10) as highlighted
+        snippet(translation_versions_fts, 0, '<mark>', '</mark>', '...', 10) as highlighted
       FROM translation_versions_fts fts
-      INNER JOIN translation_versions tv ON fts.rowid = tv.rowid
-      INNER JOIN translation_units tu ON tv.translation_unit_id = tu.id
+      INNER JOIN translation_versions tv ON fts.version_id = tv.id
+      INNER JOIN translation_units tu ON tv.unit_id = tu.id
       LEFT JOIN projects p ON tu.project_id = p.id
       LEFT JOIN languages l ON tv.language_code = l.code
       WHERE translation_versions_fts MATCH '$sanitizedQuery'

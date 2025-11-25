@@ -111,6 +111,19 @@ abstract class ITranslationOrchestrator {
     required String batchId,
   });
 
+  /// Stop a batch translation immediately
+  ///
+  /// Immediately cancels any ongoing LLM requests and stops the batch.
+  /// This is more aggressive than cancelTranslation - it interrupts
+  /// HTTP requests in progress.
+  ///
+  /// Use this when user wants to stop immediately without waiting.
+  ///
+  /// Returns [Ok(void)] on success or [Err(TranslationOrchestrationException)] on failure
+  Future<Result<void, TranslationOrchestrationException>> stopTranslation({
+    required String batchId,
+  });
+
   /// Get current status of a translation batch
   ///
   /// Returns the latest progress information without starting or resuming translation.

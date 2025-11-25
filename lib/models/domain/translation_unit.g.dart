@@ -14,6 +14,7 @@ TranslationUnit _$TranslationUnitFromJson(Map<String, dynamic> json) =>
       sourceText: json['source_text'] as String,
       context: json['context'] as String?,
       notes: json['notes'] as String?,
+      sourceLocFile: json['source_loc_file'] as String?,
       isObsolete: json['is_obsolete'] == null
           ? false
           : const BoolIntConverter().fromJson(json['is_obsolete']),
@@ -29,6 +30,7 @@ Map<String, dynamic> _$TranslationUnitToJson(TranslationUnit instance) =>
       'source_text': instance.sourceText,
       'context': instance.context,
       'notes': instance.notes,
+      'source_loc_file': instance.sourceLocFile,
       'is_obsolete': const BoolIntConverter().toJson(instance.isObsolete),
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,

@@ -3,11 +3,14 @@ import '../../../models/domain/project.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/game_installation.dart';
+import '../../../models/domain/project_statistics.dart';
 import '../../../repositories/project_repository.dart';
 import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/language_repository.dart';
 import '../../../repositories/game_installation_repository.dart';
 import '../../../repositories/workshop_mod_repository.dart';
+import '../../../repositories/translation_unit_repository.dart';
+import '../../../repositories/translation_version_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
 
@@ -105,7 +108,7 @@ class ProjectWithDetails {
     if (languages.isEmpty) return 0.0;
     final sum = languages.fold<double>(
       0.0,
-      (sum, lang) => sum + lang.projectLanguage.progressPercent,
+      (sum, lang) => sum + lang.progressPercent,
     );
     return sum / languages.length;
   }
@@ -116,15 +119,29 @@ class ProjectWithDetails {
   }
 }
 
-/// Project language with language info
+/// Project language with language info and translation stats
 class ProjectLanguageWithInfo {
   final ProjectLanguage projectLanguage;
   final Language? language;
+  final int totalUnits;
+  final int translatedUnits;
+  final int validatedUnits;
 
   const ProjectLanguageWithInfo({
     required this.projectLanguage,
     this.language,
+    this.totalUnits = 0,
+    this.translatedUnits = 0,
+    this.validatedUnits = 0,
   });
+
+  /// Calculate progress percentage based on actual translation counts
+  double get progressPercent {
+    if (totalUnits == 0) return 0.0;
+    // Count translated + validated as "complete"
+    final completedUnits = translatedUnits + validatedUnits;
+    return (completedUnits / totalUnits) * 100;
+  }
 }
 
 /// Provider for project repository
@@ -219,6 +236,8 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
   final langRepo = ref.watch(languageRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
+  final unitRepo = TranslationUnitRepository();
+  final versionRepo = TranslationVersionRepository();
 
   // Fetch all projects
   final projectsResult = await projectRepo.getAll();
@@ -241,6 +260,12 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
       gameInstallation = gameResult.unwrap();
     }
 
+    // Get total units count for this project
+    final unitsResult = await unitRepo.getByProject(project.id);
+    final totalUnits = unitsResult.isOk 
+        ? unitsResult.unwrap().where((u) => !u.isObsolete).length 
+        : 0;
+
     // Get project languages
     final langResult = await projectLangRepo.getByProject(project.id);
     final List<ProjectLanguageWithInfo> languagesWithInfo = [];
@@ -248,7 +273,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
     if (langResult.isOk) {
       final projectLanguages = langResult.unwrap();
 
-      // Load language info for each project language
+      // Load language info and stats for each project language
       for (final projLang in projectLanguages) {
         Language? language;
         final langInfoResult = await langRepo.getById(projLang.languageId);
@@ -256,9 +281,18 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
           language = langInfoResult.unwrap();
         }
 
+        // Get per-language translation stats
+        final statsResult = await versionRepo.getLanguageStatistics(projLang.id);
+        final stats = statsResult.isOk 
+            ? statsResult.unwrap() 
+            : ProjectStatistics.empty();
+
         languagesWithInfo.add(ProjectLanguageWithInfo(
           projectLanguage: projLang,
           language: language,
+          totalUnits: totalUnits,
+          translatedUnits: stats.translatedCount,
+          validatedUnits: stats.validatedCount,
         ));
       }
     }

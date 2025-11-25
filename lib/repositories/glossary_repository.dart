@@ -153,23 +153,31 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
   /// Get glossary by name
   Future<Glossary?> getByName(String name) async {
-    final maps = await database.query(
-      glossaryTableName,
-      where: 'name = ?',
-      whereArgs: [name],
-      limit: 1,
-    );
+    final maps = await database.rawQuery('''
+      SELECT 
+        g.*,
+        COALESCE(COUNT(ge.id), 0) as entry_count
+      FROM $glossaryTableName g
+      LEFT JOIN $tableName ge ON g.id = ge.glossary_id
+      WHERE g.name = ?
+      GROUP BY g.id
+      LIMIT 1
+    ''', [name]);
     return maps.isEmpty ? null : Glossary.fromJson(maps.first);
   }
 
   /// Get glossary by ID (returns Glossary, not GlossaryEntry)
   Future<Glossary?> getGlossaryById(String id) async {
-    final maps = await database.query(
-      glossaryTableName,
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
-    );
+    final maps = await database.rawQuery('''
+      SELECT 
+        g.*,
+        COALESCE(COUNT(ge.id), 0) as entry_count
+      FROM $glossaryTableName g
+      LEFT JOIN $tableName ge ON g.id = ge.glossary_id
+      WHERE g.id = ?
+      GROUP BY g.id
+      LIMIT 1
+    ''', [id]);
     return maps.isEmpty ? null : Glossary.fromJson(maps.first);
   }
 
@@ -178,27 +186,33 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     String? projectId,
     bool includeGlobal = true,
   }) async {
-    String? where;
-    List<dynamic>? whereArgs;
+    String whereClause = '';
+    List<dynamic> whereArgs = [];
 
     if (projectId != null) {
       if (includeGlobal) {
-        where = 'is_global = 1 OR project_id = ?';
+        whereClause = ' WHERE g.is_global = 1 OR g.project_id = ?';
         whereArgs = [projectId];
       } else {
-        where = 'project_id = ?';
+        whereClause = ' WHERE g.project_id = ?';
         whereArgs = [projectId];
       }
     } else if (!includeGlobal) {
-      where = 'is_global = 0';
+      whereClause = ' WHERE g.is_global = 0';
     }
 
-    final maps = await database.query(
-      glossaryTableName,
-      where: where,
-      whereArgs: whereArgs,
-      orderBy: 'name ASC',
-    );
+    // Query with LEFT JOIN to count entries
+    final maps = await database.rawQuery('''
+      SELECT 
+        g.*,
+        COALESCE(COUNT(ge.id), 0) as entry_count
+      FROM $glossaryTableName g
+      LEFT JOIN $tableName ge ON g.id = ge.glossary_id
+      $whereClause
+      GROUP BY g.id
+      ORDER BY g.name ASC
+    ''', whereArgs);
+
     return maps.map((map) => Glossary.fromJson(map)).toList();
   }
 
@@ -206,11 +220,15 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   Future<List<Glossary>> getGlossariesByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
     final placeholders = ids.map((_) => '?').join(',');
-    final maps = await database.query(
-      glossaryTableName,
-      where: 'id IN ($placeholders)',
-      whereArgs: ids,
-    );
+    final maps = await database.rawQuery('''
+      SELECT 
+        g.*,
+        COALESCE(COUNT(ge.id), 0) as entry_count
+      FROM $glossaryTableName g
+      LEFT JOIN $tableName ge ON g.id = ge.glossary_id
+      WHERE g.id IN ($placeholders)
+      GROUP BY g.id
+    ''', ids);
     return maps.map((map) => Glossary.fromJson(map)).toList();
   }
 
@@ -261,8 +279,11 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   Future<List<GlossaryEntry>> getEntriesByGlossary({
     required String glossaryId,
     String? targetLanguageCode,
-    String? category,
   }) async {
+    print('[GlossaryRepository.getEntriesByGlossary] Fetching entries:');
+    print('  glossaryId: $glossaryId');
+    print('  targetLanguageCode: $targetLanguageCode');
+    
     final conditions = ['glossary_id = ?'];
     final args = <dynamic>[glossaryId];
 
@@ -270,10 +291,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       conditions.add('target_language_code = ?');
       args.add(targetLanguageCode);
     }
-    if (category != null) {
-      conditions.add('category = ?');
-      args.add(category);
-    }
+
+    print('[GlossaryRepository.getEntriesByGlossary] Query: WHERE ${conditions.join(' AND ')}');
+    print('[GlossaryRepository.getEntriesByGlossary] Args: $args');
 
     final maps = await database.query(
       tableName,
@@ -281,16 +301,35 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       whereArgs: args,
       orderBy: 'source_term ASC',
     );
+    
+    print('[GlossaryRepository.getEntriesByGlossary] Found ${maps.length} entries');
+    if (maps.isNotEmpty) {
+      print('[GlossaryRepository.getEntriesByGlossary] First entry: ${maps.first}');
+    }
+    
     return maps.map((map) => fromMap(map)).toList();
   }
 
   /// Insert entry
   Future<void> insertEntry(GlossaryEntry entry) async {
-    await database.insert(
-      tableName,
-      toMap(entry),
-      conflictAlgorithm: ConflictAlgorithm.abort,
-    );
+    print('[GlossaryRepository.insertEntry] Inserting entry: ${entry.id}');
+    print('  glossaryId: ${entry.glossaryId}');
+    print('  sourceTerm: "${entry.sourceTerm}"');
+    print('  targetTerm: "${entry.targetTerm}"');
+    print('  Entry map: ${toMap(entry)}');
+    
+    try {
+      final result = await database.insert(
+        tableName,
+        toMap(entry),
+        conflictAlgorithm: ConflictAlgorithm.abort,
+      );
+      print('[GlossaryRepository.insertEntry] Insert successful, rowId: $result');
+    } catch (e, stackTrace) {
+      print('[GlossaryRepository.insertEntry] ERROR inserting entry: $e');
+      print('[GlossaryRepository.insertEntry] Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   /// Update entry
@@ -332,7 +371,6 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     required String query,
     List<String>? glossaryIds,
     String? targetLanguageCode,
-    String? category,
   }) async {
     final conditions = <String>[];
     final args = <dynamic>[];
@@ -350,10 +388,6 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     if (targetLanguageCode != null) {
       conditions.add('target_language_code = ?');
       args.add(targetLanguageCode);
-    }
-    if (category != null) {
-      conditions.add('category = ?');
-      args.add(category);
     }
 
     final maps = await database.query(
@@ -373,13 +407,5 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     );
     final count = result.firstOrNull?['count'];
     return count is int ? count : 0;
-  }
-
-  /// Get all categories
-  Future<List<String>> getAllCategories() async {
-    final result = await database.rawQuery(
-      'SELECT DISTINCT category FROM $tableName WHERE category IS NOT NULL ORDER BY category ASC',
-    );
-    return result.map((row) => row['category'] as String).toList();
   }
 }

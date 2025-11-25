@@ -6,7 +6,6 @@ import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/llm/models/llm_model_info.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 
 /// Anthropic (Claude) provider implementation
@@ -42,8 +41,9 @@ class AnthropicProvider implements ILlmProvider {
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
     LlmRequest request,
-    String apiKey,
-  ) async {
+    String apiKey, {
+    CancelToken? cancelToken,
+  }) async {
     final startTime = DateTime.now();
 
     try {
@@ -54,6 +54,7 @@ class AnthropicProvider implements ILlmProvider {
       final response = await _dio.post(
         '/messages',
         data: payload,
+        cancelToken: cancelToken,
         options: Options(
           headers: {
             'x-api-key': apiKey,
@@ -96,11 +97,16 @@ class AnthropicProvider implements ILlmProvider {
     String apiKey, {
     String? model,
   }) async {
-    final modelToUse = model ?? config.defaultModel;
+    if (model == null) {
+      return Err(LlmInvalidRequestException(
+        'Model is required for Anthropic API key validation',
+        providerCode: providerCode,
+      ));
+    }
 
     try {
       final requestData = {
-        'model': modelToUse,
+        'model': model,
         'max_tokens': 10,
         'messages': [
           {
@@ -134,7 +140,7 @@ class AnthropicProvider implements ILlmProvider {
       }
       final error = _handleDioException(e);
       return Err(error);
-    } catch (e, stackTrace) {
+    } catch (e) {
       return Err(LlmProviderException(
         'Failed to validate API key: $e',
         providerCode: providerCode,
@@ -270,67 +276,20 @@ class AnthropicProvider implements ILlmProvider {
     return const Ok(null);
   }
 
-  @override
-  Future<Result<List<LlmModelInfo>, LlmProviderException>> fetchModels(
-    String apiKey,
-  ) async {
-    try {
-      final response = await _dio.get(
-        '/models',
-        options: Options(
-          headers: {
-            'x-api-key': apiKey,
-          },
-        ),
-      );
-
-      // Parse response
-      final data = response.data as Map<String, dynamic>;
-      final modelsData = data['data'] as List;
-
-      final models = modelsData.map((modelData) {
-        final modelMap = modelData as Map<String, dynamic>;
-        return LlmModelInfo(
-          id: modelMap['id'] as String,
-          displayName: modelMap['display_name'] as String?,
-          createdAt: modelMap['created_at'] != null
-              ? DateTime.tryParse(modelMap['created_at'] as String)
-              : null,
-          type: modelMap['type'] as String?,
-        );
-      }).toList();
-
-      return Ok(models);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to fetch models: $e',
-        providerCode: providerCode,
-        code: 'FETCH_MODELS_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
-  }
-
   /// Build request payload for Anthropic API
   Map<String, dynamic> _buildRequestPayload(LlmRequest request) {
+    if (request.modelName == null) {
+      throw ArgumentError('modelName is required for Anthropic requests');
+    }
+
     // Build system prompt
     final systemPrompt = _buildSystemPrompt(request);
 
     // Build user message with texts to translate
     final userMessage = _buildUserMessage(request);
 
-    final modelToUse = request.modelName ?? config.defaultModel;
-
-    // DEBUG: Log final model selection
-    print('[DEBUG] AnthropicProvider._buildRequestPayload:');
-    print('[DEBUG]   - request.modelName: ${request.modelName}');
-    print('[DEBUG]   - config.defaultModel: ${config.defaultModel}');
-    print('[DEBUG]   - Final model to use: $modelToUse');
-
     return {
-      'model': modelToUse,
+      'model': request.modelName,
       'max_tokens': request.maxTokens ?? 4096,
       'temperature': request.temperature,
       'system': systemPrompt,
@@ -359,8 +318,11 @@ class AnthropicProvider implements ILlmProvider {
       parts.add('\n\n## Glossary Terms\n${_formatGlossary(request.glossaryTerms!)}');
     }
 
-    // Ensure JSON output format
-    parts.add('\n\nYou must respond with ONLY a valid JSON object. '
+    // Ensure JSON output format and emphasize tag preservation
+    parts.add('\n\nCRITICAL: You must preserve ALL formatting tags exactly as they appear in the source text.');
+    parts.add('This includes: [[col:red]], [[col:yellow]], [%s], <tags>, etc.');
+    parts.add('For {{...}} template expressions: preserve structure/code but you may translate quoted display strings inside.');
+    parts.add('\nYou must respond with ONLY a valid JSON object. '
         'No markdown code blocks, no explanations, just the raw JSON object.');
 
     return parts.join();
@@ -378,7 +340,8 @@ class AnthropicProvider implements ILlmProvider {
     // Add texts to translate
     parts.add('## Translation Task');
     parts.add('Target Language: ${request.targetLanguage}');
-    parts.add('\nTranslate the following texts. Preserve the keys, translate only the values:');
+    parts.add('\nTranslate the following texts. PRESERVE ALL TAGS AND PLACEHOLDERS EXACTLY.');
+    parts.add('Preserve the keys, translate only the values:');
     parts.add('\n${jsonEncode(request.texts)}');
     parts.add('\nReturn ONLY a JSON object with the same keys and translated values. No markdown, no code blocks.');
 
@@ -515,14 +478,22 @@ class AnthropicProvider implements ILlmProvider {
         });
       }
 
-      // Validate that all requested keys are present
+      // Check for missing keys but don't throw - return partial results
+      // This allows the caller to handle retrying only the missing keys
       final missingKeys = request.texts.keys.where(
         (key) => !translations.containsKey(key),
       ).toList();
 
       if (missingKeys.isNotEmpty) {
+        // Log warning but continue with partial results
+        // ignore: avoid_print
+        print('[Anthropic] Warning: LLM response missing ${missingKeys.length} keys: ${missingKeys.take(3).join(", ")}${missingKeys.length > 3 ? "..." : ""}');
+      }
+
+      // Fail only if no translations were parsed at all
+      if (translations.isEmpty && request.texts.isNotEmpty) {
         throw FormatException(
-          'Missing translations for keys: ${missingKeys.join(", ")}',
+          'No valid translations found in response',
         );
       }
 

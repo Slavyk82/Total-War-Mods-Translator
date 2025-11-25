@@ -3,7 +3,7 @@ import 'package:twmt/models/domain/glossary_entry.dart';
 /// Utility class for calculating glossary statistics
 ///
 /// Provides static methods for analyzing glossary entries and generating
-/// statistical information about language pairs, categories, and usage.
+/// statistical information about language pairs and usage.
 class GlossaryStatistics {
   GlossaryStatistics._(); // Private constructor to prevent instantiation
 
@@ -12,7 +12,6 @@ class GlossaryStatistics {
   /// Returns a map containing:
   /// - totalEntries: Total number of entries
   /// - languagePairs: Map of language pair to count
-  /// - categories: Map of category to count
   ///
   /// [entries] - List of glossary entries to analyze
   static Map<String, dynamic> calculateStats(List<GlossaryEntry> entries) {
@@ -23,17 +22,9 @@ class GlossaryStatistics {
       languagePairs[pair] = (languagePairs[pair] ?? 0) + 1;
     }
 
-    // Count by category
-    final categories = <String, int>{};
-    for (final entry in entries) {
-      final cat = entry.category ?? 'Uncategorized';
-      categories[cat] = (categories[cat] ?? 0) + 1;
-    }
-
     return {
       'totalEntries': entries.length,
       'languagePairs': languagePairs,
-      'categories': categories,
     };
   }
 
@@ -48,15 +39,6 @@ class GlossaryStatistics {
         .toSet();
   }
 
-  /// Get categories present in entries
-  ///
-  /// Returns a set of category names (uncategorized entries marked as 'Uncategorized')
-  ///
-  /// [entries] - List of glossary entries
-  static Set<String> getCategories(List<GlossaryEntry> entries) {
-    return entries.map((e) => e.category ?? 'Uncategorized').toSet();
-  }
-
   /// Count entries by language pair
   ///
   /// Returns a map of language pair to count
@@ -67,20 +49,6 @@ class GlossaryStatistics {
     for (final entry in entries) {
       final pair = entry.targetLanguageCode;
       counts[pair] = (counts[pair] ?? 0) + 1;
-    }
-    return counts;
-  }
-
-  /// Count entries by category
-  ///
-  /// Returns a map of category to count
-  ///
-  /// [entries] - List of glossary entries
-  static Map<String, int> countByCategory(List<GlossaryEntry> entries) {
-    final counts = <String, int>{};
-    for (final entry in entries) {
-      final cat = entry.category ?? 'Uncategorized';
-      counts[cat] = (counts[cat] ?? 0) + 1;
     }
     return counts;
   }

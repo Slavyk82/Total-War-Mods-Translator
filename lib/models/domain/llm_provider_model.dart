@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'llm_provider_model.g.dart';
 

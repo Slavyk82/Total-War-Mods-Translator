@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/steam/steam_detection_service.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
 
@@ -125,8 +127,36 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
   // === Auto-Detection Methods ===
 
   Future<void> _autoDetectWorkshop() async {
-    if (mounted) {
-      FluentToast.info(context, 'Auto-detection not yet implemented for Workshop folder');
+    if (_isDetecting) return;
+
+    setState(() => _isDetecting = true);
+
+    try {
+      final steamDetection = ServiceLocator.get<SteamDetectionService>();
+      final result = await steamDetection.detectWorkshopFolder();
+
+      if (!mounted) return;
+
+      if (result.isOk) {
+        final workshopPath = result.unwrap();
+        if (workshopPath != null && workshopPath.isNotEmpty) {
+          setState(() => widget.workshopPathController.text = workshopPath);
+          await _saveWorkshopPath(workshopPath);
+          FluentToast.success(context, 'Workshop folder detected: $workshopPath');
+        } else {
+          FluentToast.warning(context, 'Workshop folder not found. Please select manually.');
+        }
+      } else {
+        FluentToast.error(context, 'Detection failed: ${result.unwrapErr().message}');
+      }
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Detection error: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDetecting = false);
+      }
     }
   }
 

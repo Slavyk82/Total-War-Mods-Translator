@@ -26,6 +26,8 @@ TranslationContext _$TranslationContextFromJson(Map<String, dynamic> json) =>
       category: json['category'] as String?,
       formalityLevel: json['formalityLevel'] as String?,
       preserveFormatting: json['preserveFormatting'] as bool? ?? true,
+      unitsPerBatch: (json['unitsPerBatch'] as num?)?.toInt() ?? 100,
+      parallelBatches: (json['parallelBatches'] as num?)?.toInt() ?? 1,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -46,6 +48,8 @@ Map<String, dynamic> _$TranslationContextToJson(TranslationContext instance) =>
       'category': instance.category,
       'formalityLevel': instance.formalityLevel,
       'preserveFormatting': instance.preserveFormatting,
+      'unitsPerBatch': instance.unitsPerBatch,
+      'parallelBatches': instance.parallelBatches,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),
     };

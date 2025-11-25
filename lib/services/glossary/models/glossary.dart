@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'glossary.g.dart';
 
@@ -17,18 +18,28 @@ class Glossary {
   final String? description;
 
   /// If true, glossary is shared across all projects
+  @JsonKey(name: 'is_global')
+  @BoolIntConverter()
   final bool isGlobal;
 
   /// If specified, glossary is project-specific
+  @JsonKey(name: 'project_id')
   final String? projectId;
 
-  /// Number of entries in the glossary
+  /// Target language ID (required by database schema)
+  @JsonKey(name: 'target_language_id')
+  final String? targetLanguageId;
+
+  /// Number of entries in the glossary (calculated dynamically)
+  @JsonKey(includeToJson: false)
   final int entryCount;
 
   /// Creation timestamp (Unix milliseconds)
+  @JsonKey(name: 'created_at')
   final int createdAt;
 
   /// Last modification timestamp (Unix milliseconds)
+  @JsonKey(name: 'updated_at')
   final int updatedAt;
 
   const Glossary({
@@ -37,7 +48,8 @@ class Glossary {
     this.description,
     required this.isGlobal,
     this.projectId,
-    required this.entryCount,
+    this.targetLanguageId,
+    this.entryCount = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -55,6 +67,7 @@ class Glossary {
     String? description,
     bool? isGlobal,
     String? projectId,
+    String? targetLanguageId,
     int? entryCount,
     int? createdAt,
     int? updatedAt,
@@ -65,6 +78,7 @@ class Glossary {
       description: description ?? this.description,
       isGlobal: isGlobal ?? this.isGlobal,
       projectId: projectId ?? this.projectId,
+      targetLanguageId: targetLanguageId ?? this.targetLanguageId,
       entryCount: entryCount ?? this.entryCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -81,6 +95,7 @@ class Glossary {
         other.description == description &&
         other.isGlobal == isGlobal &&
         other.projectId == projectId &&
+        other.targetLanguageId == targetLanguageId &&
         other.entryCount == entryCount &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
@@ -94,6 +109,7 @@ class Glossary {
       description,
       isGlobal,
       projectId,
+      targetLanguageId,
       entryCount,
       createdAt,
       updatedAt,
@@ -103,7 +119,7 @@ class Glossary {
   @override
   String toString() {
     return 'Glossary(id: $id, name: $name, description: $description, '
-        'isGlobal: $isGlobal, projectId: $projectId, entryCount: $entryCount, '
-        'createdAt: $createdAt, updatedAt: $updatedAt)';
+        'isGlobal: $isGlobal, projectId: $projectId, targetLanguageId: $targetLanguageId, '
+        'entryCount: $entryCount, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

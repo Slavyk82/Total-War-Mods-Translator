@@ -13,7 +13,7 @@ class DatabaseConfig {
   static const String databaseName = 'twmt.db';
 
   /// Current database schema version
-  static const int databaseVersion = 7;
+  static const int databaseVersion = 1;
 
   /// Application directory name in AppData
   static const String appDirectoryName = 'TWMT';
@@ -98,6 +98,7 @@ class DatabaseConfig {
     'synchronous': 'NORMAL', // Balance between safety and performance
     'temp_store': 'MEMORY', // Use memory for temporary storage
     'cache_size': -2000, // 2MB cache (negative = KB)
+    'busy_timeout': 30000, // Wait up to 30 seconds for locks to be released
   };
 
   /// Get database connection configuration as PRAGMA statements
@@ -108,6 +109,7 @@ class DatabaseConfig {
       'PRAGMA synchronous = NORMAL',
       'PRAGMA temp_store = MEMORY',
       'PRAGMA cache_size = -2000',
+      'PRAGMA busy_timeout = 30000', // Wait 30 seconds for locks (increased for batch operations)
     ];
   }
 }

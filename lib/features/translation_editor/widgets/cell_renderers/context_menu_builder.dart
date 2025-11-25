@@ -20,6 +20,8 @@ class ContextMenuBuilder {
     required Future<void> Function() onClear,
     required Future<void> Function() onViewHistory,
     required Future<void> Function() onDelete,
+    Future<void> Function()? onForceRetranslate,
+    Future<void> Function()? onViewPrompt,
   }) {
     final hasSelection = selectionCount > 0;
     final isSingleSelection = selectionCount == 1;
@@ -114,6 +116,27 @@ class ContextMenuBuilder {
             ],
           ),
         ),
+        if (onForceRetranslate != null)
+          PopupMenuItem(
+            value: 'force_retranslate',
+            enabled: hasSelection,
+            child: Row(
+              children: [
+                Icon(
+                  FluentIcons.arrow_sync_24_regular,
+                  size: 16,
+                  color: hasSelection ? null : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  selectionCount > 1
+                      ? 'Force Retranslate ($selectionCount)'
+                      : 'Force Retranslate',
+                  style: TextStyle(color: hasSelection ? null : Colors.grey),
+                ),
+              ],
+            ),
+          ),
         PopupMenuItem(
           value: 'clear',
           enabled: hasSelection,
@@ -143,6 +166,17 @@ class ContextMenuBuilder {
                 Icon(FluentIcons.history_24_regular, size: 16),
                 SizedBox(width: 8),
                 Text('View History'),
+              ],
+            ),
+          ),
+        if (isSingleSelection && onViewPrompt != null)
+          const PopupMenuItem(
+            value: 'view_prompt',
+            child: Row(
+              children: [
+                Icon(FluentIcons.code_24_regular, size: 16),
+                SizedBox(width: 8),
+                Text('View Prompt'),
               ],
             ),
           ),
@@ -185,11 +219,21 @@ class ContextMenuBuilder {
         case 'validate':
           await onValidate();
           break;
+        case 'force_retranslate':
+          if (onForceRetranslate != null) {
+            await onForceRetranslate();
+          }
+          break;
         case 'clear':
           await onClear();
           break;
         case 'history':
           await onViewHistory();
+          break;
+        case 'view_prompt':
+          if (onViewPrompt != null) {
+            await onViewPrompt();
+          }
           break;
         case 'delete':
           await onDelete();

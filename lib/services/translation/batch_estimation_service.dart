@@ -98,6 +98,7 @@ class BatchEstimationService {
         targetLanguage: context.targetLanguage,
         systemPrompt: promptResult.unwrap().systemMessage,
         modelName: context.modelId,
+        providerCode: context.providerCode,
         gameContext: context.gameContext,
         glossaryTerms: context.glossaryTerms,
         timestamp: DateTime.now(),

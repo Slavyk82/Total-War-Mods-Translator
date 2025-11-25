@@ -27,11 +27,10 @@ class GlossaryImportExportService {
 
   /// Import glossary from CSV file
   ///
-  /// CSV format: source_term, target_term, category, notes
+  /// CSV format: source_term, target_term
   ///
   /// [glossaryId] - Target glossary ID
   /// [filePath] - Path to CSV file
-  /// [sourceLanguageCode] - Source language
   /// [targetLanguageCode] - Target language
   /// [skipDuplicates] - If true, skip existing terms
   ///
@@ -79,8 +78,8 @@ class GlossaryImportExportService {
 
         final sourceTerm = parts[0].trim();
         final targetTerm = parts[1].trim();
-        final category = parts.length > 2 ? parts[2].trim() : null;
-        final notes = parts.length > 3 ? parts[3].trim() : null;
+        // Optional 3rd column for notes (LLM context)
+        final notes = parts.length > 2 ? parts[2].trim() : null;
 
         if (sourceTerm.isEmpty || targetTerm.isEmpty) {
           errors.add('Line $i: Empty term');
@@ -105,8 +104,7 @@ class GlossaryImportExportService {
           targetLanguageCode: targetLanguageCode,
           sourceTerm: sourceTerm,
           targetTerm: targetTerm,
-          category: category,
-          notes: notes,
+          notes: notes?.isNotEmpty == true ? notes : null,
         );
 
         if (result.isOk) {
@@ -157,13 +155,14 @@ class GlossaryImportExportService {
       final sink = file.openWrite();
 
       // Write header
-      sink.writeln('source_term,target_term,category,notes');
+      sink.writeln('source_term,target_term,notes');
 
       // Write entries
       for (final entry in entries) {
-        final category = entry.category ?? '';
+        // Escape commas in notes by wrapping in quotes
         final notes = entry.notes ?? '';
-        sink.writeln('${entry.sourceTerm},${entry.targetTerm},$category,$notes');
+        final escapedNotes = notes.contains(',') ? '"$notes"' : notes;
+        sink.writeln('${entry.sourceTerm},${entry.targetTerm},$escapedNotes');
       }
 
       await sink.close();
@@ -276,9 +275,8 @@ class GlossaryImportExportService {
           targetLanguageCode: tbxEntry.targetLanguage,
           sourceTerm: tbxEntry.sourceTerm,
           targetTerm: tbxEntry.targetTerm,
-          category: tbxEntry.category,
-          notes: tbxEntry.description,
           caseSensitive: tbxEntry.caseSensitive,
+          notes: tbxEntry.notes,
         );
 
         if (result.isOk) {
@@ -326,10 +324,8 @@ class GlossaryImportExportService {
       String? sourceTerm;
       String? targetTerm;
       String? targetLanguage;
-      String? description;
-      String? category;
-      String? partOfSpeech;
       bool caseSensitive = false;
+      String? notes;
 
       // Extract descriptions from descripGrp elements
       for (final descripGrp in termEntry.findElements('descripGrp')) {
@@ -338,23 +334,17 @@ class GlossaryImportExportService {
           final type = descrip.getAttribute('type') ?? '';
           final text = descrip.innerText.trim();
 
-          switch (type) {
-            case 'definition':
-              description = text;
-              break;
-            case 'subjectField':
-              category = text;
-              break;
-            case 'note':
-              // Check for case-sensitive indicator
-              if (text.toLowerCase().contains('case-sensitive')) {
-                caseSensitive = true;
-              }
-              // If we don't have a description yet, use the note
-              if (description == null && text.isNotEmpty) {
-                description = text;
-              }
-              break;
+          if (type == 'note') {
+            // Check for case-sensitive indicator
+            if (text.toLowerCase().contains('case-sensitive')) {
+              caseSensitive = true;
+            } else if (text.isNotEmpty) {
+              // Store as notes for LLM context (not case-sensitive indicator)
+              notes = text;
+            }
+          } else if (type == 'context' && text.isNotEmpty) {
+            // Also accept 'context' type as notes
+            notes = text;
           }
         }
       }
@@ -368,14 +358,6 @@ class GlossaryImportExportService {
 
         if (tig != null) {
           final term = tig.findElements('term').firstOrNull?.innerText.trim();
-
-          // Extract part of speech if available
-          for (final termNote in tig.findElements('termNote')) {
-            final type = termNote.getAttribute('type') ?? '';
-            if (type == 'partOfSpeech') {
-              partOfSpeech = termNote.innerText.trim();
-            }
-          }
 
           // Determine if source or target based on order
           // First langSet is source, second is target
@@ -397,10 +379,8 @@ class GlossaryImportExportService {
           targetLanguage: targetLanguage,
           sourceTerm: sourceTerm,
           targetTerm: targetTerm,
-          description: description,
-          category: category,
-          partOfSpeech: partOfSpeech,
           caseSensitive: caseSensitive,
+          notes: notes,
         ));
       }
     }
@@ -541,24 +521,13 @@ class GlossaryImportExportService {
         });
       });
 
-      // Description/Note
-      if (entry.notes != null && entry.notes!.isNotEmpty) {
+      // Notes for LLM context
+      if (entry.hasNotes) {
         builder.element('descripGrp', nest: () {
           builder.element('descrip', attributes: {
-            'type': 'definition',
+            'type': 'context',
           }, nest: () {
             builder.text(entry.notes!);
-          });
-        });
-      }
-
-      // Category (subject field)
-      if (entry.category != null && entry.category!.isNotEmpty) {
-        builder.element('descripGrp', nest: () {
-          builder.element('descrip', attributes: {
-            'type': 'subjectField',
-          }, nest: () {
-            builder.text(entry.category!);
           });
         });
       }
@@ -582,11 +551,10 @@ class GlossaryImportExportService {
 
   /// Import glossary from Excel file
   ///
-  /// Excel columns: source_term, target_term, category, notes
+  /// Excel columns: source_term, target_term
   ///
   /// [glossaryId] - Target glossary ID
   /// [filePath] - Path to Excel file
-  /// [sourceLanguageCode] - Source language
   /// [targetLanguageCode] - Target language
   /// [sheetName] - Excel sheet name (default: first sheet)
   /// [skipDuplicates] - If true, skip existing terms
@@ -644,7 +612,6 @@ class GlossaryImportExportService {
         final row = rows[i];
         final sourceTerm = row['source_term']?.trim() ?? '';
         final targetTerm = row['target_term']?.trim() ?? '';
-        final category = row['category']?.trim();
         final notes = row['notes']?.trim();
 
         if (sourceTerm.isEmpty || targetTerm.isEmpty) {
@@ -670,8 +637,7 @@ class GlossaryImportExportService {
           targetLanguageCode: targetLanguageCode,
           sourceTerm: sourceTerm,
           targetTerm: targetTerm,
-          category: category,
-          notes: notes,
+          notes: notes?.isNotEmpty == true ? notes : null,
         );
 
         if (result.isOk) {
@@ -747,7 +713,6 @@ class GlossaryImportExportService {
         return {
           'source_term': entry.sourceTerm,
           'target_term': entry.targetTerm,
-          'category': entry.category ?? '',
           'notes': entry.notes ?? '',
         };
       }).toList();
@@ -758,7 +723,7 @@ class GlossaryImportExportService {
         data: data,
         filePath: filePath,
         sheetName: glossary.name,
-        headers: ['source_term', 'target_term', 'category', 'notes'],
+        headers: ['source_term', 'target_term', 'notes'],
       );
 
       if (exportResult.isErr) {

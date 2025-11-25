@@ -3,6 +3,10 @@ import 'package:json_annotation/json_annotation.dart';
 part 'llm_provider_config.g.dart';
 
 /// Configuration for an LLM provider
+/// 
+/// Note: Available models are loaded dynamically from the database
+/// via LlmModelManagementService. This class only contains static
+/// provider configuration (endpoints, rate limits, etc.).
 @JsonSerializable()
 class LlmProviderConfig {
   /// Provider code (e.g., "anthropic", "openai", "deepl")
@@ -13,12 +17,6 @@ class LlmProviderConfig {
 
   /// API base URL
   final String apiBaseUrl;
-
-  /// Default model to use
-  final String defaultModel;
-
-  /// Available models
-  final List<String> availableModels;
 
   /// Supports streaming responses
   final bool supportsStreaming;
@@ -39,8 +37,6 @@ class LlmProviderConfig {
     required this.providerCode,
     required this.providerName,
     required this.apiBaseUrl,
-    required this.defaultModel,
-    required this.availableModels,
     required this.supportsStreaming,
     required this.maxTokensPerRequest,
     required this.defaultRateLimitRpm,
@@ -58,14 +54,8 @@ class LlmProviderConfig {
         providerCode: 'anthropic',
         providerName: 'Anthropic (Claude)',
         apiBaseUrl: 'https://api.anthropic.com/v1',
-        defaultModel: 'claude-3-5-sonnet-20241022',
-        availableModels: [
-          'claude-3-5-sonnet-20241022',
-          'claude-3-opus-20240229',
-          'claude-3-sonnet-20240229',
-        ],
         supportsStreaming: true,
-        maxTokensPerRequest: 200000, // Claude 3.5 Sonnet context window
+        maxTokensPerRequest: 200000,
         defaultRateLimitRpm: 50,
         defaultRateLimitTpm: 40000,
         retryConfig: RetryConfig.defaultConfig,
@@ -76,14 +66,8 @@ class LlmProviderConfig {
         providerCode: 'openai',
         providerName: 'OpenAI',
         apiBaseUrl: 'https://api.openai.com/v1',
-        defaultModel: 'gpt-4-turbo',
-        availableModels: [
-          'gpt-4-turbo',
-          'gpt-4',
-          'gpt-3.5-turbo',
-        ],
         supportsStreaming: true,
-        maxTokensPerRequest: 128000, // GPT-4 Turbo context window
+        maxTokensPerRequest: 128000,
         defaultRateLimitRpm: 500,
         defaultRateLimitTpm: 150000,
         retryConfig: RetryConfig.defaultConfig,
@@ -94,8 +78,6 @@ class LlmProviderConfig {
         providerCode: 'deepl',
         providerName: 'DeepL',
         apiBaseUrl: 'https://api.deepl.com/v2',
-        defaultModel: 'deepl-pro',
-        availableModels: ['deepl-pro'],
         supportsStreaming: false,
         maxTokensPerRequest: 100000, // Characters, not tokens
         defaultRateLimitRpm: 100,
@@ -107,8 +89,6 @@ class LlmProviderConfig {
     String? providerCode,
     String? providerName,
     String? apiBaseUrl,
-    String? defaultModel,
-    List<String>? availableModels,
     bool? supportsStreaming,
     int? maxTokensPerRequest,
     int? defaultRateLimitRpm,
@@ -119,8 +99,6 @@ class LlmProviderConfig {
       providerCode: providerCode ?? this.providerCode,
       providerName: providerName ?? this.providerName,
       apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
-      defaultModel: defaultModel ?? this.defaultModel,
-      availableModels: availableModels ?? this.availableModels,
       supportsStreaming: supportsStreaming ?? this.supportsStreaming,
       maxTokensPerRequest: maxTokensPerRequest ?? this.maxTokensPerRequest,
       defaultRateLimitRpm: defaultRateLimitRpm ?? this.defaultRateLimitRpm,
@@ -137,8 +115,6 @@ class LlmProviderConfig {
           providerCode == other.providerCode &&
           providerName == other.providerName &&
           apiBaseUrl == other.apiBaseUrl &&
-          defaultModel == other.defaultModel &&
-          availableModels == other.availableModels &&
           supportsStreaming == other.supportsStreaming &&
           maxTokensPerRequest == other.maxTokensPerRequest &&
           defaultRateLimitRpm == other.defaultRateLimitRpm &&
@@ -150,8 +126,6 @@ class LlmProviderConfig {
       providerCode.hashCode ^
       providerName.hashCode ^
       apiBaseUrl.hashCode ^
-      defaultModel.hashCode ^
-      availableModels.hashCode ^
       supportsStreaming.hashCode ^
       maxTokensPerRequest.hashCode ^
       defaultRateLimitRpm.hashCode ^
@@ -160,7 +134,7 @@ class LlmProviderConfig {
 
   @override
   String toString() {
-    return 'LlmProviderConfig($providerName, model: $defaultModel, '
+    return 'LlmProviderConfig($providerName, '
         'maxTokens: $maxTokensPerRequest, rpm: $defaultRateLimitRpm)';
   }
 }

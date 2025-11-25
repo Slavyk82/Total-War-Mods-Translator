@@ -150,8 +150,9 @@ class ProjectDetailScreen extends ConsumerWidget {
         return LanguageCard(
           projectLanguage: langDetails.projectLanguage,
           language: langDetails.language,
-          totalUnits: details.stats.totalUnits,
-          translatedUnits: details.stats.translatedUnits,
+          totalUnits: langDetails.totalUnits,
+          translatedUnits: langDetails.translatedUnits,
+          validatedUnits: langDetails.validatedUnits,
           onOpenEditor: () => _handleOpenEditor(
             context,
             details.project.id,

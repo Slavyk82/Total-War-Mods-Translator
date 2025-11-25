@@ -229,6 +229,76 @@ class DatabaseService {
     }
   }
 
+  /// Checkpoint the WAL file to merge changes back to main database
+  ///
+  /// This should be called periodically to prevent WAL file from growing too large.
+  /// Returns true if checkpoint was successful.
+  static Future<bool> checkpointWal() async {
+    try {
+      final result = await database.rawQuery('PRAGMA wal_checkpoint(PASSIVE)');
+      final busy = result.first['busy'] as int;
+      final checkpointed = result.first['checkpointed'] as int;
+      
+      LoggingService.instance.debug('WAL checkpoint completed', {
+        'busy': busy,
+        'checkpointed': checkpointed,
+      });
+      
+      return busy == 0;
+    } catch (e, stackTrace) {
+      LoggingService.instance.error('WAL checkpoint failed', e, stackTrace);
+      return false;
+    }
+  }
+
+  /// Get WAL file statistics
+  static Future<Map<String, dynamic>> getWalStats() async {
+    try {
+      final dbPath = await DatabaseConfig.getDatabasePath();
+      final walPath = '$dbPath-wal';
+      final walFile = File(walPath);
+      
+      if (!await walFile.exists()) {
+        return {'exists': false};
+      }
+      
+      final stat = await walFile.stat();
+      return {
+        'exists': true,
+        'size': stat.size,
+        'modified': stat.modified.toIso8601String(),
+      };
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  /// Check WAL file size and checkpoint if necessary
+  ///
+  /// Checkpoints the WAL file if it's larger than threshold (default 1MB).
+  /// This prevents the WAL file from growing too large and causing lock issues.
+  static Future<void> checkpointIfNeeded({int thresholdBytes = 1048576}) async {
+    try {
+      final stats = await getWalStats();
+      if (stats['exists'] == true && stats['size'] != null) {
+        final size = stats['size'] as int;
+        if (size > thresholdBytes) {
+          LoggingService.instance.debug('WAL file exceeds threshold', {
+            'size': size,
+            'threshold': thresholdBytes,
+          });
+          await checkpointWal();
+        }
+      }
+    } catch (e, stackTrace) {
+      LoggingService.instance.error(
+        'Failed to check WAL size',
+        e,
+        stackTrace,
+      );
+    }
+  }
+
   /// Execute operations in a transaction
   ///
   /// All operations in the callback will be executed atomically.

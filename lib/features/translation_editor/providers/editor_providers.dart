@@ -300,6 +300,17 @@ class EditorSelection extends _$EditorSelection {
   }
 }
 
+/// Get the TM source type from a translation row based on confidence and manual edit flag
+TmSourceType getTmSourceType(TranslationRow row) {
+  if (row.isManuallyEdited) return TmSourceType.manual;
+  if (row.confidence != null) {
+    if (row.confidence! >= 0.999) return TmSourceType.exactMatch;
+    if (row.confidence! >= 0.85) return TmSourceType.fuzzyMatch;
+    return TmSourceType.llm;
+  }
+  return TmSourceType.none;
+}
+
 /// Provider for translation rows (units + versions)
 @riverpod
 Future<List<TranslationRow>> translationRows(
@@ -362,6 +373,65 @@ Future<List<TranslationRow>> translationRows(
   rows.sort((a, b) => a.key.compareTo(b.key));
 
   return rows;
+}
+
+/// Provider for filtered translation rows
+/// Applies status filters, TM source filters, and search query from EditorFilterState
+@riverpod
+Future<List<TranslationRow>> filteredTranslationRows(
+  Ref ref,
+  String projectId,
+  String languageId,
+) async {
+  // Get all rows
+  final allRows = await ref.watch(translationRowsProvider(projectId, languageId).future);
+  
+  // Get filter state
+  final filterState = ref.watch(editorFilterProvider);
+  
+  // If no filters active, return all rows
+  if (!filterState.hasActiveFilters) {
+    return allRows;
+  }
+  
+  // Apply filters
+  return allRows.where((row) {
+    // Status filter
+    if (filterState.statusFilters.isNotEmpty) {
+      if (!filterState.statusFilters.contains(row.status)) {
+        return false;
+      }
+    }
+    
+    // TM source filter
+    if (filterState.tmSourceFilters.isNotEmpty) {
+      final tmSourceType = getTmSourceType(row);
+      if (!filterState.tmSourceFilters.contains(tmSourceType)) {
+        return false;
+      }
+    }
+    
+    // Search query filter
+    if (filterState.searchQuery.isNotEmpty) {
+      final query = filterState.searchQuery.toLowerCase();
+      final matchesKey = row.key.toLowerCase().contains(query);
+      final matchesSource = row.sourceText.toLowerCase().contains(query);
+      final matchesTranslated = row.translatedText?.toLowerCase().contains(query) ?? false;
+      
+      if (!matchesKey && !matchesSource && !matchesTranslated) {
+        return false;
+      }
+    }
+    
+    // Show only with issues filter
+    if (filterState.showOnlyWithIssues) {
+      if (!row.hasValidationIssues) {
+        return false;
+      }
+    }
+    
+    return true;
+  }).toList();
 }
 
 /// Provider for TM suggestions for a specific unit

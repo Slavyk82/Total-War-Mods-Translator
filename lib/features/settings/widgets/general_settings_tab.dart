@@ -2,12 +2,16 @@ import 'dart:io' as io;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
+import 'package:twmt/services/steam/steam_detection_service.dart';
 import '../models/game_display_info.dart';
 import 'general/game_installations_section.dart';
 import 'general/workshop_section.dart';
 import 'general/rpfm_section.dart';
+import 'general/settings_action_button.dart';
 
 /// General settings tab for configuring game paths, languages, and preferences.
 ///
@@ -28,6 +32,10 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
   late TextEditingController _rpfmSchemaPathController;
   String _targetLanguage = 'es';
   bool _autoUpdate = true;
+  
+  // Detection service and state
+  final _detectionService = SteamDetectionService();
+  bool _isDetecting = false;
 
   // Supported games with display information
   final List<GameDisplayInfo> _games = [
@@ -461,63 +469,6 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
     }
     _targetLanguage = settings[SettingsKeys.defaultTargetLanguage] ?? 'es';
     _autoUpdate = settings[SettingsKeys.autoUpdate] == 'true';
-  }
-
-  Widget _buildGameInstallationsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          'Game Installations',
-          subtitle: 'Configure paths to your Total War games',
-        ),
-        const SizedBox(height: 8),
-        _buildAutoDetectAllButton(),
-        const SizedBox(height: 16),
-        ..._games.map((game) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: FluentExpander(
-            header: game.name,
-            icon: FluentIcons.games_24_regular,
-            initiallyExpanded: (_gamePathControllers[game.code]?.text ?? '').isNotEmpty,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: _buildGamePathField(game),
-            ),
-          ),
-        )),
-      ],
-    );
-  }
-
-  Widget _buildWorkshopSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          'Steam Workshop',
-          subtitle: 'Base folder for Steam Workshop content (game IDs will be appended automatically)',
-        ),
-        const SizedBox(height: 16),
-        _buildWorkshopPathField(),
-      ],
-    );
-  }
-
-  Widget _buildRpfmSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          'RPFM Tool',
-          subtitle: 'Path to RPFM executable for pack file extraction',
-        ),
-        const SizedBox(height: 16),
-        _buildRpfmPathField(),
-        const SizedBox(height: 24),
-        _buildRpfmSchemaPathField(),
-      ],
-    );
   }
 
   Widget _buildLanguageSection() {

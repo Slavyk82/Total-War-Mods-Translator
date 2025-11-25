@@ -66,18 +66,26 @@ Future<List<GlossaryEntry>> glossaryEntries(
   Ref ref, {
   required String glossaryId,
   String? targetLanguageCode,
-  String? category,
 }) async {
+  print('[glossaryEntriesProvider] Fetching entries for:');
+  print('  glossaryId: $glossaryId');
+  print('  targetLanguageCode: $targetLanguageCode');
+  
   final service = ServiceLocator.get<IGlossaryService>();
   final result = await service.getEntriesByGlossary(
     glossaryId: glossaryId,
     targetLanguageCode: targetLanguageCode,
-    category: category,
   );
 
   return result.when(
-    ok: (entries) => entries,
-    err: (error) => throw error,
+    ok: (entries) {
+      print('[glossaryEntriesProvider] Fetched ${entries.length} entries');
+      return entries;
+    },
+    err: (error) {
+      print('[glossaryEntriesProvider] ERROR: $error');
+      throw error;
+    },
   );
 }
 
@@ -88,7 +96,6 @@ Future<List<GlossaryEntry>> glossarySearchResults(
   required String query,
   List<String>? glossaryIds,
   String? targetLanguageCode,
-  String? category,
 }) async {
   if (query.isEmpty) {
     return [];
@@ -99,7 +106,6 @@ Future<List<GlossaryEntry>> glossarySearchResults(
     query: query,
     glossaryIds: glossaryIds,
     targetLanguageCode: targetLanguageCode,
-    category: category,
   );
 
   return result.when(
@@ -123,18 +129,6 @@ Future<GlossaryStatistics> glossaryStatistics(
   );
 }
 
-/// All distinct categories
-@riverpod
-Future<List<String>> glossaryCategories(Ref ref) async {
-  final service = ServiceLocator.get<IGlossaryService>();
-  final result = await service.getAllCategories();
-
-  return result.when(
-    ok: (categories) => categories,
-    err: (error) => throw error,
-  );
-}
-
 /// Entry editor state (for add/edit)
 @riverpod
 class GlossaryEntryEditor extends _$GlossaryEntryEditor {
@@ -154,49 +148,80 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
     required String targetLanguageCode,
     required String sourceTerm,
     required String targetTerm,
-    String? category,
     bool caseSensitive = false,
     String? notes,
   }) async {
+    print('[GlossaryEntryEditor.save] Starting save operation');
+    print('  state: ${state != null ? "UPDATE" : "ADD NEW"}');
+    print('  glossaryId: $glossaryId');
+    print('  targetLanguageCode: $targetLanguageCode');
+    print('  sourceTerm: "$sourceTerm"');
+    print('  targetTerm: "$targetTerm"');
+    print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
+    
     final service = ServiceLocator.get<IGlossaryService>();
 
     if (state != null) {
       // Update existing entry
+      print('[GlossaryEntryEditor.save] Updating existing entry: ${state!.id}');
       final updated = state!.copyWith(
         sourceTerm: sourceTerm,
         targetTerm: targetTerm,
-        category: category,
         caseSensitive: caseSensitive,
         notes: notes,
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );
-      await service.updateEntry(updated);
+      
+      final result = await service.updateEntry(updated);
+      result.when(
+        ok: (entry) => print('[GlossaryEntryEditor.save] Entry updated successfully: ${entry.id}'),
+        err: (error) => print('[GlossaryEntryEditor.save] ERROR updating entry: $error'),
+      );
+      
+      if (result.isErr) {
+        throw Exception('Failed to update entry: ${result.error}');
+      }
     } else {
       // Add new entry
-      await service.addEntry(
+      print('[GlossaryEntryEditor.save] Adding new entry...');
+      final result = await service.addEntry(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
         sourceTerm: sourceTerm,
         targetTerm: targetTerm,
-        category: category,
         caseSensitive: caseSensitive,
         notes: notes,
       );
+      
+      result.when(
+        ok: (entry) => print('[GlossaryEntryEditor.save] Entry added successfully: ${entry.id}'),
+        err: (error) => print('[GlossaryEntryEditor.save] ERROR adding entry: $error'),
+      );
+      
+      if (result.isErr) {
+        throw Exception('Failed to add entry: ${result.error}');
+      }
     }
 
-    // Clear editor and refresh entries
-    state = null;
-    ref.invalidate(glossaryEntriesProvider);
-    ref.invalidate(glossaryStatisticsProvider);
+    // Clear editor state only if still mounted
+    if (ref.mounted) {
+      print('[GlossaryEntryEditor.save] Clearing editor state');
+      state = null;
+    } else {
+      print('[GlossaryEntryEditor.save] WARNING: Provider not mounted, skipping state clear');
+    }
+    
+    print('[GlossaryEntryEditor.save] Save operation completed');
   }
 
   Future<void> delete(String entryId) async {
     final service = ServiceLocator.get<IGlossaryService>();
     await service.deleteEntry(entryId);
 
-    state = null;
-    ref.invalidate(glossaryEntriesProvider);
-    ref.invalidate(glossaryStatisticsProvider);
+    // Clear editor state only if still mounted
+    if (ref.mounted) {
+      state = null;
+    }
   }
 }
 
@@ -208,10 +233,6 @@ class GlossaryFilterState extends _$GlossaryFilterState {
 
   void setTargetLanguage(String? lang) {
     state = state.copyWith(targetLanguage: lang);
-  }
-
-  void setCategory(String? category) {
-    state = state.copyWith(category: category);
   }
 
   void setSearchText(String text) {
@@ -283,12 +304,16 @@ class GlossaryImportState extends _$GlossaryImportState {
         failed: 0,
       ));
 
-      // Refresh glossaries and entries
-      ref.invalidate(glossariesProvider);
-      ref.invalidate(glossaryEntriesProvider);
-      ref.invalidate(glossaryStatisticsProvider);
+      // Refresh glossaries and entries only if provider is still mounted
+      if (ref.mounted) {
+        ref.invalidate(glossariesProvider);
+        ref.invalidate(glossaryEntriesProvider);
+        ref.invalidate(glossaryStatisticsProvider);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -317,12 +342,16 @@ class GlossaryImportState extends _$GlossaryImportState {
         failed: 0,
       ));
 
-      // Refresh glossaries and entries
-      ref.invalidate(glossariesProvider);
-      ref.invalidate(glossaryEntriesProvider);
-      ref.invalidate(glossaryStatisticsProvider);
+      // Refresh glossaries and entries only if provider is still mounted
+      if (ref.mounted) {
+        ref.invalidate(glossariesProvider);
+        ref.invalidate(glossaryEntriesProvider);
+        ref.invalidate(glossaryStatisticsProvider);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -357,12 +386,16 @@ class GlossaryImportState extends _$GlossaryImportState {
         failed: 0,
       ));
 
-      // Refresh glossaries and entries
-      ref.invalidate(glossariesProvider);
-      ref.invalidate(glossaryEntriesProvider);
-      ref.invalidate(glossaryStatisticsProvider);
+      // Refresh glossaries and entries only if provider is still mounted
+      if (ref.mounted) {
+        ref.invalidate(glossariesProvider);
+        ref.invalidate(glossaryEntriesProvider);
+        ref.invalidate(glossaryStatisticsProvider);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -397,12 +430,16 @@ class GlossaryExportState extends _$GlossaryExportState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(ExportResult(
-        entriesExported: count,
-        filePath: filePath,
-      ));
+      if (ref.mounted) {
+        state = AsyncValue.data(ExportResult(
+          entriesExported: count,
+          filePath: filePath,
+        ));
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -424,12 +461,16 @@ class GlossaryExportState extends _$GlossaryExportState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(ExportResult(
-        entriesExported: count,
-        filePath: filePath,
-      ));
+      if (ref.mounted) {
+        state = AsyncValue.data(ExportResult(
+          entriesExported: count,
+          filePath: filePath,
+        ));
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -453,12 +494,16 @@ class GlossaryExportState extends _$GlossaryExportState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(ExportResult(
-        entriesExported: count,
-        filePath: filePath,
-      ));
+      if (ref.mounted) {
+        state = AsyncValue.data(ExportResult(
+          entriesExported: count,
+          filePath: filePath,
+        ));
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -472,23 +517,19 @@ class GlossaryExportState extends _$GlossaryExportState {
 /// Filter configuration
 class GlossaryFilters {
   final String? targetLanguage;
-  final String? category;
   final String searchText;
 
   const GlossaryFilters({
     this.targetLanguage,
-    this.category,
     this.searchText = '',
   });
 
   GlossaryFilters copyWith({
     String? targetLanguage,
-    String? category,
     String? searchText,
   }) {
     return GlossaryFilters(
       targetLanguage: targetLanguage ?? this.targetLanguage,
-      category: category ?? this.category,
       searchText: searchText ?? this.searchText,
     );
   }
@@ -497,7 +538,6 @@ class GlossaryFilters {
 /// Glossary statistics model
 class GlossaryStatistics {
   final int totalEntries;
-  final Map<String, int> entriesByCategory;
   final Map<String, int> entriesByLanguagePair;
   final int usedInTranslations;
   final int unusedEntries;
@@ -510,7 +550,6 @@ class GlossaryStatistics {
 
   const GlossaryStatistics({
     required this.totalEntries,
-    required this.entriesByCategory,
     required this.entriesByLanguagePair,
     required this.usedInTranslations,
     required this.unusedEntries,
@@ -525,9 +564,6 @@ class GlossaryStatistics {
   factory GlossaryStatistics.fromJson(Map<String, dynamic> json) {
     return GlossaryStatistics(
       totalEntries: json['totalEntries'] as int? ?? 0,
-      entriesByCategory: (json['entriesByCategory'] as Map<String, dynamic>?)
-              ?.map((k, v) => MapEntry(k, v as int)) ??
-          {},
       entriesByLanguagePair:
           (json['entriesByLanguagePair'] as Map<String, dynamic>?)
                   ?.map((k, v) => MapEntry(k, v as int)) ??

@@ -1,5 +1,6 @@
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
+import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 
@@ -108,7 +109,7 @@ abstract class IPromptBuilderService {
     String? category,
   });
 
-  /// Build glossary terms section
+  /// Build glossary terms section (legacy Map format)
   ///
   /// Includes glossary terms that must be preserved or translated consistently.
   /// Format: "term (source) -> translation (target)"
@@ -116,8 +117,23 @@ abstract class IPromptBuilderService {
   /// [glossaryTerms]: Map of source terms to target translations
   ///
   /// Returns formatted glossary text, or empty string if no terms
+  @Deprecated('Use buildGlossarySectionWithVariants instead')
   Future<String> buildGlossarySection({
     required Map<String, String>? glossaryTerms,
+  });
+
+  /// Build glossary section with variant support
+  ///
+  /// Filters glossary entries to only those appearing in source texts,
+  /// then formats with full variant and context support.
+  ///
+  /// [glossaryEntries]: Full glossary entries with variants
+  /// [sourceTexts]: Source texts to filter relevant terms
+  ///
+  /// Returns formatted glossary text with variants, or empty string if no matches
+  Future<String> buildGlossarySectionWithVariants({
+    required List<GlossaryTermWithVariants>? glossaryEntries,
+    required List<String> sourceTexts,
   });
 
   /// Build format instructions for structured output

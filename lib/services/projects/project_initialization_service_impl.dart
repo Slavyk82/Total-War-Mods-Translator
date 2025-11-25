@@ -133,8 +133,22 @@ class ProjectInitializationServiceImpl
         final tsvFilePath = locFiles[i];
         final fileName = tsvFilePath.split('\\').last.split('/').last;
         
+        // Extract the original .loc file path relative to extraction directory
+        // TSV path: C:\temp\rpfm_extract_xxx\text\db\something.loc.tsv
+        // Extraction dir: C:\temp\rpfm_extract_xxx
+        // Result: text/db/something.loc
+        String sourceLocFile = tsvFilePath
+            .replaceAll('\\', '/')
+            .replaceFirst('${extraction.outputDirectory.replaceAll('\\', '/')}/', '');
+        
+        // Remove .tsv extension to get the original .loc path
+        if (sourceLocFile.endsWith('.tsv')) {
+          sourceLocFile = sourceLocFile.substring(0, sourceLocFile.length - 4);
+        }
+        
         _logger.info('Parsing TSV file ${i + 1}/${locFiles.length}', {
           'file': tsvFilePath,
+          'sourceLocFile': sourceLocFile,
         });
         _addLog('Processing file ${i + 1}/${locFiles.length}: $fileName', InitializationLogLevel.info);
 
@@ -185,6 +199,7 @@ class ProjectInitializationServiceImpl
             sourceText: entry.value,
             context: null,
             notes: null,
+            sourceLocFile: sourceLocFile,
             isObsolete: false,
             createdAt: now,
             updatedAt: now,

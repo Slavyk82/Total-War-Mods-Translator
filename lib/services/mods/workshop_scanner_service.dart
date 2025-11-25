@@ -8,18 +8,27 @@ import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/workshop_mod.dart';
+import 'package:twmt/models/domain/mod_scan_cache.dart';
+import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
+import 'package:twmt/repositories/mod_scan_cache_repository.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
+import 'package:twmt/services/rpfm/i_rpfm_service.dart';
+import 'package:twmt/services/rpfm/utils/rpfm_output_parser.dart';
+import 'package:twmt/services/mods/mod_update_analysis_service.dart';
 
 /// Service for scanning Steam Workshop folders and discovering/importing mods
 class WorkshopScannerService {
   final ProjectRepository _projectRepository;
   final GameInstallationRepository _gameInstallationRepository;
   final WorkshopModRepository _workshopModRepository;
+  final ModScanCacheRepository _modScanCacheRepository;
   final IWorkshopApiService _workshopApiService;
+  final IRpfmService _rpfmService;
+  final ModUpdateAnalysisService _modUpdateAnalysisService;
   final LoggingService _logger = LoggingService.instance;
   final Uuid _uuid = const Uuid();
 
@@ -27,11 +36,17 @@ class WorkshopScannerService {
     required ProjectRepository projectRepository,
     required GameInstallationRepository gameInstallationRepository,
     required WorkshopModRepository workshopModRepository,
+    required ModScanCacheRepository modScanCacheRepository,
     required IWorkshopApiService workshopApiService,
+    required IRpfmService rpfmService,
+    required ModUpdateAnalysisService modUpdateAnalysisService,
   })  : _projectRepository = projectRepository,
         _gameInstallationRepository = gameInstallationRepository,
         _workshopModRepository = workshopModRepository,
-        _workshopApiService = workshopApiService;
+        _modScanCacheRepository = modScanCacheRepository,
+        _workshopApiService = workshopApiService,
+        _rpfmService = rpfmService,
+        _modUpdateAnalysisService = modUpdateAnalysisService;
 
   /// Scan Workshop folder for a game and return detected mods without creating projects
   Future<Result<List<DetectedMod>, ServiceException>> scanMods(
@@ -41,7 +56,6 @@ class WorkshopScannerService {
       _logger.info('Scanning Workshop folder for game: $gameCode');
 
       // Get game installation from database
-      _logger.info('Looking up game installation for: $gameCode');
       final gameInstallationResult =
           await _gameInstallationRepository.getByGameCode(gameCode);
 
@@ -56,11 +70,10 @@ class WorkshopScannerService {
       }
       
       gameInstallation = gameInstallationResult.value;
-      _logger.info('Found game installation: ${gameInstallation.gameName}');
 
       // Check if Workshop path is configured
       if (!gameInstallation.hasWorkshopPath) {
-        _logger.warning('No Workshop path configured for $gameCode');
+        _logger.debug('No Workshop path configured for $gameCode');
         return const Ok([]);
       }
 
@@ -68,11 +81,9 @@ class WorkshopScannerService {
       final gameWorkshopDir = Directory(workshopPath);
 
       if (!await gameWorkshopDir.exists()) {
-        _logger.info('Workshop folder does not exist: $workshopPath');
+        _logger.debug('Workshop folder does not exist: $workshopPath');
         return const Ok([]);
       }
-      
-      _logger.info('Scanning Workshop directory: $workshopPath');
 
       // Get existing projects to mark which mods are already imported
       final existingProjectsResult = await _projectRepository.getAll();
@@ -99,9 +110,18 @@ class WorkshopScannerService {
 
       _logger.info('Found ${modDirs.length} Workshop items');
 
-      // Phase 1: Collect all mod information locally (pack files, images)
-      final modDataList = <_ModLocalData>[];
+      // Check if RPFM is available for loc file detection
+      final rpfmAvailable = await _rpfmService.isRpfmAvailable();
+      if (!rpfmAvailable) {
+        _logger.warning('RPFM-CLI not available, cannot filter mods by loc files');
+      }
 
+      // Phase 1: Collect all mod information locally (pack files, images, loc files check)
+      // Use cache to avoid re-scanning mods that haven't changed
+      final modDataList = <_ModLocalData>[];
+      final packFileInfos = <_PackFileInfo>[];
+
+      // First pass: collect all valid pack files and their modification times
       for (final modDir in modDirs) {
         final workshopId = path.basename(modDir.path);
 
@@ -127,18 +147,107 @@ class WorkshopScannerService {
         final packFile = packFiles.first;
         final packFileName = path.basenameWithoutExtension(packFile.path);
 
-        // Try to find mod image in the mod directory
-        final modImagePath = await _findModImage(modDir, packFileName);
+        // Get file last modified time
+        final fileStat = await packFile.stat();
+        final fileLastModified = fileStat.modified.millisecondsSinceEpoch ~/ 1000;
 
-        modDataList.add(_ModLocalData(
+        packFileInfos.add(_PackFileInfo(
           workshopId: workshopId,
+          modDir: modDir,
           packFile: packFile,
           packFileName: packFileName,
-          modImagePath: modImagePath,
+          fileLastModified: fileLastModified,
         ));
       }
 
-      _logger.info('Found ${modDataList.length} valid mods with pack files');
+      _logger.debug('Found ${packFileInfos.length} pack files to check');
+
+      // Fetch cache entries for all pack files in batch
+      final packFilePaths = packFileInfos.map((info) => info.packFile.path).toList();
+      final cacheResult = await _modScanCacheRepository.getByPackFilePaths(packFilePaths);
+      final cacheMap = cacheResult is Ok<Map<String, ModScanCache>, dynamic>
+          ? cacheResult.value
+          : <String, ModScanCache>{};
+
+      int cacheHits = 0;
+      int cacheMisses = 0;
+      int cacheSkipped = 0;
+      final cacheUpdates = <ModScanCache>[];
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      // Second pass: check cache and scan if necessary
+      for (final info in packFileInfos) {
+        final cacheEntry = cacheMap[info.packFile.path];
+        bool hasLocFiles = false;
+
+        // Check if we have a valid cache entry
+        if (cacheEntry != null && cacheEntry.isValidFor(info.fileLastModified)) {
+          // Cache hit - file hasn't been modified
+          hasLocFiles = cacheEntry.hasLocFiles;
+          cacheHits++;
+
+          if (!hasLocFiles) {
+            cacheSkipped++;
+            _logger.debug('Cache hit (no loc files): ${info.workshopId}');
+            continue;
+          }
+        } else if (rpfmAvailable) {
+          // Cache miss or invalidated - need to scan
+          cacheMisses++;
+          final listResult = await _rpfmService.listPackContents(info.packFile.path);
+          listResult.when(
+            ok: (files) {
+              final locFiles = RpfmOutputParser.filterLocalizationFiles(files);
+              hasLocFiles = locFiles.isNotEmpty;
+              if (!hasLocFiles) {
+                _logger.debug('No loc files in ${info.workshopId} (${info.packFileName}), skipping');
+              }
+            },
+            err: (error) {
+              _logger.warning('Failed to list pack contents for ${info.workshopId}: ${error.message}');
+              // Skip mod if we can't determine if it has loc files
+            },
+          );
+
+          // Update cache with scan result
+          cacheUpdates.add(ModScanCache(
+            id: cacheEntry?.id ?? _uuid.v4(),
+            packFilePath: info.packFile.path,
+            fileLastModified: info.fileLastModified,
+            hasLocFiles: hasLocFiles,
+            scannedAt: now,
+          ));
+
+          // Skip mods without loc files (not translatable)
+          if (!hasLocFiles) {
+            continue;
+          }
+        } else {
+          // RPFM not available and no cache - skip
+          continue;
+        }
+
+        // Try to find mod image in the mod directory
+        final modImagePath = await _findModImage(info.modDir, info.packFileName);
+
+        modDataList.add(_ModLocalData(
+          workshopId: info.workshopId,
+          packFile: info.packFile,
+          packFileName: info.packFileName,
+          modImagePath: modImagePath,
+          hasLocFiles: hasLocFiles,
+          fileLastModified: info.fileLastModified,
+        ));
+      }
+
+      // Batch update cache entries
+      if (cacheUpdates.isNotEmpty) {
+        await _modScanCacheRepository.upsertBatch(cacheUpdates);
+      }
+
+      _logger.debug(
+        'Cache: hits=$cacheHits, misses=$cacheMisses, skipped=$cacheSkipped'
+      );
 
       // Phase 2: Batch fetch Steam Workshop data
       final workshopModsMap = <String, WorkshopMod>{};
@@ -148,14 +257,10 @@ class WorkshopScannerService {
         if (appId != null && modDataList.isNotEmpty) {
           final workshopIds = modDataList.map((m) => m.workshopId).toList();
 
-          _logger.info('Fetching Steam Workshop info for ${workshopIds.length} mods in batches of 100');
-
           // Process in batches of 100 (Steam API limit)
           for (int i = 0; i < workshopIds.length; i += 100) {
             final batchEnd = (i + 100 < workshopIds.length) ? i + 100 : workshopIds.length;
             final batch = workshopIds.sublist(i, batchEnd);
-
-            _logger.info('Fetching batch ${(i ~/ 100) + 1}: ${batch.length} mods');
 
             final modInfosResult = await _workshopApiService.getMultipleModInfo(
               workshopIds: batch,
@@ -164,7 +269,6 @@ class WorkshopScannerService {
 
             if (modInfosResult is Ok) {
               final modInfos = modInfosResult.value;
-              _logger.info('Successfully fetched ${modInfos.length}/${batch.length} mods from batch ${(i ~/ 100) + 1}');
 
               // Save all fetched mods to database
               final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
@@ -222,14 +326,9 @@ class WorkshopScannerService {
 
                 // Only upsert if it's a new mod or if data has changed
                 if (isNewMod || hasChanges) {
-                  final isModUpdate = !isNewMod;
                   _workshopModRepository.upsert(workshopMod).then((result) {
                     result.when(
-                      ok: (_) => _logger.debug(
-                        isModUpdate 
-                          ? 'Updated mod in database: ${modInfo.workshopId}'
-                          : 'Saved new mod to database: ${modInfo.workshopId}'
-                      ),
+                      ok: (_) {},
                       err: (error) => _logger.error('Failed to save mod ${modInfo.workshopId}: ${error.message}'),
                     );
                   });
@@ -237,7 +336,7 @@ class WorkshopScannerService {
                   // Only update lastCheckedAt without changing updatedAt
                   _workshopModRepository.updateLastChecked(modInfo.workshopId, now).then((result) {
                     result.when(
-                      ok: (_) => _logger.debug('Checked mod (no changes): ${modInfo.workshopId}'),
+                      ok: (_) {},
                       err: (error) => _logger.warning('Failed to update lastCheckedAt for mod ${modInfo.workshopId}: ${error.message}'),
                     );
                   });
@@ -245,11 +344,9 @@ class WorkshopScannerService {
               }
             } else {
               final error = modInfosResult.error;
-              _logger.warning('Failed to fetch batch ${(i ~/ 100) + 1}: ${error.message}');
+              _logger.warning('Steam API batch failed: ${error.message}');
             }
           }
-
-          _logger.info('Batch fetching complete. Retrieved ${workshopModsMap.length}/${workshopIds.length} mods from Steam');
         }
       }
 
@@ -260,12 +357,14 @@ class WorkshopScannerService {
         final workshopId = modData.workshopId;
         String modTitle = _cleanModName(modData.packFileName);
         ProjectMetadata? metadata;
+        int? timeUpdated;
 
         // Try to get Workshop data from batch fetch
         final workshopMod = workshopModsMap[workshopId];
 
         if (workshopMod != null) {
           modTitle = workshopMod.title;
+          timeUpdated = workshopMod.timeUpdated;
           metadata = ProjectMetadata(
             modTitle: workshopMod.title,
             modImageUrl: modData.modImagePath,
@@ -277,12 +376,12 @@ class WorkshopScannerService {
           if (dbModResult is Ok) {
             final cachedMod = dbModResult.value;
             modTitle = cachedMod.title;
+            timeUpdated = cachedMod.timeUpdated;
             metadata = ProjectMetadata(
               modTitle: cachedMod.title,
               modImageUrl: modData.modImagePath,
               modSubscribers: cachedMod.subscriptions,
             );
-            _logger.debug('Loaded mod from database cache: $modTitle');
           } else if (modData.modImagePath != null) {
             // Use local image and cleaned name if both API and DB failed
             metadata = ProjectMetadata(
@@ -295,6 +394,23 @@ class WorkshopScannerService {
         // Check if mod is already imported
         final existingProject = existingWorkshopIds[workshopId];
 
+        // Analyze changes for imported projects
+        ModUpdateAnalysis? updateAnalysis;
+        if (existingProject != null) {
+          final analysisResult = await _modUpdateAnalysisService.analyzeChanges(
+            projectId: existingProject.id,
+            packFilePath: modData.packFile.path,
+          );
+          analysisResult.when(
+            ok: (analysis) {
+              updateAnalysis = analysis;
+            },
+            err: (error) {
+              _logger.warning('Failed to analyze changes for $workshopId: ${error.message}');
+            },
+          );
+        }
+
         detectedMods.add(DetectedMod(
           workshopId: workshopId,
           name: modTitle,
@@ -303,10 +419,14 @@ class WorkshopScannerService {
           metadata: metadata,
           isAlreadyImported: existingProject != null,
           existingProjectId: existingProject?.id,
+          hasLocFiles: modData.hasLocFiles,
+          timeUpdated: timeUpdated,
+          localFileLastModified: modData.fileLastModified,
+          updateAnalysis: updateAnalysis,
         ));
       }
 
-      _logger.info('Scan complete. Found ${detectedMods.length} mods.');
+      _logger.info('Scan complete: ${detectedMods.length} translatable mods');
       return Ok(detectedMods);
     } catch (e, stackTrace) {
       _logger.error('Failed to scan Workshop folder: $e', stackTrace);
@@ -327,7 +447,6 @@ class WorkshopScannerService {
       _logger.info('Scanning Workshop folder for game: $gameCode');
 
       // Get game installation from database
-      _logger.info('Looking up game installation for: $gameCode');
       final gameInstallationResult =
           await _gameInstallationRepository.getByGameCode(gameCode);
 
@@ -342,11 +461,10 @@ class WorkshopScannerService {
       }
       
       gameInstallation = gameInstallationResult.value;
-      _logger.info('Found game installation: ${gameInstallation.gameName}');
 
       // Check if Workshop path is configured
       if (!gameInstallation.hasWorkshopPath) {
-        _logger.warning('No Workshop path configured for $gameCode');
+        _logger.debug('No Workshop path configured for $gameCode');
         return const Ok([]);
       }
 
@@ -357,11 +475,9 @@ class WorkshopScannerService {
       final gameWorkshopDir = Directory(workshopPath);
 
       if (!await gameWorkshopDir.exists()) {
-        _logger.info('Workshop folder does not exist: $workshopPath');
+        _logger.debug('Workshop folder does not exist: $workshopPath');
         return const Ok([]);
       }
-      
-      _logger.info('Scanning Workshop directory: $workshopPath');
 
       // Get existing projects to avoid duplicates
       final existingProjectsResult = await _projectRepository.getAll();
@@ -386,8 +502,6 @@ class WorkshopScannerService {
           .cast<Directory>()
           .toList();
 
-      _logger.info('Found ${modDirs.length} Workshop items');
-
       final importedProjects = <Project>[];
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
@@ -404,15 +518,12 @@ class WorkshopScannerService {
         if (existingProject != null) {
           // Update metadata if missing image
           if (existingProject.imageUrl == null || existingProject.imageUrl!.isEmpty) {
-            _logger.info('Updating metadata for existing mod: $workshopId');
             await _updateProjectMetadata(
               existingProject,
               modDir,
               gameInstallation,
               workshopId,
             );
-          } else {
-            _logger.debug('Mod $workshopId already exists with image, skipping');
           }
           continue;
         }
@@ -426,7 +537,6 @@ class WorkshopScannerService {
             .toList();
 
         if (packFiles.isEmpty) {
-          _logger.debug('No .pack files found in $workshopId, skipping');
           continue;
         }
 
@@ -443,7 +553,6 @@ class WorkshopScannerService {
           final imagePath = path.join(modDir.path, '$packFileName$ext');
           if (await File(imagePath).exists()) {
             modImagePath = imagePath;
-            _logger.debug('Found mod image: $packFileName$ext');
             break;
           }
         }
@@ -454,7 +563,6 @@ class WorkshopScannerService {
             final imagePath = path.join(modDir.path, 'preview$ext');
             if (await File(imagePath).exists()) {
               modImagePath = imagePath;
-              _logger.debug('Found preview image: preview$ext');
               break;
             }
           }
@@ -471,7 +579,6 @@ class WorkshopScannerService {
               .toList();
           if (imageFiles.isNotEmpty) {
             modImagePath = imageFiles.first.path;
-            _logger.debug('Found fallback image: ${path.basename(imageFiles.first.path)}');
           }
         }
 
@@ -483,7 +590,6 @@ class WorkshopScannerService {
         if (gameInstallation.steamAppId != null) {
           final appId = int.tryParse(gameInstallation.steamAppId!);
           if (appId != null) {
-            _logger.info('Fetching Workshop info for mod: $workshopId');
             final modInfoResult = await _workshopApiService.getModInfo(
               workshopId: workshopId,
               appId: appId,
@@ -497,10 +603,8 @@ class WorkshopScannerService {
                   modImageUrl: modImagePath,
                   modSubscribers: modInfo.subscriptions,
                 );
-                _logger.info('Retrieved mod info: $modTitle');
               },
               err: (error) {
-                _logger.warning('Failed to fetch mod info for $workshopId: ${error.message}');
                 // Use local image and cleaned name if API failed
                 if (modImagePath != null) {
                   metadata = ProjectMetadata(
@@ -545,7 +649,6 @@ class WorkshopScannerService {
         insertResult.when(
           ok: (insertedProject) {
             importedProjects.add(insertedProject);
-            _logger.info('Imported mod: $packFileName (Workshop ID: $workshopId)');
           },
           err: (error) {
             _logger.error('Failed to import mod $workshopId: ${error.message}');
@@ -553,7 +656,7 @@ class WorkshopScannerService {
         );
       }
 
-      _logger.info('Import complete. Imported ${importedProjects.length} new mods.');
+      _logger.info('Import complete: ${importedProjects.length} new mods');
       return Ok(importedProjects);
     } catch (e, stackTrace) {
       _logger.error('Failed to scan Workshop folder: $e', stackTrace);
@@ -582,7 +685,6 @@ class WorkshopScannerService {
           .toList();
 
       if (packFiles.isEmpty) {
-        _logger.debug('No .pack files found in $workshopId for update');
         return;
       }
 
@@ -598,7 +700,6 @@ class WorkshopScannerService {
         final imagePath = path.join(modDir.path, '$packFileName$ext');
         if (await File(imagePath).exists()) {
           modImagePath = imagePath;
-          _logger.debug('Found mod image: $packFileName$ext');
           break;
         }
       }
@@ -609,7 +710,6 @@ class WorkshopScannerService {
           final imagePath = path.join(modDir.path, 'preview$ext');
           if (await File(imagePath).exists()) {
             modImagePath = imagePath;
-            _logger.debug('Found preview image: preview$ext');
             break;
           }
         }
@@ -626,7 +726,6 @@ class WorkshopScannerService {
             .toList();
         if (imageFiles.isNotEmpty) {
           modImagePath = imageFiles.first.path;
-          _logger.debug('Found fallback image: ${path.basename(imageFiles.first.path)}');
         }
       }
 
@@ -636,7 +735,6 @@ class WorkshopScannerService {
       if (gameInstallation.steamAppId != null) {
         final appId = int.tryParse(gameInstallation.steamAppId!);
         if (appId != null) {
-          _logger.info('Fetching Workshop info for mod: $workshopId');
           final modInfoResult = await _workshopApiService.getModInfo(
             workshopId: workshopId,
             appId: appId,
@@ -649,10 +747,8 @@ class WorkshopScannerService {
                 modImageUrl: modImagePath,
                 modSubscribers: modInfo.subscriptions,
               );
-              _logger.info('Retrieved mod info: ${modInfo.title}');
             },
             err: (error) {
-              _logger.warning('Failed to fetch mod info for $workshopId: ${error.message}');
               // Use local image if API failed
               if (modImagePath != null) {
                 metadata = ProjectMetadata(
@@ -681,9 +777,7 @@ class WorkshopScannerService {
 
         final updateResult = await _projectRepository.update(updatedProject);
         updateResult.when(
-          ok: (_) {
-            _logger.info('Updated metadata for mod: $workshopId');
-          },
+          ok: (_) {},
           err: (error) {
             _logger.error('Failed to update metadata for $workshopId: ${error.message}');
           },
@@ -704,7 +798,6 @@ class WorkshopScannerService {
       final imagePath = path.join(modDir.path, '$packFileName$ext');
       if (await File(imagePath).exists()) {
         modImagePath = imagePath;
-        _logger.debug('Found mod image: $packFileName$ext');
         break;
       }
     }
@@ -715,7 +808,6 @@ class WorkshopScannerService {
         final imagePath = path.join(modDir.path, 'preview$ext');
         if (await File(imagePath).exists()) {
           modImagePath = imagePath;
-          _logger.debug('Found preview image: preview$ext');
           break;
         }
       }
@@ -732,7 +824,6 @@ class WorkshopScannerService {
           .toList();
       if (imageFiles.isNotEmpty) {
         modImagePath = imageFiles.first.path;
-        _logger.debug('Found fallback image: ${path.basename(imageFiles.first.path)}');
       }
     }
 
@@ -775,12 +866,35 @@ class _ModLocalData {
   final File packFile;
   final String packFileName;
   final String? modImagePath;
+  /// Whether the pack file contains localization (.loc) files
+  final bool hasLocFiles;
+  /// Local file last modified timestamp (Unix epoch seconds)
+  final int fileLastModified;
 
   _ModLocalData({
     required this.workshopId,
     required this.packFile,
     required this.packFileName,
     this.modImagePath,
+    this.hasLocFiles = false,
+    required this.fileLastModified,
+  });
+}
+
+/// Helper class to store pack file info before cache lookup
+class _PackFileInfo {
+  final String workshopId;
+  final Directory modDir;
+  final File packFile;
+  final String packFileName;
+  final int fileLastModified;
+
+  _PackFileInfo({
+    required this.workshopId,
+    required this.modDir,
+    required this.packFile,
+    required this.packFileName,
+    required this.fileLastModified,
   });
 }
 

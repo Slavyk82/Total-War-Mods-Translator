@@ -87,7 +87,6 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
         child: SfDataGrid(
           source: _dataSource,
           controller: _dataGridController,
-          columnWidthMode: ColumnWidthMode.fill,
           gridLinesVisibility: GridLinesVisibility.horizontal,
           headerGridLinesVisibility: GridLinesVisibility.horizontal,
           allowSorting: true,
@@ -107,19 +106,21 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
           columns: <GridColumn>[
             GridColumn(
               columnName: 'image',
-              width: 80,
+              width: 64,
+              allowFiltering: false,
+              allowSorting: false,
               label: Container(
                 padding: const EdgeInsets.all(8),
                 alignment: Alignment.center,
-                child: Icon(
-                  FluentIcons.image_24_regular,
-                  size: 20,
-                  color: theme.colorScheme.onSurfaceVariant,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHigh,
                 ),
+                child: const SizedBox.shrink(),
               ),
             ),
             GridColumn(
               columnName: 'workshop_id',
+              columnWidthMode: ColumnWidthMode.fitByCellValue,
               label: Container(
                 padding: const EdgeInsets.all(8),
                 alignment: Alignment.centerLeft,
@@ -148,6 +149,7 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
             ),
             GridColumn(
               columnName: 'name',
+              columnWidthMode: ColumnWidthMode.fill,
               label: Container(
                 padding: const EdgeInsets.all(8),
                 alignment: Alignment.centerLeft,
@@ -204,6 +206,35 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
               ),
             ),
             GridColumn(
+              columnName: 'last_updated',
+              width: 170,
+              label: Container(
+                padding: const EdgeInsets.all(8),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.calendar_24_regular,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Last Updated',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            GridColumn(
               columnName: 'imported',
               width: 140,
               label: Container(
@@ -221,6 +252,35 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
                     Flexible(
                       child: Text(
                         'Status',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            GridColumn(
+              columnName: 'changes',
+              width: 180,
+              label: Container(
+                padding: const EdgeInsets.all(8),
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.arrow_sync_24_regular,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Changes',
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,

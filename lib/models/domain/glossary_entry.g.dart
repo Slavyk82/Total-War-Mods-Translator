@@ -13,8 +13,9 @@ GlossaryEntry _$GlossaryEntryFromJson(Map<String, dynamic> json) =>
       targetLanguageCode: json['target_language_code'] as String,
       sourceTerm: json['source_term'] as String,
       targetTerm: json['target_term'] as String,
-      category: json['category'] as String?,
-      caseSensitive: json['case_sensitive'] as bool? ?? false,
+      caseSensitive: json['case_sensitive'] == null
+          ? false
+          : const BoolIntConverter().fromJson(json['case_sensitive']),
       notes: json['notes'] as String?,
       createdAt: (json['created_at'] as num).toInt(),
       updatedAt: (json['updated_at'] as num).toInt(),
@@ -27,8 +28,7 @@ Map<String, dynamic> _$GlossaryEntryToJson(GlossaryEntry instance) =>
       'target_language_code': instance.targetLanguageCode,
       'source_term': instance.sourceTerm,
       'target_term': instance.targetTerm,
-      'category': instance.category,
-      'case_sensitive': instance.caseSensitive,
+      'case_sensitive': const BoolIntConverter().toJson(instance.caseSensitive),
       'notes': instance.notes,
       'created_at': instance.createdAt,
       'updated_at': instance.updatedAt,

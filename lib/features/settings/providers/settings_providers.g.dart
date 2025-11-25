@@ -189,7 +189,7 @@ final class LlmProviderSettingsProvider
 }
 
 String _$llmProviderSettingsHash() =>
-    r'00f19f6fe422c4c75e2059b4bf4a573095da2f22';
+    r'b05c4b4d3cee65eb36ace05c41dc7f4a89bf14e7';
 
 /// LLM provider settings notifier
 
@@ -259,7 +259,7 @@ final class LlmModelsProvider
   }
 }
 
-String _$llmModelsHash() => r'a347c6ac34fa0ea1d7da27c18a3bd38be8bffcf5';
+String _$llmModelsHash() => r'4065f2b4c3a0b88f1d7fd3b05a2e135ab25ff6f9';
 
 /// Provider for available LLM models for a specific provider
 

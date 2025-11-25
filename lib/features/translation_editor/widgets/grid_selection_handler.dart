@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -45,9 +44,6 @@ class GridSelectionHandler {
     final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
     final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 
-    // DEBUG: Log selection mode
-    debugPrint('Cell tapped: row=$rowIndex, ctrl=$isCtrlPressed, shift=$isShiftPressed');
-
     if (isCtrlPressed) {
       _handleCtrlClick(unitId, rowIndex);
     } else if (isShiftPressed) {
@@ -67,11 +63,11 @@ class GridSelectionHandler {
     _lastClickedIndex = rowIndex;
     _updateDataGridSelection();
 
-    // DEBUG: Log multi-selection
-    debugPrint('Ctrl+Click: ${_selectedRowIds.length} rows selected');
-
     final notifier = ref.read(editorSelectionProvider.notifier);
     notifier.toggleSelection(unitId);
+
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
 
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
@@ -100,6 +96,9 @@ class GridSelectionHandler {
     final startId = dataSource.translationRows[_lastClickedIndex!].id;
     notifier.selectRange(startId, unitId, allIds);
 
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
+
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
 
@@ -112,6 +111,9 @@ class GridSelectionHandler {
     final notifier = ref.read(editorSelectionProvider.notifier);
     notifier.clearSelection();
     notifier.toggleSelection(unitId);
+
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
 
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
@@ -128,8 +130,8 @@ class GridSelectionHandler {
     final notifier = ref.read(editorSelectionProvider.notifier);
     notifier.toggleSelection(unitId);
 
-    // DEBUG: Log checkbox selection
-    debugPrint('Checkbox clicked: ${_selectedRowIds.length} rows selected');
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
 
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
@@ -145,6 +147,9 @@ class GridSelectionHandler {
     final notifier = ref.read(editorSelectionProvider.notifier);
     notifier.selectAll(dataSource.allUnitIds);
 
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
+
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
 
@@ -156,6 +161,9 @@ class GridSelectionHandler {
 
     final notifier = ref.read(editorSelectionProvider.notifier);
     notifier.clearSelection();
+
+    // Refresh display to update checkbox states
+    dataSource.refreshDisplay();
 
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }

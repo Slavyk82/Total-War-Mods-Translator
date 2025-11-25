@@ -219,16 +219,22 @@ class SaveSearchAction extends _$SaveSearchAction {
 
       result.when(
         ok: (_) {
-          state = const AsyncValue.data(null);
-          // Refresh saved searches list
-          ref.invalidate(savedSearchesProvider);
+          if (ref.mounted) {
+            state = const AsyncValue.data(null);
+            // Refresh saved searches list
+            ref.invalidate(savedSearchesProvider);
+          }
         },
         err: (error) {
-          state = AsyncValue.error(error, StackTrace.current);
+          if (ref.mounted) {
+            state = AsyncValue.error(error, StackTrace.current);
+          }
         },
       );
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 }
@@ -248,16 +254,22 @@ class DeleteSearchAction extends _$DeleteSearchAction {
 
       result.when(
         ok: (_) {
-          state = const AsyncValue.data(null);
-          // Refresh saved searches list
-          ref.invalidate(savedSearchesProvider);
+          if (ref.mounted) {
+            state = const AsyncValue.data(null);
+            // Refresh saved searches list
+            ref.invalidate(savedSearchesProvider);
+          }
         },
         err: (error) {
-          state = AsyncValue.error(error, StackTrace.current);
+          if (ref.mounted) {
+            state = AsyncValue.error(error, StackTrace.current);
+          }
         },
       );
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 }
@@ -277,19 +289,23 @@ class ExecuteSavedSearchAction extends _$ExecuteSavedSearchAction {
       // Increment usage count
       await service.incrementSavedSearchUsage(search.id);
 
-      // Load search query into search query provider
-      final queryNotifier = ref.read(searchQueryProvider.notifier);
-      queryNotifier.loadFromSavedSearch(search);
+      if (ref.mounted) {
+        // Load search query into search query provider
+        final queryNotifier = ref.read(searchQueryProvider.notifier);
+        queryNotifier.loadFromSavedSearch(search);
 
-      // Refresh search results
-      ref.invalidate(searchResultsProvider);
+        // Refresh search results
+        ref.invalidate(searchResultsProvider);
 
-      // Refresh saved searches to update usage count
-      ref.invalidate(savedSearchesProvider);
+        // Refresh saved searches to update usage count
+        ref.invalidate(savedSearchesProvider);
 
-      state = const AsyncValue.data(null);
+        state = const AsyncValue.data(null);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 }
@@ -309,16 +325,22 @@ class ClearHistoryAction extends _$ClearHistoryAction {
 
       result.when(
         ok: (_) {
-          state = const AsyncValue.data(null);
-          // Refresh search history
-          ref.invalidate(searchHistoryProvider);
+          if (ref.mounted) {
+            state = const AsyncValue.data(null);
+            // Refresh search history
+            ref.invalidate(searchHistoryProvider);
+          }
         },
         err: (error) {
-          state = AsyncValue.error(error, StackTrace.current);
+          if (ref.mounted) {
+            state = AsyncValue.error(error, StackTrace.current);
+          }
         },
       );
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 }

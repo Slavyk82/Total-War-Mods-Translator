@@ -83,6 +83,7 @@ class _TranslationEditorScreenState
           EditorToolbar(
             projectId: widget.projectId,
             languageId: widget.languageId,
+            onTranslationSettings: () => _getActions().handleTranslationSettings(),
             onTranslateAll: () => _getActions().handleTranslateAll(),
             onTranslateSelected: () => _getActions().handleTranslateSelected(),
             onValidate: () => _getActions().handleValidate(),
@@ -128,6 +129,8 @@ class _TranslationEditorScreenState
                                   _selectedUnitId = unitId;
                                 });
                               },
+                              onForceRetranslate: () =>
+                                _getActions().handleForceRetranslateSelected(),
                             ),
                           ),
 

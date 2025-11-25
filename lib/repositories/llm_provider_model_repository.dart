@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/llm_provider_model.dart';
+import '../services/llm/utils/model_validator.dart';
 import 'base_repository.dart';
 
 /// Repository for managing LLM Provider Model entities.
@@ -57,6 +58,15 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
   @override
   Future<Result<LlmProviderModel, TWMTDatabaseException>> insert(
       LlmProviderModel entity) async {
+    // Validate provider/model compatibility
+    final validationError = LlmModelValidator.validate(
+      entity.providerCode,
+      entity.modelId,
+    );
+    if (validationError != null) {
+      return Err(TWMTDatabaseException(validationError));
+    }
+
     return executeQuery(() async {
       final map = toMap(entity);
       await database.insert(
@@ -72,6 +82,15 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
   @override
   Future<Result<LlmProviderModel, TWMTDatabaseException>> update(
       LlmProviderModel entity) async {
+    // Validate provider/model compatibility
+    final validationError = LlmModelValidator.validate(
+      entity.providerCode,
+      entity.modelId,
+    );
+    if (validationError != null) {
+      return Err(TWMTDatabaseException(validationError));
+    }
+
     return executeQuery(() async {
       final map = toMap(entity);
       final rowsAffected = await database.update(
@@ -158,7 +177,7 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
 
   /// Get the default model for a specific provider.
   ///
-  /// Returns [Ok] with the default model, [Err] if no default is set.
+  /// Returns [Ok] with the default model if it belongs to this provider, null otherwise.
   Future<Result<LlmProviderModel?, TWMTDatabaseException>> getDefaultByProvider(
       String providerCode) async {
     return executeQuery(() async {
@@ -166,6 +185,25 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
         tableName,
         where: 'provider_code = ? AND is_default = 1 AND is_archived = 0',
         whereArgs: [providerCode],
+        limit: 1,
+      );
+
+      if (maps.isEmpty) {
+        return null;
+      }
+
+      return fromMap(maps.first);
+    });
+  }
+
+  /// Get the global default model (only one can exist across all providers).
+  ///
+  /// Returns [Ok] with the default model, null if none is set.
+  Future<Result<LlmProviderModel?, TWMTDatabaseException>> getGlobalDefault() async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'is_default = 1 AND is_archived = 0',
         limit: 1,
       );
 
@@ -204,8 +242,22 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
   /// which is useful when fetching models from provider APIs.
   ///
   /// Uses REPLACE conflict algorithm to update existing models or insert new ones.
+  /// Validates all models before inserting; fails fast on first invalid model.
   Future<Result<void, TWMTDatabaseException>> upsertMany(
       List<LlmProviderModel> models) async {
+    // Validate all models before transaction
+    for (final model in models) {
+      final validationError = LlmModelValidator.validate(
+        model.providerCode,
+        model.modelId,
+      );
+      if (validationError != null) {
+        return Err(TWMTDatabaseException(
+          'Invalid model in batch: ${model.modelId} - $validationError',
+        ));
+      }
+    }
+
     return executeTransaction((txn) async {
       final batch = txn.batch();
 
@@ -275,29 +327,48 @@ class LlmProviderModelRepository extends BaseRepository<LlmProviderModel> {
     });
   }
 
-  /// Set a model as the default for its provider.
+  /// Set a model as the global default.
   ///
-  /// This automatically unsets the previous default due to the database trigger.
+  /// Only one model can be default at a time across all providers.
+  /// This unsets any previous default before setting the new one.
   Future<Result<void, TWMTDatabaseException>> setAsDefault(String id) async {
-    return executeQuery(() async {
+    return executeTransaction((txn) async {
       // First, verify the model exists and is not archived
-      final modelResult = await getById(id);
-      if (modelResult.isErr) {
-        throw modelResult.unwrapErr();
+      final maps = await txn.query(
+        tableName,
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+
+      if (maps.isEmpty) {
+        throw TWMTDatabaseException('LLM model not found: $id');
       }
 
-      final model = modelResult.unwrap();
+      final model = fromMap(maps.first);
       if (model.isArchived) {
         throw TWMTDatabaseException(
             'Cannot set archived model as default: $id');
       }
 
-      // Update to set as default (trigger will handle unsetting others)
-      final rowsAffected = await database.update(
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      // Clear all existing defaults across ALL providers
+      await txn.update(
+        tableName,
+        {
+          'is_default': 0,
+          'updated_at': now,
+        },
+        where: 'is_default = 1',
+      );
+
+      // Set the new default
+      final rowsAffected = await txn.update(
         tableName,
         {
           'is_default': 1,
-          'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          'updated_at': now,
         },
         where: 'id = ?',
         whereArgs: [id],

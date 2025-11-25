@@ -174,4 +174,43 @@ class TranslationBatchRepository extends BaseRepository<TranslationBatch> {
       return fromMap(maps.first);
     });
   }
+
+  /// Clean up all translation batches at application startup
+  ///
+  /// This method deletes ALL existing batches and their associated units
+  /// to ensure a clean state at application start.
+  ///
+  /// Returns [Ok] with cleanup stats, [Err] with exception if cleanup fails.
+  Future<Result<({int deleted}), TWMTDatabaseException>> cleanupOrphanedBatches() async {
+    return executeQuery(() async {
+      // Count existing batches and units
+      final batchCount = await database.rawQuery(
+        'SELECT COUNT(*) as count FROM translation_batches',
+      );
+      final unitCount = await database.rawQuery(
+        'SELECT COUNT(*) as count FROM translation_batch_units',
+      );
+      
+      final totalBatches = batchCount.first['count'] as int;
+      final totalUnits = unitCount.first['count'] as int;
+      
+      print('[DEBUG] Found $totalBatches batches and $totalUnits units to clean up');
+
+      if (totalBatches == 0 && totalUnits == 0) {
+        print('[DEBUG] No batches to clean up');
+        return (deleted: 0);
+      }
+
+      // Delete all batch units first (due to foreign key constraint)
+      final deletedUnits = await database.delete('translation_batch_units');
+      print('[DEBUG] Deleted $deletedUnits batch units');
+
+      // Delete all batches
+      final deletedBatches = await database.delete(tableName);
+      print('[DEBUG] Deleted $deletedBatches batches');
+      print('[INFO] Cleaned up all translation batches: $deletedBatches batches, $deletedUnits units');
+
+      return (deleted: deletedBatches);
+    });
+  }
 }

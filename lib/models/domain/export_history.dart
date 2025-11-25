@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'export_history.g.dart';
 
@@ -36,6 +37,7 @@ class ExportHistory {
 
   /// Whether only validated translations were exported
   @JsonKey(name: 'validated_only')
+  @BoolIntConverter()
   final bool validatedOnly;
 
   /// Path where the file was exported

@@ -266,14 +266,38 @@ class ValidationServiceImpl implements IValidationService {
     final sourceVars = _extractVariables(sourceText);
     final translatedVars = _extractVariables(translatedText);
 
+    // Debug logging for variable extraction
+    if (sourceVars.any((v) => v.startsWith('{{'))) {
+      print('[DEBUG] Variable extraction for key: $key');
+      print('[DEBUG] Source double-brace vars: ${sourceVars.where((v) => v.startsWith('{{')).toList()}');
+      print('[DEBUG] Translated double-brace vars: ${translatedVars.where((v) => v.startsWith('{{')).toList()}');
+    }
+
     // Check if all source variables are in translation
-    final missingVars = sourceVars.where((v) => !translatedVars.contains(v));
+    final missingVars = sourceVars.where((v) => !translatedVars.contains(v)).toList();
     if (missingVars.isNotEmpty) {
-      return ValidationError(
-        severity: ValidationSeverity.error,
-        message: 'Missing variables in translation: ${missingVars.join(', ')}',
-        field: key,
-      );
+      // Separate double-brace templates from simple variables
+      final missingSimpleVars = missingVars.where((v) => !v.startsWith('{{')).toList();
+      final missingTemplates = missingVars.where((v) => v.startsWith('{{')).toList();
+
+      // Simple variables missing = error (e.g., {0}, %s must be preserved exactly)
+      if (missingSimpleVars.isNotEmpty) {
+        return ValidationError(
+          severity: ValidationSeverity.error,
+          message: 'Missing variables in translation: ${missingSimpleVars.join(', ')}',
+          field: key,
+        );
+      }
+
+      // Double-brace templates modified = warning only
+      // These may contain display strings that should be translated
+      if (missingTemplates.isNotEmpty) {
+        return ValidationError(
+          severity: ValidationSeverity.warning,
+          message: 'Template expressions modified (may be intentional for display strings): ${missingTemplates.length} template(s)',
+          field: key,
+        );
+      }
     }
 
     // Check if translation has extra variables
@@ -299,6 +323,15 @@ class ValidationServiceImpl implements IValidationService {
     final sourceTags = _extractMarkupTags(sourceText);
     final translatedTags = _extractMarkupTags(translatedText);
 
+    // Check source tag balance first (data quality check)
+    if (!_areTagsBalanced(sourceTags)) {
+      return ValidationError(
+        severity: ValidationSeverity.warning,
+        message: 'Source text has unbalanced markup tags - may cause translation issues',
+        field: key,
+      );
+    }
+
     // Check if tags match
     if (sourceTags.length != translatedTags.length) {
       return ValidationError(
@@ -309,7 +342,7 @@ class ValidationServiceImpl implements IValidationService {
       );
     }
 
-    // Check tag balance
+    // Check tag balance in translation
     if (!_areTagsBalanced(translatedTags)) {
       return ValidationError(
         severity: ValidationSeverity.error,
@@ -602,17 +635,46 @@ class ValidationServiceImpl implements IValidationService {
   /// Extract variables from text
   ///
   /// Supports:
+  /// - {{expression}} (Total War double-brace templates)
   /// - {0}, {1}, {2} (positional)
   /// - {name}, {count} (named)
   /// - %s, %d, %f (printf-style)
+  /// - [%s], [%d], [%f] (bracketed printf-style)
   /// - $var, ${var} (template-style)
   List<String> _extractVariables(String text) {
     final variables = <String>[];
 
-    // Positional and named placeholders: {0}, {name}
-    final bracePattern = RegExp(r'\{([^}]+)\}');
+    // Total War double-brace templates: {{CcoCampaignEventDilemma:GetIfElse(...)}}
+    // These can contain nested braces, so match {{ until }}
+    // Pattern: {{ followed by any char except }} until }}
+    final doubleBracePattern = RegExp(r'\{\{(?:[^}]|\}(?!\}))*\}\}');
+    final doubleBraceMatches = doubleBracePattern.allMatches(text).toList();
     variables.addAll(
-      bracePattern.allMatches(text).map((m) => m.group(0)!),
+      doubleBraceMatches.map((m) => m.group(0)!),
+    );
+
+    // Build a set of ranges covered by double-brace matches to avoid double-counting
+    final doubleBraceRanges = doubleBraceMatches
+        .map((m) => (start: m.start, end: m.end))
+        .toList();
+
+    // Positional and named placeholders: {0}, {name}
+    // Skip matches that fall within double-brace ranges
+    final bracePattern = RegExp(r'\{([^}]+)\}');
+    for (final match in bracePattern.allMatches(text)) {
+      final isInsideDoubleBrace = doubleBraceRanges.any(
+        (r) => match.start >= r.start && match.end <= r.end,
+      );
+      if (!isInsideDoubleBrace) {
+        variables.add(match.group(0)!);
+      }
+    }
+
+    // Bracketed printf-style: [%s], [%d], [%f], etc.
+    // Must be checked BEFORE single printf and BBCode patterns to avoid conflicts
+    final bracketedPrintfPattern = RegExp(r'\[%[sdf]\]');
+    variables.addAll(
+      bracketedPrintfPattern.allMatches(text).map((m) => m.group(0)!),
     );
 
     // Printf-style: %s, %d, %f, etc.
@@ -636,6 +698,8 @@ class ValidationServiceImpl implements IValidationService {
   /// - XML: &lt;tag&gt;, &lt;/tag&gt;
   /// - BBCode: [tag], [/tag]
   /// - Double-bracket: [[tag]], [[/tag]]
+  ///
+  /// Excludes printf-style placeholders like [%s] which are variables, not tags
   List<String> _extractMarkupTags(String text) {
     final tags = <String>[];
 
@@ -655,10 +719,17 @@ class ValidationServiceImpl implements IValidationService {
     // Single BBCode tags: [tag], [/tag], [tag=value]
     // Use negative lookbehind/lookahead to avoid matching double brackets
     // Match [ but not [[, and ] but not ]]
+    // Exclude [%s], [%d], [%f] which are printf-style placeholders, not tags
     final bbcodePattern = RegExp(r'(?<!\[)\[[^\[\]]+\](?!\])');
-    tags.addAll(
-      bbcodePattern.allMatches(text).map((m) => m.group(0)!),
-    );
+    final matches = bbcodePattern.allMatches(text);
+    
+    for (final match in matches) {
+      final tag = match.group(0)!;
+      // Skip if this is a bracketed printf placeholder
+      if (!RegExp(r'^\[%[sdf]\]$').hasMatch(tag)) {
+        tags.add(tag);
+      }
+    }
 
     return tags;
   }
@@ -745,17 +816,14 @@ class ValidationServiceImpl implements IValidationService {
 
       // First, handle the slash for closing tags
       // [[/col]] -> [col] (after outer bracket removal we have [/col])
-      var isClosing = false;
       if (name.startsWith('[/')) {
         name = name.substring(2); // Remove [/
-        isClosing = true;
         // Also remove trailing ] for double-bracket tags
         if (name.endsWith(']')) {
           name = name.substring(0, name.length - 1);
         }
       } else if (name.startsWith('/')) {
         name = name.substring(1); // Remove /
-        isClosing = true;
       } else if (name.startsWith('[')) {
         name = name.substring(1); // Remove [ for double-bracket opening
         // Also remove trailing ] for double-bracket tags

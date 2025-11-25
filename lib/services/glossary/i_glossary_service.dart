@@ -18,6 +18,7 @@ abstract class IGlossaryService {
   /// [description] - Optional description
   /// [isGlobal] - If true, glossary is shared across all projects
   /// [projectId] - If specified, glossary is project-specific
+  /// [targetLanguageId] - Target language ID for glossary terms
   ///
   /// Returns the created glossary or error
   Future<Result<Glossary, GlossaryException>> createGlossary({
@@ -25,6 +26,7 @@ abstract class IGlossaryService {
     String? description,
     required bool isGlobal,
     String? projectId,
+    required String targetLanguageId,
   });
 
   /// Get glossary by ID
@@ -57,15 +59,13 @@ abstract class IGlossaryService {
   /// [targetLanguageCode] - Target language (e.g., 'fr')
   /// [sourceTerm] - Source term/phrase
   /// [targetTerm] - Target translation
-  /// [category] - Optional category (e.g., 'UI', 'Units', 'Factions')
   /// [caseSensitive] - If true, matching is case-sensitive
-  /// [notes] - Optional notes
+  /// [notes] - Optional notes providing context for the LLM (e.g., gender hints)
   Future<Result<GlossaryEntry, GlossaryException>> addEntry({
     required String glossaryId,
     required String targetLanguageCode,
     required String sourceTerm,
     required String targetTerm,
-    String? category,
     bool caseSensitive = false,
     String? notes,
   });
@@ -78,12 +78,10 @@ abstract class IGlossaryService {
   /// [glossaryId] - Glossary ID
   /// [sourceLanguageCode] - Filter by source language
   /// [targetLanguageCode] - Filter by target language
-  /// [category] - Filter by category
   Future<Result<List<GlossaryEntry>, GlossaryException>> getEntriesByGlossary({
     required String glossaryId,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? category,
   });
 
   /// Update glossary entry
@@ -187,7 +185,7 @@ abstract class IGlossaryService {
 
   /// Import glossary from CSV file
   ///
-  /// CSV format: source_term, target_term, category, notes
+  /// CSV format: source_term, target_term
   ///
   /// [glossaryId] - Target glossary ID
   /// [filePath] - Path to CSV file
@@ -241,7 +239,7 @@ abstract class IGlossaryService {
 
   /// Import glossary from Excel file
   ///
-  /// Excel columns: source_term, target_term, category, notes
+  /// Excel columns: source_term, target_term
   ///
   /// [glossaryId] - Target glossary ID
   /// [filePath] - Path to Excel file
@@ -313,7 +311,6 @@ abstract class IGlossaryService {
   /// [glossaryIds] - Filter by glossary IDs
   /// [sourceLanguageCode] - Filter by source language
   /// [targetLanguageCode] - Filter by target language
-  /// [category] - Filter by category
   ///
   /// Returns matching entries
   Future<Result<List<GlossaryEntry>, GlossaryException>> searchEntries({
@@ -321,7 +318,6 @@ abstract class IGlossaryService {
     List<String>? glossaryIds,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? category,
   });
 
   /// Get glossary statistics
@@ -329,14 +325,10 @@ abstract class IGlossaryService {
   /// Returns:
   /// - Total entries
   /// - Entries by language pair
-  /// - Entries by category
   /// - Most used terms
   ///
   /// [glossaryId] - Glossary ID
   Future<Result<Map<String, dynamic>, GlossaryException>> getGlossaryStats(
     String glossaryId,
   );
-
-  /// Get all distinct categories across glossaries
-  Future<Result<List<String>, GlossaryException>> getAllCategories();
 }

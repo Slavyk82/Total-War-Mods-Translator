@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'language.dart' show BoolIntConverter;
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'game_installation.g.dart';
 

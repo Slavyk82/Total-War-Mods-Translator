@@ -23,15 +23,31 @@ class ProjectDetails {
   });
 }
 
-/// Project language with full language information
+/// Project language with full language information and statistics
 class ProjectLanguageDetails {
   final ProjectLanguage projectLanguage;
   final Language language;
+  final int totalUnits;
+  final int translatedUnits;
+  final int pendingUnits;
+  final int validatedUnits;
 
   const ProjectLanguageDetails({
     required this.projectLanguage,
     required this.language,
+    this.totalUnits = 0,
+    this.translatedUnits = 0,
+    this.pendingUnits = 0,
+    this.validatedUnits = 0,
   });
+
+  /// Calculate progress percentage based on actual translation counts
+  double get progressPercent {
+    if (totalUnits == 0) return 0.0;
+    // Count translated + validated as "complete"
+    final completedUnits = translatedUnits + validatedUnits;
+    return (completedUnits / totalUnits) * 100;
+  }
 }
 
 /// Translation statistics for a project
@@ -78,6 +94,7 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
   final langRepo = ref.watch(languageRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
   final translationUnitRepo = ref.watch(translationUnitRepositoryProvider);
+  final translationVersionRepo = ref.watch(translationVersionRepositoryProvider);
 
   // Fetch project
   final projectResult = await projectRepo.getById(projectId);
@@ -93,7 +110,13 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
     gameInstallation = gameResult.unwrap();
   }
 
-  // Fetch project languages with language details
+  // Fetch translation units count for the project
+  final unitsResult = await translationUnitRepo.getByProject(projectId);
+  final totalUnits = unitsResult.isOk 
+      ? unitsResult.unwrap().where((u) => !u.isObsolete).length 
+      : 0;
+
+  // Fetch project languages with language details and per-language statistics
   final List<ProjectLanguageDetails> languageDetails = [];
   final langResult = await projectLangRepo.getByProject(projectId);
   if (langResult.isOk) {
@@ -110,25 +133,30 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
         languagesMap[lang.id] = lang;
       }
 
-      // Build details list with fast lookups
+      // Build details list with fast lookups and per-language stats
       for (final projLang in projectLanguages) {
         final language = languagesMap[projLang.languageId];
         if (language != null) {
+          // Get statistics for this specific project language
+          final langStatsResult = await translationVersionRepo.getLanguageStatistics(projLang.id);
+          final langStats = langStatsResult.isOk 
+              ? langStatsResult.unwrap() 
+              : ProjectStatistics.empty();
+
           languageDetails.add(ProjectLanguageDetails(
             projectLanguage: projLang,
             language: language,
+            totalUnits: totalUnits,
+            translatedUnits: langStats.translatedCount,
+            pendingUnits: langStats.pendingCount,
+            validatedUnits: langStats.validatedCount,
           ));
         }
       }
     }
   }
 
-  // Fetch translation statistics
-  final translationVersionRepo = ref.watch(translationVersionRepositoryProvider);
-  final unitsResult = await translationUnitRepo.getByProject(projectId);
-  final totalUnits = unitsResult.isOk ? unitsResult.unwrap().length : 0;
-
-  // Optimized: Get all statistics in single query (3-4x faster than 4 separate queries)
+  // Fetch project-level translation statistics
   final statsResult = await translationVersionRepo.getProjectStatistics(projectId);
   final projectStats = statsResult.isOk
       ? statsResult.unwrap()

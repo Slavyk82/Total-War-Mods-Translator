@@ -182,8 +182,7 @@ final class GlossaryEntriesProvider
   /// Glossary entries with filtering and pagination
   const GlossaryEntriesProvider._({
     required GlossaryEntriesFamily super.from,
-    required ({String glossaryId, String? targetLanguageCode, String? category})
-    super.argument,
+    required ({String glossaryId, String? targetLanguageCode}) super.argument,
   }) : super(
          retry: null,
          name: r'glossaryEntriesProvider',
@@ -211,17 +210,11 @@ final class GlossaryEntriesProvider
   @override
   FutureOr<List<GlossaryEntry>> create(Ref ref) {
     final argument =
-        this.argument
-            as ({
-              String glossaryId,
-              String? targetLanguageCode,
-              String? category,
-            });
+        this.argument as ({String glossaryId, String? targetLanguageCode});
     return glossaryEntries(
       ref,
       glossaryId: argument.glossaryId,
       targetLanguageCode: argument.targetLanguageCode,
-      category: argument.category,
     );
   }
 
@@ -236,7 +229,7 @@ final class GlossaryEntriesProvider
   }
 }
 
-String _$glossaryEntriesHash() => r'23a75b2825729bf59c64fb442fe132bc1753c563';
+String _$glossaryEntriesHash() => r'3c7ef77ff87bccfd5451b23edc12be9031f88201';
 
 /// Glossary entries with filtering and pagination
 
@@ -244,7 +237,7 @@ final class GlossaryEntriesFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<GlossaryEntry>>,
-          ({String glossaryId, String? targetLanguageCode, String? category})
+          ({String glossaryId, String? targetLanguageCode})
         > {
   const GlossaryEntriesFamily._()
     : super(
@@ -260,13 +253,8 @@ final class GlossaryEntriesFamily extends $Family
   GlossaryEntriesProvider call({
     required String glossaryId,
     String? targetLanguageCode,
-    String? category,
   }) => GlossaryEntriesProvider._(
-    argument: (
-      glossaryId: glossaryId,
-      targetLanguageCode: targetLanguageCode,
-      category: category,
-    ),
+    argument: (glossaryId: glossaryId, targetLanguageCode: targetLanguageCode),
     from: this,
   );
 
@@ -298,7 +286,6 @@ final class GlossarySearchResultsProvider
       String query,
       List<String>? glossaryIds,
       String? targetLanguageCode,
-      String? category,
     })
     super.argument,
   }) : super(
@@ -333,14 +320,12 @@ final class GlossarySearchResultsProvider
               String query,
               List<String>? glossaryIds,
               String? targetLanguageCode,
-              String? category,
             });
     return glossarySearchResults(
       ref,
       query: argument.query,
       glossaryIds: argument.glossaryIds,
       targetLanguageCode: argument.targetLanguageCode,
-      category: argument.category,
     );
   }
 
@@ -356,7 +341,7 @@ final class GlossarySearchResultsProvider
 }
 
 String _$glossarySearchResultsHash() =>
-    r'17e1b6c08efccff6fecbd4904867152a2b1a0789';
+    r'b2dca7bb1b2572f795375599c23548082520be40';
 
 /// Search glossary entries
 
@@ -368,7 +353,6 @@ final class GlossarySearchResultsFamily extends $Family
             String query,
             List<String>? glossaryIds,
             String? targetLanguageCode,
-            String? category,
           })
         > {
   const GlossarySearchResultsFamily._()
@@ -386,13 +370,11 @@ final class GlossarySearchResultsFamily extends $Family
     required String query,
     List<String>? glossaryIds,
     String? targetLanguageCode,
-    String? category,
   }) => GlossarySearchResultsProvider._(
     argument: (
       query: query,
       glossaryIds: glossaryIds,
       targetLanguageCode: targetLanguageCode,
-      category: category,
     ),
     from: this,
   );
@@ -488,51 +470,6 @@ final class GlossaryStatisticsFamily extends $Family
   String toString() => r'glossaryStatisticsProvider';
 }
 
-/// All distinct categories
-
-@ProviderFor(glossaryCategories)
-const glossaryCategoriesProvider = GlossaryCategoriesProvider._();
-
-/// All distinct categories
-
-final class GlossaryCategoriesProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<String>>,
-          List<String>,
-          FutureOr<List<String>>
-        >
-    with $FutureModifier<List<String>>, $FutureProvider<List<String>> {
-  /// All distinct categories
-  const GlossaryCategoriesProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'glossaryCategoriesProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$glossaryCategoriesHash();
-
-  @$internal
-  @override
-  $FutureProviderElement<List<String>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<String>> create(Ref ref) {
-    return glossaryCategories(ref);
-  }
-}
-
-String _$glossaryCategoriesHash() =>
-    r'd710867593d1a4a700827bb0eb91d088ddef5ae9';
-
 /// Entry editor state (for add/edit)
 
 @ProviderFor(GlossaryEntryEditor)
@@ -570,7 +507,7 @@ final class GlossaryEntryEditorProvider
 }
 
 String _$glossaryEntryEditorHash() =>
-    r'9bc632dc3744e01084e17307b4327be92219ed09';
+    r'8a8c76b74c9856d133304be47583e1199d603ae7';
 
 /// Entry editor state (for add/edit)
 
@@ -630,7 +567,7 @@ final class GlossaryFilterStateProvider
 }
 
 String _$glossaryFilterStateHash() =>
-    r'b2bcf17c24be7a6eeace52b917aad30e9a634630';
+    r'2c6dab06f92779d995a5e2db28bf14a5e1d70c12';
 
 /// Filter state
 
@@ -749,7 +686,7 @@ final class GlossaryImportStateProvider
 }
 
 String _$glossaryImportStateHash() =>
-    r'b809f065ffd09772acdc41d304a5cb28c440146f';
+    r'c9562c6438a0abf4e354564030473e14ae729f77';
 
 /// Import state
 
@@ -811,7 +748,7 @@ final class GlossaryExportStateProvider
 }
 
 String _$glossaryExportStateHash() =>
-    r'18321759921454eb599c0cd6381fefbcd1368423';
+    r'c2a7d2877d5fdd364829aef00ab37557fb314070';
 
 /// Export state
 

@@ -8,6 +8,7 @@ import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
+import 'package:twmt/services/database/database_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -93,12 +94,22 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
     // Clean up resources when app is being terminated
     if (state == AppLifecycleState.detached) {
       debugPrint('🧹 Application shutting down, cleaning up resources...');
-      _cleanup();
+      _cleanupAsync();
     }
   }
 
   /// Cleanup all resources before app termination
-  void _cleanup() {
+  Future<void> _cleanupAsync() async {
+    try {
+      // Checkpoint WAL before closing - await to ensure completion
+      if (DatabaseService.isInitialized) {
+        await DatabaseService.checkpointWal();
+        debugPrint('✅ Database WAL checkpointed');
+      }
+    } catch (e) {
+      debugPrint('❌ Error checkpointing WAL: $e');
+    }
+
     try {
       // Dispose EventBus to close StreamController
       EventBus.instance.dispose();

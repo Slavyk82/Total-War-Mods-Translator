@@ -32,6 +32,10 @@ class LlmRequest {
   /// Model name to use (e.g., "claude-3-5-sonnet-20241022")
   final String? modelName;
 
+  /// Provider code (e.g., "anthropic", "openai", "deepl")
+  /// If not provided, the active provider from settings is used
+  final String? providerCode;
+
   /// Temperature (0.0-1.0, default 0.3 for consistency)
   final double temperature;
 
@@ -51,6 +55,7 @@ class LlmRequest {
     this.fewShotExamples,
     this.glossaryTerms,
     this.modelName,
+    this.providerCode,
     this.temperature = 0.3,
     this.maxTokens,
     required this.timestamp,
@@ -71,6 +76,7 @@ class LlmRequest {
     List<TranslationExample>? fewShotExamples,
     Map<String, String>? glossaryTerms,
     String? modelName,
+    String? providerCode,
     double? temperature,
     int? maxTokens,
     DateTime? timestamp,
@@ -85,6 +91,7 @@ class LlmRequest {
       fewShotExamples: fewShotExamples ?? this.fewShotExamples,
       glossaryTerms: glossaryTerms ?? this.glossaryTerms,
       modelName: modelName ?? this.modelName,
+      providerCode: providerCode ?? this.providerCode,
       temperature: temperature ?? this.temperature,
       maxTokens: maxTokens ?? this.maxTokens,
       timestamp: timestamp ?? this.timestamp,
@@ -105,6 +112,7 @@ class LlmRequest {
           fewShotExamples == other.fewShotExamples &&
           glossaryTerms == other.glossaryTerms &&
           modelName == other.modelName &&
+          providerCode == other.providerCode &&
           temperature == other.temperature &&
           maxTokens == other.maxTokens &&
           timestamp == other.timestamp;
@@ -120,6 +128,7 @@ class LlmRequest {
       (fewShotExamples?.hashCode ?? 0) ^
       (glossaryTerms?.hashCode ?? 0) ^
       (modelName?.hashCode ?? 0) ^
+      (providerCode?.hashCode ?? 0) ^
       temperature.hashCode ^
       (maxTokens?.hashCode ?? 0) ^
       timestamp.hashCode;

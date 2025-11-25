@@ -7,7 +7,6 @@ import 'package:twmt/repositories/mod_version_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/mods/i_mod_update_service.dart';
 import 'package:twmt/services/steam/i_steam_workshop_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/models/workshop_item_update.dart';
 
 /// Implementation of mod update tracking service.
@@ -18,7 +17,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
   final ISteamWorkshopService _workshopService;
   final ProjectRepository _projectRepository;
   final ModVersionRepository _modVersionRepository;
-  final LoggingService _logger = LoggingService.instance;
   final Uuid _uuid = const Uuid();
 
   ModUpdateServiceImpl({
@@ -33,8 +31,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
   Future<Result<List<ModUpdateInfo>, ServiceException>>
       checkAllModsForUpdates() async {
     try {
-      _logger.info('Checking all mods for updates');
-
       // Get all projects
       final projectsResult = await _projectRepository.getAll();
       if (projectsResult is Err) {
@@ -52,11 +48,8 @@ class ModUpdateServiceImpl implements IModUpdateService {
           .toList();
 
       if (steamProjects.isEmpty) {
-        _logger.info('No projects with Steam Workshop IDs found');
         return const Ok([]);
       }
-
-      _logger.info('Found ${steamProjects.length} Steam Workshop projects');
 
       // Build map of workshop IDs to last known update times
       final workshopIdsMap = <String, DateTime>{};
@@ -76,8 +69,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
       }
 
       if (workshopIdsMap.isEmpty) {
-        _logger.warning(
-            'No projects have Steam update timestamps in their current versions');
         return const Ok([]);
       }
 
@@ -135,9 +126,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
         updateInfoList.add(updateInfo);
       }
 
-      _logger.info(
-          'Update check complete: ${updateInfoList.where((u) => u.hasUpdate).length}/${updateInfoList.length} have updates');
-
       return Ok(updateInfoList);
     } catch (e, stackTrace) {
       return Err(ServiceException(
@@ -153,8 +141,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
     required String projectId,
   }) async {
     try {
-      _logger.info('Checking mod for update: $projectId');
-
       // Get project
       final projectResult = await _projectRepository.getById(projectId);
       if (projectResult is Err) {
@@ -221,12 +207,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
         affectedTranslations: 0,
       );
 
-      if (hasUpdate) {
-        _logger.info('Update available for ${project.name}');
-      } else {
-        _logger.info('No update available for ${project.name}');
-      }
-
       return Ok(updateInfo);
     } catch (e, stackTrace) {
       return Err(ServiceException(
@@ -243,8 +223,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
     required String newVersionString,
   }) async {
     try {
-      _logger.info('Tracking mod update for project: $projectId');
-
       // Get project
       final projectResult = await _projectRepository.getById(projectId);
       if (projectResult is Err) {
@@ -327,9 +305,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
         ));
       }
 
-      _logger.info(
-          'Successfully tracked mod update: ${project.name} -> $newVersionString');
-
       return const Ok(null);
     } catch (e, stackTrace) {
       return Err(ServiceException(
@@ -344,8 +319,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
   Future<Result<List<ModUpdateInfo>, ServiceException>>
       getPendingUpdates() async {
     try {
-      _logger.info('Getting pending updates');
-
       final allUpdatesResult = await checkAllModsForUpdates();
       if (allUpdatesResult is Err) {
         return allUpdatesResult;
@@ -354,8 +327,6 @@ class ModUpdateServiceImpl implements IModUpdateService {
       final allUpdates = allUpdatesResult.value;
       final pendingUpdates =
           allUpdates.where((update) => update.hasUpdate).toList();
-
-      _logger.info('Found ${pendingUpdates.length} pending updates');
 
       return Ok(pendingUpdates);
     } catch (e, stackTrace) {

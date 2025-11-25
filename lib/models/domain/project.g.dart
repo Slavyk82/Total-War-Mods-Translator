@@ -20,7 +20,7 @@ Project _$ProjectFromJson(Map<String, dynamic> json) => Project(
   lastUpdateCheck: (json['last_update_check'] as num?)?.toInt(),
   sourceModUpdated: (json['source_mod_updated'] as num?)?.toInt(),
   batchSize: (json['batch_size'] as num?)?.toInt() ?? 25,
-  parallelBatches: (json['parallel_batches'] as num?)?.toInt() ?? 3,
+  parallelBatches: (json['parallel_batches'] as num?)?.toInt() ?? 1,
   customPrompt: json['custom_prompt'] as String?,
   createdAt: (json['created_at'] as num).toInt(),
   updatedAt: (json['updated_at'] as num).toInt(),

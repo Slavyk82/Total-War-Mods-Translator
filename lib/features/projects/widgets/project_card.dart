@@ -69,17 +69,13 @@ class _ProjectCardState extends State<ProjectCard> {
                 : [],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context, project, gameInstallation),
-                const SizedBox(height: 12),
-                _buildModInfo(context, project),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _buildLanguageProgress(context),
-                const SizedBox(height: 16),
-                _buildFooter(context, project),
               ],
             ),
           ),
@@ -94,94 +90,76 @@ class _ProjectCardState extends State<ProjectCard> {
     GameInstallation? gameInstallation,
   ) {
     final theme = Theme.of(context);
+    final lastModified = DateTime.fromMillisecondsSinceEpoch(
+      project.updatedAt * 1000,
+    );
+    final mutedColor = theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
 
     return Row(
       children: [
         // Game icon
         Container(
-          width: 40,
-          height: 40,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
             color: theme.colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(
             _getGameIcon(gameInstallation?.gameCode),
-            size: 24,
+            size: 18,
             color: theme.colorScheme.onPrimaryContainer,
           ),
         ),
-        const SizedBox(width: 12),
-        // Project name and game
+        const SizedBox(width: 10),
+        // Project name
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                project.name,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                gameInstallation?.gameName ?? 'Unknown Game',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+          child: Text(
+            project.name,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
+        // Update badge
+        if (widget.projectWithDetails.hasUpdates) ...[
+          _buildUpdateBadge(context),
+          const SizedBox(width: 8),
+        ],
+        // Steam ID
+        if (project.modSteamId != null) ...[
+          const SizedBox(width: 8),
+          Icon(
+            FluentIcons.cloud_24_regular,
+            size: 14,
+            color: mutedColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            project.modSteamId!,
+            style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
+          ),
+        ],
+        // Timestamp
+        const SizedBox(width: 12),
+        Icon(
+          FluentIcons.clock_24_regular,
+          size: 14,
+          color: mutedColor,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          timeago.format(lastModified),
+          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
+        ),
         // Status badge
+        const SizedBox(width: 12),
         _buildStatusBadge(context, project.status),
         const SizedBox(width: 8),
         // Actions menu
         _buildActionsMenu(context),
-      ],
-    );
-  }
-
-  Widget _buildModInfo(BuildContext context, Project project) {
-    final theme = Theme.of(context);
-
-    if (project.modSteamId == null) {
-      return const SizedBox.shrink();
-    }
-
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.cloud_24_regular,
-          size: 14,
-          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Steam ID: ${project.modSteamId}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-          ),
-        ),
-        if (project.modVersion != null) ...[
-          const SizedBox(width: 12),
-          Icon(
-            FluentIcons.tag_24_regular,
-            size: 14,
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            'v${project.modVersion}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -208,11 +186,11 @@ class _ProjectCardState extends State<ProjectCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ...displayLanguages.map((langInfo) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.only(bottom: 6.0),
               child: _buildProgressBar(
                 context,
                 langInfo.language?.name ?? 'Unknown',
-                langInfo.projectLanguage.progressPercent,
+                langInfo.progressPercent,
               ),
             )),
         if (remainingCount > 0)
@@ -252,11 +230,11 @@ class _ProjectCardState extends State<ProjectCard> {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         ClipRRect(
           borderRadius: BorderRadius.circular(2),
           child: SizedBox(
-            height: 6,
+            height: 4,
             child: LinearProgressIndicator(
               value: progressPercent / 100,
               backgroundColor:
@@ -271,55 +249,33 @@ class _ProjectCardState extends State<ProjectCard> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, Project project) {
+  Widget _buildUpdateBadge(BuildContext context) {
     final theme = Theme.of(context);
-    final lastModified = DateTime.fromMillisecondsSinceEpoch(
-      project.updatedAt * 1000,
-    );
 
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.clock_24_regular,
-          size: 14,
-          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          timeago.format(lastModified),
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            FluentIcons.arrow_sync_circle_24_regular,
+            size: 12,
+            color: theme.colorScheme.onErrorContainer,
           ),
-        ),
-        if (widget.projectWithDetails.hasUpdates) ...[
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.errorContainer,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  FluentIcons.arrow_sync_circle_24_regular,
-                  size: 12,
-                  color: theme.colorScheme.onErrorContainer,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Update Available',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+          const SizedBox(width: 4),
+          Text(
+            'Update Available',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onErrorContainer,
+              fontSize: 11,
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 

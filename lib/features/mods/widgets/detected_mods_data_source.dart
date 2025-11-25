@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
+import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 
 /// Data source for Syncfusion DataGrid displaying detected mods
 class DetectedModsDataSource extends DataGridSource {
@@ -51,9 +53,20 @@ class DetectedModsDataSource extends DataGridSource {
             columnName: 'subscribers',
             value: mod.metadata?.modSubscribers ?? 0,
           ),
+          DataGridCell<_LastUpdatedData>(
+            columnName: 'last_updated',
+            value: _LastUpdatedData(
+              timeUpdated: mod.timeUpdated,
+              needsUpdate: mod.needsUpdate,
+            ),
+          ),
           DataGridCell<bool>(
             columnName: 'imported',
             value: mod.isAlreadyImported,
+          ),
+          DataGridCell<ModUpdateAnalysis?>(
+            columnName: 'changes',
+            value: mod.updateAnalysis,
           ),
         ],
       );
@@ -66,7 +79,9 @@ class DetectedModsDataSource extends DataGridSource {
     final workshopId = row.getCells()[1].value.toString();
     final modName = row.getCells()[2].value.toString();
     final subscribers = row.getCells()[3].value as int;
-    final isImported = row.getCells()[4].value as bool;
+    final lastUpdatedData = row.getCells()[4].value as _LastUpdatedData;
+    final isImported = row.getCells()[5].value as bool;
+    final updateAnalysis = row.getCells()[6].value as ModUpdateAnalysis?;
 
     return DataGridRowAdapter(
       cells: [
@@ -95,8 +110,14 @@ class DetectedModsDataSource extends DataGridSource {
         // Subscribers
         RepaintBoundary(
           child: _DataGridCell(
-            text: subscribers > 0 ? subscribers.toString() : '-',
+            text: subscribers > 0 
+                ? NumberFormat('#,###', 'en_US').format(subscribers).replaceAll(',', ' ')
+                : '-',
           ),
+        ),
+        // Last Updated
+        RepaintBoundary(
+          child: _LastUpdatedCell(data: lastUpdatedData),
         ),
         // Imported Status
         RepaintBoundary(
@@ -106,7 +127,114 @@ class DetectedModsDataSource extends DataGridSource {
             child: _ImportedBadge(isImported: isImported),
           ),
         ),
+        // Changes Analysis
+        RepaintBoundary(
+          child: _ChangesCell(analysis: updateAnalysis, isImported: isImported),
+        ),
       ],
+    );
+  }
+}
+
+/// Data class for last updated cell
+class _LastUpdatedData {
+  final int? timeUpdated;
+  final bool needsUpdate;
+
+  const _LastUpdatedData({
+    this.timeUpdated,
+    this.needsUpdate = false,
+  });
+}
+
+/// Last updated cell widget with update indicator
+class _LastUpdatedCell extends StatelessWidget {
+  final _LastUpdatedData data;
+
+  const _LastUpdatedCell({required this.data});
+
+  /// Format the number of days since the last update
+  String _formatDaysSinceUpdate(DateTime updatedDate) {
+    final now = DateTime.now();
+    final difference = now.difference(updatedDate);
+    final days = difference.inDays;
+
+    if (days == 0) {
+      final hours = difference.inHours;
+      if (hours == 0) {
+        return '< 1h';
+      }
+      return '${hours}h';
+    } else if (days == 1) {
+      return '1 day';
+    } else if (days < 30) {
+      return '$days days';
+    } else if (days < 365) {
+      final months = (days / 30).floor();
+      return months == 1 ? '1 month' : '$months months';
+    } else {
+      final years = (days / 365).floor();
+      return years == 1 ? '1 year' : '$years years';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (data.timeUpdated == null || data.timeUpdated == 0) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          '-',
+          style: theme.textTheme.bodyMedium,
+        ),
+      );
+    }
+
+    final date = DateTime.fromMillisecondsSinceEpoch(data.timeUpdated! * 1000);
+    final daysSinceUpdate = _formatDaysSinceUpdate(date);
+
+    if (data.needsUpdate) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Tooltip(
+          message: 'Steam version is newer than local file.\nLaunch the game to update this mod.',
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.arrow_sync_circle_24_filled,
+                size: 16,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  daysSinceUpdate,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        daysSinceUpdate,
+        style: theme.textTheme.bodyMedium,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
@@ -280,6 +408,124 @@ class _ImportedBadge extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Changes analysis cell widget
+class _ChangesCell extends StatelessWidget {
+  final ModUpdateAnalysis? analysis;
+  final bool isImported;
+
+  const _ChangesCell({
+    required this.analysis,
+    required this.isImported,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // Not imported - no analysis
+    if (!isImported) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          '-',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    // Imported but no analysis available
+    if (analysis == null) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          'Analyzing...',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    // No changes
+    if (!analysis!.hasChanges) {
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.checkmark_circle_24_regular,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Up to date',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Has changes - build tooltip with details
+    final tooltipLines = <String>[];
+    if (analysis!.hasNewUnits) {
+      tooltipLines.add('+${analysis!.newUnitsCount} new translations to add');
+    }
+    if (analysis!.hasRemovedUnits) {
+      tooltipLines.add('-${analysis!.removedUnitsCount} translations removed');
+    }
+    if (analysis!.hasModifiedUnits) {
+      tooltipLines.add('~${analysis!.modifiedUnitsCount} source texts changed');
+    }
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.all(8),
+      child: Tooltip(
+        message: tooltipLines.join('\n'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.warning_24_filled,
+                size: 14,
+                color: theme.colorScheme.onErrorContainer,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  analysis!.summary,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

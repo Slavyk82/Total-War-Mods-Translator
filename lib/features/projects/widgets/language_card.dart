@@ -12,6 +12,7 @@ class LanguageCard extends StatefulWidget {
   final Language language;
   final int totalUnits;
   final int translatedUnits;
+  final int validatedUnits;
   final VoidCallback? onOpenEditor;
 
   const LanguageCard({
@@ -20,8 +21,17 @@ class LanguageCard extends StatefulWidget {
     required this.language,
     required this.totalUnits,
     required this.translatedUnits,
+    this.validatedUnits = 0,
     this.onOpenEditor,
   });
+
+  /// Calculate progress percentage based on actual translation counts
+  double get progressPercent {
+    if (totalUnits == 0) return 0.0;
+    // Count translated + validated as "complete"
+    final completedUnits = translatedUnits + validatedUnits;
+    return (completedUnits / totalUnits) * 100;
+  }
 
   @override
   State<LanguageCard> createState() => _LanguageCardState();
@@ -34,7 +44,7 @@ class _LanguageCardState extends State<LanguageCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = widget.projectLanguage.progressPercent;
+    final progress = widget.progressPercent;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -212,7 +222,16 @@ class _LanguageCardState extends State<LanguageCard> {
 
   Widget _buildStatusBadge(BuildContext context) {
     final theme = Theme.of(context);
-    final status = widget.projectLanguage.status;
+    // Determine status from actual progress rather than database field
+    final progress = widget.progressPercent;
+    final ProjectLanguageStatus status;
+    if (progress >= 100) {
+      status = ProjectLanguageStatus.completed;
+    } else if (progress > 0) {
+      status = ProjectLanguageStatus.translating;
+    } else {
+      status = ProjectLanguageStatus.pending;
+    }
     final (icon, label, bgColor, fgColor) = _getStatusInfo(theme, status);
 
     return Container(

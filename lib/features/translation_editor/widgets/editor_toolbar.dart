@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/models/domain/llm_provider_model.dart';
+import '../../settings/providers/settings_providers.dart';
 import '../providers/editor_providers.dart';
 
 /// Top toolbar for the translation editor
@@ -10,6 +12,7 @@ import '../providers/editor_providers.dart';
 class EditorToolbar extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
+  final VoidCallback onTranslationSettings;
   final VoidCallback onTranslateAll;
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
@@ -23,6 +26,7 @@ class EditorToolbar extends ConsumerStatefulWidget {
     super.key,
     required this.projectId,
     required this.languageId,
+    required this.onTranslationSettings,
     required this.onTranslateAll,
     required this.onTranslateSelected,
     required this.onValidate,
@@ -122,6 +126,14 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
 
           // LLM Model selector
           _buildModelSelector(),
+          const SizedBox(width: 16),
+
+          // Translation Settings button
+          _buildActionButton(
+            icon: FluentIcons.settings_24_regular,
+            label: 'Settings',
+            onPressed: widget.onTranslationSettings,
+          ),
           const SizedBox(width: 16),
 
           // Action buttons
@@ -309,6 +321,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
   Widget _buildModelSelector() {
     final modelsAsync = ref.watch(availableLlmModelsProvider);
     final selectedModelId = ref.watch(selectedLlmModelProvider);
+    final settingsAsync = ref.watch(llmProviderSettingsProvider);
 
     return modelsAsync.when(
       data: (models) {
@@ -316,19 +329,24 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           return const SizedBox.shrink();
         }
 
+        // Get the active provider from settings (e.g., 'openai', 'anthropic', 'deepl')
+        final activeProvider = settingsAsync.whenOrNull(
+          data: (settings) => settings[SettingsKeys.activeProvider],
+        ) ?? '';
+
         // Find the current selection or default model
+        // Priority order:
+        // 1. Currently selected model (if valid)
+        // 2. Default model from the active provider
+        // 3. Any enabled model from the active provider
+        // 4. Any default model across all providers
+        // 5. First available model
         final currentModel = selectedModelId != null
           ? models.firstWhere(
               (m) => m.id == selectedModelId,
-              orElse: () => models.firstWhere(
-                (m) => m.isDefault,
-                orElse: () => models.first,
-              ),
+              orElse: () => _findBestDefaultModel(models, activeProvider),
             )
-          : models.firstWhere(
-              (m) => m.isDefault,
-              orElse: () => models.first,
-            );
+          : _findBestDefaultModel(models, activeProvider);
 
         // Initialize provider with default model if not set
         if (selectedModelId == null) {
@@ -361,7 +379,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                   return DropdownMenuItem<String>(
                     value: model.id,
                     child: Text(
-                      '${model.providerCode}: ${model.displayName}',
+                      '${model.providerCode}: ${model.friendlyName}',
                       style: const TextStyle(fontSize: 13),
                     ),
                   );
@@ -383,5 +401,44 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
       ),
       error: (_, __) => const SizedBox.shrink(),
     );
+  }
+
+  /// Find the best default model based on active provider setting.
+  ///
+  /// Priority order:
+  /// 1. Default model from the active provider
+  /// 2. Any enabled model from the active provider
+  /// 3. Any default model across all providers
+  /// 4. First available model
+  LlmProviderModel _findBestDefaultModel(
+    List<LlmProviderModel> models,
+    String activeProvider,
+  ) {
+    if (activeProvider.isNotEmpty) {
+      // Try to find default model from active provider
+      final activeProviderDefault = models.where(
+        (m) => m.providerCode == activeProvider && m.isDefault,
+      ).firstOrNull;
+      if (activeProviderDefault != null) {
+        return activeProviderDefault;
+      }
+
+      // Try any enabled model from active provider
+      final activeProviderModel = models.where(
+        (m) => m.providerCode == activeProvider,
+      ).firstOrNull;
+      if (activeProviderModel != null) {
+        return activeProviderModel;
+      }
+    }
+
+    // Fallback: any default model across all providers
+    final anyDefault = models.where((m) => m.isDefault).firstOrNull;
+    if (anyDefault != null) {
+      return anyDefault;
+    }
+
+    // Final fallback: first model
+    return models.first;
   }
 }

@@ -285,8 +285,8 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                 child: Slider(
                   value: rateLimit.toDouble(),
                   min: 10,
-                  max: 200,
-                  divisions: 19,
+                  max: 500,
+                  divisions: 49,
                   label: rateLimit.toString(),
                   onChanged: (value) async {
                     try {

@@ -13,7 +13,10 @@ import '../widgets/glossary_export_dialog.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/glossary/i_glossary_service.dart';
+import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 
 /// Main screen for Glossary management
 class GlossaryScreen extends ConsumerStatefulWidget {
@@ -340,11 +343,39 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  void _showEntryEditor(dynamic entry, Glossary glossary) {
+  void _showEntryEditor(dynamic entry, Glossary glossary) async {
+    print('[GlossaryScreen._showEntryEditor] Opening entry editor');
+    print('  glossaryId: ${glossary.id}');
+    print('  glossary.targetLanguageId: ${glossary.targetLanguageId}');
+    print('  entry: ${entry != null ? "EDIT ${entry.id}" : "NEW"}');
+    
+    // Get target language code from glossary's target language ID
+    String? targetLanguageCode;
+    if (glossary.targetLanguageId != null) {
+      try {
+        final languageRepo = ServiceLocator.get<LanguageRepository>();
+        final langResult = await languageRepo.getById(glossary.targetLanguageId!);
+        langResult.when(
+          ok: (language) {
+            targetLanguageCode = language.code;
+            print('[GlossaryScreen._showEntryEditor] Target language code: $targetLanguageCode');
+          },
+          err: (error) {
+            print('[GlossaryScreen._showEntryEditor] ERROR getting language: $error');
+          },
+        );
+      } catch (e) {
+        print('[GlossaryScreen._showEntryEditor] Exception getting language: $e');
+      }
+    }
+    
+    if (!mounted) return;
+    
     showDialog(
       context: context,
       builder: (context) => GlossaryEntryEditorDialog(
         glossaryId: glossary.id,
+        targetLanguageCode: targetLanguageCode,
         entry: entry,
       ),
     );
@@ -405,11 +436,11 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         final service = ServiceLocator.get<IGlossaryService>();
         await service.deleteGlossary(selectedGlossary.id);
 
-        // Clear selection and refresh
-        ref.read(selectedGlossaryProvider.notifier).clear();
-        ref.invalidate(glossariesProvider);
-
         if (mounted) {
+          // Clear selection and refresh
+          ref.read(selectedGlossaryProvider.notifier).clear();
+          ref.invalidate(glossariesProvider);
+
           FluentToast.success(
             context,
             'Glossary "${selectedGlossary.name}" deleted successfully',
@@ -436,13 +467,94 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
   final _descriptionController = TextEditingController();
   bool _isGlobal = true;
   String? _projectId;
+  String? _selectedLanguageId;
   bool _isCreating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLanguages();
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLanguages() async {
+    final repository = ServiceLocator.get<LanguageRepository>();
+    final settingsService = ServiceLocator.get<SettingsService>();
+    
+    // Get the default target language from settings
+    final defaultLanguageCode = await settingsService.getString(
+      SettingsKeys.defaultTargetLanguage,
+      defaultValue: 'fr',
+    );
+    
+    final result = await repository.getActive();
+    result.when(
+      ok: (languages) {
+        if (mounted && languages.isNotEmpty) {
+          // Find language matching the default code, or fallback to first
+          final defaultLang = languages.firstWhere(
+            (lang) => lang.code == defaultLanguageCode,
+            orElse: () => languages.first,
+          );
+          setState(() {
+            _selectedLanguageId = defaultLang.id;
+          });
+        }
+      },
+      err: (_) {},
+    );
+  }
+
+  Widget _buildLanguageSelector() {
+    final repository = ServiceLocator.get<LanguageRepository>();
+    return FutureBuilder(
+      future: repository.getActive(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const FluentInlineSpinner();
+        }
+
+        return snapshot.data?.when(
+          ok: (languages) {
+            if (languages.isEmpty) {
+              return const Text('No active languages available');
+            }
+
+            return DropdownButtonFormField<String>(
+              initialValue: _selectedLanguageId,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Select target language',
+              ),
+              items: languages.map((lang) {
+                return DropdownMenuItem<String>(
+                  value: lang.id,
+                  child: Text(lang.displayName),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedLanguageId = value;
+                });
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Target language is required';
+                }
+                return null;
+              },
+            );
+          },
+          err: (_) => const Text('Error loading languages'),
+        ) ?? const Text('Error loading languages');
+      },
+    );
   }
 
   @override
@@ -525,6 +637,15 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+
+                // Target Language
+                Text(
+                  'Target Language *',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                _buildLanguageSelector(),
               ],
             ),
           ),
@@ -546,14 +667,38 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
   }
 
   Future<void> _createGlossary() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('[NewGlossaryDialog] Starting glossary creation...');
+    print('[NewGlossaryDialog] Form validation: ${_formKey.currentState!.validate()}');
+    
+    if (!_formKey.currentState!.validate()) {
+      print('[NewGlossaryDialog] Form validation failed');
+      return;
+    }
 
+    print('[NewGlossaryDialog] Setting isCreating to true');
     setState(() {
       _isCreating = true;
     });
 
     try {
+      print('[NewGlossaryDialog] Getting service...');
       final service = ServiceLocator.get<IGlossaryService>();
+      
+      if (_selectedLanguageId == null) {
+        print('[NewGlossaryDialog] No language selected');
+        if (mounted) {
+          FluentToast.error(context, 'Please select a target language');
+        }
+        return;
+      }
+
+      print('[NewGlossaryDialog] Calling service.createGlossary with:');
+      print('  name: ${_nameController.text.trim()}');
+      print('  description: ${_descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null}');
+      print('  isGlobal: $_isGlobal');
+      print('  projectId: $_projectId');
+      print('  targetLanguageId: $_selectedLanguageId');
+      
       final result = await service.createGlossary(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim().isNotEmpty
@@ -561,16 +706,21 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
             : null,
         isGlobal: _isGlobal,
         projectId: _projectId,
+        targetLanguageId: _selectedLanguageId!,
       );
 
+      print('[NewGlossaryDialog] Service returned result');
+      
       result.when(
         ok: (glossary) {
-          // Select the new glossary
-          ref.read(selectedGlossaryProvider.notifier).select(glossary);
-          // Refresh glossaries list
-          ref.invalidate(glossariesProvider);
-
+          print('[NewGlossaryDialog] SUCCESS: Glossary created: ${glossary.id}');
+          
           if (mounted) {
+            // Select the new glossary
+            ref.read(selectedGlossaryProvider.notifier).select(glossary);
+            // Refresh glossaries list
+            ref.invalidate(glossariesProvider);
+
             Navigator.of(context).pop();
             FluentToast.success(
               context,
@@ -579,12 +729,20 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
           }
         },
         err: (error) {
+          print('[NewGlossaryDialog] ERROR: $error');
           if (mounted) {
             FluentToast.error(context, 'Error creating glossary: $error');
           }
         },
       );
+    } catch (e, stackTrace) {
+      print('[NewGlossaryDialog] EXCEPTION caught: $e');
+      print('[NewGlossaryDialog] Stack trace: $stackTrace');
+      if (mounted) {
+        FluentToast.error(context, 'Unexpected error: $e');
+      }
     } finally {
+      print('[NewGlossaryDialog] Finally block - resetting isCreating');
       if (mounted) {
         setState(() {
           _isCreating = false;

@@ -1,9 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/llm/models/llm_model_info.dart';
 
 /// Interface for LLM providers (Anthropic, OpenAI, DeepL)
 abstract class ILlmProvider {
@@ -20,12 +20,14 @@ abstract class ILlmProvider {
   ///
   /// [request] - Translation request with texts and context
   /// [apiKey] - API key for authentication
+  /// [cancelToken] - Optional token to cancel the request
   ///
   /// Returns [Ok(LlmResponse)] on success or [Err(LlmProviderException)] on failure
   Future<Result<LlmResponse, LlmProviderException>> translate(
     LlmRequest request,
-    String apiKey,
-  );
+    String apiKey, {
+    CancelToken? cancelToken,
+  });
 
   /// Estimate tokens for a given text
   ///
@@ -103,18 +105,6 @@ abstract class ILlmProvider {
   ///
   /// Returns [Ok(RateLimitStatus)] or [Err(LlmProviderException)]
   Future<Result<RateLimitStatus?, LlmProviderException>> getRateLimitStatus(
-    String apiKey,
-  );
-
-  /// Fetch available models from the provider
-  ///
-  /// Retrieves the list of models available for the given API key.
-  /// Returns an empty list for providers that don't support model listing (e.g., DeepL).
-  ///
-  /// [apiKey] - API key for authentication
-  ///
-  /// Returns [Ok(List<LlmModelInfo>)] on success or [Err(LlmProviderException)] on failure
-  Future<Result<List<LlmModelInfo>, LlmProviderException>> fetchModels(
     String apiKey,
   );
 }

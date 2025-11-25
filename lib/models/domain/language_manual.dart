@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'language_manual.g.dart';
 
@@ -24,6 +25,7 @@ class LanguageManual {
 
   /// Whether this language is currently active/enabled
   @JsonKey(name: 'is_active')
+  @BoolIntConverter()
   final bool isActive;
 
   const LanguageManual({

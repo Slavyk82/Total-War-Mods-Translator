@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
@@ -18,11 +19,13 @@ abstract class ILlmService {
   /// - Tracks token usage
   ///
   /// [request] - Translation request with texts and context
+  /// [cancelToken] - Optional token to cancel the request
   ///
   /// Returns [Ok(LlmResponse)] on success or [Err(LlmServiceException)] on failure
   Future<Result<LlmResponse, LlmServiceException>> translateBatch(
-    LlmRequest request,
-  );
+    LlmRequest request, {
+    CancelToken? cancelToken,
+  });
 
   /// Translate multiple batches in parallel
   ///
@@ -86,12 +89,14 @@ abstract class ILlmService {
   ///
   /// [providerCode] - Provider to validate ("anthropic", "openai", "deepl")
   /// [apiKey] - API key to validate
+  /// [model] - Model to use for validation (required for LLM providers, ignored by DeepL)
   ///
   /// Returns [Ok(true)] if valid or [Err(LlmServiceException)] if invalid
   Future<Result<bool, LlmServiceException>> validateApiKey(
     String providerCode,
-    String apiKey,
-  );
+    String apiKey, {
+    String? model,
+  });
 
   /// Get active provider code from settings
   ///

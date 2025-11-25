@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart';
 import '../providers/editor_providers.dart';
+import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
 import 'editor_data_source.dart';
 
 /// Handler for grid actions (copy, paste, validate, clear, delete)
@@ -152,15 +153,21 @@ class GridActionsHandler {
           context,
           'Marked $successCount translation(s) as reviewed',
         );
+        
+        // Refresh the data
+        _refreshProviders();
       }
-
-      // Refresh the data
-      ref.invalidate(translationRowsProvider(projectId, languageId));
     } catch (e) {
       if (context.mounted) {
         FluentToast.error(context, 'Error: $e');
       }
     }
+  }
+
+  /// Refresh all relevant providers after data changes
+  void _refreshProviders() {
+    ref.invalidate(translationRowsProvider(projectId, languageId));
+    ref.invalidate(projectsWithDetailsProvider);
   }
 
   /// Clear translation text for selected rows
@@ -192,10 +199,10 @@ class GridActionsHandler {
 
       if (context.mounted) {
         FluentToast.success(context, 'Cleared $successCount translation(s)');
+        
+        // Refresh the data
+        _refreshProviders();
       }
-
-      // Refresh the data
-      ref.invalidate(translationRowsProvider(projectId, languageId));
     } catch (e) {
       if (context.mounted) {
         FluentToast.error(context, 'Error: $e');
@@ -228,10 +235,10 @@ class GridActionsHandler {
 
       if (context.mounted) {
         FluentToast.success(context, 'Deleted $successCount translation(s)');
+        
+        // Refresh the data
+        _refreshProviders();
       }
-
-      // Refresh the data
-      ref.invalidate(translationRowsProvider(projectId, languageId));
     } catch (e) {
       if (context.mounted) {
         FluentToast.error(context, 'Error: $e');

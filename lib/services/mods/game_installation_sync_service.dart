@@ -69,8 +69,6 @@ class GameInstallationSyncService {
   /// Sync all configured games from settings to database
   Future<Result<void, ServiceException>> syncAllGames() async {
     try {
-      _logger.info('Syncing game installations from settings');
-
       for (final entry in _availableGames.entries) {
         final gameCode = entry.key;
         final gameInfo = entry.value;
@@ -78,7 +76,6 @@ class GameInstallationSyncService {
         await _syncGame(gameCode, gameInfo);
       }
 
-      _logger.info('Game installations sync completed');
       return const Ok(null);
     } catch (e, stackTrace) {
       _logger.error('Failed to sync game installations: $e', stackTrace);
@@ -128,8 +125,6 @@ class GameInstallationSyncService {
                                     existing.steamWorkshopPath!.isEmpty;
         
         if (installPathChanged || workshopPathMissing) {
-          _logger.info('Updating game installation for $gameCode (install path changed: $installPathChanged, workshop missing: $workshopPathMissing)');
-          
           final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
           
           // Only detect Workshop path if it's missing
@@ -137,9 +132,6 @@ class GameInstallationSyncService {
           String? workshopPath = existing.steamWorkshopPath;
           if (workshopPathMissing) {
             workshopPath = await _detectWorkshopPath(gamePath, gameInfo.steamAppId);
-            _logger.info('Detected Workshop path: $workshopPath');
-          } else if (installPathChanged) {
-            _logger.info('Installation path changed, keeping existing Workshop path: $workshopPath');
           }
           
           final updated = existing.copyWith(
@@ -155,12 +147,9 @@ class GameInstallationSyncService {
               error: updateResult.error,
             ));
           }
-          
-          _logger.info('Game installation updated successfully for $gameCode');
         }
       } else {
         // Game installation doesn't exist, create it
-        _logger.info('Creating game installation for $gameCode');
         
         // Detect Workshop path
         final workshopPath = await _detectWorkshopPath(gamePath, gameInfo.steamAppId);
@@ -187,8 +176,6 @@ class GameInstallationSyncService {
             error: insertResult.error,
           ));
         }
-        
-        _logger.info('Game installation created successfully for $gameCode');
       }
 
       return const Ok(null);
@@ -213,11 +200,8 @@ class GameInstallationSyncService {
         final workshopPath = path.join(baseWorkshopPath, steamAppId);
         
         if (await Directory(workshopPath).exists()) {
-          _logger.info('Found Workshop path (from settings): $workshopPath');
           return workshopPath;
         }
-        
-        _logger.warning('Workshop path from settings does not exist: $workshopPath');
         // Fall through to auto-detection
       }
       
@@ -240,14 +224,11 @@ class GameInstallationSyncService {
       );
       
       if (await Directory(workshopPath).exists()) {
-        _logger.info('Found Workshop path (auto-detected): $workshopPath');
         return workshopPath;
       }
       
-      _logger.warning('Workshop path does not exist: $workshopPath');
       return null;
     } catch (e) {
-      _logger.warning('Failed to detect Workshop path: $e');
       return null;
     }
   }
@@ -268,7 +249,6 @@ class GameInstallationSyncService {
 
       return exeFiles.isNotEmpty;
     } catch (e) {
-      _logger.warning('Failed to validate game path: $e');
       return false;
     }
   }

@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
 
 part 'translation_context.g.dart';
 
@@ -27,8 +28,14 @@ class TranslationContext {
   /// Project-specific context (mod type, faction, period)
   final String? projectContext;
 
-  /// Glossary terms to preserve (term -> translation)
+  /// @deprecated Use [glossaryEntries] instead for variant support
+  /// Legacy glossary terms (term -> translation)
   final Map<String, String>? glossaryTerms;
+
+  /// Full glossary entries with variant support
+  /// Filtered per-batch during prompt building to optimize tokens
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final List<GlossaryTermWithVariants>? glossaryEntries;
 
   /// Few-shot examples from Translation Memory
   /// Format: [{"source": "...", "target": "..."}]
@@ -49,6 +56,14 @@ class TranslationContext {
   /// Preserve formatting (XML tags, BBCode, etc.)
   final bool preserveFormatting;
 
+  /// Number of units per LLM batch (default: 100)
+  final int unitsPerBatch;
+
+  /// Number of parallel LLM batches (default: 1)
+  /// Note: Higher values can improve throughput but may cause FTS5 corruption
+  /// due to concurrent database writes. Keep at 1 for stability.
+  final int parallelBatches;
+
   /// Created timestamp
   final DateTime createdAt;
 
@@ -64,15 +79,31 @@ class TranslationContext {
     this.gameContext,
     this.projectContext,
     this.glossaryTerms,
+    this.glossaryEntries,
     this.fewShotExamples,
     this.customInstructions,
     required this.targetLanguage,
     this.category,
     this.formalityLevel,
     this.preserveFormatting = true,
+    this.unitsPerBatch = 100,
+    this.parallelBatches = 1,
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Extracts the provider code from providerId.
+  /// 
+  /// providerId format is "provider_<code>" (e.g., "provider_anthropic").
+  /// Returns the code part (e.g., "anthropic"), or null if providerId is null/invalid.
+  String? get providerCode {
+    if (providerId == null) return null;
+    if (providerId!.startsWith('provider_')) {
+      return providerId!.substring('provider_'.length);
+    }
+    // If providerId doesn't have the prefix, assume it's already the code
+    return providerId;
+  }
 
   // JSON serialization
   factory TranslationContext.fromJson(Map<String, dynamic> json) =>
@@ -90,6 +121,7 @@ class TranslationContext {
     String? gameContext,
     String? projectContext,
     Map<String, String>? glossaryTerms,
+    List<GlossaryTermWithVariants>? glossaryEntries,
     List<Map<String, String>>? fewShotExamples,
     String? customInstructions,
     String? targetLanguage,
@@ -108,6 +140,7 @@ class TranslationContext {
       gameContext: gameContext ?? this.gameContext,
       projectContext: projectContext ?? this.projectContext,
       glossaryTerms: glossaryTerms ?? this.glossaryTerms,
+      glossaryEntries: glossaryEntries ?? this.glossaryEntries,
       fewShotExamples: fewShotExamples ?? this.fewShotExamples,
       customInstructions: customInstructions ?? this.customInstructions,
       targetLanguage: targetLanguage ?? this.targetLanguage,

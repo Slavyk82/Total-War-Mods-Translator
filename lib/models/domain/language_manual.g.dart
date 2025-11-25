@@ -12,7 +12,9 @@ LanguageManual _$LanguageManualFromJson(Map<String, dynamic> json) =>
       code: json['code'] as String,
       name: json['name'] as String,
       nativeName: json['native_name'] as String,
-      isActive: json['is_active'] as bool? ?? true,
+      isActive: json['is_active'] == null
+          ? true
+          : const BoolIntConverter().fromJson(json['is_active']),
     );
 
 Map<String, dynamic> _$LanguageManualToJson(LanguageManual instance) =>
@@ -21,5 +23,5 @@ Map<String, dynamic> _$LanguageManualToJson(LanguageManual instance) =>
       'code': instance.code,
       'name': instance.name,
       'native_name': instance.nativeName,
-      'is_active': instance.isActive,
+      'is_active': const BoolIntConverter().toJson(instance.isActive),
     };

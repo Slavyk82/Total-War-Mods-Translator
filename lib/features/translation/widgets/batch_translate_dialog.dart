@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../models/domain/llm_provider_model.dart';
+import '../../translation_editor/providers/editor_providers.dart';
 
 /// Dialog for batch translating selected units
 ///
@@ -40,32 +43,36 @@ class BatchTranslateDialog extends ConsumerStatefulWidget {
 }
 
 class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
-  String _selectedProvider = 'anthropic';
-  String _selectedModel = 'claude-3-5-sonnet-20241022';
+  String _selectedProvider = AppConstants.defaultLlmProvider;
+  String? _selectedModel;
   String _qualityMode = 'balanced';
   bool _useGlossary = true;
   bool _useTranslationMemory = true;
 
-  // Available models per provider
-  final _models = {
-    'anthropic': [
-      'claude-3-5-sonnet-20241022',
-      'claude-3-opus-20240229',
-      'claude-3-haiku-20240307',
-    ],
-    'openai': [
-      'gpt-4-turbo',
-      'gpt-4',
-      'gpt-3.5-turbo',
-    ],
-    'deepl': [
-      'deepl-default',
-    ],
-  };
+  // Models are loaded dynamically from DB via availableLlmModelsProvider
+  Map<String, List<LlmProviderModel>> _modelsByProvider = {};
+  bool _modelsLoaded = false;
 
   @override
   Widget build(BuildContext context) {
     final operationState = ref.watch(batchOperationProvider);
+    final modelsAsync = ref.watch(availableLlmModelsProvider);
+
+    // Load models from DB when available
+    modelsAsync.whenData((models) {
+      if (!_modelsLoaded && models.isNotEmpty) {
+        _modelsByProvider = {};
+        for (final model in models) {
+          _modelsByProvider.putIfAbsent(model.providerCode, () => []).add(model);
+        }
+        
+        // Set default model (global default or first available)
+        final defaultModel = models.where((m) => m.isDefault).firstOrNull ?? models.first;
+        _selectedProvider = defaultModel.providerCode;
+        _selectedModel = defaultModel.modelId;
+        _modelsLoaded = true;
+      }
+    });
 
     return Dialog(
       child: Container(
@@ -155,6 +162,26 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
   }
 
   Widget _buildConfigurationView() {
+    // Get available providers from loaded models
+    final availableProviders = _modelsByProvider.keys.toList();
+    if (availableProviders.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // Ensure selected provider is valid
+    if (!availableProviders.contains(_selectedProvider)) {
+      _selectedProvider = availableProviders.first;
+    }
+
+    // Get models for current provider
+    final providerModels = _modelsByProvider[_selectedProvider] ?? [];
+    final modelIds = providerModels.map((m) => m.modelId).toList();
+
+    // Ensure selected model is valid
+    if (_selectedModel == null || !modelIds.contains(_selectedModel)) {
+      _selectedModel = modelIds.isNotEmpty ? modelIds.first : null;
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,11 +194,12 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
           const SizedBox(height: 8),
           _buildDropdown(
             value: _selectedProvider,
-            items: const ['anthropic', 'openai', 'deepl'],
+            items: availableProviders,
             onChanged: (value) {
               setState(() {
                 _selectedProvider = value!;
-                _selectedModel = _models[_selectedProvider]![0];
+                final newModels = _modelsByProvider[_selectedProvider] ?? [];
+                _selectedModel = newModels.isNotEmpty ? newModels.first.modelId : null;
               });
             },
             itemBuilder: (item) => _capitalizeFirst(item),
@@ -184,12 +212,23 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 8),
-          _buildDropdown(
-            value: _selectedModel,
-            items: _models[_selectedProvider]!,
-            onChanged: (value) => setState(() => _selectedModel = value!),
-            itemBuilder: (item) => item,
-          ),
+          if (modelIds.isNotEmpty && _selectedModel != null)
+            _buildDropdown(
+              value: _selectedModel!,
+              items: modelIds,
+              onChanged: (value) => setState(() => _selectedModel = value!),
+              itemBuilder: (item) {
+                final model = providerModels.firstWhere((m) => m.modelId == item);
+                return model.displayName ?? item;
+              },
+            )
+          else
+            Text(
+              'No models available for this provider',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
           const SizedBox(height: 16),
 
           // Quality mode
@@ -415,6 +454,8 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
   }
 
   void _startTranslation() {
+    if (_selectedModel == null) return;
+    
     ref.read(batchOperationProvider.notifier).start(
       operation: BatchOperationType.translate,
       totalItems: widget.selectedUnits.length,
@@ -422,7 +463,7 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
 
     widget.onTranslate(
       provider: _selectedProvider,
-      model: _selectedModel,
+      model: _selectedModel!,
       qualityMode: _qualityMode,
       useGlossary: _useGlossary,
       useTranslationMemory: _useTranslationMemory,

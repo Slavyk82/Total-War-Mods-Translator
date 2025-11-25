@@ -7,7 +7,6 @@ import 'package:twmt/services/glossary/utils/glossary_statistics.dart';
 ///
 /// Handles all statistics-related operations including:
 /// - Calculating glossary statistics
-/// - Managing categories
 /// - Generating usage reports
 class GlossaryStatisticsService {
   final GlossaryRepository _repository;
@@ -18,7 +17,6 @@ class GlossaryStatisticsService {
   ///
   /// Returns statistics including:
   /// - Entry counts by language pair
-  /// - Category distribution
   /// - Case sensitivity breakdown
   /// - Usage patterns
   Future<Result<Map<String, dynamic>, GlossaryException>> getGlossaryStats(
@@ -41,48 +39,6 @@ class GlossaryStatisticsService {
     } catch (e) {
       return Err(
         GlossaryDatabaseException('Failed to get stats', e),
-      );
-    }
-  }
-
-  /// Get all unique categories across all glossaries
-  ///
-  /// Returns sorted list of category names
-  Future<Result<List<String>, GlossaryException>> getAllCategories() async {
-    try {
-      final categories = await _repository.getAllCategories();
-      return Ok(categories);
-    } catch (e) {
-      return Err(
-        GlossaryDatabaseException('Failed to get categories', e),
-      );
-    }
-  }
-
-  /// Get categories for a specific glossary
-  ///
-  /// [glossaryId]: ID of the glossary
-  ///
-  /// Returns sorted list of category names used in this glossary
-  Future<Result<List<String>, GlossaryException>> getGlossaryCategories(
-    String glossaryId,
-  ) async {
-    try {
-      final entries = await _repository.getEntriesByGlossary(
-        glossaryId: glossaryId,
-      );
-
-      final categories = entries
-          .where((e) => e.category != null && e.category!.isNotEmpty)
-          .map((e) => e.category!)
-          .toSet()
-          .toList()
-        ..sort();
-
-      return Ok(categories);
-    } catch (e) {
-      return Err(
-        GlossaryDatabaseException('Failed to get glossary categories', e),
       );
     }
   }

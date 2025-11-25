@@ -70,6 +70,24 @@ class TranslationVersionRepository
     });
   }
 
+  /// Insert a translation version within an existing transaction.
+  ///
+  /// This method is used for batch operations where multiple inserts
+  /// need to happen within a single transaction to prevent FTS5 corruption.
+  ///
+  /// Parameters:
+  /// - [txn]: The transaction to execute the insert within
+  /// - [entity]: The translation version to insert
+  Future<void> insertWithTransaction(
+      Transaction txn, TranslationVersion entity) async {
+    final map = toMap(entity);
+    await txn.insert(
+      tableName,
+      map,
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+  }
+
   @override
   Future<Result<TranslationVersion, TWMTDatabaseException>> update(
       TranslationVersion entity) async {
@@ -91,6 +109,60 @@ class TranslationVersionRepository
       }
 
       return entity;
+    });
+  }
+
+  /// Upsert (INSERT or UPDATE) a single translation version.
+  ///
+  /// If translation exists for (unitId, projectLanguageId), UPDATE it.
+  /// If not, INSERT new translation.
+  ///
+  /// Uses a transaction to ensure atomicity of the read-modify-write pattern,
+  /// preventing race conditions and database corruption under concurrent access.
+  ///
+  /// Returns [Ok] with the saved entity on success.
+  Future<Result<TranslationVersion, TWMTDatabaseException>> upsert(
+      TranslationVersion entity) async {
+    return executeTransaction((txn) async {
+      // Check if translation exists (within transaction for atomicity)
+      final existingMaps = await txn.query(
+        tableName,
+        where: 'unit_id = ? AND project_language_id = ?',
+        whereArgs: [entity.unitId, entity.projectLanguageId],
+        columns: ['id', 'created_at'],
+        limit: 1,
+      );
+
+      if (existingMaps.isNotEmpty) {
+        // UPDATE: Preserve original ID and createdAt
+        final existing = existingMaps.first;
+        final existingId = existing['id'] as String;
+        final existingCreatedAt = existing['created_at'] as int;
+
+        final map = toMap(entity);
+        map['id'] = existingId;
+        map['created_at'] = existingCreatedAt;
+        map.remove('id'); // Remove from UPDATE fields
+
+        await txn.update(
+          tableName,
+          map,
+          where: 'id = ?',
+          whereArgs: [existingId],
+        );
+
+        return entity;
+      } else {
+        // INSERT: Use entity's ID and timestamps
+        final map = toMap(entity);
+        await txn.insert(
+          tableName,
+          map,
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+
+        return entity;
+      }
     });
   }
 
@@ -133,6 +205,88 @@ class TranslationVersionRepository
       }
 
       await batch.commit(noResult: true);
+      return entities;
+    });
+  }
+
+  /// Upsert (INSERT or UPDATE) multiple translation versions in a single transaction.
+  ///
+  /// For each entity:
+  /// - If translation exists for (unitId, projectLanguageId), UPDATE it
+  /// - If not, INSERT new translation
+  ///
+  /// This is significantly faster than individual operations as it uses:
+  /// - Single transaction for atomicity (prevents corruption under concurrent access)
+  /// - Batch query for existence checks
+  /// - Single batch commit
+  ///
+  /// Returns [Ok] with the list of successfully saved entities.
+  Future<Result<List<TranslationVersion>, TWMTDatabaseException>> upsertBatch(
+      List<TranslationVersion> entities) async {
+    if (entities.isEmpty) {
+      return Ok([]);
+    }
+
+    return executeTransaction((txn) async {
+      // Step 1: Check which translations already exist (batch query within transaction)
+      final unitIds = entities.map((e) => e.unitId).toSet().toList();
+      final projectLanguageIds = entities.map((e) => e.projectLanguageId).toSet().toList();
+
+      // Build placeholders for IN clause
+      final unitPlaceholders = List.filled(unitIds.length, '?').join(',');
+      final langPlaceholders = List.filled(projectLanguageIds.length, '?').join(',');
+
+      final existingMaps = await txn.rawQuery('''
+        SELECT id, unit_id, project_language_id, created_at
+        FROM $tableName
+        WHERE unit_id IN ($unitPlaceholders)
+          AND project_language_id IN ($langPlaceholders)
+      ''', [...unitIds, ...projectLanguageIds]);
+
+      // Build lookup map: (unitId, projectLanguageId) -> (id, createdAt)
+      final existingLookup = <String, ({String id, int createdAt})>{};
+      for (final map in existingMaps) {
+        final key = '${map['unit_id']}:${map['project_language_id']}';
+        existingLookup[key] = (
+          id: map['id'] as String,
+          createdAt: map['created_at'] as int,
+        );
+      }
+
+      // Step 2: Build batch operations within transaction
+      final batch = txn.batch();
+
+      for (final entity in entities) {
+        final lookupKey = '${entity.unitId}:${entity.projectLanguageId}';
+        final existing = existingLookup[lookupKey];
+
+        if (existing != null) {
+          // UPDATE: Preserve original ID and createdAt
+          final map = toMap(entity);
+          map['id'] = existing.id; // Keep original ID
+          map['created_at'] = existing.createdAt; // Keep original createdAt
+          map.remove('id'); // Remove from UPDATE fields
+
+          batch.update(
+            tableName,
+            map,
+            where: 'id = ?',
+            whereArgs: [existing.id],
+          );
+        } else {
+          // INSERT: Use entity's ID and timestamps
+          final map = toMap(entity);
+          batch.insert(
+            tableName,
+            map,
+            conflictAlgorithm: ConflictAlgorithm.abort,
+          );
+        }
+      }
+
+      // Step 3: Commit batch (within transaction for atomicity)
+      await batch.commit(noResult: true);
+
       return entities;
     });
   }
@@ -190,7 +344,7 @@ class TranslationVersionRepository
 
   /// Get all untranslated unit IDs for a specific project language.
   ///
-  /// Returns [Ok] with list of translation version IDs where translated_text is null or empty,
+  /// Returns [Ok] with list of unit IDs where translated_text is null or empty,
   /// ordered by the translation unit key.
   Future<Result<List<String>, TWMTDatabaseException>> getUntranslatedIds({
     required String projectLanguageId,
@@ -198,7 +352,7 @@ class TranslationVersionRepository
     return executeQuery(() async {
       final maps = await database.rawQuery(
         '''
-        SELECT tv.id
+        SELECT tu.id
         FROM translation_versions tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tv.project_language_id = ?
@@ -432,30 +586,83 @@ class TranslationVersionRepository
       getProjectStatistics(String projectId) async {
     return executeQuery(() async {
       // Single query with conditional aggregation - much faster than 4 separate queries
+      // Uses status-based counting consistent with editor statistics
+      // Groups by unit_id and takes the "best" status per unit across all languages
+      final result = await database.rawQuery(
+        '''
+        WITH unit_best_status AS (
+          -- For each unit, get the best status across all target languages
+          -- Priority: approved > reviewed > translated > needs_review > translating > pending
+          SELECT
+            tu.id as unit_id,
+            MAX(CASE
+              WHEN tv.status = 'approved' THEN 6
+              WHEN tv.status = 'reviewed' THEN 5
+              WHEN tv.status = 'translated' THEN 4
+              WHEN tv.status = 'needs_review' THEN 3
+              WHEN tv.status = 'translating' THEN 2
+              WHEN tv.status = 'pending' THEN 1
+              ELSE 0
+            END) as status_priority,
+            MAX(CASE WHEN tv.status = 'approved' THEN 1 ELSE 0 END) as is_approved,
+            MAX(CASE WHEN tv.status = 'reviewed' THEN 1 ELSE 0 END) as is_reviewed,
+            MAX(CASE WHEN tv.status = 'translated' THEN 1 ELSE 0 END) as is_translated,
+            MAX(CASE WHEN tv.status = 'pending' OR tv.status = 'translating' THEN 1 ELSE 0 END) as is_pending,
+            MAX(CASE WHEN tv.status = 'needs_review' THEN 1 ELSE 0 END) as is_needs_review
+          FROM translation_units tu
+          INNER JOIN translation_versions tv ON tv.unit_id = tu.id
+          WHERE tu.project_id = ?
+          GROUP BY tu.id
+        )
+        SELECT
+          -- Translated: units where best status is translated (but not approved/reviewed)
+          COUNT(CASE WHEN status_priority = 4 THEN 1 END) as translated_count,
+          -- Pending: units where best status is pending/translating
+          COUNT(CASE WHEN status_priority <= 2 THEN 1 END) as pending_count,
+          -- Validated: units where best status is approved or reviewed
+          COUNT(CASE WHEN status_priority >= 5 THEN 1 END) as validated_count,
+          -- Needs review count (treated as error for display purposes)
+          COUNT(CASE WHEN status_priority = 3 THEN 1 END) as error_count
+        FROM unit_best_status
+        ''',
+        [projectId],
+      );
+
+      if (result.isEmpty) {
+        return ProjectStatistics.empty();
+      }
+
+      final row = result.first;
+      return ProjectStatistics(
+        translatedCount: (row['translated_count'] as int?) ?? 0,
+        pendingCount: (row['pending_count'] as int?) ?? 0,
+        validatedCount: (row['validated_count'] as int?) ?? 0,
+        errorCount: (row['error_count'] as int?) ?? 0,
+      );
+    });
+  }
+
+  /// Get translation statistics for a specific project language.
+  ///
+  /// Returns statistics based on status values, consistent with editor statistics.
+  ///
+  /// Returns [Ok] with [ProjectStatistics] containing all counts, or [Err] on database error.
+  Future<Result<ProjectStatistics, TWMTDatabaseException>>
+      getLanguageStatistics(String projectLanguageId) async {
+    return executeQuery(() async {
       final result = await database.rawQuery(
         '''
         SELECT
-          COUNT(DISTINCT CASE
-            WHEN tv.translated_text IS NOT NULL AND tv.translated_text != ''
-            THEN tv.unit_id
-          END) as translated_count,
-          COUNT(DISTINCT CASE
-            WHEN tv.status = 'pending'
-            THEN tv.unit_id
-          END) as pending_count,
-          COUNT(DISTINCT CASE
-            WHEN tv.status IN ('approved', 'reviewed')
-            THEN tv.unit_id
-          END) as validated_count,
-          COUNT(DISTINCT CASE
-            WHEN tv.status = 'error'
-            THEN tv.unit_id
-          END) as error_count
+          COUNT(CASE WHEN tv.status = 'translated' THEN 1 END) as translated_count,
+          COUNT(CASE WHEN tv.status IN ('pending', 'translating') THEN 1 END) as pending_count,
+          COUNT(CASE WHEN tv.status IN ('approved', 'reviewed') THEN 1 END) as validated_count,
+          COUNT(CASE WHEN tv.status = 'needs_review' THEN 1 END) as error_count
         FROM translation_versions tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
-        WHERE tu.project_id = ?
+        WHERE tv.project_language_id = ?
+          AND tu.is_obsolete = 0
         ''',
-        [projectId],
+        [projectLanguageId],
       );
 
       if (result.isEmpty) {

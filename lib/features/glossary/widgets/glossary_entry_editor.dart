@@ -7,11 +7,13 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 /// Dialog for adding or editing a glossary entry
 class GlossaryEntryEditorDialog extends ConsumerStatefulWidget {
   final String glossaryId;
+  final String? targetLanguageCode;
   final GlossaryEntry? entry;
 
   const GlossaryEntryEditorDialog({
     super.key,
     required this.glossaryId,
+    this.targetLanguageCode,
     this.entry,
   });
 
@@ -26,23 +28,8 @@ class _GlossaryEntryEditorDialogState
   late TextEditingController _sourceTermController;
   late TextEditingController _targetTermController;
   late TextEditingController _notesController;
-  String? _selectedCategory;
   bool _caseSensitive = false;
   bool _isSaving = false;
-
-  // Predefined categories
-  static const List<String> _categories = [
-    'UI',
-    'Units',
-    'Factions',
-    'Locations',
-    'Items',
-    'Abilities',
-    'Buildings',
-    'Technologies',
-    'Characters',
-    'Other',
-  ];
 
   @override
   void initState() {
@@ -50,7 +37,6 @@ class _GlossaryEntryEditorDialogState
     _sourceTermController = TextEditingController(text: widget.entry?.sourceTerm ?? '');
     _targetTermController = TextEditingController(text: widget.entry?.targetTerm ?? '');
     _notesController = TextEditingController(text: widget.entry?.notes ?? '');
-    _selectedCategory = widget.entry?.category;
     _caseSensitive = widget.entry?.caseSensitive ?? false;
   }
 
@@ -119,36 +105,17 @@ class _GlossaryEntryEditorDialogState
                 ),
                 const SizedBox(height: 16),
 
-                // Category
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedCategory,
-                  decoration: const InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _categories.map((category) {
-                    return DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCategory = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Notes
+                // Notes for LLM context
                 TextFormField(
                   controller: _notesController,
                   decoration: const InputDecoration(
-                    labelText: 'Notes',
-                    hintText: 'Optional notes or usage guidelines',
+                    labelText: 'Notes (LLM context)',
+                    hintText: 'e.g., "Bretonnian is not gendered in English but can be Bretonnien/Bretonnienne in French"',
                     border: OutlineInputBorder(),
+                    helperText: 'Optional hints for the translator about gender, context, or usage',
+                    helperMaxLines: 2,
                   ),
-                  maxLines: 4,
+                  maxLines: 3,
                   maxLength: 500,
                 ),
                 const SizedBox(height: 16),
@@ -192,41 +159,76 @@ class _GlossaryEntryEditorDialogState
   }
 
   Future<void> _saveEntry() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('[GlossaryEntryEditor._saveEntry] Starting save operation');
+    
+    if (!_formKey.currentState!.validate()) {
+      print('[GlossaryEntryEditor._saveEntry] Form validation failed');
+      return;
+    }
+
+    if (!mounted) {
+      print('[GlossaryEntryEditor._saveEntry] Widget not mounted, aborting');
+      return;
+    }
 
     setState(() {
       _isSaving = true;
     });
 
     try {
-      // Get target language code from the entry or use default
-      final targetLanguageCode = widget.entry?.targetLanguageCode ?? 'fr';
+      // Get target language code from entry, widget prop, or default
+      final targetLanguageCode = widget.entry?.targetLanguageCode 
+          ?? widget.targetLanguageCode 
+          ?? 'fr';
 
+      final notes = _notesController.text.trim().isNotEmpty 
+          ? _notesController.text.trim() 
+          : null;
+
+      print('[GlossaryEntryEditor._saveEntry] Calling provider.save with:');
+      print('  glossaryId: ${widget.glossaryId}');
+      print('  targetLanguageCode: $targetLanguageCode');
+      print('  sourceTerm: "${_sourceTermController.text.trim()}"');
+      print('  targetTerm: "${_targetTermController.text.trim()}"');
+      print('  caseSensitive: $_caseSensitive');
+      print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
+      
       await ref.read(glossaryEntryEditorProvider.notifier).save(
             glossaryId: widget.glossaryId,
             targetLanguageCode: targetLanguageCode,
             sourceTerm: _sourceTermController.text.trim(),
             targetTerm: _targetTermController.text.trim(),
-            category: _selectedCategory,
             caseSensitive: _caseSensitive,
-            notes: _notesController.text.trim().isNotEmpty
-                ? _notesController.text.trim()
-                : null,
+            notes: notes,
           );
 
-      if (mounted) {
-        Navigator.of(context).pop();
-        FluentToast.success(
-          context,
-          widget.entry != null
-              ? 'Entry updated successfully'
-              : 'Entry added successfully',
-        );
+      print('[GlossaryEntryEditor._saveEntry] Provider.save completed successfully');
+
+      if (!mounted) {
+        print('[GlossaryEntryEditor._saveEntry] Widget not mounted after save, returning');
+        return;
       }
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Error saving entry: $e');
-      }
+
+      // Refresh entries and statistics
+      print('[GlossaryEntryEditor._saveEntry] Invalidating providers...');
+      ref.invalidate(glossaryEntriesProvider);
+      ref.invalidate(glossaryStatisticsProvider);
+      print('[GlossaryEntryEditor._saveEntry] Providers invalidated');
+
+      print('[GlossaryEntryEditor._saveEntry] Closing dialog and showing success toast');
+      Navigator.of(context).pop();
+      FluentToast.success(
+        context,
+        widget.entry != null
+            ? 'Entry updated successfully'
+            : 'Entry added successfully',
+      );
+      print('[GlossaryEntryEditor._saveEntry] Save operation completed successfully');
+    } catch (e, stackTrace) {
+      print('[GlossaryEntryEditor._saveEntry] ERROR: Exception caught: $e');
+      print('[GlossaryEntryEditor._saveEntry] Stack trace: $stackTrace');
+      if (!mounted) return;
+      FluentToast.error(context, 'Error saving entry: $e');
     } finally {
       if (mounted) {
         setState(() {

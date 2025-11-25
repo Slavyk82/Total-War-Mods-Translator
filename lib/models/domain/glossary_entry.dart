@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'glossary_entry.g.dart';
 
@@ -28,14 +29,14 @@ class GlossaryEntry {
   @JsonKey(name: 'target_term')
   final String targetTerm;
 
-  /// Category (e.g., 'UI', 'Units', 'Factions', 'General')
-  final String? category;
-
   /// Whether matching should be case-sensitive
   @JsonKey(name: 'case_sensitive')
+  @BoolIntConverter()
   final bool caseSensitive;
 
-  /// Additional notes or usage guidelines
+  /// Optional notes providing context for the LLM during translation.
+  /// Example: "Bretonnian is not gendered in English but should be 
+  /// Bretonnien (m) or Bretonnienne (f) in French depending on context"
   final String? notes;
 
   /// Unix timestamp when the entry was created
@@ -52,24 +53,17 @@ class GlossaryEntry {
     required this.targetLanguageCode,
     required this.sourceTerm,
     required this.targetTerm,
-    this.category,
     this.caseSensitive = false,
     this.notes,
     required this.createdAt,
     required this.updatedAt,
   });
 
-  /// Returns true if the entry has a category
-  bool get hasCategory => category != null && category!.isNotEmpty;
-
-  /// Returns true if the entry has notes
-  bool get hasNotes => notes != null && notes!.isNotEmpty;
-
   /// Returns a display string for the glossary entry
   String get displayText => '$sourceTerm → $targetTerm';
 
-  /// Returns the category display or a default
-  String get categoryDisplay => category ?? 'General';
+  /// Whether this entry has notes
+  bool get hasNotes => notes != null && notes!.isNotEmpty;
 
   GlossaryEntry copyWith({
     String? id,
@@ -77,7 +71,6 @@ class GlossaryEntry {
     String? targetLanguageCode,
     String? sourceTerm,
     String? targetTerm,
-    String? category,
     bool? caseSensitive,
     String? notes,
     int? createdAt,
@@ -89,7 +82,6 @@ class GlossaryEntry {
       targetLanguageCode: targetLanguageCode ?? this.targetLanguageCode,
       sourceTerm: sourceTerm ?? this.sourceTerm,
       targetTerm: targetTerm ?? this.targetTerm,
-      category: category ?? this.category,
       caseSensitive: caseSensitive ?? this.caseSensitive,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
@@ -111,7 +103,6 @@ class GlossaryEntry {
         other.targetLanguageCode == targetLanguageCode &&
         other.sourceTerm == sourceTerm &&
         other.targetTerm == targetTerm &&
-        other.category == category &&
         other.caseSensitive == caseSensitive &&
         other.notes == notes &&
         other.createdAt == createdAt &&
@@ -125,7 +116,6 @@ class GlossaryEntry {
         targetLanguageCode,
         sourceTerm,
         targetTerm,
-        category,
         caseSensitive,
         notes,
         createdAt,
@@ -134,5 +124,5 @@ class GlossaryEntry {
 
   @override
   String toString() =>
-      'GlossaryEntry(id: $id, displayText: $displayText, targetLanguage: $targetLanguageCode, category: $categoryDisplay)';
+      'GlossaryEntry(id: $id, displayText: $displayText, targetLanguage: $targetLanguageCode)';
 }

@@ -1,5 +1,8 @@
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
+import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
+import 'package:twmt/services/glossary/utils/glossary_matcher.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -55,9 +58,18 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
             )
           : '';
 
-      final glossaryText = await buildGlossarySection(
-        glossaryTerms: context.glossaryTerms,
-      );
+      // Extract source texts for glossary filtering
+      final sourceTexts = units.map((u) => u.sourceText).toList();
+
+      // Use new variant-aware glossary if available, otherwise fall back to legacy
+      final glossaryText = context.glossaryEntries != null
+          ? await buildGlossarySectionWithVariants(
+              glossaryEntries: context.glossaryEntries,
+              sourceTexts: sourceTexts,
+            )
+          : await buildGlossarySection(
+              glossaryTerms: context.glossaryTerms,
+            );
 
       final formatInstructions = await buildFormatInstructions();
 
@@ -77,6 +89,11 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
         userMessage,
       );
 
+      // Calculate actual glossary term count (filtered terms included in prompt)
+      final glossaryTermCount = glossaryText.isEmpty
+          ? 0
+          : glossaryText.split('\n').where((l) => l.startsWith('- "')).length;
+
       final prompt = BuiltPrompt(
         systemMessage: fullSystemMessage,
         userMessage: fullUserMessage,
@@ -84,8 +101,8 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
         metadata: PromptMetadata(
           includesExamples: examplesText.isNotEmpty,
           exampleCount: includeExamples ? maxExamples : 0,
-          includesGlossary: context.glossaryTerms?.isNotEmpty ?? false,
-          glossaryTermCount: context.glossaryTerms?.length ?? 0,
+          includesGlossary: glossaryText.isNotEmpty,
+          glossaryTermCount: glossaryTermCount,
           includesGameContext: gameContextText.isNotEmpty,
           includesProjectContext: projectContextText.isNotEmpty,
           createdAt: DateTime.now(),
@@ -113,14 +130,30 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
 Your task is to translate game text to ${context.targetLanguage}.
 
 CRITICAL RULES:
-1. Preserve ALL formatting tags (e.g., {{tags}}, [[tags]], <tags>)
-2. Preserve ALL variables and placeholders (e.g., %s, {0}, \$var)
+1. Preserve ALL formatting tags EXACTLY as they appear:
+   - Total War color tags: [[col:red]], [[col:yellow]], etc.
+   - BBCode tags: [b], [/b], [i], [/i]
+   - XML tags: <color=#FF0000>, <b>, </b>
+   - Double brackets: [[tag:value]]
+2. Preserve ALL variables and placeholders EXACTLY as they appear (e.g., %s, [%s], {0}, \$var)
+3. Template expressions {{...}} contain game logic - preserve structure but you MAY translate display strings inside:
+   - PRESERVE: function names, property names, operators, syntax (CcoCampaignEventDilemma, GetIfElse, Filter, Size, etc.)
+   - MAY TRANSLATE: quoted strings that will display to users (e.g., "Tradeable resources:" → "Ressources échangeables :")
+   - Example: {{GetIfElse(x, "Landmarks:", "")}} → {{GetIfElse(x, "Monuments :", "")}}
 3. Maintain the same tone and style as the source
 4. Use glossary terms when provided
 5. Keep translations culturally appropriate for gaming context
 6. Preserve line breaks (\\n) and special characters
 7. Do NOT add explanations or notes
 8. Output ONLY the JSON response in the specified format
+9. If source text has unbalanced tags (e.g., [[/col]] without opening tag), preserve them as-is
+
+EXAMPLES OF TAG PRESERVATION:
+- "[[col:red]]Warning" → "[[col:red]]Avertissement"
+- "Changes on [%s] lost" → "Modifications sur [%s] perdues"
+- "<b>Attack</b>" → "<b>Attaquer</b>"
+- "Settings[[/col]]" → "Paramètres[[/col]]" (preserve even if unbalanced)
+- "The {{CcoContext:GetIfElse(x, "yes", "no")}} is ready" → "Le {{CcoContext:GetIfElse(x, "oui", "non")}} est prêt" (structure preserved, display strings translated)
 
 QUALITY EXPECTATIONS:
 - Accurate: Convey the exact meaning
@@ -201,8 +234,83 @@ QUALITY EXPECTATIONS:
     glossaryText.writeln('\nGLOSSARY (must use these translations):');
 
     glossaryTerms.forEach((source, target) {
-      glossaryText.writeln('- "$source" → "$target"');
+      // Check if target includes notes in format "translation [Note: ...]"
+      final noteMatch = RegExp(r'^(.+?) \[Note: (.+)\]$').firstMatch(target);
+      if (noteMatch != null) {
+        final translation = noteMatch.group(1)!;
+        final note = noteMatch.group(2)!;
+        glossaryText.writeln('- "$source" → "$translation"');
+        glossaryText.writeln('  Context: $note');
+      } else {
+        glossaryText.writeln('- "$source" → "$target"');
+      }
     });
+
+    return glossaryText.toString();
+  }
+
+  @override
+  Future<String> buildGlossarySectionWithVariants({
+    required List<GlossaryTermWithVariants>? glossaryEntries,
+    required List<String> sourceTexts,
+  }) async {
+    if (glossaryEntries == null || glossaryEntries.isEmpty) {
+      return '';
+    }
+
+    // Concatenate source texts for matching
+    final combinedText = sourceTexts.join(' ');
+
+    // Convert glossary entries to GlossaryEntry format for matcher
+    final allEntries = <GlossaryEntry>[];
+    for (final term in glossaryEntries) {
+      for (final variant in term.variants) {
+        allEntries.add(GlossaryEntry(
+          id: variant.entryId,
+          glossaryId: '', // Not needed for matching
+          targetLanguageCode: '', // Not needed for matching
+          sourceTerm: term.sourceTerm,
+          targetTerm: variant.targetTerm,
+          caseSensitive: term.caseSensitive,
+          notes: variant.notes,
+          createdAt: 0,
+          updatedAt: 0,
+        ));
+      }
+    }
+
+    // Find matches in combined text
+    final matches = GlossaryMatcher.findMatches(
+      text: combinedText,
+      entries: allEntries,
+      wholeWordOnly: true,
+    );
+
+    if (matches.isEmpty) {
+      return '';
+    }
+
+    // Get unique matched source terms (case-insensitive)
+    final matchedSourceTerms = matches
+        .map((m) => m.entry.sourceTerm.toLowerCase())
+        .toSet();
+
+    // Filter to only matched glossary entries
+    final relevantEntries = glossaryEntries
+        .where((e) => matchedSourceTerms.contains(e.sourceTerm.toLowerCase()))
+        .toList();
+
+    if (relevantEntries.isEmpty) {
+      return '';
+    }
+
+    // Build formatted glossary section
+    final glossaryText = StringBuffer();
+    glossaryText.writeln('\nGLOSSARY (must use these translations):');
+
+    for (final entry in relevantEntries) {
+      glossaryText.writeln('- ${entry.formatForPrompt()}');
+    }
 
     return glossaryText.toString();
   }

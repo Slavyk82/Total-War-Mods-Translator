@@ -63,7 +63,7 @@ class Project {
   @JsonKey(name: 'batch_size')
   final int batchSize;
 
-  /// Number of batches to process in parallel
+  /// Number of batches to process in parallel (1-5)
   @JsonKey(name: 'parallel_batches')
   final int parallelBatches;
 

@@ -6,14 +6,16 @@ import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/llm/models/llm_model_info.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 
 /// OpenAI (GPT) provider implementation
 ///
 /// API Documentation: https://platform.openai.com/docs/api-reference
-/// Models: gpt-4-turbo (recommended), gpt-4, gpt-3.5-turbo
 /// Rate Limits: Configurable RPM/TPM per account
+///
+/// Note: Model capabilities (temperature support, JSON format support, token
+/// parameter names) should be stored in the database llm_provider_models table.
+/// This provider uses safe defaults that work with most modern models.
 class OpenAiProvider implements ILlmProvider {
   final Dio _dio;
   final TokenCalculator _tokenCalculator = TokenCalculator();
@@ -41,8 +43,9 @@ class OpenAiProvider implements ILlmProvider {
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
     LlmRequest request,
-    String apiKey,
-  ) async {
+    String apiKey, {
+    CancelToken? cancelToken,
+  }) async {
     final startTime = DateTime.now();
 
     try {
@@ -53,6 +56,7 @@ class OpenAiProvider implements ILlmProvider {
       final response = await _dio.post(
         '/chat/completions',
         data: payload,
+        cancelToken: cancelToken,
         options: Options(
           headers: {
             'Authorization': 'Bearer $apiKey',
@@ -95,19 +99,29 @@ class OpenAiProvider implements ILlmProvider {
     String apiKey, {
     String? model,
   }) async {
-    final modelToUse = model ?? config.defaultModel;
+    if (model == null) {
+      return Err(LlmInvalidRequestException(
+        'Model is required for OpenAI API key validation',
+        providerCode: providerCode,
+      ));
+    }
+
     try {
       // Make a minimal request to validate API key
       // Using minimal tokens for fast validation (10 to ensure response)
+      final payload = <String, dynamic>{
+        'model': model,
+        'messages': [
+          {'role': 'user', 'content': 'Hi'}
+        ],
+      };
+
+      // Use max_completion_tokens (modern OpenAI API standard)
+      payload['max_completion_tokens'] = 10;
+
       final response = await _dio.post(
         '/chat/completions',
-        data: {
-          'model': modelToUse,
-          'messages': [
-            {'role': 'user', 'content': 'Hi'}
-          ],
-          'max_tokens': 10,
-        },
+        data: payload,
         options: Options(
           headers: {
             'Authorization': 'Bearer $apiKey',
@@ -257,49 +271,6 @@ class OpenAiProvider implements ILlmProvider {
     return const Ok(null);
   }
 
-  @override
-  Future<Result<List<LlmModelInfo>, LlmProviderException>> fetchModels(
-    String apiKey,
-  ) async {
-    try {
-      final response = await _dio.get(
-        '/models',
-        options: Options(
-          headers: {
-            'Authorization': 'Bearer $apiKey',
-          },
-        ),
-      );
-
-      // Parse response
-      final data = response.data as Map<String, dynamic>;
-      final modelsData = data['data'] as List;
-
-      final models = modelsData.map((modelData) {
-        final modelMap = modelData as Map<String, dynamic>;
-        return LlmModelInfo(
-          id: modelMap['id'] as String,
-          createdAt: modelMap['created'] != null
-              ? DateTime.fromMillisecondsSinceEpoch(
-                  (modelMap['created'] as int) * 1000)
-              : null,
-          ownedBy: modelMap['owned_by'] as String?,
-        );
-      }).toList();
-
-      return Ok(models);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to fetch models: $e',
-        providerCode: providerCode,
-        code: 'FETCH_MODELS_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
-  }
-
   /// Build request payload for OpenAI API
   Map<String, dynamic> _buildRequestPayload(LlmRequest request) {
     final messages = <Map<String, String>>[];
@@ -330,13 +301,22 @@ class OpenAiProvider implements ILlmProvider {
       'content': _buildUserMessage(request),
     });
 
-    return {
-      'model': request.modelName ?? config.defaultModel,
+    if (request.modelName == null) {
+      throw ArgumentError('modelName is required for OpenAI requests');
+    }
+
+    final modelName = request.modelName!;
+    final maxTokens = request.maxTokens ?? 4096;
+
+    final payload = <String, dynamic>{
+      'model': modelName,
       'messages': messages,
-      'temperature': request.temperature,
-      'max_tokens': request.maxTokens ?? 4096,
       'response_format': {'type': 'json_object'},
+      'temperature': request.temperature,
+      'max_completion_tokens': maxTokens,
     };
+
+    return payload;
   }
 
   /// Build system prompt
@@ -355,8 +335,11 @@ class OpenAiProvider implements ILlmProvider {
       parts.add('\n\n## Glossary Terms\n${_formatGlossary(request.glossaryTerms!)}');
     }
 
-    // Emphasize JSON output format
-    parts.add('\n\nYou must respond with valid JSON only. '
+    // Emphasize JSON output format and tag preservation
+    parts.add('\n\nCRITICAL: You must preserve ALL formatting tags exactly as they appear in the source text.');
+    parts.add('This includes: [[col:red]], [[col:yellow]], [%s], <tags>, etc.');
+    parts.add('For {{...}} template expressions: preserve structure/code but you may translate quoted display strings inside.');
+    parts.add('\nYou must respond with valid JSON only. '
         'Return a JSON object with the same keys as the input, with translated values.');
 
     return parts.join();
@@ -365,6 +348,7 @@ class OpenAiProvider implements ILlmProvider {
   /// Build user message
   String _buildUserMessage(LlmRequest request) {
     return 'Translate the following texts to ${request.targetLanguage}. '
+        'PRESERVE ALL TAGS AND PLACEHOLDERS EXACTLY.\n'
         'Return ONLY a JSON object with the same keys:\n\n'
         '${jsonEncode(request.texts)}';
   }
@@ -390,7 +374,14 @@ class OpenAiProvider implements ILlmProvider {
       }
 
       final message = choices[0]['message'] as Map<String, dynamic>;
-      final content = message['content'] as String;
+      final content = message['content'] as String?;
+
+      // Check for empty content (some models return null/empty)
+      if (content == null || content.trim().isEmpty) {
+        throw FormatException(
+          'Model returned empty content. This model may not be suitable for translation tasks.',
+        );
+      }
 
       // Parse translations
       final translations = _parseTranslations(content, request);
@@ -431,6 +422,9 @@ class OpenAiProvider implements ILlmProvider {
   /// 1. Plain JSON object: {"key1": "value1", "key2": "value2"}
   /// 2. Array format: {"translations": [{"key": "key1", "translation": "value1"}]}
   /// 3. JSON wrapped in markdown code blocks
+  ///
+  /// Returns partial results if some keys are missing (lenient parsing).
+  /// The caller should handle retrying missing keys if needed.
   Map<String, String> _parseTranslations(String content, LlmRequest request) {
     try {
       String jsonText = content.trim();
@@ -481,14 +475,22 @@ class OpenAiProvider implements ILlmProvider {
         });
       }
 
-      // Validate that all requested keys are present
+      // Check for missing keys but don't throw - return partial results
+      // This allows the caller to handle retrying only the missing keys
       final missingKeys = request.texts.keys.where(
         (key) => !translations.containsKey(key),
       ).toList();
 
       if (missingKeys.isNotEmpty) {
+        // Log warning but continue with partial results
+        // ignore: avoid_print
+        print('[OpenAI] Warning: LLM response missing ${missingKeys.length} keys: ${missingKeys.take(3).join(", ")}${missingKeys.length > 3 ? "..." : ""}');
+      }
+
+      // Fail only if no translations were parsed at all
+      if (translations.isEmpty && request.texts.isNotEmpty) {
         throw FormatException(
-          'Missing translations for keys: ${missingKeys.join(", ")}',
+          'No valid translations found in response',
         );
       }
 
@@ -580,6 +582,16 @@ class OpenAiProvider implements ILlmProvider {
          errorMessage.toLowerCase().contains('context length'))) {
       return LlmTokenLimitException(
         errorMessage,
+        providerCode: providerCode,
+      );
+    }
+
+    // Handle max_tokens parameter error (model requires max_completion_tokens)
+    if (statusCode == 400 &&
+        errorMessage.contains('max_tokens') &&
+        errorMessage.contains('not supported')) {
+      return LlmInvalidRequestException(
+        'Model requires max_completion_tokens parameter. Please report this model to update the provider.',
         providerCode: providerCode,
       );
     }

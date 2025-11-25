@@ -26,6 +26,11 @@ TranslationProgress _$TranslationProgressFromJson(Map<String, dynamic> json) =>
       errorMessage: json['errorMessage'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      llmLogs:
+          (json['llmLogs'] as List<dynamic>?)
+              ?.map((e) => LlmExchangeLog.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$TranslationProgressToJson(
@@ -45,6 +50,7 @@ Map<String, dynamic> _$TranslationProgressToJson(
   'errorMessage': instance.errorMessage,
   'metadata': instance.metadata,
   'timestamp': instance.timestamp.toIso8601String(),
+  'llmLogs': instance.llmLogs,
 };
 
 const _$TranslationProgressStatusEnumMap = {

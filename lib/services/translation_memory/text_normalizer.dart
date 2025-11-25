@@ -67,7 +67,18 @@ class TextNormalizer {
     result = result.replaceAll(RegExp(r'<[^>]+>'), '');
 
     // Remove BBCode tags: [b], [/b], [url=...], etc.
-    result = result.replaceAll(RegExp(r'\[[^\]]+\]'), '');
+    // BUT preserve printf-style placeholders like [%s], [%d], [%f]
+    result = result.replaceAllMapped(
+      RegExp(r'\[[^\]]+\]'),
+      (match) {
+        final tag = match.group(0)!;
+        // Preserve bracketed printf placeholders
+        if (RegExp(r'^\[%[sdf]\]$').hasMatch(tag)) {
+          return tag;
+        }
+        return ''; // Remove other BBCode tags
+      },
+    );
 
     // Remove Markdown bold/italic: **text**, __text__, *text*, _text_
     result = result.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1');

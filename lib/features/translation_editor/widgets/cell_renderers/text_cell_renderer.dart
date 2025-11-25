@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Text cell widget for DataGrid
 ///
 /// Displays text content with optional styling for key columns
+/// Supports text selection for copying content
 class TextCellRenderer extends StatelessWidget {
   final String? text;
   final bool isKey;
@@ -15,18 +17,25 @@ class TextCellRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-      child: Text(
-        text ?? '',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: isKey ? FontWeight.w500 : FontWeight.normal,
-          color: text == null ? Colors.grey : null,
+    final displayText = text ?? '';
+    
+    return GestureDetector(
+      // Allow double-click to select and copy text
+      onDoubleTap: () {
+        if (displayText.isNotEmpty) {
+          Clipboard.setData(ClipboardData(text: displayText));
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          displayText,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isKey ? FontWeight.w500 : FontWeight.normal,
+            color: displayText.isEmpty ? Colors.grey : null,
+          ),
         ),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
       ),
     );
   }

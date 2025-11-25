@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,11 +6,18 @@ import 'package:twmt/config/router/app_router.dart';
 import '../../../services/toast_notification_service.dart';
 import '../../../services/history/undo_redo_manager.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../providers/batch/batch_operations_provider.dart' as batch;
+import '../../../services/validation/models/validation_issue.dart' as validation;
 import '../../settings/providers/settings_providers.dart';
+import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
+import '../../translation/widgets/batch_validation_dialog.dart';
 import '../providers/editor_providers.dart';
+import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_dialogs.dart';
 import '../widgets/provider_setup_dialog.dart';
+import '../widgets/translation_settings_dialog.dart';
 import '../utils/translation_batch_helper.dart';
+import 'translation_progress_screen.dart';
 
 /// Translation editor business logic actions
 ///
@@ -34,6 +42,114 @@ class TranslationEditorActions {
   final String languageId;
 
   bool get mounted => context.mounted;
+
+  // ========== HELPER METHODS ==========
+
+  /// Get the project_language_id from project_id and language_id
+  Future<String> _getProjectLanguageId() async {
+    final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+    final projectLanguagesResult = await projectLanguageRepo.getByProject(projectId);
+
+    if (projectLanguagesResult.isErr) {
+      throw Exception('Failed to load project languages');
+    }
+
+    final projectLanguages = projectLanguagesResult.unwrap();
+    final projectLanguage = projectLanguages.firstWhere(
+      (pl) => pl.languageId == languageId,
+      orElse: () => throw Exception('Project language not found'),
+    );
+
+    return projectLanguage.id;
+  }
+
+  /// Refresh all relevant providers after data changes
+  void _refreshProviders() {
+    if (!mounted) return;
+    ref.invalidate(translationRowsProvider(projectId, languageId));
+    ref.invalidate(projectsWithDetailsProvider);
+  }
+
+  /// Convert validation issue type to readable label
+  String _getIssueTypeLabel(validation.ValidationIssueType type) {
+    switch (type) {
+      case validation.ValidationIssueType.emptyTranslation:
+        return 'Empty Translation';
+      case validation.ValidationIssueType.lengthDifference:
+        return 'Length Difference';
+      case validation.ValidationIssueType.missingVariables:
+        return 'Missing Variables';
+      case validation.ValidationIssueType.whitespaceIssue:
+        return 'Whitespace Issue';
+      case validation.ValidationIssueType.punctuationMismatch:
+        return 'Punctuation Mismatch';
+      case validation.ValidationIssueType.caseMismatch:
+        return 'Case Mismatch';
+      case validation.ValidationIssueType.missingNumbers:
+        return 'Missing Numbers';
+    }
+  }
+
+  /// Export validation report to file
+  Future<void> _exportValidationReport(
+    String filePath,
+    List<batch.ValidationIssue> issues,
+  ) async {
+    try {
+      final buffer = StringBuffer();
+      buffer.writeln('Validation Report');
+      buffer.writeln('=' * 80);
+      buffer.writeln('Generated: ${DateTime.now()}');
+      buffer.writeln('Total Issues: ${issues.length}');
+      buffer.writeln();
+
+      // Group issues by severity
+      final errors = issues.where((i) => i.severity == batch.ValidationSeverity.error).toList();
+      final warnings = issues.where((i) => i.severity == batch.ValidationSeverity.warning).toList();
+
+      if (errors.isNotEmpty) {
+        buffer.writeln('ERRORS (${errors.length})');
+        buffer.writeln('-' * 80);
+        for (final issue in errors) {
+          buffer.writeln('Key: ${issue.unitKey}');
+          buffer.writeln('Type: ${issue.issueType}');
+          buffer.writeln('Description: ${issue.description}');
+          buffer.writeln();
+        }
+      }
+
+      if (warnings.isNotEmpty) {
+        buffer.writeln('WARNINGS (${warnings.length})');
+        buffer.writeln('-' * 80);
+        for (final issue in warnings) {
+          buffer.writeln('Key: ${issue.unitKey}');
+          buffer.writeln('Type: ${issue.issueType}');
+          buffer.writeln('Description: ${issue.description}');
+          buffer.writeln();
+        }
+      }
+
+      await File(filePath).writeAsString(buffer.toString());
+      
+      ref.read(loggingServiceProvider).info(
+        'Validation report exported',
+        {'filePath': filePath, 'issueCount': issues.length},
+      );
+    } catch (e, stackTrace) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to export validation report',
+        e,
+        stackTrace,
+      );
+      if (mounted) {
+        EditorDialogs.showErrorDialog(
+          context,
+          'Export Failed',
+          'Failed to export validation report: ${e.toString()}',
+        );
+      }
+    }
+  }
 
   // ========== CELL EDIT HANDLERS ==========
 
@@ -94,13 +210,14 @@ class TranslationEditorActions {
       undoRedoManager.recordAction(historyAction);
 
       // Manually invalidate after recording (since action won't do it)
-      ref.invalidate(translationRowsProvider(projectId, languageId));
+      _refreshProviders();
 
       // 5. Update TM with new translation (if not empty)
       if (newText.isNotEmpty) {
         // Get project language to determine language codes
+        final projectLanguageId = await _getProjectLanguageId();
         final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
-        final plResult = await projectLanguageRepo.getById(languageId);
+        final plResult = await projectLanguageRepo.getById(projectLanguageId);
 
         if (plResult.isOk) {
           final projectLanguage = plResult.unwrap();
@@ -122,7 +239,7 @@ class TranslationEditorActions {
       }
 
       // 6. Refresh the data grid
-      ref.invalidate(translationRowsProvider(projectId, languageId));
+      _refreshProviders();
 
       ref.read(loggingServiceProvider).info(
         'Translation updated',
@@ -199,11 +316,12 @@ class TranslationEditorActions {
       undoRedoManager.recordAction(historyAction);
 
       // Manually invalidate after recording (since action won't do it)
-      ref.invalidate(translationRowsProvider(projectId, languageId));
+      _refreshProviders();
 
       // 5. Increment TM usage count
+      final projectLanguageId = await _getProjectLanguageId();
       final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
-      final plResult = await projectLanguageRepo.getById(languageId);
+      final plResult = await projectLanguageRepo.getById(projectLanguageId);
 
       if (plResult.isOk) {
         final projectLanguage = plResult.unwrap();
@@ -233,7 +351,7 @@ class TranslationEditorActions {
       }
 
       // 6. Refresh the data grid
-      ref.invalidate(translationRowsProvider(projectId, languageId));
+      _refreshProviders();
 
       ref.read(loggingServiceProvider).info(
         'TM suggestion applied',
@@ -259,10 +377,13 @@ class TranslationEditorActions {
 
   Future<void> handleTranslateAll() async {
     try {
+      // Get the project_language_id from project_id and language_id
+      final projectLanguageId = await _getProjectLanguageId();
+
       // Get all untranslated units for this project language
       final unitIds = await TranslationBatchHelper.getUntranslatedUnitIds(
         ref: ref,
-        projectLanguageId: languageId,
+        projectLanguageId: projectLanguageId,
       );
 
       if (unitIds.isEmpty) {
@@ -360,19 +481,78 @@ class TranslationEditorActions {
     }
   }
 
+  /// Force retranslate selected units (including already translated ones)
+  Future<void> handleForceRetranslateSelected() async {
+    final selectionState = ref.read(editorSelectionProvider);
+
+    if (!selectionState.hasSelection) {
+      EditorDialogs.showNoSelectionDialog(context);
+      return;
+    }
+
+    try {
+      final selectedIds = selectionState.selectedUnitIds.toList();
+
+      if (selectedIds.isEmpty) {
+        return;
+      }
+
+      // Check if provider is configured
+      final hasProvider = await TranslationBatchHelper.checkProviderConfigured(
+        ref: ref,
+        getSettings: () => ref.read(llmProviderSettingsProvider.future),
+      );
+      if (!hasProvider) {
+        if (!mounted) return;
+        showProviderSetupDialog();
+        return;
+      }
+
+      // Show confirmation dialog with warning about overwriting
+      if (!mounted) return;
+      final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
+        context,
+        title: 'Force Retranslate',
+        message: 'Retranslate ${selectedIds.length} unit(s)?\n\n'
+            'Warning: This will overwrite existing translations.',
+      );
+
+      if (!confirmed) return;
+
+      // Create batch and start translation (no filtering)
+      await createAndStartBatch(selectedIds);
+    } catch (e) {
+      if (!mounted) return;
+      EditorDialogs.showErrorDialog(
+        context,
+        'Failed to start translation',
+        e.toString(),
+      );
+    }
+  }
+
   Future<void> handleValidate() async {
     try {
+      // Get the project_language_id from project_id and language_id
+      final projectLanguageId = await _getProjectLanguageId();
+      
       final versionRepo = ref.read(translationVersionRepositoryProvider);
       final unitRepo = ref.read(translationUnitRepositoryProvider);
       final validationService = ref.read(validationServiceProvider);
 
       // 1. Get all translations for this project language
-      final versionsResult = await versionRepo.getByProjectLanguage(languageId);
+      final versionsResult = await versionRepo.getByProjectLanguage(projectLanguageId);
       if (versionsResult.isErr) {
         throw Exception('Failed to load translations');
       }
 
       final versions = versionsResult.unwrap();
+      
+      ref.read(loggingServiceProvider).info(
+        'Validation starting',
+        {'totalVersions': versions.length},
+      );
+
       if (versions.isEmpty) {
         if (mounted) {
           EditorDialogs.showInfoDialog(
@@ -387,17 +567,27 @@ class TranslationEditorActions {
       // Show progress dialog
       if (!mounted) return;
       int validatedCount = 0;
-      int issuesCount = 0;
+      int skippedCount = 0;
+      int totalIssuesCount = 0;
+      final allIssues = <batch.ValidationIssue>[];
 
       // Start validation
       for (final version in versions) {
         if (version.translatedText == null || version.translatedText!.isEmpty) {
+          skippedCount++;
           continue; // Skip empty translations
         }
 
         // Get source text
         final unitResult = await unitRepo.getById(version.unitId);
-        if (unitResult.isErr) continue;
+        if (unitResult.isErr) {
+          ref.read(loggingServiceProvider).warning(
+            'Failed to load unit for validation',
+            {'versionId': version.id, 'unitId': version.unitId},
+          );
+          skippedCount++;
+          continue;
+        }
 
         final unit = unitResult.unwrap();
 
@@ -430,7 +620,21 @@ class TranslationEditorActions {
             );
 
             await versionRepo.update(updatedVersion);
-            issuesCount += issues.length;
+            totalIssuesCount += issues.length;
+
+            // Collect issues for dialog display
+            for (final issue in issues) {
+              allIssues.add(batch.ValidationIssue(
+                unitKey: unit.key,
+                unitId: unit.id,
+                severity: issue.severity == validation.ValidationSeverity.error
+                    ? batch.ValidationSeverity.error
+                    : batch.ValidationSeverity.warning,
+                issueType: _getIssueTypeLabel(issue.type),
+                description: issue.description,
+                canAutoFix: issue.autoFixable,
+              ));
+            }
           } else {
             // Clear validation issues if none found
             if (version.validationIssues != null) {
@@ -447,21 +651,66 @@ class TranslationEditorActions {
       }
 
       // Refresh the data grid
-      ref.invalidate(translationRowsProvider(projectId, languageId));
+      _refreshProviders();
 
-      // 4. Show results dialog
       if (mounted) {
-        EditorDialogs.showInfoDialog(
-          context,
-          'Validation Complete',
-          'Validated $validatedCount translations.\n'
-              'Found $issuesCount validation issues.',
+        // 4. Set validation results and show detailed dialog
+        final passedCount = validatedCount - allIssues.map((i) => i.unitId).toSet().length;
+        
+        ref.read(loggingServiceProvider).debug(
+          'Setting validation results',
+          {
+            'issuesCount': allIssues.length,
+            'validatedCount': validatedCount,
+            'passedCount': passedCount,
+          },
+        );
+
+        ref.read(batch.batchValidationResultsProvider.notifier).setResults(
+          issues: allIssues,
+          totalValidated: validatedCount,
+          passedCount: passedCount,
+        );
+
+        // Verify state was set
+        final verifyState = ref.read(batch.batchValidationResultsProvider);
+        ref.read(loggingServiceProvider).debug(
+          'Verification after setting results',
+          {
+            'stateIssuesCount': verifyState.issues.length,
+            'stateTotalValidated': verifyState.totalValidated,
+            'statePassedCount': verifyState.passedCount,
+          },
+        );
+
+        // Show detailed results dialog
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (context) => BatchValidationDialog(
+            issues: allIssues,
+            totalValidated: validatedCount,
+            passedCount: passedCount,
+            onAutoFix: () {
+              // TODO: Implement auto-fix functionality
+              Navigator.of(context).pop();
+            },
+            onExportReport: (filePath) async {
+              await _exportValidationReport(filePath, allIssues);
+            },
+          ),
         );
       }
 
       ref.read(loggingServiceProvider).info(
         'Validation completed',
-        {'validatedCount': validatedCount, 'issuesCount': issuesCount},
+        {
+          'totalVersions': versions.length,
+          'validatedCount': validatedCount,
+          'skippedCount': skippedCount,
+          'issuesCount': totalIssuesCount,
+          'affectedUnits': allIssues.map((i) => i.unitId).toSet().length,
+        },
       );
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
@@ -485,13 +734,16 @@ class TranslationEditorActions {
       final exportFormat = await EditorDialogs.showExportDialog(context);
       if (exportFormat == null) return; // User cancelled
 
+      // Get the project_language_id from project_id and language_id
+      final projectLanguageId = await _getProjectLanguageId();
+
       // Get export orchestrator service
       final exportService = ref.read(exportOrchestratorServiceProvider);
       final languageRepo = ref.read(languageRepositoryProvider);
       final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
 
       // Get project language info
-      final plResult = await projectLanguageRepo.getById(languageId);
+      final plResult = await projectLanguageRepo.getById(projectLanguageId);
       if (plResult.isErr) {
         throw Exception('Failed to load project language');
       }
@@ -673,107 +925,98 @@ class TranslationEditorActions {
     if (!mounted) return;
 
     try {
-      // BUG FIX: Get the project_language_id (UUID), not the language_id!
-      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
-      final projectLanguagesResult = await projectLanguageRepo.getByProject(projectId);
-
-      if (projectLanguagesResult.isErr) {
-        throw Exception('Failed to load project languages');
-      }
-
-      final projectLanguages = projectLanguagesResult.unwrap();
-      final projectLanguage = projectLanguages.firstWhere(
-        (pl) => pl.languageId == languageId,
-        orElse: () => throw Exception('Project language not found'),
-      );
-
-      final projectLanguageId = projectLanguage.id;
-
       final orchestrator = ref.read(translationOrchestratorProvider);
 
-      // Get the selected LLM model from the dropdown
-      // If no model is selected, use the default model
-      final selectedModelId = ref.read(selectedLlmModelProvider);
-      final modelRepo = ref.read(llmProviderModelRepositoryProvider);
+      // Navigate to progress screen immediately
+      // Pass a preparation callback that will be executed by the screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => TranslationProgressScreen(
+            orchestrator: orchestrator,
+            onComplete: () {
+              // Refresh DataGrid data and project stats
+              _refreshProviders();
+            },
+            preparationCallback: () async {
+              // All preparation happens here, asynchronously
+              
+              // Get the project_language_id from project_id and language_id
+              final projectLanguageId = await _getProjectLanguageId();
 
-      String providerCode;
-      String? modelId;
+              // Get the selected LLM model from the dropdown
+              final selectedModelId = ref.read(selectedLlmModelProvider);
+              final modelRepo = ref.read(llmProviderModelRepositoryProvider);
 
-      if (selectedModelId != null) {
-        // Use the selected model
-        final modelResult = await modelRepo.getById(selectedModelId);
-        if (modelResult.isErr) {
-          throw Exception('Failed to load selected model');
-        }
-        final model = modelResult.unwrap();
-        providerCode = model.providerCode;
-        modelId = model.modelId;
+              String providerCode;
+              String? modelId;
 
-        // DEBUG: Log selected model details
-        print('[DEBUG] Selected model from dropdown:');
-        print('[DEBUG]   - selectedModelId (DB ID): $selectedModelId');
-        print('[DEBUG]   - model.displayName: ${model.displayName}');
-        print('[DEBUG]   - model.providerCode: ${model.providerCode}');
-        print('[DEBUG]   - model.modelId (API model ID): ${model.modelId}');
-      } else {
-        // No model selected in dropdown, fall back to default from settings
-        final llmSettings = await ref.read(llmProviderSettingsProvider.future);
-        providerCode = llmSettings['active_llm_provider'] ?? '';
+              if (selectedModelId != null) {
+                // Use the selected model
+                final modelResult = await modelRepo.getById(selectedModelId);
+                if (modelResult.isErr) {
+                  throw Exception('Failed to load selected model');
+                }
+                final model = modelResult.unwrap();
+                providerCode = model.providerCode;
+                modelId = model.modelId;
 
-        if (providerCode.isEmpty) {
-          throw Exception('No LLM provider selected');
-        }
-        // modelId stays null - will use provider's default
-      }
+                // DEBUG: Log selected model details
+                print('[DEBUG] Selected model from dropdown:');
+                print('[DEBUG]   - selectedModelId (DB ID): $selectedModelId');
+                print('[DEBUG]   - model.displayName: ${model.displayName}');
+                print('[DEBUG]   - model.providerCode: ${model.providerCode}');
+                print('[DEBUG]   - model.modelId (API model ID): ${model.modelId}');
+              } else {
+                // No model selected in dropdown, fall back to default from settings
+                final llmSettings = await ref.read(llmProviderSettingsProvider.future);
+                providerCode = llmSettings['active_llm_provider'] ?? '';
 
-      // Convert provider code to database provider ID
-      // Provider codes: "anthropic", "openai", "deepl"
-      // Database expects: "provider_anthropic", "provider_openai", "provider_deepl"
-      final providerId = 'provider_$providerCode';
+                if (providerCode.isEmpty) {
+                  throw Exception('No LLM provider selected');
+                }
+                // modelId stays null - will use provider's default
+              }
 
-      // Create batch entities
-      final batchId = await TranslationBatchHelper.createAndPrepareBatch(
-        ref: ref,
-        projectLanguageId: projectLanguageId,
-        unitIds: unitIds,
-        providerId: providerId,
-        onError: () {
-          if (mounted) {
-            EditorDialogs.showErrorDialog(
-              context,
-              'Failed to create batch',
-              'Could not create translation batch',
-            );
-          }
-        },
+              // Convert provider code to database provider ID
+              final providerId = 'provider_$providerCode';
+
+              // Create batch entities
+              final batchId = await TranslationBatchHelper.createAndPrepareBatch(
+                ref: ref,
+                projectLanguageId: projectLanguageId,
+                unitIds: unitIds,
+                providerId: providerId,
+                onError: () {
+                  throw Exception('Could not create translation batch');
+                },
+              );
+
+              if (batchId == null) {
+                throw Exception('Failed to create batch');
+              }
+
+              // Get translation settings
+              final settings = ref.read(translationSettingsProvider);
+
+              // Build translation context
+              final translationContext = await TranslationBatchHelper.buildTranslationContext(
+                ref: ref,
+                projectId: projectId,
+                projectLanguageId: projectLanguageId,
+                providerId: providerId,
+                modelId: modelId,
+                unitsPerBatch: settings.unitsPerBatch,
+                parallelBatches: settings.parallelBatches,
+              );
+
+              return (batchId: batchId, context: translationContext);
+            },
+          ),
+        ),
       );
-
-      if (batchId == null) return;
-
-      // Build translation context
-      final translationContext = await TranslationBatchHelper.buildTranslationContext(
-        ref: ref,
-        projectId: projectId,
-        projectLanguageId: projectLanguageId,
-        providerId: providerId,
-        modelId: modelId,
-      );
-
-      // Start translation with orchestrator
-      if (mounted) {
-        EditorDialogs.showTranslationProgressDialog(
-          context,
-          batchId: batchId,
-          orchestrator: orchestrator,
-          translationContext: translationContext,
-          onComplete: () {
-            // Refresh DataGrid - handled by parent screen
-          },
-        );
-      }
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
-        'Failed to create and start batch',
+        'Failed to navigate to translation screen',
         e,
         stackTrace,
       );
@@ -784,6 +1027,37 @@ class TranslationEditorActions {
           e.toString(),
         );
       }
+    }
+  }
+
+  /// Handle translation settings button click
+  Future<void> handleTranslationSettings() async {
+    if (!mounted) return;
+
+    // Ensure settings are loaded before showing dialog
+    final currentSettings = await ref.read(translationSettingsProvider.notifier).ensureLoaded();
+    
+    if (!mounted) return;
+    
+    final result = await showTranslationSettingsDialog(
+      context,
+      currentUnitsPerBatch: currentSettings.unitsPerBatch,
+      currentParallelBatches: currentSettings.parallelBatches,
+    );
+
+    debugPrint('[TranslationSettings] Dialog result: $result');
+    
+    if (result != null && mounted) {
+      debugPrint('[TranslationSettings] Calling updateSettings with units=${result['unitsPerBatch']}, parallel=${result['parallelBatches']}');
+      await ref.read(translationSettingsProvider.notifier).updateSettings(
+        unitsPerBatch: result['unitsPerBatch']!,
+        parallelBatches: result['parallelBatches']!,
+      );
+
+      ToastNotificationService.showSuccess(
+        context,
+        'Translation settings updated',
+      );
     }
   }
 }

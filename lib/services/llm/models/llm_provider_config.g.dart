@@ -11,10 +11,6 @@ LlmProviderConfig _$LlmProviderConfigFromJson(Map<String, dynamic> json) =>
       providerCode: json['providerCode'] as String,
       providerName: json['providerName'] as String,
       apiBaseUrl: json['apiBaseUrl'] as String,
-      defaultModel: json['defaultModel'] as String,
-      availableModels: (json['availableModels'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
       supportsStreaming: json['supportsStreaming'] as bool,
       maxTokensPerRequest: (json['maxTokensPerRequest'] as num).toInt(),
       defaultRateLimitRpm: (json['defaultRateLimitRpm'] as num).toInt(),
@@ -29,8 +25,6 @@ Map<String, dynamic> _$LlmProviderConfigToJson(LlmProviderConfig instance) =>
       'providerCode': instance.providerCode,
       'providerName': instance.providerName,
       'apiBaseUrl': instance.apiBaseUrl,
-      'defaultModel': instance.defaultModel,
-      'availableModels': instance.availableModels,
       'supportsStreaming': instance.supportsStreaming,
       'maxTokensPerRequest': instance.maxTokensPerRequest,
       'defaultRateLimitRpm': instance.defaultRateLimitRpm,

@@ -281,7 +281,7 @@ final class SaveSearchActionProvider
   }
 }
 
-String _$saveSearchActionHash() => r'6861a8658b8bf0492f80fa2d73fe14bc0c5a667a';
+String _$saveSearchActionHash() => r'098298797d7bf8fbb55d84e27c22bf5138de9376';
 
 /// Save a search
 
@@ -341,7 +341,7 @@ final class DeleteSearchActionProvider
 }
 
 String _$deleteSearchActionHash() =>
-    r'f820e5acda3746df055f8fce7a3076e4537870be';
+    r'1615bd801f5354b37f553a1fafad500108a849f9';
 
 /// Delete a saved search
 
@@ -401,7 +401,7 @@ final class ExecuteSavedSearchActionProvider
 }
 
 String _$executeSavedSearchActionHash() =>
-    r'd6d9d0e5346100e345de091f4ecf60eac7ffe7d7';
+    r'896f9097f02978e65b6bd4e1b5813462f124dea0';
 
 /// Execute a saved search
 
@@ -461,7 +461,7 @@ final class ClearHistoryActionProvider
 }
 
 String _$clearHistoryActionHash() =>
-    r'52124ef48e1b38a460c73c744f8eb947c588e684';
+    r'ae24c4bcaac96cb1f3b40ebd695a73218e999abb';
 
 /// Clear search history
 

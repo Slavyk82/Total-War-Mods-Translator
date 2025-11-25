@@ -254,18 +254,22 @@ class TmImportState extends _$TmImportState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(TmImportResult(
-        totalEntries: importedCount,
-        importedEntries: importedCount,
-        skippedEntries: 0,
-        failedEntries: 0,
-      ));
+      if (ref.mounted) {
+        state = AsyncValue.data(TmImportResult(
+          totalEntries: importedCount,
+          importedEntries: importedCount,
+          skippedEntries: 0,
+          failedEntries: 0,
+        ));
 
-      // Refresh TM entries after import
-      ref.invalidate(tmEntriesProvider);
-      ref.invalidate(tmStatisticsProvider);
+        // Refresh TM entries after import
+        ref.invalidate(tmEntriesProvider);
+        ref.invalidate(tmStatisticsProvider);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -303,12 +307,16 @@ class TmExportState extends _$TmExportState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(TmExportResult(
-        entriesExported: exportedCount,
-        filePath: outputPath,
-      ));
+      if (ref.mounted) {
+        state = AsyncValue.data(TmExportResult(
+          entriesExported: exportedCount,
+          filePath: outputPath,
+        ));
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -342,13 +350,17 @@ class TmCleanupState extends _$TmCleanupState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(deletedCount);
+      if (ref.mounted) {
+        state = AsyncValue.data(deletedCount);
 
-      // Refresh TM entries after cleanup
-      ref.invalidate(tmEntriesProvider);
-      ref.invalidate(tmStatisticsProvider);
+        // Refresh TM entries after cleanup
+        ref.invalidate(tmEntriesProvider);
+        ref.invalidate(tmStatisticsProvider);
+      }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -466,17 +478,21 @@ class TmDeleteState extends _$TmDeleteState {
         err: (error) => throw error,
       );
 
-      state = AsyncValue.data(success);
+      if (ref.mounted) {
+        state = AsyncValue.data(success);
 
-      // Refresh TM entries after deletion
-      if (success) {
-        ref.invalidate(tmEntriesProvider);
-        ref.invalidate(tmStatisticsProvider);
+        // Refresh TM entries after deletion
+        if (success) {
+          ref.invalidate(tmEntriesProvider);
+          ref.invalidate(tmStatisticsProvider);
+        }
       }
 
       return success;
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
       return false;
     }
   }

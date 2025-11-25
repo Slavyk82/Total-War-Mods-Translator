@@ -10,6 +10,7 @@ import 'package:twmt/repositories/translation_batch_unit_repository.dart';
 import 'package:twmt/repositories/translation_provider_repository.dart';
 import 'package:twmt/services/concurrency/batch_isolation_manager.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
+import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -92,7 +93,6 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           validation: validation,
           tmService: tmService,
           versionRepository: versionRepository,
-          transactionManager: transactionManager,
           logger: logger,
         ),
         _batchProgressManager = BatchProgressManager(
@@ -109,15 +109,18 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
   }) async* {
     _logger.info('Starting batch translation', {
       'batchId': batchId,
-      'projectId': context.projectId,
-      'targetLanguage': context.targetLanguage,
+      'provider': context.providerId ?? 'default',
+      'model': context.modelId ?? 'default',
     });
 
     // Track actual processing duration
     final startTime = DateTime.now();
 
-    // Create stream controller for this batch
-    _batchProgressManager.getOrCreateController(batchId);
+      // Create stream controller for this batch
+      _batchProgressManager.getOrCreateController(batchId);
+
+      // Create cancellation token for this batch
+      _batchProgressManager.getOrCreateCancellationToken(batchId);
 
     // Get batch details for events (loaded once, used in all event emissions)
     TranslationBatch? batch;
@@ -202,7 +205,11 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       yield Ok(currentProgress);
       await _batchProgressManager.checkPauseOrCancel(batchId);
 
+      // Track units already saved progressively to avoid double-saving
+      final savedUnitIds = <String>{};
+      
       // Step 3 & 4: Build Prompt and Call LLM for remaining units
+      // With progressive saving: save after each LLM sub-batch completes
       final (progressAfterLlm, llmTranslations) =
           await _llmTranslationHandler.performTranslation(
         batchId: batchId,
@@ -210,23 +217,64 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         context: context,
         currentProgress: currentProgress,
         isUnitTranslated: _tmLookupHandler.isUnitTranslated,
+        getCancellationToken: (batchId) => _batchProgressManager.getCancellationToken(batchId),
+        onProgressUpdate: (batchId, progress) {
+          _batchProgressManager.updateAndEmitProgress(batchId, progress);
+        },
+        checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
+        // Progressive save callback - saves immediately after each LLM sub-batch
+        onSubBatchTranslated: (subBatchUnits, translations) async {
+          final progressBeforeSave = _batchProgressManager.getProgress(batchId) ?? currentProgress;
+          await _validationPersistenceHandler.validateAndSave(
+            translations: translations,
+            batchId: batchId,
+            units: subBatchUnits,
+            context: context,
+            currentProgress: progressBeforeSave,
+            checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
+            onProgressUpdate: (batchId, progress) {
+              _batchProgressManager.updateProgress(batchId, progress);
+              final controller = _batchProgressManager.getOrCreateController(batchId);
+              controller.add(Ok(progress));
+            },
+          );
+          // Track saved unit IDs
+          savedUnitIds.addAll(translations.keys);
+        },
       );
-      currentProgress = progressAfterLlm;
+      currentProgress = _batchProgressManager.getProgress(batchId) ?? progressAfterLlm;
       _batchProgressManager.updateProgress(batchId, currentProgress);
       yield Ok(currentProgress);
       await _batchProgressManager.checkPauseOrCancel(batchId);
 
-      // Step 5 & 6: Validate and Save Translations
-      currentProgress = await _validationPersistenceHandler.validateAndSave(
-        translations: llmTranslations,
-        batchId: batchId,
-        units: units,
-        context: context,
-        currentProgress: currentProgress,
-        checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
-      );
-      _batchProgressManager.updateProgress(batchId, currentProgress);
-      yield Ok(currentProgress);
+      // Step 5 & 6: Validate and Save any remaining translations not saved progressively
+      final remainingTranslations = Map<String, String>.from(llmTranslations)
+        ..removeWhere((unitId, _) => savedUnitIds.contains(unitId));
+      
+      if (remainingTranslations.isNotEmpty) {
+        _logger.info('Saving remaining translations', {
+          'batchId': batchId,
+          'remainingCount': remainingTranslations.length,
+          'alreadySaved': savedUnitIds.length,
+        });
+        
+        final remainingUnits = units.where((u) => remainingTranslations.containsKey(u.id)).toList();
+        currentProgress = await _validationPersistenceHandler.validateAndSave(
+          translations: remainingTranslations,
+          batchId: batchId,
+          units: remainingUnits,
+          context: context,
+          currentProgress: currentProgress,
+          checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
+          onProgressUpdate: (batchId, progress) {
+            _batchProgressManager.updateProgress(batchId, progress);
+            final controller = _batchProgressManager.getOrCreateController(batchId);
+            controller.add(Ok(progress));
+          },
+        );
+        _batchProgressManager.updateProgress(batchId, currentProgress);
+        yield Ok(currentProgress);
+      }
 
       // Mark as completed
       final completedProgress = currentProgress.copyWith(
@@ -349,6 +397,17 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       ));
     } finally {
       _batchProgressManager.cleanup(batchId);
+
+      // Checkpoint WAL file if needed after batch operations
+      // Only checkpoint when no other batches are active to prevent contention
+      final activeBatches = await _batchProgressManager.getActiveBatchIds();
+      if (activeBatches.isEmpty) {
+        try {
+          await DatabaseService.checkpointIfNeeded();
+        } catch (e) {
+          _logger.debug('WAL checkpoint failed (non-critical)', {'error': e});
+        }
+      }
     }
   }
 
@@ -516,6 +575,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         targetLanguage: context.targetLanguage,
         systemPrompt: promptResult.unwrap().systemMessage,
         modelName: context.modelId,
+        providerCode: context.providerCode,
         gameContext: context.gameContext,
         glossaryTerms: context.glossaryTerms,
         timestamp: DateTime.now(),
@@ -612,6 +672,13 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     required String batchId,
   }) async {
     return await _batchProgressManager.cancel(batchId: batchId);
+  }
+
+  @override
+  Future<Result<void, TranslationOrchestrationException>> stopTranslation({
+    required String batchId,
+  }) async {
+    return await _batchProgressManager.stop(batchId: batchId);
   }
 
   @override

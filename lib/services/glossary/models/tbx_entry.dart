@@ -15,27 +15,19 @@ class TbxEntry {
   /// Target term in the translation language
   final String targetTerm;
 
-  /// Description or definition of the term
-  final String? description;
-
-  /// Category or subject field (e.g., 'Computing', 'Military')
-  final String? category;
-
-  /// Part of speech (e.g., 'noun', 'verb', 'adjective')
-  final String? partOfSpeech;
-
   /// Whether matching should be case-sensitive
   final bool caseSensitive;
+
+  /// Optional notes providing context for the LLM
+  final String? notes;
 
   const TbxEntry({
     required this.id,
     required this.targetLanguage,
     required this.sourceTerm,
     required this.targetTerm,
-    this.description,
-    this.category,
-    this.partOfSpeech,
     this.caseSensitive = false,
+    this.notes,
   });
 
   @override
@@ -51,10 +43,8 @@ class TbxEntry {
         other.targetLanguage == targetLanguage &&
         other.sourceTerm == sourceTerm &&
         other.targetTerm == targetTerm &&
-        other.description == description &&
-        other.category == category &&
-        other.partOfSpeech == partOfSpeech &&
-        other.caseSensitive == caseSensitive;
+        other.caseSensitive == caseSensitive &&
+        other.notes == notes;
   }
 
   @override
@@ -63,9 +53,7 @@ class TbxEntry {
         targetLanguage,
         sourceTerm,
         targetTerm,
-        description,
-        category,
-        partOfSpeech,
         caseSensitive,
+        notes,
       );
 }

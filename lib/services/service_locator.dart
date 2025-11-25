@@ -16,6 +16,7 @@ import '../repositories/translation_version_repository.dart';
 import '../repositories/translation_batch_unit_repository.dart';
 import '../repositories/export_history_repository.dart';
 import '../repositories/workshop_mod_repository.dart';
+import '../repositories/mod_scan_cache_repository.dart';
 import '../repositories/llm_provider_model_repository.dart';
 import 'database/database_service.dart';
 import 'database/migration_service.dart';
@@ -57,10 +58,12 @@ import 'steam/i_workshop_api_service.dart';
 import 'steam/workshop_api_service_impl.dart';
 import 'steam/steamcmd_manager.dart';
 import 'steam/workshop_metadata_service.dart';
+import 'steam/steam_detection_service.dart';
 
 // Mod Services
 import 'mods/workshop_scanner_service.dart';
 import 'mods/game_installation_sync_service.dart';
+import 'mods/mod_update_analysis_service.dart';
 
 // Translation Services
 import 'translation/i_prompt_builder_service.dart';
@@ -219,10 +222,52 @@ class ServiceLocator {
       logging.info('Running database migrations');
       await MigrationService.runMigrations();
 
+      // Clean up orphaned and old translation batches
+      logging.info('Cleaning up orphaned translation batches');
+      await _cleanupTranslationBatches();
+
       logging.info('Database initialized successfully');
     } catch (e, stackTrace) {
       logging.error('Failed to initialize database', e, stackTrace);
       rethrow;
+    }
+  }
+
+  /// Clean up orphaned and old translation batches
+  static Future<void> _cleanupTranslationBatches() async {
+    final logging = _locator<LoggingService>();
+
+    try {
+      // Import here to avoid circular dependencies
+      final batchRepo = TranslationBatchRepository();
+      final result = await batchRepo.cleanupOrphanedBatches();
+
+      result.when(
+        ok: (stats) {
+          if (stats.deleted > 0) {
+            logging.info(
+              'Translation batch cleanup completed',
+              {
+                'deleted': stats.deleted,
+              },
+            );
+          } else {
+            logging.debug('No batches to clean up');
+          }
+        },
+        err: (error) {
+          // Log warning but don't fail initialization
+          logging.warning(
+            'Failed to clean up translation batches: ${error.message}',
+          );
+        },
+      );
+    } catch (e, stackTrace) {
+      // Log warning but don't fail initialization
+      logging.warning(
+        'Exception during batch cleanup: $e',
+        {'stackTrace': stackTrace.toString()},
+      );
     }
   }
 
@@ -296,6 +341,10 @@ class ServiceLocator {
       () => WorkshopModRepository(),
     );
 
+    _locator.registerLazySingleton<ModScanCacheRepository>(
+      () => ModScanCacheRepository(),
+    );
+
     _locator.registerLazySingleton<LlmProviderModelRepository>(
       () => LlmProviderModelRepository(),
     );
@@ -342,7 +391,6 @@ class ServiceLocator {
     _locator.registerLazySingleton<LlmModelManagementService>(
       () => LlmModelManagementService(
         _locator<LlmProviderModelRepository>(),
-        _locator<LlmProviderFactory>(),
         _locator<LoggingService>(),
       ),
     );
@@ -357,6 +405,10 @@ class ServiceLocator {
     );
 
     // Steam Services
+    _locator.registerLazySingleton<SteamDetectionService>(
+      () => SteamDetectionService(),
+    );
+
     _locator.registerLazySingleton<SteamCmdManager>(
       () => SteamCmdManager(),
     );
@@ -377,12 +429,23 @@ class ServiceLocator {
     );
 
     // Mod Services
+    _locator.registerLazySingleton<ModUpdateAnalysisService>(
+      () => ModUpdateAnalysisService(
+        rpfmService: _locator<IRpfmService>(),
+        locParser: _locator<ILocalizationParser>(),
+        unitRepository: _locator<TranslationUnitRepository>(),
+      ),
+    );
+
     _locator.registerLazySingleton<WorkshopScannerService>(
       () => WorkshopScannerService(
         projectRepository: _locator<ProjectRepository>(),
         gameInstallationRepository: _locator<GameInstallationRepository>(),
         workshopModRepository: _locator<WorkshopModRepository>(),
+        modScanCacheRepository: _locator<ModScanCacheRepository>(),
         workshopApiService: _locator<IWorkshopApiService>(),
+        rpfmService: _locator<IRpfmService>(),
+        modUpdateAnalysisService: _locator<ModUpdateAnalysisService>(),
       ),
     );
 
@@ -484,6 +547,7 @@ class ServiceLocator {
         fileImportExportService: _locator<FileImportExportService>(),
         tmxService: _locator<TmxService>(),
         exportHistoryRepository: _locator<ExportHistoryRepository>(),
+        gameInstallationRepository: _locator<GameInstallationRepository>(),
         projectRepository: _locator<ProjectRepository>(),
         projectLanguageRepository: _locator<ProjectLanguageRepository>(),
         translationUnitRepository: _locator<TranslationUnitRepository>(),

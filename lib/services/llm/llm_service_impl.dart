@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
@@ -51,11 +52,12 @@ class LlmServiceImpl implements ILlmService {
 
   @override
   Future<Result<LlmResponse, LlmServiceException>> translateBatch(
-    LlmRequest request,
-  ) async {
+    LlmRequest request, {
+    CancelToken? cancelToken,
+  }) async {
     try {
-      // Get active provider and API key
-      final providerCode = await getActiveProviderCode();
+      // Use provider from request if specified, otherwise fall back to active provider
+      final providerCode = request.providerCode ?? await getActiveProviderCode();
       final apiKey = await _getApiKey(providerCode);
 
       if (apiKey.isEmpty) {
@@ -75,10 +77,10 @@ class LlmServiceImpl implements ILlmService {
       // Get provider instance
       final provider = _providerFactory.getProvider(providerCode);
 
-      // Execute with circuit breaker protection
+      // Execute with circuit breaker protection, passing cancel token
       final result = await _executeWithCircuitBreaker(
         providerCode,
-        () => provider.translate(request, apiKey),
+        () => provider.translate(request, apiKey, cancelToken: cancelToken),
       );
 
       return result;
@@ -267,8 +269,9 @@ class LlmServiceImpl implements ILlmService {
   @override
   Future<Result<bool, LlmServiceException>> validateApiKey(
     String providerCode,
-    String apiKey,
-  ) async {
+    String apiKey, {
+    String? model,
+  }) async {
     try {
       if (apiKey.isEmpty) {
         return Err(
@@ -284,7 +287,7 @@ class LlmServiceImpl implements ILlmService {
       final provider = _providerFactory.getProvider(providerCode);
 
       // Delegate to provider-specific validation
-      final result = await provider.validateApiKey(apiKey);
+      final result = await provider.validateApiKey(apiKey, model: model);
 
       return result.when(
         ok: (_) => Ok(true),

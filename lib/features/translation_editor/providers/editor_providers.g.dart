@@ -731,6 +731,106 @@ final class TranslationRowsFamily extends $Family
   String toString() => r'translationRowsProvider';
 }
 
+/// Provider for filtered translation rows
+/// Applies status filters, TM source filters, and search query from EditorFilterState
+
+@ProviderFor(filteredTranslationRows)
+const filteredTranslationRowsProvider = FilteredTranslationRowsFamily._();
+
+/// Provider for filtered translation rows
+/// Applies status filters, TM source filters, and search query from EditorFilterState
+
+final class FilteredTranslationRowsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TranslationRow>>,
+          List<TranslationRow>,
+          FutureOr<List<TranslationRow>>
+        >
+    with
+        $FutureModifier<List<TranslationRow>>,
+        $FutureProvider<List<TranslationRow>> {
+  /// Provider for filtered translation rows
+  /// Applies status filters, TM source filters, and search query from EditorFilterState
+  const FilteredTranslationRowsProvider._({
+    required FilteredTranslationRowsFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'filteredTranslationRowsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$filteredTranslationRowsHash();
+
+  @override
+  String toString() {
+    return r'filteredTranslationRowsProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TranslationRow>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TranslationRow>> create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return filteredTranslationRows(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FilteredTranslationRowsProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$filteredTranslationRowsHash() =>
+    r'16434b9d99d78e50beb141b972602f379bfdb217';
+
+/// Provider for filtered translation rows
+/// Applies status filters, TM source filters, and search query from EditorFilterState
+
+final class FilteredTranslationRowsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<TranslationRow>>,
+          (String, String)
+        > {
+  const FilteredTranslationRowsFamily._()
+    : super(
+        retry: null,
+        name: r'filteredTranslationRowsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Provider for filtered translation rows
+  /// Applies status filters, TM source filters, and search query from EditorFilterState
+
+  FilteredTranslationRowsProvider call(String projectId, String languageId) =>
+      FilteredTranslationRowsProvider._(
+        argument: (projectId, languageId),
+        from: this,
+      );
+
+  @override
+  String toString() => r'filteredTranslationRowsProvider';
+}
+
 /// Provider for TM suggestions for a specific unit
 
 @ProviderFor(tmSuggestionsForUnit)

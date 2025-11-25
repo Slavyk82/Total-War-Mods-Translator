@@ -8,13 +8,16 @@ import '../../models/common/service_exception.dart';
 /// Performs various quality checks on translations to identify issues
 class TranslationValidationService implements ITranslationValidationService {
   /// Regular expression to find variables in text
-  static final _variablePattern = RegExp(r'\{(\d+)\}|%[sdifgc]|\$\{[\w]+\}');
+  /// Supports: {0}, %s, [%s], ${var}
+  static final _variablePattern = RegExp(r'\{(\d+)\}|\[%[sdifgc]\]|%[sdifgc]|\$\{[\w]+\}');
 
   /// Regular expression to find numbers in text
   static final _numberPattern = RegExp(r'\d+');
 
-  /// Threshold for length difference warning (30%)
-  static const _lengthDifferenceThreshold = 0.3;
+  /// Threshold for length difference warning (100%)
+  /// Translations from English to Romance languages (French, Spanish, Italian)
+  /// are typically 15-30% longer, and can be 50-100% longer for short UI text
+  static const _lengthDifferenceThreshold = 1.0;
 
   @override
   Future<Result<List<ValidationIssue>, ServiceException>>
@@ -152,16 +155,23 @@ class TranslationValidationService implements ITranslationValidationService {
     final difference = (sourceLength - translatedLength).abs();
     final percentDifference = difference / sourceLength;
 
+    // Only flag if translation is significantly different
+    // 100% threshold allows for natural language expansion (English->French typically 15-30%, can be 50-100% for short text)
     if (percentDifference > _lengthDifferenceThreshold) {
       final percent = (percentDifference * 100).round();
+      
+      // Determine if translation is shorter or longer
+      final lengthStatus = translatedLength < sourceLength ? 'shorter' : 'longer';
+      
       return [
         ValidationIssue(
           type: ValidationIssueType.lengthDifference,
           severity: ValidationSeverity.warning,
-          description: 'Length difference: $percent%',
+          description: 'Length difference: $percent% ($lengthStatus)',
           suggestion:
               'Source: $sourceLength characters, Translation: $translatedLength characters. '
-              'Review for accuracy - text might be incomplete or too verbose.',
+              'Translation is $lengthStatus than expected. '
+              'Review for accuracy - text might be incomplete${translatedLength < sourceLength ? '' : ' or too verbose'}.',
           autoFixable: false,
           metadata: {
             'source_length': sourceLength,

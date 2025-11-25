@@ -54,16 +54,21 @@ class GlossaryServiceImpl implements IGlossaryService {
     String? description,
     required bool isGlobal,
     String? projectId,
+    required String targetLanguageId,
   }) async {
     try {
+      print('[GlossaryService] Creating glossary: name=$name, isGlobal=$isGlobal, projectId=$projectId, targetLanguageId=$targetLanguageId');
+      
       // Validate input
       if (name.trim().isEmpty) {
+        print('[GlossaryService] Validation failed: name is empty');
         return Err(
           InvalidGlossaryDataException(['Name cannot be empty']),
         );
       }
 
       if (!isGlobal && projectId == null) {
+        print('[GlossaryService] Validation failed: project-specific requires projectId');
         return Err(
           InvalidGlossaryDataException(
             ['Project-specific glossary requires projectId'],
@@ -72,8 +77,10 @@ class GlossaryServiceImpl implements IGlossaryService {
       }
 
       // Check for duplicate name
+      print('[GlossaryService] Checking for duplicate name: $name');
       final existing = await _repository.getByName(name);
       if (existing != null) {
+        print('[GlossaryService] Duplicate name found: ${existing.id}');
         return Err(GlossaryAlreadyExistsException(name));
       }
 
@@ -84,15 +91,20 @@ class GlossaryServiceImpl implements IGlossaryService {
         description: description?.trim(),
         isGlobal: isGlobal,
         projectId: projectId,
+        targetLanguageId: targetLanguageId,
         entryCount: 0,
         createdAt: now,
         updatedAt: now,
       );
 
+      print('[GlossaryService] Inserting glossary: ${glossary.toJson()}');
       await _repository.insertGlossary(glossary);
+      print('[GlossaryService] Glossary created successfully: ${glossary.id}');
 
       return Ok(glossary);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[GlossaryService] ERROR creating glossary: $e');
+      print('[GlossaryService] Stack trace: $stackTrace');
       return Err(
         GlossaryDatabaseException('Failed to create glossary', e),
       );
@@ -197,25 +209,37 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String targetLanguageCode,
     required String sourceTerm,
     required String targetTerm,
-    String? category,
     bool caseSensitive = false,
     String? notes,
   }) async {
     try {
+      print('[GlossaryService.addEntry] Starting with params:');
+      print('  glossaryId: $glossaryId');
+      print('  targetLanguageCode: $targetLanguageCode');
+      print('  sourceTerm: "$sourceTerm"');
+      print('  targetTerm: "$targetTerm"');
+      print('  caseSensitive: $caseSensitive');
+      print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
+
       // Validate glossary exists
+      print('[GlossaryService.addEntry] Checking if glossary exists...');
       final glossary = await _repository.getGlossaryById(glossaryId);
       if (glossary == null) {
+        print('[GlossaryService.addEntry] ERROR: Glossary not found: $glossaryId');
         return Err(GlossaryNotFoundException(glossaryId));
       }
+      print('[GlossaryService.addEntry] Glossary found: ${glossary.name}');
 
       // Validate input
       if (sourceTerm.trim().isEmpty || targetTerm.trim().isEmpty) {
+        print('[GlossaryService.addEntry] ERROR: Empty terms detected');
         return Err(
           InvalidGlossaryDataException(['Terms cannot be empty']),
         );
       }
 
       // Check for duplicate term
+      print('[GlossaryService.addEntry] Checking for duplicate entry...');
       final duplicate = await _repository.findDuplicateEntry(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
@@ -223,32 +247,42 @@ class GlossaryServiceImpl implements IGlossaryService {
       );
 
       if (duplicate != null) {
+        print('[GlossaryService.addEntry] ERROR: Duplicate entry found: ${duplicate.id}');
         return Err(
           DuplicateGlossaryEntryException(sourceTerm.trim(), glossaryId),
         );
       }
+      print('[GlossaryService.addEntry] No duplicate found, proceeding...');
 
       final now = DateTime.now().millisecondsSinceEpoch;
+      final trimmedNotes = notes?.trim();
       final entry = GlossaryEntry(
         id: _uuid.v4(),
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
         sourceTerm: sourceTerm.trim(),
         targetTerm: targetTerm.trim(),
-        category: category?.trim(),
         caseSensitive: caseSensitive,
-        notes: notes?.trim(),
+        notes: trimmedNotes?.isNotEmpty == true ? trimmedNotes : null,
         createdAt: now,
         updatedAt: now,
       );
 
+      print('[GlossaryService.addEntry] Created entry object: ${entry.toJson()}');
+      print('[GlossaryService.addEntry] Calling repository.insertEntry...');
       await _repository.insertEntry(entry);
+      print('[GlossaryService.addEntry] Entry inserted successfully');
 
       // Update glossary entry count
+      print('[GlossaryService.addEntry] Updating glossary entry count...');
       await _updateGlossaryEntryCount(glossaryId);
+      print('[GlossaryService.addEntry] Entry count updated');
 
+      print('[GlossaryService.addEntry] SUCCESS: Entry added with ID: ${entry.id}');
       return Ok(entry);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[GlossaryService.addEntry] ERROR: Exception caught: $e');
+      print('[GlossaryService.addEntry] Stack trace: $stackTrace');
       return Err(
         GlossaryDatabaseException('Failed to add entry', e),
       );
@@ -277,13 +311,11 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String glossaryId,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? category,
   }) async {
     try {
       final entries = await _repository.getEntriesByGlossary(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
-        category: category,
       );
       return Ok(entries);
     } catch (e) {
@@ -639,14 +671,12 @@ class GlossaryServiceImpl implements IGlossaryService {
     List<String>? glossaryIds,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? category,
   }) async {
     try {
       final results = await _repository.searchEntries(
         query: query,
         glossaryIds: glossaryIds,
         targetLanguageCode: targetLanguageCode,
-        category: category,
       );
       return Ok(results);
     } catch (e) {
@@ -662,24 +692,15 @@ class GlossaryServiceImpl implements IGlossaryService {
   ) =>
       _statisticsService.getGlossaryStats(glossaryId);
 
-  @override
-  Future<Result<List<String>, GlossaryException>> getAllCategories() =>
-      _statisticsService.getAllCategories();
-
   // ============================================================================
   // Private Helpers
   // ============================================================================
 
   /// Update glossary entry count
+  /// 
+  /// Note: entry_count is now calculated dynamically via SQL COUNT,
+  /// so this method is a no-op. Kept for backward compatibility.
   Future<void> _updateGlossaryEntryCount(String glossaryId) async {
-    final count = await _repository.getEntryCount(glossaryId);
-    final glossary = await _repository.getGlossaryById(glossaryId);
-    if (glossary != null) {
-      final updated = glossary.copyWith(
-        entryCount: count,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      );
-      await _repository.updateGlossary(updated);
-    }
+    // No-op: entry_count is calculated dynamically in repository queries
   }
 }

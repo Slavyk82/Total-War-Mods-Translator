@@ -348,14 +348,14 @@ class ProjectsScreen extends ConsumerWidget {
     if (result.isOk) {
       print('DEBUG: Delete successful, refreshing list');
       // Refresh projects list first
-      try {
-        ref.invalidate(projectsWithDetailsProvider);
-      } catch (e) {
-        print('DEBUG: Error invalidating provider: $e');
-      }
-      
-      // Show success toast after refresh
       if (context.mounted) {
+        try {
+          ref.invalidate(projectsWithDetailsProvider);
+        } catch (e) {
+          print('DEBUG: Error invalidating provider: $e');
+        }
+        
+        // Show success toast after refresh
         FluentToast.success(context, 'Project deleted successfully');
       }
     } else {

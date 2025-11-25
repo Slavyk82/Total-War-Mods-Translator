@@ -17,6 +17,10 @@ import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/projects/i_project_initialization_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/repositories/language_repository.dart';
+import 'package:twmt/repositories/project_language_repository.dart';
+import 'package:twmt/models/domain/project_language.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 /// Complete mods screen with Syncfusion DataGrid
@@ -260,6 +264,9 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     DetectedMod mod,
     GoRouter router,
   ) async {
+    final projectRepo = ref.read(projectRepositoryProvider);
+    String? projectId;
+
     try {
       // Validate RPFM schema path is configured
       final settingsService = ServiceLocator.get<SettingsService>();
@@ -307,12 +314,6 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         outputFolder = path.join(matchingGame.installationPath!, 'data');
       }
 
-      if (gameId == null) {
-        if (!context.mounted) return;
-        FluentToast.error(context, 'Could not find matching game installation');
-        return;
-      }
-
       if (outputFolder == null) {
         if (!context.mounted) return;
         FluentToast.error(context, 'Game installation path is not configured');
@@ -321,7 +322,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
 
       // Create project
       const uuid = Uuid();
-      final projectId = uuid.v4();
+      projectId = uuid.v4();
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
       final metadata = ProjectMetadata(modTitle: mod.name);
@@ -330,7 +331,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         id: projectId,
         name: mod.name,
         modSteamId: mod.workshopId,
-        gameInstallationId: gameId!,
+        gameInstallationId: gameId,
         sourceFilePath: mod.packFilePath,
         outputFilePath: outputFolder,
         status: ProjectStatus.draft,
@@ -341,7 +342,6 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         metadata: metadata.toJsonString(),
       );
 
-      final projectRepo = ref.read(projectRepositoryProvider);
       final createResult = await projectRepo.insert(project);
 
       if (createResult.isErr) {
@@ -351,6 +351,28 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
           'Failed to create project: ${createResult.error}',
         );
         return;
+      }
+
+      // Add favorite language to the project
+      final languageRepo = ServiceLocator.get<LanguageRepository>();
+      final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
+
+      final favoriteLanguageCode = await settingsService.getString(
+        SettingsKeys.defaultTargetLanguage,
+        defaultValue: 'es',
+      );
+
+      final languageResult = await languageRepo.getByCode(favoriteLanguageCode);
+      if (languageResult.isOk) {
+        final language = languageResult.unwrap();
+        final projectLanguage = ProjectLanguage(
+          id: uuid.v4(),
+          projectId: projectId,
+          languageId: language.id,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await projectLanguageRepo.insert(projectLanguage);
       }
 
       // Show initialization dialog
@@ -365,7 +387,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
           projectName: mod.name,
           logStream: initService.logStream,
           onInitialize: () => initService.initializeProject(
-            projectId: projectId,
+            projectId: projectId!,
             packFilePath: mod.packFilePath,
           ).then((result) {
             if (result.isErr) {
@@ -385,8 +407,21 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         if (context.mounted) {
           router.go('/projects/$projectId');
         }
+      } else {
+        // Delete the project if initialization failed (no loc files or error)
+        await projectRepo.delete(projectId);
+        if (context.mounted) {
+          FluentToast.warning(
+            context,
+            'Project not created: no localization files found in the mod.',
+          );
+        }
       }
     } catch (e) {
+      // Delete the project on error if it was created
+      if (projectId != null) {
+        await projectRepo.delete(projectId);
+      }
       if (context.mounted) {
         FluentToast.error(
           context,

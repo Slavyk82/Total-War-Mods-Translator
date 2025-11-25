@@ -153,7 +153,7 @@ class SettingsService {
 
   /// Get the default parallel batches count.
   Future<int> getDefaultParallelBatches() async {
-    return await getInt('default_parallel_batches', defaultValue: 3);
+    return await getInt('default_parallel_batches', defaultValue: 5);
   }
 
   /// Set the default parallel batches count.

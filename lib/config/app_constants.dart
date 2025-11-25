@@ -62,6 +62,14 @@ class AppConstants {
   /// Upper limit to prevent token count from exceeding provider limits.
   static const int maxLlmBatchSize = 100;
 
+  /// Maximum units per LLM request before forced split
+  ///
+  /// If a batch exceeds this size, it will be automatically split
+  /// even before attempting translation. Prevents extremely large
+  /// batches that cause response truncation or parsing errors.
+  /// This is a hard limit to prevent overwhelmingly large requests.
+  static const int maxUnitsPerLlmRequest = 50;
+
   /// Default provider when none is configured
   ///
   /// Fallback LLM provider to use if user hasn't selected one.

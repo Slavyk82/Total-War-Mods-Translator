@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/services/translation/models/llm_exchange_log.dart';
 
 part 'translation_progress.g.dart';
 
@@ -48,6 +49,9 @@ class TranslationProgress {
   /// Timestamp of this progress update
   final DateTime timestamp;
 
+  /// LLM exchange logs for debugging and monitoring
+  final List<LlmExchangeLog> llmLogs;
+
   const TranslationProgress({
     required this.batchId,
     required this.status,
@@ -63,6 +67,7 @@ class TranslationProgress {
     this.errorMessage,
     this.metadata,
     required this.timestamp,
+    this.llmLogs = const [],
   });
 
   /// Progress percentage (0.0 - 1.0)
@@ -101,6 +106,7 @@ class TranslationProgress {
     String? errorMessage,
     Map<String, dynamic>? metadata,
     DateTime? timestamp,
+    List<LlmExchangeLog>? llmLogs,
   }) {
     return TranslationProgress(
       batchId: batchId ?? this.batchId,
@@ -118,6 +124,7 @@ class TranslationProgress {
       errorMessage: errorMessage ?? this.errorMessage,
       metadata: metadata ?? this.metadata,
       timestamp: timestamp ?? this.timestamp,
+      llmLogs: llmLogs ?? this.llmLogs,
     );
   }
 

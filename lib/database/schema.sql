@@ -1,10 +1,8 @@
 -- ============================================================================
--- TWMT Database Schema v1
+-- TWMT Database Schema
 -- Total War Mods Translator - Complete SQLite Database Schema
 -- ============================================================================
--- Description: Complete database schema for TWMT application
--- Version: 1
--- Created: 2025-11-14
+-- Description: Full database schema for fresh installations
 -- Database: SQLite with FTS5, WAL mode, Foreign Keys enabled
 -- ============================================================================
 
@@ -82,7 +80,7 @@ CREATE TABLE IF NOT EXISTS projects (
     last_update_check INTEGER,
     source_mod_updated INTEGER,
     batch_size INTEGER NOT NULL DEFAULT 25,
-    parallel_batches INTEGER NOT NULL DEFAULT 3,
+    parallel_batches INTEGER NOT NULL DEFAULT 5,
     custom_prompt TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
@@ -151,14 +149,13 @@ CREATE TABLE IF NOT EXISTS translation_units (
     project_id TEXT NOT NULL,
     key TEXT NOT NULL,
     source_text TEXT NOT NULL,
-    source_language_id TEXT,
     context TEXT,
     notes TEXT,
+    source_loc_file TEXT,
     is_obsolete INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (source_language_id) REFERENCES languages(id) ON DELETE SET NULL,
     UNIQUE(project_id, key),
     CHECK (is_obsolete IN (0, 1)),
     CHECK (created_at <= updated_at)
@@ -278,6 +275,153 @@ CREATE TABLE IF NOT EXISTS translation_version_tm_usage (
 );
 
 -- ============================================================================
+-- GLOSSARY MANAGEMENT
+-- ============================================================================
+
+-- Glossaries: Term glossaries for consistent translations
+CREATE TABLE IF NOT EXISTS glossaries (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    is_global INTEGER NOT NULL DEFAULT 0,
+    project_id TEXT,
+    target_language_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
+    CHECK (is_global IN (0, 1)),
+    CHECK ((is_global = 1 AND project_id IS NULL) OR (is_global = 0 AND project_id IS NOT NULL)),
+    CHECK (created_at <= updated_at)
+);
+
+-- Glossary Entries: Individual terms in a glossary
+CREATE TABLE IF NOT EXISTS glossary_entries (
+    id TEXT PRIMARY KEY,
+    glossary_id TEXT NOT NULL,
+    target_language_code TEXT NOT NULL,
+    source_term TEXT NOT NULL,
+    target_term TEXT NOT NULL,
+    definition TEXT,
+    notes TEXT,
+    is_forbidden INTEGER NOT NULL DEFAULT 0,
+    case_sensitive INTEGER NOT NULL DEFAULT 0,
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (glossary_id) REFERENCES glossaries(id) ON DELETE CASCADE,
+    CHECK (is_forbidden IN (0, 1)),
+    CHECK (case_sensitive IN (0, 1)),
+    CHECK (usage_count >= 0),
+    CHECK (created_at <= updated_at),
+    UNIQUE(glossary_id, target_language_code, source_term, case_sensitive)
+);
+
+-- ============================================================================
+-- SEARCH MANAGEMENT
+-- ============================================================================
+
+-- Search History: Recent search queries
+CREATE TABLE IF NOT EXISTS search_history (
+    id TEXT PRIMARY KEY,
+    query TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    filters_json TEXT,
+    result_count INTEGER NOT NULL,
+    searched_at INTEGER NOT NULL,
+    CHECK (scope IN ('source', 'target', 'both', 'key', 'all'))
+);
+
+-- Saved Searches: User-saved search queries
+CREATE TABLE IF NOT EXISTS saved_searches (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    query TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    filters_json TEXT,
+    usage_count INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    last_used_at INTEGER NOT NULL,
+    CHECK (scope IN ('source', 'target', 'both', 'key', 'all')),
+    CHECK (usage_count >= 0)
+);
+
+-- ============================================================================
+-- WORKSHOP MODS
+-- ============================================================================
+
+-- Workshop Mods: Steam Workshop mod metadata
+CREATE TABLE IF NOT EXISTS workshop_mods (
+    id TEXT PRIMARY KEY,
+    workshop_id TEXT NOT NULL UNIQUE,
+    app_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    workshop_url TEXT NOT NULL,
+    file_size INTEGER,
+    time_created INTEGER,
+    time_updated INTEGER,
+    subscriptions INTEGER DEFAULT 0,
+    tags TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    last_checked_at INTEGER,
+    CHECK (file_size IS NULL OR file_size >= 0),
+    CHECK (subscriptions >= 0),
+    CHECK (created_at <= updated_at)
+);
+
+-- ============================================================================
+-- LLM PROVIDER MODELS
+-- ============================================================================
+
+-- LLM Provider Models: Available models per provider
+CREATE TABLE IF NOT EXISTS llm_provider_models (
+    id TEXT PRIMARY KEY,
+    provider_code TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    display_name TEXT,
+    is_enabled INTEGER NOT NULL DEFAULT 0,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    is_archived INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    last_fetched_at INTEGER NOT NULL,
+    UNIQUE(provider_code, model_id)
+);
+
+-- ============================================================================
+-- EVENT STORE
+-- ============================================================================
+
+-- Event Store: Event sourcing and audit trail
+CREATE TABLE IF NOT EXISTS event_store (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    occurred_at INTEGER NOT NULL,
+    triggered_by TEXT,
+    aggregate_id TEXT,
+    aggregate_type TEXT,
+    correlation_id TEXT,
+    causation_id TEXT,
+    metadata TEXT
+);
+
+-- ============================================================================
+-- MOD SCAN CACHE
+-- ============================================================================
+
+-- Mod Scan Cache: Cache RPFM scan results
+CREATE TABLE IF NOT EXISTS mod_scan_cache (
+    id TEXT PRIMARY KEY,
+    pack_file_path TEXT NOT NULL UNIQUE,
+    file_last_modified INTEGER NOT NULL,
+    has_loc_files INTEGER NOT NULL DEFAULT 0,
+    scanned_at INTEGER NOT NULL,
+    CHECK (has_loc_files IN (0, 1))
+);
+
+-- ============================================================================
 -- CONFIGURATION
 -- ============================================================================
 
@@ -292,7 +436,37 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 -- ============================================================================
--- INDEXES FOR PERFORMANCE (100-800x gain)
+-- DENORMALIZED TABLE FOR PERFORMANCE (DataGrid)
+-- ============================================================================
+
+-- Denormalized cache for fast DataGrid display
+CREATE TABLE IF NOT EXISTS translation_view_cache (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    project_language_id TEXT NOT NULL,
+    language_code TEXT NOT NULL,
+    unit_id TEXT NOT NULL,
+    version_id TEXT,
+    key TEXT NOT NULL,
+    source_text TEXT NOT NULL,
+    translated_text TEXT,
+    status TEXT NOT NULL,
+    confidence_score REAL,
+    is_manually_edited INTEGER NOT NULL DEFAULT 0,
+    is_obsolete INTEGER NOT NULL DEFAULT 0,
+    tm_match_confidence REAL,
+    tm_match_text TEXT,
+    batch_number INTEGER,
+    provider_name TEXT,
+    unit_created_at INTEGER NOT NULL,
+    unit_updated_at INTEGER NOT NULL,
+    version_updated_at INTEGER,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (project_language_id) REFERENCES project_languages(id) ON DELETE CASCADE
+);
+
+-- ============================================================================
+-- INDEXES FOR PERFORMANCE
 -- ============================================================================
 
 -- Projects
@@ -312,6 +486,7 @@ CREATE INDEX IF NOT EXISTS idx_mod_version_changes_version ON mod_version_change
 CREATE INDEX IF NOT EXISTS idx_translation_units_project ON translation_units(project_id);
 CREATE INDEX IF NOT EXISTS idx_translation_units_key ON translation_units(key);
 CREATE INDEX IF NOT EXISTS idx_translation_units_obsolete ON translation_units(project_id, is_obsolete);
+CREATE INDEX IF NOT EXISTS idx_translation_units_source_loc_file ON translation_units(project_id, source_loc_file);
 
 -- Translation Versions
 CREATE INDEX IF NOT EXISTS idx_translation_versions_unit ON translation_versions(unit_id);
@@ -331,8 +506,8 @@ CREATE INDEX IF NOT EXISTS idx_tm_hash_lang_context ON translation_memory(source
 CREATE INDEX IF NOT EXISTS idx_tm_source_lang ON translation_memory(source_language_id, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory(last_used_at DESC);
 CREATE INDEX IF NOT EXISTS idx_tm_game_context ON translation_memory(game_context, quality_score DESC);
--- Optimized index for FTS5 TM lookups with language filtering (10-50x performance improvement)
 CREATE INDEX IF NOT EXISTS idx_tm_lang_quality ON translation_memory(target_language_id, quality_score DESC, usage_count DESC) WHERE quality_score >= 0.85;
+CREATE INDEX IF NOT EXISTS idx_tm_target_lang_quality ON translation_memory(target_language_id, quality_score DESC);
 
 -- Translation Version TM Usage
 CREATE INDEX IF NOT EXISTS idx_tm_usage_version ON translation_version_tm_usage(version_id);
@@ -351,11 +526,55 @@ CREATE INDEX IF NOT EXISTS idx_languages_code ON languages(code);
 -- Translation Providers
 CREATE INDEX IF NOT EXISTS idx_translation_providers_code ON translation_providers(code);
 
+-- Glossaries
+CREATE INDEX IF NOT EXISTS idx_glossaries_project ON glossaries(project_id, is_global);
+CREATE INDEX IF NOT EXISTS idx_glossaries_target_language ON glossaries(target_language_id);
+CREATE INDEX IF NOT EXISTS idx_glossaries_name ON glossaries(name);
+
+-- Glossary Entries
+CREATE INDEX IF NOT EXISTS idx_glossary_entries_glossary ON glossary_entries(glossary_id);
+CREATE INDEX IF NOT EXISTS idx_glossary_entries_source ON glossary_entries(source_term);
+CREATE INDEX IF NOT EXISTS idx_glossary_entries_usage ON glossary_entries(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_glossary_entries_language ON glossary_entries(target_language_code);
+
+-- Search History
+CREATE INDEX IF NOT EXISTS idx_search_history_searched ON search_history(searched_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_name ON saved_searches(name);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_last_used ON saved_searches(last_used_at DESC);
+
+-- Workshop Mods
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workshop_mods_workshop_id ON workshop_mods(workshop_id);
+CREATE INDEX IF NOT EXISTS idx_workshop_mods_app_id ON workshop_mods(app_id);
+CREATE INDEX IF NOT EXISTS idx_workshop_mods_app_updated ON workshop_mods(app_id, time_updated DESC);
+CREATE INDEX IF NOT EXISTS idx_workshop_mods_title ON workshop_mods(title COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_workshop_mods_updated ON workshop_mods(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_workshop_mods_last_checked ON workshop_mods(last_checked_at);
+
+-- LLM Provider Models
+CREATE INDEX IF NOT EXISTS idx_llm_models_provider ON llm_provider_models(provider_code);
+CREATE INDEX IF NOT EXISTS idx_llm_models_enabled ON llm_provider_models(provider_code, is_enabled) WHERE is_archived = 0;
+CREATE INDEX IF NOT EXISTS idx_llm_models_default ON llm_provider_models(provider_code, is_default) WHERE is_archived = 0;
+
+-- Event Store
+CREATE INDEX IF NOT EXISTS idx_event_store_type ON event_store(event_type);
+CREATE INDEX IF NOT EXISTS idx_event_store_aggregate ON event_store(aggregate_id, aggregate_type);
+CREATE INDEX IF NOT EXISTS idx_event_store_occurred_at ON event_store(occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_event_store_correlation ON event_store(correlation_id) WHERE correlation_id IS NOT NULL;
+
+-- Mod Scan Cache
+CREATE INDEX IF NOT EXISTS idx_mod_scan_cache_pack_path ON mod_scan_cache(pack_file_path);
+CREATE INDEX IF NOT EXISTS idx_mod_scan_cache_scanned_at ON mod_scan_cache(scanned_at);
+
+-- Translation View Cache
+CREATE INDEX IF NOT EXISTS idx_translation_cache_proj_lang ON translation_view_cache(project_id, project_language_id);
+CREATE INDEX IF NOT EXISTS idx_translation_cache_status ON translation_view_cache(project_language_id, status);
+CREATE INDEX IF NOT EXISTS idx_translation_cache_updated ON translation_view_cache(project_language_id, version_updated_at DESC);
+
 -- ============================================================================
--- FULL-TEXT SEARCH (FTS5) FOR PERFORMANT SEARCH
+-- FULL-TEXT SEARCH (FTS5)
 -- ============================================================================
 
--- FTS5 for translation_units search (100-1000x faster than LIKE)
+-- FTS5 for translation_units search
 CREATE VIRTUAL TABLE IF NOT EXISTS translation_units_fts USING fts5(
     key,
     source_text,
@@ -365,183 +584,32 @@ CREATE VIRTUAL TABLE IF NOT EXISTS translation_units_fts USING fts5(
     content_rowid='rowid'
 );
 
--- FTS5 for translation_versions search
+-- FTS5 for translation_versions search (CONTENTLESS MODE)
+-- Uses contentless FTS5 to avoid rowid mapping issues with TEXT PRIMARY KEY (UUID)
+-- The version_id column is stored (UNINDEXED) to enable JOINs back to translation_versions
 CREATE VIRTUAL TABLE IF NOT EXISTS translation_versions_fts USING fts5(
     translated_text,
     validation_issues,
-    content='translation_versions',
+    version_id UNINDEXED,
+    content=''
+);
+
+-- FTS5 for translation_memory search
+CREATE VIRTUAL TABLE IF NOT EXISTS translation_memory_fts USING fts5(
+    source_text,
+    translated_text,
+    game_context,
+    content='translation_memory',
     content_rowid='rowid'
 );
 
--- Triggers to maintain FTS5 sync with translation_units
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_insert AFTER INSERT ON translation_units BEGIN
-    INSERT INTO translation_units_fts(rowid, key, source_text, context, notes)
-    VALUES (new.rowid, new.key, new.source_text, new.context, new.notes);
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_update AFTER UPDATE ON translation_units BEGIN
-    UPDATE translation_units_fts
-    SET key = new.key,
-        source_text = new.source_text,
-        context = new.context,
-        notes = new.notes
-    WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_delete AFTER DELETE ON translation_units BEGIN
-    DELETE FROM translation_units_fts WHERE rowid = old.rowid;
-END;
-
--- Triggers to maintain FTS5 sync with translation_versions
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_insert AFTER INSERT ON translation_versions BEGIN
-    INSERT INTO translation_versions_fts(rowid, translated_text, validation_issues)
-    VALUES (new.rowid, new.translated_text, new.validation_issues);
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_update AFTER UPDATE ON translation_versions BEGIN
-    UPDATE translation_versions_fts
-    SET translated_text = new.translated_text,
-        validation_issues = new.validation_issues
-    WHERE rowid = new.rowid;
-END;
-
-CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_delete AFTER DELETE ON translation_versions BEGIN
-    DELETE FROM translation_versions_fts WHERE rowid = old.rowid;
-END;
-
--- ============================================================================
--- DENORMALIZED TABLE FOR PERFORMANCE (DataGrid)
--- ============================================================================
-
--- Denormalized cache for fast DataGrid display
--- Avoids complex JOINs for each displayed row
-CREATE TABLE IF NOT EXISTS translation_view_cache (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL,
-    project_language_id TEXT NOT NULL,
-    language_code TEXT NOT NULL,
-    unit_id TEXT NOT NULL,
-    version_id TEXT,
-
-    -- Denormalized data
-    key TEXT NOT NULL,
-    source_text TEXT NOT NULL,
-    translated_text TEXT,
-    status TEXT NOT NULL,
-    confidence_score REAL,
-    is_manually_edited INTEGER NOT NULL DEFAULT 0,
-    is_obsolete INTEGER NOT NULL DEFAULT 0,
-
-    -- TM metadata
-    tm_match_confidence REAL,
-    tm_match_text TEXT,
-
-    -- Batch metadata
-    batch_number INTEGER,
-    provider_name TEXT,
-
-    -- Timestamps
-    unit_created_at INTEGER NOT NULL,
-    unit_updated_at INTEGER NOT NULL,
-    version_updated_at INTEGER,
-
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY (project_language_id) REFERENCES project_languages(id) ON DELETE CASCADE
+-- FTS5 for workshop_mods search
+CREATE VIRTUAL TABLE IF NOT EXISTS workshop_mods_fts USING fts5(
+    title,
+    tags,
+    content='workshop_mods',
+    content_rowid='rowid'
 );
-
--- Indexes for fast cache access
-CREATE INDEX IF NOT EXISTS idx_translation_cache_proj_lang
-    ON translation_view_cache(project_id, project_language_id);
-
-CREATE INDEX IF NOT EXISTS idx_translation_cache_status
-    ON translation_view_cache(project_language_id, status);
-
-CREATE INDEX IF NOT EXISTS idx_translation_cache_updated
-    ON translation_view_cache(project_language_id, version_updated_at DESC);
-
--- Triggers to maintain cache
-
--- Update cache when translation_unit changes
-CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_unit_change
-AFTER UPDATE ON translation_units
-BEGIN
-    UPDATE translation_view_cache
-    SET key = new.key,
-        source_text = new.source_text,
-        is_obsolete = new.is_obsolete,
-        unit_updated_at = new.updated_at
-    WHERE unit_id = new.id;
-END;
-
--- Update cache when translation_version changes
-CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_version_change
-AFTER UPDATE ON translation_versions
-BEGIN
-    UPDATE translation_view_cache
-    SET translated_text = new.translated_text,
-        status = new.status,
-        confidence_score = new.confidence_score,
-        is_manually_edited = new.is_manually_edited,
-        version_id = new.id,
-        version_updated_at = new.updated_at
-    WHERE unit_id = new.unit_id
-      AND project_language_id = new.project_language_id;
-END;
-
--- Insert into cache for new versions
-CREATE TRIGGER IF NOT EXISTS trg_insert_cache_on_version_insert
-AFTER INSERT ON translation_versions
-BEGIN
-    INSERT OR REPLACE INTO translation_view_cache (
-        id,
-        project_id,
-        project_language_id,
-        language_code,
-        unit_id,
-        version_id,
-        key,
-        source_text,
-        translated_text,
-        status,
-        confidence_score,
-        is_manually_edited,
-        is_obsolete,
-        unit_created_at,
-        unit_updated_at,
-        version_updated_at
-    )
-    SELECT
-        new.id || '_' || tu.id AS id,
-        tu.project_id,
-        new.project_language_id,
-        l.code,
-        tu.id,
-        new.id,
-        tu.key,
-        tu.source_text,
-        new.translated_text,
-        new.status,
-        new.confidence_score,
-        new.is_manually_edited,
-        tu.is_obsolete,
-        tu.created_at,
-        tu.updated_at,
-        new.updated_at
-    FROM translation_units tu
-    INNER JOIN project_languages pl ON pl.id = new.project_language_id
-    INNER JOIN languages l ON l.id = pl.language_id
-    WHERE tu.id = new.unit_id;
-END;
-
--- Delete from cache when version is deleted
-CREATE TRIGGER IF NOT EXISTS trg_delete_cache_on_version_delete
-AFTER DELETE ON translation_versions
-BEGIN
-    DELETE FROM translation_view_cache
-    WHERE version_id = old.id;
-END;
 
 -- ============================================================================
 -- VIEWS FOR STATISTICS
@@ -592,8 +660,152 @@ WHERE tv.status IN ('needs_review', 'translated')
     AND (tv.confidence_score < 0.8 OR tv.validation_issues IS NOT NULL);
 
 -- ============================================================================
--- TRIGGERS FOR AUTOMATION
+-- TRIGGERS
 -- ============================================================================
+
+-- Translation Units FTS5 sync triggers
+CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_insert AFTER INSERT ON translation_units BEGIN
+    INSERT INTO translation_units_fts(rowid, key, source_text, context, notes)
+    VALUES (new.rowid, new.key, new.source_text, new.context, new.notes);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_update AFTER UPDATE ON translation_units BEGIN
+    UPDATE translation_units_fts
+    SET key = new.key,
+        source_text = new.source_text,
+        context = new.context,
+        notes = new.notes
+    WHERE rowid = new.rowid;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_units_fts_delete AFTER DELETE ON translation_units BEGIN
+    DELETE FROM translation_units_fts WHERE rowid = old.rowid;
+END;
+
+-- Translation Versions FTS5 sync triggers (CONTENTLESS MODE)
+-- Uses version_id for identification instead of rowid mapping
+-- Note: Contentless FTS5 requires DELETE+INSERT for updates (no UPDATE support)
+CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_insert
+AFTER INSERT ON translation_versions
+WHEN new.translated_text IS NOT NULL
+BEGIN
+    INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+    VALUES (new.translated_text, new.validation_issues, new.id);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_update
+AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+BEGIN
+    -- Contentless FTS5: must DELETE then INSERT (cannot UPDATE)
+    DELETE FROM translation_versions_fts WHERE version_id = old.id;
+    INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+    SELECT new.translated_text, new.validation_issues, new.id
+    WHERE new.translated_text IS NOT NULL;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_delete
+AFTER DELETE ON translation_versions
+BEGIN
+    DELETE FROM translation_versions_fts WHERE version_id = old.id;
+END;
+
+-- Translation Memory FTS5 sync triggers
+CREATE TRIGGER IF NOT EXISTS trg_translation_memory_fts_insert AFTER INSERT ON translation_memory BEGIN
+    INSERT INTO translation_memory_fts(rowid, source_text, translated_text, game_context)
+    VALUES (new.rowid, new.source_text, new.translated_text, new.game_context);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_memory_fts_update AFTER UPDATE ON translation_memory BEGIN
+    UPDATE translation_memory_fts
+    SET source_text = new.source_text,
+        translated_text = new.translated_text,
+        game_context = new.game_context
+    WHERE rowid = new.rowid;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_translation_memory_fts_delete AFTER DELETE ON translation_memory BEGIN
+    DELETE FROM translation_memory_fts WHERE rowid = old.rowid;
+END;
+
+-- Workshop Mods FTS5 sync triggers
+CREATE TRIGGER IF NOT EXISTS trg_workshop_mods_fts_insert AFTER INSERT ON workshop_mods BEGIN
+    INSERT INTO workshop_mods_fts(rowid, title, tags)
+    VALUES (new.rowid, new.title, new.tags);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_workshop_mods_fts_update AFTER UPDATE ON workshop_mods BEGIN
+    UPDATE workshop_mods_fts
+    SET title = new.title,
+        tags = new.tags
+    WHERE rowid = new.rowid;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_workshop_mods_fts_delete AFTER DELETE ON workshop_mods BEGIN
+    DELETE FROM workshop_mods_fts WHERE rowid = old.rowid;
+END;
+
+-- Cache sync triggers
+CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_unit_change
+AFTER UPDATE ON translation_units
+BEGIN
+    UPDATE translation_view_cache
+    SET key = new.key,
+        source_text = new.source_text,
+        is_obsolete = new.is_obsolete,
+        unit_updated_at = new.updated_at
+    WHERE unit_id = new.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_version_change
+AFTER UPDATE ON translation_versions
+BEGIN
+    UPDATE translation_view_cache
+    SET translated_text = new.translated_text,
+        status = new.status,
+        confidence_score = new.confidence_score,
+        is_manually_edited = new.is_manually_edited,
+        version_id = new.id,
+        version_updated_at = new.updated_at
+    WHERE unit_id = new.unit_id
+      AND project_language_id = new.project_language_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_insert_cache_on_version_insert
+AFTER INSERT ON translation_versions
+BEGIN
+    INSERT OR REPLACE INTO translation_view_cache (
+        id, project_id, project_language_id, language_code, unit_id, version_id,
+        key, source_text, translated_text, status, confidence_score,
+        is_manually_edited, is_obsolete, unit_created_at, unit_updated_at, version_updated_at
+    )
+    SELECT
+        new.id || '_' || tu.id AS id,
+        tu.project_id,
+        new.project_language_id,
+        l.code,
+        tu.id,
+        new.id,
+        tu.key,
+        tu.source_text,
+        new.translated_text,
+        new.status,
+        new.confidence_score,
+        new.is_manually_edited,
+        tu.is_obsolete,
+        tu.created_at,
+        tu.updated_at,
+        new.updated_at
+    FROM translation_units tu
+    INNER JOIN project_languages pl ON pl.id = new.project_language_id
+    INNER JOIN languages l ON l.id = pl.language_id
+    WHERE tu.id = new.unit_id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_delete_cache_on_version_delete
+AFTER DELETE ON translation_versions
+BEGIN
+    DELETE FROM translation_view_cache WHERE version_id = old.id;
+END;
 
 -- Auto-update progress_percent
 CREATE TRIGGER IF NOT EXISTS trg_update_project_language_progress
@@ -615,30 +827,89 @@ BEGIN
 END;
 
 -- Auto-update timestamps
-
+-- IMPORTANT: All self-referential triggers MUST have WHEN clause to prevent infinite recursion
 CREATE TRIGGER IF NOT EXISTS trg_projects_updated_at
 AFTER UPDATE ON projects
+WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE projects SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_translation_units_updated_at
 AFTER UPDATE ON translation_units
+WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE translation_units SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_translation_versions_updated_at
 AFTER UPDATE ON translation_versions
+WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE translation_versions SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_glossaries_updated_at
+AFTER UPDATE ON glossaries
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE glossaries SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_glossary_entries_updated_at
+AFTER UPDATE ON glossary_entries
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE glossary_entries SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_workshop_mods_updated_at
+AFTER UPDATE ON workshop_mods
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE workshop_mods SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
+END;
+
+-- LLM Models triggers
+CREATE TRIGGER IF NOT EXISTS trg_llm_models_single_default
+BEFORE UPDATE OF is_default ON llm_provider_models
+WHEN NEW.is_default = 1
+BEGIN
+    UPDATE llm_provider_models
+    SET is_default = 0
+    WHERE provider_code = NEW.provider_code
+      AND id != NEW.id
+      AND is_default = 1;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_llm_models_updated_at
+AFTER UPDATE ON llm_provider_models
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE llm_provider_models
+    SET updated_at = strftime('%s', 'now')
+    WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_llm_models_prevent_enable_archived
+BEFORE UPDATE OF is_enabled ON llm_provider_models
+WHEN NEW.is_enabled = 1 AND NEW.is_archived = 1
+BEGIN
+    SELECT RAISE(ABORT, 'Cannot enable archived model');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_llm_models_prevent_default_archived
+BEFORE UPDATE OF is_default ON llm_provider_models
+WHEN NEW.is_default = 1 AND NEW.is_archived = 1
+BEGIN
+    SELECT RAISE(ABORT, 'Cannot set archived model as default');
 END;
 
 -- ============================================================================
 -- INITIAL REFERENCE DATA
 -- ============================================================================
 
--- Supported languages (alphabetical order)
+-- Supported languages
 INSERT OR IGNORE INTO languages (id, code, name, native_name, is_active) VALUES
 ('lang_de', 'de', 'German', 'Deutsch', 1),
 ('lang_en', 'en', 'English', 'English', 1),
@@ -647,16 +918,37 @@ INSERT OR IGNORE INTO languages (id, code, name, native_name, is_active) VALUES
 ('lang_fr', 'fr', 'French', 'Français', 1),
 ('lang_ru', 'ru', 'Russian', 'Русский', 1);
 
--- Translation providers (alphabetical order)
+-- Translation providers
 INSERT OR IGNORE INTO translation_providers (id, code, name, api_endpoint, default_model, max_context_tokens, max_batch_size, rate_limit_rpm, rate_limit_tpm, is_active, created_at) VALUES
-('provider_anthropic', 'anthropic', 'Anthropic Claude', 'https://api.anthropic.com/v1', 'claude-3-5-sonnet-20241022', 200000, 25, 50, 40000, 1, strftime('%s', 'now')),
-('provider_deepl', 'deepl', 'DeepL', 'https://api.deepl.com/v2', NULL, NULL, 50, 100, NULL, 1, strftime('%s', 'now')),
-('provider_openai', 'openai', 'OpenAI GPT', 'https://api.openai.com/v1', 'gpt-4-turbo-preview', 128000, 40, 60, 90000, 1, strftime('%s', 'now'));
+('provider_anthropic', 'anthropic', 'Anthropic Claude', 'https://api.anthropic.com/v1', 'claude-sonnet-4-5-20250929', 200000, 25, 50, 40000, 1, strftime('%s', 'now')),
+('provider_deepl', 'deepl', 'DeepL', 'https://api-free.deepl.com/v2', 'deepl-free', NULL, 50, 100, NULL, 1, strftime('%s', 'now')),
+('provider_openai', 'openai', 'OpenAI GPT', 'https://api.openai.com/v1', 'gpt-5.1-2025-11-13', 128000, 40, 60, 90000, 1, strftime('%s', 'now'));
 
 -- Default settings
 INSERT OR IGNORE INTO settings (id, key, value, value_type, updated_at) VALUES
-('setting_active_provider', 'active_translation_provider_id', 'provider_anthropic', 'string', strftime('%s', 'now')),
+('setting_active_provider', 'active_translation_provider_id', 'provider_openai', 'string', strftime('%s', 'now')),
 ('setting_default_game', 'default_game_installation_id', '', 'string', strftime('%s', 'now')),
 ('setting_game_prompts', 'default_game_context_prompts', '{}', 'json', strftime('%s', 'now')),
 ('setting_default_batch_size', 'default_batch_size', '25', 'integer', strftime('%s', 'now')),
-('setting_default_parallel_batches', 'default_parallel_batches', '3', 'integer', strftime('%s', 'now'));
+('setting_default_parallel_batches', 'default_parallel_batches', '5', 'integer', strftime('%s', 'now'));
+
+-- ============================================================================
+-- LLM MODELS SEED DATA
+-- ============================================================================
+
+-- Anthropic models
+INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
+VALUES
+('model_claude_sonnet_4_5', 'anthropic', 'claude-sonnet-4-5-20250929', 'Claude Sonnet 4.5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_claude_4_5_haiku', 'anthropic', 'claude-haiku-4-5-20251001', 'Claude 4.5 Haiku', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+
+-- OpenAI models
+INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
+VALUES
+('model_gpt_5_1', 'openai', 'gpt-5.1-2025-11-13', 'GPT-5.1', 1, 1, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+
+-- DeepL models (plans)
+INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
+VALUES
+('model_deepl_free', 'deepl', 'deepl-free', 'DeepL Free', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_deepl_pro', 'deepl', 'deepl-pro', 'DeepL Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));

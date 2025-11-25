@@ -61,4 +61,20 @@ abstract class ILocFileService {
     required String languageCode,
     required bool validatedOnly,
   });
+
+  /// Generate multiple .loc files grouped by original source file
+  ///
+  /// Creates separate TSV files for each distinct source .loc file in the project.
+  /// Each TSV file preserves the original internal path with a language prefix.
+  ///
+  /// [projectId]: ID of the project to export
+  /// [languageCode]: Language code (e.g., 'en', 'fr', 'de')
+  /// [validatedOnly]: If true, only export validated translations
+  ///
+  /// Returns a list of generated TSV file paths
+  Future<Result<List<String>, FileServiceException>> generateLocFilesGroupedBySource({
+    required String projectId,
+    required String languageCode,
+    required bool validatedOnly,
+  });
 }

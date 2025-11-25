@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/project.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
 
 /// Data source for Syncfusion DataGrid displaying mod projects
@@ -87,7 +86,7 @@ class ModsDataSource extends DataGridSource {
     final version = row.getCells()[3].value.toString();
     final status = row.getCells()[4].value as String;
     final updatedDate = row.getCells()[5].value as DateTime;
-    final timeAgo = timeago.format(updatedDate);
+    final daysSinceUpdate = _formatDaysSinceUpdate(updatedDate);
 
     // Performance: Wrap each cell in RepaintBoundary to isolate repaints
     return DataGridRowAdapter(
@@ -129,9 +128,9 @@ class ModsDataSource extends DataGridSource {
             child: _StatusBadge(status: status),
           ),
         ),
-        // Last Updated
+        // Last Updated (days since)
         RepaintBoundary(
-          child: _DataGridCell(text: timeAgo),
+          child: _DataGridCell(text: daysSinceUpdate),
         ),
       ],
     );
@@ -148,6 +147,31 @@ class ModsDataSource extends DataGridSource {
   Future<bool> handlePageChange(int oldPageIndex, int newPageIndex) async {
     // Page change support - can be implemented later
     return true;
+  }
+
+  /// Format the number of days since the last update
+  String _formatDaysSinceUpdate(DateTime updatedDate) {
+    final now = DateTime.now();
+    final difference = now.difference(updatedDate);
+    final days = difference.inDays;
+
+    if (days == 0) {
+      final hours = difference.inHours;
+      if (hours == 0) {
+        return '< 1h';
+      }
+      return '${hours}h';
+    } else if (days == 1) {
+      return '1 day';
+    } else if (days < 30) {
+      return '$days days';
+    } else if (days < 365) {
+      final months = (days / 30).floor();
+      return months == 1 ? '1 month' : '$months months';
+    } else {
+      final years = (days / 365).floor();
+      return years == 1 ? '1 year' : '$years years';
+    }
   }
 }
 

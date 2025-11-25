@@ -33,8 +33,9 @@ class TokenCalculator {
   factory TokenCalculator() => _instance;
 
   TokenCalculator._internal() {
-    // Initialize tiktoken with cl100k_base encoding
-    _encoding = encodingForModel('gpt-4');
+    // Initialize tiktoken with cl100k_base encoding (used by GPT-4, GPT-3.5, Claude)
+    // Using encoding name directly instead of model name for flexibility
+    _encoding = getEncoding('cl100k_base');
   }
 
   /// Calculate tokens for a single text

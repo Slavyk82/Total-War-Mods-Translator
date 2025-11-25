@@ -1,25 +1,19 @@
-import 'package:uuid/uuid.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/llm_provider_model.dart';
 import '../../repositories/llm_provider_model_repository.dart';
-import '../../services/llm/llm_provider_factory.dart';
 import '../shared/logging_service.dart';
 
 /// Service for managing LLM provider models.
 ///
-/// Handles fetching models from provider APIs, storing them in the database,
-/// archiving models that are no longer available, and managing model
-/// enabled/disabled/default status.
+/// Models are seeded in the database via migration. This service handles
+/// model enabled/disabled/default status management.
 class LlmModelManagementService {
   final LlmProviderModelRepository _repository;
-  final LlmProviderFactory _providerFactory;
   final LoggingService _logging;
-  final Uuid _uuid = const Uuid();
 
   LlmModelManagementService(
     this._repository,
-    this._providerFactory,
     this._logging,
   );
 
@@ -57,161 +51,10 @@ class LlmModelManagementService {
     return await _repository.getDefaultByProvider(providerCode);
   }
 
-  /// Fetch models from provider API and store in database.
-  ///
-  /// This method:
-  /// 1. Fetches models from the provider's API
-  /// 2. Creates or updates models in the database
-  /// 3. Archives models that are no longer returned by the API
-  /// 4. If no default is set and models exist, sets first enabled model as default
-  ///
-  /// [providerCode] - Provider to fetch models for ('anthropic', 'openai', etc.)
-  /// [apiKey] - API key for authentication
-  ///
-  /// Returns [Ok] with number of models fetched/updated, or [Err] with exception.
-  Future<Result<int, ServiceException>> fetchAndStoreModels(
-    String providerCode,
-    String apiKey,
-  ) async {
-    _logging.info('[LlmModelManagement] Fetching models for provider: $providerCode');
-
-    try {
-      // Get provider instance
-      final provider = _providerFactory.getProvider(providerCode);
-
-      // Fetch models from API
-      final result = await provider.fetchModels(apiKey);
-
-      if (result.isErr) {
-        final error = result.unwrapErr();
-        _logging.error('[LlmModelManagement] Failed to fetch models', error);
-        return Err(ServiceException(
-          'Failed to fetch models from $providerCode: ${error.message}',
-          error: error,
-        ));
-      }
-
-      final fetchedModels = result.unwrap();
-      _logging.debug('[LlmModelManagement] Fetched ${fetchedModels.length} models from API');
-
-      if (fetchedModels.isEmpty) {
-        _logging.info('[LlmModelManagement] No models returned by provider');
-        return const Ok(0);
-      }
-
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final fetchTimestamp = now;
-
-      // Get existing models from database
-      final existingResult = await _repository.getByProvider(providerCode);
-      if (existingResult.isErr) {
-        final error = existingResult.unwrapErr();
-        _logging.error('[LlmModelManagement] Failed to get existing models', error);
-        return Err(ServiceException(
-          'Failed to get existing models: ${error.message}',
-          error: error,
-        ));
-      }
-
-      final existingModels = existingResult.unwrap();
-      final existingModelMap = <String, LlmProviderModel>{
-        for (var model in existingModels) model.modelId: model
-      };
-
-      // Prepare models to upsert
-      final modelsToUpsert = <LlmProviderModel>[];
-
-      for (final fetchedModelInfo in fetchedModels) {
-        final existingModel = existingModelMap[fetchedModelInfo.id];
-
-        if (existingModel != null) {
-          // Update existing model
-          modelsToUpsert.add(existingModel.copyWith(
-            displayName: fetchedModelInfo.displayName,
-            isArchived: false, // Unarchive if it was archived
-            updatedAt: now,
-            lastFetchedAt: fetchTimestamp,
-          ));
-        } else {
-          // Create new model
-          modelsToUpsert.add(LlmProviderModel(
-            id: _uuid.v4(),
-            providerCode: providerCode,
-            modelId: fetchedModelInfo.id,
-            displayName: fetchedModelInfo.displayName,
-            isEnabled: false, // Start disabled by default
-            isDefault: false,
-            isArchived: false,
-            createdAt: now,
-            updatedAt: now,
-            lastFetchedAt: fetchTimestamp,
-          ));
-        }
-      }
-
-      // Upsert models
-      final upsertResult = await _repository.upsertMany(modelsToUpsert);
-      if (upsertResult.isErr) {
-        final error = upsertResult.unwrapErr();
-        _logging.error('[LlmModelManagement] Failed to upsert models', error);
-        return Err(ServiceException(
-          'Failed to save models: ${error.message}',
-          error: error,
-        ));
-      }
-
-      _logging.debug('[LlmModelManagement] Upserted ${modelsToUpsert.length} models');
-
-      // Archive models not in the fetched list
-      final archivedResult = await _repository.archiveStaleModels(
-        providerCode,
-        fetchTimestamp,
-      );
-
-      if (archivedResult.isErr) {
-        final error = archivedResult.unwrapErr();
-        _logging.error('[LlmModelManagement] Failed to archive stale models', error);
-        // Don't fail the whole operation, just log the error
-      } else {
-        final archivedCount = archivedResult.unwrap();
-        if (archivedCount > 0) {
-          _logging.info('[LlmModelManagement] Archived $archivedCount stale models');
-        }
-      }
-
-      // Check if a default model is set
-      final defaultResult = await _repository.getDefaultByProvider(providerCode);
-      if (defaultResult.isOk) {
-        final defaultModel = defaultResult.unwrap();
-        if (defaultModel == null) {
-          // No default set, set first available model as default
-          _logging.debug('[LlmModelManagement] No default model set, setting first available as default');
-          if (modelsToUpsert.isNotEmpty) {
-            final firstModel = modelsToUpsert.first;
-            final setDefaultResult = await _repository.setAsDefault(firstModel.id);
-            if (setDefaultResult.isErr) {
-              _logging.error(
-                '[LlmModelManagement] Failed to set default model',
-                setDefaultResult.unwrapErr(),
-              );
-            } else {
-              // Also enable the default model
-              await _repository.enable(firstModel.id);
-            }
-          }
-        }
-      }
-
-      _logging.info('[LlmModelManagement] Successfully fetched and stored ${fetchedModels.length} models');
-      return Ok(fetchedModels.length);
-    } catch (e, stackTrace) {
-      _logging.error('[LlmModelManagement] Unexpected error fetching models', e, stackTrace);
-      return Err(ServiceException(
-        'Unexpected error fetching models: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
-    }
+  /// Get the global default model (only one can exist across all providers).
+  Future<Result<LlmProviderModel?, TWMTDatabaseException>> getGlobalDefaultModel() async {
+    _logging.debug('[LlmModelManagement] Getting global default model');
+    return await _repository.getGlobalDefault();
   }
 
   /// Enable a model for use.

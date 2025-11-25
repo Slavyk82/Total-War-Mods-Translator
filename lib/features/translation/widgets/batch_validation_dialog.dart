@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:file_picker/file_picker.dart';
@@ -13,24 +12,43 @@ import '../../../providers/batch/batch_operations_provider.dart';
 /// - Filter options (errors only, warnings only)
 /// - Auto-fix capability for common issues
 /// - Export validation report
-class BatchValidationDialog extends ConsumerStatefulWidget {
+class BatchValidationDialog extends StatefulWidget {
   const BatchValidationDialog({
     super.key,
+    required this.issues,
+    required this.totalValidated,
+    required this.passedCount,
     required this.onAutoFix,
     required this.onExportReport,
   });
 
+  final List<ValidationIssue> issues;
+  final int totalValidated;
+  final int passedCount;
   final VoidCallback onAutoFix;
   final Function(String filePath) onExportReport;
 
   @override
-  ConsumerState<BatchValidationDialog> createState() => _BatchValidationDialogState();
+  State<BatchValidationDialog> createState() => _BatchValidationDialogState();
 }
 
-class _BatchValidationDialogState extends ConsumerState<BatchValidationDialog> {
+class _BatchValidationDialogState extends State<BatchValidationDialog> {
+  bool _showOnlyErrors = false;
+  bool _showOnlyWarnings = false;
+
+  BatchValidationState get _validationState {
+    return BatchValidationState(
+      issues: widget.issues,
+      totalValidated: widget.totalValidated,
+      passedCount: widget.passedCount,
+      showOnlyErrors: _showOnlyErrors,
+      showOnlyWarnings: _showOnlyWarnings,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final validationState = ref.watch(batchValidationResultsProvider);
+    final validationState = _validationState;
 
     return Dialog(
       child: Container(
@@ -79,16 +97,22 @@ class _BatchValidationDialogState extends ConsumerState<BatchValidationDialog> {
                 _buildFilterChip(
                   label: 'Show Errors Only',
                   icon: FluentIcons.error_circle_24_regular,
-                  isActive: validationState.showOnlyErrors,
-                  onTap: () => ref.read(batchValidationResultsProvider.notifier).toggleShowOnlyErrors(),
+                  isActive: _showOnlyErrors,
+                  onTap: () => setState(() {
+                    _showOnlyErrors = !_showOnlyErrors;
+                    _showOnlyWarnings = false;
+                  }),
                   color: Colors.red[700]!,
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(
                   label: 'Show Warnings Only',
                   icon: FluentIcons.warning_24_regular,
-                  isActive: validationState.showOnlyWarnings,
-                  onTap: () => ref.read(batchValidationResultsProvider.notifier).toggleShowOnlyWarnings(),
+                  isActive: _showOnlyWarnings,
+                  onTap: () => setState(() {
+                    _showOnlyWarnings = !_showOnlyWarnings;
+                    _showOnlyErrors = false;
+                  }),
                   color: Colors.orange[700]!,
                 ),
               ],

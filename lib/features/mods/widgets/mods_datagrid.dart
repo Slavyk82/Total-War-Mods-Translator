@@ -108,15 +108,19 @@ class _ModsDataGridState extends State<ModsDataGrid> {
             GridColumn(
               columnName: 'image',
               width: 64,
-              label: _buildColumnHeader(
-                context,
-                '',
-                FluentIcons.image_24_regular,
+              allowFiltering: false,
+              allowSorting: false,
+              label: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHigh,
+                ),
               ),
             ),
             GridColumn(
               columnName: 'workshop_id',
-              width: 140,
+              width: 130,
               label: _buildColumnHeader(
                 context,
                 'Workshop ID',
@@ -170,22 +174,6 @@ class _ModsDataGridState extends State<ModsDataGrid> {
     IconData icon,
   ) {
     final theme = Theme.of(context);
-
-    // For columns with no title (like image column), show only icon centered
-    if (title.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHigh,
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: theme.colorScheme.primary,
-        ),
-      );
-    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8),

@@ -68,24 +68,24 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // By Category
+          // By Language
           Text(
-            'By Category',
+            'By Language',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
           const SizedBox(height: 8),
-          if (stats.entriesByCategory.isEmpty)
+          if (stats.entriesByLanguagePair.isEmpty)
             Text(
-              'No categories',
+              'No languages',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
             )
           else
-            ...stats.entriesByCategory.entries
-                .map((entry) => _buildCategoryItem(context, entry.key, entry.value)),
+            ...stats.entriesByLanguagePair.entries
+                .map((entry) => _buildLanguageItem(context, entry.key, entry.value)),
           const SizedBox(height: 16),
 
           // Usage Stats
@@ -241,20 +241,20 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, String category, int count) {
+  Widget _buildLanguageItem(BuildContext context, String language, int count) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
           Icon(
-            FluentIcons.circle_small_24_filled,
+            FluentIcons.globe_24_regular,
             size: 16,
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              category,
+              language.toUpperCase(),
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),

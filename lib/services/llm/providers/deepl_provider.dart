@@ -5,7 +5,6 @@ import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/llm/models/llm_model_info.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 
 /// DeepL provider implementation
@@ -17,6 +16,24 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 class DeepLProvider implements ILlmProvider {
   final Dio _dio;
   final TokenCalculator _tokenCalculator = TokenCalculator();
+
+  // XML placeholder for literal \n sequences (DeepL preserves XML tags)
+  static const _newlinePlaceholder = '<x id="nl"/>';
+  static final _newlinePlaceholderPattern = RegExp(r'<x\s+id="nl"\s*/?>');
+
+  /// Preprocess text before sending to DeepL
+  /// Converts literal \n sequences to XML placeholders
+  String _preprocessText(String text) {
+    // Replace literal \n (backslash + n) with XML placeholder
+    return text.replaceAll(r'\n', _newlinePlaceholder);
+  }
+
+  /// Postprocess text after receiving from DeepL
+  /// Restores literal \n sequences from XML placeholders
+  String _postprocessText(String text) {
+    // Restore literal \n from XML placeholder
+    return text.replaceAll(_newlinePlaceholderPattern, r'\n');
+  }
 
   @override
   final String providerCode = 'deepl';
@@ -55,8 +72,9 @@ class DeepLProvider implements ILlmProvider {
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
     LlmRequest request,
-    String apiKey,
-  ) async {
+    String apiKey, {
+    CancelToken? cancelToken,
+  }) async {
     final startTime = DateTime.now();
 
     try {
@@ -64,14 +82,19 @@ class DeepLProvider implements ILlmProvider {
       _updateBaseUrl(apiKey);
 
       // DeepL API supports batch translation - send all texts at once
-      final texts = request.texts.values.toList();
+      // Preprocess texts to convert \n to XML placeholders
+      final texts = request.texts.values.map(_preprocessText).toList();
 
       // Build request payload
+      // tag_handling: 'xml' preserves XML-like tags in translation
+      // split_sentences: 'nonewlines' prevents sentence splitting at newlines
       final payload = {
         'text': texts,
         'target_lang': _mapLanguageCode(request.targetLanguage),
         'formality': 'default',
         'preserve_formatting': true,
+        'tag_handling': 'xml',
+        'split_sentences': 'nonewlines',
       };
 
       // Add glossary if available (would need to be created beforehand)
@@ -81,6 +104,7 @@ class DeepLProvider implements ILlmProvider {
       final response = await _dio.post(
         '/translate',
         data: payload,
+        cancelToken: cancelToken,
         options: Options(
           headers: {
             'Authorization': 'DeepL-Auth-Key $apiKey',
@@ -243,14 +267,6 @@ class DeepLProvider implements ILlmProvider {
     }
   }
 
-  @override
-  Future<Result<List<LlmModelInfo>, LlmProviderException>> fetchModels(
-    String apiKey,
-  ) async {
-    // DeepL doesn't have multiple models, so return an empty list
-    return const Ok([]);
-  }
-
   /// Parse API response
   LlmResponse _parseResponse(
     Map<String, dynamic> data,
@@ -275,7 +291,8 @@ class DeepLProvider implements ILlmProvider {
       for (var i = 0; i < translationsList.length; i++) {
         final translation = translationsList[i] as Map<String, dynamic>;
         final translatedText = translation['text'] as String;
-        translations[keys[i]] = translatedText;
+        // Postprocess to restore \n from XML placeholders
+        translations[keys[i]] = _postprocessText(translatedText);
       }
 
       // Calculate character count
@@ -291,7 +308,7 @@ class DeepLProvider implements ILlmProvider {
         requestId: request.requestId,
         translations: translations,
         providerCode: providerCode,
-        modelName: 'deepl-pro', // DeepL doesn't have different models
+        modelName: request.modelName ?? 'deepl', // Use request model or default
         inputTokens: totalCharacters, // Characters, not tokens
         outputTokens: 0, // DeepL doesn't charge for output separately
         totalTokens: totalCharacters,
@@ -586,7 +603,8 @@ class DeepLProvider implements ILlmProvider {
     final startTime = DateTime.now();
 
     try {
-      final texts = request.texts.values.toList();
+      // Preprocess texts to convert \n to XML placeholders
+      final texts = request.texts.values.map(_preprocessText).toList();
 
       final payload = {
         'text': texts,
@@ -594,6 +612,8 @@ class DeepLProvider implements ILlmProvider {
         'glossary_id': glossaryId,
         'formality': 'default',
         'preserve_formatting': true,
+        'tag_handling': 'xml',
+        'split_sentences': 'nonewlines',
       };
 
       final response = await _dio.post(

@@ -39,13 +39,11 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
           ? glossaryEntriesProvider(
               glossaryId: widget.glossaryId,
               targetLanguageCode: filterState.targetLanguage,
-              category: filterState.category,
             )
           : glossarySearchResultsProvider(
               query: filterState.searchText,
               glossaryIds: [widget.glossaryId],
               targetLanguageCode: filterState.targetLanguage,
-              category: filterState.category,
             ),
     );
 
@@ -129,20 +127,6 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
           ),
         ),
         GridColumn(
-          columnName: 'category',
-          width: 120,
-          label: Container(
-            padding: const EdgeInsets.all(8.0),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Category',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ),
-        ),
-        GridColumn(
           columnName: 'caseSensitive',
           width: 80,
           label: Container(
@@ -177,7 +161,6 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
   Widget _buildEmptyState() {
     final filterState = ref.watch(glossaryFilterStateProvider);
     final hasFilters = filterState.searchText.isNotEmpty ||
-        filterState.category != null ||
         filterState.targetLanguage != null;
 
     return Center(
@@ -286,7 +269,6 @@ class GlossaryEntryDataSource extends DataGridSource {
       return DataGridRow(cells: [
         DataGridCell<String>(columnName: 'sourceTerm', value: entry.sourceTerm),
         DataGridCell<String>(columnName: 'targetTerm', value: entry.targetTerm),
-        DataGridCell<String>(columnName: 'category', value: entry.categoryDisplay),
         DataGridCell<bool>(columnName: 'caseSensitive', value: entry.caseSensitive),
         DataGridCell<GlossaryEntry>(columnName: 'actions', value: entry),
       ]);
@@ -309,13 +291,9 @@ class GlossaryEntryDataSource extends DataGridSource {
         RepaintBoundary(
           child: GlossaryTextCell(text: cells[1].value?.toString() ?? ''),
         ),
-        // Category
-        RepaintBoundary(
-          child: GlossaryTextCell(text: cells[2].value?.toString() ?? ''),
-        ),
         // Case sensitive
         RepaintBoundary(
-          child: CaseSensitiveCell(isCaseSensitive: cells[3].value as bool),
+          child: CaseSensitiveCell(isCaseSensitive: cells[2].value as bool),
         ),
         // Actions
         RepaintBoundary(

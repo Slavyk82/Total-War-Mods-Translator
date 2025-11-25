@@ -4,6 +4,9 @@ import 'package:uuid/uuid.dart';
 import '../../../models/domain/translation_batch.dart';
 import '../../../models/domain/translation_batch_unit.dart';
 import '../../../services/translation/models/translation_context.dart';
+import '../../../repositories/glossary_repository.dart';
+import '../../../services/glossary/glossary_filter_service.dart';
+import '../../../services/service_locator.dart';
 import '../providers/editor_providers.dart';
 
 /// Helper for managing translation batch creation and execution
@@ -174,18 +177,23 @@ class TranslationBatchHelper {
     required String projectLanguageId,
     required String providerId,
     String? modelId,
+    int? unitsPerBatch,
+    int? parallelBatches,
   }) async {
     try {
       final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
       final languageRepo = ref.read(languageRepositoryProvider);
+      final glossaryRepo = ServiceLocator.get<GlossaryRepository>();
       final logging = ref.read(loggingServiceProvider);
 
       // Get project language to determine target language
       final projectLanguageResult = await projectLanguageRepo.getById(projectLanguageId);
       String targetLanguage = 'en'; // Default fallback
+      String? languageId;
 
       if (projectLanguageResult.isOk) {
         final projectLanguage = projectLanguageResult.unwrap();
+        languageId = projectLanguage.languageId;
 
         // Get the actual language entity to retrieve the language code
         final languageResult = await languageRepo.getById(projectLanguage.languageId);
@@ -204,11 +212,34 @@ class TranslationBatchHelper {
         );
       }
 
+      // Load glossary entries with variant support for this project and target language
+      // The full glossary is loaded here; filtering happens per-batch in PromptBuilderService
+      final glossaryFilterService = GlossaryFilterService(glossaryRepo);
+      var glossaryEntries = await glossaryFilterService.loadAllTerms(
+        projectId: projectId,
+        targetLanguageId: languageId ?? '',
+        targetLanguageCode: targetLanguage,
+      );
+
+      if (glossaryEntries.isNotEmpty) {
+        logging.info('Loaded glossary entries with variants', {
+          'projectId': projectId,
+          'languageId': languageId,
+          'termCount': glossaryEntries.length,
+          'variantCount': glossaryEntries.fold<int>(
+            0,
+            (sum, e) => sum + e.variants.length,
+          ),
+        });
+      }
+
       // DEBUG: Log TranslationContext creation
       print('[DEBUG] buildTranslationContext:');
       print('[DEBUG]   - providerId: $providerId');
       print('[DEBUG]   - modelId: $modelId');
       print('[DEBUG]   - targetLanguage: $targetLanguage');
+      print('[DEBUG]   - glossaryEntries: ${glossaryEntries.length} terms');
+      print('[DEBUG]   - total variants: ${glossaryEntries.fold<int>(0, (sum, e) => sum + e.variants.length)}');
 
       return TranslationContext(
         id: const Uuid().v4(),
@@ -217,6 +248,9 @@ class TranslationBatchHelper {
         providerId: providerId,
         modelId: modelId,
         targetLanguage: targetLanguage,
+        glossaryEntries: glossaryEntries.isEmpty ? null : glossaryEntries,
+        unitsPerBatch: unitsPerBatch ?? 100,
+        parallelBatches: parallelBatches ?? 1,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -235,6 +269,8 @@ class TranslationBatchHelper {
         providerId: providerId,
         modelId: modelId,
         targetLanguage: 'en',
+        unitsPerBatch: unitsPerBatch ?? 100,
+        parallelBatches: parallelBatches ?? 1,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

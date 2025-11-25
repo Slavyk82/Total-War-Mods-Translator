@@ -1,8 +1,8 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import '../models/common/result.dart';
-import '../models/common/service_exception.dart';
-import '../services/shared/logging_service.dart';
-import '../services/database/database_service.dart';
+import '../../models/common/result.dart';
+import '../../models/common/service_exception.dart';
+import '../shared/logging_service.dart';
+import '../database/database_service.dart';
 
 /// Highly optimized project deletion service - Version 2
 ///
@@ -478,8 +478,11 @@ class ProjectDeletionServiceV2 {
   /// Rebuild FTS5 indexes (faster than selective cleanup for large deletions)
   Future<void> _rebuildFts5(Database db) async {
     // Rebuild instead of selective deletion - much faster for large changes
+    // Note: Only rebuild external content FTS5 tables
+    // translation_versions_fts uses contentless mode (content='') and cannot be rebuilt
+    // Its entries are managed by triggers on translation_versions
     await db.execute("INSERT INTO translation_units_fts(translation_units_fts) VALUES('rebuild')");
-    await db.execute("INSERT INTO translation_versions_fts(translation_versions_fts) VALUES('rebuild')");
+    // translation_versions_fts: contentless FTS5 - 'rebuild' not supported, triggers handle cleanup
   }
 
   /// Get counts of related data for a project

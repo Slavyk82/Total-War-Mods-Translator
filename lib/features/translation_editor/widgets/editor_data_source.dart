@@ -15,8 +15,8 @@ class EditorDataSource extends DataGridSource {
   List<TranslationRow> _rows = [];
   final Function(String unitId, String newText) onCellEdit;
   final Function(String unitId) onCellTap;
-  final Function(String unitId) onCheckboxTap;
-  final bool Function(String unitId) isRowSelected;
+  Function(String unitId) onCheckboxTap;
+  bool Function(String unitId) isRowSelected;
 
   // Performance: Cache for DataGridRow objects to avoid rebuilding unchanged rows
   final Map<int, DataGridRow> _rowCache = {};
@@ -42,6 +42,11 @@ class EditorDataSource extends DataGridSource {
 
   /// Get all unit IDs
   List<String> get allUnitIds => _rows.map((row) => row.id).toList();
+
+  /// Notify listeners to refresh display (e.g., after selection change)
+  void refreshDisplay() {
+    notifyListeners();
+  }
 
   @override
   List<DataGridRow> get rows => _rows.asMap().entries.map((entry) {
@@ -114,7 +119,8 @@ class EditorDataSource extends DataGridSource {
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
 
-    // Performance: Wrap each cell in RepaintBoundary to isolate repaints
+    // Performance: Wrap cells in RepaintBoundary except multiline text cells
+    // which need to expand freely
     return DataGridRowAdapter(
       cells: [
         RepaintBoundary(
@@ -125,8 +131,9 @@ class EditorDataSource extends DataGridSource {
         ),
         RepaintBoundary(child: StatusCellRenderer(status: statusCell.value)),
         RepaintBoundary(child: TextCellRenderer(text: keyCell.value, isKey: true)),
-        RepaintBoundary(child: TextCellRenderer(text: sourceTextCell.value)),
-        RepaintBoundary(child: TextCellRenderer(text: translatedTextCell.value)),
+        // Don't wrap multiline text cells in RepaintBoundary to allow proper height expansion
+        TextCellRenderer(text: sourceTextCell.value),
+        TextCellRenderer(text: translatedTextCell.value),
         RepaintBoundary(child: TextCellRenderer(text: tmSourceCell.value)),
         RepaintBoundary(child: ConfidenceCellRenderer(confidence: confidenceCell.value)),
         RepaintBoundary(child: const ActionsCellRenderer()),

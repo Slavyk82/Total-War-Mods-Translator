@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<martif type="TBX" xml:lang="en">
+  <martifHeader>
+    <fileDesc>
+      <sourceDesc>
+        <p>Total War Glossary Sample</p>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <p type="DCSName">TBX-Basic</p>
+    </encodingDesc>
+  </martifHeader>
+  <text>
+    <body>
+      <termEntry id="term_001">
+        <langSet xml:lang="en">
+          <tig>
+            <term>file</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="fr">
+          <tig>
+            <term>fichier</term>
+          </tig>
+        </langSet>
+        <descripGrp>
+          <descrip type="definition">A computer file containing game data</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="subjectField">Computing</descrip>
+        </descripGrp>
+      </termEntry>
+      <termEntry id="term_002">
+        <langSet xml:lang="en">
+          <tig>
+            <term>faction</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="fr">
+          <tig>
+            <term>faction</term>
+          </tig>
+        </langSet>
+        <descripGrp>
+          <descrip type="definition">A playable group or nation in the game</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="subjectField">Game Mechanics</descrip>
+        </descripGrp>
+      </termEntry>
+      <termEntry id="term_003">
+        <langSet xml:lang="en">
+          <tig>
+            <term>battle</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="es">
+          <tig>
+            <term>batalla</term>
+          </tig>
+        </langSet>
+        <descripGrp>
+          <descrip type="definition">A military engagement between armies</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="subjectField">Military</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="note">Case-sensitive matching</descrip>
+        </descripGrp>
+      </termEntry>
+      <termEntry id="term_004">
+        <langSet xml:lang="en">
+          <tig>
+            <term>campaign</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="de">
+          <tig>
+            <term>Kampagne</term>
+          </tig>
+        </langSet>
+        <descripGrp>
+          <descrip type="definition">A series of military operations</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="subjectField">Military</descrip>
+        </descripGrp>
+      </termEntry>
+      <termEntry id="term_005">
+        <langSet xml:lang="en">
+          <tig>
+            <term>unit</term>
+            <termNote type="partOfSpeech">noun</termNote>
+          </tig>
+        </langSet>
+        <langSet xml:lang="ja">
+          <tig>
+            <term>ユニット</term>
+          </tig>
+        </langSet>
+        <descripGrp>
+          <descrip type="definition">A group of soldiers or a military formation</descrip>
+        </descripGrp>
+        <descripGrp>
+          <descrip type="subjectField">Game Units</descrip>
+        </descripGrp>
+      </termEntry>
+    </body>
+  </text>
+</martif>

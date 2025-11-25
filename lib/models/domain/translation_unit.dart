@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'language.dart' show BoolIntConverter;
+import 'package:twmt/models/common/json_converters.dart';
 
 part 'translation_unit.g.dart';
 
@@ -30,6 +30,11 @@ class TranslationUnit {
   /// Additional notes or instructions for translators
   final String? notes;
 
+  /// Original .loc file path within the source pack
+  /// e.g., "text/db/something__.loc" 
+  @JsonKey(name: 'source_loc_file')
+  final String? sourceLocFile;
+
   /// Whether this unit is obsolete (removed from current mod version)
   @JsonKey(name: 'is_obsolete')
   @BoolIntConverter()
@@ -50,6 +55,7 @@ class TranslationUnit {
     required this.sourceText,
     this.context,
     this.notes,
+    this.sourceLocFile,
     this.isObsolete = false,
     required this.createdAt,
     required this.updatedAt,
@@ -66,6 +72,9 @@ class TranslationUnit {
 
   /// Returns true if the unit has additional information (context or notes)
   bool get hasAdditionalInfo => hasContext || hasNotes;
+
+  /// Returns true if the unit has a source .loc file path
+  bool get hasSourceLocFile => sourceLocFile != null && sourceLocFile!.isNotEmpty;
 
   /// Returns the source text truncated to a maximum length
   String getSourceTextPreview([int maxLength = 100]) {
@@ -90,6 +99,7 @@ class TranslationUnit {
     String? sourceText,
     String? context,
     String? notes,
+    String? sourceLocFile,
     bool? isObsolete,
     int? createdAt,
     int? updatedAt,
@@ -101,6 +111,7 @@ class TranslationUnit {
       sourceText: sourceText ?? this.sourceText,
       context: context ?? this.context,
       notes: notes ?? this.notes,
+      sourceLocFile: sourceLocFile ?? this.sourceLocFile,
       isObsolete: isObsolete ?? this.isObsolete,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -122,6 +133,7 @@ class TranslationUnit {
         other.sourceText == sourceText &&
         other.context == context &&
         other.notes == notes &&
+        other.sourceLocFile == sourceLocFile &&
         other.isObsolete == isObsolete &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
@@ -135,6 +147,7 @@ class TranslationUnit {
       sourceText.hashCode ^
       context.hashCode ^
       notes.hashCode ^
+      sourceLocFile.hashCode ^
       isObsolete.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;

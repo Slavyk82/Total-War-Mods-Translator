@@ -293,7 +293,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Check models to make them available for translations. Click the star to set a model as default.',
+              'Check models to make them available for translations. Click the star to set a model as global default (only one default across all providers).',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ),

@@ -173,17 +173,18 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     final service = ref.read(settingsServiceProvider);
 
     // Load non-sensitive settings from database
+    // Models are NOT hardcoded - empty string means "use DB default"
     final provider = await service.getString(
       SettingsKeys.activeProvider,
-      defaultValue: 'anthropic',
+      defaultValue: 'openai',
     );
     final anthropicModel = await service.getString(
       SettingsKeys.anthropicModel,
-      defaultValue: 'claude-3-5-sonnet-20241022',
+      defaultValue: '', // Model loaded from DB if empty
     );
     final openaiModel = await service.getString(
       SettingsKeys.openaiModel,
-      defaultValue: 'gpt-4-turbo',
+      defaultValue: '', // Model loaded from DB if empty
     );
     final deeplPlan = await service.getString(
       SettingsKeys.deeplPlan,
@@ -260,23 +261,16 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     print('[LlmProviderSettings] testConnection called for: $providerCode');
 
     try {
-      final service = ref.read(settingsServiceProvider);
-
-      // Get API key and model for the provider
+      // Get API key for the provider
       String? apiKey;
-      String? model;
       switch (providerCode) {
         case 'anthropic':
           apiKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey);
-          model = await service.getString(SettingsKeys.anthropicModel);
           print('[LlmProviderSettings] Anthropic API key loaded: ${apiKey != null ? "Yes (${apiKey.length} chars)" : "No"}');
-          print('[LlmProviderSettings] Anthropic model: $model');
           break;
         case 'openai':
           apiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey);
-          model = await service.getString(SettingsKeys.openaiModel);
           print('[LlmProviderSettings] OpenAI API key loaded: ${apiKey != null ? "Yes (${apiKey.length} chars)" : "No"}');
-          print('[LlmProviderSettings] OpenAI model: $model');
           break;
         case 'deepl':
           apiKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey);
@@ -293,6 +287,25 @@ class LlmProviderSettings extends _$LlmProviderSettings {
         return (false, 'No API key configured');
       }
 
+      // Get the first enabled model for this provider (required for validation)
+      String? effectiveModel;
+      if (providerCode != 'deepl') {
+        final modelService = ref.read(llmModelManagementServiceProvider);
+        final modelsResult = await modelService.getEnabledModelsByProvider(providerCode);
+        if (modelsResult.isOk) {
+          final models = modelsResult.unwrap();
+          if (models.isNotEmpty) {
+            effectiveModel = models.first.modelId;
+            print('[LlmProviderSettings] Using first enabled model for validation: $effectiveModel');
+          }
+        }
+        
+        if (effectiveModel == null) {
+          print('[LlmProviderSettings] No enabled model found for $providerCode');
+          return (false, 'No model enabled. Enable at least one model to test the connection.');
+        }
+      }
+
       print('[LlmProviderSettings] Getting provider factory...');
       // Get provider instance and test connection
       final providerFactory = ServiceLocator.get<LlmProviderFactory>();
@@ -300,8 +313,8 @@ class LlmProviderSettings extends _$LlmProviderSettings {
       final provider = providerFactory.getProvider(providerCode);
       print('[LlmProviderSettings] Provider instance obtained: ${provider.providerName}');
 
-      print('[LlmProviderSettings] Calling validateApiKey with model: $model...');
-      final result = await provider.validateApiKey(apiKey, model: model);
+      print('[LlmProviderSettings] Calling validateApiKey with model: $effectiveModel...');
+      final result = await provider.validateApiKey(apiKey, model: effectiveModel);
       print('[LlmProviderSettings] validateApiKey returned: ${result.isOk ? "OK" : "ERROR"}');
 
       if (result.isOk) {
@@ -319,49 +332,16 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     }
   }
 
-  Future<List<String>?> fetchModels(String providerCode) async {
-    try {
-      // Get API key for the provider
-      String? apiKey;
-      switch (providerCode) {
-        case 'anthropic':
-          apiKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey);
-          break;
-        case 'openai':
-          apiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey);
-          break;
-        case 'deepl':
-          // DeepL doesn't have model selection
-          return null;
-        default:
-          return null;
-      }
-
-      // Check if API key exists
-      if (apiKey == null || apiKey.isEmpty) {
-        return null;
-      }
-
-      // Get provider instance and fetch models
-      final providerFactory = ServiceLocator.get<LlmProviderFactory>();
-      final provider = providerFactory.getProvider(providerCode);
-
-      final result = await provider.fetchModels(apiKey);
-      if (result.isOk) {
-        return result.unwrap().map((model) => model.id).toList();
-      }
-
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
   Future<void> resetToDefaults() async {
     final service = ref.read(settingsServiceProvider);
-    await service.setString(SettingsKeys.activeProvider, 'anthropic');
-    await service.setString(SettingsKeys.anthropicModel, 'claude-3-5-sonnet-20241022');
-    await service.setString(SettingsKeys.openaiModel, 'gpt-4-turbo');
+    
+    // Reset provider to default (uses global default model from DB)
+    await service.setString(SettingsKeys.activeProvider, 'openai');
+    
+    // Clear model settings - empty means "use DB default model"
+    await service.setString(SettingsKeys.anthropicModel, '');
+    await service.setString(SettingsKeys.openaiModel, '');
+    
     await service.setString(SettingsKeys.deeplPlan, 'free');
     await service.setInt(SettingsKeys.rateLimit, 100);
 
@@ -386,25 +366,6 @@ class LlmModels extends _$LlmModels {
       ok: (models) => models,
       err: (_) => [],
     );
-  }
-
-  /// Fetch models from provider API and store in database
-  Future<(bool, String?)> fetchAndStoreModels(String apiKey) async {
-    print('[LlmModels] Fetching models for provider: $providerCode');
-
-    final service = ref.read(llmModelManagementServiceProvider);
-    final result = await service.fetchAndStoreModels(providerCode, apiKey);
-
-    if (result.isOk) {
-      print('[LlmModels] Successfully fetched ${result.unwrap()} models');
-      // Refresh the models list
-      ref.invalidateSelf();
-      return (true, null);
-    } else {
-      final error = result.unwrapErr();
-      print('[LlmModels] Failed to fetch models: ${error.message}');
-      return (false, error.message);
-    }
   }
 
   /// Enable a model
@@ -443,21 +404,54 @@ class LlmModels extends _$LlmModels {
     }
   }
 
-  /// Set a model as default for the provider
+  /// Set a model as the global default.
+  ///
+  /// Only one model can be default at a time across all providers.
+  /// Also updates the global active provider setting to this provider,
+  /// so the model becomes the "favorite" for translations.
+  /// Note: DeepL is not set as the active LLM provider since it's a
+  /// translation API, not an LLM for batch translation.
   Future<(bool, String?)> setAsDefault(String modelId) async {
-    print('[LlmModels] Setting model as default: $modelId');
+    print('[LlmModels] Setting model as global default: $modelId');
 
     final service = ref.read(llmModelManagementServiceProvider);
     final result = await service.setDefaultModel(modelId);
 
     if (result.isOk) {
-      print('[LlmModels] Successfully set model as default');
+      print('[LlmModels] Successfully set model as global default');
+
+      // Also set this provider as the global active provider
+      // This makes clicking the star set both the default model AND the favorite provider
+      // Skip DeepL - it's a translation API, not an LLM for batch translation
+      if (providerCode != 'deepl') {
+        print('[LlmModels] Setting $providerCode as active global provider');
+        await ref.read(llmProviderSettingsProvider.notifier).updateActiveProvider(providerCode);
+      } else {
+        print('[LlmModels] Skipping DeepL as active global provider (not an LLM)');
+      }
+
+      // Invalidate all provider model lists since default is now global
+      _invalidateAllProviderModels();
+      // Also invalidate self to refresh current provider's list
       ref.invalidateSelf();
       return (true, null);
     } else {
       final error = result.unwrapErr();
-      print('[LlmModels] Failed to set default model: ${error.message}');
+      print('[LlmModels] Failed to set global default model: ${error.message}');
       return (false, error.message);
+    }
+  }
+
+  /// Invalidate model lists for all known providers.
+  ///
+  /// Excludes the current provider to avoid self-invalidation error.
+  void _invalidateAllProviderModels() {
+    const providers = ['anthropic', 'openai', 'deepl'];
+    for (final provider in providers) {
+      // Skip current provider to avoid self-invalidation error
+      if (provider != providerCode) {
+        ref.invalidate(llmModelsProvider(provider));
+      }
     }
   }
 

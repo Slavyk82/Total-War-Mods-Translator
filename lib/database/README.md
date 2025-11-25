@@ -21,14 +21,12 @@ lib/
 ├── config/
 │   └── database_config.dart          # Database configuration and path management
 ├── database/
-│   ├── schema.sql                    # Complete database schema (v1)
-│   ├── migrations/
-│   │   └── migration_v1.dart         # Initial migration
+│   ├── schema.sql                    # Complete database schema
 │   └── README.md                     # This file
 └── services/
     └── database/
         ├── database_service.dart     # Core database service (singleton)
-        └── migration_service.dart    # Migration management
+        └── migration_service.dart    # Schema initialization
 ```
 
 ## Database Location
@@ -267,7 +265,7 @@ Application settings.
 - `default_game_installation_id`: Default game
 - `default_game_context_prompts`: Game-specific prompts (JSON)
 - `default_batch_size`: Default batch size (25)
-- `default_parallel_batches`: Default parallel batches (3)
+- `default_parallel_batches`: Default parallel batches (5)
 
 ## Performance Features
 
@@ -379,68 +377,36 @@ final needsReview = await DatabaseService.rawQuery(
 - `trg_translation_units_updated_at`: Auto-update translation_units.updated_at
 - `trg_translation_versions_updated_at`: Auto-update translation_versions.updated_at
 
-## Migrations
+## Schema Initialization
 
 ### Current Version: 1
 
-Migration v1 includes:
+The database schema includes:
 - All 15+ tables
 - All 30+ indexes
-- FTS5 virtual tables
+- FTS5 virtual tables (contentless for translation_versions)
 - All triggers
 - All views
-- Seed data (6 languages, 3 providers, 5 settings)
+- Seed data (6 languages, 3 providers, 5 settings, LLM models)
 
-### Running Migrations
+### Running Initialization
 
-Migrations run automatically on app startup:
+Schema initialization runs automatically on app startup for fresh databases:
 
 ```dart
 await DatabaseService.initialize();
 await MigrationService.runMigrations();
 ```
 
-### Creating New Migrations
+### Schema Changes
 
-1. Create new migration file: `lib/database/migrations/migration_v2.dart`
-2. Extend `Migration` class
-3. Implement `up()`, `verify()`, and optionally `down()`
-4. Register in `MigrationService._migrations`
-5. Increment `DatabaseConfig.databaseVersion`
+Incremental migrations are not supported. For schema changes:
+1. Update `lib/database/schema.sql`
+2. Increment `DatabaseConfig.databaseVersion`
+3. Users must delete their database and restart the app
 
-Example:
-
-```dart
-class MigrationV2 extends Migration {
-  @override
-  int get version => 2;
-
-  @override
-  String get description => 'Add export_logs table';
-
-  @override
-  Future<void> up(Transaction txn) async {
-    await txn.execute('''
-      CREATE TABLE export_logs (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL,
-        exported_at INTEGER NOT NULL,
-        FOREIGN KEY (project_id) REFERENCES projects(id)
-      )
-    ''');
-  }
-
-  @override
-  Future<void> verify(Database db) async {
-    final tables = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='export_logs'",
-    );
-    if (tables.isEmpty) {
-      throw Exception('export_logs table not created');
-    }
-  }
-}
-```
+This simplified approach is suitable for MVP/development. For production,
+incremental migration support can be added later.
 
 ## Best Practices
 
@@ -564,8 +530,11 @@ await MigrationService.reset(); // WARNING: Deletes all data
 Rebuild FTS5 indexes:
 
 ```dart
+// translation_units_fts supports rebuild
 await DatabaseService.execute('INSERT INTO translation_units_fts(translation_units_fts) VALUES("rebuild")');
-await DatabaseService.execute('INSERT INTO translation_versions_fts(translation_versions_fts) VALUES("rebuild")');
+
+// translation_versions_fts is CONTENTLESS - rebuild not supported
+// Must delete and re-insert manually if out of sync
 ```
 
 ## Performance Tips

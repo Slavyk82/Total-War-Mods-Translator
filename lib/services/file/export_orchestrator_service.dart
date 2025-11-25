@@ -6,6 +6,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/export_history_repository.dart';
+import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
@@ -52,6 +53,7 @@ class ExportOrchestratorService {
   final FileImportExportService _fileImportExportService;
   final TmxService _tmxService;
   final ExportHistoryRepository _exportHistoryRepository;
+  final GameInstallationRepository _gameInstallationRepository;
   final ProjectRepository _projectRepository;
   final ProjectLanguageRepository _projectLanguageRepository;
   final TranslationUnitRepository _translationUnitRepository;
@@ -64,6 +66,7 @@ class ExportOrchestratorService {
     required FileImportExportService fileImportExportService,
     required TmxService tmxService,
     required ExportHistoryRepository exportHistoryRepository,
+    required GameInstallationRepository gameInstallationRepository,
     required ProjectRepository projectRepository,
     required ProjectLanguageRepository projectLanguageRepository,
     required TranslationUnitRepository translationUnitRepository,
@@ -74,6 +77,7 @@ class ExportOrchestratorService {
         _fileImportExportService = fileImportExportService,
         _tmxService = tmxService,
         _exportHistoryRepository = exportHistoryRepository,
+        _gameInstallationRepository = gameInstallationRepository,
         _projectRepository = projectRepository,
         _projectLanguageRepository = projectLanguageRepository,
         _translationUnitRepository = translationUnitRepository,
@@ -116,7 +120,28 @@ class ExportOrchestratorService {
 
       final project = projectResult.unwrap();
 
-      // Create temporary directory for .loc files
+      // Get game installation to determine data folder path
+      final gameInstallationResult = await _gameInstallationRepository.getById(
+        project.gameInstallationId,
+      );
+      if (gameInstallationResult.isErr) {
+        return Err(FileServiceException(
+          'Game installation not found: ${gameInstallationResult.unwrapErr()}',
+        ));
+      }
+
+      final gameInstallation = gameInstallationResult.unwrap();
+      if (gameInstallation.installationPath == null ||
+          gameInstallation.installationPath!.isEmpty) {
+        return Err(FileServiceException(
+          'Game installation path not configured for ${gameInstallation.gameName}',
+        ));
+      }
+
+      // Export to game's data folder
+      final gameDataPath = path.join(gameInstallation.installationPath!, 'data');
+
+      // Create temporary directory for TSV files
       final systemTempDir = Directory.systemTemp;
       final tempDirPath = path.join(
         systemTempDir.path,
@@ -124,14 +149,10 @@ class ExportOrchestratorService {
       );
       tempDir = await Directory(tempDirPath).create(recursive: true);
 
-      // Create text/db subdirectory (Total War structure)
-      final textDbDir = await Directory(path.join(tempDir.path, 'text', 'db'))
-          .create(recursive: true);
-
-      // Generate .loc files for each language
+      // Generate TSV files grouped by source .loc file for each language
+      // TSV format is used because RPFM-CLI can convert it to binary .loc
       onProgress?.call('generatingLocFiles', 0.1);
 
-      final locFiles = <String>[];
       int totalEntries = 0;
 
       for (var i = 0; i < languageCodes.length; i++) {
@@ -145,7 +166,8 @@ class ExportOrchestratorService {
           total: languageCodes.length,
         );
 
-        final result = await _locFileService.generateLocFile(
+        // Generate multiple TSV files grouped by source .loc file
+        final result = await _locFileService.generateLocFilesGroupedBySource(
           projectId: projectId,
           languageCode: languageCode,
           validatedOnly: validatedOnly,
@@ -155,16 +177,31 @@ class ExportOrchestratorService {
           return Err(result.error);
         }
 
-        final locFilePath = (result as Ok<String, FileServiceException>).value;
+        final generatedTsvPaths = (result as Ok<List<String>, FileServiceException>).value;
 
-        // Move .loc file to text/db directory
-        final locFile = File(locFilePath);
-        final targetPath = path.join(
-          textDbDir.path,
-          '${languageCode}_text.loc',
-        );
-        await locFile.copy(targetPath);
-        locFiles.add(targetPath);
+        // Copy each TSV file to pack structure directory
+        // The TSV filename encodes the internal pack path (with __ as separator)
+        // e.g.: text__db__!!!!!!!!!!_FR_something.loc.tsv
+        for (final generatedTsvPath in generatedTsvPaths) {
+          final tsvFile = File(generatedTsvPath);
+          final tsvFileName = path.basename(generatedTsvPath);
+          
+          // Reconstruct the directory structure from the filename
+          // text__db__!!!!!!!!!!_FR_something.loc.tsv -> text/db/!!!!!!!!!!_FR_something.loc.tsv
+          final internalPath = tsvFileName.replaceAll('__', '/');
+          final targetDir = path.dirname(internalPath);
+          final targetDirPath = path.join(tempDir.path, targetDir);
+          await Directory(targetDirPath).create(recursive: true);
+          
+          final targetPath = path.join(tempDir.path, internalPath);
+          await tsvFile.copy(targetPath);
+
+          _logger.info('TSV file prepared for pack', {
+            'source': generatedTsvPath,
+            'target': targetPath,
+            'internalPath': internalPath,
+          });
+        }
 
         // Count entries
         final countResult = await _locFileService.countExportableTranslations(
@@ -181,16 +218,20 @@ class ExportOrchestratorService {
       // Create .pack file using RPFM
       onProgress?.call('creatingPack', 0.6);
 
-      // Ensure output directory exists
-      final outputFile = File(outputPath);
-      await outputFile.parent.create(recursive: true);
+      // Ensure game data directory exists
+      final dataDir = Directory(gameDataPath);
+      if (!await dataDir.exists()) {
+        await dataDir.create(recursive: true);
+      }
 
-      // Generate pack file name
-      final languagesSuffix = languageCodes.join('_');
-      final timestamp = DateTime.now().toIso8601String().split('T')[0];
+      // Generate pack file name with prefix for load order priority
+      // Use the original pack filename from source_file_path instead of project name
+      // Format: !!!!!!!!!!_{LANG}_{original_pack_name}.pack
+      final languageCode = languageCodes.first.toUpperCase();
+      final originalPackName = _extractOriginalPackName(project.sourceFilePath);
       final packFileName =
-          '${project.name}_${languagesSuffix}_Translation_$timestamp.pack';
-      final packPath = path.join(outputPath, packFileName);
+          '!!!!!!!!!!_${languageCode}_$originalPackName.pack';
+      final packPath = path.join(gameDataPath, packFileName);
 
       // Create pack (RPFM requires the first language code)
       final packResult = await _rpfmService.createPack(
@@ -719,6 +760,26 @@ class ExportOrchestratorService {
       _logger.error('Failed to record export history', e, stackTrace);
       // Don't fail the export if history recording fails
     }
+  }
+
+  /// Extract original pack filename from source file path
+  ///
+  /// Extracts just the pack name (without extension) from the full path.
+  /// Example: "C:\Games\Steam\...\something.pack" -> "something"
+  String _extractOriginalPackName(String? sourceFilePath) {
+    if (sourceFilePath == null || sourceFilePath.isEmpty) {
+      return 'translation';
+    }
+    
+    // Get just the filename
+    final fileName = path.basename(sourceFilePath);
+    
+    // Remove .pack extension if present
+    if (fileName.toLowerCase().endsWith('.pack')) {
+      return fileName.substring(0, fileName.length - 5);
+    }
+    
+    return fileName;
   }
 
   /// Fetch translations for a specific language from the database
