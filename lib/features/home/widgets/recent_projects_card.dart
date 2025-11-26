@@ -139,42 +139,9 @@ class _ProjectTileState extends State<_ProjectTile> {
                     ],
                   ),
                 ),
-                _StatusBadge(status: widget.project.status),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final ProjectStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final (color, label) = switch (status) {
-      ProjectStatus.draft => (Colors.grey, 'Draft'),
-      ProjectStatus.translating => (Colors.blue, 'Translating'),
-      ProjectStatus.reviewing => (Colors.orange, 'Reviewing'),
-      ProjectStatus.completed => (Colors.green, 'Completed'),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );

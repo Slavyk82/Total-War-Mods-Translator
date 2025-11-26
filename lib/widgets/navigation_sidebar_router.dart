@@ -87,19 +87,10 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   label: 'Translation Memory',
                   onTap: () => context.goTranslationMemory(),
                 ),
-                _buildNavigationItem(
-                  context: context,
-                  index: 5,
-                  selectedIndex: selectedIndex,
-                  icon: FluentIcons.data_bar_vertical_24_regular,
-                  selectedIcon: FluentIcons.data_bar_vertical_24_filled,
-                  label: 'Statistics',
-                  onTap: () => context.goStatistics(),
-                ),
                 const Divider(height: 24),
                 _buildNavigationItem(
                   context: context,
-                  index: 6,
+                  index: 5,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.settings_24_regular,
                   selectedIcon: FluentIcons.settings_24_filled,
@@ -184,8 +175,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
     if (path.startsWith(AppRoutes.projects)) return 2;
     if (path.startsWith(AppRoutes.glossary)) return 3;
     if (path.startsWith(AppRoutes.translationMemory)) return 4;
-    if (path.startsWith(AppRoutes.statistics)) return 5;
-    if (path.startsWith(AppRoutes.settings)) return 6;
+    if (path.startsWith(AppRoutes.settings)) return 5;
     return 0; // Default to home
   }
 }

@@ -20,16 +20,14 @@ class GlossaryExportDialog extends ConsumerStatefulWidget {
 }
 
 class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
-  ExportFormat _selectedFormat = ExportFormat.csv;
   String? _selectedFilePath;
-  String? _targetLanguage;
 
   @override
   Widget build(BuildContext context) {
     final exportState = ref.watch(glossaryExportStateProvider);
 
     return AlertDialog(
-      title: const Text('Export Glossary'),
+      title: const Text('Export Glossary (CSV)'),
       content: SizedBox(
         width: 600,
         child: SingleChildScrollView(
@@ -37,31 +35,6 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Format selector
-              Text(
-                'Format',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<ExportFormat>(
-                initialValue: _selectedFormat,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-                items: ExportFormat.values.map((format) {
-                  return DropdownMenuItem(
-                    value: format,
-                    child: Text(format.displayName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedFormat = value ?? ExportFormat.csv;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
               // File path picker
               Text(
                 'Output File',
@@ -98,38 +71,6 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Language filters
-              Text(
-                'Language Filter (Optional)',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String?>(
-                initialValue: _targetLanguage,
-                decoration: const InputDecoration(
-                  labelText: 'Target Language',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text('All'),
-                  ),
-                  ..._languageCodes.map((lang) {
-                    return DropdownMenuItem<String?>(
-                      value: lang,
-                      child: Text(lang.toUpperCase()),
-                    );
-                  }),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _targetLanguage = value;
-                  });
-                },
               ),
               const SizedBox(height: 16),
 
@@ -234,9 +175,9 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.saveFile(
       dialogTitle: 'Save Glossary Export',
-      fileName: 'glossary.${_selectedFormat.defaultExtension}',
+      fileName: 'glossary.csv',
       type: FileType.custom,
-      allowedExtensions: _selectedFormat.extensions,
+      allowedExtensions: ['csv'],
     );
 
     if (result != null) {
@@ -254,82 +195,9 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
       return;
     }
 
-    switch (_selectedFormat) {
-      case ExportFormat.csv:
-        await ref.read(glossaryExportStateProvider.notifier).exportCsv(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-              targetLanguageCode: _targetLanguage,
-            );
-        break;
-
-      case ExportFormat.tbx:
-        await ref.read(glossaryExportStateProvider.notifier).exportTbx(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-            );
-        break;
-
-      case ExportFormat.excel:
-        await ref.read(glossaryExportStateProvider.notifier).exportExcel(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-              targetLanguageCode: _targetLanguage,
-            );
-        break;
-    }
-  }
-
-  static const List<String> _languageCodes = [
-    'en',
-    'fr',
-    'de',
-    'es',
-    'it',
-    'pt',
-    'ru',
-    'zh',
-    'ja',
-    'ko',
-  ];
-}
-
-/// Export format options
-enum ExportFormat {
-  csv,
-  tbx,
-  excel;
-
-  String get displayName {
-    switch (this) {
-      case ExportFormat.csv:
-        return 'CSV';
-      case ExportFormat.tbx:
-        return 'TBX (TermBase eXchange)';
-      case ExportFormat.excel:
-        return 'Excel';
-    }
-  }
-
-  String get defaultExtension {
-    switch (this) {
-      case ExportFormat.csv:
-        return 'csv';
-      case ExportFormat.tbx:
-        return 'tbx';
-      case ExportFormat.excel:
-        return 'xlsx';
-    }
-  }
-
-  List<String> get extensions {
-    switch (this) {
-      case ExportFormat.csv:
-        return ['csv'];
-      case ExportFormat.tbx:
-        return ['tbx', 'xml'];
-      case ExportFormat.excel:
-        return ['xlsx'];
-    }
+    await ref.read(glossaryExportStateProvider.notifier).exportCsv(
+          glossaryId: widget.glossaryId,
+          filePath: _selectedFilePath!,
+        );
   }
 }

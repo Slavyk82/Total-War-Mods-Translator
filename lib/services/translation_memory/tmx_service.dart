@@ -143,14 +143,6 @@ class TmxService {
         builder.text(entry.usageCount.toString());
       });
 
-      if (entry.gameContext != null && entry.gameContext!.isNotEmpty) {
-        builder.element('prop', attributes: {
-          'type': 'x-game-context',
-        }, nest: () {
-          builder.text(entry.gameContext!);
-        });
-      }
-
       if (entry.translationProviderId != null &&
           entry.translationProviderId!.isNotEmpty) {
         builder.element('prop', attributes: {
@@ -322,7 +314,6 @@ class TmxService {
       final usageCount = int.tryParse(
         properties['x-usage-count'] ?? '0',
       ) ?? 0;
-      final gameContext = properties['x-game-context'];
       final providerId = properties['x-provider-id'];
 
       return TmxEntry(
@@ -332,7 +323,6 @@ class TmxService {
         targetText: targetText,
         qualityScore: qualityScore,
         usageCount: usageCount,
-        gameContext: gameContext,
         translationProviderId: providerId,
       );
     } catch (e) {
@@ -394,11 +384,11 @@ class TmxService {
             id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
             sourceText: entry.sourceText,
             translatedText: entry.targetText,
+            sourceLanguageId: entry.sourceLanguage,
             targetLanguageId: entry.targetLanguage,
             sourceHash: sourceHash,
             qualityScore: entry.qualityScore,
             usageCount: entry.usageCount,
-            gameContext: entry.gameContext,
             translationProviderId: entry.translationProviderId,
             createdAt: now,
             lastUsedAt: now,
@@ -449,7 +439,6 @@ class TmxEntry {
   final String targetText;
   final double? qualityScore;
   final int usageCount;
-  final String? gameContext;
   final String? translationProviderId;
 
   const TmxEntry({
@@ -459,7 +448,6 @@ class TmxEntry {
     required this.targetText,
     this.qualityScore,
     this.usageCount = 0,
-    this.gameContext,
     this.translationProviderId,
   });
 

@@ -31,6 +31,9 @@ class TranslationProgress {
   /// Current phase of translation
   final TranslationPhase currentPhase;
 
+  /// Detailed description of current sub-step within a phase
+  final String? phaseDetail;
+
   /// Estimated time remaining in seconds
   final int? estimatedSecondsRemaining;
 
@@ -61,6 +64,7 @@ class TranslationProgress {
     required this.failedUnits,
     required this.skippedUnits,
     required this.currentPhase,
+    this.phaseDetail,
     this.estimatedSecondsRemaining,
     required this.tokensUsed,
     required this.tmReuseRate,
@@ -100,6 +104,8 @@ class TranslationProgress {
     int? failedUnits,
     int? skippedUnits,
     TranslationPhase? currentPhase,
+    String? phaseDetail,
+    bool clearPhaseDetail = false,
     int? estimatedSecondsRemaining,
     int? tokensUsed,
     double? tmReuseRate,
@@ -117,6 +123,7 @@ class TranslationProgress {
       failedUnits: failedUnits ?? this.failedUnits,
       skippedUnits: skippedUnits ?? this.skippedUnits,
       currentPhase: currentPhase ?? this.currentPhase,
+      phaseDetail: clearPhaseDetail ? null : (phaseDetail ?? this.phaseDetail),
       estimatedSecondsRemaining:
           estimatedSecondsRemaining ?? this.estimatedSecondsRemaining,
       tokensUsed: tokensUsed ?? this.tokensUsed,

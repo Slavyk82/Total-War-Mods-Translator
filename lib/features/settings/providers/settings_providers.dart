@@ -20,6 +20,9 @@ class SettingsKeys {
   static const String rpfmPath = 'rpfm_path';
   static const String rpfmSchemaPath = 'rpfm_schema_path';
   static const String defaultTargetLanguage = 'default_target_language';
+  
+  // Default values
+  static const String defaultTargetLanguageValue = 'fr';
   static const String autoUpdate = 'auto_update';
 
   // Game installation paths (per game)
@@ -76,7 +79,7 @@ class GeneralSettings extends _$GeneralSettings {
       SettingsKeys.rpfmPath: await service.getString(SettingsKeys.rpfmPath),
       SettingsKeys.rpfmSchemaPath: await service.getString(SettingsKeys.rpfmSchemaPath),
       SettingsKeys.defaultTargetLanguage:
-          await service.getString(SettingsKeys.defaultTargetLanguage, defaultValue: 'es'),
+          await service.getString(SettingsKeys.defaultTargetLanguage, defaultValue: SettingsKeys.defaultTargetLanguageValue),
       SettingsKeys.autoUpdate:
           (await service.getBool(SettingsKeys.autoUpdate, defaultValue: true)).toString(),
     };
@@ -159,7 +162,7 @@ class GeneralSettings extends _$GeneralSettings {
     await service.setString(SettingsKeys.workshopPath, '');
     await service.setString(SettingsKeys.rpfmPath, '');
     await service.setString(SettingsKeys.rpfmSchemaPath, '');
-    await service.setString(SettingsKeys.defaultTargetLanguage, 'es');
+    await service.setString(SettingsKeys.defaultTargetLanguage, SettingsKeys.defaultTargetLanguageValue);
     await service.setBool(SettingsKeys.autoUpdate, true);
     ref.invalidateSelf();
   }
@@ -343,7 +346,7 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     await service.setString(SettingsKeys.openaiModel, '');
     
     await service.setString(SettingsKeys.deeplPlan, 'free');
-    await service.setInt(SettingsKeys.rateLimit, 100);
+    await service.setInt(SettingsKeys.rateLimit, 500);
 
     // Clear API keys
     await _secureStorage.delete(key: SettingsKeys.anthropicApiKey);

@@ -6,7 +6,6 @@ import 'cell_renderers/checkbox_cell_renderer.dart';
 import 'cell_renderers/status_cell_renderer.dart';
 import 'cell_renderers/text_cell_renderer.dart';
 import 'cell_renderers/confidence_cell_renderer.dart';
-import 'cell_renderers/actions_cell_renderer.dart';
 
 /// DataSource for Syncfusion DataGrid
 ///
@@ -136,7 +135,6 @@ class EditorDataSource extends DataGridSource {
         TextCellRenderer(text: translatedTextCell.value),
         RepaintBoundary(child: TextCellRenderer(text: tmSourceCell.value)),
         RepaintBoundary(child: ConfidenceCellRenderer(confidence: confidenceCell.value)),
-        RepaintBoundary(child: const ActionsCellRenderer()),
       ],
     );
   }

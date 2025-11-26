@@ -4,17 +4,16 @@ import 'package:twmt/models/common/json_converters.dart';
 part 'translation_version.g.dart';
 
 /// Translation version status enumeration
+///
+/// Simplified status workflow:
+/// - pending: Not yet translated
+/// - translated: Translation completed and validated
+/// - needsReview: Translation has validation errors or warnings
 enum TranslationVersionStatus {
   @JsonValue('pending')
   pending,
-  @JsonValue('translating')
-  translating,
   @JsonValue('translated')
   translated,
-  @JsonValue('reviewed')
-  reviewed,
-  @JsonValue('approved')
-  approved,
   @JsonValue('needs_review')
   needsReview,
 }
@@ -80,26 +79,14 @@ class TranslationVersion {
   /// Returns true if translation is pending
   bool get isPending => status == TranslationVersionStatus.pending;
 
-  /// Returns true if translation is in progress
-  bool get isTranslating => status == TranslationVersionStatus.translating;
-
   /// Returns true if translation is completed
   bool get isTranslated => status == TranslationVersionStatus.translated;
 
-  /// Returns true if translation has been reviewed
-  bool get isReviewed => status == TranslationVersionStatus.reviewed;
-
-  /// Returns true if translation has been approved
-  bool get isApproved => status == TranslationVersionStatus.approved;
-
-  /// Returns true if translation needs review
+  /// Returns true if translation needs review (has validation errors/warnings)
   bool get needsReview => status == TranslationVersionStatus.needsReview;
 
-  /// Returns true if the translation has been completed (any finished state)
-  bool get isComplete =>
-      status == TranslationVersionStatus.translated ||
-      status == TranslationVersionStatus.reviewed ||
-      status == TranslationVersionStatus.approved;
+  /// Returns true if the translation has been completed
+  bool get isComplete => status == TranslationVersionStatus.translated;
 
   /// Returns true if the translation has validation issues
   bool get hasValidationIssues =>
@@ -131,14 +118,8 @@ class TranslationVersion {
     switch (status) {
       case TranslationVersionStatus.pending:
         return 'Pending';
-      case TranslationVersionStatus.translating:
-        return 'Translating';
       case TranslationVersionStatus.translated:
         return 'Translated';
-      case TranslationVersionStatus.reviewed:
-        return 'Reviewed';
-      case TranslationVersionStatus.approved:
-        return 'Approved';
       case TranslationVersionStatus.needsReview:
         return 'Needs Review';
     }

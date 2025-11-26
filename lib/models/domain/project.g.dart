@@ -14,13 +14,10 @@ Project _$ProjectFromJson(Map<String, dynamic> json) => Project(
   gameInstallationId: json['game_installation_id'] as String,
   sourceFilePath: json['source_file_path'] as String?,
   outputFilePath: json['output_file_path'] as String?,
-  status:
-      $enumDecodeNullable(_$ProjectStatusEnumMap, json['status']) ??
-      ProjectStatus.draft,
   lastUpdateCheck: (json['last_update_check'] as num?)?.toInt(),
   sourceModUpdated: (json['source_mod_updated'] as num?)?.toInt(),
   batchSize: (json['batch_size'] as num?)?.toInt() ?? 25,
-  parallelBatches: (json['parallel_batches'] as num?)?.toInt() ?? 1,
+  parallelBatches: (json['parallel_batches'] as num?)?.toInt() ?? 3,
   customPrompt: json['custom_prompt'] as String?,
   createdAt: (json['created_at'] as num).toInt(),
   updatedAt: (json['updated_at'] as num).toInt(),
@@ -36,7 +33,6 @@ Map<String, dynamic> _$ProjectToJson(Project instance) => <String, dynamic>{
   'game_installation_id': instance.gameInstallationId,
   'source_file_path': instance.sourceFilePath,
   'output_file_path': instance.outputFilePath,
-  'status': _$ProjectStatusEnumMap[instance.status]!,
   'last_update_check': instance.lastUpdateCheck,
   'source_mod_updated': instance.sourceModUpdated,
   'batch_size': instance.batchSize,
@@ -46,11 +42,4 @@ Map<String, dynamic> _$ProjectToJson(Project instance) => <String, dynamic>{
   'updated_at': instance.updatedAt,
   'completed_at': instance.completedAt,
   'metadata': instance.metadata,
-};
-
-const _$ProjectStatusEnumMap = {
-  ProjectStatus.draft: 'draft',
-  ProjectStatus.translating: 'translating',
-  ProjectStatus.reviewing: 'reviewing',
-  ProjectStatus.completed: 'completed',
 };

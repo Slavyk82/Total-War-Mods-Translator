@@ -24,7 +24,7 @@ class GlossaryStatistics {
 
     return {
       'totalEntries': entries.length,
-      'languagePairs': languagePairs,
+      'entriesByLanguagePair': languagePairs,
     };
   }
 

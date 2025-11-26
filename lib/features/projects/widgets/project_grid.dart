@@ -8,17 +8,11 @@ import 'project_card.dart';
 class ProjectGrid extends StatelessWidget {
   final List<ProjectWithDetails> projects;
   final Function(String projectId)? onProjectTap;
-  final Function(String projectId)? onProjectEdit;
-  final Function(String projectId)? onProjectExport;
-  final Function(String projectId)? onProjectDelete;
 
   const ProjectGrid({
     super.key,
     required this.projects,
     this.onProjectTap,
-    this.onProjectEdit,
-    this.onProjectExport,
-    this.onProjectDelete,
   });
 
   @override
@@ -31,11 +25,6 @@ class ProjectGrid extends StatelessWidget {
         return ProjectCard(
           projectWithDetails: projectWithDetails,
           onTap: () => onProjectTap?.call(projectWithDetails.project.id),
-          onEdit: () => onProjectEdit?.call(projectWithDetails.project.id),
-          onExport: () =>
-              onProjectExport?.call(projectWithDetails.project.id),
-          onDelete: () =>
-              onProjectDelete?.call(projectWithDetails.project.id),
         );
       },
     );

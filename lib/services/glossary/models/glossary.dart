@@ -5,7 +5,9 @@ part 'glossary.g.dart';
 
 /// Represents a glossary containing terminology translations
 ///
-/// Glossaries can be global (shared across all projects) or project-specific.
+/// Glossaries can be:
+/// - Universal (isGlobal = true): shared across all games and projects
+/// - Game-specific (isGlobal = false): shared across all projects of one game
 @JsonSerializable()
 class Glossary {
   /// Unique glossary ID (UUID)
@@ -17,14 +19,15 @@ class Glossary {
   /// Optional description
   final String? description;
 
-  /// If true, glossary is shared across all projects
+  /// If true, glossary is universal (all games, all projects)
+  /// If false, glossary is game-specific (all projects of one game)
   @JsonKey(name: 'is_global')
   @BoolIntConverter()
   final bool isGlobal;
 
-  /// If specified, glossary is project-specific
-  @JsonKey(name: 'project_id')
-  final String? projectId;
+  /// If specified, glossary is game-specific (required when isGlobal = false)
+  @JsonKey(name: 'game_installation_id')
+  final String? gameInstallationId;
 
   /// Target language ID (required by database schema)
   @JsonKey(name: 'target_language_id')
@@ -47,7 +50,7 @@ class Glossary {
     required this.name,
     this.description,
     required this.isGlobal,
-    this.projectId,
+    this.gameInstallationId,
     this.targetLanguageId,
     this.entryCount = 0,
     required this.createdAt,
@@ -66,7 +69,7 @@ class Glossary {
     String? name,
     String? description,
     bool? isGlobal,
-    String? projectId,
+    String? gameInstallationId,
     String? targetLanguageId,
     int? entryCount,
     int? createdAt,
@@ -77,7 +80,7 @@ class Glossary {
       name: name ?? this.name,
       description: description ?? this.description,
       isGlobal: isGlobal ?? this.isGlobal,
-      projectId: projectId ?? this.projectId,
+      gameInstallationId: gameInstallationId ?? this.gameInstallationId,
       targetLanguageId: targetLanguageId ?? this.targetLanguageId,
       entryCount: entryCount ?? this.entryCount,
       createdAt: createdAt ?? this.createdAt,
@@ -94,7 +97,7 @@ class Glossary {
         other.name == name &&
         other.description == description &&
         other.isGlobal == isGlobal &&
-        other.projectId == projectId &&
+        other.gameInstallationId == gameInstallationId &&
         other.targetLanguageId == targetLanguageId &&
         other.entryCount == entryCount &&
         other.createdAt == createdAt &&
@@ -108,7 +111,7 @@ class Glossary {
       name,
       description,
       isGlobal,
-      projectId,
+      gameInstallationId,
       targetLanguageId,
       entryCount,
       createdAt,
@@ -119,7 +122,7 @@ class Glossary {
   @override
   String toString() {
     return 'Glossary(id: $id, name: $name, description: $description, '
-        'isGlobal: $isGlobal, projectId: $projectId, targetLanguageId: $targetLanguageId, '
+        'isGlobal: $isGlobal, gameInstallationId: $gameInstallationId, targetLanguageId: $targetLanguageId, '
         'entryCount: $entryCount, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

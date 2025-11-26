@@ -34,12 +34,14 @@ class TmMatchingService {
   Future<Result<TmMatch?, TmLookupException>> findExactMatch({
     required String sourceText,
     required String targetLanguageCode,
-    String? gameContext,
   }) async {
     try {
       // Calculate source hash (using normalized text)
       final normalized = _normalizer.normalize(sourceText);
       final sourceHash = normalized.hashCode.toString();
+
+      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
+      final targetLanguageId = 'lang_$targetLanguageCode';
 
       // Build cache key
       final cacheKey = '$sourceHash:$targetLanguageCode';
@@ -53,7 +55,7 @@ class TmMatchingService {
       // Lookup in repository
       final result = await _repository.findByHash(
         sourceHash,
-        targetLanguageCode,
+        targetLanguageId,
       );
 
       if (result.isErr) {
@@ -81,7 +83,6 @@ class TmMatchingService {
         similarityScore: AppConstants.exactMatchSimilarity,
         matchType: TmMatchType.exact,
         breakdown: breakdown,
-        gameContext: gameContext,
         usageCount: entry.usageCount,
         lastUsedAt: DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
         qualityScore: entry.qualityScore ?? AppConstants.defaultTmQuality,
@@ -110,7 +111,6 @@ class TmMatchingService {
     required String targetLanguageCode,
     double minSimilarity = AppConstants.minTmSimilarity,
     int maxResults = AppConstants.maxTmFuzzyResults,
-    String? gameContext,
     String? category,
   }) async {
     try {
@@ -135,10 +135,13 @@ class TmMatchingService {
         );
       }
 
+      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
+      final targetLanguageId = 'lang_$targetLanguageCode';
+
       // Use repository's findMatches method
       final candidatesResult = await _repository.findMatches(
         sourceText,
-        targetLanguageCode,
+        targetLanguageId,
         minConfidence: minSimilarity,
       );
 
@@ -165,8 +168,6 @@ class TmMatchingService {
         final score = _similarityCalculator.calculateSimilarity(
           text1: sourceText,
           text2: candidate.sourceText,
-          gameContext1: gameContext,
-          gameContext2: candidate.gameContext,
           category1: category,
           category2: null, // Note: Category is not stored in the database schema
         );
@@ -185,7 +186,6 @@ class TmMatchingService {
           similarityScore: score.combinedScore,
           matchType: TmMatchType.fuzzy,
           breakdown: score,
-          gameContext: gameContext,
           usageCount: candidate.usageCount,
           lastUsedAt:
               DateTime.fromMillisecondsSinceEpoch(candidate.lastUsedAt * 1000),
@@ -220,7 +220,6 @@ class TmMatchingService {
     required String sourceText,
     required String targetLanguageCode,
     double minSimilarity = AppConstants.minTmSimilarity,
-    String? gameContext,
     String? category,
   }) async {
     try {
@@ -228,7 +227,6 @@ class TmMatchingService {
       final exactResult = await findExactMatch(
         sourceText: sourceText,
         targetLanguageCode: targetLanguageCode,
-        gameContext: gameContext,
       );
 
       if (exactResult.isErr) {
@@ -245,7 +243,6 @@ class TmMatchingService {
         targetLanguageCode: targetLanguageCode,
         minSimilarity: minSimilarity,
         maxResults: AppConstants.singleTmResult,
-        gameContext: gameContext,
         category: category,
       );
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -17,6 +19,7 @@ class SearchQueryBuilder extends ConsumerStatefulWidget {
 
 class _SearchQueryBuilderState extends ConsumerState<SearchQueryBuilder> {
   final _textController = TextEditingController();
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -27,8 +30,18 @@ class _SearchQueryBuilderState extends ConsumerState<SearchQueryBuilder> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _textController.dispose();
     super.dispose();
+  }
+
+  void _onTextChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        ref.read(searchQueryProvider.notifier).updateText(value);
+      }
+    });
   }
 
   @override
@@ -48,7 +61,10 @@ class _SearchQueryBuilderState extends ConsumerState<SearchQueryBuilder> {
             prefixIcon: Icon(FluentIcons.search_24_regular),
             border: OutlineInputBorder(),
           ),
-          onChanged: (value) {
+          onChanged: _onTextChanged,
+          onFieldSubmitted: (value) {
+            // Cancel debounce and search immediately on Enter
+            _debounceTimer?.cancel();
             notifier.updateText(value);
           },
           validator: (value) {

@@ -273,29 +273,36 @@ class ProjectDeletionServiceV2 {
       END
     ''');
 
-    // FTS5 triggers on translation_versions
+    // FTS5 triggers on translation_versions (CONTENTLESS MODE)
+    // Uses version_id for identification instead of rowid mapping
+    // Note: Contentless FTS5 requires DELETE+INSERT for updates (no UPDATE support)
     await db.execute('''
       CREATE TRIGGER trg_translation_versions_fts_insert
-      AFTER INSERT ON translation_versions BEGIN
-        INSERT INTO translation_versions_fts(rowid, translated_text, validation_issues)
-        VALUES (new.rowid, new.translated_text, new.validation_issues);
+      AFTER INSERT ON translation_versions
+      WHEN new.translated_text IS NOT NULL
+      BEGIN
+        INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+        VALUES (new.translated_text, new.validation_issues, new.id);
       END
     ''');
 
     await db.execute('''
       CREATE TRIGGER trg_translation_versions_fts_update
-      AFTER UPDATE ON translation_versions BEGIN
-        UPDATE translation_versions_fts
-        SET translated_text = new.translated_text,
-            validation_issues = new.validation_issues
-        WHERE rowid = new.rowid;
+      AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+      BEGIN
+        -- Contentless FTS5: must DELETE then INSERT (cannot UPDATE)
+        DELETE FROM translation_versions_fts WHERE version_id = old.id;
+        INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+        SELECT new.translated_text, new.validation_issues, new.id
+        WHERE new.translated_text IS NOT NULL;
       END
     ''');
 
     await db.execute('''
       CREATE TRIGGER trg_translation_versions_fts_delete
-      AFTER DELETE ON translation_versions BEGIN
-        DELETE FROM translation_versions_fts WHERE rowid = old.rowid;
+      AFTER DELETE ON translation_versions
+      BEGIN
+        DELETE FROM translation_versions_fts WHERE version_id = old.id;
       END
     ''');
 

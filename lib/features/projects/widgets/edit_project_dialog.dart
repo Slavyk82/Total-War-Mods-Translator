@@ -42,7 +42,6 @@ class _EditProjectDialogState extends ConsumerState<EditProjectDialog> {
   final _customPromptController = TextEditingController();
 
   String? _selectedGameId;
-  ProjectStatus? _selectedStatus;
   final Set<String> _selectedLanguageIds = {};
   final Set<String> _originalLanguageIds = {};
 
@@ -94,7 +93,6 @@ class _EditProjectDialogState extends ConsumerState<EditProjectDialog> {
         _parallelBatchesController.text = project.parallelBatches.toString();
         _customPromptController.text = project.customPrompt ?? '';
         _selectedGameId = project.gameInstallationId;
-        _selectedStatus = project.status;
         _selectedLanguageIds.addAll(languageIds);
         _originalLanguageIds.addAll(languageIds);
         _isLoading = false;
@@ -154,7 +152,6 @@ class _EditProjectDialogState extends ConsumerState<EditProjectDialog> {
         outputFilePath: _outputFileController.text.trim().isEmpty
             ? null
             : _outputFileController.text.trim(),
-        status: _selectedStatus,
         batchSize: int.tryParse(_batchSizeController.text) ?? 25,
         parallelBatches: int.tryParse(_parallelBatchesController.text) ?? 3,
         customPrompt: _customPromptController.text.trim().isEmpty
@@ -300,12 +297,6 @@ class _EditProjectDialogState extends ConsumerState<EditProjectDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Status
-                _buildFieldLabel('Status', theme),
-                const SizedBox(height: 8),
-                _buildStatusDropdown(theme),
                 const SizedBox(height: 16),
 
                 // Game selection
@@ -498,42 +489,6 @@ class _EditProjectDialogState extends ConsumerState<EditProjectDialog> {
         ],
       ),
     );
-  }
-
-  Widget _buildStatusDropdown(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.4),
-        ),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<ProjectStatus>(
-          value: _selectedStatus,
-          isExpanded: true,
-          items: ProjectStatus.values.map((status) {
-            return DropdownMenuItem(
-              value: status,
-              child: Text(_getStatusDisplay(status)),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() => _selectedStatus = value);
-          },
-        ),
-      ),
-    );
-  }
-
-  String _getStatusDisplay(ProjectStatus status) {
-    return switch (status) {
-      ProjectStatus.draft => 'Draft',
-      ProjectStatus.translating => 'Translating',
-      ProjectStatus.reviewing => 'Reviewing',
-      ProjectStatus.completed => 'Completed',
-    };
   }
 
   Widget _buildGameDropdown(List<GameInstallation> games, ThemeData theme) {

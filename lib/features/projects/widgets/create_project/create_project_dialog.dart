@@ -151,7 +151,10 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
 
       // Create metadata with the project name as mod title
       final projectName = _state.nameController.text.trim();
-      final metadata = ProjectMetadata(modTitle: projectName);
+      final metadata = ProjectMetadata(
+        modTitle: projectName,
+        modImageUrl: _state.detectedMod?.imageUrl,
+      );
 
       final project = Project(
         id: projectId,
@@ -164,7 +167,6 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
             ? null
             : _state.sourceFileController.text.trim(),
         outputFilePath: outputFolder,
-        status: ProjectStatus.draft,
         batchSize: int.tryParse(_state.batchSizeController.text) ?? 25,
         parallelBatches: int.tryParse(_state.parallelBatchesController.text) ?? 3,
         customPrompt: _state.customPromptController.text.trim().isEmpty

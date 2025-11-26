@@ -91,7 +91,6 @@ class TmImportExportService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? gameContext,
     double? minQuality,
   }) async {
     try {
@@ -99,7 +98,6 @@ class TmImportExportService {
         'outputPath': outputPath,
         'sourceLanguageCode': sourceLanguageCode,
         'targetLanguageCode': targetLanguageCode,
-        'gameContext': gameContext,
         'minQuality': minQuality,
       });
 
@@ -123,7 +121,6 @@ class TmImportExportService {
         entries,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
-        gameContext: gameContext,
         minQuality: minQuality,
       );
 
@@ -181,7 +178,6 @@ class TmImportExportService {
     List<TranslationMemoryEntry> entries, {
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? gameContext,
     double? minQuality,
   }) {
     var filtered = entries;
@@ -192,11 +188,6 @@ class TmImportExportService {
       filtered = filtered
           .where((e) => e.targetLanguageId == targetLanguageCode)
           .toList();
-    }
-
-    if (gameContext != null) {
-      filtered =
-          filtered.where((e) => e.gameContext == gameContext).toList();
     }
 
     if (minQuality != null) {

@@ -122,7 +122,7 @@ class GridActionsHandler {
     }
   }
 
-  /// Mark selected translations as reviewed
+  /// Mark selected translations as translated (validated/approved)
   Future<void> handleValidate() async {
     if (selectedRowIds.isEmpty) return;
 
@@ -135,7 +135,8 @@ class GridActionsHandler {
       int successCount = 0;
       for (final row in selectedRows) {
         final updatedVersion = row.version.copyWith(
-          status: TranslationVersionStatus.reviewed,
+          status: TranslationVersionStatus.translated,
+          validationIssues: null, // Clear validation issues when manually approved
           updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         );
 
@@ -151,7 +152,7 @@ class GridActionsHandler {
       if (context.mounted) {
         FluentToast.success(
           context,
-          'Marked $successCount translation(s) as reviewed',
+          'Marked $successCount translation(s) as translated',
         );
         
         // Refresh the data

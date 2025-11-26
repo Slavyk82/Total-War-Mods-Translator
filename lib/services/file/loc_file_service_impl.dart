@@ -112,9 +112,8 @@ class LocFileServiceImpl implements ILocFileService {
 
         // Apply validation filter
         if (validatedOnly) {
-          // Only export approved or reviewed translations
-          if (version.status != TranslationVersionStatus.approved &&
-              version.status != TranslationVersionStatus.reviewed) {
+          // Only export translated translations (not needsReview)
+          if (version.status != TranslationVersionStatus.translated) {
             continue;
           }
         } else {
@@ -270,8 +269,7 @@ class LocFileServiceImpl implements ILocFileService {
 
         // Apply validation filter
         if (validatedOnly) {
-          if (version.status == TranslationVersionStatus.approved ||
-              version.status == TranslationVersionStatus.reviewed) {
+          if (version.status == TranslationVersionStatus.translated) {
             count++;
           }
         } else {
@@ -371,8 +369,7 @@ class LocFileServiceImpl implements ILocFileService {
 
         // Apply validation filter
         if (validatedOnly) {
-          if (version.status != TranslationVersionStatus.approved &&
-              version.status != TranslationVersionStatus.reviewed) {
+          if (version.status != TranslationVersionStatus.translated) {
             continue;
           }
         } else {

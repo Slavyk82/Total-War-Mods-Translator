@@ -271,6 +271,87 @@ class MigrationService {
     return true;
   }
 
+  /// Ensure performance indexes exist on the database.
+  ///
+  /// This method can be called on any database (fresh or existing) to ensure
+  /// that recommended performance indexes are present. Uses CREATE INDEX IF NOT EXISTS
+  /// so it's safe to run multiple times.
+  ///
+  /// These indexes were identified through database analysis as high-priority
+  /// optimizations for common query patterns.
+  static Future<void> ensurePerformanceIndexes() async {
+    final logging = LoggingService.instance;
+    if (!DatabaseService.isInitialized) {
+      throw StateError('DatabaseService must be initialized before applying indexes');
+    }
+
+    logging.debug('Ensuring performance indexes exist');
+
+    const performanceIndexes = [
+      // Index on translation_version_history.version_id for FK lookups
+      '''CREATE INDEX IF NOT EXISTS idx_translation_version_history_version
+         ON translation_version_history(version_id)''',
+      // Composite index for common JOIN pattern between units and versions
+      '''CREATE INDEX IF NOT EXISTS idx_translation_versions_unit_proj_lang
+         ON translation_versions(unit_id, project_language_id)''',
+    ];
+
+    try {
+      for (final indexSql in performanceIndexes) {
+        await DatabaseService.execute(indexSql);
+      }
+      logging.info('Performance indexes verified/created successfully');
+    } catch (e, stackTrace) {
+      logging.error('Failed to create performance indexes', e, stackTrace);
+      // Non-fatal: indexes are optimization, not required for functionality
+    }
+
+    // Ensure new tables exist for existing databases
+    await _ensureModUpdateAnalysisCacheTable();
+  }
+
+  /// Ensure mod_update_analysis_cache table exists for existing databases.
+  ///
+  /// This allows existing databases to get the new caching functionality
+  /// without requiring a full database re-creation.
+  static Future<void> _ensureModUpdateAnalysisCacheTable() async {
+    final logging = LoggingService.instance;
+
+    try {
+      await DatabaseService.execute('''
+        CREATE TABLE IF NOT EXISTS mod_update_analysis_cache (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          pack_file_path TEXT NOT NULL,
+          file_last_modified INTEGER NOT NULL,
+          new_units_count INTEGER NOT NULL DEFAULT 0,
+          removed_units_count INTEGER NOT NULL DEFAULT 0,
+          modified_units_count INTEGER NOT NULL DEFAULT 0,
+          total_pack_units INTEGER NOT NULL DEFAULT 0,
+          total_project_units INTEGER NOT NULL DEFAULT 0,
+          analyzed_at INTEGER NOT NULL,
+          FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+          UNIQUE(project_id, pack_file_path)
+        )
+      ''');
+
+      await DatabaseService.execute('''
+        CREATE INDEX IF NOT EXISTS idx_mod_update_analysis_cache_project
+        ON mod_update_analysis_cache(project_id)
+      ''');
+
+      await DatabaseService.execute('''
+        CREATE INDEX IF NOT EXISTS idx_mod_update_analysis_cache_pack_path
+        ON mod_update_analysis_cache(pack_file_path)
+      ''');
+
+      logging.debug('mod_update_analysis_cache table verified/created');
+    } catch (e, stackTrace) {
+      logging.error('Failed to create mod_update_analysis_cache table', e, stackTrace);
+      // Non-fatal: caching is optimization, not required for functionality
+    }
+  }
+
   /// Check if database needs initialization
   static Future<bool> needsMigration() async {
     if (!DatabaseService.isInitialized) {

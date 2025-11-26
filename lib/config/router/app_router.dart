@@ -14,7 +14,6 @@ import '../../features/translation_editor/screens/translation_editor_screen.dart
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/statistics/screens/statistics_screen.dart';
 
 // Layout
 import '../../widgets/layouts/main_layout_router.dart';
@@ -30,7 +29,6 @@ class AppRoutes {
   static const String projects = '/projects';
   static const String glossary = '/glossary';
   static const String translationMemory = '/translation-memory';
-  static const String statistics = '/statistics';
   static const String settings = '/settings';
 
   // Detail routes
@@ -153,18 +151,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
 
-          // Statistics
-          GoRoute(
-            path: AppRoutes.statistics,
-            name: 'statistics',
-            pageBuilder: (context, state) {
-              return FluentPageTransitions.fadeTransition(
-                child: const StatisticsScreen(),
-                state: state,
-              );
-            },
-          ),
-
           // Settings
           GoRoute(
             path: AppRoutes.settings,
@@ -214,7 +200,6 @@ extension GoRouterExtensions on BuildContext {
   void goProjects() => go(AppRoutes.projects);
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
-  void goStatistics() => go(AppRoutes.statistics);
   void goSettings() => go(AppRoutes.settings);
 
   void goProjectDetail(String projectId) => go(AppRoutes.projectDetail(projectId));

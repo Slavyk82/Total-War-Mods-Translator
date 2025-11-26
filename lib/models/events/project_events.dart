@@ -52,28 +52,6 @@ class ProjectUpdatedEvent extends ProjectEvent {
       'ProjectUpdatedEvent(projectId: $projectId, changes: ${changes.keys.join(", ")})';
 }
 
-/// Event emitted when project status changes
-class ProjectStatusChangedEvent extends ProjectEvent {
-  final String oldStatus;
-  final String newStatus;
-  final String? reason;
-
-  ProjectStatusChangedEvent({
-    required super.projectId,
-    required this.oldStatus,
-    required this.newStatus,
-    this.reason,
-  });
-  @override
-  Map<String, dynamic> toJson() {
-    throw UnimplementedError('toJson() must be implemented');
-  }
-
-  @override
-  String toString() =>
-      'ProjectStatusChangedEvent(projectId: $projectId, $oldStatus -> $newStatus)';
-}
-
 /// Event emitted when a project language progress updates
 class ProjectLanguageProgressUpdatedEvent extends ProjectEvent {
   final String projectLanguageId;

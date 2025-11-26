@@ -16,7 +16,6 @@ class TmxExportDialog extends ConsumerStatefulWidget {
 class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
   String? _outputPath;
   String? _targetLanguage;
-  String? _gameContext;
   double _minQuality = 0.7;
   ExportScope _exportScope = ExportScope.all;
   bool _includeMetadata = true;
@@ -129,19 +128,6 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
           onChanged: (value) {
             setState(() {
               _targetLanguage = value;
-            });
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildDropdown(
-          context,
-          label: 'Game Context',
-          value: _gameContext,
-          hint: 'All',
-          items: const ['tw_warhammer_2', 'tw_warhammer_3', 'tw_three_kingdoms'],
-          onChanged: (value) {
-            setState(() {
-              _gameContext = value;
             });
           },
         ),
@@ -492,7 +478,6 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
     await ref.read(tmExportStateProvider.notifier).exportToTmx(
           outputPath: _outputPath!,
           targetLanguageCode: _targetLanguage,
-          gameContext: _gameContext,
           minQuality: effectiveMinQuality,
         );
   }

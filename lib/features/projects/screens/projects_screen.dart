@@ -88,10 +88,6 @@ class ProjectsScreen extends ConsumerWidget {
           child: ProjectGrid(
             projects: projects,
             onProjectTap: (projectId) => _navigateToProject(context, projectId),
-            onProjectEdit: (projectId) => _editProject(context, projectId),
-            onProjectExport: (projectId) => _exportProject(context, projectId),
-            onProjectDelete: (projectId) =>
-                _confirmDeleteProject(context, ref, projectId),
           ),
         ),
         const SizedBox(height: 16),
@@ -104,7 +100,6 @@ class ProjectsScreen extends ConsumerWidget {
   Widget _buildEmptyState(BuildContext context, ThemeData theme, WidgetRef ref) {
     final filter = ref.watch(projectsFilterProvider);
     final hasActiveFilters = filter.searchQuery.isNotEmpty ||
-        filter.statusFilters.isNotEmpty ||
         filter.gameFilters.isNotEmpty ||
         filter.languageFilters.isNotEmpty ||
         filter.showOnlyWithUpdates;

@@ -21,6 +21,7 @@ import '../../../services/translation/models/translation_context.dart';
 import '../../../repositories/glossary_repository.dart';
 import '../../../models/domain/glossary_entry.dart';
 import '../../../services/glossary/models/glossary_term_with_variants.dart';
+import '../../settings/providers/settings_providers.dart';
 
 /// Main DataGrid widget for translation editor
 ///
@@ -206,8 +207,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
           cursor: SystemMouseCursors.basic,
           child: CallbackShortcuts(
             bindings: {
-              const SingleActivator(LogicalKeyboardKey.keyA, control: true):
-                _handleSelectAll,
               const SingleActivator(LogicalKeyboardKey.escape):
                 _handleEscape,
               const SingleActivator(LogicalKeyboardKey.delete):
@@ -233,7 +232,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 onQueryRowHeight: _calculateRowHeight,
                 headerRowHeight: 48,
                 onCellTap: _handleCellTap,
-                onCellDoubleTap: _handleCellDoubleTap,
                 onCellSecondaryTap: _handleCellSecondaryTap,
                 columns: [
                   GridColumn(
@@ -281,6 +279,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                   GridColumn(
                     columnName: 'translatedText',
                     columnWidthMode: ColumnWidthMode.fill,
+                    allowEditing: true,
                     label: _buildColumnHeader('Translated Text'),
                   ),
                   GridColumn(
@@ -292,18 +291,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     columnName: 'confidence',
                     width: 90,
                     label: _buildColumnHeader('Score'),
-                  ),
-                  GridColumn(
-                    columnName: 'actions',
-                    width: 60,
-                    label: Container(
-                      padding: const EdgeInsets.all(8.0),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        FluentIcons.more_horizontal_24_regular,
-                        size: 16,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -329,12 +316,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     final rowIndex = details.rowColumnIndex.rowIndex - 1;
     if (rowIndex < 0) return;
 
-    // Enable editing for translated text column
-    final columnIndex = details.rowColumnIndex.columnIndex;
-    if (columnIndex == 3) { // translatedText column
-      _controller.beginEdit(details.rowColumnIndex);
-    }
-
+    // Let Syncfusion's native double-tap editing handle the cell edit
+    // Only trigger the optional row double-tap callback for additional actions
     if (widget.onRowDoubleTap != null && rowIndex < _dataSource.translationRows.length) {
       final unitId = _dataSource.translationRows[rowIndex].id;
       widget.onRowDoubleTap!(unitId);
@@ -354,21 +337,18 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       _selectionHandler.selectSingleRow(row.id, rowIndex);
     }
 
-    // Show context menu
-    _showContextMenu(context, details.globalPosition, row);
+    // Show context menu with grid row index for editing
+    _showContextMenu(context, details.globalPosition, row, details.rowColumnIndex.rowIndex);
   }
 
-  void _showContextMenu(BuildContext context, Offset position, TranslationRow row) {
+  void _showContextMenu(BuildContext context, Offset position, TranslationRow row, int gridRowIndex) {
     ContextMenuBuilder.showContextMenu(
       context: context,
       position: position,
       row: row,
       selectionCount: _selectedRowIds.length,
-      onEdit: () => _handleEdit(row),
+      onEdit: () => _handleEdit(gridRowIndex),
       onSelectAll: _handleSelectAll,
-      onCopy: _handleCopy,
-      onPaste: _handlePaste,
-      onValidate: _handleValidate,
       onClear: _handleClear,
       onViewHistory: () => _handleViewHistory(row),
       onDelete: _handleDeleteConfirmation,
@@ -401,12 +381,10 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     await handler.handlePaste();
   }
 
-  /// Edit the selected row inline
-  void _handleEdit(TranslationRow row) {
-    final rowIndex = _dataSource.translationRows.indexOf(row);
-    if (rowIndex == -1) return;
-
-    final rowColumnIndex = RowColumnIndex(rowIndex + 1, 3);
+  /// Edit the selected row inline using the grid's visual row index
+  void _handleEdit(int gridRowIndex) {
+    // Column 4 is translatedText (0:checkbox, 1:status, 2:key, 3:sourceText, 4:translatedText)
+    final rowColumnIndex = RowColumnIndex(gridRowIndex, 4);
     _controller.beginEdit(rowColumnIndex);
   }
 
@@ -458,6 +436,29 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
       final glossaryRepo = ServiceLocator.get<GlossaryRepository>();
 
+      // Get LLM provider from the toolbar's model selector dropdown
+      String providerCode;
+      String? modelId;
+
+      final selectedModelId = ref.read(selectedLlmModelProvider);
+      if (selectedModelId != null) {
+        final modelRepo = ref.read(llmProviderModelRepositoryProvider);
+        final modelResult = await modelRepo.getById(selectedModelId);
+        if (modelResult.isOk) {
+          final model = modelResult.unwrap();
+          providerCode = model.providerCode;
+          modelId = model.modelId;
+        } else {
+          // Fallback to settings if model not found
+          final llmSettings = await ref.read(llmProviderSettingsProvider.future);
+          providerCode = llmSettings[SettingsKeys.activeProvider] ?? 'openai';
+        }
+      } else {
+        // Fallback to settings if no model selected
+        final llmSettings = await ref.read(llmProviderSettingsProvider.future);
+        providerCode = llmSettings[SettingsKeys.activeProvider] ?? 'openai';
+      }
+
       // Get project language
       final projectLanguagesResult =
           await projectLanguageRepo.getByProject(widget.projectId);
@@ -491,6 +492,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
         id: 'preview-${DateTime.now().millisecondsSinceEpoch}',
         projectId: widget.projectId,
         projectLanguageId: projectLanguage.id,
+        providerId: providerCode,
+        modelId: modelId,
         targetLanguage: language.code,
         glossaryEntries: glossaryEntries,
         createdAt: DateTime.now(),

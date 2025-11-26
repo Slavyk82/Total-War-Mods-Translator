@@ -16,8 +16,9 @@ abstract class IGlossaryService {
   ///
   /// [name] - Unique glossary name
   /// [description] - Optional description
-  /// [isGlobal] - If true, glossary is shared across all projects
-  /// [projectId] - If specified, glossary is project-specific
+  /// [isGlobal] - If true, glossary is universal (all games, all projects)
+  ///              If false, glossary is game-specific (all projects of one game)
+  /// [gameInstallationId] - Required when isGlobal is false (game-specific)
   /// [targetLanguageId] - Target language ID for glossary terms
   ///
   /// Returns the created glossary or error
@@ -25,20 +26,20 @@ abstract class IGlossaryService {
     required String name,
     String? description,
     required bool isGlobal,
-    String? projectId,
+    String? gameInstallationId,
     required String targetLanguageId,
   });
 
   /// Get glossary by ID
   Future<Result<Glossary, GlossaryException>> getGlossaryById(String id);
 
-  /// Get all glossaries (global and project-specific)
+  /// Get all glossaries (universal and game-specific)
   ///
-  /// [projectId] - If specified, returns global + project glossaries
-  /// [includeGlobal] - Include global glossaries in result
+  /// [gameInstallationId] - If specified, returns universal + game-specific glossaries
+  /// [includeUniversal] - Include universal glossaries in result
   Future<Result<List<Glossary>, GlossaryException>> getAllGlossaries({
-    String? projectId,
-    bool includeGlobal = true,
+    String? gameInstallationId,
+    bool includeUniversal = true,
   });
 
   /// Update glossary metadata (name, description)
@@ -107,7 +108,7 @@ abstract class IGlossaryService {
   /// [sourceLanguageCode] - Source language
   /// [targetLanguageCode] - Target language
   /// [glossaryIds] - List of glossary IDs to search (empty = all applicable)
-  /// [projectId] - If specified, includes project-specific glossaries
+  /// [gameInstallationId] - If specified, includes game-specific glossaries
   ///
   /// Returns list of matching entries
   Future<Result<List<GlossaryEntry>, GlossaryException>> findMatchingTerms({
@@ -115,7 +116,7 @@ abstract class IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   });
 
   /// Apply glossary substitutions to target text
@@ -127,7 +128,7 @@ abstract class IGlossaryService {
   /// [sourceLanguageCode] - Source language
   /// [targetLanguageCode] - Target language
   /// [glossaryIds] - List of glossary IDs to use
-  /// [projectId] - If specified, includes project-specific glossaries
+  /// [gameInstallationId] - If specified, includes game-specific glossaries
   ///
   /// Returns modified target text with substitutions
   Future<Result<String, GlossaryException>> applySubstitutions({
@@ -136,7 +137,7 @@ abstract class IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   });
 
   // ============================================================================
@@ -167,7 +168,7 @@ abstract class IGlossaryService {
   /// [sourceLanguageCode] - Source language
   /// [targetLanguageCode] - Target language
   /// [glossaryIds] - Glossaries to check against
-  /// [projectId] - Project context
+  /// [gameInstallationId] - Game context
   ///
   /// Returns list of inconsistencies found
   Future<Result<List<String>, GlossaryException>> checkConsistency({
@@ -176,7 +177,7 @@ abstract class IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   });
 
   // ============================================================================

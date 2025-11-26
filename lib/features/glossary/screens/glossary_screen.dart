@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:uuid/uuid.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import '../providers/glossary_providers.dart';
-import '../widgets/glossary_selector.dart';
+import '../widgets/glossary_list.dart';
 import '../widgets/glossary_datagrid.dart';
 import '../widgets/glossary_statistics_panel.dart';
 import '../widgets/glossary_entry_editor.dart';
@@ -15,8 +16,11 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/repositories/language_repository.dart';
+import 'package:twmt/repositories/game_installation_repository.dart';
+import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 
 /// Main screen for Glossary management
 class GlossaryScreen extends ConsumerStatefulWidget {
@@ -28,6 +32,28 @@ class GlossaryScreen extends ConsumerStatefulWidget {
 
 class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   final _searchController = TextEditingController();
+  Map<String, GameInstallation> _gameInstallations = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGameInstallations();
+  }
+
+  Future<void> _loadGameInstallations() async {
+    final repository = ServiceLocator.get<GameInstallationRepository>();
+    final result = await repository.getAll();
+    result.when(
+      ok: (games) {
+        if (mounted) {
+          setState(() {
+            _gameInstallations = {for (var g in games) g.id: g};
+          });
+        }
+      },
+      err: (_) {},
+    );
+  }
 
   @override
   void dispose() {
@@ -40,66 +66,107 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     final selectedGlossary = ref.watch(selectedGlossaryProvider);
 
     return FluentScaffold(
-      body: Column(
-        children: [
-          // Header
-          _buildHeader(context),
-
-          const Divider(height: 1),
-
-          // Glossary selector
-          _buildGlossarySelector(context, selectedGlossary),
-
-          const Divider(height: 1),
-
-          // Main content
-          Expanded(
-            child: selectedGlossary == null
-                ? _buildEmptyState(context)
-                : Row(
-                    children: [
-                      // Statistics panel (left sidebar) with fixed width
-                      SizedBox(
-                        width: 280,
-                        child: GlossaryStatisticsPanel(
-                          glossaryId: selectedGlossary.id,
-                        ),
-                      ),
-
-                      const VerticalDivider(width: 1),
-
-                      // Main content area
-                      Expanded(
-                        child: Column(
-                          children: [
-                            // Toolbar
-                            _buildToolbar(context, selectedGlossary),
-
-                            const Divider(height: 1),
-
-                            // DataGrid
-                            Expanded(
-                              child: GlossaryDataGrid(
-                                glossaryId: selectedGlossary.id,
-                              ),
-                            ),
-
-                            const Divider(height: 1),
-
-                            // Footer info
-                            _buildFooter(context, selectedGlossary),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
+      body: selectedGlossary == null
+          ? _buildGlossaryListView(context)
+          : _buildGlossaryEditorView(context, selectedGlossary),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  /// Build the glossary list view (shown when no glossary selected)
+  Widget _buildGlossaryListView(BuildContext context) {
+    final glossariesAsync = ref.watch(glossariesProvider());
+
+    return Column(
+      children: [
+        // Header
+        _buildListHeader(context),
+
+        const Divider(height: 1),
+
+        // Glossary cards list
+        Expanded(
+          child: glossariesAsync.when(
+            data: (glossaries) {
+              if (glossaries.isEmpty) {
+                return _buildEmptyState(context);
+              }
+              return GlossaryList(
+                glossaries: glossaries,
+                gameInstallations: _gameInstallations,
+                onGlossaryTap: (glossary) {
+                  ref.read(selectedGlossaryProvider.notifier).select(glossary);
+                },
+                onDeleteGlossary: (glossary) => _confirmDeleteGlossary(glossary),
+              );
+            },
+            loading: () => const Center(child: FluentInlineSpinner()),
+            error: (error, stack) => Center(
+              child: Text(
+                'Error loading glossaries: $error',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build the glossary editor view (shown when a glossary is selected)
+  Widget _buildGlossaryEditorView(BuildContext context, Glossary glossary) {
+    return Column(
+      children: [
+        // Header with back button
+        _buildEditorHeader(context, glossary),
+
+        const Divider(height: 1),
+
+        // Main content
+        Expanded(
+          child: Row(
+            children: [
+              // Statistics panel (left sidebar) with fixed width
+              SizedBox(
+                width: 280,
+                child: GlossaryStatisticsPanel(
+                  glossaryId: glossary.id,
+                ),
+              ),
+
+              const VerticalDivider(width: 1),
+
+              // Main content area
+              Expanded(
+                child: Column(
+                  children: [
+                    // Toolbar
+                    _buildToolbar(context, glossary),
+
+                    const Divider(height: 1),
+
+                    // DataGrid
+                    Expanded(
+                      child: GlossaryDataGrid(
+                        glossaryId: glossary.id,
+                      ),
+                    ),
+
+                    const Divider(height: 1),
+
+                    // Footer info
+                    _buildFooter(context, glossary),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Header for the glossary list view
+  Widget _buildListHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24.0),
       child: Row(
@@ -115,14 +182,82 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const Spacer(),
-          // Action buttons
+          // Create new glossary button
           _buildActionButton(
             context,
             icon: FluentIcons.add_24_regular,
-            label: 'New',
+            label: 'New Glossary',
             onPressed: () => _showNewGlossaryDialog(),
           ),
-          const SizedBox(width: 8),
+        ],
+      ),
+    );
+  }
+
+  /// Header for the glossary editor view (with back button)
+  Widget _buildEditorHeader(BuildContext context, Glossary glossary) {
+    final isUniversal = glossary.isGlobal;
+    final gameName = glossary.gameInstallationId != null
+        ? _gameInstallations[glossary.gameInstallationId]?.gameName
+        : null;
+    final typeLabel = isUniversal
+        ? 'Universal Glossary'
+        : gameName != null
+            ? 'Game: $gameName'
+            : 'Game-specific Glossary';
+
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      child: Row(
+        children: [
+          // Back button
+          _buildBackButton(context),
+          const SizedBox(width: 16),
+          // Glossary icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isUniversal
+                  ? Theme.of(context).colorScheme.primaryContainer
+                  : Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              isUniversal
+                  ? FluentIcons.globe_24_regular
+                  : FluentIcons.games_24_regular,
+              size: 20,
+              color: isUniversal
+                  ? Theme.of(context).colorScheme.onPrimaryContainer
+                  : Theme.of(context).colorScheme.onSecondaryContainer,
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Glossary name and type
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  glossary.name,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  typeLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isUniversal
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.secondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          // Action buttons
           _buildActionButton(
             context,
             icon: FluentIcons.arrow_import_24_regular,
@@ -141,8 +276,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             context,
             icon: FluentIcons.delete_24_regular,
             label: 'Delete',
-            onPressed:
-                ref.watch(selectedGlossaryProvider) != null ? _deleteGlossary : null,
+            onPressed: () => _confirmDeleteGlossary(glossary),
             isDestructive: true,
           ),
         ],
@@ -150,26 +284,30 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  Widget _buildGlossarySelector(BuildContext context, Glossary? selectedGlossary) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-      child: Row(
-        children: [
-          Text(
-            'Glossary:',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GlossarySelector(
-              selectedGlossary: selectedGlossary,
-              onGlossarySelected: (glossary) {
-                ref.read(selectedGlossaryProvider.notifier).select(glossary);
-              },
-              onCreateNew: () => _showNewGlossaryDialog(),
+  Widget _buildBackButton(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          ref.read(selectedGlossaryProvider.notifier).clear();
+        },
+        child: Tooltip(
+          message: 'Back to Glossary List',
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              FluentIcons.arrow_left_24_regular,
+              size: 20,
+              color: theme.colorScheme.onSurface,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -225,6 +363,16 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   }
 
   Widget _buildFooter(BuildContext context, Glossary glossary) {
+    final isUniversal = glossary.isGlobal;
+    final gameName = glossary.gameInstallationId != null
+        ? _gameInstallations[glossary.gameInstallationId]?.gameName
+        : null;
+    final typeLabel = isUniversal
+        ? 'Universal Glossary'
+        : gameName != null
+            ? gameName
+            : 'Game-specific';
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Row(
@@ -240,9 +388,9 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
           ),
           const Spacer(),
           Text(
-            glossary.isGlobal ? 'Global Glossary' : 'Project Glossary',
+            typeLabel,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: glossary.isGlobal
+                  color: isUniversal
                       ? Theme.of(context).colorScheme.primary
                       : Theme.of(context).colorScheme.secondary,
                 ),
@@ -264,14 +412,14 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No glossary selected',
+            'No glossaries yet',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Select a glossary from the dropdown or create a new one',
+            'Create a glossary to manage your translation terminology',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
@@ -405,17 +553,15 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  Future<void> _deleteGlossary() async {
-    final selectedGlossary = ref.read(selectedGlossaryProvider);
-    if (selectedGlossary == null) return;
-
+  /// Show confirmation dialog and delete glossary
+  Future<void> _confirmDeleteGlossary(Glossary glossary) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Glossary'),
         content: Text(
-          'Are you sure you want to delete "${selectedGlossary.name}"? '
-          'This will permanently delete all ${selectedGlossary.entryCount} entries.',
+          'Are you sure you want to delete "${glossary.name}"? '
+          'This will permanently delete all ${glossary.entryCount} entries.',
         ),
         actions: [
           FluentTextButton(
@@ -434,16 +580,20 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     if (confirmed == true) {
       try {
         final service = ServiceLocator.get<IGlossaryService>();
-        await service.deleteGlossary(selectedGlossary.id);
+        await service.deleteGlossary(glossary.id);
 
         if (mounted) {
-          // Clear selection and refresh
-          ref.read(selectedGlossaryProvider.notifier).clear();
+          // Clear selection if this was the selected glossary
+          final selected = ref.read(selectedGlossaryProvider);
+          if (selected?.id == glossary.id) {
+            ref.read(selectedGlossaryProvider.notifier).clear();
+          }
+          // Refresh glossaries list
           ref.invalidate(glossariesProvider);
 
           FluentToast.success(
             context,
-            'Glossary "${selectedGlossary.name}" deleted successfully',
+            'Glossary "${glossary.name}" deleted successfully',
           );
         }
       } catch (e) {
@@ -465,15 +615,15 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  bool _isGlobal = true;
-  String? _projectId;
+  bool _isUniversal = true;
+  String? _selectedGameCode;
   String? _selectedLanguageId;
   bool _isCreating = false;
 
   @override
   void initState() {
     super.initState();
-    _loadLanguages();
+    _loadDefaultLanguage();
   }
 
   @override
@@ -483,21 +633,19 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
     super.dispose();
   }
 
-  Future<void> _loadLanguages() async {
-    final repository = ServiceLocator.get<LanguageRepository>();
+  Future<void> _loadDefaultLanguage() async {
+    final languageRepository = ServiceLocator.get<LanguageRepository>();
     final settingsService = ServiceLocator.get<SettingsService>();
     
-    // Get the default target language from settings
     final defaultLanguageCode = await settingsService.getString(
       SettingsKeys.defaultTargetLanguage,
-      defaultValue: 'fr',
+      defaultValue: SettingsKeys.defaultTargetLanguageValue,
     );
     
-    final result = await repository.getActive();
-    result.when(
+    final langResult = await languageRepository.getActive();
+    langResult.when(
       ok: (languages) {
         if (mounted && languages.isNotEmpty) {
-          // Find language matching the default code, or fallback to first
           final defaultLang = languages.firstWhere(
             (lang) => lang.code == defaultLanguageCode,
             orElse: () => languages.first,
@@ -509,6 +657,37 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
       },
       err: (_) {},
     );
+  }
+
+  /// Get or create GameInstallation for the given game code
+  Future<String?> _getOrCreateGameInstallationId(String gameCode, String gameName, String gamePath) async {
+    final repository = ServiceLocator.get<GameInstallationRepository>();
+    
+    // Try to find existing
+    final existingResult = await repository.getByGameCode(gameCode);
+    if (existingResult.isOk) {
+      return existingResult.value.id;
+    }
+    
+    // Create new GameInstallation
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final newInstallation = GameInstallation(
+      id: const Uuid().v4(),
+      gameCode: gameCode,
+      gameName: gameName,
+      installationPath: gamePath,
+      isAutoDetected: false,
+      isValid: true,
+      createdAt: now,
+      updatedAt: now,
+    );
+    
+    final insertResult = await repository.insert(newInstallation);
+    if (insertResult.isOk) {
+      return insertResult.value.id;
+    }
+    
+    return null;
   }
 
   Widget _buildLanguageSelector() {
@@ -527,7 +706,7 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
             }
 
             return DropdownButtonFormField<String>(
-              initialValue: _selectedLanguageId,
+              value: _selectedLanguageId,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: 'Select target language',
@@ -553,6 +732,45 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
           },
           err: (_) => const Text('Error loading languages'),
         ) ?? const Text('Error loading languages');
+      },
+    );
+  }
+
+  Widget _buildGameSelector() {
+    final configuredGamesAsync = ref.watch(configuredGamesProvider);
+
+    return configuredGamesAsync.when(
+      loading: () => const FluentInlineSpinner(),
+      error: (_, __) => const Text('Error loading games'),
+      data: (games) {
+        if (games.isEmpty) {
+          return const Text('No games configured. Add a game in Settings first.');
+        }
+
+        return DropdownButtonFormField<String>(
+          value: _selectedGameCode,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Select game',
+          ),
+          items: games.map((game) {
+            return DropdownMenuItem<String>(
+              value: game.code,
+              child: Text(game.name),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedGameCode = value;
+            });
+          },
+          validator: (value) {
+            if (!_isUniversal && (value == null || value.isEmpty)) {
+              return 'Game selection is required';
+            }
+            return null;
+          },
+        );
       },
     );
   }
@@ -601,9 +819,9 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
                 ),
                 const SizedBox(height: 16),
 
-                // Type
+                // Scope
                 Text(
-                  'Type *',
+                  'Scope *',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 8),
@@ -613,30 +831,47 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
                     RadioListTile<bool>(
                       value: true,
                       // ignore: deprecated_member_use
-                      groupValue: _isGlobal,
+                      groupValue: _isUniversal,
                       // ignore: deprecated_member_use
                       onChanged: (value) {
                         setState(() {
-                          _isGlobal = value ?? true;
+                          _isUniversal = value ?? true;
+                          if (_isUniversal) {
+                            _selectedGameCode = null;
+                          }
                         });
                       },
-                      title: const Text('Global glossary (shared across all projects)'),
+                      title: const Text('Universal (all games)'),
+                      subtitle: const Text('Shared across all projects of all games'),
                     ),
                     // ignore: deprecated_member_use
                     RadioListTile<bool>(
                       value: false,
                       // ignore: deprecated_member_use
-                      groupValue: _isGlobal,
+                      groupValue: _isUniversal,
                       // ignore: deprecated_member_use
                       onChanged: (value) {
                         setState(() {
-                          _isGlobal = value ?? false;
+                          _isUniversal = value ?? false;
                         });
                       },
-                      title: const Text('Project glossary (specific to one project)'),
+                      title: const Text('Game-specific'),
+                      subtitle: const Text('Shared across all projects of one game'),
                     ),
                   ],
                 ),
+
+                // Game selector (only visible when game-specific)
+                if (!_isUniversal) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Game *',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildGameSelector(),
+                ],
+
                 const SizedBox(height: 16),
 
                 // Target Language
@@ -692,11 +927,32 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
         return;
       }
 
+      // Get or create GameInstallation for game-specific glossary
+      String? gameInstallationId;
+      if (!_isUniversal && _selectedGameCode != null) {
+        final configuredGames = await ref.read(configuredGamesProvider.future);
+        final selectedGame = configuredGames.firstWhere(
+          (g) => g.code == _selectedGameCode,
+        );
+        gameInstallationId = await _getOrCreateGameInstallationId(
+          selectedGame.code,
+          selectedGame.name,
+          selectedGame.path,
+        );
+        
+        if (gameInstallationId == null) {
+          if (mounted) {
+            FluentToast.error(context, 'Failed to create game installation record');
+          }
+          return;
+        }
+      }
+
       print('[NewGlossaryDialog] Calling service.createGlossary with:');
       print('  name: ${_nameController.text.trim()}');
       print('  description: ${_descriptionController.text.trim().isNotEmpty ? _descriptionController.text.trim() : null}');
-      print('  isGlobal: $_isGlobal');
-      print('  projectId: $_projectId');
+      print('  isUniversal: $_isUniversal');
+      print('  gameInstallationId: $gameInstallationId');
       print('  targetLanguageId: $_selectedLanguageId');
       
       final result = await service.createGlossary(
@@ -704,8 +960,8 @@ class _NewGlossaryDialogState extends ConsumerState<_NewGlossaryDialog> {
         description: _descriptionController.text.trim().isNotEmpty
             ? _descriptionController.text.trim()
             : null,
-        isGlobal: _isGlobal,
-        projectId: _projectId,
+        isGlobal: _isUniversal,
+        gameInstallationId: gameInstallationId,
         targetLanguageId: _selectedLanguageId!,
       );
 

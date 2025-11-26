@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/projects_screen_providers.dart';
-import '../../../models/domain/project.dart';
 
 /// Toolbar for Projects screen with search, filter, sort, and view mode controls.
 ///
@@ -42,9 +41,6 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
             const SizedBox(width: 8),
             // Sort dropdown
             _buildSortDropdown(theme),
-            const SizedBox(width: 8),
-            // View mode toggle
-            _buildViewModeToggle(theme),
           ],
         ),
         const SizedBox(height: 12),
@@ -109,8 +105,7 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
 
   Widget _buildFilterButton(ThemeData theme) {
     final filter = ref.watch(projectsFilterProvider);
-    final hasActiveFilters = filter.statusFilters.isNotEmpty ||
-        filter.gameFilters.isNotEmpty ||
+    final hasActiveFilters = filter.gameFilters.isNotEmpty ||
         filter.languageFilters.isNotEmpty ||
         filter.showOnlyWithUpdates;
 
@@ -157,44 +152,9 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
     );
   }
 
-  Widget _buildViewModeToggle(ThemeData theme) {
-    final viewMode = ref.watch(
-      projectsFilterProvider.select((state) => state.viewMode),
-    );
-
-    return Row(
-      children: [
-        _ViewModeButton(
-          icon: FluentIcons.grid_24_regular,
-          isSelected: viewMode == ProjectViewMode.grid,
-          onTap: () {
-            ref.read(projectsFilterProvider.notifier).updateViewMode(ProjectViewMode.grid);
-          },
-        ),
-        const SizedBox(width: 4),
-        _ViewModeButton(
-          icon: FluentIcons.list_24_regular,
-          isSelected: viewMode == ProjectViewMode.list,
-          onTap: () {
-            ref.read(projectsFilterProvider.notifier).updateViewMode(ProjectViewMode.list);
-          },
-        ),
-      ],
-    );
-  }
-
   Widget _buildActiveFilters(ThemeData theme) {
     final filter = ref.watch(projectsFilterProvider);
     final chips = <Widget>[];
-
-    // Status filters
-    for (final status in filter.statusFilters) {
-      chips.add(_buildFilterChip(
-        theme,
-        status.name.toUpperCase(),
-        () => _removeStatusFilter(status),
-      ));
-    }
 
     // Updates filter
     if (filter.showOnlyWithUpdates) {
@@ -283,15 +243,6 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
     ref.read(projectsFilterProvider.notifier).updateSearchQuery(query);
   }
 
-  void _removeStatusFilter(ProjectStatus status) {
-    final current = ref.read(projectsFilterProvider);
-    final newFilters = Set<ProjectStatus>.from(current.statusFilters)
-      ..remove(status);
-    ref.read(projectsFilterProvider.notifier).updateFilters(
-      statusFilters: newFilters,
-    );
-  }
-
   void _toggleUpdatesFilter(bool value) {
     ref.read(projectsFilterProvider.notifier).updateFilters(
       showOnlyWithUpdates: value,
@@ -310,8 +261,7 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
   }
 
   int _getActiveFilterCount(ProjectsFilterState filter) {
-    return filter.statusFilters.length +
-        filter.gameFilters.length +
+    return filter.gameFilters.length +
         filter.languageFilters.length +
         (filter.showOnlyWithUpdates ? 1 : 0);
   }
@@ -324,8 +274,6 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
         return FluentIcons.calendar_24_regular;
       case ProjectSortOption.progress:
         return FluentIcons.chart_multiple_24_regular;
-      case ProjectSortOption.status:
-        return FluentIcons.tag_24_regular;
     }
   }
 }
@@ -440,64 +388,6 @@ class _FluentButtonState extends State<_FluentButton> {
   }
 }
 
-/// View mode toggle button
-class _ViewModeButton extends StatefulWidget {
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _ViewModeButton({
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  State<_ViewModeButton> createState() => _ViewModeButtonState();
-}
-
-class _ViewModeButtonState extends State<_ViewModeButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: widget.isSelected
-                ? theme.colorScheme.primaryContainer
-                : (_isHovered
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                    : Colors.transparent),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: widget.isSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Icon(
-            widget.icon,
-            size: 18,
-            color: widget.isSelected
-                ? theme.colorScheme.onPrimaryContainer
-                : theme.colorScheme.onSurface,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Filter dialog for advanced filtering options
 class _FilterDialog extends ConsumerWidget {
   const _FilterDialog();
@@ -544,25 +434,6 @@ class _FilterDialog extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              // Status filters
-              Text(
-                'Status',
-                style: theme.textTheme.titleSmall,
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ProjectStatus.values.map((status) {
-                  final isSelected = filter.statusFilters.contains(status);
-                  return _FilterCheckbox(
-                    label: status.name.toUpperCase(),
-                    isSelected: isSelected,
-                    onChanged: (value) => _toggleStatusFilter(ref, status),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
               // Updates filter
               _FilterCheckbox(
                 label: 'Show only projects with updates',
@@ -577,21 +448,6 @@ class _FilterDialog extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _toggleStatusFilter(WidgetRef ref, ProjectStatus status) {
-    final current = ref.read(projectsFilterProvider);
-    final newFilters = Set<ProjectStatus>.from(current.statusFilters);
-
-    if (newFilters.contains(status)) {
-      newFilters.remove(status);
-    } else {
-      newFilters.add(status);
-    }
-
-    ref.read(projectsFilterProvider.notifier).updateFilters(
-      statusFilters: newFilters,
     );
   }
 }

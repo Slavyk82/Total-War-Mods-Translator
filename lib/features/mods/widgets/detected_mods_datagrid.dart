@@ -120,7 +120,7 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
             ),
             GridColumn(
               columnName: 'workshop_id',
-              columnWidthMode: ColumnWidthMode.fitByCellValue,
+              width: 140,
               label: Container(
                 padding: const EdgeInsets.all(8),
                 alignment: Alignment.centerLeft,
@@ -135,7 +135,7 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'Workshop ID',
+                        'ID',
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,
@@ -193,7 +193,7 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
-                        'Subscribers',
+                        'Subs',
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,

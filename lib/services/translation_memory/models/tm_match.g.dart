@@ -16,7 +16,6 @@ TmMatch _$TmMatchFromJson(Map<String, dynamic> json) => TmMatch(
   breakdown: SimilarityBreakdown.fromJson(
     json['breakdown'] as Map<String, dynamic>,
   ),
-  gameContext: json['gameContext'] as String?,
   category: json['category'] as String?,
   usageCount: (json['usageCount'] as num).toInt(),
   lastUsedAt: DateTime.parse(json['lastUsedAt'] as String),
@@ -32,7 +31,6 @@ Map<String, dynamic> _$TmMatchToJson(TmMatch instance) => <String, dynamic>{
   'similarityScore': instance.similarityScore,
   'matchType': _$TmMatchTypeEnumMap[instance.matchType]!,
   'breakdown': instance.breakdown,
-  'gameContext': instance.gameContext,
   'category': instance.category,
   'usageCount': instance.usageCount,
   'lastUsedAt': instance.lastUsedAt.toIso8601String(),

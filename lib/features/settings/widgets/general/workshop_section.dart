@@ -7,6 +7,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/steam/steam_detection_service.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
+import 'settings_section_header.dart';
 
 /// Steam Workshop configuration section.
 ///
@@ -31,34 +32,13 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          'Steam Workshop',
+        const SettingsSectionHeader(
+          title: 'Steam Workshop',
           subtitle:
               'Base folder for Steam Workshop content (game IDs will be appended automatically)',
         ),
         const SizedBox(height: 16),
         _buildWorkshopPathField(),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title, {String? subtitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-          ),
-        ],
       ],
     );
   }
@@ -83,6 +63,13 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
         const SizedBox(height: 8),
         Row(
           children: [
+            SettingsActionButton.detect(
+              onPressed: _autoDetectWorkshop,
+              isDetecting: _isDetecting,
+            ),
+            const SizedBox(width: 4),
+            SettingsActionButton.browse(onPressed: _selectWorkshopPath),
+            const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
                 controller: widget.workshopPathController,
@@ -99,13 +86,6 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
                 onChanged: _saveWorkshopPath,
               ),
             ),
-            const SizedBox(width: 8),
-            SettingsActionButton.detect(
-              onPressed: _autoDetectWorkshop,
-              isDetecting: _isDetecting,
-            ),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectWorkshopPath),
           ],
         ),
       ],
@@ -142,12 +122,18 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
         if (workshopPath != null && workshopPath.isNotEmpty) {
           setState(() => widget.workshopPathController.text = workshopPath);
           await _saveWorkshopPath(workshopPath);
-          FluentToast.success(context, 'Workshop folder detected: $workshopPath');
+          if (mounted) {
+            FluentToast.success(context, 'Workshop folder detected: $workshopPath');
+          }
         } else {
-          FluentToast.warning(context, 'Workshop folder not found. Please select manually.');
+          if (mounted) {
+            FluentToast.warning(context, 'Workshop folder not found. Please select manually.');
+          }
         }
       } else {
-        FluentToast.error(context, 'Detection failed: ${result.unwrapErr().message}');
+        if (mounted) {
+          FluentToast.error(context, 'Detection failed: ${result.unwrapErr().message}');
+        }
       }
     } catch (e) {
       if (mounted) {

@@ -68,26 +68,6 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // By Language
-          Text(
-            'By Language',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          if (stats.entriesByLanguagePair.isEmpty)
-            Text(
-              'No languages',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-            )
-          else
-            ...stats.entriesByLanguagePair.entries
-                .map((entry) => _buildLanguageItem(context, entry.key, entry.value)),
-          const SizedBox(height: 16),
-
           // Usage Stats
           Text(
             'Usage',
@@ -123,11 +103,6 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
           const SizedBox(height: 8),
           _buildStatRow(
             context,
-            'Consistency score',
-            '${(stats.consistencyScore * 100).toStringAsFixed(1)}%',
-          ),
-          _buildStatRow(
-            context,
             'Duplicates',
             stats.duplicatesDetected.toString(),
             isWarning: stats.duplicatesDetected > 0,
@@ -137,21 +112,6 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
             'Missing translations',
             stats.missingTranslations.toString(),
             isWarning: stats.missingTranslations > 0,
-          ),
-          const SizedBox(height: 16),
-
-          // Other Stats
-          Text(
-            'Other',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: 8),
-          _buildStatRow(
-            context,
-            'Case sensitive',
-            stats.caseSensitiveTerms.toString(),
           ),
           const SizedBox(height: 24),
 
@@ -235,34 +195,6 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLanguageItem(BuildContext context, String language, int count) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.globe_24_regular,
-            size: 16,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              language.toUpperCase(),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ),
-          Text(
-            count.toString(),
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
           ),
         ],
       ),

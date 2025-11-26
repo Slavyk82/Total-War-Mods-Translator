@@ -127,20 +127,14 @@ class EditorSelectionState {
 class EditorStats {
   final int totalUnits;
   final int pendingCount;
-  final int translatingCount;
   final int translatedCount;
-  final int reviewedCount;
-  final int approvedCount;
   final int needsReviewCount;
   final double completionPercentage;
 
   const EditorStats({
     required this.totalUnits,
     required this.pendingCount,
-    required this.translatingCount,
     required this.translatedCount,
-    required this.reviewedCount,
-    required this.approvedCount,
     required this.needsReviewCount,
     required this.completionPercentage,
   });
@@ -149,10 +143,7 @@ class EditorStats {
     return const EditorStats(
       totalUnits: 0,
       pendingCount: 0,
-      translatingCount: 0,
       translatedCount: 0,
-      reviewedCount: 0,
-      approvedCount: 0,
       needsReviewCount: 0,
       completionPercentage: 0.0,
     );
@@ -482,10 +473,7 @@ Future<EditorStats> editorStats(
 
   // Count by status
   int pendingCount = 0;
-  int translatingCount = 0;
   int translatedCount = 0;
-  int reviewedCount = 0;
-  int approvedCount = 0;
   int needsReviewCount = 0;
 
   for (final row in rows) {
@@ -493,17 +481,8 @@ Future<EditorStats> editorStats(
       case TranslationVersionStatus.pending:
         pendingCount++;
         break;
-      case TranslationVersionStatus.translating:
-        translatingCount++;
-        break;
       case TranslationVersionStatus.translated:
         translatedCount++;
-        break;
-      case TranslationVersionStatus.reviewed:
-        reviewedCount++;
-        break;
-      case TranslationVersionStatus.approved:
-        approvedCount++;
         break;
       case TranslationVersionStatus.needsReview:
         needsReviewCount++;
@@ -512,19 +491,15 @@ Future<EditorStats> editorStats(
   }
 
   // Calculate completion percentage
-  // Consider translated, reviewed, and approved as "completed"
-  final completedCount = translatedCount + reviewedCount + approvedCount;
+  // Consider translated as "completed" (needsReview still needs attention)
   final totalUnits = rows.length;
   final completionPercentage =
-      totalUnits > 0 ? (completedCount / totalUnits) * 100 : 0.0;
+      totalUnits > 0 ? (translatedCount / totalUnits) * 100 : 0.0;
 
   return EditorStats(
     totalUnits: totalUnits,
     pendingCount: pendingCount,
-    translatingCount: translatingCount,
     translatedCount: translatedCount,
-    reviewedCount: reviewedCount,
-    approvedCount: approvedCount,
     needsReviewCount: needsReviewCount,
     completionPercentage: completionPercentage,
   );

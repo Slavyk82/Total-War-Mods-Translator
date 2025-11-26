@@ -69,10 +69,18 @@ class LlmTranslationHandler {
 
     var progress = currentProgress.copyWith(
       currentPhase: TranslationPhase.buildingPrompt,
+      phaseDetail: 'Building translation prompt with context and examples...',
       timestamp: DateTime.now(),
     );
+    onProgressUpdate(batchId, progress);
 
     // Build prompt with TM examples (few-shot learning)
+    progress = progress.copyWith(
+      phaseDetail: 'Loading few-shot examples from Translation Memory...',
+      timestamp: DateTime.now(),
+    );
+    onProgressUpdate(batchId, progress);
+    
     final promptResult = await _promptBuilder.buildPrompt(
       units: unitsToTranslate,
       context: context,
@@ -91,14 +99,22 @@ class LlmTranslationHandler {
 
     progress = progress.copyWith(
       currentPhase: TranslationPhase.llmTranslation,
+      phaseDetail: 'Starting LLM translation (${unitsToTranslate.length} units via ${context.providerCode ?? "default"})...',
       timestamp: DateTime.now(),
     );
+    onProgressUpdate(batchId, progress);
 
     // Split units into parallel chunks if parallelBatches > 1
     final parallelBatches = context.parallelBatches;
     if (parallelBatches > 1 && unitsToTranslate.length > parallelBatches) {
       // Check cancellation before starting parallel processing
       await checkPauseOrCancel(batchId);
+      
+      progress = progress.copyWith(
+        phaseDetail: 'Splitting into $parallelBatches parallel batches for faster processing...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
       
       _logger.debug('Splitting into $parallelBatches parallel batches');
 
@@ -265,6 +281,13 @@ class LlmTranslationHandler {
         units: unitsToTranslate,
       );
 
+      // Update progress detail
+      final splitProgress = progress.copyWith(
+        phaseDetail: 'Batch too large (~$estimatedTokens tokens), auto-splitting into smaller chunks...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, splitProgress);
+
       // Create warning log
       final warningLog = LlmExchangeLog.fromError(
         requestId: '$batchId-preemptive-split-$depth',
@@ -338,6 +361,13 @@ class LlmTranslationHandler {
     // Get cancellation token
     final cancellationToken = getCancellationToken(batchId);
     final dioCancelToken = cancellationToken?.dioToken;
+
+    // Update progress with LLM call info
+    final llmCallProgress = progress.copyWith(
+      phaseDetail: 'Calling ${context.providerCode ?? "LLM"} API (${unitsToTranslate.length} units)...',
+      timestamp: DateTime.now(),
+    );
+    onProgressUpdate(batchId, llmCallProgress);
 
     // Try translation with retry for transient errors (429, 529, etc.)
     final llmResult = await _translateWithRetry(
@@ -469,6 +499,13 @@ class LlmTranslationHandler {
     }
 
     _logger.debug('LLM batch done: ${llmResponse.translations.length} units, ${llmResponse.totalTokens} tokens');
+
+    // Update progress with completion info
+    final completionProgress = progress.copyWith(
+      phaseDetail: 'LLM returned ${llmResponse.translations.length} translations (${llmResponse.totalTokens} tokens used)',
+      timestamp: DateTime.now(),
+    );
+    onProgressUpdate(batchId, completionProgress);
 
     // Progressive save: call callback to save translations immediately
     if (onSubBatchTranslated != null && translations.isNotEmpty) {

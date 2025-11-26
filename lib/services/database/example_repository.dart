@@ -122,16 +122,16 @@ class ExampleProjectRepository {
     }
   }
 
-  /// Update project status
+  /// Update project name
   ///
   /// Demonstrates:
   /// - Simple UPDATE operation
   /// - Auto-updated timestamp (via trigger)
-  Future<void> updateProjectStatus(String projectId, String status) async {
+  Future<void> updateProjectName(String projectId, String name) async {
     try {
       final updated = await DatabaseService.update(
         'projects',
-        {'status': status},
+        {'name': name},
         where: 'id = ?',
         whereArgs: [projectId],
       );
@@ -141,7 +141,7 @@ class ExampleProjectRepository {
       }
     } catch (e, stackTrace) {
       throw TWMTDatabaseException(
-        'Failed to update project status: $projectId',
+        'Failed to update project name: $projectId',
         error: e,
         stackTrace: stackTrace,
       );

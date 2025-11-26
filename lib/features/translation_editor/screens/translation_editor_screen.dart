@@ -88,10 +88,6 @@ class _TranslationEditorScreenState
             onTranslateSelected: () => _getActions().handleTranslateSelected(),
             onValidate: () => _getActions().handleValidate(),
             onExport: () => _getActions().handleExport(),
-            onUndo: () => _getActions().handleUndo(),
-            onRedo: () => _getActions().handleRedo(),
-            canUndo: undoRedoManager.canUndo,
-            canRedo: undoRedoManager.canRedo,
           ),
 
           // Main content area

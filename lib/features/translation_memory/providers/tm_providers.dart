@@ -11,15 +11,13 @@ part 'tm_providers.g.dart';
 Future<List<TranslationMemoryEntry>> tmEntries(
   Ref ref, {
   String? targetLang,
-  String? gameContext,
   double? minQuality,
   int page = 1,
-  int pageSize = 20,
+  int pageSize = 1000,
 }) async {
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting tmEntries provider', {
     'targetLang': targetLang,
-    'gameContext': gameContext,
     'minQuality': minQuality,
     'page': page,
     'pageSize': pageSize,
@@ -30,7 +28,6 @@ Future<List<TranslationMemoryEntry>> tmEntries(
 
     final result = await service.getEntries(
       targetLanguageCode: targetLang,
-      gameContext: gameContext,
       limit: pageSize,
       offset: offset,
     );
@@ -64,7 +61,6 @@ Future<List<TranslationMemoryEntry>> tmEntries(
 Future<int> tmEntriesCount(
   Ref ref, {
   String? targetLang,
-  String? gameContext,
   double? minQuality,
 }) async {
   final service = ServiceLocator.get<ITranslationMemoryService>();
@@ -72,7 +68,6 @@ Future<int> tmEntriesCount(
   // Get all entries (we'll optimize this later with a count query)
   final result = await service.getEntries(
     targetLanguageCode: targetLang,
-    gameContext: gameContext,
     limit: 100000, // Large limit to get all
     offset: 0,
   );
@@ -95,19 +90,16 @@ Future<int> tmEntriesCount(
 Future<TmStatistics> tmStatistics(
   Ref ref, {
   String? targetLang,
-  String? gameContext,
 }) async {
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting tmStatistics provider', {
     'targetLang': targetLang,
-    'gameContext': gameContext,
   });
   try {
     final service = ServiceLocator.get<ITranslationMemoryService>();
 
     final result = await service.getStatistics(
       targetLanguageCode: targetLang,
-      gameContext: gameContext,
     );
 
     return result.when(
@@ -179,10 +171,6 @@ class TmFilterState extends _$TmFilterState {
 
   void setTargetLanguage(String? lang) {
     state = state.copyWith(targetLanguage: lang);
-  }
-
-  void setGameContext(String? context) {
-    state = state.copyWith(gameContext: context);
   }
 
   void setMinQuality(double? quality) {
@@ -287,7 +275,6 @@ class TmExportState extends _$TmExportState {
   Future<void> exportToTmx({
     required String outputPath,
     String? targetLanguageCode,
-    String? gameContext,
     double? minQuality,
   }) async {
     state = const AsyncValue.loading();
@@ -298,7 +285,6 @@ class TmExportState extends _$TmExportState {
       final result = await service.exportToTmx(
         outputPath: outputPath,
         targetLanguageCode: targetLanguageCode,
-        gameContext: gameContext,
         minQuality: minQuality,
       );
 
@@ -374,14 +360,12 @@ class TmCleanupState extends _$TmCleanupState {
 /// TM filter configuration
 class TmFilters {
   final String? targetLanguage;
-  final String? gameContext;
   final double? minQuality;
   final QualityFilter qualityFilter;
   final String searchText;
 
   const TmFilters({
     this.targetLanguage,
-    this.gameContext,
     this.minQuality,
     this.qualityFilter = QualityFilter.all,
     this.searchText = '',
@@ -389,14 +373,12 @@ class TmFilters {
 
   TmFilters copyWith({
     String? targetLanguage,
-    String? gameContext,
     double? minQuality,
     QualityFilter? qualityFilter,
     String? searchText,
   }) {
     return TmFilters(
       targetLanguage: targetLanguage ?? this.targetLanguage,
-      gameContext: gameContext ?? this.gameContext,
       minQuality: minQuality ?? this.minQuality,
       qualityFilter: qualityFilter ?? this.qualityFilter,
       searchText: searchText ?? this.searchText,

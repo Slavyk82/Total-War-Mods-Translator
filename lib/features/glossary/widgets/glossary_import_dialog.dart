@@ -20,7 +20,6 @@ class GlossaryImportDialog extends ConsumerStatefulWidget {
 }
 
 class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
-  ImportFormat _selectedFormat = ImportFormat.csv;
   String? _selectedFilePath;
   bool _skipDuplicates = true;
   String _targetLanguage = 'fr';
@@ -30,7 +29,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
     final importState = ref.watch(glossaryImportStateProvider);
 
     return AlertDialog(
-      title: const Text('Import Glossary'),
+      title: const Text('Import Glossary (CSV)'),
       content: SizedBox(
         width: 600,
         child: SingleChildScrollView(
@@ -38,31 +37,6 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Format selector
-              Text(
-                'Format',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<ImportFormat>(
-                initialValue: _selectedFormat,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                ),
-                items: ImportFormat.values.map((format) {
-                  return DropdownMenuItem(
-                    value: format,
-                    child: Text(format.displayName),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedFormat = value ?? ImportFormat.csv;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
               // File picker
               Text(
                 'File',
@@ -102,33 +76,31 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
               ),
               const SizedBox(height: 16),
 
-              // Language settings (for CSV/Excel)
-              if (_selectedFormat != ImportFormat.tbx) ...[
-                Text(
-                  'Target Language',
-                  style: Theme.of(context).textTheme.titleSmall,
+              // Language settings
+              Text(
+                'Target Language',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _targetLanguage,
+                decoration: const InputDecoration(
+                  labelText: 'Target Language',
+                  border: OutlineInputBorder(),
                 ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: _targetLanguage,
-                  decoration: const InputDecoration(
-                    labelText: 'Target Language',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _languageCodes.map((lang) {
-                    return DropdownMenuItem(
-                      value: lang,
-                      child: Text(lang.toUpperCase()),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _targetLanguage = value ?? 'fr';
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
+                items: _languageCodes.map((lang) {
+                  return DropdownMenuItem(
+                    value: lang,
+                    child: Text(lang.toUpperCase()),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _targetLanguage = value ?? 'fr';
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
 
               // Import options
               Text(
@@ -252,7 +224,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: _selectedFormat.extensions,
+      allowedExtensions: ['csv'],
     );
 
     if (result != null && result.files.single.path != null) {
@@ -270,32 +242,12 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
       return;
     }
 
-    switch (_selectedFormat) {
-      case ImportFormat.csv:
-        await ref.read(glossaryImportStateProvider.notifier).importCsv(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-              targetLanguageCode: _targetLanguage,
-              skipDuplicates: _skipDuplicates,
-            );
-        break;
-
-      case ImportFormat.tbx:
-        await ref.read(glossaryImportStateProvider.notifier).importTbx(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-            );
-        break;
-
-      case ImportFormat.excel:
-        await ref.read(glossaryImportStateProvider.notifier).importExcel(
-              glossaryId: widget.glossaryId,
-              filePath: _selectedFilePath!,
-              targetLanguageCode: _targetLanguage,
-              skipDuplicates: _skipDuplicates,
-            );
-        break;
-    }
+    await ref.read(glossaryImportStateProvider.notifier).importCsv(
+          glossaryId: widget.glossaryId,
+          filePath: _selectedFilePath!,
+          targetLanguageCode: _targetLanguage,
+          skipDuplicates: _skipDuplicates,
+        );
   }
 
   static const List<String> _languageCodes = [
@@ -310,33 +262,4 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
     'ja',
     'ko',
   ];
-}
-
-/// Import format options
-enum ImportFormat {
-  csv,
-  tbx,
-  excel;
-
-  String get displayName {
-    switch (this) {
-      case ImportFormat.csv:
-        return 'CSV';
-      case ImportFormat.tbx:
-        return 'TBX (TermBase eXchange)';
-      case ImportFormat.excel:
-        return 'Excel';
-    }
-  }
-
-  List<String> get extensions {
-    switch (this) {
-      case ImportFormat.csv:
-        return ['csv'];
-      case ImportFormat.tbx:
-        return ['tbx', 'xml'];
-      case ImportFormat.excel:
-        return ['xlsx', 'xls'];
-    }
-  }
 }

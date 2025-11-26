@@ -8,12 +8,12 @@ part of 'glossary_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// All glossaries (global + project-specific)
+/// All glossaries (universal + game-specific)
 
 @ProviderFor(glossaries)
 const glossariesProvider = GlossariesFamily._();
 
-/// All glossaries (global + project-specific)
+/// All glossaries (universal + game-specific)
 
 final class GlossariesProvider
     extends
@@ -23,10 +23,11 @@ final class GlossariesProvider
           FutureOr<List<Glossary>>
         >
     with $FutureModifier<List<Glossary>>, $FutureProvider<List<Glossary>> {
-  /// All glossaries (global + project-specific)
+  /// All glossaries (universal + game-specific)
   const GlossariesProvider._({
     required GlossariesFamily super.from,
-    required ({String? projectId, bool includeGlobal}) super.argument,
+    required ({String? gameInstallationId, bool includeUniversal})
+    super.argument,
   }) : super(
          retry: null,
          name: r'glossariesProvider',
@@ -53,11 +54,12 @@ final class GlossariesProvider
 
   @override
   FutureOr<List<Glossary>> create(Ref ref) {
-    final argument = this.argument as ({String? projectId, bool includeGlobal});
+    final argument =
+        this.argument as ({String? gameInstallationId, bool includeUniversal});
     return glossaries(
       ref,
-      projectId: argument.projectId,
-      includeGlobal: argument.includeGlobal,
+      gameInstallationId: argument.gameInstallationId,
+      includeUniversal: argument.includeUniversal,
     );
   }
 
@@ -72,15 +74,15 @@ final class GlossariesProvider
   }
 }
 
-String _$glossariesHash() => r'7bc333dd8db66a7823a7507cffbeedbce1c8988f';
+String _$glossariesHash() => r'53dce6e78ca9f8e6a718a93f80193acd141e0f5b';
 
-/// All glossaries (global + project-specific)
+/// All glossaries (universal + game-specific)
 
 final class GlossariesFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<Glossary>>,
-          ({String? projectId, bool includeGlobal})
+          ({String? gameInstallationId, bool includeUniversal})
         > {
   const GlossariesFamily._()
     : super(
@@ -91,13 +93,18 @@ final class GlossariesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// All glossaries (global + project-specific)
+  /// All glossaries (universal + game-specific)
 
-  GlossariesProvider call({String? projectId, bool includeGlobal = true}) =>
-      GlossariesProvider._(
-        argument: (projectId: projectId, includeGlobal: includeGlobal),
-        from: this,
-      );
+  GlossariesProvider call({
+    String? gameInstallationId,
+    bool includeUniversal = true,
+  }) => GlossariesProvider._(
+    argument: (
+      gameInstallationId: gameInstallationId,
+      includeUniversal: includeUniversal,
+    ),
+    from: this,
+  );
 
   @override
   String toString() => r'glossariesProvider';

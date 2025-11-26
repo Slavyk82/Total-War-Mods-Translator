@@ -32,8 +32,6 @@ class SimilarityCalculator {
   /// [text1]: First text
   /// [text2]: Second text
   /// [weights]: Score weights (default: 0.4, 0.3, 0.3)
-  /// [gameContext1]: Game context of text1
-  /// [gameContext2]: Game context of text2
   /// [category1]: Category of text1
   /// [category2]: Category of text2
   ///
@@ -42,8 +40,6 @@ class SimilarityCalculator {
     required String text1,
     required String text2,
     ScoreWeights? weights,
-    String? gameContext1,
-    String? gameContext2,
     String? category1,
     String? category2,
   }) {
@@ -62,11 +58,6 @@ class SimilarityCalculator {
 
     // Calculate context boost
     double contextBoost = 0.0;
-    if (gameContext1 != null &&
-        gameContext2 != null &&
-        gameContext1 == gameContext2) {
-      contextBoost += 0.05; // +5% for matching game context
-    }
     if (category1 != null && category2 != null && category1 == category2) {
       contextBoost += 0.03; // +3% for matching category
     }
@@ -233,16 +224,12 @@ class SimilarityCalculator {
     required String text1,
     required String text2,
     double threshold = 0.85,
-    String? gameContext1,
-    String? gameContext2,
     String? category1,
     String? category2,
   }) {
     final breakdown = calculateSimilarity(
       text1: text1,
       text2: text2,
-      gameContext1: gameContext1,
-      gameContext2: gameContext2,
       category1: category1,
       category2: category2,
     );

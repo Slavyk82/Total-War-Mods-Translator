@@ -7,6 +7,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
+import 'settings_section_header.dart';
 
 /// RPFM Tool configuration section.
 ///
@@ -31,35 +32,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          'RPFM Tool',
+        const SettingsSectionHeader(
+          title: 'RPFM Tool',
           subtitle: 'Path to RPFM executable for pack file extraction',
         ),
         const SizedBox(height: 16),
         _buildRpfmPathField(),
         const SizedBox(height: 24),
         _buildRpfmSchemaPathField(),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title, {String? subtitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-          ),
-        ],
       ],
     );
   }
@@ -84,6 +64,10 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         const SizedBox(height: 8),
         Row(
           children: [
+            SettingsActionButton.test(onPressed: _testRpfmPath),
+            const SizedBox(width: 4),
+            SettingsActionButton.browse(onPressed: _selectRpfmPath),
+            const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
                 controller: widget.rpfmPathController,
@@ -97,10 +81,6 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
                 onChanged: _saveRpfmPath,
               ),
             ),
-            const SizedBox(width: 8),
-            SettingsActionButton.test(onPressed: _testRpfmPath),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectRpfmPath),
           ],
         ),
       ],
@@ -137,6 +117,11 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         const SizedBox(height: 8),
         Row(
           children: [
+            SettingsActionButton.defaultPath(
+                onPressed: _useDefaultRpfmSchemaPath),
+            const SizedBox(width: 4),
+            SettingsActionButton.browse(onPressed: _selectRpfmSchemaPath),
+            const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
                 controller: widget.rpfmSchemaPathController,
@@ -151,11 +136,6 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
                 onChanged: _saveRpfmSchemaPath,
               ),
             ),
-            const SizedBox(width: 8),
-            SettingsActionButton.defaultPath(
-                onPressed: _useDefaultRpfmSchemaPath),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectRpfmSchemaPath),
           ],
         ),
       ],

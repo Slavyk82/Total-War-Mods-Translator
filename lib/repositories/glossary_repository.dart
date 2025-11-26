@@ -182,22 +182,25 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   }
 
   /// Get all glossaries
+  ///
+  /// [gameInstallationId] - If specified, returns universal + game-specific glossaries
+  /// [includeUniversal] - Include universal glossaries (is_global = 1) in result
   Future<List<Glossary>> getAllGlossaries({
-    String? projectId,
-    bool includeGlobal = true,
+    String? gameInstallationId,
+    bool includeUniversal = true,
   }) async {
     String whereClause = '';
     List<dynamic> whereArgs = [];
 
-    if (projectId != null) {
-      if (includeGlobal) {
-        whereClause = ' WHERE g.is_global = 1 OR g.project_id = ?';
-        whereArgs = [projectId];
+    if (gameInstallationId != null) {
+      if (includeUniversal) {
+        whereClause = ' WHERE g.is_global = 1 OR g.game_installation_id = ?';
+        whereArgs = [gameInstallationId];
       } else {
-        whereClause = ' WHERE g.project_id = ?';
-        whereArgs = [projectId];
+        whereClause = ' WHERE g.game_installation_id = ?';
+        whereArgs = [gameInstallationId];
       }
-    } else if (!includeGlobal) {
+    } else if (!includeUniversal) {
       whereClause = ' WHERE g.is_global = 0';
     }
 

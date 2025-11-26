@@ -91,14 +91,8 @@ class TranslationVersionHistory {
     switch (status) {
       case TranslationVersionStatus.pending:
         return 'Pending';
-      case TranslationVersionStatus.translating:
-        return 'Translating';
       case TranslationVersionStatus.translated:
         return 'Translated';
-      case TranslationVersionStatus.reviewed:
-        return 'Reviewed';
-      case TranslationVersionStatus.approved:
-        return 'Approved';
       case TranslationVersionStatus.needsReview:
         return 'Needs Review';
     }

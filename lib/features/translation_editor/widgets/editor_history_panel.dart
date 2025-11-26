@@ -448,8 +448,10 @@ class _EditorHistoryPanelState extends ConsumerState<EditorHistoryPanel> {
   ) {
     if (previous == null) return TranslationChangeType.created;
 
-    if (entry.status == TranslationVersionStatus.approved ||
-        entry.status == TranslationVersionStatus.reviewed) {
+    // Validated when going from needsReview/pending to translated
+    if (entry.status == TranslationVersionStatus.translated &&
+        (previous.status == TranslationVersionStatus.needsReview ||
+         previous.status == TranslationVersionStatus.pending)) {
       return TranslationChangeType.validated;
     }
 

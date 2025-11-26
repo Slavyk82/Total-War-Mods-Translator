@@ -986,7 +986,7 @@ final class EditorStatsProvider
   }
 }
 
-String _$editorStatsHash() => r'bf7fb885945a8daf05d1b0d08a40a8ae5d7eb80c';
+String _$editorStatsHash() => r'0089b48190e84f9090c4eb9943d1816d197c736b';
 
 /// Provider for editor statistics
 

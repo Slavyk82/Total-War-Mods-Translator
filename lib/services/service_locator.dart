@@ -17,6 +17,7 @@ import '../repositories/translation_batch_unit_repository.dart';
 import '../repositories/export_history_repository.dart';
 import '../repositories/workshop_mod_repository.dart';
 import '../repositories/mod_scan_cache_repository.dart';
+import '../repositories/mod_update_analysis_cache_repository.dart';
 import '../repositories/llm_provider_model_repository.dart';
 import 'database/database_service.dart';
 import 'database/migration_service.dart';
@@ -222,6 +223,9 @@ class ServiceLocator {
       logging.info('Running database migrations');
       await MigrationService.runMigrations();
 
+      // Ensure performance indexes exist (safe for existing databases)
+      await MigrationService.ensurePerformanceIndexes();
+
       // Clean up orphaned and old translation batches
       logging.info('Cleaning up orphaned translation batches');
       await _cleanupTranslationBatches();
@@ -345,6 +349,10 @@ class ServiceLocator {
       () => ModScanCacheRepository(),
     );
 
+    _locator.registerLazySingleton<ModUpdateAnalysisCacheRepository>(
+      () => ModUpdateAnalysisCacheRepository(),
+    );
+
     _locator.registerLazySingleton<LlmProviderModelRepository>(
       () => LlmProviderModelRepository(),
     );
@@ -443,6 +451,7 @@ class ServiceLocator {
         gameInstallationRepository: _locator<GameInstallationRepository>(),
         workshopModRepository: _locator<WorkshopModRepository>(),
         modScanCacheRepository: _locator<ModScanCacheRepository>(),
+        analysisCacheRepository: _locator<ModUpdateAnalysisCacheRepository>(),
         workshopApiService: _locator<IWorkshopApiService>(),
         rpfmService: _locator<IRpfmService>(),
         modUpdateAnalysisService: _locator<ModUpdateAnalysisService>(),

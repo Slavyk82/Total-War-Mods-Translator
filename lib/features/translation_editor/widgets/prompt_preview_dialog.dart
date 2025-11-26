@@ -33,6 +33,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
   bool _isLoading = true;
   String? _error;
   late TabController _tabController;
+  int _selectedProviderIndex = 0;
 
   @override
   void initState() {
@@ -65,8 +66,13 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
       result.when(
         ok: (preview) {
           if (mounted) {
+            // Find index of current provider to select it by default
+            final currentProviderIndex = preview.providerPayloads.indexWhere(
+              (p) => p.providerCode == preview.providerCode,
+            );
             setState(() {
               _preview = preview;
+              _selectedProviderIndex = currentProviderIndex >= 0 ? currentProviderIndex : 0;
               _isLoading = false;
             });
           }
@@ -148,7 +154,9 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
         if (_preview != null) ...[
           _buildMetadataBadge(
             icon: FluentIcons.server_24_regular,
-            label: _preview!.providerCode,
+            label: _preview!.providerPayloads.isNotEmpty
+                ? _preview!.providerPayloads[_selectedProviderIndex].providerName
+                : _preview!.providerCode,
           ),
           const SizedBox(width: 8),
           _buildMetadataBadge(
@@ -316,17 +324,135 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
                 content: _preview!.userMessage,
                 description: 'The actual translation request with source text',
               ),
-              _buildPromptSection(
-                title: 'API Payload',
-                content: _preview!.formattedPayload,
-                description:
-                    'Complete JSON payload as it would be sent to ${_preview!.providerCode}',
-                isJson: true,
-              ),
+              _buildApiPayloadSection(),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildApiPayloadSection() {
+    final payloads = _preview!.providerPayloads;
+    if (payloads.isEmpty) {
+      return _buildPromptSection(
+        title: 'API Payload',
+        content: _preview!.formattedPayload,
+        description: 'Complete JSON payload',
+        isJson: true,
+      );
+    }
+
+    final selectedPayload = payloads[_selectedProviderIndex];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Complete JSON payload as it would be sent to the provider',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                    ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            _buildProviderSelector(payloads),
+            const SizedBox(width: 12),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _copyToClipboard(selectedPayload.payload, 'API Payload'),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.copy_24_regular, size: 14),
+                      SizedBox(width: 6),
+                      Text('Copy', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade900,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: Colors.grey.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                selectedPayload.payload,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'Consolas',
+                  color: Colors.green.shade300,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProviderSelector(List<ProviderPayload> payloads) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Colors.grey.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: DropdownButton<int>(
+        value: _selectedProviderIndex,
+        underline: const SizedBox.shrink(),
+        isDense: true,
+        icon: const Icon(FluentIcons.chevron_down_16_regular, size: 14),
+        style: const TextStyle(fontSize: 12),
+        items: payloads.asMap().entries.map((entry) {
+          return DropdownMenuItem<int>(
+            value: entry.key,
+            child: Text(
+              entry.value.providerName,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
+            ),
+          );
+        }).toList(),
+        onChanged: (index) {
+          if (index != null) {
+            setState(() {
+              _selectedProviderIndex = index;
+            });
+          }
+        },
+      ),
     );
   }
 

@@ -5,7 +5,9 @@ import '../../../models/domain/translation_batch.dart';
 import '../../../models/domain/translation_batch_unit.dart';
 import '../../../services/translation/models/translation_context.dart';
 import '../../../repositories/glossary_repository.dart';
+import '../../../repositories/project_repository.dart';
 import '../../../services/glossary/glossary_filter_service.dart';
+import '../../../services/glossary/models/glossary_term_with_variants.dart';
 import '../../../services/service_locator.dart';
 import '../providers/editor_providers.dart';
 
@@ -181,10 +183,18 @@ class TranslationBatchHelper {
     int? parallelBatches,
   }) async {
     try {
+      final projectRepo = ServiceLocator.get<ProjectRepository>();
       final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
       final languageRepo = ref.read(languageRepositoryProvider);
       final glossaryRepo = ServiceLocator.get<GlossaryRepository>();
       final logging = ref.read(loggingServiceProvider);
+
+      // Get project to determine game installation ID for glossary lookup
+      String? gameInstallationId;
+      final projectResult = await projectRepo.getById(projectId);
+      if (projectResult.isOk) {
+        gameInstallationId = projectResult.unwrap().gameInstallationId;
+      }
 
       // Get project language to determine target language
       final projectLanguageResult = await projectLanguageRepo.getById(projectLanguageId);
@@ -212,14 +222,16 @@ class TranslationBatchHelper {
         );
       }
 
-      // Load glossary entries with variant support for this project and target language
+      // Load glossary entries with variant support for this game and target language
       // The full glossary is loaded here; filtering happens per-batch in PromptBuilderService
       final glossaryFilterService = GlossaryFilterService(glossaryRepo);
-      var glossaryEntries = await glossaryFilterService.loadAllTerms(
-        projectId: projectId,
-        targetLanguageId: languageId ?? '',
-        targetLanguageCode: targetLanguage,
-      );
+      List<GlossaryTermWithVariants> glossaryEntries = gameInstallationId != null
+          ? await glossaryFilterService.loadAllTerms(
+              gameInstallationId: gameInstallationId,
+              targetLanguageId: languageId ?? '',
+              targetLanguageCode: targetLanguage,
+            )
+          : <GlossaryTermWithVariants>[];
 
       if (glossaryEntries.isNotEmpty) {
         logging.info('Loaded glossary entries with variants', {

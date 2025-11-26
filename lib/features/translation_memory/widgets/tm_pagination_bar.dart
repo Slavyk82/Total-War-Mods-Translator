@@ -8,7 +8,7 @@ import '../providers/tm_providers.dart';
 class TmPaginationBar extends ConsumerWidget {
   const TmPaginationBar({super.key});
 
-  static const _itemsPerPage = 20;
+  static const _itemsPerPage = 1000;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -16,7 +16,6 @@ class TmPaginationBar extends ConsumerWidget {
     final filterState = ref.watch(tmFilterStateProvider);
     final countAsync = ref.watch(tmEntriesCountProvider(
       targetLang: filterState.targetLanguage,
-      gameContext: filterState.gameContext,
       minQuality: filterState.effectiveMinQuality,
     ));
 

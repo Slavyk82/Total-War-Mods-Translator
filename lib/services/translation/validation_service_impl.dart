@@ -3,6 +3,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/services/translation/utils/markup_tag_utils.dart';
+import 'package:twmt/services/translation/utils/text_parser_utils.dart';
 
 /// Implementation of translation validation service
 ///
@@ -262,29 +264,35 @@ class ValidationServiceImpl implements IValidationService {
     required String translatedText,
     required String key,
   }) async {
-    // Extract variables from source
-    final sourceVars = _extractVariables(sourceText);
-    final translatedVars = _extractVariables(translatedText);
+    // Extract variables from source and translation
+    final sourceVars = TextParserUtils.extractVariables(sourceText);
+    final translatedVars = TextParserUtils.extractVariables(translatedText);
 
     // Debug logging for variable extraction
     if (sourceVars.any((v) => v.startsWith('{{'))) {
       print('[DEBUG] Variable extraction for key: $key');
-      print('[DEBUG] Source double-brace vars: ${sourceVars.where((v) => v.startsWith('{{')).toList()}');
-      print('[DEBUG] Translated double-brace vars: ${translatedVars.where((v) => v.startsWith('{{')).toList()}');
+      print('[DEBUG] Source double-brace vars: '
+          '${sourceVars.where((v) => v.startsWith('{{')).toList()}');
+      print('[DEBUG] Translated double-brace vars: '
+          '${translatedVars.where((v) => v.startsWith('{{')).toList()}');
     }
 
     // Check if all source variables are in translation
-    final missingVars = sourceVars.where((v) => !translatedVars.contains(v)).toList();
+    final missingVars =
+        sourceVars.where((v) => !translatedVars.contains(v)).toList();
     if (missingVars.isNotEmpty) {
       // Separate double-brace templates from simple variables
-      final missingSimpleVars = missingVars.where((v) => !v.startsWith('{{')).toList();
-      final missingTemplates = missingVars.where((v) => v.startsWith('{{')).toList();
+      final missingSimpleVars =
+          missingVars.where((v) => !v.startsWith('{{')).toList();
+      final missingTemplates =
+          missingVars.where((v) => v.startsWith('{{')).toList();
 
-      // Simple variables missing = error (e.g., {0}, %s must be preserved exactly)
+      // Simple variables missing = error (e.g., {0}, %s must be preserved)
       if (missingSimpleVars.isNotEmpty) {
         return ValidationError(
           severity: ValidationSeverity.error,
-          message: 'Missing variables in translation: ${missingSimpleVars.join(', ')}',
+          message:
+              'Missing variables in translation: ${missingSimpleVars.join(', ')}',
           field: key,
         );
       }
@@ -294,7 +302,8 @@ class ValidationServiceImpl implements IValidationService {
       if (missingTemplates.isNotEmpty) {
         return ValidationError(
           severity: ValidationSeverity.warning,
-          message: 'Template expressions modified (may be intentional for display strings): ${missingTemplates.length} template(s)',
+          message: 'Template expressions modified (may be intentional for '
+              'display strings): ${missingTemplates.length} template(s)',
           field: key,
         );
       }
@@ -319,15 +328,16 @@ class ValidationServiceImpl implements IValidationService {
     required String translatedText,
     required String key,
   }) async {
-    // Extract markup tags from source
-    final sourceTags = _extractMarkupTags(sourceText);
-    final translatedTags = _extractMarkupTags(translatedText);
+    // Extract markup tags from source and translation
+    final sourceTags = TextParserUtils.extractMarkupTags(sourceText);
+    final translatedTags = TextParserUtils.extractMarkupTags(translatedText);
 
     // Check source tag balance first (data quality check)
-    if (!_areTagsBalanced(sourceTags)) {
+    if (!MarkupTagUtils.areTagsBalanced(sourceTags)) {
       return ValidationError(
         severity: ValidationSeverity.warning,
-        message: 'Source text has unbalanced markup tags - may cause translation issues',
+        message:
+            'Source text has unbalanced markup tags - may cause translation issues',
         field: key,
       );
     }
@@ -343,7 +353,7 @@ class ValidationServiceImpl implements IValidationService {
     }
 
     // Check tag balance in translation
-    if (!_areTagsBalanced(translatedTags)) {
+    if (!MarkupTagUtils.areTagsBalanced(translatedTags)) {
       return ValidationError(
         severity: ValidationSeverity.error,
         message: 'Unbalanced markup tags in translation',
@@ -360,10 +370,10 @@ class ValidationServiceImpl implements IValidationService {
     required String key,
   }) async {
     // Check for invalid UTF-8 characters
-    if (translatedText.contains('�')) {
+    if (translatedText.contains('\uFFFD')) {
       return ValidationError(
         severity: ValidationSeverity.error,
-        message: 'Invalid encoding: contains replacement character (�)',
+        message: 'Invalid encoding: contains replacement character',
         field: key,
       );
     }
@@ -398,7 +408,7 @@ class ValidationServiceImpl implements IValidationService {
       if (sourceText.contains(sourceTerm)) {
         // Translation should contain the glossary translation
         if (!translatedText.contains(expectedTranslation)) {
-          violations.add('$sourceTerm → $expectedTranslation');
+          violations.add('$sourceTerm -> $expectedTranslation');
         }
       }
     }
@@ -513,8 +523,8 @@ class ValidationServiceImpl implements IValidationService {
     }
 
     // Check for number mismatches
-    final sourceNumbers = _extractNumbers(sourceText);
-    final translatedNumbers = _extractNumbers(translatedText);
+    final sourceNumbers = TextParserUtils.extractNumbers(sourceText);
+    final translatedNumbers = TextParserUtils.extractNumbers(translatedText);
     if (sourceNumbers.isNotEmpty && sourceNumbers != translatedNumbers) {
       mistakes.add(ValidationError(
         severity: ValidationSeverity.warning,
@@ -630,227 +640,5 @@ class ValidationServiceImpl implements IValidationService {
     } else {
       warnings.add(error.message);
     }
-  }
-
-  /// Extract variables from text
-  ///
-  /// Supports:
-  /// - {{expression}} (Total War double-brace templates)
-  /// - {0}, {1}, {2} (positional)
-  /// - {name}, {count} (named)
-  /// - %s, %d, %f (printf-style)
-  /// - [%s], [%d], [%f] (bracketed printf-style)
-  /// - $var, ${var} (template-style)
-  List<String> _extractVariables(String text) {
-    final variables = <String>[];
-
-    // Total War double-brace templates: {{CcoCampaignEventDilemma:GetIfElse(...)}}
-    // These can contain nested braces, so match {{ until }}
-    // Pattern: {{ followed by any char except }} until }}
-    final doubleBracePattern = RegExp(r'\{\{(?:[^}]|\}(?!\}))*\}\}');
-    final doubleBraceMatches = doubleBracePattern.allMatches(text).toList();
-    variables.addAll(
-      doubleBraceMatches.map((m) => m.group(0)!),
-    );
-
-    // Build a set of ranges covered by double-brace matches to avoid double-counting
-    final doubleBraceRanges = doubleBraceMatches
-        .map((m) => (start: m.start, end: m.end))
-        .toList();
-
-    // Positional and named placeholders: {0}, {name}
-    // Skip matches that fall within double-brace ranges
-    final bracePattern = RegExp(r'\{([^}]+)\}');
-    for (final match in bracePattern.allMatches(text)) {
-      final isInsideDoubleBrace = doubleBraceRanges.any(
-        (r) => match.start >= r.start && match.end <= r.end,
-      );
-      if (!isInsideDoubleBrace) {
-        variables.add(match.group(0)!);
-      }
-    }
-
-    // Bracketed printf-style: [%s], [%d], [%f], etc.
-    // Must be checked BEFORE single printf and BBCode patterns to avoid conflicts
-    final bracketedPrintfPattern = RegExp(r'\[%[sdf]\]');
-    variables.addAll(
-      bracketedPrintfPattern.allMatches(text).map((m) => m.group(0)!),
-    );
-
-    // Printf-style: %s, %d, %f, etc.
-    final printfPattern = RegExp(r'%[sdf]');
-    variables.addAll(
-      printfPattern.allMatches(text).map((m) => m.group(0)!),
-    );
-
-    // Template-style: $var, ${var}
-    final templatePattern = RegExp(r'\$\{?(\w+)\}?');
-    variables.addAll(
-      templatePattern.allMatches(text).map((m) => m.group(0)!),
-    );
-
-    return variables;
-  }
-
-  /// Extract markup tags from text
-  ///
-  /// Supports:
-  /// - XML: &lt;tag&gt;, &lt;/tag&gt;
-  /// - BBCode: [tag], [/tag]
-  /// - Double-bracket: [[tag]], [[/tag]]
-  ///
-  /// Excludes printf-style placeholders like [%s] which are variables, not tags
-  List<String> _extractMarkupTags(String text) {
-    final tags = <String>[];
-
-    // XML tags: <tag>, </tag>, <tag attr="value">
-    final xmlPattern = RegExp(r'<[^>]+>');
-    tags.addAll(
-      xmlPattern.allMatches(text).map((m) => m.group(0)!),
-    );
-
-    // Double-bracket tags: [[tag:value]], [[/tag]]
-    // Must be checked BEFORE single-bracket pattern to avoid partial matches
-    final doubleBracketPattern = RegExp(r'\[\[[^\]]+\]\]');
-    tags.addAll(
-      doubleBracketPattern.allMatches(text).map((m) => m.group(0)!),
-    );
-
-    // Single BBCode tags: [tag], [/tag], [tag=value]
-    // Use negative lookbehind/lookahead to avoid matching double brackets
-    // Match [ but not [[, and ] but not ]]
-    // Exclude [%s], [%d], [%f] which are printf-style placeholders, not tags
-    final bbcodePattern = RegExp(r'(?<!\[)\[[^\[\]]+\](?!\])');
-    final matches = bbcodePattern.allMatches(text);
-    
-    for (final match in matches) {
-      final tag = match.group(0)!;
-      // Skip if this is a bracketed printf placeholder
-      if (!RegExp(r'^\[%[sdf]\]$').hasMatch(tag)) {
-        tags.add(tag);
-      }
-    }
-
-    return tags;
-  }
-
-  /// Check if markup tags are balanced
-  bool _areTagsBalanced(List<String> tags) {
-    final stack = <String>[];
-
-    for (final tag in tags) {
-      // Self-closing tags (e.g., <br/>, <img/>)
-      if (tag.endsWith('/>')) {
-        continue; // Self-closing, no need to track
-      }
-
-      // Closing tags (including double-bracket [[/tag]])
-      if (tag.startsWith('</') || tag.startsWith('[/') || tag.startsWith('[[/')) {
-        final tagName = _extractTagName(tag);
-        if (stack.isEmpty) return false;
-
-        final expectedOpening = stack.removeLast();
-        final expectedName = _extractTagName(expectedOpening);
-
-        // Check if closing tag matches opening tag
-        if (tagName != expectedName) {
-          return false;
-        }
-      } else {
-        // Opening tag (including tags with attributes like [tag=value])
-        stack.add(tag);
-      }
-    }
-
-    return stack.isEmpty;
-  }
-
-  /// Extract tag name from a markup tag
-  ///
-  /// Examples:
-  /// - <b> -> b
-  /// - </b> -> b
-  /// - <div class="foo"> -> div
-  /// - <color=#FF0000> -> color
-  /// - [color=red] -> color
-  /// - [/color] -> color
-  /// - [[col:red]] -> [col (opening bracket)
-  /// - [[/col]] -> [/col (closing bracket)
-  String _extractTagName(String tag) {
-    // XML/HTML tags
-    if (tag.startsWith('<')) {
-      // Remove < and > and / if present
-      var name = tag.substring(1);
-      if (name.startsWith('/')) {
-        name = name.substring(1);
-      }
-      if (name.endsWith('>')) {
-        name = name.substring(0, name.length - 1);
-      }
-      // Remove self-closing marker
-      if (name.endsWith('/')) {
-        name = name.substring(0, name.length - 1);
-      }
-      // Remove attributes (everything after first space or =)
-      var cutIndex = name.indexOf(' ');
-      final equalsIndex = name.indexOf('=');
-      if (equalsIndex != -1 && (cutIndex == -1 || equalsIndex < cutIndex)) {
-        cutIndex = equalsIndex;
-      }
-      if (cutIndex != -1) {
-        name = name.substring(0, cutIndex);
-      }
-      return name.trim();
-    }
-
-    // BBCode tags (including double-bracket style [[tag]])
-    if (tag.startsWith('[')) {
-      // Remove outer brackets
-      var name = tag.substring(1);
-      if (name.endsWith(']')) {
-        name = name.substring(0, name.length - 1);
-      }
-
-      // For double-bracket tags: [[col:red]] -> [col:red], [[/col]] -> [/col]
-      // We'll keep the inner bracket as part of the tag name
-
-      // First, handle the slash for closing tags
-      // [[/col]] -> [col] (after outer bracket removal we have [/col])
-      if (name.startsWith('[/')) {
-        name = name.substring(2); // Remove [/
-        // Also remove trailing ] for double-bracket tags
-        if (name.endsWith(']')) {
-          name = name.substring(0, name.length - 1);
-        }
-      } else if (name.startsWith('/')) {
-        name = name.substring(1); // Remove /
-      } else if (name.startsWith('[')) {
-        name = name.substring(1); // Remove [ for double-bracket opening
-        // Also remove trailing ] for double-bracket tags
-        if (name.endsWith(']')) {
-          name = name.substring(0, name.length - 1);
-        }
-      }
-
-      // Remove attributes (everything after = or :)
-      var cutIndex = name.indexOf('=');
-      final colonIndex = name.indexOf(':');
-      if (colonIndex != -1 && (cutIndex == -1 || colonIndex < cutIndex)) {
-        cutIndex = colonIndex;
-      }
-      if (cutIndex != -1) {
-        name = name.substring(0, cutIndex);
-      }
-
-      return name.trim();
-    }
-
-    return tag;
-  }
-
-  /// Extract numbers from text
-  List<String> _extractNumbers(String text) {
-    final numberPattern = RegExp(r'\b\d+\b');
-    return numberPattern.allMatches(text).map((m) => m.group(0)!).toList();
   }
 }

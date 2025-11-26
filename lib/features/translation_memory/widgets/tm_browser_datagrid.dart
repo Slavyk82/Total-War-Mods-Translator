@@ -33,13 +33,19 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     final filtersState = ref.watch(tmFilterStateProvider);
     final pageState = ref.watch(tmPageStateProvider);
 
-    final entriesAsync = ref.watch(tmEntriesProvider(
-      targetLang: filtersState.targetLanguage,
-      gameContext: filtersState.gameContext,
-      minQuality: filtersState.effectiveMinQuality,
-      page: pageState,
-      pageSize: 20,
-    ));
+    // Use search provider when there's search text, otherwise use entries provider
+    final entriesAsync = filtersState.searchText.isEmpty
+        ? ref.watch(tmEntriesProvider(
+            targetLang: filtersState.targetLanguage,
+            minQuality: filtersState.effectiveMinQuality,
+            page: pageState,
+            pageSize: 1000,
+          ))
+        : ref.watch(tmSearchResultsProvider(
+            searchText: filtersState.searchText,
+            targetLang: filtersState.targetLanguage,
+            limit: 1000,
+          ));
 
     return entriesAsync.when(
       data: (entries) {
@@ -97,7 +103,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       columns: [
         GridColumn(
           columnName: 'quality',
-          width: 100,
+          width: 110,
           label: Container(
             padding: const EdgeInsets.all(16),
             alignment: Alignment.centerLeft,
@@ -129,20 +135,6 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
             alignment: Alignment.centerLeft,
             child: Text(
               'Target Text',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
-        GridColumn(
-          columnName: 'game',
-          width: 120,
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Game',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -236,8 +228,6 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
                 _buildDetailRow('Source Text', entry.sourceText),
                 const Divider(),
                 _buildDetailRow('Target Text', entry.translatedText),
-                const Divider(),
-                _buildDetailRow('Game Context', entry.gameContext ?? 'None'),
                 const Divider(),
                 _buildDetailRow('Usage Count', entry.usageCount.toString()),
                 const Divider(),
@@ -367,7 +357,6 @@ class TmDataSource extends DataGridSource {
         DataGridCell<TranslationMemoryEntry>(columnName: 'quality', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'source', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'target', value: entry),
-        DataGridCell<TranslationMemoryEntry>(columnName: 'game', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'usage', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'actions', value: entry),
       ]);
@@ -386,7 +375,6 @@ class TmDataSource extends DataGridSource {
         _buildQualityCell(entry),
         _buildTextCell(entry.sourceText, maxLines: 2),
         _buildTextCell(entry.translatedText, maxLines: 2),
-        _buildGameCell(entry),
         _buildUsageCell(entry),
         _buildActionsCell(entry),
       ],
@@ -445,42 +433,6 @@ class TmDataSource extends DataGridSource {
     );
   }
 
-  Widget _buildGameCell(TranslationMemoryEntry entry) {
-    final gameContext = entry.gameContext;
-    if (gameContext == null || gameContext.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        alignment: Alignment.centerLeft,
-        child: const Text('-'),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: Colors.blue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: Colors.blue.withValues(alpha: 0.3),
-          ),
-        ),
-        child: Text(
-          gameContext,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Colors.blue,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
   Widget _buildUsageCell(TranslationMemoryEntry entry) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -520,7 +472,7 @@ class TmDataSource extends DataGridSource {
             tooltip: 'Copy',
             onPressed: () => _copyEntry(entry),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           _ActionButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: 'Delete',

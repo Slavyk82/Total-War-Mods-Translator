@@ -228,18 +228,22 @@ class BatchTranslateConfig extends _$BatchTranslateConfig {
 class ValidationIssue {
   final String unitKey;
   final String unitId;
+  final String versionId;
   final ValidationSeverity severity;
   final String issueType;
   final String description;
-  final bool canAutoFix;
+  final String sourceText;
+  final String translatedText;
 
   const ValidationIssue({
     required this.unitKey,
     required this.unitId,
+    required this.versionId,
     required this.severity,
     required this.issueType,
     required this.description,
-    this.canAutoFix = false,
+    required this.sourceText,
+    required this.translatedText,
   });
 }
 

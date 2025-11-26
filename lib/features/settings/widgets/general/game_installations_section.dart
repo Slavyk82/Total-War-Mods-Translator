@@ -8,6 +8,7 @@ import 'package:twmt/widgets/fluent/fluent_expander.dart';
 import 'package:twmt/services/steam/steam_detection_service.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
+import 'settings_section_header.dart';
 
 /// Game installations configuration section.
 ///
@@ -38,8 +39,8 @@ class _GameInstallationsSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          'Game Installations',
+        const SettingsSectionHeader(
+          title: 'Game Installations',
           subtitle: 'Configure paths to your Total War games',
         ),
         const SizedBox(height: 8),
@@ -59,27 +60,6 @@ class _GameInstallationsSectionState
                 ),
               ),
             )),
-      ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title, {String? subtitle}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-          ),
-        ],
       ],
     );
   }
@@ -111,6 +91,14 @@ class _GameInstallationsSectionState
   Widget _buildGamePathField(GameDisplayInfo game) {
     return Row(
       children: [
+        SettingsActionButton.detect(
+          onPressed: () => _autoDetectGame(game.code),
+          isDetecting: _isDetecting,
+        ),
+        const SizedBox(width: 4),
+        SettingsActionButton.browse(
+            onPressed: () => _selectGamePath(game.code)),
+        const SizedBox(width: 8),
         Expanded(
           child: TextFormField(
             controller: widget.gamePathControllers[game.code],
@@ -123,14 +111,6 @@ class _GameInstallationsSectionState
             onChanged: (value) => _saveGamePath(game.code, value),
           ),
         ),
-        const SizedBox(width: 8),
-        SettingsActionButton.detect(
-          onPressed: () => _autoDetectGame(game.code),
-          isDetecting: _isDetecting,
-        ),
-        const SizedBox(width: 4),
-        SettingsActionButton.browse(
-            onPressed: () => _selectGamePath(game.code)),
       ],
     );
   }

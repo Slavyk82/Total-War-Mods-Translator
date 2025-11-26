@@ -29,9 +29,6 @@ class TmMatch {
   /// Breakdown of similarity components
   final SimilarityBreakdown breakdown;
 
-  /// Game context that was matched (if any)
-  final String? gameContext;
-
   /// Category context that was matched (if any)
   final String? category;
 
@@ -55,7 +52,6 @@ class TmMatch {
     required this.similarityScore,
     required this.matchType,
     required this.breakdown,
-    this.gameContext,
     this.category,
     required this.usageCount,
     required this.lastUsedAt,
@@ -72,8 +68,8 @@ class TmMatch {
   /// Whether this is a good fuzzy match (>=85%)
   bool get isGoodMatch => similarityScore >= 0.85;
 
-  /// Whether context matches (game or category)
-  bool get hasContextMatch => gameContext != null || category != null;
+  /// Whether context matches (category)
+  bool get hasContextMatch => category != null;
 
   // JSON serialization
   factory TmMatch.fromJson(Map<String, dynamic> json) =>
@@ -90,7 +86,6 @@ class TmMatch {
     double? similarityScore,
     TmMatchType? matchType,
     SimilarityBreakdown? breakdown,
-    String? gameContext,
     String? category,
     int? usageCount,
     DateTime? lastUsedAt,
@@ -105,7 +100,6 @@ class TmMatch {
       similarityScore: similarityScore ?? this.similarityScore,
       matchType: matchType ?? this.matchType,
       breakdown: breakdown ?? this.breakdown,
-      gameContext: gameContext ?? this.gameContext,
       category: category ?? this.category,
       usageCount: usageCount ?? this.usageCount,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,

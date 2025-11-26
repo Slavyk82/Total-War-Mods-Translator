@@ -19,6 +19,7 @@ TranslationProgress _$TranslationProgressFromJson(Map<String, dynamic> json) =>
         _$TranslationPhaseEnumMap,
         json['currentPhase'],
       ),
+      phaseDetail: json['phaseDetail'] as String?,
       estimatedSecondsRemaining: (json['estimatedSecondsRemaining'] as num?)
           ?.toInt(),
       tokensUsed: (json['tokensUsed'] as num).toInt(),
@@ -44,6 +45,7 @@ Map<String, dynamic> _$TranslationProgressToJson(
   'failedUnits': instance.failedUnits,
   'skippedUnits': instance.skippedUnits,
   'currentPhase': _$TranslationPhaseEnumMap[instance.currentPhase]!,
+  'phaseDetail': instance.phaseDetail,
   'estimatedSecondsRemaining': instance.estimatedSecondsRemaining,
   'tokensUsed': instance.tokensUsed,
   'tmReuseRate': instance.tmReuseRate,

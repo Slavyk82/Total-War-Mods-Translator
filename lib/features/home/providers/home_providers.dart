@@ -9,16 +9,12 @@ part 'home_providers.g.dart';
 /// Dashboard statistics model
 class DashboardStats {
   final int totalProjects;
-  final int activeProjects;
-  final int completedProjects;
   final int totalTranslationUnits;
   final int translatedUnits;
   final int pendingUnits;
 
   const DashboardStats({
     required this.totalProjects,
-    required this.activeProjects,
-    required this.completedProjects,
     required this.totalTranslationUnits,
     required this.translatedUnits,
     required this.pendingUnits,
@@ -40,14 +36,7 @@ Future<DashboardStats> dashboardStats(Ref ref) async {
   final projectsResult = await projectRepo.getAll();
   final projects = projectsResult.isOk ? projectsResult.value : <Project>[];
 
-  // Count projects by status
   final totalProjects = projects.length;
-  final activeProjects = projects.where((p) =>
-    p.status == ProjectStatus.translating || p.status == ProjectStatus.reviewing
-  ).length;
-  final completedProjects = projects.where((p) =>
-    p.status == ProjectStatus.completed
-  ).length;
 
   // Get translation unit stats (simplified - would need to join with versions for real counts)
   final unitsResult = await translationUnitRepo.getAll();
@@ -60,8 +49,6 @@ Future<DashboardStats> dashboardStats(Ref ref) async {
 
   return DashboardStats(
     totalProjects: totalProjects,
-    activeProjects: activeProjects,
-    completedProjects: completedProjects,
     totalTranslationUnits: totalTranslationUnits,
     translatedUnits: translatedUnits,
     pendingUnits: pendingUnits,

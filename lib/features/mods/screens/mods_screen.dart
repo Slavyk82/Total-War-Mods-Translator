@@ -325,7 +325,10 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
       projectId = uuid.v4();
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-      final metadata = ProjectMetadata(modTitle: mod.name);
+      final metadata = ProjectMetadata(
+        modTitle: mod.name,
+        modImageUrl: mod.imageUrl,
+      );
 
       final project = Project(
         id: projectId,
@@ -334,7 +337,6 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         gameInstallationId: gameId,
         sourceFilePath: mod.packFilePath,
         outputFilePath: outputFolder,
-        status: ProjectStatus.draft,
         batchSize: 25,
         parallelBatches: 3,
         createdAt: now,
@@ -359,7 +361,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
 
       final favoriteLanguageCode = await settingsService.getString(
         SettingsKeys.defaultTargetLanguage,
-        defaultValue: 'es',
+        defaultValue: SettingsKeys.defaultTargetLanguageValue,
       );
 
       final languageResult = await languageRepo.getByCode(favoriteLanguageCode);

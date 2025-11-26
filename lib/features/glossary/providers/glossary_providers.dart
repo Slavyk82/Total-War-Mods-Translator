@@ -7,24 +7,24 @@ import 'package:twmt/services/shared/logging_service.dart';
 
 part 'glossary_providers.g.dart';
 
-/// All glossaries (global + project-specific)
+/// All glossaries (universal + game-specific)
 @riverpod
 Future<List<Glossary>> glossaries(
   Ref ref, {
-  String? projectId,
-  bool includeGlobal = true,
+  String? gameInstallationId,
+  bool includeUniversal = true,
 }) async {
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting glossaries provider', {
-    'projectId': projectId,
-    'includeGlobal': includeGlobal,
+    'gameInstallationId': gameInstallationId,
+    'includeUniversal': includeUniversal,
   });
   try {
     final service = ServiceLocator.get<IGlossaryService>();
 
     final result = await service.getAllGlossaries(
-      projectId: projectId,
-      includeGlobal: includeGlobal,
+      gameInstallationId: gameInstallationId,
+      includeUniversal: includeUniversal,
     );
 
     return result.when(

@@ -20,6 +20,10 @@ class TranslationMemoryEntry {
   @JsonKey(name: 'source_hash')
   final String sourceHash;
 
+  /// ID of the source language (typically 'lang_en' for English)
+  @JsonKey(name: 'source_language_id')
+  final String sourceLanguageId;
+
   /// ID of the target language
   @JsonKey(name: 'target_language_id')
   final String targetLanguageId;
@@ -27,10 +31,6 @@ class TranslationMemoryEntry {
   /// The translated text
   @JsonKey(name: 'translated_text')
   final String translatedText;
-
-  /// Game/mod context where this translation was used
-  @JsonKey(name: 'game_context')
-  final String? gameContext;
 
   /// ID of the translation provider that created this translation
   @JsonKey(name: 'translation_provider_id')
@@ -60,12 +60,12 @@ class TranslationMemoryEntry {
     required this.id,
     required this.sourceText,
     required this.sourceHash,
+    required this.sourceLanguageId,
     required this.targetLanguageId,
     required this.translatedText,
-    this.gameContext,
     this.translationProviderId,
     this.qualityScore,
-    this.usageCount = 1,
+    this.usageCount = 0,
     required this.createdAt,
     required this.lastUsedAt,
     required this.updatedAt,
@@ -80,9 +80,6 @@ class TranslationMemoryEntry {
 
   /// Returns true if the entry has been used multiple times
   bool get isFrequentlyUsed => usageCount > 5;
-
-  /// Returns true if the entry is from a specific game context
-  bool get hasGameContext => gameContext != null && gameContext!.isNotEmpty;
 
   /// Returns true if the entry has a translation provider
   bool get hasProvider =>
@@ -122,6 +119,9 @@ class TranslationMemoryEntry {
 
   /// Returns a display string for usage statistics
   String get usageDisplay {
+    if (usageCount == 0) {
+      return 'Never used';
+    }
     if (usageCount == 1) {
       return 'Used once';
     }
@@ -132,9 +132,9 @@ class TranslationMemoryEntry {
     String? id,
     String? sourceText,
     String? sourceHash,
+    String? sourceLanguageId,
     String? targetLanguageId,
     String? translatedText,
-    String? gameContext,
     String? translationProviderId,
     double? qualityScore,
     int? usageCount,
@@ -146,9 +146,9 @@ class TranslationMemoryEntry {
       id: id ?? this.id,
       sourceText: sourceText ?? this.sourceText,
       sourceHash: sourceHash ?? this.sourceHash,
+      sourceLanguageId: sourceLanguageId ?? this.sourceLanguageId,
       targetLanguageId: targetLanguageId ?? this.targetLanguageId,
       translatedText: translatedText ?? this.translatedText,
-      gameContext: gameContext ?? this.gameContext,
       translationProviderId: translationProviderId ?? this.translationProviderId,
       qualityScore: qualityScore ?? this.qualityScore,
       usageCount: usageCount ?? this.usageCount,
@@ -170,9 +170,9 @@ class TranslationMemoryEntry {
         other.id == id &&
         other.sourceText == sourceText &&
         other.sourceHash == sourceHash &&
+        other.sourceLanguageId == sourceLanguageId &&
         other.targetLanguageId == targetLanguageId &&
         other.translatedText == translatedText &&
-        other.gameContext == gameContext &&
         other.translationProviderId == translationProviderId &&
         other.qualityScore == qualityScore &&
         other.usageCount == usageCount &&
@@ -186,9 +186,9 @@ class TranslationMemoryEntry {
       id.hashCode ^
       sourceText.hashCode ^
       sourceHash.hashCode ^
+      sourceLanguageId.hashCode ^
       targetLanguageId.hashCode ^
       translatedText.hashCode ^
-      gameContext.hashCode ^
       translationProviderId.hashCode ^
       qualityScore.hashCode ^
       usageCount.hashCode ^

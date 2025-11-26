@@ -3,30 +3,20 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/domain/project.dart';
-import '../../../models/domain/game_installation.dart';
 
 /// Project overview section showing basic project information.
 ///
-/// Displays project name, game, Steam Workshop link, description,
-/// status badge, timestamps, and edit button.
-class ProjectOverviewSection extends StatefulWidget {
+/// Displays project name, Steam Workshop link, timestamps,
+/// and delete button.
+class ProjectOverviewSection extends StatelessWidget {
   final Project project;
-  final GameInstallation? gameInstallation;
-  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ProjectOverviewSection({
     super.key,
     required this.project,
-    this.gameInstallation,
-    this.onEdit,
+    this.onDelete,
   });
-
-  @override
-  State<ProjectOverviewSection> createState() => _ProjectOverviewSectionState();
-}
-
-class _ProjectOverviewSectionState extends State<ProjectOverviewSection> {
-  bool _editButtonHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,24 +41,18 @@ class _ProjectOverviewSectionState extends State<ProjectOverviewSection> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.project.name,
+                      project.name,
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    _buildGameInfo(context),
                   ],
                 ),
               ),
-              _buildStatusBadge(context),
-              if (widget.onEdit != null) ...[
-                const SizedBox(width: 12),
-                _buildEditButton(context),
-              ],
+              if (onDelete != null) _buildDeleteButton(context),
             ],
           ),
-          if (widget.project.modSteamId != null) ...[
+          if (project.modSteamId != null) ...[
             const SizedBox(height: 16),
             _buildSteamInfo(context),
           ],
@@ -79,31 +63,9 @@ class _ProjectOverviewSectionState extends State<ProjectOverviewSection> {
     );
   }
 
-  Widget _buildGameInfo(BuildContext context) {
-    final theme = Theme.of(context);
-    final gameInstallation = widget.gameInstallation;
-
-    return Row(
-      children: [
-        Icon(
-          _getGameIcon(gameInstallation?.gameCode),
-          size: 20,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          gameInstallation?.gameName ?? 'Unknown Game',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.8),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSteamInfo(BuildContext context) {
     final theme = Theme.of(context);
-    final modId = widget.project.modSteamId!;
+    final modId = project.modSteamId!;
 
     return Row(
       children: [
@@ -164,10 +126,10 @@ class _ProjectOverviewSectionState extends State<ProjectOverviewSection> {
     final dateFormat = DateFormat('MMM d, yyyy \'at\' h:mm a');
 
     final created = DateTime.fromMillisecondsSinceEpoch(
-      widget.project.createdAt * 1000,
+      project.createdAt * 1000,
     );
     final modified = DateTime.fromMillisecondsSinceEpoch(
-      widget.project.updatedAt * 1000,
+      project.updatedAt * 1000,
     );
 
     return Row(
@@ -201,128 +163,33 @@ class _ProjectOverviewSectionState extends State<ProjectOverviewSection> {
     );
   }
 
-  Widget _buildStatusBadge(BuildContext context) {
-    final theme = Theme.of(context);
-    final (icon, label, bgColor, fgColor) = _getStatusInfo(theme, widget.project.status);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: fgColor),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: fgColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditButton(BuildContext context) {
+  Widget _buildDeleteButton(BuildContext context) {
     final theme = Theme.of(context);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _editButtonHovered = true),
-      onExit: (_) => setState(() => _editButtonHovered = false),
       child: GestureDetector(
-        onTap: widget.onEdit,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: _editButtonHovered
-                ? theme.colorScheme.primary
-                : theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.edit_24_regular,
-                size: 16,
-                color: _editButtonHovered
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onPrimaryContainer,
+        onTap: onDelete,
+        child: Tooltip(
+          message: 'Delete Project',
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.error.withValues(alpha: 0.3),
               ),
-              const SizedBox(width: 6),
-              Text(
-                'Edit Project',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _editButtonHovered
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
+            child: Icon(
+              FluentIcons.delete_24_regular,
+              size: 18,
+              color: theme.colorScheme.error,
+            ),
           ),
         ),
       ),
     );
-  }
-
-  IconData _getGameIcon(String? gameCode) {
-    switch (gameCode?.toLowerCase()) {
-      case 'wh3':
-      case 'wh2':
-      case 'wh1':
-        return FluentIcons.shield_24_regular;
-      case 'troy':
-        return FluentIcons.crown_24_regular;
-      case 'threekingdoms':
-      case '3k':
-        return FluentIcons.people_24_regular;
-      default:
-        return FluentIcons.games_24_regular;
-    }
-  }
-
-  (IconData, String, Color, Color) _getStatusInfo(
-    ThemeData theme,
-    ProjectStatus status,
-  ) {
-    switch (status) {
-      case ProjectStatus.draft:
-        return (
-          FluentIcons.document_24_regular,
-          'Draft',
-          theme.colorScheme.secondaryContainer,
-          theme.colorScheme.onSecondaryContainer,
-        );
-      case ProjectStatus.translating:
-        return (
-          FluentIcons.translate_24_regular,
-          'Translating',
-          theme.colorScheme.primaryContainer,
-          theme.colorScheme.onPrimaryContainer,
-        );
-      case ProjectStatus.reviewing:
-        return (
-          FluentIcons.document_search_24_regular,
-          'Reviewing',
-          theme.colorScheme.tertiaryContainer,
-          theme.colorScheme.onTertiaryContainer,
-        );
-      case ProjectStatus.completed:
-        return (
-          FluentIcons.checkmark_circle_24_regular,
-          'Completed',
-          Colors.green.withValues(alpha: 0.2),
-          Colors.green.shade700,
-        );
-    }
   }
 
   Future<void> _launchSteamWorkshop(String modId) async {

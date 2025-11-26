@@ -17,14 +17,14 @@ class GlossaryMatchingService {
 
   /// Find glossary terms that match in source text
   ///
-  /// Searches applicable glossaries (project-specific + global) for terms
+  /// Searches applicable glossaries (game-specific + universal) for terms
   /// that appear in the source text.
   ///
   /// [sourceText]: Source text to search for matches
   /// [sourceLanguageCode]: Source language code
   /// [targetLanguageCode]: Target language code
   /// [glossaryIds]: Optional specific glossaries to search (null = all applicable)
-  /// [projectId]: Project context for finding applicable glossaries
+  /// [gameInstallationId]: Game context for finding applicable glossaries
   ///
   /// Returns list of matching glossary entries
   Future<Result<List<GlossaryEntry>, GlossaryException>> findMatchingTerms({
@@ -32,15 +32,15 @@ class GlossaryMatchingService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) async {
     try {
       // Get applicable glossaries
       final glossaries = glossaryIds != null && glossaryIds.isNotEmpty
           ? await _repository.getGlossariesByIds(glossaryIds)
           : await _repository.getAllGlossaries(
-              projectId: projectId,
-              includeGlobal: true,
+              gameInstallationId: gameInstallationId,
+              includeUniversal: true,
             );
 
       // Get all entries from applicable glossaries
@@ -81,7 +81,7 @@ class GlossaryMatchingService {
   /// [sourceLanguageCode]: Source language code
   /// [targetLanguageCode]: Target language code
   /// [glossaryIds]: Optional specific glossaries to use (null = all applicable)
-  /// [projectId]: Project context for finding applicable glossaries
+  /// [gameInstallationId]: Game context for finding applicable glossaries
   ///
   /// Returns target text with glossary substitutions applied
   Future<Result<String, GlossaryException>> applySubstitutions({
@@ -90,15 +90,15 @@ class GlossaryMatchingService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) async {
     try {
       // Get applicable glossaries
       final glossaries = glossaryIds != null && glossaryIds.isNotEmpty
           ? await _repository.getGlossariesByIds(glossaryIds)
           : await _repository.getAllGlossaries(
-              projectId: projectId,
-              includeGlobal: true,
+              gameInstallationId: gameInstallationId,
+              includeUniversal: true,
             );
 
       // Get all entries
@@ -143,7 +143,7 @@ class GlossaryMatchingService {
   /// [sourceLanguageCode]: Source language code
   /// [targetLanguageCode]: Target language code
   /// [glossaryIds]: Optional specific glossaries to check (null = all applicable)
-  /// [projectId]: Project context for finding applicable glossaries
+  /// [gameInstallationId]: Game context for finding applicable glossaries
   ///
   /// Returns list of inconsistency error messages (empty if consistent)
   Future<Result<List<String>, GlossaryException>> checkConsistency({
@@ -152,7 +152,7 @@ class GlossaryMatchingService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) async {
     try {
       final matchResult = await findMatchingTerms(
@@ -160,7 +160,7 @@ class GlossaryMatchingService {
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        projectId: projectId,
+        gameInstallationId: gameInstallationId,
       );
 
       if (matchResult.isErr) {

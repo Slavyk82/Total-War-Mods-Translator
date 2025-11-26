@@ -136,7 +136,7 @@ final class GeneralSettingsProvider
   GeneralSettings create() => GeneralSettings();
 }
 
-String _$generalSettingsHash() => r'5799c7c0c7b92cb9feeba2f9fcfdd3619e0932f7';
+String _$generalSettingsHash() => r'dafb29155161159b2e97c4d821a4dadd83c29e1d';
 
 /// General settings notifier
 
@@ -189,7 +189,7 @@ final class LlmProviderSettingsProvider
 }
 
 String _$llmProviderSettingsHash() =>
-    r'b05c4b4d3cee65eb36ace05c41dc7f4a89bf14e7';
+    r'510f99f4808f82fb098fd3bfa503a93984f90882';
 
 /// LLM provider settings notifier
 

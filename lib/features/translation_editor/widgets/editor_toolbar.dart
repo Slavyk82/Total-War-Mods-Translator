@@ -17,10 +17,6 @@ class EditorToolbar extends ConsumerStatefulWidget {
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
   final VoidCallback onExport;
-  final VoidCallback onUndo;
-  final VoidCallback onRedo;
-  final bool canUndo;
-  final bool canRedo;
 
   const EditorToolbar({
     super.key,
@@ -31,10 +27,6 @@ class EditorToolbar extends ConsumerStatefulWidget {
     required this.onTranslateSelected,
     required this.onValidate,
     required this.onExport,
-    required this.onUndo,
-    required this.onRedo,
-    this.canUndo = false,
-    this.canRedo = false,
   });
 
   @override
@@ -162,21 +154,6 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
             label: 'Export',
             onPressed: widget.onExport,
           ),
-          const SizedBox(width: 16),
-
-          // Undo/Redo
-          _buildIconButton(
-            icon: FluentIcons.arrow_undo_24_regular,
-            tooltip: 'Undo',
-            onPressed: widget.canUndo ? widget.onUndo : null,
-          ),
-          const SizedBox(width: 4),
-          _buildIconButton(
-            icon: FluentIcons.arrow_redo_24_regular,
-            tooltip: 'Redo',
-            onPressed: widget.canRedo ? widget.onRedo : null,
-          ),
-
           const Spacer(),
 
           // Search field - flexible with constraints
@@ -280,38 +257,6 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIconButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback? onPressed,
-  }) {
-    final isEnabled = onPressed != null;
-
-    return Tooltip(
-      message: tooltip,
-      child: MouseRegion(
-        cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          onTap: onPressed,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: isEnabled ? null : Colors.grey,
-            ),
           ),
         ),
       ),

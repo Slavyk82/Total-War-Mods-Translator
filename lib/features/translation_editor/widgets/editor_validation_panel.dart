@@ -12,7 +12,6 @@ class EditorValidationPanel extends ConsumerStatefulWidget {
   final String? sourceText;
   final String? translatedText;
   final Function(String fixedText)? onApplyFix;
-  final Function(String fixedText)? onApplyAllFixes;
   final Function()? onValidate;
 
   const EditorValidationPanel({
@@ -20,7 +19,6 @@ class EditorValidationPanel extends ConsumerStatefulWidget {
     this.sourceText,
     this.translatedText,
     this.onApplyFix,
-    this.onApplyAllFixes,
     this.onValidate,
   });
 
@@ -70,8 +68,6 @@ class _EditorValidationPanelState
     final infos =
         issues.where((i) => i.severity == ValidationSeverity.info).toList();
 
-    final autoFixableIssues = issues.where((i) => i.autoFixable).toList();
-
     return Column(
       children: [
         // Summary header
@@ -79,7 +75,6 @@ class _EditorValidationPanelState
           errorCount: errors.length,
           warningCount: warnings.length,
           infoCount: infos.length,
-          hasAutoFix: autoFixableIssues.isNotEmpty,
         ),
 
         // Issues list
@@ -120,7 +115,6 @@ class _EditorValidationPanelState
     required int errorCount,
     required int warningCount,
     required int infoCount,
-    required bool hasAutoFix,
   }) {
     final hasErrors = errorCount > 0;
     final canValidate = !hasErrors;
@@ -174,47 +168,6 @@ class _EditorValidationPanelState
               ],
             ),
           ),
-
-          // Action buttons
-          if (hasAutoFix) ...[
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _handleApplyAllFixes,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: Colors.blue, width: 1),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FluentIcons.wrench_24_regular,
-                        size: 14,
-                        color: Colors.blue,
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Fix All',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
 
           // Validate button
           Opacity(
@@ -431,14 +384,6 @@ class _EditorValidationPanelState
     if (widget.onApplyFix != null && issue.autoFixValue != null) {
       widget.onApplyFix!(issue.autoFixValue!);
       FluentToast.success(context, 'Auto-fix applied');
-    }
-  }
-
-  void _handleApplyAllFixes() {
-    if (widget.onApplyAllFixes != null) {
-      // This would need the list of issues to apply all fixes
-      // For now, just trigger the callback
-      FluentToast.info(context, 'Applying all auto-fixes...');
     }
   }
 

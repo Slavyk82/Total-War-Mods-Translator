@@ -340,14 +340,8 @@ class _TranslationHistoryDialogState
     switch (status) {
       case TranslationVersionStatus.pending:
         return FluentIcons.circle_24_regular;
-      case TranslationVersionStatus.translating:
-        return FluentIcons.arrow_sync_24_regular;
       case TranslationVersionStatus.translated:
         return FluentIcons.checkmark_circle_24_regular;
-      case TranslationVersionStatus.reviewed:
-        return FluentIcons.shield_checkmark_24_regular;
-      case TranslationVersionStatus.approved:
-        return FluentIcons.checkmark_circle_24_filled;
       case TranslationVersionStatus.needsReview:
         return FluentIcons.warning_24_regular;
     }
@@ -357,14 +351,8 @@ class _TranslationHistoryDialogState
     switch (status) {
       case TranslationVersionStatus.pending:
         return Colors.grey;
-      case TranslationVersionStatus.translating:
-        return Colors.blue;
       case TranslationVersionStatus.translated:
         return Colors.green;
-      case TranslationVersionStatus.reviewed:
-        return Colors.teal;
-      case TranslationVersionStatus.approved:
-        return Colors.green.shade700;
       case TranslationVersionStatus.needsReview:
         return Colors.orange;
     }

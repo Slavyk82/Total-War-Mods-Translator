@@ -5,6 +5,19 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 
+/// Provider-specific API payload preview
+class ProviderPayload {
+  final String providerCode;
+  final String providerName;
+  final String payload;
+
+  const ProviderPayload({
+    required this.providerCode,
+    required this.providerName,
+    required this.payload,
+  });
+}
+
 /// Result containing the formatted prompt preview
 class PromptPreview {
   /// The system message (instructions, context, glossary)
@@ -16,13 +29,16 @@ class PromptPreview {
   /// Full prompt as it would be sent to the LLM
   final String fullPrompt;
 
-  /// Provider-specific formatted payload (JSON)
+  /// Provider-specific formatted payload (JSON) - legacy, use providerPayloads
   final String formattedPayload;
+
+  /// All provider payloads for comparison
+  final List<ProviderPayload> providerPayloads;
 
   /// Estimated token count
   final int estimatedTokens;
 
-  /// Provider code
+  /// Provider code (currently selected or default)
   final String providerCode;
 
   /// Model name
@@ -33,6 +49,7 @@ class PromptPreview {
     required this.userMessage,
     required this.fullPrompt,
     required this.formattedPayload,
+    required this.providerPayloads,
     required this.estimatedTokens,
     required this.providerCode,
     required this.modelName,
@@ -75,7 +92,14 @@ class PromptPreviewService {
       final providerCode = context.providerCode ?? AppConstants.defaultLlmProvider;
       final modelName = context.modelId ?? 'default';
 
-      // Format as the actual API payload that would be sent
+      // Generate payloads for all providers
+      final providerPayloads = _generateAllProviderPayloads(
+        systemMessage: builtPrompt.systemMessage,
+        userMessage: builtPrompt.userMessage,
+        modelName: modelName,
+      );
+
+      // Default formatted payload for current provider
       final formattedPayload = _formatAsApiPayload(
         systemMessage: builtPrompt.systemMessage,
         userMessage: builtPrompt.userMessage,
@@ -95,6 +119,7 @@ class PromptPreviewService {
         userMessage: builtPrompt.userMessage,
         fullPrompt: fullPrompt,
         formattedPayload: formattedPayload,
+        providerPayloads: providerPayloads,
         estimatedTokens: estimatedTokens,
         providerCode: providerCode,
         modelName: modelName,
@@ -102,6 +127,42 @@ class PromptPreviewService {
     } catch (e) {
       return Err('Error building prompt preview: $e');
     }
+  }
+
+  /// Generate payloads for all available providers
+  List<ProviderPayload> _generateAllProviderPayloads({
+    required String systemMessage,
+    required String userMessage,
+    required String modelName,
+  }) {
+    return [
+      ProviderPayload(
+        providerCode: 'anthropic',
+        providerName: 'Anthropic (Claude)',
+        payload: _formatAnthropicPayload(
+          systemMessage: systemMessage,
+          userMessage: userMessage,
+          modelName: modelName,
+        ),
+      ),
+      ProviderPayload(
+        providerCode: 'openai',
+        providerName: 'OpenAI / OpenRouter',
+        payload: _formatOpenAiPayload(
+          systemMessage: systemMessage,
+          userMessage: userMessage,
+          modelName: modelName,
+        ),
+      ),
+      ProviderPayload(
+        providerCode: 'deepl',
+        providerName: 'DeepL',
+        payload: _formatDeepLPayload(
+          sourceText: userMessage,
+          targetLanguage: 'fr', // Placeholder
+        ),
+      ),
+    ];
   }
 
   /// Format the prompt as it would appear in the actual API request
@@ -120,6 +181,11 @@ class PromptPreviewService {
         systemMessage: systemMessage,
         userMessage: userMessage,
         modelName: modelName,
+      );
+    } else if (providerCode == 'deepl') {
+      return _formatDeepLPayload(
+        sourceText: sourceText,
+        targetLanguage: targetLanguage,
       );
     } else {
       // Default to OpenAI-style format (also used by OpenRouter)
@@ -171,6 +237,21 @@ class PromptPreviewService {
           'content': userMessage,
         },
       ],
+    };
+
+    return const JsonEncoder.withIndent('  ').convert(payload);
+  }
+
+  String _formatDeepLPayload({
+    required String sourceText,
+    required String targetLanguage,
+  }) {
+    final payload = {
+      'text': [sourceText],
+      'target_lang': targetLanguage.toUpperCase(),
+      'source_lang': 'EN',
+      'formality': 'default',
+      'note': 'DeepL uses a different API structure - no system/user messages',
     };
 
     return const JsonEncoder.withIndent('  ').convert(payload);

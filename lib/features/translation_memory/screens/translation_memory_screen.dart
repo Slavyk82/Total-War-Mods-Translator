@@ -7,7 +7,6 @@ import '../widgets/tm_browser_datagrid.dart';
 import '../widgets/tm_statistics_panel.dart';
 import '../widgets/tmx_import_dialog.dart';
 import '../widgets/tmx_export_dialog.dart';
-import '../widgets/tm_filter_panel.dart';
 import '../widgets/tm_search_bar.dart';
 import '../widgets/tm_cleanup_dialog.dart';
 import '../widgets/tm_pagination_bar.dart';
@@ -24,8 +23,6 @@ class TranslationMemoryScreen extends ConsumerStatefulWidget {
 
 class _TranslationMemoryScreenState
     extends ConsumerState<TranslationMemoryScreen> {
-  bool _showFilters = true;
-
   @override
   Widget build(BuildContext context) {
     return FluentScaffold(
@@ -56,12 +53,6 @@ class _TranslationMemoryScreenState
                       _buildToolbar(context),
 
                       const Divider(height: 1),
-
-                      // Filters (collapsible)
-                      if (_showFilters) ...[
-                        const TmFilterPanel(),
-                        const Divider(height: 1),
-                      ],
 
                       // DataGrid
                       const Expanded(
@@ -137,22 +128,6 @@ class _TranslationMemoryScreenState
           ),
 
           const SizedBox(width: 16),
-
-          // Toggle filters button
-          _buildToolbarButton(
-            context,
-            icon: _showFilters
-                ? FluentIcons.chevron_up_24_regular
-                : FluentIcons.chevron_down_24_regular,
-            label: 'Filters',
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
-          ),
-
-          const SizedBox(width: 8),
 
           // Refresh button
           _buildToolbarButton(

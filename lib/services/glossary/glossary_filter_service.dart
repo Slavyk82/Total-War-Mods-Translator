@@ -15,14 +15,14 @@ class GlossaryFilterService {
   /// Filter glossary entries to only those relevant for the given source texts
   ///
   /// [sourceTexts] - List of source texts to be translated
-  /// [projectId] - Project ID for project-specific glossaries
+  /// [gameInstallationId] - Game installation ID for game-specific glossaries
   /// [targetLanguageId] - Target language ID to filter glossaries
   /// [targetLanguageCode] - Target language code for entries
   ///
   /// Returns list of glossary terms with variants, grouped by source term
   Future<List<GlossaryTermWithVariants>> filterRelevantTerms({
     required List<String> sourceTexts,
-    required String projectId,
+    required String gameInstallationId,
     required String targetLanguageId,
     required String targetLanguageCode,
   }) async {
@@ -30,8 +30,8 @@ class GlossaryFilterService {
 
     // Get all applicable glossaries
     final glossaries = await _repository.getAllGlossaries(
-      projectId: projectId,
-      includeGlobal: true,
+      gameInstallationId: gameInstallationId,
+      includeUniversal: true,
     );
 
     // Filter by target language
@@ -77,17 +77,17 @@ class GlossaryFilterService {
     return _groupEntriesBySourceTerm(matchedEntries);
   }
 
-  /// Load all glossary terms with variants for a project/language
+  /// Load all glossary terms with variants for a game/language
   ///
   /// Use this when you need the full glossary (e.g., for post-processing validation)
   Future<List<GlossaryTermWithVariants>> loadAllTerms({
-    required String projectId,
+    required String gameInstallationId,
     required String targetLanguageId,
     required String targetLanguageCode,
   }) async {
     final glossaries = await _repository.getAllGlossaries(
-      projectId: projectId,
-      includeGlobal: true,
+      gameInstallationId: gameInstallationId,
+      includeUniversal: true,
     );
 
     final applicableGlossaries = glossaries

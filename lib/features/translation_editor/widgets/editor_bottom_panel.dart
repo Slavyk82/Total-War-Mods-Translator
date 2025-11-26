@@ -297,25 +297,6 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
                       ),
                     ],
                   ),
-                  if (match.gameContext != null)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          FluentIcons.games_24_regular,
-                          size: 12,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          match.gameContext!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
                   if (match.qualityScore > 0)
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -387,12 +368,6 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
       translatedText: widget.translatedText,
       onApplyFix: (fixedText) {
         // Handle auto-fix
-        if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
-          widget.onApplySuggestion!(widget.selectedUnitId!, fixedText);
-        }
-      },
-      onApplyAllFixes: (fixedText) {
-        // Handle apply all fixes
         if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
           widget.onApplySuggestion!(widget.selectedUnitId!, fixedText);
         }

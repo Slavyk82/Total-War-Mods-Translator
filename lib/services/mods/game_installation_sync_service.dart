@@ -124,19 +124,24 @@ class GameInstallationSyncService {
         final workshopPathMissing = existing.steamWorkshopPath == null || 
                                     existing.steamWorkshopPath!.isEmpty;
         
-        if (installPathChanged || workshopPathMissing) {
+        // Also check if steamAppId is missing (from older database versions)
+        final steamAppIdMissing = existing.steamAppId == null ||
+                                  existing.steamAppId!.isEmpty;
+
+        if (installPathChanged || workshopPathMissing || steamAppIdMissing) {
           final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-          
+
           // Only detect Workshop path if it's missing
           // If installation path changes, keep existing Workshop path
           String? workshopPath = existing.steamWorkshopPath;
           if (workshopPathMissing) {
             workshopPath = await _detectWorkshopPath(gamePath, gameInfo.steamAppId);
           }
-          
+
           final updated = existing.copyWith(
             installationPath: gamePath,
             steamWorkshopPath: workshopPath,
+            steamAppId: gameInfo.steamAppId,
             updatedAt: now,
           );
 

@@ -49,10 +49,17 @@ class ValidationPersistenceHandler {
   }) async {
     _logger.info('Starting validation and save', {'batchId': batchId});
 
+    // Count translations to validate
+    final translationsToValidate = units.where((u) => translations.containsKey(u.id)).toList();
+    final totalToValidate = translationsToValidate.length;
+    var validatedCount = 0;
+
     var progress = currentProgress.copyWith(
       currentPhase: TranslationPhase.validating,
+      phaseDetail: 'Preparing validation ($totalToValidate translations)...',
       timestamp: DateTime.now(),
     );
+    onProgressUpdate(batchId, progress);
 
     var successCount = 0;
     var failCount = 0;
@@ -67,6 +74,15 @@ class ValidationPersistenceHandler {
         continue;
       }
 
+      validatedCount++;
+      
+      // Update phase detail with current validation progress
+      progress = progress.copyWith(
+        phaseDetail: 'Validating translation $validatedCount/$totalToValidate (variables, markup, glossary)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
+
       // Validate translation
       final validationResult = await _validation.validateTranslation(
         sourceText: unit.sourceText,
@@ -75,46 +91,57 @@ class ValidationPersistenceHandler {
         glossaryTerms: context.glossaryTerms,
       );
 
-      if (validationResult.isErr || !validationResult.unwrap().isValid) {
-        _logger.warning('Translation validation failed', {
+      // Determine status based on validation results
+      // - If validation failed (error in validation process): needsReview
+      // - If has errors or warnings: needsReview
+      // - Otherwise: translated
+      TranslationVersionStatus status = TranslationVersionStatus.translated;
+      String? validationIssuesJson;
+
+      if (validationResult.isErr) {
+        // Validation process itself failed
+        status = TranslationVersionStatus.needsReview;
+        _logger.warning('Translation validation process failed', {
           'batchId': batchId,
           'unitId': unit.id,
           'key': unit.key,
-          'errors': validationResult.isOk
-              ? validationResult
-                  .unwrap()
-                  .errors
-                  .map((e) => e.toString())
-                  .toList()
-              : [validationResult.unwrapErr()],
+          'error': validationResult.unwrapErr().toString(),
         });
-        // Debug: log actual texts for comparison
-        _logger.debug('Validation debug', {
-          'sourceText': unit.sourceText.substring(0, unit.sourceText.length.clamp(0, 500)),
-          'translatedText': llmTranslation.substring(0, llmTranslation.length.clamp(0, 500)),
-        });
-        failCount++;
-        
-        // Update progress after failure
-        progress = progress.copyWith(
-          failedUnits: currentProgress.failedUnits + failCount,
-          processedUnits: currentProgress.processedUnits + successCount + failCount,
-          timestamp: DateTime.now(),
-        );
-        onProgressUpdate(batchId, progress);
-        continue;
+      } else {
+        final result = validationResult.unwrap();
+        if (result.hasErrors || result.hasWarnings) {
+          // Has validation errors or warnings - needs review
+          status = TranslationVersionStatus.needsReview;
+          validationIssuesJson = result.allMessages.toString();
+          _logger.debug('Translation has validation issues', {
+            'batchId': batchId,
+            'unitId': unit.id,
+            'key': unit.key,
+            'errors': result.errors,
+            'warnings': result.warnings,
+          });
+        }
       }
 
       // Save translation
       try {
+        // Update detail: saving phase
+        progress = progress.copyWith(
+          currentPhase: TranslationPhase.saving,
+          phaseDetail: 'Saving translation $validatedCount/$totalToValidate to database...',
+          timestamp: DateTime.now(),
+        );
+        onProgressUpdate(batchId, progress);
+
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         final version = TranslationVersion(
           id: _generateId(),
           unitId: unit.id,
           projectLanguageId: context.projectLanguageId,
           translatedText: llmTranslation,
-          status: TranslationVersionStatus.translated,
+          status: status,
           confidenceScore: 0.8,
+          validationIssues: validationIssuesJson,
           createdAt: now,
           updatedAt: now,
         );
@@ -129,13 +156,20 @@ class ValidationPersistenceHandler {
         } else {
           successCount++;
 
+          // Update detail: TM update phase
+          progress = progress.copyWith(
+            currentPhase: TranslationPhase.updatingTm,
+            phaseDetail: 'Adding to Translation Memory $validatedCount/$totalToValidate...',
+            timestamp: DateTime.now(),
+          );
+          onProgressUpdate(batchId, progress);
+
           // Add to Translation Memory
           try {
             await _tmService.addTranslation(
               sourceText: unit.sourceText,
               targetText: llmTranslation,
               targetLanguageCode: context.targetLanguage,
-              gameContext: context.gameContext,
               category: context.category,
               quality: 0.8,
             );
@@ -177,6 +211,7 @@ class ValidationPersistenceHandler {
 
     return progress.copyWith(
       currentPhase: TranslationPhase.finalizing,
+      phaseDetail: 'Finalizing batch...',
       timestamp: DateTime.now(),
     );
   }

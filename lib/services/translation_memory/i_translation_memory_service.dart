@@ -23,8 +23,8 @@ abstract class ITranslationMemoryService {
   ///
   /// [sourceText]: Source text to store
   /// [targetText]: Translated text
+  /// [sourceLanguageCode]: Source language (ISO 639-1), defaults to 'en'
   /// [targetLanguageCode]: Target language (ISO 639-1)
-  /// [gameContext]: Optional game context (e.g., "tw_warhammer_2")
   /// [category]: Optional category (e.g., "UI", "narrative")
   /// [quality]: Initial quality score (0.0 - 1.0), default 0.8
   ///
@@ -32,8 +32,8 @@ abstract class ITranslationMemoryService {
   Future<Result<TranslationMemoryEntry, TmAddException>> addTranslation({
     required String sourceText,
     required String targetText,
+    String sourceLanguageCode = 'en',
     required String targetLanguageCode,
-    String? gameContext,
     String? category,
     double quality = 0.8,
   });
@@ -44,13 +44,11 @@ abstract class ITranslationMemoryService {
   ///
   /// [sourceText]: Text to match
   /// [targetLanguageCode]: Target language
-  /// [gameContext]: Optional game context filter
   ///
   /// Returns exact match if found, null otherwise
   Future<Result<TmMatch?, TmLookupException>> findExactMatch({
     required String sourceText,
     required String targetLanguageCode,
-    String? gameContext,
   });
 
   /// Find fuzzy matches in Translation Memory
@@ -61,14 +59,12 @@ abstract class ITranslationMemoryService {
   /// - Token-Based Similarity (30% weight)
   ///
   /// Context boost:
-  /// - +5% if game context matches
   /// - +3% if category matches
   ///
   /// [sourceText]: Text to match
   /// [targetLanguageCode]: Target language
   /// [minSimilarity]: Minimum similarity threshold (default: 0.85 = 85%)
   /// [maxResults]: Maximum number of results (default: 5)
-  /// [gameContext]: Optional game context for boost
   /// [category]: Optional category for boost
   ///
   /// Returns list of fuzzy matches sorted by similarity (highest first)
@@ -77,7 +73,6 @@ abstract class ITranslationMemoryService {
     required String targetLanguageCode,
     double minSimilarity = 0.85,
     int maxResults = 5,
-    String? gameContext,
     String? category,
   });
 
@@ -91,7 +86,6 @@ abstract class ITranslationMemoryService {
     required String sourceText,
     required String targetLanguageCode,
     double minSimilarity = 0.85,
-    String? gameContext,
     String? category,
   });
 
@@ -157,7 +151,6 @@ abstract class ITranslationMemoryService {
   /// - Tokens saved
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
     String? targetLanguageCode,
-    String? gameContext,
   });
 
   /// Import TM entries from TMX file
@@ -181,7 +174,6 @@ abstract class ITranslationMemoryService {
   /// [outputPath]: Path for output .tmx file
   /// [sourceLanguageCode]: Optional source language filter
   /// [targetLanguageCode]: Optional target language filter
-  /// [gameContext]: Optional game context filter
   /// [minQuality]: Optional minimum quality filter
   ///
   /// Returns number of entries exported
@@ -189,21 +181,18 @@ abstract class ITranslationMemoryService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? gameContext,
     double? minQuality,
   });
 
   /// Get TM entries for review/editing
   ///
   /// [targetLanguageCode]: Optional target language filter
-  /// [gameContext]: Optional game context filter
   /// [limit]: Maximum results
   /// [offset]: Pagination offset
   ///
   /// Returns paginated list of TM entries
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>> getEntries({
     String? targetLanguageCode,
-    String? gameContext,
     int limit = 50,
     int offset = 0,
   });

@@ -50,6 +50,7 @@ class TmLookupHandler {
     required TranslationContext context,
     required TranslationProgress currentProgress,
     required Future<void> Function(String batchId) checkPauseOrCancel,
+    required void Function(String batchId, TranslationProgress progress) onProgressUpdate,
   }) async {
     _logger.info('Starting TM lookup', {
       'batchId': batchId,
@@ -58,8 +59,10 @@ class TmLookupHandler {
 
     var progress = currentProgress.copyWith(
       currentPhase: TranslationPhase.tmExactLookup,
+      phaseDetail: 'Searching exact matches in Translation Memory (${units.length} units)...',
       timestamp: DateTime.now(),
     );
+    onProgressUpdate(batchId, progress);
 
     var skippedCount = 0;
     var processedCount = 0;
@@ -72,6 +75,14 @@ class TmLookupHandler {
       await checkPauseOrCancel(batchId);
 
       final chunk = units.skip(i).take(_maxConcurrentLookups).toList();
+      final progressPct = ((i / units.length) * 100).round();
+      
+      // Update progress detail
+      progress = progress.copyWith(
+        phaseDetail: 'Exact TM lookup: $progressPct% ($i/${units.length} units, ${exactMatchedUnitIds.length} matches)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
 
       // Phase 1: Parallel READ operations (TM lookups)
       final lookupResults = await Future.wait(
@@ -89,6 +100,12 @@ class TmLookupHandler {
 
       // Phase 3: Single WRITE transaction for all matches in this chunk
       if (matchesToApply.isNotEmpty) {
+        progress = progress.copyWith(
+          phaseDetail: 'Applying ${matchesToApply.length} exact TM matches...',
+          timestamp: DateTime.now(),
+        );
+        onProgressUpdate(batchId, progress);
+        
         await _applyTmMatchesBatch(matchesToApply, context);
         for (final pending in matchesToApply) {
           exactMatchedUnitIds.add(pending.unit.id);
@@ -111,10 +128,12 @@ class TmLookupHandler {
     // Update progress for fuzzy phase
     progress = progress.copyWith(
       currentPhase: TranslationPhase.tmFuzzyLookup,
+      phaseDetail: 'Exact lookup complete: ${exactMatchedUnitIds.length} matches found. Starting fuzzy search...',
       skippedUnits: skippedCount,
       processedUnits: processedCount,
       timestamp: DateTime.now(),
     );
+    onProgressUpdate(batchId, progress);
 
     // Filter units that need fuzzy matching (not already exact matched)
     final unitsForFuzzy = units.where((u) => !exactMatchedUnitIds.contains(u.id)).toList();
@@ -125,12 +144,22 @@ class TmLookupHandler {
       'exactMatched': exactMatchedUnitIds.length,
     });
 
+    var fuzzyMatchCount = 0;
+
     // Process fuzzy matches in parallel chunks
     // IMPORTANT: Reads are done in parallel, but ALL writes are batched into single transaction
     for (var i = 0; i < unitsForFuzzy.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
       final chunk = unitsForFuzzy.skip(i).take(_maxConcurrentLookups).toList();
+      final progressPct = ((i / unitsForFuzzy.length) * 100).round();
+      
+      // Update progress detail
+      progress = progress.copyWith(
+        phaseDetail: 'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzy.length} units, $fuzzyMatchCount matches)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
 
       // Phase 1: Parallel READ operations (TM lookups + check if already translated)
       final lookupResults = await Future.wait(
@@ -149,9 +178,16 @@ class TmLookupHandler {
 
       // Phase 3: Single WRITE transaction for all matches in this chunk
       if (matchesToApply.isNotEmpty) {
+        progress = progress.copyWith(
+          phaseDetail: 'Auto-accepting ${matchesToApply.length} high-confidence fuzzy matches (≥95%)...',
+          timestamp: DateTime.now(),
+        );
+        onProgressUpdate(batchId, progress);
+        
         await _applyTmMatchesBatch(matchesToApply, context);
         skippedCount += matchesToApply.length;
         processedCount += matchesToApply.length;
+        fuzzyMatchCount += matchesToApply.length;
       }
 
       // Log progress periodically
@@ -166,6 +202,7 @@ class TmLookupHandler {
     }
 
     final tmReuseRate = units.isNotEmpty ? skippedCount / units.length : 0.0;
+    final tmReuseRatePct = (tmReuseRate * 100).round();
 
     _logger.info('TM lookup completed', {
       'batchId': batchId,
@@ -176,6 +213,7 @@ class TmLookupHandler {
     });
 
     return progress.copyWith(
+      phaseDetail: 'TM lookup complete: $tmReuseRatePct% reuse (${exactMatchedUnitIds.length} exact, $fuzzyMatchCount fuzzy)',
       skippedUnits: skippedCount,
       processedUnits: processedCount,
       tmReuseRate: tmReuseRate,
@@ -193,7 +231,6 @@ class TmLookupHandler {
       final exactMatchResult = await _tmService.findExactMatch(
         sourceText: unit.sourceText,
         targetLanguageCode: context.targetLanguage,
-        gameContext: context.gameContext,
       );
 
       if (exactMatchResult.isOk && exactMatchResult.unwrap() != null) {
@@ -222,7 +259,6 @@ class TmLookupHandler {
         targetLanguageCode: context.targetLanguage,
         minSimilarity: AppConstants.minTmSimilarity,
         maxResults: AppConstants.maxTmFuzzyResults,
-        gameContext: context.gameContext,
         category: context.category,
       );
 
@@ -237,6 +273,7 @@ class TmLookupHandler {
 
   /// Apply multiple TM matches in a SINGLE transaction
   /// This prevents FTS5 corruption from concurrent writes
+  /// Uses upsert to handle cases where translation already exists
   Future<void> _applyTmMatchesBatch(
     List<_PendingTmMatch> matches,
     TranslationContext context,
@@ -253,16 +290,14 @@ class TmLookupHandler {
           unitId: pending.unit.id,
           projectLanguageId: context.projectLanguageId,
           translatedText: pending.match.targetText,
-          status:
-              pending.match.similarityScore >= AppConstants.exactMatchSimilarity
-                  ? TranslationVersionStatus.approved
-                  : TranslationVersionStatus.translated,
+          status: TranslationVersionStatus.translated,
           confidenceScore: pending.match.similarityScore,
           createdAt: now,
           updatedAt: now,
         );
 
-        await _versionRepository.insertWithTransaction(txn, version);
+        // Use upsert to handle existing translations (e.g., when re-translating)
+        await _versionRepository.upsertWithTransaction(txn, version);
       }
       return true;
     });
@@ -286,9 +321,7 @@ class TmLookupHandler {
         unitId: unit.id,
         projectLanguageId: context.projectLanguageId,
         translatedText: match.targetText,
-        status: match.similarityScore >= AppConstants.exactMatchSimilarity
-            ? TranslationVersionStatus.approved
-            : TranslationVersionStatus.translated,
+        status: TranslationVersionStatus.translated,
         confidenceScore: match.similarityScore,
         createdAt: DateTime.now().millisecondsSinceEpoch,
         updatedAt: DateTime.now().millisecondsSinceEpoch,

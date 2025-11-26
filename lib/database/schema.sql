@@ -76,7 +76,6 @@ CREATE TABLE IF NOT EXISTS projects (
     game_installation_id TEXT NOT NULL,
     source_file_path TEXT,
     output_file_path TEXT,
-    status TEXT NOT NULL DEFAULT 'draft',
     last_update_check INTEGER,
     source_mod_updated INTEGER,
     batch_size INTEGER NOT NULL DEFAULT 25,
@@ -87,7 +86,6 @@ CREATE TABLE IF NOT EXISTS projects (
     completed_at INTEGER,
     metadata TEXT,
     FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE RESTRICT,
-    CHECK (status IN ('draft', 'translating', 'reviewing', 'completed')),
     CHECK (batch_size > 0 AND batch_size <= 100),
     CHECK (parallel_batches > 0 AND parallel_batches <= 10),
     CHECK (created_at <= updated_at)
@@ -247,19 +245,18 @@ CREATE TABLE IF NOT EXISTS translation_memory (
     source_language_id TEXT NOT NULL,
     target_language_id TEXT NOT NULL,
     translated_text TEXT NOT NULL,
-    game_context TEXT,
     translation_provider_id TEXT,
     quality_score REAL,
-    usage_count INTEGER NOT NULL DEFAULT 1,
+    usage_count INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     last_used_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     FOREIGN KEY (source_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
     FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
     FOREIGN KEY (translation_provider_id) REFERENCES translation_providers(id) ON DELETE SET NULL,
-    UNIQUE(source_hash, target_language_id, game_context),
+    UNIQUE(source_hash, target_language_id),
     CHECK (quality_score IS NULL OR (quality_score >= 0 AND quality_score <= 1)),
-    CHECK (usage_count >= 1)
+    CHECK (usage_count >= 0)
 );
 
 -- Translation Version TM Usage: TM usage tracking
@@ -279,19 +276,21 @@ CREATE TABLE IF NOT EXISTS translation_version_tm_usage (
 -- ============================================================================
 
 -- Glossaries: Term glossaries for consistent translations
+-- is_global = 1: Universal glossary (all games, all projects)
+-- is_global = 0: Game-specific glossary (all projects of one game)
 CREATE TABLE IF NOT EXISTS glossaries (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
     is_global INTEGER NOT NULL DEFAULT 0,
-    project_id TEXT,
+    game_installation_id TEXT,
     target_language_id TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE CASCADE,
     FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
     CHECK (is_global IN (0, 1)),
-    CHECK ((is_global = 1 AND project_id IS NULL) OR (is_global = 0 AND project_id IS NOT NULL)),
+    CHECK ((is_global = 1 AND game_installation_id IS NULL) OR (is_global = 0 AND game_installation_id IS NOT NULL)),
     CHECK (created_at <= updated_at)
 );
 
@@ -421,6 +420,23 @@ CREATE TABLE IF NOT EXISTS mod_scan_cache (
     CHECK (has_loc_files IN (0, 1))
 );
 
+-- Mod Update Analysis Cache: Cache analysis results per project
+-- Only re-analyze when the pack file has been modified
+CREATE TABLE IF NOT EXISTS mod_update_analysis_cache (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    pack_file_path TEXT NOT NULL,
+    file_last_modified INTEGER NOT NULL,
+    new_units_count INTEGER NOT NULL DEFAULT 0,
+    removed_units_count INTEGER NOT NULL DEFAULT 0,
+    modified_units_count INTEGER NOT NULL DEFAULT 0,
+    total_pack_units INTEGER NOT NULL DEFAULT 0,
+    total_project_units INTEGER NOT NULL DEFAULT 0,
+    analyzed_at INTEGER NOT NULL,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    UNIQUE(project_id, pack_file_path)
+);
+
 -- ============================================================================
 -- CONFIGURATION
 -- ============================================================================
@@ -470,7 +486,7 @@ CREATE TABLE IF NOT EXISTS translation_view_cache (
 -- ============================================================================
 
 -- Projects
-CREATE INDEX IF NOT EXISTS idx_projects_game ON projects(game_installation_id, status);
+CREATE INDEX IF NOT EXISTS idx_projects_game ON projects(game_installation_id);
 CREATE INDEX IF NOT EXISTS idx_projects_updated ON projects(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_steam_id ON projects(mod_steam_id);
 
@@ -492,6 +508,11 @@ CREATE INDEX IF NOT EXISTS idx_translation_units_source_loc_file ON translation_
 CREATE INDEX IF NOT EXISTS idx_translation_versions_unit ON translation_versions(unit_id);
 CREATE INDEX IF NOT EXISTS idx_translation_versions_proj_lang ON translation_versions(project_language_id, status);
 CREATE INDEX IF NOT EXISTS idx_translation_versions_status ON translation_versions(status);
+-- Composite index for common JOIN pattern (unit + project_language)
+CREATE INDEX IF NOT EXISTS idx_translation_versions_unit_proj_lang ON translation_versions(unit_id, project_language_id);
+
+-- Translation Version History
+CREATE INDEX IF NOT EXISTS idx_translation_version_history_version ON translation_version_history(version_id);
 
 -- Translation Batches
 CREATE INDEX IF NOT EXISTS idx_batches_proj_lang ON translation_batches(project_language_id, status);
@@ -502,10 +523,9 @@ CREATE INDEX IF NOT EXISTS idx_batch_units_batch ON translation_batch_units(batc
 CREATE INDEX IF NOT EXISTS idx_batch_units_unit ON translation_batch_units(unit_id);
 
 -- Translation Memory
-CREATE INDEX IF NOT EXISTS idx_tm_hash_lang_context ON translation_memory(source_hash, target_language_id, game_context);
+CREATE INDEX IF NOT EXISTS idx_tm_hash_lang ON translation_memory(source_hash, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_source_lang ON translation_memory(source_language_id, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory(last_used_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tm_game_context ON translation_memory(game_context, quality_score DESC);
 CREATE INDEX IF NOT EXISTS idx_tm_lang_quality ON translation_memory(target_language_id, quality_score DESC, usage_count DESC) WHERE quality_score >= 0.85;
 CREATE INDEX IF NOT EXISTS idx_tm_target_lang_quality ON translation_memory(target_language_id, quality_score DESC);
 
@@ -527,7 +547,7 @@ CREATE INDEX IF NOT EXISTS idx_languages_code ON languages(code);
 CREATE INDEX IF NOT EXISTS idx_translation_providers_code ON translation_providers(code);
 
 -- Glossaries
-CREATE INDEX IF NOT EXISTS idx_glossaries_project ON glossaries(project_id, is_global);
+CREATE INDEX IF NOT EXISTS idx_glossaries_game ON glossaries(game_installation_id, is_global);
 CREATE INDEX IF NOT EXISTS idx_glossaries_target_language ON glossaries(target_language_id);
 CREATE INDEX IF NOT EXISTS idx_glossaries_name ON glossaries(name);
 
@@ -565,6 +585,10 @@ CREATE INDEX IF NOT EXISTS idx_event_store_correlation ON event_store(correlatio
 CREATE INDEX IF NOT EXISTS idx_mod_scan_cache_pack_path ON mod_scan_cache(pack_file_path);
 CREATE INDEX IF NOT EXISTS idx_mod_scan_cache_scanned_at ON mod_scan_cache(scanned_at);
 
+-- Mod Update Analysis Cache
+CREATE INDEX IF NOT EXISTS idx_mod_update_analysis_cache_project ON mod_update_analysis_cache(project_id);
+CREATE INDEX IF NOT EXISTS idx_mod_update_analysis_cache_pack_path ON mod_update_analysis_cache(pack_file_path);
+
 -- Translation View Cache
 CREATE INDEX IF NOT EXISTS idx_translation_cache_proj_lang ON translation_view_cache(project_id, project_language_id);
 CREATE INDEX IF NOT EXISTS idx_translation_cache_status ON translation_view_cache(project_language_id, status);
@@ -598,7 +622,6 @@ CREATE VIRTUAL TABLE IF NOT EXISTS translation_versions_fts USING fts5(
 CREATE VIRTUAL TABLE IF NOT EXISTS translation_memory_fts USING fts5(
     source_text,
     translated_text,
-    game_context,
     content='translation_memory',
     content_rowid='rowid'
 );
@@ -711,15 +734,14 @@ END;
 
 -- Translation Memory FTS5 sync triggers
 CREATE TRIGGER IF NOT EXISTS trg_translation_memory_fts_insert AFTER INSERT ON translation_memory BEGIN
-    INSERT INTO translation_memory_fts(rowid, source_text, translated_text, game_context)
-    VALUES (new.rowid, new.source_text, new.translated_text, new.game_context);
+    INSERT INTO translation_memory_fts(rowid, source_text, translated_text)
+    VALUES (new.rowid, new.source_text, new.translated_text);
 END;
 
 CREATE TRIGGER IF NOT EXISTS trg_translation_memory_fts_update AFTER UPDATE ON translation_memory BEGIN
     UPDATE translation_memory_fts
     SET source_text = new.source_text,
-        translated_text = new.translated_text,
-        game_context = new.game_context
+        translated_text = new.translated_text
     WHERE rowid = new.rowid;
 END;
 

@@ -72,8 +72,8 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   Future<Result<TranslationMemoryEntry, TmAddException>> addTranslation({
     required String sourceText,
     required String targetText,
+    String sourceLanguageCode = 'en',
     required String targetLanguageCode,
-    String? gameContext,
     String? category,
     double quality = AppConstants.defaultTmQuality,
   }) async {
@@ -110,10 +110,14 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       final normalized = _normalizer.normalize(sourceText);
       final sourceHash = normalized.hashCode.toString();
 
+      // Convert language codes to IDs (e.g., 'en' -> 'lang_en')
+      final sourceLanguageId = 'lang_$sourceLanguageCode';
+      final targetLanguageId = 'lang_$targetLanguageCode';
+
       // Check for existing entry (deduplication)
       final existingResult = await _repository.findBySourceHash(
         sourceHash,
-        targetLanguageCode,
+        targetLanguageId,
       );
 
       if (existingResult.isOk) {
@@ -132,7 +136,8 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           id: existing.id,
           sourceText: sourceText,
           translatedText: targetText,
-          targetLanguageId: targetLanguageCode,
+          sourceLanguageId: existing.sourceLanguageId,
+          targetLanguageId: targetLanguageId,
           sourceHash: sourceHash,
           qualityScore: updatedQuality,
           usageCount: existing.usageCount + 1,
@@ -166,7 +171,8 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         sourceText: sourceText,
         translatedText: targetText,
-        targetLanguageId: targetLanguageCode,
+        sourceLanguageId: sourceLanguageId,
+        targetLanguageId: targetLanguageId,
         sourceHash: sourceHash,
         qualityScore: quality,
         usageCount: 0,
@@ -225,6 +231,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         id: entry.id,
         sourceText: entry.sourceText,
         translatedText: entry.translatedText,
+        sourceLanguageId: entry.sourceLanguageId,
         targetLanguageId: entry.targetLanguageId,
         sourceHash: entry.sourceHash,
         qualityScore: entry.qualityScore,
@@ -292,6 +299,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         id: entry.id,
         sourceText: entry.sourceText,
         translatedText: entry.translatedText,
+        sourceLanguageId: entry.sourceLanguageId,
         targetLanguageId: entry.targetLanguageId,
         sourceHash: entry.sourceHash,
         qualityScore: newQuality,
@@ -355,13 +363,17 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   @override
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>> getEntries({
     String? targetLanguageCode,
-    String? gameContext,
     int limit = AppConstants.defaultTmPageSize,
     int offset = 0,
   }) async {
     try {
+      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
+      final targetLanguageId = targetLanguageCode != null
+          ? 'lang_$targetLanguageCode'
+          : null;
+
       final result = await _repository.getWithFilters(
-        targetLanguageId: targetLanguageCode,
+        targetLanguageId: targetLanguageId,
         limit: limit,
         offset: offset,
       );
@@ -440,12 +452,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   Future<Result<TmMatch?, TmLookupException>> findExactMatch({
     required String sourceText,
     required String targetLanguageCode,
-    String? gameContext,
   }) =>
       _matchingService.findExactMatch(
         sourceText: sourceText,
         targetLanguageCode: targetLanguageCode,
-        gameContext: gameContext,
       );
 
   @override
@@ -454,7 +464,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String targetLanguageCode,
     double minSimilarity = AppConstants.minTmSimilarity,
     int maxResults = AppConstants.maxTmFuzzyResults,
-    String? gameContext,
     String? category,
   }) =>
       _matchingService.findFuzzyMatches(
@@ -462,7 +471,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         targetLanguageCode: targetLanguageCode,
         minSimilarity: minSimilarity,
         maxResults: maxResults,
-        gameContext: gameContext,
         category: category,
       );
 
@@ -471,14 +479,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String sourceText,
     required String targetLanguageCode,
     double minSimilarity = AppConstants.minTmSimilarity,
-    String? gameContext,
     String? category,
   }) =>
       _matchingService.findBestMatch(
         sourceText: sourceText,
         targetLanguageCode: targetLanguageCode,
         minSimilarity: minSimilarity,
-        gameContext: gameContext,
         category: category,
       );
 
@@ -509,14 +515,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    String? gameContext,
     double? minQuality,
   }) =>
       _importExportService.exportToTmx(
         outputPath: outputPath,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
-        gameContext: gameContext,
         minQuality: minQuality,
       );
 
@@ -595,12 +599,16 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   @override
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
     String? targetLanguageCode,
-    String? gameContext,
   }) async {
     try {
+      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
+      final targetLanguageId = targetLanguageCode != null
+          ? 'lang_$targetLanguageCode'
+          : null;
+
       // Get basic statistics
       final statsResult = await _repository.getStatistics(
-        targetLanguageId: targetLanguageCode,
+        targetLanguageId: targetLanguageId,
       );
 
       if (statsResult.isErr) {

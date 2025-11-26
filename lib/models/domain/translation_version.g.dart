@@ -45,9 +45,6 @@ Map<String, dynamic> _$TranslationVersionToJson(TranslationVersion instance) =>
 
 const _$TranslationVersionStatusEnumMap = {
   TranslationVersionStatus.pending: 'pending',
-  TranslationVersionStatus.translating: 'translating',
   TranslationVersionStatus.translated: 'translated',
-  TranslationVersionStatus.reviewed: 'reviewed',
-  TranslationVersionStatus.approved: 'approved',
   TranslationVersionStatus.needsReview: 'needs_review',
 };

@@ -62,7 +62,7 @@ class TranslationEditedEvent extends DomainEvent {
 class TranslationValidatedEvent extends DomainEvent {
   final String versionId;
   final String unitId;
-  final String status; // 'reviewed' or 'approved'
+  final String status; // 'translated' or 'needs_review'
   final String validatedBy;
   final List<String>? validationIssues;
 
@@ -74,7 +74,7 @@ class TranslationValidatedEvent extends DomainEvent {
     this.validationIssues,
   }) : super.now();
 
-  bool get isApproved => status == 'approved';
+  bool get isTranslated => status == 'translated';
   bool get hasIssues => validationIssues != null && validationIssues!.isNotEmpty;
   @override
   Map<String, dynamic> toJson() {

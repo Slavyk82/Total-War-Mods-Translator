@@ -13,7 +13,6 @@ class TmStatisticsPanel extends ConsumerWidget {
     final filtersState = ref.watch(tmFilterStateProvider);
     final statsAsync = ref.watch(tmStatisticsProvider(
       targetLang: filtersState.targetLanguage,
-      gameContext: filtersState.gameContext,
     ));
 
     return Container(
@@ -132,19 +131,6 @@ class TmStatisticsPanel extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
-          // Quality Breakdown
-          _buildSectionHeader(context, 'Quality'),
-          const SizedBox(height: 8),
-          _buildQualityBar(context, stats.averageQuality),
-          const SizedBox(height: 8),
-          _buildSmallStat(
-            context,
-            label: 'Average Quality',
-            value: '${(stats.averageQuality * 100).toStringAsFixed(0)}%',
-          ),
-
-          const SizedBox(height: 24),
-
           // Performance Stats
           _buildSectionHeader(context, 'Performance'),
           const SizedBox(height: 8),
@@ -251,57 +237,6 @@ class TmStatisticsPanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildQualityBar(BuildContext context, double quality) {
-    final percentage = (quality * 100).toInt();
-    final color = _getQualityColor(context, quality);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                height: 24,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Stack(
-                  children: [
-                    FractionallySizedBox(
-                      widthFactor: quality,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    Center(
-                      child: Text(
-                        '$percentage%',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: percentage > 50
-                                  ? Colors.white
-                                  : Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.color,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildSmallStat(
     BuildContext context, {
     required String label,
@@ -324,16 +259,6 @@ class TmStatisticsPanel extends ConsumerWidget {
         ),
       ],
     );
-  }
-
-  Color _getQualityColor(BuildContext context, double quality) {
-    if (quality >= 0.9) {
-      return Colors.green;
-    } else if (quality >= 0.7) {
-      return Colors.orange;
-    } else {
-      return Colors.red;
-    }
   }
 
   String _formatNumber(int number) {

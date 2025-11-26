@@ -14,9 +14,6 @@ class ContextMenuBuilder {
     required int selectionCount,
     required VoidCallback onEdit,
     required VoidCallback onSelectAll,
-    required Future<void> Function() onCopy,
-    required Future<void> Function() onPaste,
-    required Future<void> Function() onValidate,
     required Future<void> Function() onClear,
     required Future<void> Function() onViewHistory,
     required Future<void> Function() onDelete,
@@ -54,65 +51,6 @@ class ContextMenuBuilder {
               Icon(FluentIcons.select_all_on_24_regular, size: 16),
               SizedBox(width: 8),
               Text('Select All'),
-              Spacer(),
-              Text('Ctrl+A', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: 'copy',
-          enabled: hasSelection,
-          child: Row(
-            children: [
-              Icon(
-                FluentIcons.copy_24_regular,
-                size: 16,
-                color: hasSelection ? null : Colors.grey,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Copy',
-                style: TextStyle(color: hasSelection ? null : Colors.grey),
-              ),
-              const Spacer(),
-              const Text(
-                'Ctrl+C',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'paste',
-          child: Row(
-            children: [
-              Icon(FluentIcons.clipboard_paste_24_regular, size: 16),
-              SizedBox(width: 8),
-              Text('Paste'),
-              Spacer(),
-              Text('Ctrl+V', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem(
-          value: 'validate',
-          enabled: hasSelection,
-          child: Row(
-            children: [
-              Icon(
-                FluentIcons.checkmark_circle_24_regular,
-                size: 16,
-                color: hasSelection ? null : Colors.grey,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                selectionCount > 1
-                    ? 'Mark as Reviewed ($selectionCount)'
-                    : 'Mark as Reviewed',
-                style: TextStyle(color: hasSelection ? null : Colors.grey),
-              ),
             ],
           ),
         ),
@@ -210,18 +148,15 @@ class ContextMenuBuilder {
         case 'select_all':
           onSelectAll();
           break;
-        case 'copy':
-          await onCopy();
-          break;
-        case 'paste':
-          await onPaste();
-          break;
-        case 'validate':
-          await onValidate();
-          break;
         case 'force_retranslate':
+          print('[DEBUG] Context menu: force_retranslate clicked');
+          print('[DEBUG] Context menu: selectionCount = $selectionCount');
           if (onForceRetranslate != null) {
+            print('[DEBUG] Context menu: calling onForceRetranslate');
             await onForceRetranslate();
+            print('[DEBUG] Context menu: onForceRetranslate completed');
+          } else {
+            print('[DEBUG] Context menu: onForceRetranslate is null!');
           }
           break;
         case 'clear':

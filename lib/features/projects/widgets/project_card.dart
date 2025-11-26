@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -12,17 +13,11 @@ import '../../../models/domain/game_installation.dart';
 class ProjectCard extends StatefulWidget {
   final ProjectWithDetails projectWithDetails;
   final VoidCallback? onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onExport;
-  final VoidCallback? onDelete;
 
   const ProjectCard({
     super.key,
     required this.projectWithDetails,
     this.onTap,
-    this.onEdit,
-    this.onExport,
-    this.onDelete,
   });
 
   @override
@@ -31,7 +26,6 @@ class ProjectCard extends StatefulWidget {
 
 class _ProjectCardState extends State<ProjectCard> {
   bool _isHovered = false;
-  bool _isMenuOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -97,20 +91,8 @@ class _ProjectCardState extends State<ProjectCard> {
 
     return Row(
       children: [
-        // Game icon
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(
-            _getGameIcon(gameInstallation?.gameCode),
-            size: 18,
-            color: theme.colorScheme.onPrimaryContainer,
-          ),
-        ),
+        // Mod image or game icon fallback
+        _buildModImage(context, project, gameInstallation),
         const SizedBox(width: 10),
         // Project name
         Expanded(
@@ -123,9 +105,9 @@ class _ProjectCardState extends State<ProjectCard> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        // Update badge
-        if (widget.projectWithDetails.hasUpdates) ...[
-          _buildUpdateBadge(context),
+        // Changes badge (same as Mods screen)
+        if (widget.projectWithDetails.updateAnalysis != null) ...[
+          _buildChangesBadge(context),
           const SizedBox(width: 8),
         ],
         // Steam ID
@@ -154,12 +136,6 @@ class _ProjectCardState extends State<ProjectCard> {
           timeago.format(lastModified),
           style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
         ),
-        // Status badge
-        const SizedBox(width: 12),
-        _buildStatusBadge(context, project.status),
-        const SizedBox(width: 8),
-        // Actions menu
-        _buildActionsMenu(context),
       ],
     );
   }
@@ -249,121 +225,119 @@ class _ProjectCardState extends State<ProjectCard> {
     );
   }
 
-  Widget _buildUpdateBadge(BuildContext context) {
+  /// Build changes badge with same labels as Mods screen
+  Widget _buildChangesBadge(BuildContext context) {
     final theme = Theme.of(context);
+    final analysis = widget.projectWithDetails.updateAnalysis;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            FluentIcons.arrow_sync_circle_24_regular,
-            size: 12,
-            color: theme.colorScheme.onErrorContainer,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'Update Available',
-            style: theme.textTheme.bodySmall?.copyWith(
+    // No analysis available
+    if (analysis == null) {
+      return const SizedBox.shrink();
+    }
+
+    // No changes - show "Up to date" with green checkmark
+    if (!analysis.hasChanges) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.checkmark_circle_24_regular,
+              size: 12,
+              color: theme.colorScheme.onPrimaryContainer,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Up to date',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Has changes - build tooltip with details and show summary badge
+    final tooltipLines = <String>[];
+    if (analysis.hasNewUnits) {
+      tooltipLines.add('+${analysis.newUnitsCount} new translations to add');
+    }
+    if (analysis.hasRemovedUnits) {
+      tooltipLines.add('-${analysis.removedUnitsCount} translations removed');
+    }
+    if (analysis.hasModifiedUnits) {
+      tooltipLines.add('~${analysis.modifiedUnitsCount} source texts changed');
+    }
+
+    return Tooltip(
+      message: tooltipLines.join('\n'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.warning_24_filled,
+              size: 12,
               color: theme.colorScheme.onErrorContainer,
-              fontSize: 11,
             ),
-          ),
-        ],
+            const SizedBox(width: 4),
+            Text(
+              analysis.summary,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onErrorContainer,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatusBadge(BuildContext context, ProjectStatus status) {
+  Widget _buildModImage(
+    BuildContext context,
+    Project project,
+    GameInstallation? gameInstallation,
+  ) {
     final theme = Theme.of(context);
-    final (icon, label, bgColor, fgColor) = _getStatusInfo(theme, status);
+    final imagePath = project.imageUrl;
+
+    Widget fallbackIcon() => Icon(
+      _getGameIcon(gameInstallation?.gameCode),
+      size: 18,
+      color: theme.colorScheme.onPrimaryContainer,
+    );
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      width: 32,
+      height: 32,
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: fgColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: fgColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionsMenu(BuildContext context) {
-    return MenuAnchor(
-      menuChildren: [
-        if (widget.onEdit != null)
-          MenuItemButton(
-            leadingIcon: const Icon(FluentIcons.edit_24_regular, size: 16),
-            onPressed: widget.onEdit,
-            child: const Text('Edit'),
-          ),
-        if (widget.onExport != null)
-          MenuItemButton(
-            leadingIcon: const Icon(FluentIcons.arrow_export_24_regular, size: 16),
-            onPressed: widget.onExport,
-            child: const Text('Export'),
-          ),
-        if (widget.onDelete != null) ...[
-          const Divider(height: 1),
-          MenuItemButton(
-            leadingIcon: const Icon(FluentIcons.delete_24_regular, size: 16),
-            onPressed: widget.onDelete,
-            child: const Text('Delete'),
-          ),
-        ],
-      ],
-      builder: (context, controller, child) {
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              if (controller.isOpen) {
-                controller.close();
-              } else {
-                controller.open();
-              }
-              setState(() => _isMenuOpen = controller.isOpen);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: _isMenuOpen || _isHovered
-                    ? Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.5)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Icon(
-                FluentIcons.more_vertical_24_regular,
-                size: 20,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        );
-      },
+      clipBehavior: Clip.antiAlias,
+      child: imagePath != null && imagePath.isNotEmpty
+          ? Image.file(
+              File(imagePath),
+              fit: BoxFit.cover,
+              width: 32,
+              height: 32,
+              errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+            )
+          : fallbackIcon(),
     );
   }
 
@@ -381,42 +355,6 @@ class _ProjectCardState extends State<ProjectCard> {
         return FluentIcons.people_24_regular;
       default:
         return FluentIcons.games_24_regular;
-    }
-  }
-
-  (IconData, String, Color, Color) _getStatusInfo(
-    ThemeData theme,
-    ProjectStatus status,
-  ) {
-    switch (status) {
-      case ProjectStatus.draft:
-        return (
-          FluentIcons.document_24_regular,
-          'Draft',
-          theme.colorScheme.secondaryContainer,
-          theme.colorScheme.onSecondaryContainer,
-        );
-      case ProjectStatus.translating:
-        return (
-          FluentIcons.translate_24_regular,
-          'Translating',
-          theme.colorScheme.primaryContainer,
-          theme.colorScheme.onPrimaryContainer,
-        );
-      case ProjectStatus.reviewing:
-        return (
-          FluentIcons.document_search_24_regular,
-          'Reviewing',
-          theme.colorScheme.tertiaryContainer,
-          theme.colorScheme.onTertiaryContainer,
-        );
-      case ProjectStatus.completed:
-        return (
-          FluentIcons.checkmark_circle_24_regular,
-          'Completed',
-          theme.colorScheme.primaryContainer,
-          theme.colorScheme.onPrimaryContainer,
-        );
     }
   }
 

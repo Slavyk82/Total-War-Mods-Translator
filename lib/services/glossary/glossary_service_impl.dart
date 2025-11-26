@@ -53,11 +53,11 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String name,
     String? description,
     required bool isGlobal,
-    String? projectId,
+    String? gameInstallationId,
     required String targetLanguageId,
   }) async {
     try {
-      print('[GlossaryService] Creating glossary: name=$name, isGlobal=$isGlobal, projectId=$projectId, targetLanguageId=$targetLanguageId');
+      print('[GlossaryService] Creating glossary: name=$name, isGlobal=$isGlobal, gameInstallationId=$gameInstallationId, targetLanguageId=$targetLanguageId');
       
       // Validate input
       if (name.trim().isEmpty) {
@@ -67,11 +67,11 @@ class GlossaryServiceImpl implements IGlossaryService {
         );
       }
 
-      if (!isGlobal && projectId == null) {
-        print('[GlossaryService] Validation failed: project-specific requires projectId');
+      if (!isGlobal && gameInstallationId == null) {
+        print('[GlossaryService] Validation failed: game-specific requires gameInstallationId');
         return Err(
           InvalidGlossaryDataException(
-            ['Project-specific glossary requires projectId'],
+            ['Game-specific glossary requires gameInstallationId'],
           ),
         );
       }
@@ -90,7 +90,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         name: name.trim(),
         description: description?.trim(),
         isGlobal: isGlobal,
-        projectId: projectId,
+        gameInstallationId: gameInstallationId,
         targetLanguageId: targetLanguageId,
         entryCount: 0,
         createdAt: now,
@@ -130,13 +130,13 @@ class GlossaryServiceImpl implements IGlossaryService {
 
   @override
   Future<Result<List<Glossary>, GlossaryException>> getAllGlossaries({
-    String? projectId,
-    bool includeGlobal = true,
+    String? gameInstallationId,
+    bool includeUniversal = true,
   }) async {
     try {
       final glossaries = await _repository.getAllGlossaries(
-        projectId: projectId,
-        includeGlobal: includeGlobal,
+        gameInstallationId: gameInstallationId,
+        includeUniversal: includeUniversal,
       );
       return Ok(glossaries);
     } catch (e) {
@@ -412,14 +412,14 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) =>
       _matchingService.findMatchingTerms(
         sourceText: sourceText,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        projectId: projectId,
+        gameInstallationId: gameInstallationId,
       );
 
   @override
@@ -429,7 +429,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) =>
       _matchingService.applySubstitutions(
         sourceText: sourceText,
@@ -437,7 +437,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        projectId: projectId,
+        gameInstallationId: gameInstallationId,
       );
 
   // ============================================================================
@@ -515,7 +515,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? projectId,
+    String? gameInstallationId,
   }) async {
     try {
       final matchResult = await findMatchingTerms(
@@ -523,7 +523,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        projectId: projectId,
+        gameInstallationId: gameInstallationId,
       );
 
       if (matchResult.isErr) {

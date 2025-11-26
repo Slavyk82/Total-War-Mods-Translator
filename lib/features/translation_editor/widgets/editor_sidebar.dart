@@ -52,34 +52,10 @@ class EditorSidebar extends ConsumerWidget {
             _buildStatusFilter(
               context,
               ref,
-              TranslationVersionStatus.translating,
-              'Translating',
-              FluentIcons.arrow_sync_24_regular,
-              Colors.blue,
-            ),
-            _buildStatusFilter(
-              context,
-              ref,
               TranslationVersionStatus.translated,
               'Translated',
               FluentIcons.checkmark_circle_24_regular,
               Colors.green,
-            ),
-            _buildStatusFilter(
-              context,
-              ref,
-              TranslationVersionStatus.reviewed,
-              'Reviewed',
-              FluentIcons.checkmark_circle_24_filled,
-              Colors.teal,
-            ),
-            _buildStatusFilter(
-              context,
-              ref,
-              TranslationVersionStatus.approved,
-              'Approved',
-              FluentIcons.checkmark_circle_24_filled,
-              Colors.green.shade700,
             ),
             _buildStatusFilter(
               context,
@@ -302,7 +278,7 @@ class EditorSidebar extends ConsumerWidget {
         _buildStatRow('Total', stats.totalUnits.toString()),
         _buildStatRow('Pending', stats.pendingCount.toString()),
         _buildStatRow('Translated', stats.translatedCount.toString()),
-        _buildStatRow('Reviewed', stats.reviewedCount.toString()),
+        _buildStatRow('Needs Review', stats.needsReviewCount.toString()),
         const SizedBox(height: 8),
         LinearProgressIndicator(
           value: stats.completionPercentage / 100,

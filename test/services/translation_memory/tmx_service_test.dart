@@ -46,11 +46,11 @@ void main() {
           id: '1',
           sourceText: 'Open File',
           translatedText: 'Ouvrir le fichier',
+          sourceLanguageId: 'en',
           targetLanguageId: 'fr',
           sourceHash: 'hash1',
           qualityScore: 0.95,
           usageCount: 15,
-          gameContext: 'UI',
           createdAt: 1234567890,
           lastUsedAt: 1234567890,
           updatedAt: 1234567890,
@@ -59,6 +59,7 @@ void main() {
           id: '2',
           sourceText: 'Save File',
           translatedText: 'Enregistrer le fichier',
+          sourceLanguageId: 'en',
           targetLanguageId: 'fr',
           sourceHash: 'hash2',
           qualityScore: 0.92,
@@ -100,7 +101,6 @@ void main() {
       expect(content, contains('Enregistrer le fichier'));
       expect(content, contains('x-quality-score'));
       expect(content, contains('x-usage-count'));
-      expect(content, contains('x-game-context'));
 
       // Cleanup
       await tempDir.delete(recursive: true);
@@ -194,7 +194,6 @@ void main() {
       expect(entries[0].targetText, 'Ouvrir le fichier');
       expect(entries[0].qualityScore, 0.95);
       expect(entries[0].usageCount, 15);
-      expect(entries[0].gameContext, 'UI');
 
       // Verify second entry
       expect(entries[1].sourceLanguage, 'en');
@@ -203,7 +202,6 @@ void main() {
       expect(entries[1].targetText, 'Enregistrer le fichier');
       expect(entries[1].qualityScore, 0.92);
       expect(entries[1].usageCount, 10);
-      expect(entries[1].gameContext, null);
 
       // Cleanup
       await tempDir.delete(recursive: true);
@@ -289,11 +287,11 @@ void main() {
           id: '1',
           sourceText: 'Test Source',
           translatedText: 'Test Target',
+          sourceLanguageId: 'en',
           targetLanguageId: 'de',
           sourceHash: 'hash1',
           qualityScore: 0.88,
           usageCount: 5,
-          gameContext: 'narrative',
           createdAt: 1234567890,
           lastUsedAt: 1234567890,
           updatedAt: 1234567890,
@@ -328,7 +326,6 @@ void main() {
       expect(imported.targetLanguage, originalEntries[0].targetLanguageId);
       expect(imported.qualityScore, originalEntries[0].qualityScore);
       expect(imported.usageCount, originalEntries[0].usageCount);
-      expect(imported.gameContext, originalEntries[0].gameContext);
 
       // Cleanup
       await tempDir.delete(recursive: true);

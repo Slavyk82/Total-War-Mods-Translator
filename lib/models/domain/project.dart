@@ -3,18 +3,6 @@ import 'package:twmt/models/domain/project_metadata.dart';
 
 part 'project.g.dart';
 
-/// Project status enumeration
-enum ProjectStatus {
-  @JsonValue('draft')
-  draft,
-  @JsonValue('translating')
-  translating,
-  @JsonValue('reviewing')
-  reviewing,
-  @JsonValue('completed')
-  completed,
-}
-
 /// Represents a mod translation project in TWMT.
 ///
 /// A project contains all information about translating a specific Total War mod,
@@ -47,9 +35,6 @@ class Project {
   /// Path where translated files will be output
   @JsonKey(name: 'output_file_path')
   final String? outputFilePath;
-
-  /// Current project status
-  final ProjectStatus status;
 
   /// Unix timestamp of last update check for source mod
   @JsonKey(name: 'last_update_check')
@@ -94,7 +79,6 @@ class Project {
     required this.gameInstallationId,
     this.sourceFilePath,
     this.outputFilePath,
-    this.status = ProjectStatus.draft,
     this.lastUpdateCheck,
     this.sourceModUpdated,
     this.batchSize = 25,
@@ -105,22 +89,6 @@ class Project {
     this.completedAt,
     this.metadata,
   });
-
-  /// Returns true if the project is in draft status
-  bool get isDraft => status == ProjectStatus.draft;
-
-  /// Returns true if the project is currently being translated
-  bool get isTranslating => status == ProjectStatus.translating;
-
-  /// Returns true if the project is in review status
-  bool get isReviewing => status == ProjectStatus.reviewing;
-
-  /// Returns true if the project is completed
-  bool get isCompleted => status == ProjectStatus.completed;
-
-  /// Returns true if the project is active (translating or reviewing)
-  bool get isActive =>
-      status == ProjectStatus.translating || status == ProjectStatus.reviewing;
 
   /// Returns true if the project has a source file configured
   bool get hasSourceFile =>
@@ -143,20 +111,6 @@ class Project {
     return daysSinceCheck >= 1; // Check daily
   }
 
-  /// Returns a status display string
-  String get statusDisplay {
-    switch (status) {
-      case ProjectStatus.draft:
-        return 'Draft';
-      case ProjectStatus.translating:
-        return 'Translating';
-      case ProjectStatus.reviewing:
-        return 'Reviewing';
-      case ProjectStatus.completed:
-        return 'Completed';
-    }
-  }
-
   /// Parse and return project metadata
   ProjectMetadata? get parsedMetadata => ProjectMetadata.fromJsonString(metadata);
 
@@ -175,7 +129,6 @@ class Project {
     String? gameInstallationId,
     String? sourceFilePath,
     String? outputFilePath,
-    ProjectStatus? status,
     int? lastUpdateCheck,
     int? sourceModUpdated,
     int? batchSize,
@@ -194,7 +147,6 @@ class Project {
       gameInstallationId: gameInstallationId ?? this.gameInstallationId,
       sourceFilePath: sourceFilePath ?? this.sourceFilePath,
       outputFilePath: outputFilePath ?? this.outputFilePath,
-      status: status ?? this.status,
       lastUpdateCheck: lastUpdateCheck ?? this.lastUpdateCheck,
       sourceModUpdated: sourceModUpdated ?? this.sourceModUpdated,
       batchSize: batchSize ?? this.batchSize,
@@ -223,7 +175,6 @@ class Project {
         other.gameInstallationId == gameInstallationId &&
         other.sourceFilePath == sourceFilePath &&
         other.outputFilePath == outputFilePath &&
-        other.status == status &&
         other.lastUpdateCheck == lastUpdateCheck &&
         other.sourceModUpdated == sourceModUpdated &&
         other.batchSize == batchSize &&
@@ -244,7 +195,6 @@ class Project {
       gameInstallationId.hashCode ^
       sourceFilePath.hashCode ^
       outputFilePath.hashCode ^
-      status.hashCode ^
       lastUpdateCheck.hashCode ^
       sourceModUpdated.hashCode ^
       batchSize.hashCode ^
@@ -256,5 +206,5 @@ class Project {
       metadata.hashCode;
 
   @override
-  String toString() => 'Project(id: $id, name: $name, status: $status, gameInstallationId: $gameInstallationId)';
+  String toString() => 'Project(id: $id, name: $name, gameInstallationId: $gameInstallationId)';
 }

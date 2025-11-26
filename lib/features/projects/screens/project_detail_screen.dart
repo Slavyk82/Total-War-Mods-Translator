@@ -10,7 +10,6 @@ import '../widgets/project_overview_section.dart';
 import '../widgets/language_card.dart';
 import '../widgets/project_stats_card.dart';
 import '../widgets/add_language_dialog.dart';
-import '../widgets/project_settings_card.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 /// Project detail screen showing comprehensive project information.
@@ -65,8 +64,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         children: [
           ProjectOverviewSection(
             project: details.project,
-            gameInstallation: details.gameInstallation,
-            onEdit: () => _handleEditProject(context, details),
+            onDelete: () => _handleDeleteProject(context, ref, details),
           ),
           const SizedBox(height: 24),
           LayoutBuilder(
@@ -243,29 +241,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     ProjectDetails details,
   ) {
-    return Column(
-      children: [
-        ProjectStatsCard(stats: details.stats),
-        const SizedBox(height: 16),
-        ProjectSettingsCard(
-          project: details.project,
-          onSave: (batchSize, parallelBatches, customPrompt) =>
-              _handleSaveSettings(
-            context,
-            ref,
-            details,
-            batchSize,
-            parallelBatches,
-            customPrompt,
-          ),
-        ),
-        const SizedBox(height: 16),
-        ProjectActionsCard(
-          onExport: () => _handleExportAll(context, details),
-          onDelete: () => _handleDeleteProject(context, ref, details),
-        ),
-      ],
-    );
+    return ProjectStatsCard(stats: details.stats);
   }
 
   Widget _buildLoading(BuildContext context) {
@@ -349,10 +325,6 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _handleEditProject(BuildContext context, ProjectDetails details) {
-    FluentToast.info(context, 'Edit project: ${details.project.name}');
-  }
-
   void _handleAddLanguage(BuildContext context, ProjectDetails details) {
     final existingLanguageIds =
         details.languages.map((l) => l.projectLanguage.languageId).toList();
@@ -372,41 +344,6 @@ class ProjectDetailScreen extends ConsumerWidget {
     String languageId,
   ) {
     context.push(AppRoutes.translationEditor(projectId, languageId));
-  }
-
-  Future<void> _handleSaveSettings(
-    BuildContext context,
-    WidgetRef ref,
-    ProjectDetails details,
-    int batchSize,
-    int parallelBatches,
-    String? customPrompt,
-  ) async {
-    final projectRepo = ref.read(projectRepositoryProvider);
-
-    final updatedProject = details.project.copyWith(
-      batchSize: batchSize,
-      parallelBatches: parallelBatches,
-      customPrompt: customPrompt,
-      updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    );
-
-    final result = await projectRepo.update(updatedProject);
-
-    if (!context.mounted) return;
-
-    if (result.isOk) {
-      // Refresh project details
-      ref.invalidate(projectDetailsProvider(details.project.id));
-
-      FluentToast.success(context, 'Settings saved successfully');
-    } else {
-      FluentToast.error(context, 'Failed to save settings: ${result.error}');
-    }
-  }
-
-  void _handleExportAll(BuildContext context, ProjectDetails details) {
-    FluentToast.info(context, 'Export all languages for: ${details.project.name}');
   }
 
   void _handleDeleteProject(

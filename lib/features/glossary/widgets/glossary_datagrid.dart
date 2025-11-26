@@ -25,6 +25,16 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
   late GlossaryEntryDataSource _dataSource;
   final DataGridController _controller = DataGridController();
 
+  /// Cached list for glossaryIds to avoid recreating on each build
+  /// (List comparison is by reference, not content)
+  late final List<String> _glossaryIdsList;
+
+  @override
+  void initState() {
+    super.initState();
+    _glossaryIdsList = [widget.glossaryId];
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -42,7 +52,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             )
           : glossarySearchResultsProvider(
               query: filterState.searchText,
-              glossaryIds: [widget.glossaryId],
+              glossaryIds: _glossaryIdsList,
               targetLanguageCode: filterState.targetLanguage,
             ),
     );

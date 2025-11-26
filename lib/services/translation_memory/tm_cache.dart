@@ -163,20 +163,17 @@ class TmCache {
   /// [sourceHash]: Hash of source text
   /// [sourceLanguageCode]: Source language
   /// [targetLanguageCode]: Target language
-  /// [gameContext]: Optional game context
   ///
   /// Returns cache key string
   static String generateExactMatchKey({
     required String sourceHash,
     required String sourceLanguageCode,
     required String targetLanguageCode,
-    String? gameContext,
   }) {
     final parts = [
       sourceLanguageCode,
       targetLanguageCode,
       sourceHash,
-      if (gameContext != null) gameContext,
     ];
     return parts.join('_');
   }
@@ -198,7 +195,6 @@ class TmCache {
         sourceHash: entry.sourceHash,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
-        gameContext: entry.gameContext,
       );
 
       // Create TmMatch from entry
@@ -216,7 +212,6 @@ class TmCache {
           contextBoost: 0.0,
           weights: ScoreWeights.defaultWeights,
         ),
-        gameContext: entry.gameContext,
         category: null, // Not stored in TranslationMemoryEntry model
         usageCount: entry.usageCount,
         lastUsedAt: DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),

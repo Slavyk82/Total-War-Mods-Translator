@@ -391,17 +391,8 @@ class HistoryTimelinePanel extends ConsumerWidget {
       case TranslationVersionStatus.pending:
         color = Colors.grey;
         break;
-      case TranslationVersionStatus.translating:
-        color = Colors.blue;
-        break;
       case TranslationVersionStatus.translated:
         color = Colors.green;
-        break;
-      case TranslationVersionStatus.reviewed:
-        color = Colors.teal;
-        break;
-      case TranslationVersionStatus.approved:
-        color = Colors.purple;
         break;
       case TranslationVersionStatus.needsReview:
         color = Colors.orange;
