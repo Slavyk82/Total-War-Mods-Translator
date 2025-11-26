@@ -5,6 +5,7 @@ import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/repositories/translation_batch_unit_repository.dart';
 import 'package:twmt/repositories/translation_provider_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
+import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -14,9 +15,6 @@ import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/batch_estimate.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
-
-/// Signature for checking if a unit is already translated (TM match)
-typedef TmMatchChecker = Future<bool> Function(TranslationUnit unit, TranslationContext context);
 
 /// Handles batch estimation, validation, and statistics calculations
 ///
@@ -30,6 +28,7 @@ class BatchEstimationHandler {
   final TranslationBatchRepository _batchRepository;
   final TranslationBatchUnitRepository _batchUnitRepository;
   final TranslationUnitRepository _unitRepository;
+  final TranslationVersionRepository _versionRepository;
   final LoggingService _logger;
 
   BatchEstimationHandler({
@@ -38,12 +37,14 @@ class BatchEstimationHandler {
     required TranslationBatchRepository batchRepository,
     required TranslationBatchUnitRepository batchUnitRepository,
     required TranslationUnitRepository unitRepository,
+    required TranslationVersionRepository versionRepository,
     required LoggingService logger,
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,
         _batchRepository = batchRepository,
         _batchUnitRepository = batchUnitRepository,
         _unitRepository = unitRepository,
+        _versionRepository = versionRepository,
         _logger = logger;
 
   /// Estimate tokens, TM reuse, and duration for a batch
@@ -51,12 +52,10 @@ class BatchEstimationHandler {
   /// [batchId]: The batch to estimate
   /// [units]: Translation units in the batch
   /// [context]: Translation context
-  /// [isUnitTranslated]: Function to check TM matches
   Future<Result<BatchEstimate, TranslationOrchestrationException>> estimateBatch({
     required String batchId,
     required List<TranslationUnit> units,
     required TranslationContext context,
-    required TmMatchChecker isUnitTranslated,
   }) async {
     try {
       _logger.info('Estimating batch', {'batchId': batchId});
@@ -65,13 +64,16 @@ class BatchEstimationHandler {
         return Err(EmptyBatchException('Batch has no units', batchId: batchId));
       }
 
-      // Check TM for exact/fuzzy matches to calculate TM reuse rate
-      var tmMatchCount = 0;
-      for (final unit in units) {
-        if (await isUnitTranslated(unit, context)) {
-          tmMatchCount++;
-        }
-      }
+      // Check TM for exact/fuzzy matches using batch query (optimized)
+      final unitIds = units.map((u) => u.id).toList();
+      final translatedIdsResult = await _versionRepository.getTranslatedUnitIds(
+        unitIds: unitIds,
+        projectLanguageId: context.projectLanguageId,
+      );
+
+      final tmMatchCount = translatedIdsResult.isOk
+          ? translatedIdsResult.unwrap().length
+          : 0;
 
       final unitsRequiringLlm = units.length - tmMatchCount;
       final tmReuseRate = units.isNotEmpty ? tmMatchCount / units.length : 0.0;

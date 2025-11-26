@@ -38,6 +38,28 @@ abstract class ITranslationMemoryService {
     double quality = 0.8,
   });
 
+  /// Add multiple translations to Translation Memory in batch
+  ///
+  /// Efficiently inserts or updates multiple translations in a single transaction.
+  /// This is significantly faster than calling addTranslation() repeatedly.
+  ///
+  /// Automatically deduplicates based on source hash:
+  /// - Existing entries: updates quality (uses higher), increments usage count
+  /// - New entries: creates with provided values
+  ///
+  /// [translations]: List of translation pairs (sourceText, targetText)
+  /// [sourceLanguageCode]: Source language (ISO 639-1), defaults to 'en'
+  /// [targetLanguageCode]: Target language (ISO 639-1)
+  /// [quality]: Initial quality score (0.0 - 1.0), default 0.8
+  ///
+  /// Returns number of entries processed (inserted + updated)
+  Future<Result<int, TmAddException>> addTranslationsBatch({
+    required List<({String sourceText, String targetText})> translations,
+    String sourceLanguageCode = 'en',
+    required String targetLanguageCode,
+    double quality = 0.8,
+  });
+
   /// Find exact match in Translation Memory
   ///
   /// Uses hash-based lookup for O(1) performance.

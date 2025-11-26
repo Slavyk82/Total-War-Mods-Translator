@@ -122,6 +122,9 @@ class DeepLProvider implements ILlmProvider {
       return Ok(llmResponse);
     } on DioException catch (e) {
       return Err(_handleDioException(e));
+    } on LlmProviderException catch (e) {
+      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
+      return Err(e);
     } catch (e, stackTrace) {
       return Err(LlmProviderException(
         'Unexpected error: $e',
@@ -277,6 +280,18 @@ class DeepLProvider implements ILlmProvider {
       // Extract translations array
       final translationsList = data['translations'] as List;
 
+      if (translationsList.isEmpty && request.texts.isNotEmpty) {
+        // DeepL returned no translations - might be content filtered
+        final sourceTexts = request.texts.values.toList();
+        throw LlmContentFilteredException(
+          'DeepL returned no translations. The content may have been filtered '
+          'or is not supported. Try using a different provider.',
+          providerCode: providerCode,
+          filteredTexts: sourceTexts,
+          finishReason: 'empty_response',
+        );
+      }
+
       if (translationsList.length != request.texts.length) {
         throw FormatException(
           'Response contains ${translationsList.length} translations '
@@ -287,12 +302,28 @@ class DeepLProvider implements ILlmProvider {
       // Map translations back to original keys
       final translations = <String, String>{};
       final keys = request.texts.keys.toList();
+      var emptyCount = 0;
 
       for (var i = 0; i < translationsList.length; i++) {
         final translation = translationsList[i] as Map<String, dynamic>;
         final translatedText = translation['text'] as String;
         // Postprocess to restore \n from XML placeholders
         translations[keys[i]] = _postprocessText(translatedText);
+        if (translatedText.trim().isEmpty) {
+          emptyCount++;
+        }
+      }
+
+      // If all translations are empty, treat as content filtered
+      if (emptyCount == translationsList.length && translationsList.isNotEmpty) {
+        final sourceTexts = request.texts.values.toList();
+        throw LlmContentFilteredException(
+          'DeepL returned empty translations for all texts. The content may '
+          'have been filtered. Try using a different provider.',
+          providerCode: providerCode,
+          filteredTexts: sourceTexts,
+          finishReason: 'all_empty',
+        );
       }
 
       // Calculate character count
@@ -316,6 +347,9 @@ class DeepLProvider implements ILlmProvider {
         timestamp: DateTime.now(),
         finishReason: 'completed',
       );
+    } on LlmContentFilteredException {
+      // Re-throw content filter exceptions as-is
+      rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(
         'Failed to parse response: $e',
@@ -635,6 +669,9 @@ class DeepLProvider implements ILlmProvider {
       return Ok(llmResponse);
     } on DioException catch (e) {
       return Err(_handleDioException(e));
+    } on LlmProviderException catch (e) {
+      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
+      return Err(e);
     } catch (e, stackTrace) {
       return Err(LlmProviderException(
         'Unexpected error: $e',

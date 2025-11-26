@@ -8,6 +8,70 @@ part of 'editor_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Global state tracking if a batch translation is in progress.
+/// Used to block navigation while translation is running.
+
+@ProviderFor(TranslationInProgress)
+const translationInProgressProvider = TranslationInProgressProvider._();
+
+/// Global state tracking if a batch translation is in progress.
+/// Used to block navigation while translation is running.
+final class TranslationInProgressProvider
+    extends $NotifierProvider<TranslationInProgress, bool> {
+  /// Global state tracking if a batch translation is in progress.
+  /// Used to block navigation while translation is running.
+  const TranslationInProgressProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'translationInProgressProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$translationInProgressHash();
+
+  @$internal
+  @override
+  TranslationInProgress create() => TranslationInProgress();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$translationInProgressHash() =>
+    r'ac33a69c2047562b5ccbedf20e9f84db7af8e574';
+
+/// Global state tracking if a batch translation is in progress.
+/// Used to block navigation while translation is running.
+
+abstract class _$TranslationInProgress extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 /// Provider for project repository
 
 @ProviderFor(projectRepository)
@@ -831,101 +895,6 @@ final class FilteredTranslationRowsFamily extends $Family
   String toString() => r'filteredTranslationRowsProvider';
 }
 
-/// Provider for TM suggestions for a specific unit
-
-@ProviderFor(tmSuggestionsForUnit)
-const tmSuggestionsForUnitProvider = TmSuggestionsForUnitFamily._();
-
-/// Provider for TM suggestions for a specific unit
-
-final class TmSuggestionsForUnitProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<TmMatch>>,
-          List<TmMatch>,
-          FutureOr<List<TmMatch>>
-        >
-    with $FutureModifier<List<TmMatch>>, $FutureProvider<List<TmMatch>> {
-  /// Provider for TM suggestions for a specific unit
-  const TmSuggestionsForUnitProvider._({
-    required TmSuggestionsForUnitFamily super.from,
-    required (String, String, String) super.argument,
-  }) : super(
-         retry: null,
-         name: r'tmSuggestionsForUnitProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$tmSuggestionsForUnitHash();
-
-  @override
-  String toString() {
-    return r'tmSuggestionsForUnitProvider'
-        ''
-        '$argument';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<List<TmMatch>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<TmMatch>> create(Ref ref) {
-    final argument = this.argument as (String, String, String);
-    return tmSuggestionsForUnit(ref, argument.$1, argument.$2, argument.$3);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is TmSuggestionsForUnitProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$tmSuggestionsForUnitHash() =>
-    r'5d390151796cceaa470dbe96cec7005edaac2d12';
-
-/// Provider for TM suggestions for a specific unit
-
-final class TmSuggestionsForUnitFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<List<TmMatch>>,
-          (String, String, String)
-        > {
-  const TmSuggestionsForUnitFamily._()
-    : super(
-        retry: null,
-        name: r'tmSuggestionsForUnitProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  /// Provider for TM suggestions for a specific unit
-
-  TmSuggestionsForUnitProvider call(
-    String unitId,
-    String sourceLanguageCode,
-    String targetLanguageCode,
-  ) => TmSuggestionsForUnitProvider._(
-    argument: (unitId, sourceLanguageCode, targetLanguageCode),
-    from: this,
-  );
-
-  @override
-  String toString() => r'tmSuggestionsForUnitProvider';
-}
-
 /// Provider for editor statistics
 
 @ProviderFor(editorStats)
@@ -1010,63 +979,6 @@ final class EditorStatsFamily extends $Family
   String toString() => r'editorStatsProvider';
 }
 
-/// Provider for translation version history repository
-
-@ProviderFor(translationVersionHistoryRepository)
-const translationVersionHistoryRepositoryProvider =
-    TranslationVersionHistoryRepositoryProvider._();
-
-/// Provider for translation version history repository
-
-final class TranslationVersionHistoryRepositoryProvider
-    extends
-        $FunctionalProvider<
-          TranslationVersionHistoryRepository,
-          TranslationVersionHistoryRepository,
-          TranslationVersionHistoryRepository
-        >
-    with $Provider<TranslationVersionHistoryRepository> {
-  /// Provider for translation version history repository
-  const TranslationVersionHistoryRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'translationVersionHistoryRepositoryProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() =>
-      _$translationVersionHistoryRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<TranslationVersionHistoryRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  TranslationVersionHistoryRepository create(Ref ref) {
-    return translationVersionHistoryRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(TranslationVersionHistoryRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<TranslationVersionHistoryRepository>(
-        value,
-      ),
-    );
-  }
-}
-
-String _$translationVersionHistoryRepositoryHash() =>
-    r'f4dd5cec57ef4ba7c9bc8b0155ec8c9d5c88121d';
-
 /// Provider for validation service
 
 @ProviderFor(validationService)
@@ -1120,189 +1032,6 @@ final class ValidationServiceProvider
 }
 
 String _$validationServiceHash() => r'146cc02490c1cac473ebd23f29386cc6126764d2';
-
-/// Provider for history entries for a specific version
-
-@ProviderFor(historyForVersion)
-const historyForVersionProvider = HistoryForVersionFamily._();
-
-/// Provider for history entries for a specific version
-
-final class HistoryForVersionProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<TranslationVersionHistory>>,
-          List<TranslationVersionHistory>,
-          FutureOr<List<TranslationVersionHistory>>
-        >
-    with
-        $FutureModifier<List<TranslationVersionHistory>>,
-        $FutureProvider<List<TranslationVersionHistory>> {
-  /// Provider for history entries for a specific version
-  const HistoryForVersionProvider._({
-    required HistoryForVersionFamily super.from,
-    required String super.argument,
-  }) : super(
-         retry: null,
-         name: r'historyForVersionProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$historyForVersionHash();
-
-  @override
-  String toString() {
-    return r'historyForVersionProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<List<TranslationVersionHistory>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<TranslationVersionHistory>> create(Ref ref) {
-    final argument = this.argument as String;
-    return historyForVersion(ref, argument);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is HistoryForVersionProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$historyForVersionHash() => r'd0c81a7d4954f2b634d669063df4ccb332fc96a7';
-
-/// Provider for history entries for a specific version
-
-final class HistoryForVersionFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<List<TranslationVersionHistory>>,
-          String
-        > {
-  const HistoryForVersionFamily._()
-    : super(
-        retry: null,
-        name: r'historyForVersionProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  /// Provider for history entries for a specific version
-
-  HistoryForVersionProvider call(String versionId) =>
-      HistoryForVersionProvider._(argument: versionId, from: this);
-
-  @override
-  String toString() => r'historyForVersionProvider';
-}
-
-/// Provider for validation issues
-
-@ProviderFor(validationIssues)
-const validationIssuesProvider = ValidationIssuesFamily._();
-
-/// Provider for validation issues
-
-final class ValidationIssuesProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<ValidationIssue>>,
-          List<ValidationIssue>,
-          FutureOr<List<ValidationIssue>>
-        >
-    with
-        $FutureModifier<List<ValidationIssue>>,
-        $FutureProvider<List<ValidationIssue>> {
-  /// Provider for validation issues
-  const ValidationIssuesProvider._({
-    required ValidationIssuesFamily super.from,
-    required (String, String) super.argument,
-  }) : super(
-         retry: null,
-         name: r'validationIssuesProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$validationIssuesHash();
-
-  @override
-  String toString() {
-    return r'validationIssuesProvider'
-        ''
-        '$argument';
-  }
-
-  @$internal
-  @override
-  $FutureProviderElement<List<ValidationIssue>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<ValidationIssue>> create(Ref ref) {
-    final argument = this.argument as (String, String);
-    return validationIssues(ref, argument.$1, argument.$2);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ValidationIssuesProvider && other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$validationIssuesHash() => r'13054a0f27ad542389fd3db085a078f20c57b403';
-
-/// Provider for validation issues
-
-final class ValidationIssuesFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<List<ValidationIssue>>,
-          (String, String)
-        > {
-  const ValidationIssuesFamily._()
-    : super(
-        retry: null,
-        name: r'validationIssuesProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  /// Provider for validation issues
-
-  ValidationIssuesProvider call(String sourceText, String translatedText) =>
-      ValidationIssuesProvider._(
-        argument: (sourceText, translatedText),
-        from: this,
-      );
-
-  @override
-  String toString() => r'validationIssuesProvider';
-}
 
 /// Provider for logging service
 
@@ -1565,159 +1294,6 @@ final class TranslationOrchestratorProvider
 
 String _$translationOrchestratorHash() =>
     r'3d7e2a1c3073a9a1d926c67999527624c0c3adda';
-
-/// Provider for currently selected translation version ID
-/// This is used by the History and Validation panels to know which translation to display
-
-@ProviderFor(SelectedTranslationVersion)
-const selectedTranslationVersionProvider =
-    SelectedTranslationVersionProvider._();
-
-/// Provider for currently selected translation version ID
-/// This is used by the History and Validation panels to know which translation to display
-final class SelectedTranslationVersionProvider
-    extends $NotifierProvider<SelectedTranslationVersion, String?> {
-  /// Provider for currently selected translation version ID
-  /// This is used by the History and Validation panels to know which translation to display
-  const SelectedTranslationVersionProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'selectedTranslationVersionProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$selectedTranslationVersionHash();
-
-  @$internal
-  @override
-  SelectedTranslationVersion create() => SelectedTranslationVersion();
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(String? value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<String?>(value),
-    );
-  }
-}
-
-String _$selectedTranslationVersionHash() =>
-    r'eb996645704eb1d3f2ea9f0b2f8a1a8fa57c3881';
-
-/// Provider for currently selected translation version ID
-/// This is used by the History and Validation panels to know which translation to display
-
-abstract class _$SelectedTranslationVersion extends $Notifier<String?> {
-  String? build();
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final created = build();
-    final ref = this.ref as $Ref<String?, String?>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<String?, String?>,
-              String?,
-              Object?,
-              Object?
-            >;
-    element.handleValue(ref, created);
-  }
-}
-
-/// Provider for the full translation version data of the selected translation
-
-@ProviderFor(selectedTranslationVersionData)
-const selectedTranslationVersionDataProvider =
-    SelectedTranslationVersionDataProvider._();
-
-/// Provider for the full translation version data of the selected translation
-
-final class SelectedTranslationVersionDataProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<TranslationVersion?>,
-          TranslationVersion?,
-          FutureOr<TranslationVersion?>
-        >
-    with
-        $FutureModifier<TranslationVersion?>,
-        $FutureProvider<TranslationVersion?> {
-  /// Provider for the full translation version data of the selected translation
-  const SelectedTranslationVersionDataProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'selectedTranslationVersionDataProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$selectedTranslationVersionDataHash();
-
-  @$internal
-  @override
-  $FutureProviderElement<TranslationVersion?> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<TranslationVersion?> create(Ref ref) {
-    return selectedTranslationVersionData(ref);
-  }
-}
-
-String _$selectedTranslationVersionDataHash() =>
-    r'b24379a40678f17f15628cd163ec53fd42b156e2';
-
-/// Provider for the source text of the selected translation
-
-@ProviderFor(selectedTranslationSourceText)
-const selectedTranslationSourceTextProvider =
-    SelectedTranslationSourceTextProvider._();
-
-/// Provider for the source text of the selected translation
-
-final class SelectedTranslationSourceTextProvider
-    extends $FunctionalProvider<AsyncValue<String?>, String?, FutureOr<String?>>
-    with $FutureModifier<String?>, $FutureProvider<String?> {
-  /// Provider for the source text of the selected translation
-  const SelectedTranslationSourceTextProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'selectedTranslationSourceTextProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$selectedTranslationSourceTextHash();
-
-  @$internal
-  @override
-  $FutureProviderElement<String?> $createElement($ProviderPointer pointer) =>
-      $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<String?> create(Ref ref) {
-    return selectedTranslationSourceText(ref);
-  }
-}
-
-String _$selectedTranslationSourceTextHash() =>
-    r'580a4ac02c4a11e94b88d736e00f4e33bc9016b9';
 
 /// Provider for export orchestrator service
 

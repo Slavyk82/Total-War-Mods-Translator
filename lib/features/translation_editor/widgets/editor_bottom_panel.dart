@@ -13,15 +13,19 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 /// Resizable panel showing contextual information for selected translation
 class EditorBottomPanel extends ConsumerStatefulWidget {
   final String? selectedUnitId;
+  final String? selectedVersionId;
   final String sourceLanguageCode;
   final String targetLanguageCode;
   final String? sourceText;
   final String? translatedText;
-  final Function(String unitId, String targetText)? onApplySuggestion;
+  /// Callback when applying a TM suggestion
+  /// Parameters: unitId, targetText, qualityScore, isExactMatch
+  final Function(String unitId, String targetText, double qualityScore, bool isExactMatch)? onApplySuggestion;
 
   const EditorBottomPanel({
     super.key,
     this.selectedUnitId,
+    this.selectedVersionId,
     required this.sourceLanguageCode,
     required this.targetLanguageCode,
     this.sourceText,
@@ -173,6 +177,8 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
             widget.onApplySuggestion!(
               widget.selectedUnitId!,
               match.targetText,
+              match.qualityScore,
+              match.matchType == TmMatchType.exact,
             );
 
             // Show confirmation toast
@@ -326,8 +332,8 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
   }
 
   Color _getSimilarityColor(double similarity) {
-    if (similarity >= 0.95) return Colors.green;
-    if (similarity >= 0.85) return Colors.orange;
+    if (similarity >= 0.90) return Colors.green;
+    if (similarity >= 0.80) return Colors.orange;
     return Colors.red;
   }
 
@@ -343,13 +349,13 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
   }
 
   Widget _buildHistoryTab() {
-    // Import the history panel
     return EditorHistoryPanel(
-      selectedVersionId: widget.selectedUnitId,
+      selectedVersionId: widget.selectedVersionId,
       onRevert: (translatedText, reason) {
         // Handle revert - this would need to be wired up to the parent
         if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
-          widget.onApplySuggestion!(widget.selectedUnitId!, translatedText);
+          // History reverts are treated as manual edits
+          widget.onApplySuggestion!(widget.selectedUnitId!, translatedText, 1.0, false);
         }
       },
     );
@@ -369,7 +375,8 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
       onApplyFix: (fixedText) {
         // Handle auto-fix
         if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
-          widget.onApplySuggestion!(widget.selectedUnitId!, fixedText);
+          // Validation fixes are treated as manual edits
+          widget.onApplySuggestion!(widget.selectedUnitId!, fixedText, 1.0, false);
         }
       },
       onValidate: () {

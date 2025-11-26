@@ -126,14 +126,6 @@ class _BatchTranslateDialogState extends ConsumerState<BatchTranslateDialog> {
               children: [
                 if (operationState.isInProgress) ...[
                   _buildButton(
-                    label: 'Pause',
-                    icon: FluentIcons.pause_24_regular,
-                    onPressed: () {
-                      // TODO: Implement pause functionality
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  _buildButton(
                     label: 'Cancel',
                     onPressed: () {
                       ref.read(batchOperationProvider.notifier).cancel();

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'fluent_scaffold.dart';
 import '../navigation_sidebar_router.dart';
+import '../fluent/fluent_widgets.dart';
 import '../../config/router/app_router.dart';
+import '../../features/translation_editor/providers/editor_providers.dart';
 
 /// Router-aware main layout with breadcrumbs and keyboard shortcuts
 ///
@@ -13,7 +16,8 @@ import '../../config/router/app_router.dart';
 /// - Breadcrumb navigation for nested routes
 /// - Keyboard shortcuts (Ctrl+1-7 for main screens)
 /// - Fluent Design styling
-class MainLayoutRouter extends StatelessWidget {
+/// - Navigation blocking during active translations
+class MainLayoutRouter extends ConsumerWidget {
   final Widget child;
 
   const MainLayoutRouter({
@@ -21,17 +25,44 @@ class MainLayoutRouter extends StatelessWidget {
     required this.child,
   });
 
+  /// Check if navigation is allowed and show warning if blocked
+  bool _canNavigate(BuildContext context, WidgetRef ref) {
+    final isTranslating = ref.read(translationInProgressProvider);
+    if (isTranslating) {
+      FluentToast.warning(
+        context,
+        'Translation in progress. Stop the translation first.',
+      );
+      return false;
+    }
+    return true;
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => context.goHome(),
-        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => context.goMods(),
-        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => context.goProjects(),
-        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => context.goGlossary(),
-        const SingleActivator(LogicalKeyboardKey.digit5, control: true): () => context.goTranslationMemory(),
-        const SingleActivator(LogicalKeyboardKey.digit6, control: true): () => context.goSettings(),
-        const SingleActivator(LogicalKeyboardKey.home, control: true): () => context.goHome(),
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () {
+          if (_canNavigate(context, ref)) context.goHome();
+        },
+        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () {
+          if (_canNavigate(context, ref)) context.goMods();
+        },
+        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () {
+          if (_canNavigate(context, ref)) context.goProjects();
+        },
+        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () {
+          if (_canNavigate(context, ref)) context.goGlossary();
+        },
+        const SingleActivator(LogicalKeyboardKey.digit5, control: true): () {
+          if (_canNavigate(context, ref)) context.goTranslationMemory();
+        },
+        const SingleActivator(LogicalKeyboardKey.digit6, control: true): () {
+          if (_canNavigate(context, ref)) context.goSettings();
+        },
+        const SingleActivator(LogicalKeyboardKey.home, control: true): () {
+          if (_canNavigate(context, ref)) context.goHome();
+        },
       },
       child: Focus(
         autofocus: true,
@@ -39,13 +70,19 @@ class MainLayoutRouter extends StatelessWidget {
           body: Column(
             children: [
               // Breadcrumbs
-              _buildBreadcrumbs(context),
+              _buildBreadcrumbs(context, ref),
 
               // Main content with sidebar
               Expanded(
                 child: Row(
                   children: [
-                    const NavigationSidebarRouter(),
+                    NavigationSidebarRouter(
+                      onNavigate: (path) {
+                        if (_canNavigate(context, ref)) {
+                          context.go(path);
+                        }
+                      },
+                    ),
                     Expanded(child: child),
                   ],
                 ),
@@ -57,7 +94,7 @@ class MainLayoutRouter extends StatelessWidget {
     );
   }
 
-  Widget _buildBreadcrumbs(BuildContext context) {
+  Widget _buildBreadcrumbs(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.path;
     final breadcrumbs = _generateBreadcrumbs(location);
 
@@ -84,7 +121,9 @@ class MainLayoutRouter extends StatelessWidget {
             icon: FluentIcons.home_24_regular,
             label: 'Home',
             isFirst: true,
-            onTap: () => context.goHome(),
+            onTap: () {
+              if (_canNavigate(context, ref)) context.goHome();
+            },
           ),
 
           // Breadcrumb trail
@@ -103,7 +142,9 @@ class MainLayoutRouter extends StatelessWidget {
                 _BreadcrumbItem(
                   label: breadcrumb.label,
                   isLast: isLast,
-                  onTap: isLast ? null : () => context.go(breadcrumb.path),
+                  onTap: isLast ? null : () {
+                    if (_canNavigate(context, ref)) context.go(breadcrumb.path);
+                  },
                 ),
               ],
             );

@@ -141,25 +141,29 @@ class TranslationBatchHelper {
         return null;
       }
 
-      // Create batch unit entities
+      // Create batch unit entities (optimized: single transaction)
+      final batchUnits = <TranslationBatchUnit>[];
       for (var i = 0; i < unitIds.length; i++) {
-        final batchUnit = TranslationBatchUnit(
+        batchUnits.add(TranslationBatchUnit(
           id: const Uuid().v4(),
           batchId: batchId,
           unitId: unitIds[i],
           processingOrder: i,
           status: TranslationBatchUnitStatus.pending,
-        );
-
-        final unitInsertResult = await batchUnitRepo.insert(batchUnit);
-        if (unitInsertResult.isErr) {
-          logging.error(
-            'Failed to create batch unit',
-            unitInsertResult.unwrapErr(),
-          );
-          // Continue with other units even if one fails
-        }
+        ));
       }
+
+      final unitsInsertResult = await batchUnitRepo.insertBatch(batchUnits);
+      if (unitsInsertResult.isErr) {
+        logging.error(
+          'Failed to create batch units',
+          unitsInsertResult.unwrapErr(),
+        );
+        onError();
+        return null;
+      }
+
+      logging.info('Created batch with ${batchUnits.length} units in single transaction');
 
       return batchId;
     } catch (e, stackTrace) {
@@ -261,7 +265,7 @@ class TranslationBatchHelper {
         modelId: modelId,
         targetLanguage: targetLanguage,
         glossaryEntries: glossaryEntries.isEmpty ? null : glossaryEntries,
-        unitsPerBatch: unitsPerBatch ?? 100,
+        unitsPerBatch: unitsPerBatch ?? 0, // 0 = auto mode
         parallelBatches: parallelBatches ?? 1,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -281,7 +285,7 @@ class TranslationBatchHelper {
         providerId: providerId,
         modelId: modelId,
         targetLanguage: 'en',
-        unitsPerBatch: unitsPerBatch ?? 100,
+        unitsPerBatch: unitsPerBatch ?? 0, // 0 = auto mode
         parallelBatches: parallelBatches ?? 1,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),

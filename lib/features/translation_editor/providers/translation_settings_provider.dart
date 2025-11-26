@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Translation batch settings
+///
+/// [unitsPerBatch]: Number of units per batch. 0 = auto (calculated based on tokens)
 class TranslationSettings {
   final int unitsPerBatch;
   final int parallelBatches;
@@ -11,9 +13,12 @@ class TranslationSettings {
     required this.unitsPerBatch,
     required this.parallelBatches,
   });
-  
+
+  /// Whether auto mode is enabled (unitsPerBatch = 0)
+  bool get isAutoMode => unitsPerBatch == 0;
+
   @override
-  String toString() => 'TranslationSettings(units: $unitsPerBatch, parallel: $parallelBatches)';
+  String toString() => 'TranslationSettings(units: ${isAutoMode ? "auto" : unitsPerBatch}, parallel: $parallelBatches)';
 }
 
 /// Simple state provider for translation settings
@@ -24,9 +29,9 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
   TranslationSettings build() {
     // Load settings asynchronously and update state when done
     _loadSettings();
-    // Return default values initially
+    // Return default values initially (0 = auto mode)
     return const TranslationSettings(
-      unitsPerBatch: 100,
+      unitsPerBatch: 0,
       parallelBatches: 3,
     );
   }
@@ -41,7 +46,8 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final unitsPerBatch = prefs.getInt('translation_units_per_batch') ?? 100;
+    // 0 = auto mode (default)
+    final unitsPerBatch = prefs.getInt('translation_units_per_batch') ?? 0;
     // Limit parallelBatches to 1-5 range for safety
     final savedParallel = prefs.getInt('translation_parallel_batches') ?? 3;
     final parallelBatches = savedParallel.clamp(1, 5);

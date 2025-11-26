@@ -1,5 +1,6 @@
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
@@ -17,19 +18,40 @@ import 'package:twmt/services/translation_memory/tm_cache.dart';
 /// - Quality scoring
 class TmMatchingService {
   final TranslationMemoryRepository _repository;
+  final LanguageRepository _languageRepository;
   final TextNormalizer _normalizer;
   final SimilarityCalculator _similarityCalculator;
   final TmCache _cache;
 
-  const TmMatchingService({
+  // Cache for language code → ID mapping
+  final Map<String, String> _languageCodeToId = {};
+
+  TmMatchingService({
     required TranslationMemoryRepository repository,
+    required LanguageRepository languageRepository,
     required TextNormalizer normalizer,
     required SimilarityCalculator similarityCalculator,
     required TmCache cache,
   })  : _repository = repository,
+        _languageRepository = languageRepository,
         _normalizer = normalizer,
         _similarityCalculator = similarityCalculator,
         _cache = cache;
+
+  /// Resolve language code to database ID (with caching)
+  Future<String?> _resolveLanguageId(String languageCode) async {
+    if (_languageCodeToId.containsKey(languageCode)) {
+      return _languageCodeToId[languageCode];
+    }
+
+    final result = await _languageRepository.getByCode(languageCode);
+    if (result.isOk) {
+      final languageId = result.unwrap().id;
+      _languageCodeToId[languageCode] = languageId;
+      return languageId;
+    }
+    return null;
+  }
 
   Future<Result<TmMatch?, TmLookupException>> findExactMatch({
     required String sourceText,
@@ -40,8 +62,12 @@ class TmMatchingService {
       final normalized = _normalizer.normalize(sourceText);
       final sourceHash = normalized.hashCode.toString();
 
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = 'lang_$targetLanguageCode';
+      // Resolve language code to database ID
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+      if (targetLanguageId == null) {
+        // Language not found - no matches possible
+        return Ok(null);
+      }
 
       // Build cache key
       final cacheKey = '$sourceHash:$targetLanguageCode';
@@ -135,8 +161,12 @@ class TmMatchingService {
         );
       }
 
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = 'lang_$targetLanguageCode';
+      // Resolve language code to database ID
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+      if (targetLanguageId == null) {
+        // Language not found - no matches possible
+        return Ok([]);
+      }
 
       // Use repository's findMatches method
       final candidatesResult = await _repository.findMatches(

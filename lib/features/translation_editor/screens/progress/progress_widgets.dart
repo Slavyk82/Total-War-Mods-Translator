@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
@@ -7,7 +9,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 Widget buildPreparationView(
   BuildContext context, {
   String? errorMessage,
-  required VoidCallback onClose,
+  VoidCallback? onClose,
 }) {
   final theme = Theme.of(context);
 
@@ -70,11 +72,13 @@ Widget buildPreparationView(
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            FluentButton(
-              onPressed: onClose,
-              child: const Text('Close'),
-            ),
+            if (onClose != null) ...[
+              const SizedBox(height: 24),
+              FluentButton(
+                onPressed: onClose,
+                child: const Text('Close'),
+              ),
+            ],
           ],
         ],
       ),
@@ -310,4 +314,270 @@ Widget buildErrorSection(
       ],
     ),
   );
+}
+
+/// A terminal-like widget that displays real-time logs.
+///
+/// Shows logs from [LoggingService] with auto-scrolling and level-based coloring.
+class LogTerminal extends StatefulWidget {
+  const LogTerminal({
+    super.key,
+    this.height = 150,
+  });
+
+  /// Height of the terminal (default 150px for ~10 lines).
+  final double height;
+
+  @override
+  State<LogTerminal> createState() => _LogTerminalState();
+}
+
+class _LogTerminalState extends State<LogTerminal> {
+  final ScrollController _scrollController = ScrollController();
+  final List<LogEntry> _logs = [];
+  StreamSubscription<LogEntry>? _logSubscription;
+  bool _autoScroll = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Load recent logs
+    _logs.addAll(LoggingService.instance.recentLogs);
+
+    // Subscribe to new logs
+    _logSubscription = LoggingService.instance.logStream.listen(_onNewLog);
+
+    // Scroll to bottom after initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+  }
+
+  @override
+  void dispose() {
+    _logSubscription?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onNewLog(LogEntry entry) {
+    if (!mounted) return;
+
+    setState(() {
+      _logs.add(entry);
+      // Keep only last 500 logs in UI
+      if (_logs.length > 500) {
+        _logs.removeAt(0);
+      }
+    });
+
+    if (_autoScroll) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    const terminalBg = Color(0xFF1E1E1E);
+    const headerBg = Color(0xFF2D2D2D);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: terminalBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: const BoxDecoration(
+              color: headerBg,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(8),
+                topRight: Radius.circular(8),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  FluentIcons.code_24_regular,
+                  size: 16,
+                  color: Colors.grey.shade400,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Logs',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    fontFamily: 'Consolas, monospace',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                // Auto-scroll toggle
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _autoScroll = !_autoScroll);
+                      if (_autoScroll) _scrollToBottom();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _autoScroll
+                            ? Colors.green.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FluentIcons.arrow_down_24_regular,
+                            size: 12,
+                            color: _autoScroll
+                                ? Colors.green.shade400
+                                : Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Auto-scroll',
+                            style: TextStyle(
+                              color: _autoScroll
+                                  ? Colors.green.shade400
+                                  : Colors.grey.shade500,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Clear button
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => setState(() => _logs.clear()),
+                    child: Icon(
+                      FluentIcons.delete_24_regular,
+                      size: 14,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Terminal content
+          Container(
+            height: widget.height,
+            decoration: const BoxDecoration(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(8),
+                bottomRight: Radius.circular(8),
+              ),
+            ),
+            child: _logs.isEmpty
+                ? Center(
+                    child: Text(
+                      'Waiting for logs...',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontFamily: 'Consolas, monospace',
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: _logs.length,
+                    itemBuilder: (context, index) {
+                      final entry = _logs[index];
+                      return _buildLogLine(entry);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogLine(LogEntry entry) {
+    // Format timestamp as HH:mm:ss.SSS
+    final time = entry.timestamp;
+    final timeStr =
+        '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}:'
+        '${time.second.toString().padLeft(2, '0')}.'
+        '${time.millisecond.toString().padLeft(3, '0')}';
+
+    final levelColor = Color(entry.levelColor);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: SelectableText.rich(
+        TextSpan(
+          style: const TextStyle(
+            fontFamily: 'Consolas, monospace',
+            fontSize: 11,
+            height: 1.4,
+          ),
+          children: [
+            // Timestamp
+            TextSpan(
+              text: '[$timeStr] ',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            // Level
+            TextSpan(
+              text: '[${entry.level.padRight(5)}] ',
+              style: TextStyle(
+                color: levelColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            // Message
+            TextSpan(
+              text: entry.message,
+              style: TextStyle(color: Colors.grey.shade300),
+            ),
+            // Data (if present)
+            if (entry.data != null)
+              TextSpan(
+                text: ' | ${entry.data}',
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }

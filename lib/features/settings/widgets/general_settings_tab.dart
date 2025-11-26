@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_providers.dart';
-import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../models/game_display_info.dart';
 import 'general/game_installations_section.dart';
 import 'general/workshop_section.dart';
 import 'general/rpfm_section.dart';
 import 'general/language_preferences_section.dart';
 import 'general/application_settings_section.dart';
-import 'general/cache_management_section.dart';
 
 /// General settings tab for configuring game paths, languages, and preferences.
 ///
@@ -134,10 +132,6 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
                 initialAutoUpdate:
                     settings[SettingsKeys.autoUpdate] == 'true',
               ),
-              const SizedBox(height: 32),
-              CacheManagementSection(
-                onResetToDefaults: _resetToDefaults,
-              ),
             ],
           ),
         );
@@ -160,41 +154,6 @@ class _GeneralSettingsTabState extends ConsumerState<GeneralSettingsTab> {
     if (_rpfmSchemaPathController.text.isEmpty) {
       _rpfmSchemaPathController.text =
           settings[SettingsKeys.rpfmSchemaPath] ?? '';
-    }
-  }
-
-  Future<void> _resetToDefaults() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset to Defaults'),
-        content: const Text(
-          'Are you sure you want to reset all general settings to defaults?',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await ref.read(generalSettingsProvider.notifier).resetToDefaults();
-      for (final controller in _gamePathControllers.values) {
-        controller.clear();
-      }
-      _workshopPathController.clear();
-      _rpfmPathController.clear();
-      _rpfmSchemaPathController.clear();
-      if (mounted) {
-        FluentToast.success(context, 'Settings reset to defaults');
-      }
     }
   }
 }

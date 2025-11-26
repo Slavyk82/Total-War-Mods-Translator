@@ -33,6 +33,12 @@ class CircuitBreaker {
   /// Timer for automatic state transition
   Timer? _timer;
 
+  /// Last error that caused a failure (for diagnostics)
+  Object? _lastError;
+
+  /// Last error type
+  String? _lastErrorType;
+
   CircuitBreaker({
     required this.serviceId,
     this.failureThreshold = 5,
@@ -58,6 +64,8 @@ class CircuitBreaker {
         throw CircuitBreakerOpenException(
           serviceId: serviceId,
           willAttemptCloseAt: _openedAt!.add(timeout),
+          lastErrorMessage: _lastError?.toString(),
+          lastErrorType: _lastErrorType,
         );
       }
     }
@@ -71,8 +79,8 @@ class CircuitBreaker {
 
       return result;
     } catch (error) {
-      // Record failure
-      _onFailure();
+      // Record failure with error details
+      _onFailure(error);
       rethrow;
     }
   }
@@ -91,8 +99,12 @@ class CircuitBreaker {
     }
   }
 
-  /// Record a failure
-  void _onFailure() {
+  /// Record a failure with error details
+  void _onFailure(Object error) {
+    // Store error details for diagnostics
+    _lastError = error;
+    _lastErrorType = error.runtimeType.toString();
+
     if (_state == CircuitBreakerState.closed) {
       _failureCount++;
 
@@ -141,12 +153,23 @@ class CircuitBreaker {
       successCount: _successCount,
       openedAt: _openedAt,
       willAttemptCloseAt: _openedAt?.add(timeout),
+      lastErrorMessage: _lastError?.toString(),
+      lastErrorType: _lastErrorType,
     );
   }
+
+  /// Get last error message (for display in UI)
+  String? get lastErrorMessage => _lastError?.toString();
+
+  /// Get last error type (for display in UI)
+  String? get lastErrorType => _lastErrorType;
 
   /// Reset circuit breaker to CLOSED state
   void reset() {
     _transitionToClosed();
+    // Clear error history on manual reset
+    _lastError = null;
+    _lastErrorType = null;
   }
 
   /// Check if requests are allowed
@@ -171,16 +194,27 @@ class CircuitBreakerOpenException implements Exception {
   final String serviceId;
   final DateTime willAttemptCloseAt;
 
+  /// Last error that caused the circuit to open (for diagnostics)
+  final String? lastErrorMessage;
+
+  /// Last error type
+  final String? lastErrorType;
+
   const CircuitBreakerOpenException({
     required this.serviceId,
     required this.willAttemptCloseAt,
+    this.lastErrorMessage,
+    this.lastErrorType,
   });
 
   @override
   String toString() {
     final waitTime = willAttemptCloseAt.difference(DateTime.now());
+    final errorInfo = lastErrorMessage != null
+        ? ' Last error: $lastErrorMessage'
+        : '';
     return 'Circuit breaker is OPEN for $serviceId. '
-        'Will attempt to close in ${waitTime.inSeconds}s';
+        'Will attempt to close in ${waitTime.inSeconds}s.$errorInfo';
   }
 }
 

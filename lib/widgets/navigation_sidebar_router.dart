@@ -9,9 +9,26 @@ import 'package:twmt/widgets/game_selector_dropdown.dart';
 
 /// Router-aware navigation sidebar
 ///
-/// Automatically syncs selection with current route and uses go_router for navigation
+/// Automatically syncs selection with current route and uses go_router for navigation.
+/// Accepts an optional [onNavigate] callback to intercept navigation (e.g., to block
+/// navigation during translation).
 class NavigationSidebarRouter extends ConsumerWidget {
-  const NavigationSidebarRouter({super.key});
+  const NavigationSidebarRouter({
+    super.key,
+    this.onNavigate,
+  });
+
+  /// Optional callback to handle navigation. If provided, this is called instead
+  /// of direct go_router navigation. The callback receives the target path.
+  final void Function(String path)? onNavigate;
+
+  void _navigate(BuildContext context, String path) {
+    if (onNavigate != null) {
+      onNavigate!(path);
+    } else {
+      context.go(path);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -47,7 +64,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.home_24_regular,
                   selectedIcon: FluentIcons.home_24_filled,
                   label: 'Home',
-                  onTap: () => context.goHome(),
+                  onTap: () => _navigate(context, AppRoutes.home),
                 ),
                 const SizedBox(height: 4),
                 _buildNavigationItem(
@@ -57,7 +74,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.cube_24_regular,
                   selectedIcon: FluentIcons.cube_24_filled,
                   label: 'Mods',
-                  onTap: () => context.goMods(),
+                  onTap: () => _navigate(context, AppRoutes.mods),
                 ),
                 _buildNavigationItem(
                   context: context,
@@ -66,7 +83,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.folder_24_regular,
                   selectedIcon: FluentIcons.folder_24_filled,
                   label: 'Projects',
-                  onTap: () => context.goProjects(),
+                  onTap: () => _navigate(context, AppRoutes.projects),
                 ),
                 const Divider(height: 24),
                 _buildNavigationItem(
@@ -76,7 +93,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.book_24_regular,
                   selectedIcon: FluentIcons.book_24_filled,
                   label: 'Glossary',
-                  onTap: () => context.goGlossary(),
+                  onTap: () => _navigate(context, AppRoutes.glossary),
                 ),
                 _buildNavigationItem(
                   context: context,
@@ -85,7 +102,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.database_24_regular,
                   selectedIcon: FluentIcons.database_24_filled,
                   label: 'Translation Memory',
-                  onTap: () => context.goTranslationMemory(),
+                  onTap: () => _navigate(context, AppRoutes.translationMemory),
                 ),
                 const Divider(height: 24),
                 _buildNavigationItem(
@@ -95,7 +112,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.settings_24_regular,
                   selectedIcon: FluentIcons.settings_24_filled,
                   label: 'Settings',
-                  onTap: () => context.goSettings(),
+                  onTap: () => _navigate(context, AppRoutes.settings),
                 ),
               ],
             ),

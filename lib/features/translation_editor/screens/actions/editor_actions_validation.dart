@@ -2,11 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
-import '../../../../services/validation/models/validation_issue.dart'
-    as validation;
-import '../../../translation/widgets/batch_validation_dialog.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
+import '../validation_review_screen.dart';
 import 'editor_actions_base.dart';
 
 /// Mixin handling validation operations
@@ -16,27 +14,42 @@ mixin EditorActionsValidation on EditorActionsBase {
       final projectLanguageId = await getProjectLanguageId();
       final versionRepo = ref.read(translationVersionRepositoryProvider);
       final unitRepo = ref.read(translationUnitRepositoryProvider);
-      final validationService = ref.read(validationServiceProvider);
 
+      // Get all versions for this project language
       final versionsResult =
           await versionRepo.getByProjectLanguage(projectLanguageId);
       if (versionsResult.isErr) {
         throw Exception('Failed to load translations');
       }
 
-      final versions = versionsResult.unwrap();
+      final allVersions = versionsResult.unwrap();
+
+      // Filter only versions with "needsReview" status
+      final needsReviewVersions = allVersions
+          .where((v) => v.status == TranslationVersionStatus.needsReview)
+          .toList();
+
+      // Count total translated for statistics
+      final translatedCount = allVersions
+          .where((v) =>
+              v.translatedText != null && v.translatedText!.isNotEmpty)
+          .length;
 
       ref.read(loggingServiceProvider).info(
-        'Validation starting',
-        {'totalVersions': versions.length},
+        'Loading validation issues',
+        {
+          'totalVersions': allVersions.length,
+          'translated': translatedCount,
+          'needsReview': needsReviewVersions.length,
+        },
       );
 
-      if (versions.isEmpty) {
+      if (needsReviewVersions.isEmpty) {
         if (mounted) {
           EditorDialogs.showInfoDialog(
             context,
-            'No translations to validate',
-            'Please add some translations first.',
+            'No issues to review',
+            'All translations have passed validation.',
           );
         }
         return;
@@ -44,178 +57,125 @@ mixin EditorActionsValidation on EditorActionsBase {
 
       if (!mounted) return;
 
-      final validationResults = await _validateAllVersions(
-        versions: versions,
-        versionRepo: versionRepo,
-        unitRepo: unitRepo,
-        validationService: validationService,
-      );
+      // Build validation issues from needsReview versions
+      final allIssues = <batch.ValidationIssue>[];
 
-      refreshProviders();
+      for (final version in needsReviewVersions) {
+        final unitResult = await unitRepo.getById(version.unitId);
+        if (unitResult.isErr) continue;
 
-      if (mounted) {
-        await _showValidationResults(validationResults);
+        final unit = unitResult.unwrap();
+
+        // Parse validation issues from the stored JSON
+        final issues = _parseValidationIssues(version.validationIssues);
+
+        for (final issue in issues) {
+          allIssues.add(batch.ValidationIssue(
+            unitKey: unit.key,
+            unitId: unit.id,
+            versionId: version.id,
+            severity: issue.severity == 'error'
+                ? batch.ValidationSeverity.error
+                : batch.ValidationSeverity.warning,
+            issueType: issue.type,
+            description: issue.description,
+            sourceText: unit.sourceText,
+            translatedText: version.translatedText ?? '',
+          ));
+        }
       }
 
-      _logValidationComplete(versions.length, validationResults);
+      final passedCount = translatedCount - needsReviewVersions.length;
+
+      ref.read(batch.batchValidationResultsProvider.notifier).setResults(
+        issues: allIssues,
+        totalValidated: translatedCount,
+        passedCount: passedCount,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to full-screen validation review
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (routeContext) => ValidationReviewScreen(
+            issues: allIssues,
+            totalValidated: translatedCount,
+            passedCount: passedCount,
+            onExportReport: (filePath, issues) async {
+              await exportValidationReport(filePath, issues);
+            },
+            onRejectTranslation: (issue) => _handleRejectTranslation(issue),
+            onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
+            onClose: () => Navigator.of(routeContext).pop(),
+          ),
+        ),
+      );
+
+      // Refresh providers after screen closes
+      refreshProviders();
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
-        'Failed to validate translations',
+        'Failed to load validation issues',
         e,
         stackTrace,
       );
       if (mounted) {
-        EditorDialogs.showErrorDialog(context, 'Validation failed', e.toString());
+        EditorDialogs.showErrorDialog(
+            context, 'Failed to load validation issues', e.toString());
       }
     }
   }
 
-  Future<_ValidationResults> _validateAllVersions({
-    required List<dynamic> versions,
-    required dynamic versionRepo,
-    required dynamic unitRepo,
-    required dynamic validationService,
-  }) async {
-    int validatedCount = 0;
-    int skippedCount = 0;
-    int totalIssuesCount = 0;
-    final allIssues = <batch.ValidationIssue>[];
+  /// Parse validation issues from stored JSON string
+  List<_StoredValidationIssue> _parseValidationIssues(String? issuesJson) {
+    if (issuesJson == null || issuesJson.isEmpty) {
+      return [];
+    }
 
-    for (final version in versions) {
-      if (version.translatedText == null || version.translatedText!.isEmpty) {
-        skippedCount++;
-        continue;
+    try {
+      // The issues are stored as a list of maps in string format
+      // Example: [{type: ..., severity: ..., description: ...}, ...]
+      final issues = <_StoredValidationIssue>[];
+
+      // Extract key info using regex
+      // Match patterns like {type: missing_tags, severity: error, description: ...}
+      final pattern = RegExp(
+          r'\{[^}]*type:\s*([^,}]+)[^}]*severity:\s*([^,}]+)[^}]*description:\s*([^,}]+)');
+      final matches = pattern.allMatches(issuesJson);
+
+      for (final match in matches) {
+        issues.add(_StoredValidationIssue(
+          type: match.group(1)?.trim() ?? 'unknown',
+          severity: match.group(2)?.trim().toLowerCase() ?? 'warning',
+          description: match.group(3)?.trim() ?? '',
+        ));
       }
 
-      final unitResult = await unitRepo.getById(version.unitId);
-      if (unitResult.isErr) {
-        ref.read(loggingServiceProvider).warning(
-          'Failed to load unit for validation',
-          {'versionId': version.id, 'unitId': version.unitId},
-        );
-        skippedCount++;
-        continue;
+      // Fallback: if no matches, create a generic issue
+      if (issues.isEmpty && issuesJson.isNotEmpty) {
+        issues.add(_StoredValidationIssue(
+          type: 'validation_issue',
+          severity: 'warning',
+          description: 'Translation needs review',
+        ));
       }
 
-      final unit = unitResult.unwrap();
-
-      final validationResult = await validationService.validateTranslation(
-        sourceText: unit.sourceText,
-        translatedText: version.translatedText!,
-        context: unit.context,
+      return issues;
+    } catch (e) {
+      ref.read(loggingServiceProvider).warning(
+        'Failed to parse validation issues',
+        {'json': issuesJson, 'error': e.toString()},
       );
-
-      if (validationResult.isOk) {
-        final issues = validationResult.unwrap();
-
-        if (issues.isNotEmpty) {
-          await _updateVersionWithIssues(versionRepo, version, issues);
-          totalIssuesCount += (issues.length as int);
-
-          for (final issue in issues) {
-            allIssues.add(batch.ValidationIssue(
-              unitKey: unit.key,
-              unitId: unit.id,
-              versionId: version.id,
-              severity: toBatchSeverity(issue.severity),
-              issueType: getIssueTypeLabel(issue.type),
-              description: issue.description,
-              sourceText: unit.sourceText,
-              translatedText: version.translatedText!,
-            ));
-          }
-        } else {
-          await _clearVersionIssues(versionRepo, version);
-        }
-
-        validatedCount++;
-      }
+      return [
+        _StoredValidationIssue(
+          type: 'validation_issue',
+          severity: 'warning',
+          description: 'Translation needs review',
+        ),
+      ];
     }
-
-    return _ValidationResults(
-      validatedCount: validatedCount,
-      skippedCount: skippedCount,
-      totalIssuesCount: totalIssuesCount,
-      allIssues: allIssues,
-    );
-  }
-
-  Future<void> _updateVersionWithIssues(
-    dynamic versionRepo,
-    dynamic version,
-    List<validation.ValidationIssue> issues,
-  ) async {
-    final issuesJson = issues
-        .map((issue) => {
-              'type': issue.type,
-              'severity': issue.severity.toString(),
-              'description': issue.description,
-              'suggestion': issue.suggestion,
-              'autoFixable': issue.autoFixable,
-              'autoFixValue': issue.autoFixValue,
-            })
-        .toList();
-
-    // Set status to needsReview when there are validation issues (errors or warnings)
-    final updatedVersion = version.copyWith(
-      status: TranslationVersionStatus.needsReview,
-      validationIssues: issuesJson.toString(),
-      updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    );
-
-    await versionRepo.update(updatedVersion);
-  }
-
-  Future<void> _clearVersionIssues(dynamic versionRepo, dynamic version) async {
-    // If version had issues before (needsReview status) or has validation issues,
-    // clear them and set status to translated
-    if (version.validationIssues != null || 
-        version.status == TranslationVersionStatus.needsReview) {
-      final updatedVersion = version.copyWith(
-        status: TranslationVersionStatus.translated,
-        validationIssues: null,
-        updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      );
-      await versionRepo.update(updatedVersion);
-    }
-  }
-
-  Future<void> _showValidationResults(_ValidationResults results) async {
-    final passedCount = results.validatedCount -
-        results.allIssues.map((i) => i.unitId).toSet().length;
-
-    ref.read(loggingServiceProvider).debug(
-      'Setting validation results',
-      {
-        'issuesCount': results.allIssues.length,
-        'validatedCount': results.validatedCount,
-        'passedCount': passedCount,
-      },
-    );
-
-    ref.read(batch.batchValidationResultsProvider.notifier).setResults(
-      issues: results.allIssues,
-      totalValidated: results.validatedCount,
-      passedCount: passedCount,
-    );
-
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (dialogContext) => BatchValidationDialog(
-        issues: results.allIssues,
-        totalValidated: results.validatedCount,
-        passedCount: passedCount,
-        onExportReport: (filePath) async {
-          await exportValidationReport(filePath, results.allIssues);
-        },
-        onRejectTranslation: (issue) => _handleRejectTranslation(issue),
-        onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
-      ),
-    );
-
-    // Refresh providers after dialog closes to reflect any changes
-    refreshProviders();
   }
 
   /// Reject a translation by clearing it
@@ -263,6 +223,7 @@ mixin EditorActionsValidation on EditorActionsBase {
 
     final version = versionResult.unwrap();
     final acceptedVersion = version.copyWith(
+      status: TranslationVersionStatus.translated,
       validationIssues: null,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
@@ -272,19 +233,6 @@ mixin EditorActionsValidation on EditorActionsBase {
     ref.read(loggingServiceProvider).info(
       'Translation accepted despite issues',
       {'unitKey': issue.unitKey, 'versionId': issue.versionId},
-    );
-  }
-
-  void _logValidationComplete(int totalVersions, _ValidationResults results) {
-    ref.read(loggingServiceProvider).info(
-      'Validation completed',
-      {
-        'totalVersions': totalVersions,
-        'validatedCount': results.validatedCount,
-        'skippedCount': results.skippedCount,
-        'issuesCount': results.totalIssuesCount,
-        'affectedUnits': results.allIssues.map((i) => i.unitId).toSet().length,
-      },
     );
   }
 
@@ -359,16 +307,15 @@ mixin EditorActionsValidation on EditorActionsBase {
   }
 }
 
-class _ValidationResults {
-  final int validatedCount;
-  final int skippedCount;
-  final int totalIssuesCount;
-  final List<batch.ValidationIssue> allIssues;
+/// Represents a stored validation issue parsed from the database
+class _StoredValidationIssue {
+  final String type;
+  final String severity;
+  final String description;
 
-  _ValidationResults({
-    required this.validatedCount,
-    required this.skippedCount,
-    required this.totalIssuesCount,
-    required this.allIssues,
+  _StoredValidationIssue({
+    required this.type,
+    required this.severity,
+    required this.description,
   });
 }

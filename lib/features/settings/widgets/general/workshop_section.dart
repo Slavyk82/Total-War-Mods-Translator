@@ -76,8 +76,6 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
                 decoration: InputDecoration(
                   hintText:
                       r'C:\Program Files (x86)\Steam\steamapps\workshop\content',
-                  helperText:
-                      'Game IDs (e.g., 1142710 for Warhammer III) will be added automatically',
                   border:
                       OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
                   contentPadding:

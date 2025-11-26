@@ -6,6 +6,7 @@ import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
@@ -36,36 +37,211 @@ class LlmTranslationHandler {
   /// Perform LLM translation for units not matched by TM
   ///
   /// Returns tuple of (updated progress, translations map)
-  /// 
+  ///
+  /// [tmMatchedUnitIds] contains IDs of units already translated by TM lookup.
+  /// This avoids redundant database checks for each unit.
+  ///
   /// [onSubBatchTranslated] is called after each successful LLM sub-batch
   /// to allow progressive saving. This prevents data loss on failures.
-  /// 
+  ///
   /// [checkPauseOrCancel] is called with the root batchId to check for
   /// stop/cancel requests before starting new work.
-  Future<(TranslationProgress, Map<String, String>)> performTranslation({
+  ///
+  /// Uses [BatchTranslationCache] for:
+  /// - Intra-batch deduplication (same source text within batch)
+  /// - Cross-batch deduplication (parallel batches share translations)
+  ///
+  /// Returns tuple of (progress, translations, cachedUnitIds) where:
+  /// - translations: Map of unitId -> translated text
+  /// - cachedUnitIds: Set of unit IDs that were translated via cache/deduplication
+  ///   (not directly by LLM). These should be marked as TM matches, not LLM.
+  ///
+  /// [onSubBatchTranslated] callback now receives a third parameter: Set of cached unit IDs
+  /// in this sub-batch. These are units that got their translation from cache/deduplication.
+  Future<(TranslationProgress, Map<String, String>, Set<String>)> performTranslation({
     required String batchId,
     required List<TranslationUnit> units,
     required TranslationContext context,
     required TranslationProgress currentProgress,
-    required Future<bool> Function(TranslationUnit unit, TranslationContext context) isUnitTranslated,
+    required Set<String> tmMatchedUnitIds,
     required Function(String batchId) getCancellationToken,
     required void Function(String batchId, TranslationProgress progress) onProgressUpdate,
     required Future<void> Function(String batchId) checkPauseOrCancel,
-    Future<void> Function(List<TranslationUnit> units, Map<String, String> translations)? onSubBatchTranslated,
+    Future<void> Function(List<TranslationUnit> units, Map<String, String> translations, Set<String> cachedUnitIds)? onSubBatchTranslated,
   }) async {
-    // Get units that still need translation (not matched by TM)
-    final unitsToTranslate = <TranslationUnit>[];
-    for (final unit in units) {
-      if (!await isUnitTranslated(unit, context)) {
-        unitsToTranslate.add(unit);
+    final cache = BatchTranslationCache.instance;
+
+    // Filter units that need translation (not already matched by TM) - O(1) lookup per unit
+    final unitsToTranslate = units
+        .where((unit) => !tmMatchedUnitIds.contains(unit.id))
+        .toList();
+
+    if (unitsToTranslate.isEmpty) {
+      return (currentProgress, <String, String>{}, <String>{});
+    }
+
+    // === DEDUPLICATION: Group units by source text ===
+    // This reduces LLM calls when the same text appears multiple times
+    // For large batches, yield periodically to keep UI responsive
+    final sourceTextToUnits = <String, List<TranslationUnit>>{};
+    var yieldCounter = 0;
+    const yieldInterval = 500; // Yield every N iterations
+
+    // Update progress for large batches
+    if (unitsToTranslate.length > 1000) {
+      onProgressUpdate(
+        batchId,
+        currentProgress.copyWith(
+          phaseDetail: 'Deduplicating ${unitsToTranslate.length} units...',
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
+
+    for (final unit in unitsToTranslate) {
+      sourceTextToUnits.putIfAbsent(unit.sourceText, () => []).add(unit);
+
+      // Yield to event loop periodically to prevent UI freeze
+      if (++yieldCounter % yieldInterval == 0) {
+        await Future.delayed(Duration.zero);
       }
     }
 
-    if (unitsToTranslate.isEmpty) {
-      return (currentProgress, <String, String>{});
+    final uniqueSourceTexts = sourceTextToUnits.keys.toList();
+    final duplicateCount = unitsToTranslate.length - uniqueSourceTexts.length;
+
+    if (duplicateCount > 0) {
+      _logger.info('Deduplication: ${unitsToTranslate.length} units -> ${uniqueSourceTexts.length} unique texts ($duplicateCount duplicates)');
     }
 
-    _logger.info('LLM translation: ${unitsToTranslate.length} units via ${context.providerId ?? "default"}/${context.modelId ?? "default"}');
+    // === CACHE CHECK: Find cached and pending translations ===
+    // Hash computation and cache lookups can be slow for large batches
+    final cachedTranslations = <String, String>{}; // sourceText -> translation
+    final pendingFutures = <String, Future<String?>>{}; // sourceText -> future
+    final uncachedSourceTexts = <String>[]; // source texts to translate
+
+    // Update progress for large batches
+    if (uniqueSourceTexts.length > 1000) {
+      onProgressUpdate(
+        batchId,
+        currentProgress.copyWith(
+          phaseDetail: 'Checking cache for ${uniqueSourceTexts.length} unique texts...',
+          timestamp: DateTime.now(),
+        ),
+      );
+    }
+
+    yieldCounter = 0;
+    for (final sourceText in uniqueSourceTexts) {
+      final hash = cache.computeHash(sourceText, context.targetLanguage);
+      final result = cache.lookup(hash);
+
+      switch (result) {
+        case CacheHit(:final translation):
+          cachedTranslations[sourceText] = translation;
+        case CachePending(:final future):
+          pendingFutures[sourceText] = future;
+        case CacheMiss():
+          uncachedSourceTexts.add(sourceText);
+      }
+
+      // Yield to event loop periodically to prevent UI freeze
+      if (++yieldCounter % yieldInterval == 0) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+
+    if (cachedTranslations.isNotEmpty || pendingFutures.isNotEmpty) {
+      _logger.info('Cache status', {
+        'cached': cachedTranslations.length,
+        'pending': pendingFutures.length,
+        'uncached': uncachedSourceTexts.length,
+      });
+    }
+
+    // === WAIT FOR PENDING: Get translations from other batches ===
+    if (pendingFutures.isNotEmpty) {
+      var progress = currentProgress.copyWith(
+        phaseDetail: 'Waiting for ${pendingFutures.length} translations from parallel batches...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
+
+      for (final entry in pendingFutures.entries) {
+        final translation = await entry.value;
+        if (translation != null) {
+          cachedTranslations[entry.key] = translation;
+        } else {
+          // Other batch failed, we need to translate this ourselves
+          uncachedSourceTexts.add(entry.key);
+        }
+      }
+    }
+
+    // === BUILD FINAL TRANSLATIONS MAP ===
+    final allTranslations = <String, String>{}; // unitId -> translation
+    final cachedUnitIds = <String>{}; // IDs of units translated via cache/deduplication
+
+    // Apply cached translations to all units with same source text
+    // These are all "cached" - they come from cross-batch cache or pending results
+    yieldCounter = 0;
+    for (final entry in cachedTranslations.entries) {
+      final unitsWithSameSource = sourceTextToUnits[entry.key] ?? [];
+      for (final unit in unitsWithSameSource) {
+        allTranslations[unit.id] = entry.value;
+        cachedUnitIds.add(unit.id); // Mark as cached
+      }
+
+      // Yield to event loop periodically to prevent UI freeze
+      if (++yieldCounter % yieldInterval == 0) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+
+    // If all translations came from cache, we're done
+    if (uncachedSourceTexts.isEmpty) {
+      _logger.info('All ${unitsToTranslate.length} translations served from cache');
+
+      // Save cached translations - all units are cached
+      if (onSubBatchTranslated != null && allTranslations.isNotEmpty) {
+        try {
+          await onSubBatchTranslated(unitsToTranslate, allTranslations, cachedUnitIds);
+        } catch (e) {
+          _logger.warning('Failed to save cached translations: $e');
+        }
+      }
+
+      return (currentProgress, allTranslations, cachedUnitIds);
+    }
+
+    // === REGISTER PENDING: Mark our translations as in-progress ===
+    final registeredHashes = <String, String>{}; // sourceText -> hash
+    yieldCounter = 0;
+    for (final sourceText in uncachedSourceTexts) {
+      final hash = cache.computeHash(sourceText, context.targetLanguage);
+      if (cache.registerPending(hash, batchId)) {
+        registeredHashes[sourceText] = hash;
+      }
+
+      // Yield to event loop periodically to prevent UI freeze
+      if (++yieldCounter % yieldInterval == 0) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+
+    // === BUILD UNITS FOR LLM: One unit per unique source text ===
+    // Select representative unit for each unique source text
+    final unitsForLlm = <TranslationUnit>[];
+    final sourceTextToRepresentativeUnit = <String, TranslationUnit>{};
+
+    for (final sourceText in uncachedSourceTexts) {
+      final units = sourceTextToUnits[sourceText]!;
+      final representative = units.first;
+      unitsForLlm.add(representative);
+      sourceTextToRepresentativeUnit[sourceText] = representative;
+    }
+
+    _logger.info('LLM translation: ${unitsForLlm.length} unique texts (${unitsToTranslate.length} total units) via ${context.providerId ?? "default"}/${context.modelId ?? "default"}');
 
     var progress = currentProgress.copyWith(
       currentPhase: TranslationPhase.buildingPrompt,
@@ -80,15 +256,19 @@ class LlmTranslationHandler {
       timestamp: DateTime.now(),
     );
     onProgressUpdate(batchId, progress);
-    
+
     final promptResult = await _promptBuilder.buildPrompt(
-      units: unitsToTranslate,
+      units: unitsForLlm, // Use deduplicated units
       context: context,
       includeExamples: true,
       maxExamples: 3,
     );
 
     if (promptResult.isErr) {
+      // Fail registered pending translations
+      for (final hash in registeredHashes.values) {
+        cache.fail(hash);
+      }
       throw TranslationOrchestrationException(
         'Failed to build prompt: ${promptResult.unwrapErr()}',
         batchId: batchId,
@@ -99,45 +279,61 @@ class LlmTranslationHandler {
 
     progress = progress.copyWith(
       currentPhase: TranslationPhase.llmTranslation,
-      phaseDetail: 'Starting LLM translation (${unitsToTranslate.length} units via ${context.providerCode ?? "default"})...',
+      phaseDetail: 'Starting LLM translation (${unitsForLlm.length} unique texts via ${context.providerCode ?? "default"})...',
       timestamp: DateTime.now(),
     );
     onProgressUpdate(batchId, progress);
 
     // Split units into parallel chunks if parallelBatches > 1
     final parallelBatches = context.parallelBatches;
-    if (parallelBatches > 1 && unitsToTranslate.length > parallelBatches) {
+    if (parallelBatches > 1 && unitsForLlm.length > parallelBatches) {
       // Check cancellation before starting parallel processing
       await checkPauseOrCancel(batchId);
-      
+
       progress = progress.copyWith(
         phaseDetail: 'Splitting into $parallelBatches parallel batches for faster processing...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
-      
+
       _logger.debug('Splitting into $parallelBatches parallel batches');
 
-      // Calculate chunk size
-      final chunkSize = (unitsToTranslate.length / parallelBatches).ceil();
+      // Calculate chunk size (use unitsForLlm - deduplicated)
+      final chunkSize = (unitsForLlm.length / parallelBatches).ceil();
       final chunks = <List<TranslationUnit>>[];
-      
-      for (var i = 0; i < unitsToTranslate.length; i += chunkSize) {
-        final end = (i + chunkSize < unitsToTranslate.length)
+
+      for (var i = 0; i < unitsForLlm.length; i += chunkSize) {
+        final end = (i + chunkSize < unitsForLlm.length)
             ? i + chunkSize
-            : unitsToTranslate.length;
-        chunks.add(unitsToTranslate.sublist(i, end));
+            : unitsForLlm.length;
+        chunks.add(unitsForLlm.sublist(i, end));
       }
 
       _logger.debug('Created ${chunks.length} parallel chunks');
 
-      // Process chunks in parallel
-      final futures = <Future<(TranslationProgress, Map<String, String>)>>[];
-      
+      // Track saved unit IDs to avoid double-counting at the end
+      final savedUnitIds = <String>{};
+
+      // Wrapper callback that tracks saved units for progress updates
+      Future<void> trackingSaveCallback(
+        List<TranslationUnit> units,
+        Map<String, String> translations,
+        Set<String> subBatchCachedIds,
+      ) async {
+        if (onSubBatchTranslated != null) {
+          await onSubBatchTranslated(units, translations, subBatchCachedIds);
+          savedUnitIds.addAll(translations.keys);
+        }
+      }
+
+      // Process chunks in parallel, wrapping each in error handling
+      // to continue with other chunks even if one fails
+      final futures = <Future<(TranslationProgress, Map<String, String>, String?)>>[];
+
       for (var i = 0; i < chunks.length; i++) {
         final chunk = chunks[i];
         final chunkId = '$batchId-parallel-$i';
-        
+
         // Create LLM request for this chunk
         final textsMap = <String, String>{};
         for (final unit in chunk) {
@@ -160,10 +356,11 @@ class LlmTranslationHandler {
           timestamp: DateTime.now(),
         );
 
-        futures.add(_translateWithAutoSplit(
-          batchId: chunkId,
+        // Wrap each chunk translation in error handling to continue on failure
+        futures.add(_translateChunkWithErrorHandling(
+          chunkId: chunkId,
           rootBatchId: batchId,
-          unitsToTranslate: chunk,
+          chunk: chunk,
           llmRequest: llmRequest,
           context: context,
           progress: progress,
@@ -171,34 +368,80 @@ class LlmTranslationHandler {
           getCancellationToken: getCancellationToken,
           onProgressUpdate: onProgressUpdate,
           checkPauseOrCancel: checkPauseOrCancel,
-          onSubBatchTranslated: onSubBatchTranslated,
+          onSubBatchTranslated: trackingSaveCallback,
         ));
       }
 
-      // Wait for all parallel batches to complete, but don't fail on first error
-      final results = await Future.wait(futures, eagerError: false);
+      // Wait for all parallel batches to complete
+      final results = await Future.wait(futures);
 
-      // Merge results
+      // Merge results, collecting any errors
       var finalProgress = progress;
-      final allTranslations = <String, String>{};
-      
-      for (final (chunkProgress, chunkTranslations) in results) {
+      final llmTranslations = <String, String>{}; // unitId -> translation
+      final chunkErrors = <String>[];
+
+      for (final (chunkProgress, chunkTranslations, chunkError) in results) {
         finalProgress = chunkProgress;
-        allTranslations.addAll(chunkTranslations);
+        llmTranslations.addAll(chunkTranslations);
+        if (chunkError != null) {
+          chunkErrors.add(chunkError);
+        }
       }
 
-      _logger.debug('Parallel translation completed: ${allTranslations.length} translations');
+      // Log any errors that occurred but didn't block the batch
+      if (chunkErrors.isNotEmpty) {
+        _logger.warning(
+          'Some chunks failed during parallel translation: ${chunkErrors.length} errors. '
+          'Successfully translated ${llmTranslations.length} units.',
+        );
+      }
 
-      return (finalProgress, allTranslations);
+      _logger.debug('Parallel translation completed: ${llmTranslations.length} translations');
+
+      // === UPDATE CACHE & APPLY TO DUPLICATES ===
+      await _updateCacheAndApplyDuplicates(
+        llmTranslations: llmTranslations,
+        sourceTextToUnits: sourceTextToUnits,
+        registeredHashes: registeredHashes,
+        allTranslations: allTranslations,
+        cachedUnitIds: cachedUnitIds,
+        cache: cache,
+        context: context,
+      );
+
+      // Save only unsaved translations (duplicates that weren't in parallel chunks)
+      if (onSubBatchTranslated != null && allTranslations.isNotEmpty) {
+        // Filter to only unsaved units (duplicates)
+        final unsavedTranslations = Map.fromEntries(
+          allTranslations.entries.where((e) => !savedUnitIds.contains(e.key)),
+        );
+
+        if (unsavedTranslations.isNotEmpty) {
+          _logger.debug('Saving ${unsavedTranslations.length} duplicate units');
+          // Filter units to only unsaved ones
+          final unsavedUnits = unitsToTranslate
+              .where((u) => unsavedTranslations.containsKey(u.id))
+              .toList();
+          // All unsaved units are duplicates, so they're all cached
+          final unsavedCachedIds = unsavedTranslations.keys.toSet();
+          try {
+            await onSubBatchTranslated(unsavedUnits, unsavedTranslations, unsavedCachedIds);
+          } catch (e) {
+            _logger.warning('Failed to save duplicate translations: $e');
+          }
+        }
+      }
+
+      return (finalProgress, allTranslations, cachedUnitIds);
     }
 
     // Single batch processing (parallelBatches == 1 or too few units)
     final textsMap = <String, String>{};
-    for (final unit in unitsToTranslate) {
+    for (final unit in unitsForLlm) {
       textsMap[unit.id] = unit.sourceText;
     }
 
-    final estimatedResponseTokens = (unitsToTranslate.length * 120) + 500;
+    final estimatedResponseTokens = (unitsForLlm.length * 120) + 500;
     final maxTokens = estimatedResponseTokens.clamp(1000, 8000);
 
     final llmRequest = LlmRequest(
@@ -214,21 +457,229 @@ class LlmTranslationHandler {
       timestamp: DateTime.now(),
     );
 
-    final (finalProgress, translations) = await _translateWithAutoSplit(
-      batchId: batchId,
-      rootBatchId: batchId,
-      unitsToTranslate: unitsToTranslate,
-      llmRequest: llmRequest,
-      context: context,
-      progress: progress,
-      currentProgress: currentProgress,
-      getCancellationToken: getCancellationToken,
-      onProgressUpdate: onProgressUpdate,
-      checkPauseOrCancel: checkPauseOrCancel,
-      onSubBatchTranslated: onSubBatchTranslated,
-    );
+    // Track saved unit IDs for single batch mode too
+    final savedUnitIds = <String>{};
 
-    return (finalProgress, translations);
+    Future<void> trackingSaveCallback(
+      List<TranslationUnit> units,
+      Map<String, String> translations,
+      Set<String> subBatchCachedIds,
+    ) async {
+      if (onSubBatchTranslated != null) {
+        await onSubBatchTranslated(units, translations, subBatchCachedIds);
+        savedUnitIds.addAll(translations.keys);
+      }
+    }
+
+    try {
+      final (finalProgress, llmTranslations) = await _translateWithAutoSplit(
+        batchId: batchId,
+        rootBatchId: batchId,
+        unitsToTranslate: unitsForLlm,
+        llmRequest: llmRequest,
+        context: context,
+        progress: progress,
+        currentProgress: currentProgress,
+        getCancellationToken: getCancellationToken,
+        onProgressUpdate: onProgressUpdate,
+        checkPauseOrCancel: checkPauseOrCancel,
+        onSubBatchTranslated: trackingSaveCallback,
+      );
+
+      // === UPDATE CACHE & APPLY TO DUPLICATES ===
+      await _updateCacheAndApplyDuplicates(
+        llmTranslations: llmTranslations,
+        sourceTextToUnits: sourceTextToUnits,
+        registeredHashes: registeredHashes,
+        allTranslations: allTranslations,
+        cachedUnitIds: cachedUnitIds,
+        cache: cache,
+        context: context,
+      );
+
+      // Save only unsaved translations (duplicates)
+      if (onSubBatchTranslated != null && allTranslations.isNotEmpty) {
+        final unsavedTranslations = Map.fromEntries(
+          allTranslations.entries.where((e) => !savedUnitIds.contains(e.key)),
+        );
+
+        if (unsavedTranslations.isNotEmpty) {
+          _logger.debug('Saving ${unsavedTranslations.length} duplicate units');
+          final unsavedUnits = unitsToTranslate
+              .where((u) => unsavedTranslations.containsKey(u.id))
+              .toList();
+          // All unsaved units are duplicates, so they're all cached
+          final unsavedCachedIds = unsavedTranslations.keys.toSet();
+          try {
+            await onSubBatchTranslated(unsavedUnits, unsavedTranslations, unsavedCachedIds);
+          } catch (e) {
+            _logger.warning('Failed to save duplicate translations: $e');
+          }
+        }
+      }
+
+      return (finalProgress, allTranslations, cachedUnitIds);
+    } catch (e) {
+      // Fail all registered pending translations on error
+      for (final hash in registeredHashes.values) {
+        cache.fail(hash);
+      }
+      rethrow;
+    }
+  }
+
+  /// Update cache with LLM translations and apply to all duplicate units
+  ///
+  /// [cachedUnitIds] is updated with IDs of duplicate units (not the representative
+  /// unit that was actually translated by LLM)
+  Future<void> _updateCacheAndApplyDuplicates({
+    required Map<String, String> llmTranslations,
+    required Map<String, List<TranslationUnit>> sourceTextToUnits,
+    required Map<String, String> registeredHashes,
+    required Map<String, String> allTranslations,
+    required Set<String> cachedUnitIds,
+    required BatchTranslationCache cache,
+    required TranslationContext context,
+  }) async {
+    const yieldInterval = 500;
+    var yieldCounter = 0;
+
+    // For each LLM translation, update cache and apply to all units with same source
+    for (final entry in llmTranslations.entries) {
+      final unitId = entry.key;
+      final translation = entry.value;
+
+      // Find the source text for this unit
+      String? sourceText;
+      for (final stEntry in sourceTextToUnits.entries) {
+        if (stEntry.value.any((u) => u.id == unitId)) {
+          sourceText = stEntry.key;
+          break;
+        }
+      }
+
+      if (sourceText == null) continue;
+
+      // Update cache
+      final hash = registeredHashes[sourceText];
+      if (hash != null) {
+        cache.complete(hash, translation);
+      }
+
+      // Apply translation to all units with same source text
+      // Mark duplicates (units other than the representative) as cached
+      final unitsWithSameSource = sourceTextToUnits[sourceText] ?? [];
+      for (final unit in unitsWithSameSource) {
+        allTranslations[unit.id] = translation;
+        // If this is not the unit that was actually translated by LLM, mark as cached
+        if (unit.id != unitId) {
+          cachedUnitIds.add(unit.id);
+        }
+      }
+
+      // Yield to event loop periodically to prevent UI freeze
+      if (++yieldCounter % yieldInterval == 0) {
+        await Future.delayed(Duration.zero);
+      }
+    }
+
+    // Fail any registered hashes that didn't get a translation
+    for (final entry in registeredHashes.entries) {
+      final sourceText = entry.key;
+      final hash = entry.value;
+
+      // Check if we got a translation for this source text
+      final units = sourceTextToUnits[sourceText] ?? [];
+      final hasTranslation = units.any((u) => allTranslations.containsKey(u.id));
+
+      if (!hasTranslation) {
+        cache.fail(hash);
+      }
+    }
+  }
+
+  /// Wrapper for chunk translation that catches errors and continues
+  ///
+  /// Returns a tuple of (progress, translations, errorMessage).
+  /// If an error occurs, translations will be empty but the batch can continue.
+  /// This prevents a single problematic unit from blocking the entire batch.
+  Future<(TranslationProgress, Map<String, String>, String?)>
+      _translateChunkWithErrorHandling({
+    required String chunkId,
+    required String rootBatchId,
+    required List<TranslationUnit> chunk,
+    required LlmRequest llmRequest,
+    required TranslationContext context,
+    required TranslationProgress progress,
+    required TranslationProgress currentProgress,
+    required Function(String batchId) getCancellationToken,
+    required void Function(String batchId, TranslationProgress progress)
+        onProgressUpdate,
+    required Future<void> Function(String batchId) checkPauseOrCancel,
+    Future<void> Function(
+            List<TranslationUnit> units, Map<String, String> translations, Set<String> cachedUnitIds)?
+        onSubBatchTranslated,
+  }) async {
+    try {
+      final (resultProgress, translations) = await _translateWithAutoSplit(
+        batchId: chunkId,
+        rootBatchId: rootBatchId,
+        unitsToTranslate: chunk,
+        llmRequest: llmRequest,
+        context: context,
+        progress: progress,
+        currentProgress: currentProgress,
+        getCancellationToken: getCancellationToken,
+        onProgressUpdate: onProgressUpdate,
+        checkPauseOrCancel: checkPauseOrCancel,
+        onSubBatchTranslated: onSubBatchTranslated,
+      );
+      return (resultProgress, translations, null);
+    } on TranslationOrchestrationException catch (e) {
+      // Log the error but don't rethrow - allow other chunks to continue
+      _logger.warning(
+        'Chunk $chunkId failed: ${e.message}. Skipping ${chunk.length} units.',
+      );
+
+      // Create error log for progress tracking
+      final errorLog = LlmExchangeLog.fromError(
+        requestId: chunkId,
+        providerCode: context.providerId ?? 'unknown',
+        modelName: context.modelId ?? 'unknown',
+        unitsCount: chunk.length,
+        errorMessage: 'Chunk skipped: ${e.message}',
+      );
+
+      final errorProgress = progress.copyWith(
+        llmLogs: [...currentProgress.llmLogs, errorLog],
+        phaseDetail: 'Chunk failed, continuing with others...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(rootBatchId, errorProgress);
+
+      // Return empty translations for this chunk - units will remain untranslated
+      return (errorProgress, <String, String>{}, e.message);
+    } catch (e) {
+      // Unexpected error - log and continue
+      _logger.error('Unexpected error in chunk $chunkId: $e');
+
+      final errorLog = LlmExchangeLog.fromError(
+        requestId: chunkId,
+        providerCode: context.providerId ?? 'unknown',
+        modelName: context.modelId ?? 'unknown',
+        unitsCount: chunk.length,
+        errorMessage: 'Unexpected error: $e',
+      );
+
+      final errorProgress = progress.copyWith(
+        llmLogs: [...currentProgress.llmLogs, errorLog],
+        phaseDetail: 'Chunk error, continuing...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(rootBatchId, errorProgress);
+
+      return (errorProgress, <String, String>{}, e.toString());
+    }
   }
 
   /// Translate with automatic batch splitting if token limit is exceeded
@@ -236,7 +687,7 @@ class LlmTranslationHandler {
   /// Proactively splits batches that are too large, then attempts translation.
   /// If token limit or parsing errors occur, automatically splits and retries recursively.
   /// Calls [onSubBatchTranslated] after each successful LLM call for progressive saving.
-  /// 
+  ///
   /// [rootBatchId] is used for cancellation checks - always check the root batch,
   /// not the sub-batch IDs derived from splits.
   Future<(TranslationProgress, Map<String, String>)> _translateWithAutoSplit({
@@ -250,7 +701,7 @@ class LlmTranslationHandler {
     required Function(String batchId) getCancellationToken,
     required void Function(String batchId, TranslationProgress progress) onProgressUpdate,
     required Future<void> Function(String batchId) checkPauseOrCancel,
-    Future<void> Function(List<TranslationUnit> units, Map<String, String> translations)? onSubBatchTranslated,
+    Future<void> Function(List<TranslationUnit> units, Map<String, String> translations, Set<String> cachedUnitIds)? onSubBatchTranslated,
     int depth = 0,
   }) async {
     // Check cancellation before doing any work (use root batchId, not sub-batch)
@@ -377,19 +828,24 @@ class LlmTranslationHandler {
       maxRetries: 3,
     );
 
-    // Check for errors that indicate batch is too large
+    // Check for errors that indicate batch is too large or content issues
     if (llmResult.isErr) {
       final error = llmResult.unwrapErr();
 
-      // Detect errors that suggest batch is too large:
+      // Detect errors that suggest batch should be split:
       // 1. Token limit exceeded
       // 2. Response parsing failures (often due to truncated responses)
+      // 3. Content filtered - split to isolate problematic unit(s)
+      final isContentFiltered = error is LlmContentFilteredException;
       final isBatchTooLarge = (error is LlmTokenLimitException) ||
           (error is LlmResponseParseException && unitsToTranslate.length > 1);
+      final shouldSplit = (isBatchTooLarge || isContentFiltered) && unitsToTranslate.length > 1;
 
-      // If batch is too large and has more than 1 unit, split and retry
-      if (isBatchTooLarge && unitsToTranslate.length > 1) {
-        final errorType = error is LlmTokenLimitException ? 'Token limit' : 'Response parsing';
+      // If batch should be split and has more than 1 unit, split and retry
+      if (shouldSplit) {
+        final errorType = error is LlmTokenLimitException
+            ? 'Token limit'
+            : (isContentFiltered ? 'Content filtered' : 'Response parsing');
 
         _logger.debug('$errorType error, splitting ${unitsToTranslate.length} units');
 
@@ -464,6 +920,38 @@ class LlmTranslationHandler {
         return (progressAfterSecond, {...firstTranslations, ...secondTranslations});
       }
 
+      // Single unit that failed - handle based on error type
+      // Content filter on single unit: skip gracefully and continue
+      if (isContentFiltered && unitsToTranslate.length == 1) {
+        final unit = unitsToTranslate.first;
+        _logger.warning(
+          'Content filtered for unit "${unit.key}" - skipping. '
+          'Consider using a different provider (Claude/DeepL) for this content.',
+        );
+
+        // Create warning log for filtered content
+        final filterLog = LlmExchangeLog.fromError(
+          requestId: '$batchId-filtered',
+          providerCode: context.providerId ?? 'unknown',
+          modelName: context.modelId ?? 'unknown',
+          unitsCount: 1,
+          errorMessage: 'Content filtered by provider moderation for key "${unit.key}". '
+              'The source text may contain content that violates the provider\'s usage policies.',
+        );
+
+        // Update progress with filter warning
+        final filterProgress = progress.copyWith(
+          phaseDetail: 'Skipped filtered content: "${unit.key}"',
+          llmLogs: [...currentProgress.llmLogs, filterLog],
+          timestamp: DateTime.now(),
+        );
+        onProgressUpdate(batchId, filterProgress);
+
+        // Return empty translations - the unit will remain untranslated
+        // but the batch continues processing other units
+        return (filterProgress, <String, String>{});
+      }
+
       // Other errors or single unit that's too large
       final errorLog = LlmExchangeLog.fromError(
         requestId: batchId,
@@ -474,7 +962,7 @@ class LlmTranslationHandler {
       );
 
       final updatedLogs = [...currentProgress.llmLogs, errorLog];
-      
+
       progress = progress.copyWith(
         llmLogs: updatedLogs,
         timestamp: DateTime.now(),
@@ -508,9 +996,10 @@ class LlmTranslationHandler {
     onProgressUpdate(batchId, completionProgress);
 
     // Progressive save: call callback to save translations immediately
+    // These are direct LLM translations, not cached, so pass empty set
     if (onSubBatchTranslated != null && translations.isNotEmpty) {
       try {
-        await onSubBatchTranslated(unitsToTranslate, translations);
+        await onSubBatchTranslated(unitsToTranslate, translations, <String>{});
       } catch (e) {
         _logger.warning('Progressive save failed: $e');
         // Don't throw - translations are still in memory and will be saved at the end
@@ -633,10 +1122,17 @@ class LlmTranslationHandler {
     // Calculate optimal batch size
     final calculatedSize = (availableTokens / avgTokensPerUnit).floor();
 
-    // Clamp to user-defined max batch size
-    final optimalSize = calculatedSize.clamp(1, context.unitsPerBatch);
-
-    _logger.debug('Optimal batch size: $optimalSize (from $calculatedSize calculated)');
+    // Handle auto mode (unitsPerBatch = 0) vs manual limit
+    final int optimalSize;
+    if (context.unitsPerBatch == 0) {
+      // Auto mode: use calculated size with reasonable max (1000)
+      optimalSize = calculatedSize.clamp(1, 1000);
+      _logger.debug('Optimal batch size: $optimalSize (auto mode, calculated: $calculatedSize)');
+    } else {
+      // Manual mode: clamp to user-defined max batch size
+      optimalSize = calculatedSize.clamp(1, context.unitsPerBatch);
+      _logger.debug('Optimal batch size: $optimalSize (from $calculatedSize calculated, max: ${context.unitsPerBatch})');
+    }
 
     return optimalSize;
   }

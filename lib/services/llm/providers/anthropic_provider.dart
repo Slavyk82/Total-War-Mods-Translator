@@ -72,6 +72,9 @@ class AnthropicProvider implements ILlmProvider {
       return Ok(llmResponse);
     } on DioException catch (e) {
       return Err(_handleDioException(e));
+    } on LlmProviderException catch (e) {
+      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
+      return Err(e);
     } catch (e, stackTrace) {
       return Err(LlmProviderException(
         'Unexpected error: $e',
@@ -371,13 +374,28 @@ class AnthropicProvider implements ILlmProvider {
     DateTime startTime,
   ) {
     try {
-      // Extract content
+      // Extract stop reason and content
+      final stopReason = data['stop_reason'] as String?;
       final content = data['content'] as List;
       final textBlock = content.firstWhere(
         (block) => block['type'] == 'text',
         orElse: () => {'text': ''},
       );
       final responseText = textBlock['text'] as String;
+
+      // Check for content filtering
+      // Anthropic may return empty content or specific stop reasons when content is filtered
+      if (stopReason == 'content_filter' ||
+          (responseText.trim().isEmpty && content.isNotEmpty)) {
+        final sourceTexts = request.texts.values.toList();
+        throw LlmContentFilteredException(
+          'Content blocked by Anthropic safety filters. The source text may '
+          'contain content that violates usage policies. Try using DeepL for this content.',
+          providerCode: providerCode,
+          filteredTexts: sourceTexts,
+          finishReason: stopReason ?? 'empty_content',
+        );
+      }
 
       // Parse JSON response
       final translations = _parseTranslations(responseText, request);
@@ -400,8 +418,11 @@ class AnthropicProvider implements ILlmProvider {
         totalTokens: inputTokens + outputTokens,
         processingTimeMs: processingTime,
         timestamp: DateTime.now(),
-        finishReason: data['stop_reason'] as String?,
+        finishReason: stopReason,
       );
+    } on LlmContentFilteredException {
+      // Re-throw content filter exceptions as-is
+      rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(
         'Failed to parse response: $e',

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
@@ -30,9 +31,13 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Provide statistics and maintenance operations
 class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   final TranslationMemoryRepository _repository;
+  final LanguageRepository _languageRepository;
   final TextNormalizer _normalizer;
   final TmCache _cache;
   final LoggingService _logger;
+
+  // Cache for language code → ID mapping
+  final Map<String, String> _languageCodeToId = {};
 
   // Delegated services
   final TmMatchingService _matchingService;
@@ -40,17 +45,20 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
   TranslationMemoryServiceImpl({
     required TranslationMemoryRepository repository,
+    required LanguageRepository languageRepository,
     required TextNormalizer normalizer,
     required SimilarityCalculator similarityCalculator,
     required TmCache cache,
     TmxService? tmxService,
     LoggingService? logger,
   })  : _repository = repository,
+        _languageRepository = languageRepository,
         _normalizer = normalizer,
         _cache = cache,
         _logger = logger ?? LoggingService.instance,
         _matchingService = TmMatchingService(
           repository: repository,
+          languageRepository: languageRepository,
           normalizer: normalizer,
           similarityCalculator: similarityCalculator,
           cache: cache,
@@ -65,6 +73,26 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
               ),
           logger: logger ?? LoggingService.instance,
         );
+
+  /// Resolve language code to database ID
+  /// Caches results for performance
+  Future<String?> _resolveLanguageId(String languageCode) async {
+    // Check cache first
+    if (_languageCodeToId.containsKey(languageCode)) {
+      return _languageCodeToId[languageCode];
+    }
+
+    // Look up from database
+    final result = await _languageRepository.getByCode(languageCode);
+    if (result.isOk) {
+      final languageId = result.unwrap().id;
+      _languageCodeToId[languageCode] = languageId;
+      return languageId;
+    }
+
+    _logger.warning('Language not found for code', {'code': languageCode});
+    return null;
+  }
 
   // ========== CRUD OPERATIONS ==========
 
@@ -110,9 +138,18 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       final normalized = _normalizer.normalize(sourceText);
       final sourceHash = normalized.hashCode.toString();
 
-      // Convert language codes to IDs (e.g., 'en' -> 'lang_en')
-      final sourceLanguageId = 'lang_$sourceLanguageCode';
-      final targetLanguageId = 'lang_$targetLanguageCode';
+      // Resolve language codes to database IDs
+      final sourceLanguageId = await _resolveLanguageId(sourceLanguageCode);
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+
+      if (sourceLanguageId == null || targetLanguageId == null) {
+        return Err(
+          TmAddException(
+            'Could not resolve language IDs for codes: $sourceLanguageCode, $targetLanguageCode',
+            sourceText: sourceText,
+          ),
+        );
+      }
 
       // Check for existing entry (deduplication)
       final existingResult = await _repository.findBySourceHash(
@@ -198,6 +235,105 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         TmAddException(
           'Unexpected error adding translation: ${e.toString()}',
           sourceText: sourceText,
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<int, TmAddException>> addTranslationsBatch({
+    required List<({String sourceText, String targetText})> translations,
+    String sourceLanguageCode = 'en',
+    required String targetLanguageCode,
+    double quality = 0.8,
+  }) async {
+    if (translations.isEmpty) {
+      return const Ok(0);
+    }
+
+    try {
+      // Validate quality
+      if (quality < AppConstants.minQualityClamp ||
+          quality > AppConstants.maxQualityClamp) {
+        return Err(
+          TmAddException(
+            'Quality must be between ${AppConstants.minQualityClamp} and ${AppConstants.maxQualityClamp}',
+            sourceText: 'batch',
+          ),
+        );
+      }
+
+      // Resolve language codes to database IDs
+      final sourceLanguageId = await _resolveLanguageId(sourceLanguageCode);
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+
+      if (sourceLanguageId == null || targetLanguageId == null) {
+        return Err(
+          TmAddException(
+            'Could not resolve language IDs for codes: $sourceLanguageCode, $targetLanguageCode',
+            sourceText: 'batch',
+          ),
+        );
+      }
+
+      // Build list of TM entries
+      final entries = <TranslationMemoryEntry>[];
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      for (final t in translations) {
+        // Skip empty translations
+        if (t.sourceText.trim().isEmpty || t.targetText.trim().isEmpty) {
+          continue;
+        }
+
+        // Calculate source hash
+        final normalized = _normalizer.normalize(t.sourceText);
+        final sourceHash = normalized.hashCode.toString();
+
+        entries.add(TranslationMemoryEntry(
+          id: '${now}_${entries.length}', // Temporary ID, will be replaced if new
+          sourceText: t.sourceText,
+          translatedText: t.targetText,
+          sourceLanguageId: sourceLanguageId,
+          targetLanguageId: targetLanguageId,
+          sourceHash: sourceHash,
+          qualityScore: quality,
+          usageCount: 0,
+          createdAt: now,
+          lastUsedAt: now,
+          updatedAt: now,
+        ));
+      }
+
+      if (entries.isEmpty) {
+        return const Ok(0);
+      }
+
+      // Use batch upsert
+      final result = await _repository.upsertBatch(entries);
+
+      if (result.isErr) {
+        return Err(
+          TmAddException(
+            'Failed to batch add translations: ${result.error}',
+            sourceText: 'batch',
+          ),
+        );
+      }
+
+      _logger.debug(
+        'Batch added TM entries',
+        {'count': result.value, 'targetLanguage': targetLanguageCode},
+      );
+
+      return Ok(result.value);
+    } catch (e, stackTrace) {
+      return Err(
+        TmAddException(
+          'Unexpected error in batch add: ${e.toString()}',
+          sourceText: 'batch',
           error: e,
           stackTrace: stackTrace,
         ),
@@ -549,13 +685,39 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         );
       }
 
+      // Calculate cutoff for debugging
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
+      final cutoffDate = DateTime.fromMillisecondsSinceEpoch(cutoffTimestamp * 1000);
+
       _logger.info(
         'Starting TM cleanup',
         {
           'minQuality': minQuality,
           'unusedDays': unusedDays,
+          'cutoffDate': cutoffDate.toIso8601String(),
+          'cutoffTimestamp': cutoffTimestamp,
         },
       );
+
+      // First, count candidates for diagnostic purposes
+      final countResult = await _repository.countCleanupCandidates(
+        maxQuality: minQuality,
+        unusedDays: unusedDays,
+      );
+
+      if (countResult.isOk) {
+        final counts = countResult.value;
+        _logger.info(
+          'TM cleanup candidates analysis',
+          {
+            'willBeDeleted': counts['willBeDeleted'],
+            'lowQualityOnly': counts['lowQualityOnly'],
+            'unusedOnly': counts['unusedOnly'],
+            'ageFilterDisabled': counts['ageFilterDisabled'] == 1,
+          },
+        );
+      }
 
       // Delete low-quality, unused entries
       final deleteResult = await _repository.deleteByQualityAndAge(

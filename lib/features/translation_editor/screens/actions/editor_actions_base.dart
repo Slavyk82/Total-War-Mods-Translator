@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/validation/models/validation_issue.dart' as validation;
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
+import '../../../projects/providers/project_detail_providers.dart'
+    show projectDetailsProvider;
 import '../../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider;
 import '../../providers/editor_providers.dart';
@@ -38,6 +40,7 @@ mixin EditorActionsBase {
   void refreshProviders() {
     if (!mounted) return;
     ref.invalidate(translationRowsProvider(projectId, languageId));
+    ref.invalidate(projectDetailsProvider(projectId));
     ref.invalidate(projectsWithDetailsProvider);
   }
 

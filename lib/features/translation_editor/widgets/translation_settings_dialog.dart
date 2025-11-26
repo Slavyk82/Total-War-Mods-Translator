@@ -20,13 +20,15 @@ class TranslationSettingsDialog extends StatefulWidget {
 class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
   late TextEditingController _unitsController;
   late TextEditingController _parallelController;
+  late bool _isAutoMode;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _isAutoMode = widget.currentUnitsPerBatch == 0;
     _unitsController = TextEditingController(
-      text: widget.currentUnitsPerBatch.toString(),
+      text: _isAutoMode ? '100' : widget.currentUnitsPerBatch.toString(),
     );
     _parallelController = TextEditingController(
       text: widget.currentParallelBatches.toString(),
@@ -41,14 +43,17 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
   }
 
   bool _validate() {
-    final units = int.tryParse(_unitsController.text);
     final parallel = int.tryParse(_parallelController.text);
 
-    if (units == null || units < 10 || units > 500) {
-      setState(() {
-        _errorMessage = 'Units per batch must be between 10 and 500';
-      });
-      return false;
+    // Only validate units if not in auto mode
+    if (!_isAutoMode) {
+      final units = int.tryParse(_unitsController.text);
+      if (units == null || units < 10 || units > 1000) {
+        setState(() {
+          _errorMessage = 'Units per batch must be between 10 and 1000';
+        });
+        return false;
+      }
     }
 
     if (parallel == null || parallel < 1 || parallel > 20) {
@@ -67,7 +72,8 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
   void _save() {
     if (_validate()) {
       Navigator.of(context).pop({
-        'unitsPerBatch': int.parse(_unitsController.text),
+        // 0 = auto mode
+        'unitsPerBatch': _isAutoMode ? 0 : int.parse(_unitsController.text),
         'parallelBatches': int.parse(_parallelController.text),
       });
     }
@@ -106,24 +112,56 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
             const SizedBox(height: 24),
 
             // Units per batch
-            Text(
-              'Units per batch',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Units per batch',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // Auto mode toggle
+                Text(
+                  'Auto',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _isAutoMode
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Switch(
+                  value: _isAutoMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _isAutoMode = value;
+                      _errorMessage = null;
+                    });
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _unitsController,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              enabled: !_isAutoMode,
               decoration: InputDecoration(
-                hintText: 'Enter number (10-500)',
-                helperText: 'Number of translation units to send in each LLM request',
+                hintText: _isAutoMode ? 'Calculated automatically' : 'Enter number (10-1000)',
+                helperText: _isAutoMode
+                    ? 'Batch size will be calculated based on token limits'
+                    : 'Maximum number of translation units per LLM request',
                 helperMaxLines: 2,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                filled: _isAutoMode,
+                fillColor: _isAutoMode
+                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                    : null,
               ),
               onChanged: (_) => _validate(),
             ),
@@ -204,7 +242,9 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Recommended: 50-100 units per batch, 3-5 parallel batches for optimal speed.',
+                      _isAutoMode
+                          ? 'Auto mode calculates optimal batch size based on token limits for each request.'
+                          : 'Recommended: 3-5 parallel batches for optimal speed. Use Auto mode for best results.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.primary,
                       ),

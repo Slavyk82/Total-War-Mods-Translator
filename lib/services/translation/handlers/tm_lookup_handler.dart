@@ -5,6 +5,7 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
+import 'package:twmt/services/history/i_history_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -19,9 +20,11 @@ import 'package:uuid/uuid.dart';
 /// - Find fuzzy matches in TM (>=85% similarity)
 /// - Auto-accept fuzzy matches >=95%
 /// - Apply TM matches to translation units
+/// - Record translation history for TM matches
 /// - Check if units are already translated
 class TmLookupHandler {
   final ITranslationMemoryService _tmService;
+  final IHistoryService _historyService;
   final TranslationVersionRepository _versionRepository;
   final TransactionManager _transactionManager;
   final LoggingService _logger;
@@ -29,10 +32,12 @@ class TmLookupHandler {
 
   TmLookupHandler({
     required ITranslationMemoryService tmService,
+    required IHistoryService historyService,
     required TranslationVersionRepository versionRepository,
     required TransactionManager transactionManager,
     required LoggingService logger,
   })  : _tmService = tmService,
+        _historyService = historyService,
         _versionRepository = versionRepository,
         _transactionManager = transactionManager,
         _logger = logger;
@@ -43,8 +48,9 @@ class TmLookupHandler {
 
   /// Perform TM exact and fuzzy match lookup for batch units
   ///
-  /// Returns updated progress with TM match statistics
-  Future<TranslationProgress> performLookup({
+  /// Returns tuple of (updated progress, set of matched unit IDs)
+  /// The matched unit IDs can be used to skip re-checking in subsequent phases.
+  Future<(TranslationProgress, Set<String>)> performLookup({
     required String batchId,
     required List<TranslationUnit> units,
     required TranslationContext context,
@@ -137,26 +143,50 @@ class TmLookupHandler {
 
     // Filter units that need fuzzy matching (not already exact matched)
     final unitsForFuzzy = units.where((u) => !exactMatchedUnitIds.contains(u.id)).toList();
-    
+
     _logger.info('Starting fuzzy TM lookup', {
       'batchId': batchId,
       'unitsForFuzzy': unitsForFuzzy.length,
       'exactMatched': exactMatchedUnitIds.length,
     });
 
+    // Pre-fetch all translated unit IDs in one batch query (optimization)
+    // This avoids N sequential DB queries during fuzzy matching
+    final fuzzyUnitIds = unitsForFuzzy.map((u) => u.id).toList();
+    final alreadyTranslatedIdsResult = await _versionRepository.getTranslatedUnitIds(
+      unitIds: fuzzyUnitIds,
+      projectLanguageId: context.projectLanguageId,
+    );
+    final alreadyTranslatedIds = alreadyTranslatedIdsResult.isOk
+        ? alreadyTranslatedIdsResult.unwrap()
+        : <String>{};
+
+    // Further filter to exclude already translated units
+    final unitsForFuzzyFiltered = unitsForFuzzy
+        .where((u) => !alreadyTranslatedIds.contains(u.id))
+        .toList();
+
+    _logger.debug('Fuzzy lookup after pre-filter', {
+      'batchId': batchId,
+      'beforeFilter': unitsForFuzzy.length,
+      'afterFilter': unitsForFuzzyFiltered.length,
+      'alreadyTranslated': alreadyTranslatedIds.length,
+    });
+
     var fuzzyMatchCount = 0;
+    final fuzzyMatchedUnitIds = <String>{};
 
     // Process fuzzy matches in parallel chunks
     // IMPORTANT: Reads are done in parallel, but ALL writes are batched into single transaction
-    for (var i = 0; i < unitsForFuzzy.length; i += _maxConcurrentLookups) {
+    for (var i = 0; i < unitsForFuzzyFiltered.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
-      final chunk = unitsForFuzzy.skip(i).take(_maxConcurrentLookups).toList();
-      final progressPct = ((i / unitsForFuzzy.length) * 100).round();
+      final chunk = unitsForFuzzyFiltered.skip(i).take(_maxConcurrentLookups).toList();
+      final progressPct = ((i / unitsForFuzzyFiltered.length) * 100).round();
       
       // Update progress detail
       progress = progress.copyWith(
-        phaseDetail: 'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzy.length} units, $fuzzyMatchCount matches)...',
+        phaseDetail: 'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzyFiltered.length} units, $fuzzyMatchCount matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
@@ -183,8 +213,11 @@ class TmLookupHandler {
           timestamp: DateTime.now(),
         );
         onProgressUpdate(batchId, progress);
-        
+
         await _applyTmMatchesBatch(matchesToApply, context);
+        for (final pending in matchesToApply) {
+          fuzzyMatchedUnitIds.add(pending.unit.id);
+        }
         skippedCount += matchesToApply.length;
         processedCount += matchesToApply.length;
         fuzzyMatchCount += matchesToApply.length;
@@ -195,8 +228,8 @@ class TmLookupHandler {
         _logger.debug('TM fuzzy lookup progress', {
           'batchId': batchId,
           'processed': i,
-          'total': unitsForFuzzy.length,
-          'matches': skippedCount - exactMatchedUnitIds.length,
+          'total': unitsForFuzzyFiltered.length,
+          'matches': fuzzyMatchCount,
         });
       }
     }
@@ -208,17 +241,22 @@ class TmLookupHandler {
       'batchId': batchId,
       'skippedCount': skippedCount,
       'exactMatches': exactMatchedUnitIds.length,
-      'fuzzyMatches': skippedCount - exactMatchedUnitIds.length,
+      'fuzzyMatches': fuzzyMatchedUnitIds.length,
       'tmReuseRate': tmReuseRate,
     });
 
-    return progress.copyWith(
+    // Combine all matched unit IDs (exact + fuzzy)
+    final allMatchedUnitIds = <String>{...exactMatchedUnitIds, ...fuzzyMatchedUnitIds};
+
+    final finalProgress = progress.copyWith(
       phaseDetail: 'TM lookup complete: $tmReuseRatePct% reuse (${exactMatchedUnitIds.length} exact, $fuzzyMatchCount fuzzy)',
       skippedUnits: skippedCount,
       processedUnits: processedCount,
       tmReuseRate: tmReuseRate,
       timestamp: DateTime.now(),
     );
+
+    return (finalProgress, allMatchedUnitIds);
   }
 
   /// Find exact TM match for a unit (READ-ONLY operation)
@@ -243,17 +281,13 @@ class TmLookupHandler {
   }
 
   /// Find fuzzy TM match for a unit (READ-ONLY operation)
-  /// Returns the best match if found and unit not already translated, null otherwise
+  /// Returns the best match if found, null otherwise.
+  /// Note: Already-translated units should be filtered out before calling this method.
   Future<TmMatch?> _findFuzzyMatch(
     TranslationUnit unit,
     TranslationContext context,
   ) async {
     try {
-      // Check if already translated
-      if (await isUnitTranslated(unit, context)) {
-        return null;
-      }
-
       final fuzzyMatchesResult = await _tmService.findFuzzyMatches(
         sourceText: unit.sourceText,
         targetLanguageCode: context.targetLanguage,
@@ -280,24 +314,34 @@ class TmLookupHandler {
   ) async {
     if (matches.isEmpty) return;
 
+    // Store created versions for history recording
+    final createdVersions = <(TranslationVersion, _PendingTmMatch)>[];
+
     final transactionResult =
         await _transactionManager.executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch;
 
       for (final pending in matches) {
+        // Determine translation source based on TM match type
+        final translationSource = pending.match.matchType == TmMatchType.exact
+            ? TranslationSource.tmExact
+            : TranslationSource.tmFuzzy;
+
         final version = TranslationVersion(
           id: _generateId(),
           unitId: pending.unit.id,
           projectLanguageId: context.projectLanguageId,
           translatedText: pending.match.targetText,
           status: TranslationVersionStatus.translated,
-          confidenceScore: pending.match.similarityScore,
+          confidenceScore: pending.match.qualityScore,
+          translationSource: translationSource,
           createdAt: now,
           updatedAt: now,
         );
 
         // Use upsert to handle existing translations (e.g., when re-translating)
         await _versionRepository.upsertWithTransaction(txn, version);
+        createdVersions.add((version, pending));
       }
       return true;
     });
@@ -305,6 +349,60 @@ class TmLookupHandler {
     if (transactionResult.isErr) {
       throw transactionResult.unwrapErr();
     }
+
+    // Record history for each TM match (outside transaction)
+    for (final (version, pending) in createdVersions) {
+      final matchType = pending.match.matchType == TmMatchType.exact
+          ? 'exact'
+          : 'fuzzy';
+      final similarity = (pending.match.similarityScore * 100).round();
+
+      try {
+        await _historyService.recordChange(
+          versionId: version.id,
+          translatedText: pending.match.targetText,
+          status: TranslationVersionStatus.translated.name,
+          confidenceScore: pending.match.qualityScore,
+          changedBy: 'tm_$matchType',
+          changeReason: 'TM $matchType match ($similarity% similarity)',
+        );
+      } catch (e) {
+        _logger.warning('Failed to record TM history (non-critical)', {
+          'unitId': pending.unit.id,
+          'versionId': version.id,
+          'error': e,
+        });
+      }
+    }
+
+    // Increment usage count for each unique TM entry used
+    // Collect unique entry IDs with their usage count (same entry can match multiple units)
+    final entryUsageCounts = <String, int>{};
+    for (final (_, pending) in createdVersions) {
+      entryUsageCounts.update(
+        pending.match.entryId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+
+    // Increment usage counts in parallel (non-critical, don't block on errors)
+    await Future.wait(
+      entryUsageCounts.entries.map((entry) async {
+        try {
+          // Increment once per usage (if same TM entry matched multiple units)
+          for (var i = 0; i < entry.value; i++) {
+            await _tmService.incrementUsageCount(entryId: entry.key);
+          }
+        } catch (e) {
+          _logger.warning('Failed to increment TM usage count (non-critical)', {
+            'entryId': entry.key,
+            'usageCount': entry.value,
+            'error': e,
+          });
+        }
+      }),
+    );
   }
 
   /// Apply a TM match to a unit (save to database) - DEPRECATED, use _applyTmMatchesBatch
@@ -316,13 +414,19 @@ class TmLookupHandler {
   ) async {
     final transactionResult =
         await _transactionManager.executeTransaction((txn) async {
+      // Determine translation source based on TM match type
+      final translationSource = match.matchType == TmMatchType.exact
+          ? TranslationSource.tmExact
+          : TranslationSource.tmFuzzy;
+
       final version = TranslationVersion(
         id: _generateId(),
         unitId: unit.id,
         projectLanguageId: context.projectLanguageId,
         translatedText: match.targetText,
         status: TranslationVersionStatus.translated,
-        confidenceScore: match.similarityScore,
+        confidenceScore: match.qualityScore,
+        translationSource: translationSource,
         createdAt: DateTime.now().millisecondsSinceEpoch,
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );

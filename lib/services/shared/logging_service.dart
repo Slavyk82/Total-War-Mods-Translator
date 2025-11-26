@@ -1,11 +1,54 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+
+/// A structured log entry with level, message, and optional data.
+class LogEntry {
+  final DateTime timestamp;
+  final String level;
+  final String message;
+  final dynamic data;
+
+  const LogEntry({
+    required this.timestamp,
+    required this.level,
+    required this.message,
+    this.data,
+  });
+
+  /// Format the log entry as a string.
+  String format() {
+    final buffer = StringBuffer();
+    buffer.write('[${timestamp.toIso8601String()}] [$level] $message');
+    if (data != null) {
+      buffer.write(' | Data: $data');
+    }
+    return buffer.toString();
+  }
+
+  /// Get the color for this log level (for terminal display).
+  int get levelColor {
+    switch (level) {
+      case 'ERROR':
+        return 0xFFE53935; // Red
+      case 'WARN':
+        return 0xFFFFA726; // Orange
+      case 'INFO':
+        return 0xFF42A5F5; // Blue
+      case 'DEBUG':
+      default:
+        return 0xFF78909C; // Gray
+    }
+  }
+}
 
 /// Logging service for TWMT application.
 ///
 /// Provides structured logging to console and file with different log levels.
 /// Logs are stored in AppData\Local\TWMT\logs on Windows.
+///
+/// Supports real-time log streaming via [logStream] for UI display.
 class LoggingService {
   LoggingService._();
 
@@ -14,6 +57,23 @@ class LoggingService {
 
   File? _logFile;
   bool _initialized = false;
+
+  /// Stream controller for real-time log streaming.
+  final _logStreamController = StreamController<LogEntry>.broadcast();
+
+  /// Stream of log entries for real-time monitoring.
+  ///
+  /// Use this stream to display logs in UI components like a terminal widget.
+  Stream<LogEntry> get logStream => _logStreamController.stream;
+
+  /// Recent log entries buffer for displaying history.
+  final List<LogEntry> _recentLogs = [];
+
+  /// Maximum number of recent logs to keep in memory.
+  static const int maxRecentLogs = 500;
+
+  /// Get recent log entries (for initial display when opening terminal).
+  List<LogEntry> get recentLogs => List.unmodifiable(_recentLogs);
 
   /// Initialize the logging service.
   ///
@@ -86,19 +146,32 @@ class LoggingService {
 
   /// Internal logging method.
   void _log(String level, String message, [dynamic data]) {
-    final timestamp = DateTime.now().toIso8601String();
-    final logEntry = StringBuffer();
-    logEntry.write('[$timestamp] [$level] $message');
+    final timestamp = DateTime.now();
 
-    if (data != null) {
-      logEntry.write(' | Data: $data');
-    }
+    // Create structured log entry
+    final entry = LogEntry(
+      timestamp: timestamp,
+      level: level,
+      message: message,
+      data: data,
+    );
 
-    final logLine = logEntry.toString();
+    final logLine = entry.format();
 
     // Always log to console
     // ignore: avoid_print
     print(logLine);
+
+    // Add to recent logs buffer
+    _recentLogs.add(entry);
+    if (_recentLogs.length > maxRecentLogs) {
+      _recentLogs.removeAt(0);
+    }
+
+    // Emit to stream for real-time listeners
+    if (!_logStreamController.isClosed) {
+      _logStreamController.add(entry);
+    }
 
     // Log to file if initialized
     if (_initialized && _logFile != null) {
@@ -113,6 +186,16 @@ class LoggingService {
         print('Failed to write to log file: $e');
       }
     }
+  }
+
+  /// Clear recent logs buffer.
+  void clearRecentLogs() {
+    _recentLogs.clear();
+  }
+
+  /// Dispose the logging service (close streams).
+  void dispose() {
+    _logStreamController.close();
   }
 
   /// Get the current log file path.

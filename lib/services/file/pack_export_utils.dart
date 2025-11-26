@@ -70,12 +70,12 @@ class PackExportUtils {
 
   /// Build pack file name with prefix for load order priority
   ///
-  /// Format: !!!!!!!!!!_{LANG}_{original_pack_name}.pack
+  /// Format: !!!!!!!!!!_{LANG}_twmt_{original_pack_name}.pack
   /// The exclamation marks ensure the mod loads with high priority.
   String buildPackFileName(String languageCode, String? sourceFilePath) {
     final langCode = languageCode.toUpperCase();
     final originalPackName = extractOriginalPackName(sourceFilePath);
-    return '!!!!!!!!!!_${langCode}_$originalPackName.pack';
+    return '!!!!!!!!!!_${langCode}_twmt_$originalPackName.pack';
   }
 
   /// Extract original pack filename from source file path

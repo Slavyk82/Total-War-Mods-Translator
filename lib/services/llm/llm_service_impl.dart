@@ -86,11 +86,14 @@ class LlmServiceImpl implements ILlmService {
       return result;
     } on CircuitBreakerOpenException catch (e, stackTrace) {
       // Convert circuit breaker exception to LLM-specific exception
+      // Use serviceId from exception, not active provider (they may differ)
       return Err(
         LlmCircuitBreakerException(
           'Circuit breaker is open: ${e.toString()}',
-          providerCode: await getActiveProviderCode(),
+          providerCode: e.serviceId,
           retryAfter: e.willAttemptCloseAt,
+          originalError: e.lastErrorMessage,
+          originalErrorType: e.lastErrorType,
           stackTrace: stackTrace,
         ),
       );
@@ -421,8 +424,10 @@ class LlmServiceImpl implements ILlmService {
       yield Err(
         LlmCircuitBreakerException(
           'Circuit breaker is open: ${e.toString()}',
-          providerCode: await getActiveProviderCode(),
+          providerCode: e.serviceId,
           retryAfter: e.willAttemptCloseAt,
+          originalError: e.lastErrorMessage,
+          originalErrorType: e.lastErrorType,
           stackTrace: stackTrace,
         ),
       );

@@ -74,6 +74,9 @@ class OpenAiProvider implements ILlmProvider {
       return Ok(llmResponse);
     } on DioException catch (e) {
       return Err(_handleDioException(e));
+    } on LlmProviderException catch (e) {
+      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
+      return Err(e);
     } catch (e, stackTrace) {
       return Err(LlmProviderException(
         'Unexpected error: $e',
@@ -373,13 +376,24 @@ class OpenAiProvider implements ILlmProvider {
         throw FormatException('No choices in response');
       }
 
-      final message = choices[0]['message'] as Map<String, dynamic>;
+      final choice = choices[0] as Map<String, dynamic>;
+      final finishReason = choice['finish_reason'] as String?;
+      final message = choice['message'] as Map<String, dynamic>;
       final content = message['content'] as String?;
 
-      // Check for empty content (some models return null/empty)
-      if (content == null || content.trim().isEmpty) {
-        throw FormatException(
-          'Model returned empty content. This model may not be suitable for translation tasks.',
+      // Check for content filtering (explicit finish_reason or empty content)
+      // OpenAI returns finish_reason: "content_filter" when moderation triggers
+      // Some models return empty content instead of explicit filter reason
+      if (finishReason == 'content_filter' ||
+          (content == null || content.trim().isEmpty)) {
+        final sourceTexts = request.texts.values.toList();
+        throw LlmContentFilteredException(
+          'Content blocked by provider moderation. The source text may contain '
+          'content that violates the provider\'s usage policies. Try using a '
+          'different provider (e.g., Claude or DeepL) for this content.',
+          providerCode: providerCode,
+          filteredTexts: sourceTexts,
+          finishReason: finishReason ?? 'empty_content',
         );
       }
 
@@ -404,8 +418,11 @@ class OpenAiProvider implements ILlmProvider {
         totalTokens: inputTokens + outputTokens,
         processingTimeMs: processingTime,
         timestamp: DateTime.now(),
-        finishReason: choices[0]['finish_reason'] as String?,
+        finishReason: finishReason,
       );
+    } on LlmContentFilteredException {
+      // Re-throw content filter exceptions as-is (don't wrap in parse exception)
+      rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(
         'Failed to parse response: $e',

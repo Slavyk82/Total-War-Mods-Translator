@@ -136,11 +136,10 @@ class ProjectLanguageWithInfo {
   });
 
   /// Calculate progress percentage based on actual translation counts
+  /// Only units with status = 'translated' count as complete
   double get progressPercent {
     if (totalUnits == 0) return 0.0;
-    // Count translated + validated as "complete"
-    final completedUnits = translatedUnits + validatedUnits;
-    return (completedUnits / totalUnits) * 100;
+    return (translatedUnits / totalUnits) * 100;
   }
 }
 

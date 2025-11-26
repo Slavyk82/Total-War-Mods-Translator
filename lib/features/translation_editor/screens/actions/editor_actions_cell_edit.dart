@@ -77,7 +77,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
     }
   }
 
-  Future<void> handleApplySuggestion(String unitId, String targetText) async {
+  Future<void> handleApplySuggestion(String unitId, String targetText, double qualityScore, bool isExactMatch) async {
     try {
       final versionRepo = ref.read(translationVersionRepositoryProvider);
       final unitRepo = ref.read(translationUnitRepositoryProvider);
@@ -107,11 +107,19 @@ mixin EditorActionsCellEdit on EditorActionsBase {
 
       final unit = unitResult.unwrap();
 
+      // Determine translation source
+      final translationSource = isExactMatch
+          ? TranslationSource.tmExact
+          : TranslationSource.tmFuzzy;
+
       // Update version with suggested text (mark as TM-sourced, not manually edited)
+      // Use the TM quality score as confidence score
       final updatedVersion = currentVersion.copyWith(
         translatedText: targetText,
         isManuallyEdited: false,
         status: TranslationVersionStatus.translated,
+        confidenceScore: qualityScore,
+        translationSource: translationSource,
         updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       );
 

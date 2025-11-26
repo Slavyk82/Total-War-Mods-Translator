@@ -3,10 +3,9 @@ import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../widgets/welcome_card.dart';
 import '../widgets/stats_cards.dart';
 import '../widgets/recent_projects_card.dart';
-import '../widgets/quick_actions_card.dart';
 
 /// Home/Dashboard screen
-/// Shows overview of recent activity, quick actions, statistics
+/// Shows overview of recent activity and statistics
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -26,24 +25,8 @@ class HomeScreen extends StatelessWidget {
             const StatsCards(),
             const SizedBox(height: 24),
 
-            // Two-column layout for Recent Projects and Quick Actions
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Recent Projects (takes 2/3 of width)
-                const Expanded(
-                  flex: 2,
-                  child: RecentProjectsCard(),
-                ),
-                const SizedBox(width: 24),
-
-                // Quick Actions (takes 1/3 of width)
-                const Expanded(
-                  flex: 1,
-                  child: QuickActionsCard(),
-                ),
-              ],
-            ),
+            // Recent Projects
+            const RecentProjectsCard(),
           ],
         ),
       ),

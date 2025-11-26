@@ -308,6 +308,9 @@ class MigrationService {
 
     // Ensure new tables exist for existing databases
     await _ensureModUpdateAnalysisCacheTable();
+    
+    // Ensure translation_source column exists
+    await _ensureTranslationSourceColumn();
   }
 
   /// Ensure mod_update_analysis_cache table exists for existing databases.
@@ -349,6 +352,32 @@ class MigrationService {
     } catch (e, stackTrace) {
       logging.error('Failed to create mod_update_analysis_cache table', e, stackTrace);
       // Non-fatal: caching is optimization, not required for functionality
+    }
+  }
+
+  /// Ensure translation_source column exists in translation_versions table.
+  ///
+  /// This column tracks the source of each translation (manual, tm_exact, tm_fuzzy, llm).
+  static Future<void> _ensureTranslationSourceColumn() async {
+    final logging = LoggingService.instance;
+
+    try {
+      // Check if column exists
+      final columns = await DatabaseService.database.rawQuery(
+        "PRAGMA table_info(translation_versions)"
+      );
+      final hasColumn = columns.any((col) => col['name'] == 'translation_source');
+
+      if (!hasColumn) {
+        await DatabaseService.execute('''
+          ALTER TABLE translation_versions 
+          ADD COLUMN translation_source TEXT DEFAULT 'unknown'
+        ''');
+        logging.info('Added translation_source column to translation_versions');
+      }
+    } catch (e, stackTrace) {
+      logging.error('Failed to add translation_source column', e, stackTrace);
+      // Non-fatal: display will fall back to confidence-based detection
     }
   }
 

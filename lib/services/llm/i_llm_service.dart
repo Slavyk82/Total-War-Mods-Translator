@@ -273,12 +273,20 @@ class CircuitBreakerStatus {
   /// Time when circuit will attempt to close (null if not open)
   final DateTime? willAttemptCloseAt;
 
+  /// Last error that caused a failure (for diagnostics)
+  final String? lastErrorMessage;
+
+  /// Last error type (e.g., "LlmRateLimitException", "LlmServerException")
+  final String? lastErrorType;
+
   const CircuitBreakerStatus({
     required this.state,
     required this.failureCount,
     required this.successCount,
     this.openedAt,
     this.willAttemptCloseAt,
+    this.lastErrorMessage,
+    this.lastErrorType,
   });
 
   /// Check if circuit is allowing requests

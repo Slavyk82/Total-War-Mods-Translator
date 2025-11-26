@@ -194,15 +194,53 @@ class LlmResponseParseException extends LlmProviderException {
   }
 }
 
+/// Exception for content filtered by provider's moderation system
+///
+/// This occurs when the LLM provider refuses to process content due to
+/// content policy violations (e.g., OpenAI filtering mature game content).
+/// Unlike other errors, this indicates the content itself is problematic,
+/// not the request format or service availability.
+class LlmContentFilteredException extends LlmProviderException {
+  /// The source text(s) that triggered the filter
+  final List<String>? filteredTexts;
+
+  /// The finish reason from the API (e.g., "content_filter")
+  final String? finishReason;
+
+  const LlmContentFilteredException(
+    super.message, {
+    required super.providerCode,
+    this.filteredTexts,
+    this.finishReason,
+    super.code = 'CONTENT_FILTERED',
+    super.details,
+    super.stackTrace,
+  });
+
+  @override
+  String toString() {
+    return 'LlmContentFilteredException(provider: $providerCode, '
+        'finishReason: $finishReason, message: $message)';
+  }
+}
+
 /// Exception for circuit breaker open state
 class LlmCircuitBreakerException extends LlmProviderException {
   /// Time when circuit breaker will attempt to close (half-open)
   final DateTime? retryAfter;
 
+  /// Original error that caused the circuit breaker to open
+  final String? originalError;
+
+  /// Type of the original error
+  final String? originalErrorType;
+
   const LlmCircuitBreakerException(
     super.message, {
     required super.providerCode,
     this.retryAfter,
+    this.originalError,
+    this.originalErrorType,
     super.code = 'CIRCUIT_BREAKER_OPEN',
     super.details,
     super.stackTrace,
@@ -210,8 +248,11 @@ class LlmCircuitBreakerException extends LlmProviderException {
 
   @override
   String toString() {
+    final errorInfo = originalError != null
+        ? ', originalError: $originalError'
+        : '';
     return 'LlmCircuitBreakerException(provider: $providerCode, '
-        'retryAfter: $retryAfter, message: $message)';
+        'retryAfter: $retryAfter$errorInfo)';
   }
 }
 

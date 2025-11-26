@@ -12,6 +12,7 @@ import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
@@ -27,6 +28,7 @@ import 'package:twmt/services/translation/handlers/validation_persistence_handle
 import 'package:twmt/services/translation/handlers/batch_progress_manager.dart';
 import 'package:twmt/services/translation/handlers/parallel_batch_handler.dart';
 import 'package:twmt/services/translation/handlers/batch_estimation_handler.dart';
+import 'package:twmt/services/history/i_history_service.dart';
 
 /// Implementation of translation orchestration service
 ///
@@ -58,6 +60,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     required ITranslationMemoryService tmService,
     required IPromptBuilderService promptBuilder,
     required IValidationService validation,
+    required IHistoryService historyService,
     required TranslationVersionRepository versionRepository,
     required TranslationUnitRepository unitRepository,
     required TranslationBatchRepository batchRepository,
@@ -72,6 +75,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         _logger = logger,
         _tmLookupHandler = TmLookupHandler(
           tmService: tmService,
+          historyService: historyService,
           versionRepository: versionRepository,
           transactionManager: transactionManager,
           logger: logger,
@@ -84,6 +88,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         _validationPersistenceHandler = ValidationPersistenceHandler(
           validation: validation,
           tmService: tmService,
+          historyService: historyService,
           versionRepository: versionRepository,
           logger: logger,
         ),
@@ -101,6 +106,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           batchRepository: batchRepository,
           batchUnitRepository: batchUnitRepository,
           unitRepository: unitRepository,
+          versionRepository: versionRepository,
           logger: logger,
         );
 
@@ -215,7 +221,8 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       var currentProgress = initialProgress;
 
       // Step 1 & 2: TM Exact and Fuzzy Match Lookup
-      currentProgress = await _tmLookupHandler.performLookup(
+      // Returns both progress and set of matched unit IDs for optimization
+      final (tmProgress, tmMatchedUnitIds) = await _tmLookupHandler.performLookup(
         batchId: batchId,
         units: units,
         context: context,
@@ -225,21 +232,25 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           _batchProgressManager.updateAndEmitProgress(batchId, progress);
         },
       );
+      currentProgress = tmProgress;
       _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
       await _batchProgressManager.checkPauseOrCancel(batchId);
 
       // Track units already saved progressively to avoid double-saving
       final savedUnitIds = <String>{};
+      // Track cached unit IDs across all sub-batches
+      final accumulatedCachedUnitIds = <String>{};
 
       // Step 3 & 4: Build Prompt and Call LLM for remaining units
       // With progressive saving: save after each LLM sub-batch completes
-      final (progressAfterLlm, llmTranslations) =
+      // Pass tmMatchedUnitIds to avoid redundant DB checks (optimization)
+      final (progressAfterLlm, llmTranslations, allCachedUnitIds) =
           await _llmTranslationHandler.performTranslation(
         batchId: batchId,
         units: units,
         context: context,
         currentProgress: currentProgress,
-        isUnitTranslated: _tmLookupHandler.isUnitTranslated,
+        tmMatchedUnitIds: tmMatchedUnitIds,
         getCancellationToken: (batchId) =>
             _batchProgressManager.getCancellationToken(batchId),
         onProgressUpdate: (batchId, progress) {
@@ -247,7 +258,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         },
         checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
         // Progressive save callback - saves immediately after each LLM sub-batch
-        onSubBatchTranslated: (subBatchUnits, translations) async {
+        onSubBatchTranslated: (subBatchUnits, translations, subBatchCachedIds) async {
           final progressBeforeSave =
               _batchProgressManager.getProgress(batchId) ?? currentProgress;
           await _validationPersistenceHandler.validateAndSave(
@@ -260,9 +271,11 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
             onProgressUpdate: (batchId, progress) {
               _batchProgressManager.updateAndEmitProgress(batchId, progress);
             },
+            cachedUnitIds: subBatchCachedIds,
           );
-          // Track saved unit IDs
+          // Track saved unit IDs and cached IDs
           savedUnitIds.addAll(translations.keys);
+          accumulatedCachedUnitIds.addAll(subBatchCachedIds);
         },
       );
       currentProgress =
@@ -283,6 +296,10 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
 
         final remainingUnits =
             units.where((u) => remainingTranslations.containsKey(u.id)).toList();
+        // Filter cached IDs to only include remaining (unsaved) units
+        final remainingCachedIds = allCachedUnitIds
+            .where((id) => remainingTranslations.containsKey(id))
+            .toSet();
         currentProgress = await _validationPersistenceHandler.validateAndSave(
           translations: remainingTranslations,
           batchId: batchId,
@@ -293,6 +310,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           onProgressUpdate: (batchId, progress) {
             _batchProgressManager.updateAndEmitProgress(batchId, progress);
           },
+          cachedUnitIds: remainingCachedIds,
         );
         _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
       }
@@ -348,6 +366,9 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     TranslationContext context,
     CancelledException e,
   ) async {
+    // Clean up pending translations in cache
+    BatchTranslationCache.instance.cancelBatch(batchId);
+
     final cancelledProgress = _batchProgressManager.getProgress(batchId)?.copyWith(
               status: TranslationProgressStatus.cancelled,
               currentPhase: TranslationPhase.completed,
@@ -388,6 +409,9 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     Object e,
     StackTrace stackTrace,
   ) async {
+    // Clean up pending translations in cache
+    BatchTranslationCache.instance.cancelBatch(batchId);
+
     _logger.error('Batch translation failed', e, stackTrace);
 
     final errorProgress = _batchProgressManager.getProgress(batchId)?.copyWith(
@@ -491,7 +515,6 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       batchId: batchId,
       units: unitsResult.unwrap(),
       context: context,
-      isUnitTranslated: _tmLookupHandler.isUnitTranslated,
     );
   }
 

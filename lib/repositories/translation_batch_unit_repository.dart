@@ -206,5 +206,30 @@ class TranslationBatchUnitRepository
       return maps.map((map) => fromMap(map)).toList();
     });
   }
+
+  /// Insert multiple batch units in a single transaction.
+  ///
+  /// Performance optimization: Inserts all units in one transaction
+  /// instead of N separate transactions.
+  ///
+  /// Returns [Ok] with the number of inserted units.
+  Future<Result<int, TWMTDatabaseException>> insertBatch(
+      List<TranslationBatchUnit> entities) async {
+    if (entities.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      for (final entity in entities) {
+        final map = toMap(entity);
+        await txn.insert(
+          tableName,
+          map,
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      }
+      return entities.length;
+    });
+  }
 }
 

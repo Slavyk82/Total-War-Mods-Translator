@@ -67,36 +67,6 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     }
   }
 
-  Future<void> _resetToDefaults() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Reset to Defaults'),
-        content: const Text(
-          'Are you sure you want to reset all LLM provider settings to defaults? '
-          'This will clear all API keys.',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Reset'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await ref.read(llmProviderSettingsProvider.notifier).resetToDefaults();
-      if (mounted) {
-        FluentToast.success(context, 'Settings reset to defaults');
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
@@ -170,21 +140,6 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
 
             // Advanced Settings
             _buildAdvancedSettings(settings),
-            const SizedBox(height: 32),
-
-            // Actions
-            const Divider(),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FluentOutlinedButton(
-                  onPressed: _resetToDefaults,
-                  icon: const Icon(FluentIcons.arrow_reset_24_regular),
-                  child: const Text('Reset to Defaults'),
-                ),
-              ],
-            ),
           ],
         );
       },

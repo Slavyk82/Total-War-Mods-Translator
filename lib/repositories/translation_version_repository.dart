@@ -260,6 +260,35 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
+  /// Get IDs of units that are already translated.
+  ///
+  /// Performance optimization: Single batch query instead of N individual queries.
+  /// Returns only unit IDs that have non-empty translated_text.
+  Future<Result<Set<String>, TWMTDatabaseException>> getTranslatedUnitIds({
+    required List<String> unitIds,
+    required String projectLanguageId,
+  }) async {
+    if (unitIds.isEmpty) {
+      return Ok(<String>{});
+    }
+
+    return executeQuery(() async {
+      final placeholders = List.filled(unitIds.length, '?').join(',');
+      final maps = await database.rawQuery(
+        '''
+        SELECT unit_id FROM $tableName
+        WHERE unit_id IN ($placeholders)
+          AND project_language_id = ?
+          AND translated_text IS NOT NULL
+          AND translated_text != ''
+        ''',
+        [...unitIds, projectLanguageId],
+      );
+
+      return maps.map((m) => m['unit_id'] as String).toSet();
+    });
+  }
+
   /// Get translation version by unit and project language.
   Future<Result<TranslationVersion, TWMTDatabaseException>>
       getByUnitAndProjectLanguage({

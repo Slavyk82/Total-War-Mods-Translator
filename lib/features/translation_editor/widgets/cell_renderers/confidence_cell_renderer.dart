@@ -40,12 +40,12 @@ class ConfidenceCellRenderer extends StatelessWidget {
 
   /// Calculate color based on confidence score
   ///
-  /// High confidence (>95%): green
-  /// Medium confidence (85-95%): orange
-  /// Low confidence (<85%): red
+  /// High confidence (>=90%): green
+  /// Medium confidence (80-89%): orange
+  /// Low confidence (<80%): red
   static Color _getConfidenceColor(double confidence) {
-    if (confidence >= 0.95) return Colors.green;
-    if (confidence >= 0.85) return Colors.orange;
+    if (confidence >= 0.90) return Colors.green;
+    if (confidence >= 0.80) return Colors.orange;
     return Colors.red;
   }
 }

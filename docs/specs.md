@@ -254,8 +254,8 @@ lib/services/
 **IMPORTANT:** Packs = fichiers traduction UNIQUEMENT (pas mod source complet)
 
 **Préfixage (2 niveaux):**
-1. Nom .pack: `!!!!!!!!!!_{LANG}_nom_mod.pack`
-2. Fichiers .loc: `!!!!!!!!!!_{LANG}_nom_original.loc`
+1. Nom .pack: `!!!!!!!!!!_{LANG}_twmt_nom_mod.pack`
+2. Fichiers .loc: `!!!!!!!!!!_{LANG}_twmt_nom_original.loc`
 
 **Codes langue:** FR, DE, ES, EN, RU, ZH (ISO 639-1 majuscules)
 
@@ -268,18 +268,18 @@ rpfm-cli -p "mod_source.pack" --extract-all --output "temp/"
 # Format: key\ttraduction
 
 # 3. Création pack (IMPORTANT: .loc déjà préfixés avant ajout)
-rpfm-cli -p "!!!!!!!!!!_{LANG}_mod.pack" --add-file "text/db/!!!!!!!!!!_{LANG}_file.loc"
+rpfm-cli -p "!!!!!!!!!!_{LANG}_twmt_mod.pack" --add-file "text/db/!!!!!!!!!!_{LANG}_twmt_file.loc"
 
 # 4. Multi-langues: 1 pack par langue
 ```
 
 **Structure pack exporté:**
 ```
-!!!!!!!!!!_FR_mod.pack
+!!!!!!!!!!_FR_twmt_mod.pack
 ├── text/db/
-│   ├── !!!!!!!!!!_FR_units.loc
-│   ├── !!!!!!!!!!_FR_ui_strings.loc
-│   └── !!!!!!!!!!_FR_buildings.loc
+│   ├── !!!!!!!!!!_FR_twmt_units.loc
+│   ├── !!!!!!!!!!_FR_twmt_ui_strings.loc
+│   └── !!!!!!!!!!_FR_twmt_buildings.loc
 ```
 
 **Export révision externe:**

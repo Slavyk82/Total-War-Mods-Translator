@@ -14,7 +14,7 @@ class TmCleanupDialog extends ConsumerStatefulWidget {
 
 class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
   double _minQuality = 0.3;
-  int _unusedDays = 365;
+  int _unusedDays = 0; // Default to 0 (disabled) for quality-only cleanup
 
   @override
   Widget build(BuildContext context) {
@@ -83,24 +83,37 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
                 Text(
-                  '$_unusedDays',
+                  _unusedDays == 0 ? 'Disabled' : '$_unusedDays',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: _unusedDays == 0
+                            ? Theme.of(context).colorScheme.secondary
+                            : Theme.of(context).colorScheme.primary,
                       ),
                 ),
               ],
             ),
             Slider(
               value: _unusedDays.toDouble(),
-              min: 30,
+              min: 0,
               max: 730,
-              divisions: 14,
+              divisions: 73, // 0, 10, 20, ... 730
               onChanged: (value) {
                 setState(() {
                   _unusedDays = value.toInt();
                 });
               },
             ),
+            if (_unusedDays == 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Age filter disabled - will delete by quality only',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                ),
+              ),
 
             const SizedBox(height: 24),
 

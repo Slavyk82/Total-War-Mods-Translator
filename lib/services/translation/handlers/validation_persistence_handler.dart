@@ -1,6 +1,7 @@
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
+import 'package:twmt/services/history/i_history_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -14,10 +15,12 @@ import 'package:uuid/uuid.dart';
 /// - Validate LLM translations
 /// - Save translations to database
 /// - Update Translation Memory
+/// - Record translation history
 /// - Track success/failure counts
 class ValidationPersistenceHandler {
   final IValidationService _validation;
   final ITranslationMemoryService _tmService;
+  final IHistoryService _historyService;
   final TranslationVersionRepository _versionRepository;
   final LoggingService _logger;
   final Uuid _uuid = const Uuid();
@@ -25,10 +28,12 @@ class ValidationPersistenceHandler {
   ValidationPersistenceHandler({
     required IValidationService validation,
     required ITranslationMemoryService tmService,
+    required IHistoryService historyService,
     required TranslationVersionRepository versionRepository,
     required LoggingService logger,
   })  : _validation = validation,
         _tmService = tmService,
+        _historyService = historyService,
         _versionRepository = versionRepository,
         _logger = logger;
 
@@ -36,6 +41,10 @@ class ValidationPersistenceHandler {
   ///
   /// Validates and saves translations one by one, emitting progress updates
   /// after each successful save for real-time UI feedback.
+  /// TM updates are batched at the end for performance.
+  ///
+  /// [cachedUnitIds] contains IDs of units that were translated via cache/deduplication
+  /// rather than directly by LLM. These will be marked as TM exact matches.
   ///
   /// Returns updated progress with success/failure counts
   Future<TranslationProgress> validateAndSave({
@@ -46,6 +55,7 @@ class ValidationPersistenceHandler {
     required TranslationProgress currentProgress,
     required Future<void> Function(String batchId) checkPauseOrCancel,
     required void Function(String batchId, TranslationProgress progress) onProgressUpdate,
+    Set<String> cachedUnitIds = const {},
   }) async {
     _logger.info('Starting validation and save', {'batchId': batchId});
 
@@ -64,6 +74,9 @@ class ValidationPersistenceHandler {
     var successCount = 0;
     var failCount = 0;
 
+    // Collect successful translations for batch TM update
+    final tmBatchEntries = <({String sourceText, String targetText})>[];
+
     // Process each translation individually with progress updates
     for (final unit in units) {
       await checkPauseOrCancel(batchId);
@@ -75,7 +88,7 @@ class ValidationPersistenceHandler {
       }
 
       validatedCount++;
-      
+
       // Update phase detail with current validation progress
       progress = progress.copyWith(
         phaseDetail: 'Validating translation $validatedCount/$totalToValidate (variables, markup, glossary)...',
@@ -134,13 +147,18 @@ class ValidationPersistenceHandler {
         onProgressUpdate(batchId, progress);
 
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        // Use TM exact for cached/deduplicated translations, LLM for direct translations
+        final translationSource = cachedUnitIds.contains(unit.id)
+            ? TranslationSource.tmExact
+            : TranslationSource.llm;
         final version = TranslationVersion(
           id: _generateId(),
           unitId: unit.id,
           projectLanguageId: context.projectLanguageId,
           translatedText: llmTranslation,
           status: status,
-          confidenceScore: 0.8,
+          confidenceScore: cachedUnitIds.contains(unit.id) ? 1.0 : 0.8,
+          translationSource: translationSource,
           validationIssues: validationIssuesJson,
           createdAt: now,
           updatedAt: now,
@@ -156,26 +174,29 @@ class ValidationPersistenceHandler {
         } else {
           successCount++;
 
-          // Update detail: TM update phase
-          progress = progress.copyWith(
-            currentPhase: TranslationPhase.updatingTm,
-            phaseDetail: 'Adding to Translation Memory $validatedCount/$totalToValidate...',
-            timestamp: DateTime.now(),
-          );
-          onProgressUpdate(batchId, progress);
+          // Collect for batch TM update (instead of individual calls)
+          // Only add to TM batch if it was a direct LLM translation (not cached)
+          if (!cachedUnitIds.contains(unit.id)) {
+            tmBatchEntries.add((sourceText: unit.sourceText, targetText: llmTranslation));
+          }
 
-          // Add to Translation Memory
+          // Record translation history
+          final isCached = cachedUnitIds.contains(unit.id);
           try {
-            await _tmService.addTranslation(
-              sourceText: unit.sourceText,
-              targetText: llmTranslation,
-              targetLanguageCode: context.targetLanguage,
-              category: context.category,
-              quality: 0.8,
+            await _historyService.recordChange(
+              versionId: version.id,
+              translatedText: llmTranslation,
+              status: status.name,
+              confidenceScore: isCached ? 1.0 : 0.8,
+              changedBy: isCached ? 'tm_exact' : 'provider_${context.providerCode}',
+              changeReason: isCached
+                  ? 'TM exact match (100% similarity, batch deduplication)'
+                  : 'LLM translation (${context.modelId ?? "default"})',
             );
           } catch (e) {
-            _logger.warning('Failed to add to TM (non-critical)', {
+            _logger.warning('Failed to record history (non-critical)', {
               'unitId': unit.id,
+              'versionId': version.id,
               'error': e,
             });
           }
@@ -192,7 +213,7 @@ class ValidationPersistenceHandler {
       } catch (e, stackTrace) {
         _logger.error('Save operation failed', e, stackTrace);
         failCount++;
-        
+
         // Update progress after failure
         progress = progress.copyWith(
           failedUnits: currentProgress.failedUnits + failCount,
@@ -200,6 +221,41 @@ class ValidationPersistenceHandler {
           timestamp: DateTime.now(),
         );
         onProgressUpdate(batchId, progress);
+      }
+    }
+
+    // Batch update Translation Memory (much faster than individual calls)
+    if (tmBatchEntries.isNotEmpty) {
+      progress = progress.copyWith(
+        currentPhase: TranslationPhase.updatingTm,
+        phaseDetail: 'Updating Translation Memory (${tmBatchEntries.length} entries)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
+
+      try {
+        final tmResult = await _tmService.addTranslationsBatch(
+          translations: tmBatchEntries,
+          targetLanguageCode: context.targetLanguage,
+          quality: 0.8,
+        );
+
+        if (tmResult.isErr) {
+          _logger.warning('Batch TM update failed (non-critical)', {
+            'batchId': batchId,
+            'error': tmResult.error,
+          });
+        } else {
+          _logger.debug('Batch TM update completed', {
+            'batchId': batchId,
+            'entriesProcessed': tmResult.value,
+          });
+        }
+      } catch (e) {
+        _logger.warning('Batch TM update failed (non-critical)', {
+          'batchId': batchId,
+          'error': e,
+        });
       }
     }
 

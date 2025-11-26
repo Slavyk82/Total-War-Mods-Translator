@@ -260,14 +260,15 @@ class TranslationMemoryRepository
     return StringSimilarity.similarity(text1, text2, caseSensitive: false);
   }
 
-  /// Delete entries with low quality and not recently used (bulk cleanup).
+  /// Delete entries with low quality and optionally not recently used (bulk cleanup).
   ///
-  /// This method removes TM entries that meet ALL of the following criteria:
-  /// - Quality score is below [maxQuality] threshold
-  /// - Last used more than [unusedDays] days ago
+  /// This method removes TM entries based on:
+  /// - Quality score is below [maxQuality] threshold (NULL treated as 0)
+  /// - If [unusedDays] > 0: Also requires last used more than [unusedDays] days ago
+  /// - If [unusedDays] = 0: Age filter is disabled, deletes by quality only
   ///
   /// [maxQuality] - Maximum quality score for deletion (entries below this are deleted)
-  /// [unusedDays] - Minimum days since last use for deletion
+  /// [unusedDays] - Minimum days since last use (0 = disabled, quality only)
   ///
   /// Returns [Ok] with count of deleted entries, [Err] with exception on failure.
   Future<Result<int, TWMTDatabaseException>> deleteByQualityAndAge({
@@ -275,18 +276,93 @@ class TranslationMemoryRepository
     required int unusedDays,
   }) async {
     return executeQuery(() async {
-      // Calculate cutoff timestamp (current time - unusedDays)
+      int rowsAffected;
+
+      if (unusedDays <= 0) {
+        // Age filter disabled - delete by quality only
+        rowsAffected = await database.rawDelete(
+          '''
+          DELETE FROM $tableName
+          WHERE COALESCE(quality_score, 0) < ?
+          ''',
+          [maxQuality],
+        );
+      } else {
+        // Both filters active
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
+
+        rowsAffected = await database.rawDelete(
+          '''
+          DELETE FROM $tableName
+          WHERE COALESCE(quality_score, 0) < ?
+            AND COALESCE(last_used_at, 0) < ?
+          ''',
+          [maxQuality, cutoffTimestamp],
+        );
+      }
+
+      return rowsAffected;
+    });
+  }
+
+  /// Count entries that would be deleted by cleanup criteria.
+  ///
+  /// Used for diagnostics/preview before actual deletion.
+  Future<Result<Map<String, int>, TWMTDatabaseException>> countCleanupCandidates({
+    required double maxQuality,
+    required int unusedDays,
+  }) async {
+    return executeQuery(() async {
+      // Count entries with low quality only
+      final lowQualityResult = await database.rawQuery(
+        '''
+        SELECT COUNT(*) as count FROM $tableName
+        WHERE COALESCE(quality_score, 0) < ?
+        ''',
+        [maxQuality],
+      );
+
+      final lowQualityCount = lowQualityResult.first['count'] as int;
+
+      if (unusedDays <= 0) {
+        // Age filter disabled - only quality matters
+        return {
+          'willBeDeleted': lowQualityCount,
+          'lowQualityOnly': lowQualityCount,
+          'unusedOnly': 0,
+          'ageFilterDisabled': 1,
+        };
+      }
+
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
 
-      // Delete entries matching criteria
-      final rowsAffected = await database.delete(
-        tableName,
-        where: 'quality_score < ? AND last_used_at < ?',
-        whereArgs: [maxQuality, cutoffTimestamp],
+      // Count entries matching both criteria (will be deleted)
+      final bothResult = await database.rawQuery(
+        '''
+        SELECT COUNT(*) as count FROM $tableName
+        WHERE COALESCE(quality_score, 0) < ?
+          AND COALESCE(last_used_at, 0) < ?
+        ''',
+        [maxQuality, cutoffTimestamp],
       );
 
-      return rowsAffected;
+      // Count entries not used recently only
+      final unusedResult = await database.rawQuery(
+        '''
+        SELECT COUNT(*) as count FROM $tableName
+        WHERE COALESCE(last_used_at, 0) < ?
+        ''',
+        [cutoffTimestamp],
+      );
+
+      return {
+        'willBeDeleted': bothResult.first['count'] as int,
+        'lowQualityOnly': lowQualityCount,
+        'unusedOnly': unusedResult.first['count'] as int,
+        'ageFilterDisabled': 0,
+      };
     });
   }
 
@@ -419,6 +495,105 @@ class TranslationMemoryRepository
       }
 
       return fromMap(maps.first);
+    });
+  }
+
+  /// Batch upsert translation memory entries.
+  ///
+  /// Efficiently inserts or updates multiple TM entries in a single transaction.
+  /// Uses INSERT OR REPLACE with source_hash as conflict resolution key.
+  ///
+  /// For existing entries (same source_hash + target_language_id):
+  /// - Updates translated_text, quality_score, last_used_at, updated_at
+  /// - Increments usage_count
+  ///
+  /// For new entries: Creates with provided values.
+  ///
+  /// [entries] - List of TM entries to upsert
+  ///
+  /// Returns [Ok] with number of entries processed, [Err] on failure.
+  Future<Result<int, TWMTDatabaseException>> upsertBatch(
+    List<TranslationMemoryEntry> entries,
+  ) async {
+    if (entries.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      var processedCount = 0;
+
+      // Collect all source_hash + target_language_id pairs for batch lookup
+      final hashPairs = entries
+          .map((e) => '${e.sourceHash}:${e.targetLanguageId}')
+          .toSet()
+          .toList();
+
+      // Build query to find existing entries by hash pairs
+      final existingEntries = <String, TranslationMemoryEntry>{};
+
+      // Query in chunks to avoid SQL parameter limits
+      const chunkSize = 100;
+      for (var i = 0; i < hashPairs.length; i += chunkSize) {
+        final chunk = hashPairs.skip(i).take(chunkSize).toList();
+
+        // Build WHERE clause for this chunk
+        final conditions = chunk.map((pair) {
+          final parts = pair.split(':');
+          return "(source_hash = '${parts[0].replaceAll("'", "''")}' AND target_language_id = '${parts[1].replaceAll("'", "''")}')";
+        }).join(' OR ');
+
+        final maps = await txn.rawQuery(
+          'SELECT * FROM $tableName WHERE $conditions',
+        );
+
+        for (final map in maps) {
+          final entry = fromMap(map);
+          final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+          existingEntries[key] = entry;
+        }
+      }
+
+      // Process each entry: update existing or insert new
+      for (final entry in entries) {
+        final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+        final existing = existingEntries[key];
+
+        if (existing != null) {
+          // Update existing entry
+          final updatedQuality = (existing.qualityScore ?? 0.0) > entry.qualityScore!
+              ? existing.qualityScore
+              : entry.qualityScore;
+
+          await txn.update(
+            tableName,
+            {
+              'translated_text': entry.translatedText,
+              'quality_score': updatedQuality,
+              'usage_count': existing.usageCount + 1,
+              'last_used_at': now,
+              'updated_at': now,
+            },
+            where: 'id = ?',
+            whereArgs: [existing.id],
+          );
+        } else {
+          // Insert new entry
+          final map = toMap(entry.copyWith(
+            createdAt: now,
+            lastUsedAt: now,
+            updatedAt: now,
+          ));
+          await txn.insert(
+            tableName,
+            map,
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        processedCount++;
+      }
+
+      return processedCount;
     });
   }
 }

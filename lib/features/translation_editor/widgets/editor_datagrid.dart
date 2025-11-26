@@ -32,6 +32,8 @@ class EditorDataGrid extends ConsumerStatefulWidget {
   final Function(String unitId, String newText) onCellEdit;
   final Function(String unitId)? onRowDoubleTap;
   final Future<void> Function()? onForceRetranslate;
+  /// Callback when a row is selected (single click) - provides full row details
+  final Function(TranslationRow row)? onRowSelected;
 
   const EditorDataGrid({
     super.key,
@@ -40,6 +42,7 @@ class EditorDataGrid extends ConsumerStatefulWidget {
     required this.onCellEdit,
     this.onRowDoubleTap,
     this.onForceRetranslate,
+    this.onRowSelected,
   });
 
   @override
@@ -267,6 +270,11 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     ),
                   ),
                   GridColumn(
+                    columnName: 'locFile',
+                    width: 150,
+                    label: _buildColumnHeader('Loc File'),
+                  ),
+                  GridColumn(
                     columnName: 'key',
                     width: 150,
                     label: _buildColumnHeader('Key'),
@@ -308,6 +316,14 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   void _handleCellTap(DataGridCellTapDetails details) {
     _selectionHandler.handleCellTap(details);
+
+    // Notify parent of selected row for bottom panel
+    if (widget.onRowSelected != null) {
+      final rowIndex = details.rowColumnIndex.rowIndex - 1; // Skip header
+      if (rowIndex >= 0 && rowIndex < _dataSource.translationRows.length) {
+        widget.onRowSelected!(_dataSource.translationRows[rowIndex]);
+      }
+    }
   }
 
   void _handleCellDoubleTap(DataGridCellDoubleTapDetails details) {
@@ -383,8 +399,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   /// Edit the selected row inline using the grid's visual row index
   void _handleEdit(int gridRowIndex) {
-    // Column 4 is translatedText (0:checkbox, 1:status, 2:key, 3:sourceText, 4:translatedText)
-    final rowColumnIndex = RowColumnIndex(gridRowIndex, 4);
+    // Column 5 is translatedText (0:checkbox, 1:status, 2:locFile, 3:key, 4:sourceText, 5:translatedText)
+    final rowColumnIndex = RowColumnIndex(gridRowIndex, 5);
     _controller.beginEdit(rowColumnIndex);
   }
 
@@ -575,7 +591,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     const minHeight = 56.0;
     
     // Get the width available for text columns
-    final fixedColumnsWidth = 50 + 60 + 150 + 120 + 90 + 60; // = 530
+    final fixedColumnsWidth = 50 + 60 + 150 + 120 + 90 + 150; // = 620
     final screenWidth = MediaQuery.of(context).size.width;
     final availableWidth = screenWidth > fixedColumnsWidth 
         ? screenWidth - fixedColumnsWidth 

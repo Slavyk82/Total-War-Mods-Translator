@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS translation_versions (
     is_manually_edited INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
     confidence_score REAL,
+    translation_source TEXT DEFAULT 'unknown',
     validation_issues TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
@@ -176,6 +177,7 @@ CREATE TABLE IF NOT EXISTS translation_versions (
     UNIQUE(unit_id, project_language_id),
     CHECK (status IN ('pending', 'translating', 'translated', 'reviewed', 'approved', 'needs_review')),
     CHECK (confidence_score IS NULL OR (confidence_score >= 0 AND confidence_score <= 1)),
+    CHECK (translation_source IN ('unknown', 'manual', 'tm_exact', 'tm_fuzzy', 'llm')),
     CHECK (is_manually_edited IN (0, 1)),
     CHECK (created_at <= updated_at)
 );

@@ -3,16 +3,12 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
-import 'package:twmt/models/domain/translation_version_history.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/repositories/translation_version_history_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
-import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/validation/i_translation_validation_service.dart';
-import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/services/search/i_search_service.dart';
 import 'package:twmt/services/history/undo_redo_manager.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -26,6 +22,20 @@ import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
 
 part 'editor_providers.g.dart';
+
+// =============================================================================
+// GLOBAL TRANSLATION STATE
+// =============================================================================
+
+/// Global state tracking if a batch translation is in progress.
+/// Used to block navigation while translation is running.
+@Riverpod(keepAlive: true)
+class TranslationInProgress extends _$TranslationInProgress {
+  @override
+  bool build() => false;
+
+  void setInProgress(bool value) => state = value;
+}
 
 /// Combined view of translation unit and its version for display in DataGrid
 class TranslationRow {
@@ -43,8 +53,10 @@ class TranslationRow {
   String? get translatedText => version.translatedText;
   TranslationVersionStatus get status => version.status;
   double? get confidence => version.confidenceScore;
+  TranslationSource get translationSource => version.translationSource;
   bool get isManuallyEdited => version.isManuallyEdited;
   bool get hasValidationIssues => version.hasValidationIssues;
+  String? get sourceLocFile => unit.sourceLocFile;
 
   TranslationRow copyWith({
     TranslationUnit? unit,
@@ -291,15 +303,29 @@ class EditorSelection extends _$EditorSelection {
   }
 }
 
-/// Get the TM source type from a translation row based on confidence and manual edit flag
+/// Get the TM source type from a translation row based on translation source field
 TmSourceType getTmSourceType(TranslationRow row) {
   if (row.isManuallyEdited) return TmSourceType.manual;
-  if (row.confidence != null) {
-    if (row.confidence! >= 0.999) return TmSourceType.exactMatch;
-    if (row.confidence! >= 0.85) return TmSourceType.fuzzyMatch;
-    return TmSourceType.llm;
+  
+  // Use explicit translation source field if available
+  switch (row.translationSource) {
+    case TranslationSource.tmExact:
+      return TmSourceType.exactMatch;
+    case TranslationSource.tmFuzzy:
+      return TmSourceType.fuzzyMatch;
+    case TranslationSource.llm:
+      return TmSourceType.llm;
+    case TranslationSource.manual:
+      return TmSourceType.manual;
+    case TranslationSource.unknown:
+      // Fallback for legacy data: use confidence-based detection
+      if (row.confidence != null) {
+        if (row.confidence! >= 0.999) return TmSourceType.exactMatch;
+        if (row.confidence! >= 0.85) return TmSourceType.fuzzyMatch;
+        return TmSourceType.llm;
+      }
+      return TmSourceType.none;
   }
-  return TmSourceType.none;
 }
 
 /// Provider for translation rows (units + versions)
@@ -425,38 +451,6 @@ Future<List<TranslationRow>> filteredTranslationRows(
   }).toList();
 }
 
-/// Provider for TM suggestions for a specific unit
-@riverpod
-Future<List<TmMatch>> tmSuggestionsForUnit(
-  Ref ref,
-  String unitId,
-  String sourceLanguageCode,
-  String targetLanguageCode,
-) async {
-  final tmService = ref.watch(translationMemoryServiceProvider);
-
-  // Get the translation unit to get source text
-  final unitRepo = ref.watch(translationUnitRepositoryProvider);
-  final unitResult = await unitRepo.getById(unitId);
-
-  return unitResult.when(
-    ok: (unit) async {
-      final result = await tmService.findFuzzyMatches(
-        sourceText: unit.sourceText,
-        targetLanguageCode: targetLanguageCode,
-        maxResults: 3,
-        minSimilarity: 0.85,
-      );
-
-      return result.when(
-        ok: (matches) => matches,
-        err: (_) => <TmMatch>[],
-      );
-    },
-    err: (_) => <TmMatch>[],
-  );
-}
-
 /// Provider for editor statistics
 @riverpod
 Future<EditorStats> editorStats(
@@ -505,50 +499,10 @@ Future<EditorStats> editorStats(
   );
 }
 
-/// Provider for translation version history repository
-@riverpod
-TranslationVersionHistoryRepository translationVersionHistoryRepository(Ref ref) {
-  return ServiceLocator.get<TranslationVersionHistoryRepository>();
-}
-
 /// Provider for validation service
 @riverpod
 ITranslationValidationService validationService(Ref ref) {
   return ServiceLocator.get<ITranslationValidationService>();
-}
-
-/// Provider for history entries for a specific version
-@riverpod
-Future<List<TranslationVersionHistory>> historyForVersion(
-  Ref ref,
-  String versionId,
-) async {
-  final repository = ref.watch(translationVersionHistoryRepositoryProvider);
-  final result = await repository.getByVersion(versionId);
-
-  return result.when(
-    ok: (entries) => entries,
-    err: (_) => <TranslationVersionHistory>[],
-  );
-}
-
-/// Provider for validation issues
-@riverpod
-Future<List<ValidationIssue>> validationIssues(
-  Ref ref,
-  String sourceText,
-  String translatedText,
-) async {
-  final service = ref.watch(validationServiceProvider);
-  final result = await service.validateTranslation(
-    sourceText: sourceText,
-    translatedText: translatedText,
-  );
-
-  return result.when(
-    ok: (issues) => issues,
-    err: (_) => <ValidationIssue>[],
-  );
 }
 
 /// Provider for logging service
@@ -579,65 +533,6 @@ ProjectLanguageRepository projectLanguageRepository(Ref ref) {
 @riverpod
 ITranslationOrchestrator translationOrchestrator(Ref ref) {
   return ServiceLocator.get<ITranslationOrchestrator>();
-}
-
-/// Provider for currently selected translation version ID
-/// This is used by the History and Validation panels to know which translation to display
-@riverpod
-class SelectedTranslationVersion extends _$SelectedTranslationVersion {
-  @override
-  String? build() => null;
-
-  /// Set the currently selected translation version ID
-  void select(String? versionId) {
-    state = versionId;
-  }
-
-  /// Clear the selection
-  void clear() {
-    state = null;
-  }
-}
-
-/// Provider for the full translation version data of the selected translation
-@riverpod
-Future<TranslationVersion?> selectedTranslationVersionData(
-  Ref ref,
-) async {
-  final versionId = ref.watch(selectedTranslationVersionProvider);
-
-  if (versionId == null) {
-    return null;
-  }
-
-  final repository = ref.watch(translationVersionRepositoryProvider);
-  final result = await repository.getById(versionId);
-
-  return result.when(
-    ok: (version) => version,
-    err: (_) => null,
-  );
-}
-
-/// Provider for the source text of the selected translation
-@riverpod
-Future<String?> selectedTranslationSourceText(
-  Ref ref,
-) async {
-  final versionData = await ref.watch(selectedTranslationVersionDataProvider.future);
-
-  if (versionData == null) {
-    return null;
-  }
-
-  // Get the translation unit to get the source text
-  final unitRepo = ref.watch(translationUnitRepositoryProvider);
-  final unitResult = await unitRepo.getById(versionData.unitId);
-
-  return unitResult.when(
-    ok: (unit) => unit.sourceText,
-    err: (_) => null,
-  );
 }
 
 /// Provider for export orchestrator service

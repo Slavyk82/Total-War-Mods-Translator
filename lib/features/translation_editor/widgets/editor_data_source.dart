@@ -64,6 +64,10 @@ class EditorDataSource extends DataGridSource {
             columnName: 'status',
             value: row.status,
           ),
+          DataGridCell<String?>(
+            columnName: 'locFile',
+            value: row.sourceLocFile,
+          ),
           DataGridCell<String>(
             columnName: 'key',
             value: row.key,
@@ -96,24 +100,38 @@ class EditorDataSource extends DataGridSource {
   // Performance: Static method to avoid closure allocation
   static String _getTmSourceText(TranslationRow row) {
     if (row.isManuallyEdited) return 'Manual';
-    if (row.confidence != null) {
-      if (row.confidence! >= 0.999) return 'Exact Match';
-      if (row.confidence! >= 0.95) return 'Fuzzy Match';
-      if (row.confidence! >= 0.85) return 'Fuzzy Match';
-      return 'LLM';
+    
+    // Use explicit translation source field if available
+    switch (row.translationSource) {
+      case TranslationSource.tmExact:
+        return 'Exact Match';
+      case TranslationSource.tmFuzzy:
+        return 'Fuzzy Match';
+      case TranslationSource.llm:
+        return 'LLM';
+      case TranslationSource.manual:
+        return 'Manual';
+      case TranslationSource.unknown:
+        // Fallback for legacy data: use confidence-based detection
+        if (row.confidence != null) {
+          if (row.confidence! >= 0.999) return 'Exact Match';
+          if (row.confidence! >= 0.85) return 'Fuzzy Match';
+          return 'LLM';
+        }
+        return 'None';
     }
-    return 'None';
   }
 
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {
     final checkboxCell = row.getCells()[0];
     final statusCell = row.getCells()[1];
-    final keyCell = row.getCells()[2];
-    final sourceTextCell = row.getCells()[3];
-    final translatedTextCell = row.getCells()[4];
-    final tmSourceCell = row.getCells()[5];
-    final confidenceCell = row.getCells()[6];
+    final locFileCell = row.getCells()[2];
+    final keyCell = row.getCells()[3];
+    final sourceTextCell = row.getCells()[4];
+    final translatedTextCell = row.getCells()[5];
+    final tmSourceCell = row.getCells()[6];
+    final confidenceCell = row.getCells()[7];
 
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
@@ -129,6 +147,7 @@ class EditorDataSource extends DataGridSource {
           ),
         ),
         RepaintBoundary(child: StatusCellRenderer(status: statusCell.value)),
+        RepaintBoundary(child: TextCellRenderer(text: _extractLocFileName(locFileCell.value), isKey: true)),
         RepaintBoundary(child: TextCellRenderer(text: keyCell.value, isKey: true)),
         // Don't wrap multiline text cells in RepaintBoundary to allow proper height expansion
         TextCellRenderer(text: sourceTextCell.value),
@@ -137,6 +156,14 @@ class EditorDataSource extends DataGridSource {
         RepaintBoundary(child: ConfidenceCellRenderer(confidence: confidenceCell.value)),
       ],
     );
+  }
+
+  /// Extract just the filename from the full .loc file path
+  static String? _extractLocFileName(String? path) {
+    if (path == null || path.isEmpty) return null;
+    final lastSeparator = path.lastIndexOf('/');
+    if (lastSeparator == -1) return path;
+    return path.substring(lastSeparator + 1);
   }
 
   @override

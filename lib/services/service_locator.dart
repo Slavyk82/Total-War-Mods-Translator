@@ -480,6 +480,7 @@ class ServiceLocator {
         tmService: _locator<ITranslationMemoryService>(),
         promptBuilder: _locator<IPromptBuilderService>(),
         validation: _locator<IValidationService>(),
+        historyService: _locator<IHistoryService>(),
         versionRepository: _locator<TranslationVersionRepository>(),
         unitRepository: _locator<TranslationUnitRepository>(),
         batchRepository: _locator<TranslationBatchRepository>(),
@@ -526,6 +527,7 @@ class ServiceLocator {
     _locator.registerLazySingleton<ITranslationMemoryService>(
       () => TranslationMemoryServiceImpl(
         repository: _locator<TranslationMemoryRepository>(),
+        languageRepository: _locator<LanguageRepository>(),
         normalizer: _locator<TextNormalizer>(),
         similarityCalculator: _locator<SimilarityCalculator>(),
         cache: _locator<TmCache>(),
