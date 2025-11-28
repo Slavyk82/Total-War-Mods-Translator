@@ -6,7 +6,7 @@ A professional-grade Windows desktop application for translating Total War Works
 
 ### AI-Powered Translation
 - **Multiple LLM Providers**: Anthropic Claude, OpenAI GPT, DeepL
-- **Batch Processing**: Translate up to 100 entries per batch
+- **Batch Processing**: Translate up to 1000 entries per batch
 - **Parallel Processing**: Run multiple batches concurrently
 
 ### Translation Memory (TM)
