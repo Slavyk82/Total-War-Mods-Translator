@@ -20,8 +20,8 @@ class BatchOptimizer {
   /// This accounts for tokenization variance and overhead
   static const double _safetyMargin = 0.10;
 
-  /// Minimum batch size (avoid tiny batches)
-  static const int _minBatchSize = 5;
+  /// Minimum batch size (allow single-unit batches for testing/debugging)
+  static const int _minBatchSize = 1;
 
   /// Maximum batch size (avoid huge batches)
   static const int _maxBatchSize = 100;

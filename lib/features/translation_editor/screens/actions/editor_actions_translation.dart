@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../services/translation/models/translation_context.dart';
+import '../../../projects/providers/project_detail_providers.dart';
 import '../../../settings/providers/settings_providers.dart';
 import '../../providers/editor_providers.dart';
 import '../../providers/translation_settings_provider.dart';
@@ -56,10 +57,12 @@ mixin EditorActionsTranslation on EditorActionsBase {
     }
 
     try {
+      final projectLanguageId = await getProjectLanguageId();
       final selectedIds = selectionState.selectedUnitIds.toList();
       final untranslatedIds = await TranslationBatchHelper.filterUntranslatedUnits(
         ref: ref,
         unitIds: selectedIds,
+        projectLanguageId: projectLanguageId,
       );
 
       if (untranslatedIds.isEmpty) {
@@ -185,12 +188,17 @@ mixin EditorActionsBatch on EditorActionsBase {
     try {
       final orchestrator = ref.read(translationOrchestratorProvider);
 
+      // Get project name for display
+      final projectDetails = await ref.read(projectDetailsProvider(projectId).future);
+      final projectName = projectDetails.project.name;
+
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => TranslationProgressScreen(
             orchestrator: orchestrator,
             onComplete: () => refreshProviders(),
             preparationCallback: () => _prepareBatch(unitIds),
+            projectName: projectName,
           ),
         ),
       );
@@ -262,6 +270,7 @@ mixin EditorActionsBatch on EditorActionsBase {
       modelId: modelId,
       unitsPerBatch: settings.unitsPerBatch,
       parallelBatches: settings.parallelBatches,
+      skipTranslationMemory: settings.skipTranslationMemory,
     );
 
     return (batchId: batchId, context: translationContext);

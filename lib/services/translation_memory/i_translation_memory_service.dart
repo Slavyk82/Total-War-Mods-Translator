@@ -111,6 +111,27 @@ abstract class ITranslationMemoryService {
     String? category,
   });
 
+  /// Find fuzzy matches using isolate for better performance
+  ///
+  /// This method runs similarity calculations in a background isolate
+  /// to prevent UI freezing during heavy computation.
+  /// Use this method for batch processing of many translations.
+  ///
+  /// [sourceText]: Text to match
+  /// [targetLanguageCode]: Target language
+  /// [minSimilarity]: Minimum similarity threshold (default: 0.85 = 85%)
+  /// [maxResults]: Maximum number of results (default: 5)
+  /// [category]: Optional category for boost
+  ///
+  /// Returns list of fuzzy matches sorted by similarity (highest first)
+  Future<Result<List<TmMatch>, TmLookupException>> findFuzzyMatchesIsolate({
+    required String sourceText,
+    required String targetLanguageCode,
+    double minSimilarity = 0.85,
+    int maxResults = 5,
+    String? category,
+  });
+
   /// Update usage statistics for a TM entry
   ///
   /// Increments usage count and updates last_used timestamp.
@@ -211,12 +232,14 @@ abstract class ITranslationMemoryService {
   /// [targetLanguageCode]: Optional target language filter
   /// [limit]: Maximum results
   /// [offset]: Pagination offset
+  /// [orderBy]: Sort column and direction (default: 'usage_count DESC')
   ///
   /// Returns paginated list of TM entries
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>> getEntries({
     String? targetLanguageCode,
     int limit = 50,
     int offset = 0,
+    String orderBy = 'usage_count DESC',
   });
 
   /// Search TM entries by text

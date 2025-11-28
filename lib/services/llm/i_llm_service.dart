@@ -7,14 +7,13 @@ import 'package:twmt/services/llm/models/llm_exceptions.dart';
 /// High-level LLM service interface
 ///
 /// This service orchestrates LLM providers, handles rate limiting,
-/// circuit breaking, and provides a unified interface for translation.
+/// and provides a unified interface for translation.
 abstract class ILlmService {
   /// Translate a batch of texts using the active global provider
   ///
   /// This method:
   /// - Selects the active provider from settings
   /// - Applies rate limiting
-  /// - Uses circuit breaker for fault tolerance
   /// - Handles retries on transient failures
   /// - Tracks token usage
   ///
@@ -164,29 +163,6 @@ abstract class ILlmService {
   Future<Result<bool, LlmServiceException>> isProviderAvailable(
     String providerCode,
   );
-
-  /// Get circuit breaker status for a provider
-  ///
-  /// Returns circuit breaker state (CLOSED, OPEN, HALF_OPEN)
-  /// and failure/success counts.
-  ///
-  /// [providerCode] - Provider to check
-  ///
-  /// Returns [Ok(CircuitBreakerStatus)] or [Err(LlmServiceException)]
-  Future<Result<CircuitBreakerStatus, LlmServiceException>>
-      getCircuitBreakerStatus(String providerCode);
-
-  /// Reset circuit breaker for a provider
-  ///
-  /// Forces circuit breaker to CLOSED state.
-  /// Use when you know the provider is back online.
-  ///
-  /// [providerCode] - Provider to reset
-  ///
-  /// Returns [Ok(void)] or [Err(LlmServiceException)]
-  Future<Result<void, LlmServiceException>> resetCircuitBreaker(
-    String providerCode,
-  );
 }
 
 /// Provider statistics
@@ -242,61 +218,5 @@ class ProviderStatistics {
     return 'ProviderStatistics($providerCode: $totalRequests requests, '
         '${(successRate * 100).toStringAsFixed(1)}% success, '
         '$totalTokens tokens)';
-  }
-}
-
-/// Circuit breaker status
-enum CircuitBreakerState {
-  /// Circuit is closed, requests are allowed
-  closed,
-
-  /// Circuit is open, requests are blocked
-  open,
-
-  /// Circuit is half-open, testing if service recovered
-  halfOpen,
-}
-
-class CircuitBreakerStatus {
-  /// Current state
-  final CircuitBreakerState state;
-
-  /// Consecutive failures in current state
-  final int failureCount;
-
-  /// Consecutive successes in half-open state
-  final int successCount;
-
-  /// Time when circuit was opened (null if not open)
-  final DateTime? openedAt;
-
-  /// Time when circuit will attempt to close (null if not open)
-  final DateTime? willAttemptCloseAt;
-
-  /// Last error that caused a failure (for diagnostics)
-  final String? lastErrorMessage;
-
-  /// Last error type (e.g., "LlmRateLimitException", "LlmServerException")
-  final String? lastErrorType;
-
-  const CircuitBreakerStatus({
-    required this.state,
-    required this.failureCount,
-    required this.successCount,
-    this.openedAt,
-    this.willAttemptCloseAt,
-    this.lastErrorMessage,
-    this.lastErrorType,
-  });
-
-  /// Check if circuit is allowing requests
-  bool get isAllowingRequests =>
-      state == CircuitBreakerState.closed ||
-      state == CircuitBreakerState.halfOpen;
-
-  @override
-  String toString() {
-    return 'CircuitBreakerStatus(state: $state, failures: $failureCount, '
-        'successes: $successCount)';
   }
 }

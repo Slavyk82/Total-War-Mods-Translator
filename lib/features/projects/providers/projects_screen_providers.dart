@@ -40,6 +40,18 @@ enum ProjectSortOption {
   }
 }
 
+/// Quick filter types for projects
+enum ProjectQuickFilter {
+  /// No filter - show all projects
+  none,
+  /// Projects that need a translation update (mod source changed)
+  needsUpdate,
+  /// Projects not yet 100% translated in ALL configured languages
+  incomplete,
+  /// Projects 100% translated in at least one language
+  hasCompleteLanguage,
+}
+
 /// Filter state for projects screen
 class ProjectsFilterState {
   final String searchQuery;
@@ -49,8 +61,7 @@ class ProjectsFilterState {
   final ProjectSortOption sortBy;
   final bool sortAscending;
   final ProjectViewMode viewMode;
-  final int currentPage;
-  final int itemsPerPage;
+  final ProjectQuickFilter quickFilter;
 
   const ProjectsFilterState({
     this.searchQuery = '',
@@ -60,8 +71,7 @@ class ProjectsFilterState {
     this.sortBy = ProjectSortOption.dateModified,
     this.sortAscending = false,
     this.viewMode = ProjectViewMode.grid,
-    this.currentPage = 0,
-    this.itemsPerPage = 20,
+    this.quickFilter = ProjectQuickFilter.none,
   });
 
   ProjectsFilterState copyWith({
@@ -72,8 +82,7 @@ class ProjectsFilterState {
     ProjectSortOption? sortBy,
     bool? sortAscending,
     ProjectViewMode? viewMode,
-    int? currentPage,
-    int? itemsPerPage,
+    ProjectQuickFilter? quickFilter,
   }) {
     return ProjectsFilterState(
       searchQuery: searchQuery ?? this.searchQuery,
@@ -83,8 +92,7 @@ class ProjectsFilterState {
       sortBy: sortBy ?? this.sortBy,
       sortAscending: sortAscending ?? this.sortAscending,
       viewMode: viewMode ?? this.viewMode,
-      currentPage: currentPage ?? this.currentPage,
-      itemsPerPage: itemsPerPage ?? this.itemsPerPage,
+      quickFilter: quickFilter ?? this.quickFilter,
     );
   }
 }
@@ -117,6 +125,18 @@ class ProjectWithDetails {
   bool get hasUpdates {
     return updateAnalysis?.hasChanges ?? false;
   }
+
+  /// Check if all configured languages are 100% translated
+  bool get isFullyTranslated {
+    if (languages.isEmpty) return false;
+    return languages.every((lang) => lang.isComplete);
+  }
+
+  /// Check if at least one language is 100% translated
+  bool get hasAtLeastOneCompleteLanguage {
+    if (languages.isEmpty) return false;
+    return languages.any((lang) => lang.isComplete);
+  }
 }
 
 /// Project language with language info and translation stats
@@ -141,6 +161,9 @@ class ProjectLanguageWithInfo {
     if (totalUnits == 0) return 0.0;
     return (translatedUnits / totalUnits) * 100;
   }
+
+  /// Check if this language is 100% translated
+  bool get isComplete => totalUnits > 0 && translatedUnits >= totalUnits;
 }
 
 /// Provider for project repository
@@ -178,7 +201,7 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
   }
 
   void updateSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query, currentPage: 0);
+    state = state.copyWith(searchQuery: query);
   }
 
   void updateFilters({
@@ -190,7 +213,6 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
       gameFilters: gameFilters,
       languageFilters: languageFilters,
       showOnlyWithUpdates: showOnlyWithUpdates,
-      currentPage: 0,
     );
   }
 
@@ -205,8 +227,8 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
     state = state.copyWith(viewMode: viewMode);
   }
 
-  void updatePage(int page) {
-    state = state.copyWith(currentPage: page);
+  void setQuickFilter(ProjectQuickFilter filter) {
+    state = state.copyWith(quickFilter: filter);
   }
 
   void clearFilters() {
@@ -214,7 +236,7 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
       gameFilters: const {},
       languageFilters: const {},
       showOnlyWithUpdates: false,
-      currentPage: 0,
+      quickFilter: ProjectQuickFilter.none,
     );
   }
 }
@@ -401,9 +423,23 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
       if (!hasLanguage) return false;
     }
 
-    // Updates filter
+    // Updates filter (legacy - kept for compatibility)
     if (filter.showOnlyWithUpdates && !projectWithDetails.hasUpdates) {
       return false;
+    }
+
+    // Quick filter
+    switch (filter.quickFilter) {
+      case ProjectQuickFilter.none:
+        break;
+      case ProjectQuickFilter.needsUpdate:
+        if (!projectWithDetails.hasUpdates) return false;
+      case ProjectQuickFilter.incomplete:
+        // Show projects that are NOT 100% translated in ALL languages
+        if (projectWithDetails.isFullyTranslated) return false;
+      case ProjectQuickFilter.hasCompleteLanguage:
+        // Show projects with at least one 100% translated language
+        if (!projectWithDetails.hasAtLeastOneCompleteLanguage) return false;
     }
 
     return true;
@@ -424,29 +460,11 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
   return filtered;
 });
 
-/// Provider for paginated projects
+/// Provider for all projects (no pagination)
 final paginatedProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {
-  final filtered = await ref.watch(filteredProjectsProvider.future);
-  final filter = ref.watch(projectsFilterProvider);
-
-  final startIndex = filter.currentPage * filter.itemsPerPage;
-  final endIndex = (startIndex + filter.itemsPerPage).clamp(0, filtered.length);
-
-  if (startIndex >= filtered.length) {
-    return [];
-  }
-
-  return filtered.sublist(startIndex, endIndex);
+  return ref.watch(filteredProjectsProvider.future);
 });
 
-/// Provider for total pages count
-final totalPagesProvider = FutureProvider<int>((ref) async {
-  final filtered = await ref.watch(filteredProjectsProvider.future);
-  final filter = ref.watch(projectsFilterProvider);
-
-  if (filtered.isEmpty) return 0;
-  return (filtered.length / filter.itemsPerPage).ceil();
-});
 
 /// Provider for all game installations (for filter dropdown)
 final allGameInstallationsProvider = FutureProvider<List<GameInstallation>>((ref) async {

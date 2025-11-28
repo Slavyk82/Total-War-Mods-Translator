@@ -36,6 +36,7 @@ const _$ValidationIssueTypeEnumMap = {
   ValidationIssueType.punctuationMismatch: 'punctuationMismatch',
   ValidationIssueType.caseMismatch: 'caseMismatch',
   ValidationIssueType.missingNumbers: 'missingNumbers',
+  ValidationIssueType.modifiedNumbers: 'modifiedNumbers',
 };
 
 const _$ValidationSeverityEnumMap = {

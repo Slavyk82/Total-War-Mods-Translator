@@ -12,6 +12,7 @@ import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/models/llm_exchange_log.dart';
+import 'package:twmt/services/translation/utils/translation_text_utils.dart';
 
 /// Handles LLM translation operations
 ///
@@ -33,6 +34,33 @@ class LlmTranslationHandler {
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,
         _logger = logger;
+
+  /// Estimate maxTokens based on source text content, not just unit count.
+  ///
+  /// For long texts, 120 tokens/unit is insufficient. Uses character count
+  /// as a more accurate proxy (roughly 4 chars per token for most languages).
+  int _estimateMaxTokens(Map<String, String> textsMap) {
+    // Calculate based on actual text length
+    int totalChars = 0;
+    for (final text in textsMap.values) {
+      totalChars += text.length;
+    }
+
+    // Estimate: ~4 chars per token, translation may be 1.2x longer than source
+    // Add buffer for JSON structure overhead
+    final textBasedEstimate = ((totalChars / 4) * 1.3).ceil() + 500;
+
+    // Also consider unit count for JSON key overhead
+    final unitBasedEstimate = (textsMap.length * 150) + 500;
+
+    // Use the larger of the two estimates
+    final estimate = textBasedEstimate > unitBasedEstimate
+        ? textBasedEstimate
+        : unitBasedEstimate;
+
+    // Clamp to reasonable bounds: minimum 1000, maximum 80000
+    return estimate.clamp(1000, 80000);
+  }
 
   /// Perform LLM translation for units not matched by TM
   ///
@@ -116,16 +144,24 @@ class LlmTranslationHandler {
 
     // === CACHE CHECK: Find cached and pending translations ===
     // Hash computation and cache lookups can be slow for large batches
+    // NOTE: When skipTranslationMemory=true, we skip cache lookups to force fresh
+    // LLM translations that will then update Translation Memory.
     final cachedTranslations = <String, String>{}; // sourceText -> translation
     final pendingFutures = <String, Future<String?>>{}; // sourceText -> future
     final uncachedSourceTexts = <String>[]; // source texts to translate
+
+    // When skipTranslationMemory is true, bypass cache to get fresh LLM translations
+    // This ensures new translations replace existing TM entries
+    final skipCacheLookup = context.skipTranslationMemory;
 
     // Update progress for large batches
     if (uniqueSourceTexts.length > 1000) {
       onProgressUpdate(
         batchId,
         currentProgress.copyWith(
-          phaseDetail: 'Checking cache for ${uniqueSourceTexts.length} unique texts...',
+          phaseDetail: skipCacheLookup 
+              ? 'Preparing ${uniqueSourceTexts.length} unique texts for fresh LLM translation...'
+              : 'Checking cache for ${uniqueSourceTexts.length} unique texts...',
           timestamp: DateTime.now(),
         ),
       );
@@ -134,15 +170,21 @@ class LlmTranslationHandler {
     yieldCounter = 0;
     for (final sourceText in uniqueSourceTexts) {
       final hash = cache.computeHash(sourceText, context.targetLanguage);
-      final result = cache.lookup(hash);
+      
+      // Skip cache lookup when skipTranslationMemory=true to force fresh translations
+      if (skipCacheLookup) {
+        uncachedSourceTexts.add(sourceText);
+      } else {
+        final result = cache.lookup(hash);
 
-      switch (result) {
-        case CacheHit(:final translation):
-          cachedTranslations[sourceText] = translation;
-        case CachePending(:final future):
-          pendingFutures[sourceText] = future;
-        case CacheMiss():
-          uncachedSourceTexts.add(sourceText);
+        switch (result) {
+          case CacheHit(:final translation):
+            cachedTranslations[sourceText] = translation;
+          case CachePending(:final future):
+            pendingFutures[sourceText] = future;
+          case CacheMiss():
+            uncachedSourceTexts.add(sourceText);
+        }
       }
 
       // Yield to event loop periodically to prevent UI freeze
@@ -151,7 +193,12 @@ class LlmTranslationHandler {
       }
     }
 
-    if (cachedTranslations.isNotEmpty || pendingFutures.isNotEmpty) {
+    if (skipCacheLookup) {
+      _logger.info('Cache bypassed (skipTranslationMemory=true)', {
+        'uniqueTexts': uniqueSourceTexts.length,
+        'reason': 'Force fresh LLM translations to update Translation Memory',
+      });
+    } else if (cachedTranslations.isNotEmpty || pendingFutures.isNotEmpty) {
       _logger.info('Cache status', {
         'cached': cachedTranslations.length,
         'pending': pendingFutures.length,
@@ -326,9 +373,31 @@ class LlmTranslationHandler {
         }
       }
 
+      // Update progress to indicate LLM calls are starting
+      progress = progress.copyWith(
+        phaseDetail: 'Waiting LLM API response (${chunks.length} parallel requests)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
+
       // Process chunks in parallel, wrapping each in error handling
       // to continue with other chunks even if one fails
       final futures = <Future<(TranslationProgress, Map<String, String>, String?)>>[];
+
+      // Create a wrapper for onProgressUpdate that only updates phaseDetail
+      // to prevent counter regression from parallel chunks overwriting each other.
+      // The counters will be properly accumulated after all chunks complete.
+      void parallelProgressUpdate(String id, TranslationProgress chunkProgress) {
+        // Only update phaseDetail, keep the original counters stable
+        final stableProgress = progress.copyWith(
+          phaseDetail: chunkProgress.phaseDetail,
+          currentPhase: chunkProgress.currentPhase,
+          // Keep logs for visibility but don't update counters
+          llmLogs: chunkProgress.llmLogs,
+          timestamp: chunkProgress.timestamp,
+        );
+        onProgressUpdate(id, stableProgress);
+      }
 
       for (var i = 0; i < chunks.length; i++) {
         final chunk = chunks[i];
@@ -340,8 +409,7 @@ class LlmTranslationHandler {
           textsMap[unit.id] = unit.sourceText;
         }
 
-        final estimatedResponseTokens = (chunk.length * 120) + 500;
-        final maxTokens = estimatedResponseTokens.clamp(1000, 8000);
+        final maxTokens = _estimateMaxTokens(textsMap);
 
         final llmRequest = LlmRequest(
           requestId: chunkId,
@@ -366,7 +434,7 @@ class LlmTranslationHandler {
           progress: progress,
           currentProgress: currentProgress,
           getCancellationToken: getCancellationToken,
-          onProgressUpdate: onProgressUpdate,
+          onProgressUpdate: parallelProgressUpdate, // Use wrapper to prevent counter regression
           checkPauseOrCancel: checkPauseOrCancel,
           onSubBatchTranslated: trackingSaveCallback,
         ));
@@ -376,15 +444,26 @@ class LlmTranslationHandler {
       final results = await Future.wait(futures);
 
       // Merge results, collecting any errors
-      var finalProgress = progress;
+      // Important: Accumulate tokensUsed and llmLogs from all chunks
       final llmTranslations = <String, String>{}; // unitId -> translation
       final chunkErrors = <String>[];
+      int totalTokensUsed = currentProgress.tokensUsed;
+      final allLlmLogs = <LlmExchangeLog>[...currentProgress.llmLogs];
 
       for (final (chunkProgress, chunkTranslations, chunkError) in results) {
-        finalProgress = chunkProgress;
         llmTranslations.addAll(chunkTranslations);
         if (chunkError != null) {
           chunkErrors.add(chunkError);
+        }
+        // Accumulate tokens (each chunk reports its own tokens, not cumulative)
+        // We need to extract just the new logs from this chunk
+        final newLogs = chunkProgress.llmLogs
+            .where((log) => !allLlmLogs.any((existing) => existing.requestId == log.requestId))
+            .toList();
+        allLlmLogs.addAll(newLogs);
+        // Sum up tokens from new logs
+        for (final log in newLogs) {
+          totalTokensUsed += log.inputTokens + log.outputTokens;
         }
       }
 
@@ -397,6 +476,24 @@ class LlmTranslationHandler {
       }
 
       _logger.debug('Parallel translation completed: ${llmTranslations.length} translations');
+
+      // Update progress to indicate LLM calls completed
+      // IMPORTANT: Use parallelProgressUpdate to avoid overwriting counter values
+      // that were updated by ValidationPersistenceHandler during progressive saves
+      final completionProgress = progress.copyWith(
+        phaseDetail: 'LLM translation complete (${llmTranslations.length} translations received)',
+        llmLogs: allLlmLogs,
+        timestamp: DateTime.now(),
+      );
+      parallelProgressUpdate(batchId, completionProgress);
+
+      // Build finalProgress for return value (read current state, only update tokens/logs)
+      // The counters are managed by ValidationPersistenceHandler, not here
+      var finalProgress = progress.copyWith(
+        tokensUsed: totalTokensUsed,
+        llmLogs: allLlmLogs,
+        timestamp: DateTime.now(),
+      );
 
       // === UPDATE CACHE & APPLY TO DUPLICATES ===
       await _updateCacheAndApplyDuplicates(
@@ -441,8 +538,7 @@ class LlmTranslationHandler {
       textsMap[unit.id] = unit.sourceText;
     }
 
-    final estimatedResponseTokens = (unitsForLlm.length * 120) + 500;
-    final maxTokens = estimatedResponseTokens.clamp(1000, 8000);
+    final maxTokens = _estimateMaxTokens(textsMap);
 
     final llmRequest = LlmRequest(
       requestId: batchId,
@@ -708,9 +804,14 @@ class LlmTranslationHandler {
     await checkPauseOrCancel(rootBatchId);
     
     // Safety limit to prevent infinite recursion
-    if (depth > 10) {
+    // Depth limit of 25 allows for:
+    // - Pre-emptive splitting from large batches (~12 levels for 4000+ units)
+    // - Content filter splitting down to single units (~10 levels from 1000 units)
+    // - Some margin for edge cases
+    if (depth > 25) {
       throw TranslationOrchestrationException(
-        'Batch splitting depth limit exceeded. Units may be too large to translate individually.',
+        'Batch splitting depth limit exceeded (depth=$depth). '
+        'This may indicate an issue with the translation content or batch configuration.',
         batchId: batchId,
       );
     }
@@ -732,12 +833,12 @@ class LlmTranslationHandler {
         units: unitsToTranslate,
       );
 
-      // Update progress detail
+      // Update progress detail - use rootBatchId for UI visibility
       final splitProgress = progress.copyWith(
         phaseDetail: 'Batch too large (~$estimatedTokens tokens), auto-splitting into smaller chunks...',
         timestamp: DateTime.now(),
       );
-      onProgressUpdate(batchId, splitProgress);
+      onProgressUpdate(rootBatchId, splitProgress);
 
       // Create warning log
       final warningLog = LlmExchangeLog.fromError(
@@ -757,11 +858,11 @@ class LlmTranslationHandler {
 
       // Process both halves SEQUENTIALLY (parallelism is handled at chunk level)
       // Recalculate maxTokens for the split size
-      final firstHalfMaxTokens = (firstHalf.length * 120 + 500).clamp(1000, 8000);
+      final firstHalfTexts = {for (var unit in firstHalf) unit.id: unit.sourceText};
       final firstHalfRequest = llmRequest.copyWith(
         requestId: '$batchId-preempt1-depth$depth',
-        texts: {for (var unit in firstHalf) unit.id: unit.sourceText},
-        maxTokens: firstHalfMaxTokens,
+        texts: firstHalfTexts,
+        maxTokens: _estimateMaxTokens(firstHalfTexts),
       );
 
       final (progressAfterFirst, firstTranslations) = await _translateWithAutoSplit(
@@ -784,11 +885,11 @@ class LlmTranslationHandler {
       // Check cancellation before processing second half
       await checkPauseOrCancel(rootBatchId);
 
-      final secondHalfMaxTokens = (secondHalf.length * 120 + 500).clamp(1000, 8000);
+      final secondHalfTexts = {for (var unit in secondHalf) unit.id: unit.sourceText};
       final secondHalfRequest = llmRequest.copyWith(
         requestId: '$batchId-preempt2-depth$depth',
-        texts: {for (var unit in secondHalf) unit.id: unit.sourceText},
-        maxTokens: secondHalfMaxTokens,
+        texts: secondHalfTexts,
+        maxTokens: _estimateMaxTokens(secondHalfTexts),
       );
 
       final (progressAfterSecond, secondTranslations) = await _translateWithAutoSplit(
@@ -813,12 +914,18 @@ class LlmTranslationHandler {
     final cancellationToken = getCancellationToken(batchId);
     final dioCancelToken = cancellationToken?.dioToken;
 
-    // Update progress with LLM call info
+    // Update progress with LLM call info - use rootBatchId for UI visibility
     final llmCallProgress = progress.copyWith(
-      phaseDetail: 'Calling ${context.providerCode ?? "LLM"} API (${unitsToTranslate.length} units)...',
+      phaseDetail: 'Waiting ${context.providerCode ?? "LLM"} API response...',
       timestamp: DateTime.now(),
     );
-    onProgressUpdate(batchId, llmCallProgress);
+    onProgressUpdate(rootBatchId, llmCallProgress);
+
+    _logger.debug(
+      'Waiting ${context.providerCode ?? "LLM"} API response for batch $batchId '
+      '(${unitsToTranslate.length} units) - this may take a while for large batches...',
+    );
+    final apiCallStart = DateTime.now();
 
     // Try translation with retry for transient errors (429, 529, etc.)
     final llmResult = await _translateWithRetry(
@@ -867,11 +974,11 @@ class LlmTranslationHandler {
 
         // Process both halves SEQUENTIALLY (parallelism is handled at chunk level)
         // Recalculate maxTokens for the split size
-        final firstHalfMaxTokens = (firstHalf.length * 120 + 500).clamp(1000, 8000);
+        final firstHalfTextsErr = {for (var unit in firstHalf) unit.id: unit.sourceText};
         final firstHalfRequest = llmRequest.copyWith(
           requestId: '$batchId-part1-depth$depth',
-          texts: {for (var unit in firstHalf) unit.id: unit.sourceText},
-          maxTokens: firstHalfMaxTokens,
+          texts: firstHalfTextsErr,
+          maxTokens: _estimateMaxTokens(firstHalfTextsErr),
         );
 
         final (progressAfterFirst, firstTranslations) = await _translateWithAutoSplit(
@@ -895,11 +1002,11 @@ class LlmTranslationHandler {
         await checkPauseOrCancel(rootBatchId);
 
         // Process second half
-        final secondHalfMaxTokens = (secondHalf.length * 120 + 500).clamp(1000, 8000);
+        final secondHalfTextsErr = {for (var unit in secondHalf) unit.id: unit.sourceText};
         final secondHalfRequest = llmRequest.copyWith(
           requestId: '$batchId-part2-depth$depth',
-          texts: {for (var unit in secondHalf) unit.id: unit.sourceText},
-          maxTokens: secondHalfMaxTokens,
+          texts: secondHalfTextsErr,
+          maxTokens: _estimateMaxTokens(secondHalfTextsErr),
         );
 
         final (progressAfterSecond, secondTranslations) = await _translateWithAutoSplit(
@@ -921,6 +1028,51 @@ class LlmTranslationHandler {
       }
 
       // Single unit that failed - handle based on error type
+      // Parse error on single unit: retry with higher maxTokens (truncation issue)
+      if (error is LlmResponseParseException &&
+          unitsToTranslate.length == 1 &&
+          depth < 2) {
+      final unit = unitsToTranslate.first;
+      final currentMaxTokens = llmRequest.maxTokens ?? 4000;
+      // Double maxTokens, cap at 80000 for very long texts
+      final newMaxTokens = (currentMaxTokens * 2).clamp(currentMaxTokens + 2000, 80000);
+
+        _logger.debug(
+          'Parse error for unit "${unit.key}" - retrying with maxTokens: '
+          '$currentMaxTokens -> $newMaxTokens (likely truncated response)',
+        );
+
+        final retryLog = LlmExchangeLog.fromError(
+          requestId: '$batchId-retry-$depth',
+          providerCode: context.providerId ?? 'unknown',
+          modelName: context.modelId ?? 'unknown',
+          unitsCount: 1,
+          errorMessage: 'Response truncated for "${unit.key}", retrying with maxTokens=$newMaxTokens',
+        );
+
+        final retryRequest = llmRequest.copyWith(
+          requestId: '$batchId-retry-depth$depth',
+          maxTokens: newMaxTokens,
+        );
+
+        return _translateWithAutoSplit(
+          batchId: batchId,
+          rootBatchId: rootBatchId,
+          unitsToTranslate: unitsToTranslate,
+          llmRequest: retryRequest,
+          context: context,
+          progress: progress.copyWith(
+            llmLogs: [...currentProgress.llmLogs, retryLog],
+          ),
+          currentProgress: currentProgress,
+          getCancellationToken: getCancellationToken,
+          onProgressUpdate: onProgressUpdate,
+          checkPauseOrCancel: checkPauseOrCancel,
+          onSubBatchTranslated: onSubBatchTranslated,
+          depth: depth + 1,
+        );
+      }
+
       // Content filter on single unit: skip gracefully and continue
       if (isContentFiltered && unitsToTranslate.length == 1) {
         final unit = unitsToTranslate.first;
@@ -939,16 +1091,17 @@ class LlmTranslationHandler {
               'The source text may contain content that violates the provider\'s usage policies.',
         );
 
-        // Update progress with filter warning
+        // Update progress with filter warning and increment failed count - use rootBatchId for UI visibility
         final filterProgress = progress.copyWith(
           phaseDetail: 'Skipped filtered content: "${unit.key}"',
           llmLogs: [...currentProgress.llmLogs, filterLog],
+          failedUnits: currentProgress.failedUnits + 1,
           timestamp: DateTime.now(),
         );
-        onProgressUpdate(batchId, filterProgress);
+        onProgressUpdate(rootBatchId, filterProgress);
 
         // Return empty translations - the unit will remain untranslated
-        // but the batch continues processing other units
+        // but the batch continues processing other units (counted as failed)
         return (filterProgress, <String, String>{});
       }
 
@@ -983,17 +1136,22 @@ class LlmTranslationHandler {
         i++) {
       final unit = unitsToTranslate[i];
       final translatedText = llmResponse.translations.values.elementAt(i);
-      translations[unit.id] = translatedText;
+      // Normalize: \\n → \n
+      translations[unit.id] = TranslationTextUtils.normalizeTranslation(translatedText);
     }
 
-    _logger.debug('LLM batch done: ${llmResponse.translations.length} units, ${llmResponse.totalTokens} tokens');
+    final apiCallDuration = DateTime.now().difference(apiCallStart);
+    _logger.debug(
+      'LLM API call completed in ${apiCallDuration.inSeconds}s: '
+      '${llmResponse.translations.length} units, ${llmResponse.totalTokens} tokens',
+    );
 
-    // Update progress with completion info
+    // Update progress with completion info - use rootBatchId for UI visibility
     final completionProgress = progress.copyWith(
       phaseDetail: 'LLM returned ${llmResponse.translations.length} translations (${llmResponse.totalTokens} tokens used)',
       timestamp: DateTime.now(),
     );
-    onProgressUpdate(batchId, completionProgress);
+    onProgressUpdate(rootBatchId, completionProgress);
 
     // Progressive save: call callback to save translations immediately
     // These are direct LLM translations, not cached, so pass empty set
@@ -1029,13 +1187,14 @@ class LlmTranslationHandler {
 
     final updatedProgress = progress.copyWith(
       currentPhase: TranslationPhase.llmTranslation,
+      phaseDetail: 'Chunk saved (${translations.length} units), processing continues...',
       tokensUsed: currentProgress.tokensUsed + llmResponse.totalTokens,
       llmLogs: updatedLogs,
       timestamp: DateTime.now(),
     );
 
-    // Emit progress update after successful LLM call
-    onProgressUpdate(batchId, updatedProgress);
+    // Emit progress update after successful LLM call - use rootBatchId for UI visibility
+    onProgressUpdate(rootBatchId, updatedProgress);
 
     return (updatedProgress, translations);
   }

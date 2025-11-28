@@ -64,6 +64,10 @@ class TranslationContext {
   /// due to concurrent database writes. Keep at 1 for stability.
   final int parallelBatches;
 
+  /// Skip Translation Memory lookup during translation
+  /// When true, all units are sent directly to LLM without TM matching
+  final bool skipTranslationMemory;
+
   /// Created timestamp
   final DateTime createdAt;
 
@@ -88,6 +92,7 @@ class TranslationContext {
     this.preserveFormatting = true,
     this.unitsPerBatch = 100,
     this.parallelBatches = 1,
+    this.skipTranslationMemory = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -128,6 +133,7 @@ class TranslationContext {
     String? category,
     String? formalityLevel,
     bool? preserveFormatting,
+    bool? skipTranslationMemory,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -147,6 +153,7 @@ class TranslationContext {
       category: category ?? this.category,
       formalityLevel: formalityLevel ?? this.formalityLevel,
       preserveFormatting: preserveFormatting ?? this.preserveFormatting,
+      skipTranslationMemory: skipTranslationMemory ?? this.skipTranslationMemory,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

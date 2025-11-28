@@ -61,6 +61,8 @@ mixin EditorActionsBase {
         return 'Case Mismatch';
       case validation.ValidationIssueType.missingNumbers:
         return 'Missing Numbers';
+      case validation.ValidationIssueType.modifiedNumbers:
+        return 'Modified Numbers';
     }
   }
 

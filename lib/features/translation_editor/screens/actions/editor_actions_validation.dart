@@ -108,6 +108,8 @@ mixin EditorActionsValidation on EditorActionsBase {
             },
             onRejectTranslation: (issue) => _handleRejectTranslation(issue),
             onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
+            onEditTranslation: (issue, newText) =>
+                _handleEditTranslation(issue, newText),
             onClose: () => Navigator.of(routeContext).pop(),
           ),
         ),
@@ -232,6 +234,39 @@ mixin EditorActionsValidation on EditorActionsBase {
 
     ref.read(loggingServiceProvider).info(
       'Translation accepted despite issues',
+      {'unitKey': issue.unitKey, 'versionId': issue.versionId},
+    );
+  }
+
+  /// Edit a translation manually with corrected text
+  Future<void> _handleEditTranslation(
+    batch.ValidationIssue issue,
+    String newText,
+  ) async {
+    final versionRepo = ref.read(translationVersionRepositoryProvider);
+
+    final versionResult = await versionRepo.getById(issue.versionId);
+    if (versionResult.isErr) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to load version for editing',
+        {'versionId': issue.versionId},
+      );
+      return;
+    }
+
+    final version = versionResult.unwrap();
+    final editedVersion = version.copyWith(
+      translatedText: newText,
+      status: TranslationVersionStatus.translated,
+      validationIssues: null,
+      isManuallyEdited: true,
+      updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    );
+
+    await versionRepo.update(editedVersion);
+
+    ref.read(loggingServiceProvider).info(
+      'Translation manually corrected',
       {'unitKey': issue.unitKey, 'versionId': issue.versionId},
     );
   }

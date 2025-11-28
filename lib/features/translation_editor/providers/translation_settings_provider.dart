@@ -5,20 +5,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Translation batch settings
 ///
 /// [unitsPerBatch]: Number of units per batch. 0 = auto (calculated based on tokens)
+/// [skipTranslationMemory]: If true, skip TM lookup during translation (use LLM only)
 class TranslationSettings {
   final int unitsPerBatch;
   final int parallelBatches;
+  final bool skipTranslationMemory;
 
   const TranslationSettings({
     required this.unitsPerBatch,
     required this.parallelBatches,
+    this.skipTranslationMemory = false,
   });
 
   /// Whether auto mode is enabled (unitsPerBatch = 0)
   bool get isAutoMode => unitsPerBatch == 0;
 
   @override
-  String toString() => 'TranslationSettings(units: ${isAutoMode ? "auto" : unitsPerBatch}, parallel: $parallelBatches)';
+  String toString() => 'TranslationSettings(units: ${isAutoMode ? "auto" : unitsPerBatch}, parallel: $parallelBatches, skipTM: $skipTranslationMemory)';
 }
 
 /// Simple state provider for translation settings
@@ -30,9 +33,11 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
     // Load settings asynchronously and update state when done
     _loadSettings();
     // Return default values initially (0 = auto mode)
+    // Note: skipTranslationMemory is NOT persisted - it resets on project exit
     return const TranslationSettings(
       unitsPerBatch: 0,
-      parallelBatches: 3,
+      parallelBatches: 5,
+      skipTranslationMemory: false,
     );
   }
 
@@ -49,14 +54,16 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
     // 0 = auto mode (default)
     final unitsPerBatch = prefs.getInt('translation_units_per_batch') ?? 0;
     // Limit parallelBatches to 1-5 range for safety
-    final savedParallel = prefs.getInt('translation_parallel_batches') ?? 3;
+    final savedParallel = prefs.getInt('translation_parallel_batches') ?? 5;
     final parallelBatches = savedParallel.clamp(1, 5);
+    // skipTranslationMemory is NOT loaded from prefs - always starts as false
 
     debugPrint('[TranslationSettings] Loaded from prefs: units=$unitsPerBatch, parallel=$parallelBatches');
 
     state = TranslationSettings(
       unitsPerBatch: unitsPerBatch,
       parallelBatches: parallelBatches,
+      skipTranslationMemory: false, // Always false on load
     );
     _isLoaded = true;
   }
@@ -79,6 +86,16 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
     state = TranslationSettings(
       unitsPerBatch: unitsPerBatch,
       parallelBatches: safeParallelBatches,
+      skipTranslationMemory: state.skipTranslationMemory, // Preserve current session value
+    );
+  }
+
+  /// Toggle skipTranslationMemory setting (session-only, not persisted)
+  void setSkipTranslationMemory(bool value) {
+    state = TranslationSettings(
+      unitsPerBatch: state.unitsPerBatch,
+      parallelBatches: state.parallelBatches,
+      skipTranslationMemory: value,
     );
   }
 }

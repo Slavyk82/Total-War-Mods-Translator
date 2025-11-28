@@ -25,13 +25,21 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       entries: const [],
       ref: null,
       onDeleteEntry: _handleDeleteEntry,
+      onSortChanged: _handleSortChanged,
     );
+  }
+
+  void _handleSortChanged(String column, bool ascending) {
+    ref.read(tmSortStateProvider.notifier).setSort(column, ascending);
+    // Reset to first page when sort changes
+    ref.read(tmPageStateProvider.notifier).setPage(1);
   }
 
   @override
   Widget build(BuildContext context) {
     final filtersState = ref.watch(tmFilterStateProvider);
     final pageState = ref.watch(tmPageStateProvider);
+    // sortState is watched inside tmEntriesProvider, no need to watch here
 
     // Use search provider when there's search text, otherwise use entries provider
     final entriesAsync = filtersState.searchText.isEmpty
@@ -53,6 +61,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           entries: entries,
           ref: ref,
           onDeleteEntry: _handleDeleteEntry,
+          onSortChanged: _handleSortChanged,
         );
         return _buildDataGrid(context, entries);
       },
@@ -158,6 +167,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         GridColumn(
           columnName: 'actions',
           width: 100,
+          allowSorting: false,
           label: Container(
             padding: const EdgeInsets.all(16),
             alignment: Alignment.center,
@@ -341,6 +351,7 @@ class TmDataSource extends DataGridSource {
     required List<TranslationMemoryEntry> entries,
     required this.ref,
     required this.onDeleteEntry,
+    required this.onSortChanged,
   }) {
     _entries = entries;
     _buildDataGridRows();
@@ -350,6 +361,7 @@ class TmDataSource extends DataGridSource {
   List<DataGridRow> _dataGridRows = [];
   final WidgetRef? ref;
   final void Function(TranslationMemoryEntry) onDeleteEntry;
+  final void Function(String column, bool ascending) onSortChanged;
 
   void _buildDataGridRows() {
     _dataGridRows = _entries.map<DataGridRow>((entry) {
@@ -365,6 +377,24 @@ class TmDataSource extends DataGridSource {
 
   @override
   List<DataGridRow> get rows => _dataGridRows;
+
+  @override
+  Future<void> performSorting(List<DataGridRow> rows) async {
+    // Server-side sorting: trigger provider update instead of local sort
+    if (sortedColumns.isNotEmpty) {
+      final sortColumn = sortedColumns.first;
+      final ascending = sortColumn.sortDirection == DataGridSortDirection.ascending;
+      // Defer state change to avoid modifying provider during build
+      Future.microtask(() => onSortChanged(sortColumn.name, ascending));
+    }
+    // Don't sort locally - data comes pre-sorted from server
+  }
+
+  @override
+  int compare(DataGridRow? a, DataGridRow? b, SortColumnDetails sortColumn) {
+    // Not used since performSorting doesn't call super
+    return 0;
+  }
 
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {

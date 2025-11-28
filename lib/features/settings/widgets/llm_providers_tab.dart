@@ -193,7 +193,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
   }
 
   Widget _buildAdvancedSettings(Map<String, String> settings) {
-    final rateLimit = int.tryParse(settings[SettingsKeys.rateLimit] ?? '100') ?? 100;
+    final rateLimit = int.tryParse(settings[SettingsKeys.rateLimit] ?? '500') ?? 500;
 
     return Container(
       padding: const EdgeInsets.all(20),

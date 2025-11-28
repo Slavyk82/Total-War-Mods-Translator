@@ -5,6 +5,7 @@ import '../../../models/domain/translation_unit.dart';
 import '../../../models/domain/translation_version.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
+import '../../../services/translation/utils/translation_text_utils.dart';
 import '../models/import_conflict.dart';
 import '../models/import_export_settings.dart';
 import '../models/import_result.dart';
@@ -244,7 +245,11 @@ class ImportExecutor {
       return _RowProcessResult.skipped();
     }
 
-    final translatedText = targetColumn.isNotEmpty ? row[targetColumn] : null;
+    final rawText = targetColumn.isNotEmpty ? row[targetColumn] : null;
+    // Normalize: \\n → \n
+    final translatedText = rawText != null
+        ? TranslationTextUtils.normalizeTranslation(rawText)
+        : null;
 
     if (resolution == ConflictResolution.useImported) {
       final updated = existingVersion.copyWith(
@@ -285,7 +290,11 @@ class ImportExecutor {
     required String targetColumn,
     required ImportSettings settings,
   }) async {
-    final translatedText = targetColumn.isNotEmpty ? row[targetColumn] : null;
+    final rawText = targetColumn.isNotEmpty ? row[targetColumn] : null;
+    // Normalize: \\n → \n
+    final translatedText = rawText != null
+        ? TranslationTextUtils.normalizeTranslation(rawText)
+        : null;
 
     final newVersion = TranslationVersion(
       id: _uuid.v4(),

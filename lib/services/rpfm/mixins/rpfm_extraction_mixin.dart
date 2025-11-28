@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -104,6 +105,8 @@ mixin RpfmExtractionMixin {
           rpfmPath,
           ['--game', game, 'pack', 'extract', '--pack-path', packFilePath, '--file-path', filePathArg],
           runInShell: false,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8,
         );
 
         if (result.exitCode != 0) {
@@ -252,6 +255,8 @@ mixin RpfmExtractionMixin {
           rpfmPath,
           ['--game', game, 'pack', 'extract', '--pack-path', packFilePath, '--file-path', filePathArg, '--tables-as-tsv', schemaFile],
           runInShell: false,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8,
         );
 
         if (result.exitCode != 0) {
@@ -346,16 +351,16 @@ mixin RpfmExtractionMixin {
         runInShell: false,
       );
 
-      // Capture output
+      // Capture output with UTF-8 decoding for proper Unicode support
       final stdout = StringBuffer();
       final stderr = StringBuffer();
 
-      currentProcess!.stdout.listen((data) {
-        stdout.write(String.fromCharCodes(data));
+      currentProcess!.stdout.transform(utf8.decoder).listen((data) {
+        stdout.write(data);
       });
 
-      currentProcess!.stderr.listen((data) {
-        stderr.write(String.fromCharCodes(data));
+      currentProcess!.stderr.transform(utf8.decoder).listen((data) {
+        stderr.write(data);
       });
 
       // Wait with timeout

@@ -70,10 +70,10 @@ class PackExportUtils {
 
   /// Build pack file name with prefix for load order priority
   ///
-  /// Format: !!!!!!!!!!_{LANG}_twmt_{original_pack_name}.pack
+  /// Format: !!!!!!!!!!_{lang}_twmt_{original_pack_name}.pack (all lowercase)
   /// The exclamation marks ensure the mod loads with high priority.
   String buildPackFileName(String languageCode, String? sourceFilePath) {
-    final langCode = languageCode.toUpperCase();
+    final langCode = languageCode.toLowerCase();
     final originalPackName = extractOriginalPackName(sourceFilePath);
     return '!!!!!!!!!!_${langCode}_twmt_$originalPackName.pack';
   }
@@ -81,7 +81,8 @@ class PackExportUtils {
   /// Extract original pack filename from source file path
   ///
   /// Extracts just the pack name (without extension) from the full path.
-  /// Example: "C:\Games\Steam\...\something.pack" -> "something"
+  /// Returns lowercase name.
+  /// Example: "C:\Games\Steam\...\Something.pack" -> "something"
   String extractOriginalPackName(String? sourceFilePath) {
     if (sourceFilePath == null || sourceFilePath.isEmpty) {
       return 'translation';
@@ -89,9 +90,9 @@ class PackExportUtils {
 
     final fileName = path.basename(sourceFilePath);
     if (fileName.toLowerCase().endsWith('.pack')) {
-      return fileName.substring(0, fileName.length - 5);
+      return fileName.substring(0, fileName.length - 5).toLowerCase();
     }
 
-    return fileName;
+    return fileName.toLowerCase();
   }
 }

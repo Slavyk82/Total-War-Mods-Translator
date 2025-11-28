@@ -15,6 +15,8 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
   final int passedCount;
   final Future<void> Function(ValidationIssue issue) onRejectTranslation;
   final Future<void> Function(ValidationIssue issue) onAcceptTranslation;
+  final Future<void> Function(ValidationIssue issue, String newText)?
+      onEditTranslation;
   final Future<void> Function(String filePath, List<ValidationIssue> issues)?
       onExportReport;
   final VoidCallback? onClose;
@@ -26,6 +28,7 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
     required this.passedCount,
     required this.onRejectTranslation,
     required this.onAcceptTranslation,
+    this.onEditTranslation,
     this.onExportReport,
     this.onClose,
   });
@@ -96,6 +99,7 @@ class _ValidationReviewScreenState
     // Connect action callbacks
     _dataSource.onAccept = _handleAccept;
     _dataSource.onReject = _handleReject;
+    _dataSource.onEdit = _handleEdit;
   }
 
   void _updateDataSource() {
@@ -161,6 +165,33 @@ class _ValidationReviewScreenState
     } finally {
       setState(() => _processingVersionIds.remove(issue.versionId));
       _updateDataSource();
+    }
+  }
+
+  Future<void> _handleEdit(ValidationIssue issue) async {
+    if (widget.onEditTranslation == null) return;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => _EditTranslationDialog(
+        issue: issue,
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() => _processingVersionIds.add(issue.versionId));
+      _updateDataSource();
+
+      try {
+        await widget.onEditTranslation!(issue, result);
+        setState(() {
+          _processedVersionIds.add(issue.versionId);
+          _selectedVersionIds.remove(issue.versionId);
+        });
+      } finally {
+        setState(() => _processingVersionIds.remove(issue.versionId));
+        _updateDataSource();
+      }
     }
   }
 
@@ -708,7 +739,7 @@ class _ValidationReviewScreenState
               ),
               GridColumn(
                 columnName: 'actions',
-                width: 160,
+                width: 200,
                 allowSorting: false,
                 label: _buildHeaderCell(theme, 'Actions'),
               ),
@@ -846,3 +877,218 @@ class _ValidationReviewScreenState
 }
 
 enum ValidationSeverityFilter { all, errorsOnly, warningsOnly }
+
+/// Dialog for editing a translation manually
+class _EditTranslationDialog extends StatefulWidget {
+  final ValidationIssue issue;
+
+  const _EditTranslationDialog({required this.issue});
+
+  @override
+  State<_EditTranslationDialog> createState() => _EditTranslationDialogState();
+}
+
+class _EditTranslationDialogState extends State<_EditTranslationDialog> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.issue.translatedText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Dialog(
+      child: Container(
+        width: 800,
+        constraints: const BoxConstraints(maxHeight: 600),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(
+                  FluentIcons.edit_24_regular,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Edit Translation',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        widget.issue.unitKey,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Icon(
+                      FluentIcons.dismiss_24_regular,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Issue description
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.issue.severity == ValidationSeverity.error
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: widget.issue.severity == ValidationSeverity.error
+                      ? Colors.red.withValues(alpha: 0.3)
+                      : Colors.orange.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    widget.issue.severity == ValidationSeverity.error
+                        ? FluentIcons.error_circle_24_regular
+                        : FluentIcons.warning_24_regular,
+                    size: 20,
+                    color: widget.issue.severity == ValidationSeverity.error
+                        ? Colors.red[700]
+                        : Colors.orange[700],
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${widget.issue.issueType}: ${widget.issue.description}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: widget.issue.severity == ValidationSeverity.error
+                            ? Colors.red[700]
+                            : Colors.orange[700],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Source text (read-only)
+            Text(
+              'Source Text',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: SelectableText(
+                widget.issue.sourceText,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Translation text (editable)
+            Text(
+              'Translation',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: TextField(
+                controller: _controller,
+                maxLines: null,
+                minLines: 4,
+                decoration: InputDecoration(
+                  hintText: 'Enter corrected translation...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide(color: theme.dividerColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide(color: theme.dividerColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FluentTextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                FluentButton(
+                  onPressed: () {
+                    final text = _controller.text.trim();
+                    if (text.isNotEmpty) {
+                      Navigator.of(context).pop(text);
+                    }
+                  },
+                  icon: const Icon(FluentIcons.checkmark_24_regular),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

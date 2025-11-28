@@ -13,6 +13,7 @@ class ValidationReviewDataSource extends DataGridSource {
   // Action callbacks set by the screen
   Future<void> Function(ValidationIssue issue)? onAccept;
   Future<void> Function(ValidationIssue issue)? onReject;
+  Future<void> Function(ValidationIssue issue)? onEdit;
 
   ValidationReviewDataSource({
     required List<ValidationIssue> issues,
@@ -240,6 +241,18 @@ class ValidationReviewDataSource extends DataGridSource {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildSmallActionButton(
+              context,
+              'Edit',
+              FluentIcons.edit_24_regular,
+              Colors.blue[700]!,
+              () {
+                if (onEdit != null) {
+                  onEdit!(issue);
+                }
+              },
+            ),
+            const SizedBox(width: 4),
             _buildSmallActionButton(
               context,
               'Accept',

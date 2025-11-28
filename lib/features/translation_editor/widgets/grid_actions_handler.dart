@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import '../../../models/domain/translation_version.dart';
+import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
 import '../providers/editor_providers.dart';
 import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
 import 'editor_data_source.dart';
@@ -171,38 +171,33 @@ class GridActionsHandler {
     ref.invalidate(projectsWithDetailsProvider);
   }
 
-  /// Clear translation text for selected rows
+  /// Clear translation text for selected rows using batch SQL update
   Future<void> handleClear() async {
     if (selectedRowIds.isEmpty) return;
 
+    final selectedRows = dataSource.translationRows
+        .where((row) => selectedRowIds.contains(row.id))
+        .toList();
+
+    if (selectedRows.isEmpty) return;
+
     try {
       final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final selectedRows = dataSource.translationRows
-          .where((row) => selectedRowIds.contains(row.id))
-          .toList();
+      final versionIds = selectedRows.map((row) => row.version.id).toList();
 
-      int successCount = 0;
-      for (final row in selectedRows) {
-        final updatedVersion = row.version.copyWith(
-          translatedText: '',
-          status: TranslationVersionStatus.pending,
-          updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        );
-
-        final result = await versionRepo.update(updatedVersion);
-        result.when(
-          ok: (_) => successCount++,
-          err: (error) {
-            // Log error but continue with other rows
-          },
-        );
-      }
+      // Single batch SQL update instead of N individual updates
+      final result = await versionRepo.clearBatch(versionIds);
 
       if (context.mounted) {
-        FluentToast.success(context, 'Cleared $successCount translation(s)');
-        
-        // Refresh the data
-        _refreshProviders();
+        result.when(
+          ok: (count) {
+            FluentToast.success(context, 'Cleared $count translation(s)');
+            _refreshProviders();
+          },
+          err: (error) {
+            FluentToast.error(context, 'Error: $error');
+          },
+        );
       }
     } catch (e) {
       if (context.mounted) {

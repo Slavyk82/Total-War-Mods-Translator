@@ -11,17 +11,15 @@ import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/utils/concurrency_semaphore.dart';
 import 'package:twmt/services/settings/settings_service.dart';
-import 'package:twmt/services/shared/circuit_breaker.dart';
 import 'package:twmt/services/database/database_service.dart';
 
 /// Implementation of high-level LLM service
 ///
 /// This service orchestrates LLM providers, handles rate limiting,
-/// circuit breaking, and provides a unified interface for translation.
+/// and provides a unified interface for translation.
 ///
 /// Core responsibilities:
 /// - Provider coordination and API key management
-/// - Circuit breaker protection for provider failures
 /// - Parallel batch translation with concurrency control
 /// - Streaming translation support
 /// - Token estimation
@@ -29,7 +27,6 @@ class LlmServiceImpl implements ILlmService {
   final LlmProviderFactory _providerFactory;
   final LlmBatchAdjuster _batchAdjuster;
   final SettingsService _settingsService;
-  final CircuitBreakerManager _circuitBreakerManager;
   final FlutterSecureStorage _secureStorage;
 
   /// API key setting key pattern: "{providerCode}_api_key"
@@ -42,12 +39,10 @@ class LlmServiceImpl implements ILlmService {
     required LlmProviderFactory providerFactory,
     required LlmBatchAdjuster batchAdjuster,
     required SettingsService settingsService,
-    required CircuitBreakerManager circuitBreakerManager,
     required FlutterSecureStorage secureStorage,
   })  : _providerFactory = providerFactory,
         _batchAdjuster = batchAdjuster,
         _settingsService = settingsService,
-        _circuitBreakerManager = circuitBreakerManager,
         _secureStorage = secureStorage;
 
   @override
@@ -74,28 +69,13 @@ class LlmServiceImpl implements ILlmService {
         );
       }
 
-      // Get provider instance
+      // Get provider instance and translate directly
       final provider = _providerFactory.getProvider(providerCode);
+      final result = await provider.translate(request, apiKey, cancelToken: cancelToken);
 
-      // Execute with circuit breaker protection, passing cancel token
-      final result = await _executeWithCircuitBreaker(
-        providerCode,
-        () => provider.translate(request, apiKey, cancelToken: cancelToken),
-      );
-
-      return result;
-    } on CircuitBreakerOpenException catch (e, stackTrace) {
-      // Convert circuit breaker exception to LLM-specific exception
-      // Use serviceId from exception, not active provider (they may differ)
-      return Err(
-        LlmCircuitBreakerException(
-          'Circuit breaker is open: ${e.toString()}',
-          providerCode: e.serviceId,
-          retryAfter: e.willAttemptCloseAt,
-          originalError: e.lastErrorMessage,
-          originalErrorType: e.lastErrorType,
-          stackTrace: stackTrace,
-        ),
+      return result.when(
+        ok: (response) => Ok(response),
+        err: (error) => Err(error),
       );
     } on LlmServiceException catch (e) {
       // Already an LlmServiceException, return as-is
@@ -413,24 +393,14 @@ class LlmServiceImpl implements ILlmService {
         return;
       }
 
-      // Stream translation with circuit breaker protection
-      await for (final result in _streamWithCircuitBreaker(
-        providerCode,
-        () => provider.translateStreaming(request, apiKey),
-      )) {
-        yield result;
+      // Stream translation directly
+      await for (final result in provider.translateStreaming(request, apiKey)) {
+        if (result.isErr) {
+          yield Err(result.error);
+        } else {
+          yield Ok(result.value);
+        }
       }
-    } on CircuitBreakerOpenException catch (e, stackTrace) {
-      yield Err(
-        LlmCircuitBreakerException(
-          'Circuit breaker is open: ${e.toString()}',
-          providerCode: e.serviceId,
-          retryAfter: e.willAttemptCloseAt,
-          originalError: e.lastErrorMessage,
-          originalErrorType: e.lastErrorType,
-          stackTrace: stackTrace,
-        ),
-      );
     } catch (e, stackTrace) {
       yield Err(
         LlmServiceException(
@@ -558,39 +528,6 @@ class LlmServiceImpl implements ILlmService {
     }
   }
 
-  @override
-  Future<Result<CircuitBreakerStatus, LlmServiceException>>
-      getCircuitBreakerStatus(String providerCode) async {
-    try {
-      final status = _circuitBreakerManager.getStatus(providerCode);
-      return Ok(status);
-    } catch (e, stackTrace) {
-      return Err(
-        LlmServiceException(
-          'Failed to get circuit breaker status: ${e.toString()}',
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
-  @override
-  Future<Result<void, LlmServiceException>> resetCircuitBreaker(
-    String providerCode,
-  ) async {
-    try {
-      _circuitBreakerManager.reset(providerCode);
-      return Ok(null);
-    } catch (e, stackTrace) {
-      return Err(
-        LlmServiceException(
-          'Failed to reset circuit breaker: ${e.toString()}',
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
   // ========== Private Helper Methods ==========
 
   /// Get API key for a provider from secure storage
@@ -604,80 +541,4 @@ class LlmServiceImpl implements ILlmService {
       return '';
     }
   }
-
-  /// Execute a function with circuit breaker protection
-  Future<Result<LlmResponse, LlmServiceException>> _executeWithCircuitBreaker(
-    String providerCode,
-    Future<Result<LlmResponse, LlmProviderException>> Function() fn,
-  ) async {
-    try {
-      final result = await _circuitBreakerManager.execute(
-        providerCode,
-        () async {
-          final result = await fn();
-          if (result.isErr) {
-            // Throw error so circuit breaker can track failures
-            throw result.error;
-          }
-          return result.value;
-        },
-      );
-
-      return Ok(result);
-    } on LlmProviderException catch (e) {
-      return Err(e);
-    } on CircuitBreakerOpenException {
-      rethrow; // Let caller handle circuit breaker exceptions
-    } catch (e, stackTrace) {
-      return Err(
-        LlmServiceException(
-          'Unexpected error: ${e.toString()}',
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
-  /// Stream with circuit breaker protection
-  Stream<Result<String, LlmServiceException>> _streamWithCircuitBreaker(
-    String providerCode,
-    Stream<Result<String, LlmProviderException>> Function() fn,
-  ) async* {
-    // Check if circuit breaker allows requests
-    final breaker = _circuitBreakerManager.getBreaker(providerCode);
-    if (!breaker.isAllowingRequests) {
-      throw CircuitBreakerOpenException(
-        serviceId: providerCode,
-        willAttemptCloseAt: breaker.getStatus().willAttemptCloseAt ?? DateTime.now(),
-      );
-    }
-
-    // Track if we've had any errors for circuit breaker
-    var hadError = false;
-
-    try {
-      await for (final result in fn()) {
-        if (result.isErr) {
-          hadError = true;
-          yield Err(result.error);
-        } else {
-          yield Ok(result.value);
-        }
-      }
-
-      // If no errors, record success
-      if (!hadError) {
-        breaker.execute(() async => null);
-      }
-    } catch (e, stackTrace) {
-      hadError = true;
-      yield Err(
-        LlmServiceException(
-          'Streaming error: ${e.toString()}',
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
 }

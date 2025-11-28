@@ -130,6 +130,9 @@ Widget buildProgressSection(
   BuildContext context, {
   required TranslationProgress? progress,
   required bool isPaused,
+  VoidCallback? onStop,
+  bool isStopping = false,
+  String? projectName,
 }) {
   final percentage = progress?.progressPercentage ?? 0.0;
   final theme = Theme.of(context);
@@ -149,18 +152,55 @@ Widget buildProgressSection(
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Progress',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    'Progress',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (projectName != null && projectName.isNotEmpty) ...[
+                    const SizedBox(width: 12),
+                    Text(
+                      '—',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        projectName,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            Text(
-              '${(percentage * 100).toStringAsFixed(1)}%',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.primary,
-              ),
+            Row(
+              children: [
+                if (onStop != null) ...[
+                  _SmallStopButton(
+                    onPressed: isStopping ? null : onStop,
+                    isStopping: isStopping,
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                Text(
+                  '${(percentage * 100).toStringAsFixed(1)}%',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -182,6 +222,81 @@ Widget buildProgressSection(
       ],
     ),
   );
+}
+
+/// Small stop button for embedding in progress card
+class _SmallStopButton extends StatefulWidget {
+  const _SmallStopButton({
+    required this.onPressed,
+    this.isStopping = false,
+  });
+
+  final VoidCallback? onPressed;
+  final bool isStopping;
+
+  @override
+  State<_SmallStopButton> createState() => _SmallStopButtonState();
+}
+
+class _SmallStopButtonState extends State<_SmallStopButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDisabled = widget.onPressed == null;
+    final color = theme.colorScheme.error;
+
+    return MouseRegion(
+      cursor: isDisabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDisabled
+                ? color.withValues(alpha: 0.3)
+                : _isHovered
+                    ? color.withValues(alpha: 0.9)
+                    : color.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.isStopping)
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              else
+                const Icon(
+                  FluentIcons.stop_16_filled,
+                  color: Colors.white,
+                  size: 14,
+                ),
+              const SizedBox(width: 6),
+              Text(
+                widget.isStopping ? 'Stopping...' : 'Stop',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Builds a single stat card
@@ -322,11 +437,15 @@ Widget buildErrorSection(
 class LogTerminal extends StatefulWidget {
   const LogTerminal({
     super.key,
-    this.height = 150,
+    this.height,
+    this.expand = false,
   });
 
-  /// Height of the terminal (default 150px for ~10 lines).
-  final double height;
+  /// Height of the terminal. If null and expand is false, defaults to 150px.
+  final double? height;
+
+  /// If true, the terminal will expand to fill available space.
+  final bool expand;
 
   @override
   State<LogTerminal> createState() => _LogTerminalState();
@@ -395,7 +514,7 @@ class _LogTerminalState extends State<LogTerminal> {
     const terminalBg = Color(0xFF1E1E1E);
     const headerBg = Color(0xFF2D2D2D);
 
-    return Container(
+    final terminalContent = Container(
       decoration: BoxDecoration(
         color: terminalBg,
         borderRadius: BorderRadius.circular(8),
@@ -495,38 +614,48 @@ class _LogTerminalState extends State<LogTerminal> {
             ),
           ),
           // Terminal content
-          Container(
-            height: widget.height,
-            decoration: const BoxDecoration(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(8),
-                bottomRight: Radius.circular(8),
-              ),
-            ),
-            child: _logs.isEmpty
-                ? Center(
-                    child: Text(
-                      'Waiting for logs...',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontFamily: 'Consolas, monospace',
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8),
-                    itemCount: _logs.length,
-                    itemBuilder: (context, index) {
-                      final entry = _logs[index];
-                      return _buildLogLine(entry);
-                    },
-                  ),
-          ),
+          widget.expand
+              ? Expanded(child: _buildTerminalContent())
+              : SizedBox(
+                  height: widget.height ?? 150,
+                  child: _buildTerminalContent(),
+                ),
         ],
       ),
+    );
+
+    return terminalContent;
+  }
+
+  Widget _buildTerminalContent() {
+    return Container(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(8),
+          bottomRight: Radius.circular(8),
+        ),
+      ),
+      child: _logs.isEmpty
+          ? Center(
+              child: Text(
+                'Waiting for logs...',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontFamily: 'Consolas, monospace',
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          : ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(8),
+              itemCount: _logs.length,
+              itemBuilder: (context, index) {
+                final entry = _logs[index];
+                return _buildLogLine(entry);
+              },
+            ),
     );
   }
 

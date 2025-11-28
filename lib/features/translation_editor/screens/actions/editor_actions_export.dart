@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
+import '../export_progress_screen.dart';
 import 'editor_actions_base.dart';
 
 /// Mixin handling export operations
@@ -24,43 +26,35 @@ mixin EditorActionsExport on EditorActionsBase {
 
       final language = langResult.unwrap();
       final languageCodes = [language.code];
-      final outputPath = 'exports';
 
       if (!mounted) return;
 
-      final result = await exportService.exportToPack(
-        projectId: projectId,
-        languageCodes: languageCodes,
-        outputPath: outputPath,
-        validatedOnly: false,
-        onProgress: (step, progress, {currentLanguage, currentIndex, total}) {},
-      );
-
-      result.when(
-        ok: (exportResult) {
-          if (mounted) {
-            EditorDialogs.showInfoDialog(
-              context,
-              'Export Complete',
-              'Exported ${exportResult.entryCount} translations to:\n${exportResult.outputPath}',
-            );
-          }
-        },
-        err: (error) => throw Exception(error.message),
-      );
-
-      ref.read(loggingServiceProvider).info(
-        'Export completed',
-        {'format': 'pack', 'languageCodes': languageCodes},
+      // Navigate to export progress screen
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ExportProgressScreen(
+            exportService: exportService,
+            projectId: projectId,
+            languageCodes: languageCodes,
+            onComplete: (result) {
+              if (result != null) {
+                ref.read(loggingServiceProvider).info(
+                  'Pack generation completed',
+                  {'format': 'pack', 'languageCodes': languageCodes},
+                );
+              }
+            },
+          ),
+        ),
       );
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
-        'Failed to export translations',
+        'Failed to generate pack',
         e,
         stackTrace,
       );
       if (mounted) {
-        EditorDialogs.showErrorDialog(context, 'Export failed', e.toString());
+        EditorDialogs.showErrorDialog(context, 'Pack generation failed', e.toString());
       }
     }
   }

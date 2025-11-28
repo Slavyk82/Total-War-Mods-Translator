@@ -347,6 +347,8 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String entryId,
   }) async {
     try {
+      _logger.debug('incrementUsageCount called', {'entryId': entryId});
+
       // Get current entry
       final getResult = await _repository.getById(entryId);
 
@@ -380,6 +382,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       final updateResult = await _repository.update(updatedEntry);
 
       if (updateResult.isErr) {
+        _logger.error('incrementUsageCount failed', {'entryId': entryId, 'error': updateResult.error});
         return Err(
           TmServiceException(
             'Failed to update usage count: ${updateResult.error}',
@@ -388,6 +391,11 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         );
       }
 
+      _logger.debug('incrementUsageCount success', {
+        'entryId': entryId,
+        'oldCount': entry.usageCount,
+        'newCount': updatedEntry.usageCount,
+      });
       return Ok(updateResult.value);
     } catch (e, stackTrace) {
       return Err(
@@ -501,6 +509,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     String? targetLanguageCode,
     int limit = AppConstants.defaultTmPageSize,
     int offset = 0,
+    String orderBy = 'usage_count DESC',
   }) async {
     try {
       // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
@@ -512,6 +521,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         targetLanguageId: targetLanguageId,
         limit: limit,
         offset: offset,
+        orderBy: orderBy,
       );
 
       if (result.isErr) {
@@ -621,6 +631,22 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         sourceText: sourceText,
         targetLanguageCode: targetLanguageCode,
         minSimilarity: minSimilarity,
+        category: category,
+      );
+
+  @override
+  Future<Result<List<TmMatch>, TmLookupException>> findFuzzyMatchesIsolate({
+    required String sourceText,
+    required String targetLanguageCode,
+    double minSimilarity = AppConstants.minTmSimilarity,
+    int maxResults = AppConstants.maxTmFuzzyResults,
+    String? category,
+  }) =>
+      _matchingService.findFuzzyMatchesIsolate(
+        sourceText: sourceText,
+        targetLanguageCode: targetLanguageCode,
+        minSimilarity: minSimilarity,
+        maxResults: maxResults,
         category: category,
       );
 

@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
@@ -5,6 +6,49 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 part 'tm_providers.g.dart';
+
+/// Sort configuration
+class TmSort {
+  final String column;
+  final bool ascending;
+
+  const TmSort({required this.column, required this.ascending});
+
+  /// Convert to SQL ORDER BY clause
+  String toOrderBy() {
+    final sqlColumn = switch (column) {
+      'quality' => 'quality_score',
+      'source' => 'source_text',
+      'target' => 'translated_text',
+      'usage' => 'usage_count',
+      _ => 'usage_count',
+    };
+    return '$sqlColumn ${ascending ? 'ASC' : 'DESC'}';
+  }
+}
+
+/// Sort state provider for TM entries (manual provider - not generated)
+final tmSortStateProvider = NotifierProvider<TmSortStateNotifier, TmSort>(
+  TmSortStateNotifier.new,
+);
+
+/// Sort state notifier
+class TmSortStateNotifier extends Notifier<TmSort> {
+  @override
+  TmSort build() => const TmSort(column: 'usage', ascending: false);
+
+  void setSort(String column, bool ascending) {
+    state = TmSort(column: column, ascending: ascending);
+  }
+
+  void toggleSort(String column) {
+    if (state.column == column) {
+      state = TmSort(column: column, ascending: !state.ascending);
+    } else {
+      state = TmSort(column: column, ascending: false);
+    }
+  }
+}
 
 /// TM entries list with filtering and pagination
 @riverpod
@@ -15,12 +59,17 @@ Future<List<TranslationMemoryEntry>> tmEntries(
   int page = 1,
   int pageSize = 1000,
 }) async {
+  // Get current sort state
+  final sortState = ref.watch(tmSortStateProvider);
+  final orderBy = sortState.toOrderBy();
+  
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting tmEntries provider', {
     'targetLang': targetLang,
     'minQuality': minQuality,
     'page': page,
     'pageSize': pageSize,
+    'orderBy': orderBy,
   });
   try {
     final service = ServiceLocator.get<ITranslationMemoryService>();
@@ -30,6 +79,7 @@ Future<List<TranslationMemoryEntry>> tmEntries(
       targetLanguageCode: targetLang,
       limit: pageSize,
       offset: offset,
+      orderBy: orderBy,
     );
 
     return result.when(

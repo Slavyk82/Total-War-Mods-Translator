@@ -7,6 +7,7 @@ import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 import 'package:twmt/services/translation_memory/similarity_calculator.dart';
 import 'package:twmt/services/translation_memory/tm_cache.dart';
+import 'package:twmt/services/translation_memory/isolate_similarity_service.dart';
 
 /// Translation Memory matching service
 ///
@@ -237,6 +238,218 @@ class TmMatchingService {
       return Err(
         TmLookupException(
           'Unexpected error finding fuzzy matches: ${e.toString()}',
+          sourceText,
+          targetLanguageCode,
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  /// Find fuzzy matches for multiple source texts in a batch using isolate.
+  ///
+  /// This method is optimized for bulk operations and runs similarity
+  /// calculations in a background isolate to prevent UI freezing.
+  ///
+  /// Returns a map of source text to best match (or null if no match).
+  Future<Result<Map<String, TmMatch?>, TmLookupException>> findFuzzyMatchesBatch({
+    required List<String> sourceTexts,
+    required String targetLanguageCode,
+    double minSimilarity = AppConstants.minTmSimilarity,
+    int maxResults = AppConstants.maxTmFuzzyResults,
+    String? category,
+  }) async {
+    if (sourceTexts.isEmpty) {
+      return Ok({});
+    }
+
+    try {
+      // Resolve language code to database ID
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+      if (targetLanguageId == null) {
+        return Ok({for (final text in sourceTexts) text: null});
+      }
+
+      // Initialize isolate service
+      final isolateService = IsolateSimilarityService.instance;
+      await isolateService.initialize();
+
+      final results = <String, TmMatch?>{};
+
+      // Process each source text
+      for (final sourceText in sourceTexts) {
+        // Get candidates from repository (uses FTS5 for fast filtering)
+        final candidatesResult = await _repository.findMatches(
+          sourceText,
+          targetLanguageId,
+          minConfidence: minSimilarity - 0.1, // Get slightly more candidates for isolate filtering
+        );
+
+        if (candidatesResult.isErr || candidatesResult.value.isEmpty) {
+          results[sourceText] = null;
+          continue;
+        }
+
+        final candidates = candidatesResult.value;
+
+        // Convert to isolate-compatible format
+        final candidateData = candidates.map((c) => CandidateData(
+          id: c.id,
+          sourceText: c.sourceText,
+          translatedText: c.translatedText,
+          usageCount: c.usageCount,
+          lastUsedAt: c.lastUsedAt,
+          qualityScore: c.qualityScore ?? AppConstants.defaultTmQuality,
+        )).toList();
+
+        // Calculate similarity in isolate
+        final similarityResults = await isolateService.calculateBatchSimilarity(
+          sourceText: sourceText,
+          candidates: candidateData,
+          minSimilarity: minSimilarity,
+          category: category,
+        );
+
+        if (similarityResults.isEmpty) {
+          results[sourceText] = null;
+          continue;
+        }
+
+        // Get the best match
+        final bestResult = similarityResults.first;
+        final bestCandidate = candidates.firstWhere((c) => c.id == bestResult.candidateId);
+
+        final breakdown = SimilarityBreakdown(
+          levenshteinScore: bestResult.levenshteinScore,
+          jaroWinklerScore: bestResult.jaroWinklerScore,
+          tokenScore: bestResult.tokenScore,
+          contextBoost: bestResult.contextBoost,
+          weights: const ScoreWeights(),
+        );
+
+        results[sourceText] = TmMatch(
+          entryId: bestCandidate.id,
+          sourceText: bestCandidate.sourceText,
+          targetText: bestCandidate.translatedText,
+          targetLanguageCode: targetLanguageCode,
+          similarityScore: bestResult.combinedScore,
+          matchType: TmMatchType.fuzzy,
+          breakdown: breakdown,
+          usageCount: bestCandidate.usageCount,
+          lastUsedAt: DateTime.fromMillisecondsSinceEpoch(bestCandidate.lastUsedAt * 1000),
+          qualityScore: bestCandidate.qualityScore ?? AppConstants.defaultTmQuality,
+          autoApplied: bestResult.combinedScore >= AppConstants.autoAcceptTmThreshold,
+        );
+      }
+
+      return Ok(results);
+    } catch (e, stackTrace) {
+      return Err(
+        TmLookupException(
+          'Unexpected error in batch fuzzy matching: ${e.toString()}',
+          sourceTexts.firstOrNull ?? '',
+          targetLanguageCode,
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  /// Find fuzzy matches using isolate for a single source text.
+  ///
+  /// This is more efficient than the regular findFuzzyMatches for heavy workloads
+  /// as it runs similarity calculations in a background isolate.
+  Future<Result<List<TmMatch>, TmLookupException>> findFuzzyMatchesIsolate({
+    required String sourceText,
+    required String targetLanguageCode,
+    double minSimilarity = AppConstants.minTmSimilarity,
+    int maxResults = AppConstants.maxTmFuzzyResults,
+    String? category,
+  }) async {
+    try {
+      // Resolve language code to database ID
+      final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
+      if (targetLanguageId == null) {
+        return Ok([]);
+      }
+
+      // Get candidates from repository
+      final candidatesResult = await _repository.findMatches(
+        sourceText,
+        targetLanguageId,
+        minConfidence: minSimilarity - 0.1,
+      );
+
+      if (candidatesResult.isErr) {
+        return Err(
+          TmLookupException(
+            'Failed to get candidates: ${candidatesResult.error}',
+            sourceText,
+            targetLanguageCode,
+          ),
+        );
+      }
+
+      final candidates = candidatesResult.value;
+      if (candidates.isEmpty) {
+        return Ok([]);
+      }
+
+      // Initialize isolate service and calculate similarity
+      final isolateService = IsolateSimilarityService.instance;
+      await isolateService.initialize();
+
+      final candidateData = candidates.map((c) => CandidateData(
+        id: c.id,
+        sourceText: c.sourceText,
+        translatedText: c.translatedText,
+        usageCount: c.usageCount,
+        lastUsedAt: c.lastUsedAt,
+        qualityScore: c.qualityScore ?? AppConstants.defaultTmQuality,
+      )).toList();
+
+      final similarityResults = await isolateService.calculateBatchSimilarity(
+        sourceText: sourceText,
+        candidates: candidateData,
+        minSimilarity: minSimilarity,
+        category: category,
+      );
+
+      // Convert results to TmMatch objects
+      final matches = <TmMatch>[];
+      for (final result in similarityResults.take(maxResults)) {
+        final candidate = candidates.firstWhere((c) => c.id == result.candidateId);
+
+        final breakdown = SimilarityBreakdown(
+          levenshteinScore: result.levenshteinScore,
+          jaroWinklerScore: result.jaroWinklerScore,
+          tokenScore: result.tokenScore,
+          contextBoost: result.contextBoost,
+          weights: const ScoreWeights(),
+        );
+
+        matches.add(TmMatch(
+          entryId: candidate.id,
+          sourceText: candidate.sourceText,
+          targetText: candidate.translatedText,
+          targetLanguageCode: targetLanguageCode,
+          similarityScore: result.combinedScore,
+          matchType: TmMatchType.fuzzy,
+          breakdown: breakdown,
+          usageCount: candidate.usageCount,
+          lastUsedAt: DateTime.fromMillisecondsSinceEpoch(candidate.lastUsedAt * 1000),
+          qualityScore: candidate.qualityScore ?? AppConstants.defaultTmQuality,
+          autoApplied: result.combinedScore >= AppConstants.autoAcceptTmThreshold,
+        ));
+      }
+
+      return Ok(matches);
+    } catch (e, stackTrace) {
+      return Err(
+        TmLookupException(
+          'Unexpected error in isolate fuzzy matching: ${e.toString()}',
           sourceText,
           targetLanguageCode,
           error: e,

@@ -610,24 +610,32 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   }
 
   /// Calculate the actual height needed for text using TextPainter
+  /// Uses escaped text to match actual display (newlines shown as \n)
   double _calculateTextHeight(String text, double maxWidth) {
     if (text.isEmpty) return 20.0;
-    
+
+    // Escape special characters to match what's actually displayed
+    final escapedText = text
+        .replaceAll('\r\n', '\\r\\n')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r')
+        .replaceAll('\t', '\\t');
+
     final textStyle = const TextStyle(
       fontSize: 13,
       fontWeight: FontWeight.normal,
     );
-    
-    final textSpan = TextSpan(text: text, style: textStyle);
+
+    final textSpan = TextSpan(text: escapedText, style: textStyle);
     final textPainter = TextPainter(
       text: textSpan,
       textDirection: TextDirection.ltr,
       maxLines: null,
     );
-    
+
     // Layout with available width minus padding (16px total)
     textPainter.layout(maxWidth: maxWidth - 16);
-    
+
     // Add 20% extra height as safety margin
     return textPainter.height * 1.2;
   }

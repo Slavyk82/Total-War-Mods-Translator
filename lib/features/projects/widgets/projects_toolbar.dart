@@ -36,16 +36,13 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
               child: _buildSearchField(theme),
             ),
             const SizedBox(width: 12),
-            // Filter button
-            _buildFilterButton(theme),
-            const SizedBox(width: 8),
             // Sort dropdown
             _buildSortDropdown(theme),
           ],
         ),
         const SizedBox(height: 12),
-        // Active filters chips
-        _buildActiveFilters(theme),
+        // Quick filter buttons
+        _buildQuickFilters(theme),
       ],
     );
   }
@@ -103,18 +100,94 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
     );
   }
 
-  Widget _buildFilterButton(ThemeData theme) {
-    final filter = ref.watch(projectsFilterProvider);
-    final hasActiveFilters = filter.gameFilters.isNotEmpty ||
-        filter.languageFilters.isNotEmpty ||
-        filter.showOnlyWithUpdates;
-
-    return _FluentButton(
-      icon: FluentIcons.filter_24_regular,
-      label: 'Filter',
-      badge: hasActiveFilters ? _getActiveFilterCount(filter) : null,
-      onTap: () => _showFilterDialog(),
+  Widget _buildQuickFilters(ThemeData theme) {
+    final currentFilter = ref.watch(
+      projectsFilterProvider.select((s) => s.quickFilter),
     );
+
+    return Row(
+      children: [
+        _QuickFilterButton(
+          icon: FluentIcons.arrow_sync_24_regular,
+          label: 'Needs Update',
+          tooltip: 'Projects requiring translation update from mod source',
+          isSelected: currentFilter == ProjectQuickFilter.needsUpdate,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.needsUpdate
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.needsUpdate,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _QuickFilterButton(
+          icon: FluentIcons.document_error_24_regular,
+          label: 'Incomplete',
+          tooltip: 'Projects not yet 100% translated in all configured languages',
+          isSelected: currentFilter == ProjectQuickFilter.incomplete,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.incomplete
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.incomplete,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _QuickFilterButton(
+          icon: FluentIcons.checkmark_circle_24_regular,
+          label: 'Has Complete',
+          tooltip: 'Projects with at least one 100% translated language',
+          isSelected: currentFilter == ProjectQuickFilter.hasCompleteLanguage,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.hasCompleteLanguage
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.hasCompleteLanguage,
+          ),
+        ),
+        if (currentFilter != ProjectQuickFilter.none) ...[
+          const SizedBox(width: 12),
+          _buildClearFilterButton(theme),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildClearFilterButton(ThemeData theme) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => _setQuickFilter(ProjectQuickFilter.none),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.3),
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.dismiss_24_regular,
+                size: 14,
+                color: theme.colorScheme.onSurface,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Clear',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _setQuickFilter(ProjectQuickFilter filter) {
+    ref.read(projectsFilterProvider.notifier).setQuickFilter(filter);
   }
 
   Widget _buildSortDropdown(ThemeData theme) {
@@ -152,118 +225,8 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
     );
   }
 
-  Widget _buildActiveFilters(ThemeData theme) {
-    final filter = ref.watch(projectsFilterProvider);
-    final chips = <Widget>[];
-
-    // Updates filter
-    if (filter.showOnlyWithUpdates) {
-      chips.add(_buildFilterChip(
-        theme,
-        'HAS UPDATES',
-        () => _toggleUpdatesFilter(false),
-      ));
-    }
-
-    if (chips.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        ...chips,
-        _buildClearAllButton(theme),
-      ],
-    );
-  }
-
-  Widget _buildFilterChip(ThemeData theme, String label, VoidCallback onRemove) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-              fontWeight: FontWeight.w500,
-              fontSize: 11,
-            ),
-          ),
-          const SizedBox(width: 6),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: onRemove,
-              child: Icon(
-                FluentIcons.dismiss_24_regular,
-                size: 14,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildClearAllButton(ThemeData theme) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: _clearAllFilters,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            'Clear all',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _updateSearch(String query) {
     ref.read(projectsFilterProvider.notifier).updateSearchQuery(query);
-  }
-
-  void _toggleUpdatesFilter(bool value) {
-    ref.read(projectsFilterProvider.notifier).updateFilters(
-      showOnlyWithUpdates: value,
-    );
-  }
-
-  void _clearAllFilters() {
-    ref.read(projectsFilterProvider.notifier).clearFilters();
-  }
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => const _FilterDialog(),
-    );
-  }
-
-  int _getActiveFilterCount(ProjectsFilterState filter) {
-    return filter.gameFilters.length +
-        filter.languageFilters.length +
-        (filter.showOnlyWithUpdates ? 1 : 0);
   }
 
   IconData _getSortIcon(ProjectSortOption option) {
@@ -388,137 +351,83 @@ class _FluentButtonState extends State<_FluentButton> {
   }
 }
 
-/// Filter dialog for advanced filtering options
-class _FilterDialog extends ConsumerWidget {
-  const _FilterDialog();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final filter = ref.watch(projectsFilterProvider);
-
-    return Dialog(
-      backgroundColor: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Icon(
-                    FluentIcons.filter_24_regular,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Filter Projects',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const Spacer(),
-                  MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Icon(
-                        FluentIcons.dismiss_24_regular,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // Updates filter
-              _FilterCheckbox(
-                label: 'Show only projects with updates',
-                isSelected: filter.showOnlyWithUpdates,
-                onChanged: (value) {
-                  ref.read(projectsFilterProvider.notifier).updateFilters(
-                    showOnlyWithUpdates: value,
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Custom checkbox for filters
-class _FilterCheckbox extends StatefulWidget {
+/// Quick filter toggle button with Fluent Design
+class _QuickFilterButton extends StatefulWidget {
+  final IconData icon;
   final String label;
+  final String tooltip;
   final bool isSelected;
-  final ValueChanged<bool> onChanged;
+  final VoidCallback onTap;
 
-  const _FilterCheckbox({
+  const _QuickFilterButton({
+    required this.icon,
     required this.label,
+    required this.tooltip,
     required this.isSelected,
-    required this.onChanged,
+    required this.onTap,
   });
 
   @override
-  State<_FilterCheckbox> createState() => _FilterCheckboxState();
+  State<_QuickFilterButton> createState() => _QuickFilterButtonState();
 }
 
-class _FilterCheckboxState extends State<_FilterCheckbox> {
+class _QuickFilterButtonState extends State<_QuickFilterButton> {
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: () => widget.onChanged(!widget.isSelected),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: widget.isSelected
-                ? theme.colorScheme.primaryContainer
-                : (_isHovered
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                    : Colors.transparent),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
+    return Tooltip(
+      message: widget.tooltip,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
               color: widget.isSelected
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.isSelected
-                    ? FluentIcons.checkmark_square_24_filled
-                    : FluentIcons.square_24_regular,
-                size: 18,
+                  ? theme.colorScheme.primary
+                  : (_isHovered
+                      ? theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.7)
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.4)),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
                 color: widget.isSelected
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    : theme.colorScheme.outline.withValues(alpha: 0.2),
               ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.icon,
+                  size: 16,
                   color: widget.isSelected
-                      ? theme.colorScheme.onPrimaryContainer
+                      ? theme.colorScheme.onPrimary
                       : theme.colorScheme.onSurface,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  widget.label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: widget.isSelected
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                    fontWeight:
+                        widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

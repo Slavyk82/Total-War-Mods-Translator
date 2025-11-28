@@ -85,10 +85,19 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   label: 'Projects',
                   onTap: () => _navigate(context, AppRoutes.projects),
                 ),
-                const Divider(height: 24),
                 _buildNavigationItem(
                   context: context,
                   index: 3,
+                  selectedIndex: selectedIndex,
+                  icon: FluentIcons.box_multiple_24_regular,
+                  selectedIcon: FluentIcons.box_multiple_24_filled,
+                  label: 'Pack Compilation',
+                  onTap: () => _navigate(context, AppRoutes.packCompilation),
+                ),
+                const Divider(height: 24),
+                _buildNavigationItem(
+                  context: context,
+                  index: 4,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.book_24_regular,
                   selectedIcon: FluentIcons.book_24_filled,
@@ -97,7 +106,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 ),
                 _buildNavigationItem(
                   context: context,
-                  index: 4,
+                  index: 5,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.database_24_regular,
                   selectedIcon: FluentIcons.database_24_filled,
@@ -107,7 +116,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 const Divider(height: 24),
                 _buildNavigationItem(
                   context: context,
-                  index: 5,
+                  index: 6,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.settings_24_regular,
                   selectedIcon: FluentIcons.settings_24_filled,
@@ -115,6 +124,17 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   onTap: () => _navigate(context, AppRoutes.settings),
                 ),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                'V. 0.1 - BETA',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
             ),
           ),
         ],
@@ -190,9 +210,10 @@ class NavigationSidebarRouter extends ConsumerWidget {
     if (path == AppRoutes.home) return 0;
     if (path.startsWith(AppRoutes.mods)) return 1;
     if (path.startsWith(AppRoutes.projects)) return 2;
-    if (path.startsWith(AppRoutes.glossary)) return 3;
-    if (path.startsWith(AppRoutes.translationMemory)) return 4;
-    if (path.startsWith(AppRoutes.settings)) return 5;
+    if (path.startsWith(AppRoutes.packCompilation)) return 3;
+    if (path.startsWith(AppRoutes.glossary)) return 4;
+    if (path.startsWith(AppRoutes.translationMemory)) return 5;
+    if (path.startsWith(AppRoutes.settings)) return 6;
     return 0; // Default to home
   }
 }

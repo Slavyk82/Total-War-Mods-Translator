@@ -3,6 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/home_providers.dart';
 
+/// Format large numbers with K/M suffixes
+String _formatNumber(int number) {
+  if (number >= 1000000) {
+    return '${(number / 1000000).toStringAsFixed(1)}M';
+  } else if (number >= 1000) {
+    return '${(number / 1000).toStringAsFixed(1)}K';
+  }
+  return number.toString();
+}
+
 /// Statistics cards for home dashboard
 class StatsCards extends ConsumerWidget {
   const StatsCards({super.key});
@@ -41,6 +51,16 @@ class StatsCards extends ConsumerWidget {
               value: stats.translatedUnits.toString(),
               subtitle: '${stats.pendingUnits} pending',
               color: Colors.green,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _StatCard(
+              icon: FluentIcons.text_word_count_24_regular,
+              title: 'Words Translated',
+              value: _formatNumber(stats.totalTranslatedWords),
+              subtitle: 'total words',
+              color: Colors.purple,
             ),
           ),
         ],

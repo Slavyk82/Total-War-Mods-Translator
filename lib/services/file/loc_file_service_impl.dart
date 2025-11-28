@@ -88,8 +88,8 @@ class LocFileServiceImpl implements ILocFileService {
       
       // Metadata row - RPFM format: #Loc;version;internal_path
       // The internal path will be set by RPFM when adding to pack
-      final langUpper = languageCode.toUpperCase();
-      buffer.writeln('#Loc;1;text/db/!!!!!!!!!!_${langUpper}_twmt_text.loc\t\t');
+      final langLower = languageCode.toLowerCase();
+      buffer.writeln('#Loc;1;text/db/!!!!!!!!!!_${langLower}_twmt_text.loc\t\t');
       
       int exportedCount = 0;
 
@@ -142,7 +142,7 @@ class LocFileServiceImpl implements ILocFileService {
 // Removed unused variable
       // Create directory structure matching pack internal path
       final tsvDir = path.join(tempDir.path, 'twmt_export', 'text', 'db');
-      final fileName = '!!!!!!!!!!_${langUpper}_twmt_text.loc.tsv';
+      final fileName = '!!!!!!!!!!_${langLower}_twmt_text.loc.tsv';
       final filePath = path.join(tsvDir, fileName);
 
       final file = File(filePath);
@@ -348,7 +348,7 @@ class LocFileServiceImpl implements ILocFileService {
 
       // Group units by source .loc file
       final groupedUnits = <String, List<({String key, String translatedText})>>{};
-      final langUpper = languageCode.toUpperCase();
+      final langLower = languageCode.toLowerCase();
 
       for (final unit in units) {
         // Skip obsolete units
@@ -410,9 +410,9 @@ class LocFileServiceImpl implements ILocFileService {
         // TSV Header row
         buffer.writeln('key\ttext\ttooltip');
         
-        // Generate the output .loc path with language prefix
-        // Original: text/db/something.loc -> text/db/!!!!!!!!!!_FR_something.loc
-        final outputLocPath = _generateOutputLocPath(sourceLocFile, langUpper);
+        // Generate the output .loc path with language prefix (lowercase)
+        // Original: text/db/something.loc -> text/db/!!!!!!!!!!_fr_twmt_something.loc
+        final outputLocPath = _generateOutputLocPath(sourceLocFile, langLower);
         
         // Metadata row - RPFM format: #Loc;version;internal_path
         buffer.writeln('#Loc;1;$outputLocPath\t\t');
@@ -464,23 +464,24 @@ class LocFileServiceImpl implements ILocFileService {
     }
   }
 
-  /// Generate output .loc path with language prefix
+  /// Generate output .loc path with language prefix (all lowercase)
   ///
   /// Transforms the original .loc path to include the language prefix.
-  /// Example: text/db/something.loc -> text/db/!!!!!!!!!!_FR_twmt_something.loc
-  String _generateOutputLocPath(String sourceLocFile, String langUpper) {
+  /// Example: text/db/Something.loc -> text/db/!!!!!!!!!!_fr_twmt_something.loc
+  String _generateOutputLocPath(String sourceLocFile, String langLower) {
     // Get the directory and filename parts
-    final dir = path.dirname(sourceLocFile).replaceAll('\\', '/');
+    final dir = path.dirname(sourceLocFile).replaceAll('\\', '/').toLowerCase();
     final fileName = path.basename(sourceLocFile);
     
-    // Remove .loc extension if present
+    // Remove .loc extension if present and convert to lowercase
     String baseName = fileName;
     if (baseName.toLowerCase().endsWith('.loc')) {
       baseName = baseName.substring(0, baseName.length - 4);
     }
+    baseName = baseName.toLowerCase();
     
-    // Build new filename with prefix: !!!!!!!!!!_FR_twmt_originalname.loc
-    final newFileName = '!!!!!!!!!!_${langUpper}_twmt_$baseName.loc';
+    // Build new filename with prefix (all lowercase): !!!!!!!!!!_fr_twmt_originalname.loc
+    final newFileName = '!!!!!!!!!!_${langLower}_twmt_$baseName.loc';
     
     // Combine directory and new filename
     if (dir.isEmpty || dir == '.') {

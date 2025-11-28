@@ -9,6 +9,7 @@ import 'package:twmt/services/history/i_history_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
+import 'package:twmt/services/translation/utils/translation_text_utils.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:uuid/uuid.dart';
@@ -82,13 +83,18 @@ class TmLookupHandler {
 
       final chunk = units.skip(i).take(_maxConcurrentLookups).toList();
       final progressPct = ((i / units.length) * 100).round();
-      
+
       // Update progress detail
       progress = progress.copyWith(
         phaseDetail: 'Exact TM lookup: $progressPct% ($i/${units.length} units, ${exactMatchedUnitIds.length} matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
+
+      // Yield to UI thread periodically to prevent freezing
+      if (i % 100 == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
 
       // Phase 1: Parallel READ operations (TM lookups)
       final lookupResults = await Future.wait(
@@ -183,7 +189,7 @@ class TmLookupHandler {
 
       final chunk = unitsForFuzzyFiltered.skip(i).take(_maxConcurrentLookups).toList();
       final progressPct = ((i / unitsForFuzzyFiltered.length) * 100).round();
-      
+
       // Update progress detail
       progress = progress.copyWith(
         phaseDetail: 'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzyFiltered.length} units, $fuzzyMatchCount matches)...',
@@ -191,7 +197,14 @@ class TmLookupHandler {
       );
       onProgressUpdate(batchId, progress);
 
+      // Yield to UI thread periodically to prevent freezing
+      // This allows the event loop to process UI updates
+      if (i % 100 == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
       // Phase 1: Parallel READ operations (TM lookups + check if already translated)
+      // These now use isolate-based similarity calculation
       final lookupResults = await Future.wait(
         chunk.map((unit) => _findFuzzyMatch(unit, context)),
       );
@@ -280,15 +293,17 @@ class TmLookupHandler {
     return null;
   }
 
-  /// Find fuzzy TM match for a unit (READ-ONLY operation)
+  /// Find fuzzy TM match for a unit using isolate (READ-ONLY operation)
   /// Returns the best match if found, null otherwise.
   /// Note: Already-translated units should be filtered out before calling this method.
+  /// Uses isolate-based computation to prevent UI freezing.
   Future<TmMatch?> _findFuzzyMatch(
     TranslationUnit unit,
     TranslationContext context,
   ) async {
     try {
-      final fuzzyMatchesResult = await _tmService.findFuzzyMatches(
+      // Use isolate-based fuzzy matching to prevent UI freezing
+      final fuzzyMatchesResult = await _tmService.findFuzzyMatchesIsolate(
         sourceText: unit.sourceText,
         targetLanguageCode: context.targetLanguage,
         minSimilarity: AppConstants.minTmSimilarity,
@@ -327,11 +342,14 @@ class TmLookupHandler {
             ? TranslationSource.tmExact
             : TranslationSource.tmFuzzy;
 
+        // Normalize: \\n → \n
+        final normalizedText = TranslationTextUtils.normalizeTranslation(pending.match.targetText);
+
         final version = TranslationVersion(
           id: _generateId(),
           unitId: pending.unit.id,
           projectLanguageId: context.projectLanguageId,
-          translatedText: pending.match.targetText,
+          translatedText: normalizedText,
           status: TranslationVersionStatus.translated,
           confidenceScore: pending.match.qualityScore,
           translationSource: translationSource,
@@ -360,7 +378,7 @@ class TmLookupHandler {
       try {
         await _historyService.recordChange(
           versionId: version.id,
-          translatedText: pending.match.targetText,
+          translatedText: version.translatedText ?? '',
           status: TranslationVersionStatus.translated.name,
           confidenceScore: pending.match.qualityScore,
           changedBy: 'tm_$matchType',
@@ -419,11 +437,14 @@ class TmLookupHandler {
           ? TranslationSource.tmExact
           : TranslationSource.tmFuzzy;
 
+      // Normalize: \\n → \n
+      final normalizedText = TranslationTextUtils.normalizeTranslation(match.targetText);
+
       final version = TranslationVersion(
         id: _generateId(),
         unitId: unit.id,
         projectLanguageId: context.projectLanguageId,
-        translatedText: match.targetText,
+        translatedText: normalizedText,
         status: TranslationVersionStatus.translated,
         confidenceScore: match.qualityScore,
         translationSource: translationSource,

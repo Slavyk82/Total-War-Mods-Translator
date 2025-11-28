@@ -5,6 +5,7 @@ import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
+import 'package:twmt/services/translation/models/llm_exchange_log.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/llm/models/llm_cancellation_token.dart';
@@ -86,6 +87,78 @@ class BatchProgressManager {
   void updateAndEmitProgress(String batchId, TranslationProgress progress) {
     _activeBatches[batchId] = progress;
     _batchControllers[batchId]?.add(Ok(progress));
+  }
+
+  /// Atomically increment counters and emit progress
+  ///
+  /// This method is safe for parallel chunk updates. It reads the current
+  /// progress, increments the specified counters, and emits the new progress.
+  /// Other fields (phaseDetail, currentPhase, etc.) can be optionally updated.
+  void incrementCountersAndEmit(
+    String batchId, {
+    int successfulUnits = 0,
+    int failedUnits = 0,
+    int processedUnits = 0,
+    int tokensUsed = 0,
+    String? phaseDetail,
+    TranslationPhase? currentPhase,
+    List<LlmExchangeLog>? appendLogs,
+  }) {
+    final current = _activeBatches[batchId];
+    if (current == null) return;
+
+    // Merge logs: append new logs, avoiding duplicates by requestId
+    List<LlmExchangeLog> mergedLogs = current.llmLogs;
+    if (appendLogs != null && appendLogs.isNotEmpty) {
+      final existingIds = current.llmLogs.map((l) => l.requestId).toSet();
+      final newLogs = appendLogs.where((l) => !existingIds.contains(l.requestId)).toList();
+      mergedLogs = [...current.llmLogs, ...newLogs];
+    }
+
+    final updated = current.copyWith(
+      successfulUnits: current.successfulUnits + successfulUnits,
+      failedUnits: current.failedUnits + failedUnits,
+      processedUnits: current.processedUnits + processedUnits,
+      tokensUsed: current.tokensUsed + tokensUsed,
+      phaseDetail: phaseDetail ?? current.phaseDetail,
+      currentPhase: currentPhase ?? current.currentPhase,
+      llmLogs: mergedLogs,
+      timestamp: DateTime.now(),
+    );
+
+    _activeBatches[batchId] = updated;
+    _batchControllers[batchId]?.add(Ok(updated));
+  }
+
+  /// Update only non-counter fields (phaseDetail, currentPhase, etc.)
+  ///
+  /// Safe for parallel use - doesn't modify counters
+  void updatePhaseAndEmit(
+    String batchId, {
+    String? phaseDetail,
+    TranslationPhase? currentPhase,
+    List<LlmExchangeLog>? appendLogs,
+  }) {
+    final current = _activeBatches[batchId];
+    if (current == null) return;
+
+    // Merge logs: append new logs, avoiding duplicates by requestId
+    List<LlmExchangeLog> mergedLogs = current.llmLogs;
+    if (appendLogs != null && appendLogs.isNotEmpty) {
+      final existingIds = current.llmLogs.map((l) => l.requestId).toSet();
+      final newLogs = appendLogs.where((l) => !existingIds.contains(l.requestId)).toList();
+      mergedLogs = [...current.llmLogs, ...newLogs];
+    }
+
+    final updated = current.copyWith(
+      phaseDetail: phaseDetail ?? current.phaseDetail,
+      currentPhase: currentPhase ?? current.currentPhase,
+      llmLogs: mergedLogs,
+      timestamp: DateTime.now(),
+    );
+
+    _activeBatches[batchId] = updated;
+    _batchControllers[batchId]?.add(Ok(updated));
   }
 
   /// Get current progress for a batch

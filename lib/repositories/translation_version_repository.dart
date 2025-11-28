@@ -236,8 +236,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   }
 
   /// Filter a list of IDs to only include untranslated ones.
+  ///
+  /// Requires [projectLanguageId] to avoid returning duplicates when
+  /// the same unit has multiple translation versions (one per language).
   Future<Result<List<String>, TWMTDatabaseException>> filterUntranslatedIds({
     required List<String> ids,
+    required String projectLanguageId,
   }) async {
     if (ids.isEmpty) {
       return Ok([]);
@@ -251,9 +255,10 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         SELECT unit_id
         FROM translation_versions
         WHERE unit_id IN ($placeholders)
+          AND project_language_id = ?
           AND (translated_text IS NULL OR translated_text = '')
         ''',
-        ids,
+        [...ids, projectLanguageId],
       );
 
       return maps.map((map) => map['unit_id'] as String).toList();
@@ -310,6 +315,35 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       }
 
       return fromMap(maps.first);
+    });
+  }
+
+  /// Clear translations for multiple versions in a single SQL query.
+  ///
+  /// Sets translated_text to empty, status to pending, and updates timestamp.
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> clearBatch(
+      List<String> versionIds) async {
+    if (versionIds.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeQuery(() async {
+      final placeholders = List.filled(versionIds.length, '?').join(',');
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final rowsAffected = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET translated_text = '',
+            status = 'pending',
+            updated_at = ?
+        WHERE id IN ($placeholders)
+        ''',
+        [now, ...versionIds],
+      );
+
+      return rowsAffected;
     });
   }
 }

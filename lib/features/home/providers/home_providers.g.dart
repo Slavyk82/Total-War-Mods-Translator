@@ -50,7 +50,7 @@ final class DashboardStatsProvider
   }
 }
 
-String _$dashboardStatsHash() => r'd5b83e4232cbc150ca4451989c19bfb78e0ad928';
+String _$dashboardStatsHash() => r'd7226530e9657b930c5f5eeb5ecd0f1496d1e59d';
 
 /// Provider for recent projects (last 5)
 

@@ -17,7 +17,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 /// Displays project overview, target languages with progress,
 /// translation statistics, and action buttons.
 /// Organized in a responsive layout with sections.
-class ProjectDetailScreen extends ConsumerWidget {
+class ProjectDetailScreen extends ConsumerStatefulWidget {
   const ProjectDetailScreen({
     super.key,
     required this.projectId,
@@ -26,8 +26,13 @@ class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final projectDetailsAsync = ref.watch(projectDetailsProvider(projectId));
+  ConsumerState<ProjectDetailScreen> createState() => _ProjectDetailScreenState();
+}
+
+class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final projectDetailsAsync = ref.watch(projectDetailsProvider(widget.projectId));
 
     return FluentScaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -45,7 +50,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         ),
       ),
       body: projectDetailsAsync.when(
-        data: (details) => _buildContent(context, ref, details),
+        data: (details) => _buildContent(context, details),
         loading: () => _buildLoading(context),
         error: (error, stack) => _buildError(context, error),
       ),
@@ -54,7 +59,6 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   Widget _buildContent(
     BuildContext context,
-    WidgetRef ref,
     ProjectDetails details,
   ) {
     return SingleChildScrollView(
@@ -64,7 +68,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         children: [
           ProjectOverviewSection(
             project: details.project,
-            onDelete: () => _handleDeleteProject(context, ref, details),
+            onDelete: () => _handleDeleteProject(context, details),
           ),
           const SizedBox(height: 24),
           LayoutBuilder(
@@ -75,21 +79,21 @@ class ProjectDetailScreen extends ConsumerWidget {
                   children: [
                     Expanded(
                       flex: 6,
-                      child: _buildLanguagesSection(context, ref, details),
+                      child: _buildLanguagesSection(context, details),
                     ),
                     const SizedBox(width: 24),
                     Expanded(
                       flex: 4,
-                      child: _buildStatsSection(context, ref, details),
+                      child: _buildStatsSection(details),
                     ),
                   ],
                 );
               } else {
                 return Column(
                   children: [
-                    _buildLanguagesSection(context, ref, details),
+                    _buildLanguagesSection(context, details),
                     const SizedBox(height: 24),
-                    _buildStatsSection(context, ref, details),
+                    _buildStatsSection(details),
                   ],
                 );
               }
@@ -102,7 +106,6 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   Widget _buildLanguagesSection(
     BuildContext context,
-    WidgetRef ref,
     ProjectDetails details,
   ) {
     final theme = Theme.of(context);
@@ -236,11 +239,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSection(
-    BuildContext context,
-    WidgetRef ref,
-    ProjectDetails details,
-  ) {
+  Widget _buildStatsSection(ProjectDetails details) {
     return ProjectStatsCard(stats: details.stats);
   }
 
@@ -338,17 +337,22 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _handleOpenEditor(
+  Future<void> _handleOpenEditor(
     BuildContext context,
     String projectId,
     String languageId,
-  ) {
-    context.push(AppRoutes.translationEditor(projectId, languageId));
+  ) async {
+    // Navigate to editor and wait for it to be popped
+    await context.push(AppRoutes.translationEditor(projectId, languageId));
+
+    // Refresh data when returning from editor to ensure stats are up to date
+    if (mounted) {
+      ref.invalidate(projectDetailsProvider(widget.projectId));
+    }
   }
 
   void _handleDeleteProject(
     BuildContext context,
-    WidgetRef ref,
     ProjectDetails details,
   ) {
     showDialog(

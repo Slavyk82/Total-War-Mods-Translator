@@ -220,26 +220,45 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       // Execute the 6-step workflow
       var currentProgress = initialProgress;
 
-      // Step 1 & 2: TM Exact and Fuzzy Match Lookup
-      // Returns both progress and set of matched unit IDs for optimization
-      final (tmProgress, tmMatchedUnitIds) = await _tmLookupHandler.performLookup(
-        batchId: batchId,
-        units: units,
-        context: context,
-        currentProgress: currentProgress,
-        checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
-        onProgressUpdate: (batchId, progress) {
-          _batchProgressManager.updateAndEmitProgress(batchId, progress);
-        },
-      );
-      currentProgress = tmProgress;
-      _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
+      // Step 1 & 2: TM Exact and Fuzzy Match Lookup (skipped if skipTranslationMemory is true)
+      Set<String> tmMatchedUnitIds = {};
+      
+      if (context.skipTranslationMemory) {
+        _logger.info('Skipping TM lookup (skipTranslationMemory=true)', {
+          'batchId': batchId,
+        });
+        currentProgress = currentProgress.copyWith(
+          phaseDetail: 'Skipping Translation Memory lookup...',
+          timestamp: DateTime.now(),
+        );
+        _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
+      } else {
+        // Returns both progress and set of matched unit IDs for optimization
+        final (tmProgress, matchedIds) = await _tmLookupHandler.performLookup(
+          batchId: batchId,
+          units: units,
+          context: context,
+          currentProgress: currentProgress,
+          checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
+          onProgressUpdate: (batchId, progress) {
+            _batchProgressManager.updateAndEmitProgress(batchId, progress);
+          },
+        );
+        currentProgress = tmProgress;
+        tmMatchedUnitIds = matchedIds;
+        _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
+      }
       await _batchProgressManager.checkPauseOrCancel(batchId);
 
       // Track units already saved progressively to avoid double-saving
       final savedUnitIds = <String>{};
       // Track cached unit IDs across all sub-batches
       final accumulatedCachedUnitIds = <String>{};
+
+      // Lock to serialize progressive saves from parallel chunks
+      // This prevents race conditions where multiple chunks try to update
+      // progress counters simultaneously, causing counter regression
+      Completer<void>? saveLock;
 
       // Step 3 & 4: Build Prompt and Call LLM for remaining units
       // With progressive saving: save after each LLM sub-batch completes
@@ -254,28 +273,58 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         getCancellationToken: (batchId) =>
             _batchProgressManager.getCancellationToken(batchId),
         onProgressUpdate: (batchId, progress) {
-          _batchProgressManager.updateAndEmitProgress(batchId, progress);
+          // Guard against counter regression from parallel chunks
+          // Only update if counters don't decrease (or use updatePhaseAndEmit for phase-only updates)
+          final current = _batchProgressManager.getProgress(batchId);
+          if (current != null &&
+              (progress.successfulUnits < current.successfulUnits ||
+               progress.processedUnits < current.processedUnits ||
+               progress.tokensUsed < current.tokensUsed)) {
+            // Counter regression detected - only update phase/detail, not counters
+            _batchProgressManager.updatePhaseAndEmit(
+              batchId,
+              phaseDetail: progress.phaseDetail,
+              currentPhase: progress.currentPhase,
+              appendLogs: progress.llmLogs,
+            );
+          } else {
+            _batchProgressManager.updateAndEmitProgress(batchId, progress);
+          }
         },
         checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
         // Progressive save callback - saves immediately after each LLM sub-batch
+        // Uses a lock to serialize saves from parallel chunks
         onSubBatchTranslated: (subBatchUnits, translations, subBatchCachedIds) async {
-          final progressBeforeSave =
-              _batchProgressManager.getProgress(batchId) ?? currentProgress;
-          await _validationPersistenceHandler.validateAndSave(
-            translations: translations,
-            batchId: batchId,
-            units: subBatchUnits,
-            context: context,
-            currentProgress: progressBeforeSave,
-            checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
-            onProgressUpdate: (batchId, progress) {
-              _batchProgressManager.updateAndEmitProgress(batchId, progress);
-            },
-            cachedUnitIds: subBatchCachedIds,
-          );
-          // Track saved unit IDs and cached IDs
-          savedUnitIds.addAll(translations.keys);
-          accumulatedCachedUnitIds.addAll(subBatchCachedIds);
+          // Wait for any ongoing save to complete
+          while (saveLock != null) {
+            await saveLock!.future;
+          }
+          // Acquire lock
+          saveLock = Completer<void>();
+          try {
+            final progressBeforeSave =
+                _batchProgressManager.getProgress(batchId) ?? currentProgress;
+            await _validationPersistenceHandler.validateAndSave(
+              translations: translations,
+              batchId: batchId,
+              units: subBatchUnits,
+              context: context,
+              currentProgress: progressBeforeSave,
+              checkPauseOrCancel: _batchProgressManager.checkPauseOrCancel,
+              onProgressUpdate: (batchId, progress) {
+                _batchProgressManager.updateAndEmitProgress(batchId, progress);
+              },
+              cachedUnitIds: subBatchCachedIds,
+            );
+            // Track saved unit IDs and cached IDs
+            savedUnitIds.addAll(translations.keys);
+            accumulatedCachedUnitIds.addAll(subBatchCachedIds);
+          } finally {
+            // Release lock
+            final lock = saveLock;
+            saveLock = null;
+            lock?.complete();
+          }
         },
       );
       currentProgress =

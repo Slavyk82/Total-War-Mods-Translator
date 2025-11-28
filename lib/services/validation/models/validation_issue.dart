@@ -18,6 +18,7 @@ enum ValidationIssueType {
   punctuationMismatch,
   caseMismatch,
   missingNumbers,
+  modifiedNumbers,
 }
 
 /// Represents a single validation issue found in a translation

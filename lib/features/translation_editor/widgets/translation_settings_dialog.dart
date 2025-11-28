@@ -48,9 +48,9 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
     // Only validate units if not in auto mode
     if (!_isAutoMode) {
       final units = int.tryParse(_unitsController.text);
-      if (units == null || units < 10 || units > 1000) {
+      if (units == null || units < 1 || units > 1000) {
         setState(() {
-          _errorMessage = 'Units per batch must be between 10 and 1000';
+          _errorMessage = 'Units per batch must be between 1 and 1000';
         });
         return false;
       }
@@ -150,7 +150,7 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               enabled: !_isAutoMode,
               decoration: InputDecoration(
-                hintText: _isAutoMode ? 'Calculated automatically' : 'Enter number (10-1000)',
+                hintText: _isAutoMode ? 'Calculated automatically' : 'Enter number (1-1000)',
                 helperText: _isAutoMode
                     ? 'Batch size will be calculated based on token limits'
                     : 'Maximum number of translation units per LLM request',

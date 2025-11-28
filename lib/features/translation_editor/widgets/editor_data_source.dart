@@ -197,6 +197,24 @@ class EditorDataSource extends DataGridSource {
 
   dynamic newCellValue;
 
+  /// Escape special characters for display (actual newlines → \n literal)
+  static String _escapeForDisplay(String text) {
+    return text
+        .replaceAll('\r\n', '\\r\\n')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r')
+        .replaceAll('\t', '\\t');
+  }
+
+  /// Unescape special characters for storage (\n literal → actual newlines)
+  static String _unescapeForStorage(String text) {
+    return text
+        .replaceAll('\\r\\n', '\r\n')
+        .replaceAll('\\n', '\n')
+        .replaceAll('\\r', '\r')
+        .replaceAll('\\t', '\t');
+  }
+
   @override
   Widget? buildEditWidget(
     DataGridRow dataGridRow,
@@ -209,19 +227,21 @@ class EditorDataSource extends DataGridSource {
       return null;
     }
 
-    final String? displayText = dataGridRow
+    final String? rawText = dataGridRow
       .getCells()
       .firstWhere((cell) => cell.columnName == column.columnName)
       .value;
 
-    newCellValue = displayText;
+    // Show escaped text in editor (newlines displayed as \n)
+    final escapedText = _escapeForDisplay(rawText ?? '');
+    newCellValue = rawText;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       alignment: Alignment.centerLeft,
       child: TextField(
         autofocus: true,
-        controller: TextEditingController(text: displayText ?? ''),
+        controller: TextEditingController(text: escapedText),
         style: const TextStyle(fontSize: 13),
         maxLines: null,
         decoration: const InputDecoration(
@@ -229,9 +249,12 @@ class EditorDataSource extends DataGridSource {
           contentPadding: EdgeInsets.zero,
         ),
         onChanged: (value) {
-          newCellValue = value;
+          // Convert escaped sequences back to actual characters for storage
+          newCellValue = _unescapeForStorage(value);
         },
         onSubmitted: (value) {
+          // Convert escaped sequences back to actual characters for storage
+          newCellValue = _unescapeForStorage(value);
           submitCell();
         },
       ),

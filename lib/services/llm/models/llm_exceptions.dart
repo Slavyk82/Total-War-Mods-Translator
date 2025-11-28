@@ -224,38 +224,6 @@ class LlmContentFilteredException extends LlmProviderException {
   }
 }
 
-/// Exception for circuit breaker open state
-class LlmCircuitBreakerException extends LlmProviderException {
-  /// Time when circuit breaker will attempt to close (half-open)
-  final DateTime? retryAfter;
-
-  /// Original error that caused the circuit breaker to open
-  final String? originalError;
-
-  /// Type of the original error
-  final String? originalErrorType;
-
-  const LlmCircuitBreakerException(
-    super.message, {
-    required super.providerCode,
-    this.retryAfter,
-    this.originalError,
-    this.originalErrorType,
-    super.code = 'CIRCUIT_BREAKER_OPEN',
-    super.details,
-    super.stackTrace,
-  });
-
-  @override
-  String toString() {
-    final errorInfo = originalError != null
-        ? ', originalError: $originalError'
-        : '';
-    return 'LlmCircuitBreakerException(provider: $providerCode, '
-        'retryAfter: $retryAfter$errorInfo)';
-  }
-}
-
 /// Exception for unsupported operations
 class LlmUnsupportedOperationException extends LlmServiceException {
   final String operation;

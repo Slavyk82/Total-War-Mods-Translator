@@ -189,7 +189,7 @@ final class LlmProviderSettingsProvider
 }
 
 String _$llmProviderSettingsHash() =>
-    r'daf9d302d224c958be57447d728630f53631266b';
+    r'b9711ebc9163d2e4e34c855a346a38f26ec23881';
 
 /// LLM provider settings notifier
 
@@ -489,119 +489,4 @@ final class DefaultLlmModelFamily extends $Family
 
   @override
   String toString() => r'defaultLlmModelProvider';
-}
-
-/// Provider for circuit breaker status of a specific provider
-
-@ProviderFor(CircuitBreakerStatusNotifier)
-const circuitBreakerStatusProvider = CircuitBreakerStatusNotifierFamily._();
-
-/// Provider for circuit breaker status of a specific provider
-final class CircuitBreakerStatusNotifierProvider
-    extends
-        $AsyncNotifierProvider<
-          CircuitBreakerStatusNotifier,
-          CircuitBreakerStatus
-        > {
-  /// Provider for circuit breaker status of a specific provider
-  const CircuitBreakerStatusNotifierProvider._({
-    required CircuitBreakerStatusNotifierFamily super.from,
-    required String super.argument,
-  }) : super(
-         retry: null,
-         name: r'circuitBreakerStatusProvider',
-         isAutoDispose: true,
-         dependencies: null,
-         $allTransitiveDependencies: null,
-       );
-
-  @override
-  String debugGetCreateSourceHash() => _$circuitBreakerStatusNotifierHash();
-
-  @override
-  String toString() {
-    return r'circuitBreakerStatusProvider'
-        ''
-        '($argument)';
-  }
-
-  @$internal
-  @override
-  CircuitBreakerStatusNotifier create() => CircuitBreakerStatusNotifier();
-
-  @override
-  bool operator ==(Object other) {
-    return other is CircuitBreakerStatusNotifierProvider &&
-        other.argument == argument;
-  }
-
-  @override
-  int get hashCode {
-    return argument.hashCode;
-  }
-}
-
-String _$circuitBreakerStatusNotifierHash() =>
-    r'0ce3694c807b45ac594ccbc8fa2a09441e7f29c8';
-
-/// Provider for circuit breaker status of a specific provider
-
-final class CircuitBreakerStatusNotifierFamily extends $Family
-    with
-        $ClassFamilyOverride<
-          CircuitBreakerStatusNotifier,
-          AsyncValue<CircuitBreakerStatus>,
-          CircuitBreakerStatus,
-          FutureOr<CircuitBreakerStatus>,
-          String
-        > {
-  const CircuitBreakerStatusNotifierFamily._()
-    : super(
-        retry: null,
-        name: r'circuitBreakerStatusProvider',
-        dependencies: null,
-        $allTransitiveDependencies: null,
-        isAutoDispose: true,
-      );
-
-  /// Provider for circuit breaker status of a specific provider
-
-  CircuitBreakerStatusNotifierProvider call(String providerCode) =>
-      CircuitBreakerStatusNotifierProvider._(
-        argument: providerCode,
-        from: this,
-      );
-
-  @override
-  String toString() => r'circuitBreakerStatusProvider';
-}
-
-/// Provider for circuit breaker status of a specific provider
-
-abstract class _$CircuitBreakerStatusNotifier
-    extends $AsyncNotifier<CircuitBreakerStatus> {
-  late final _$args = ref.$arg as String;
-  String get providerCode => _$args;
-
-  FutureOr<CircuitBreakerStatus> build(String providerCode);
-  @$mustCallSuper
-  @override
-  void runBuild() {
-    final created = build(_$args);
-    final ref =
-        this.ref
-            as $Ref<AsyncValue<CircuitBreakerStatus>, CircuitBreakerStatus>;
-    final element =
-        ref.element
-            as $ClassProviderElement<
-              AnyNotifier<
-                AsyncValue<CircuitBreakerStatus>,
-                CircuitBreakerStatus
-              >,
-              AsyncValue<CircuitBreakerStatus>,
-              Object?,
-              Object?
-            >;
-    element.handleValue(ref, created);
-  }
 }

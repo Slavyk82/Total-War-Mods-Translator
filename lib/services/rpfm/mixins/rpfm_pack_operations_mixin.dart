@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
@@ -73,6 +74,8 @@ mixin RpfmPackOperationsMixin {
         rpfmPath,
         ['--game', game, 'pack', 'create', '--pack-path', outputPackPath],
         runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
       );
 
       if (result.exitCode != 0) {
@@ -105,6 +108,8 @@ mixin RpfmPackOperationsMixin {
               rpfmPath,
               ['--game', game, 'pack', 'add', '--pack-path', outputPackPath, '--file-path', filePathArg],
               runInShell: false,
+              stdoutEncoding: utf8,
+              stderrEncoding: utf8,
             );
 
             if (result.exitCode != 0) {
@@ -130,6 +135,8 @@ mixin RpfmPackOperationsMixin {
             rpfmPath,
             ['--game', game, 'pack', 'add', '--pack-path', outputPackPath, '--file-path', filePathArg, '--tsv-to-binary', schemaFile],
             runInShell: false,
+            stdoutEncoding: utf8,
+            stderrEncoding: utf8,
           );
 
           if (result.exitCode != 0) {
@@ -244,6 +251,8 @@ mixin RpfmPackOperationsMixin {
         rpfmPath,
         ['--game', game, 'pack', 'list', '--pack-path', packFilePath],
         runInShell: false,
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
       );
 
       logger.info('RPFM list command exit code: ${result.exitCode}');

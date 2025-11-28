@@ -4,7 +4,6 @@ import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/llm/llm_provider_factory.dart';
 import '../../../services/llm/llm_model_management_service.dart';
-import '../../../services/llm/i_llm_service.dart';
 import '../../../models/domain/llm_provider_model.dart';
 
 part 'settings_providers.g.dart';
@@ -174,7 +173,7 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     );
     final rateLimit = await service.getInt(
       SettingsKeys.rateLimit,
-      defaultValue: 100,
+      defaultValue: 500,
     );
 
     // Load API keys from secure storage
@@ -463,36 +462,4 @@ Future<LlmProviderModel?> defaultLlmModel(
     ok: (model) => model,
     err: (_) => null,
   );
-}
-
-/// Provider for circuit breaker status of a specific provider
-@riverpod
-class CircuitBreakerStatusNotifier extends _$CircuitBreakerStatusNotifier {
-  @override
-  Future<CircuitBreakerStatus> build(String providerCode) async {
-    final llmService = ServiceLocator.get<ILlmService>();
-    final result = await llmService.getCircuitBreakerStatus(providerCode);
-
-    return result.when(
-      ok: (status) => status,
-      err: (_) => const CircuitBreakerStatus(
-        state: CircuitBreakerState.closed,
-        failureCount: 0,
-        successCount: 0,
-      ),
-    );
-  }
-
-  /// Reset the circuit breaker for this provider
-  Future<(bool, String?)> resetCircuitBreaker() async {
-    final llmService = ServiceLocator.get<ILlmService>();
-    final result = await llmService.resetCircuitBreaker(providerCode);
-
-    if (result.isOk) {
-      ref.invalidateSelf();
-      return (true, null);
-    } else {
-      return (false, result.unwrapErr().message);
-    }
-  }
 }

@@ -3,6 +3,8 @@ import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/project_statistics.dart';
 
+export '../../models/domain/project_statistics.dart' show GlobalStatistics;
+
 /// Mixin providing statistics and counting operations for translation versions.
 ///
 /// Extracts complex aggregation queries from the main repository to maintain
@@ -239,6 +241,53 @@ mixin TranslationVersionStatisticsMixin {
         pendingCount: (row['pending_count'] as int?) ?? 0,
         validatedCount: (row['validated_count'] as int?) ?? 0,
         errorCount: (row['error_count'] as int?) ?? 0,
+      );
+    });
+  }
+
+  /// Get global statistics across all projects for the dashboard.
+  ///
+  /// Counts unique translation units and their translation status.
+  /// Word count is approximated by counting spaces + 1 in translated texts.
+  Future<Result<GlobalStatistics, TWMTDatabaseException>>
+      getGlobalStatistics() async {
+    return executeQuery(() async {
+      final result = await database.rawQuery(
+        '''
+        SELECT
+          COUNT(DISTINCT tu.id) as total_units,
+          COUNT(DISTINCT CASE
+            WHEN tv.translated_text IS NOT NULL AND tv.translated_text != ''
+            THEN tu.id
+          END) as translated_units,
+          COALESCE(SUM(
+            CASE
+              WHEN tv.translated_text IS NOT NULL AND tv.translated_text != ''
+              THEN LENGTH(tv.translated_text) - LENGTH(REPLACE(tv.translated_text, ' ', '')) + 1
+              ELSE 0
+            END
+          ), 0) as total_words
+        FROM translation_units tu
+        LEFT JOIN $tableName tv ON tv.unit_id = tu.id
+        WHERE tu.is_obsolete = 0
+        ''',
+      );
+
+      if (result.isEmpty) {
+        return GlobalStatistics.empty();
+      }
+
+      final row = result.first;
+      final totalUnits = (row['total_units'] as int?) ?? 0;
+      final translatedUnits = (row['translated_units'] as int?) ?? 0;
+      final pendingUnits = totalUnits - translatedUnits;
+      final totalWords = (row['total_words'] as int?) ?? 0;
+
+      return GlobalStatistics(
+        totalUnits: totalUnits,
+        translatedUnits: translatedUnits,
+        pendingUnits: pendingUnits,
+        totalTranslatedWords: totalWords,
       );
     });
   }

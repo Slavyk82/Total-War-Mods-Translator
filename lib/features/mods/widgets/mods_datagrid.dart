@@ -103,11 +103,11 @@ class _ModsDataGridState extends State<ModsDataGrid> {
             }
           },
           headerRowHeight: 56,
-          rowHeight: 64,
+          rowHeight: 83,
           columns: [
             GridColumn(
               columnName: 'image',
-              width: 64,
+              width: 83,
               allowFiltering: false,
               allowSorting: false,
               label: Container(

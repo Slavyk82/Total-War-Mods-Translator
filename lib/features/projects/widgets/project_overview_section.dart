@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/domain/project.dart';
 
 /// Project overview section showing basic project information.
 ///
-/// Displays project name, Steam Workshop link, timestamps,
-/// and delete button.
+/// Displays project name, Steam Workshop link, and delete button.
 class ProjectOverviewSection extends StatelessWidget {
   final Project project;
   final VoidCallback? onDelete;
@@ -56,8 +54,6 @@ class ProjectOverviewSection extends StatelessWidget {
             const SizedBox(height: 16),
             _buildSteamInfo(context),
           ],
-          const SizedBox(height: 16),
-          _buildTimestamps(context),
         ],
       ),
     );
@@ -118,48 +114,6 @@ class ProjectOverviewSection extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTimestamps(BuildContext context) {
-    final theme = Theme.of(context);
-    final dateFormat = DateFormat('MMM d, yyyy \'at\' h:mm a');
-
-    final created = DateTime.fromMillisecondsSinceEpoch(
-      project.createdAt * 1000,
-    );
-    final modified = DateTime.fromMillisecondsSinceEpoch(
-      project.updatedAt * 1000,
-    );
-
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.calendar_24_regular,
-          size: 14,
-          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Created: ${dateFormat.format(created)}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-          ),
-        ),
-        const SizedBox(width: 24),
-        Icon(
-          FluentIcons.clock_24_regular,
-          size: 14,
-          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          'Modified: ${dateFormat.format(modified)}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-          ),
-        ),
-      ],
     );
   }
 

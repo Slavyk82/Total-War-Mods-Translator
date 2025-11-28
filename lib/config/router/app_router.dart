@@ -13,6 +13,7 @@ import '../../features/projects/screens/project_detail_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
+import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 
 // Layout
@@ -29,6 +30,7 @@ class AppRoutes {
   static const String projects = '/projects';
   static const String glossary = '/glossary';
   static const String translationMemory = '/translation-memory';
+  static const String packCompilation = '/pack-compilation';
   static const String settings = '/settings';
 
   // Detail routes
@@ -151,6 +153,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
 
+          // Pack Compilation
+          GoRoute(
+            path: AppRoutes.packCompilation,
+            name: 'packCompilation',
+            pageBuilder: (context, state) {
+              return FluentPageTransitions.fadeTransition(
+                child: const PackCompilationScreen(),
+                state: state,
+              );
+            },
+          ),
+
           // Settings
           GoRoute(
             path: AppRoutes.settings,
@@ -200,6 +214,7 @@ extension GoRouterExtensions on BuildContext {
   void goProjects() => go(AppRoutes.projects);
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
+  void goPackCompilation() => go(AppRoutes.packCompilation);
   void goSettings() => go(AppRoutes.settings);
 
   void goProjectDetail(String projectId) => go(AppRoutes.projectDetail(projectId));

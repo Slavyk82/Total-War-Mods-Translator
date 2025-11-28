@@ -49,12 +49,14 @@ class TranslationBatchHelper {
   static Future<List<String>> filterUntranslatedUnits({
     required WidgetRef ref,
     required List<String> unitIds,
+    required String projectLanguageId,
   }) async {
     try {
       final versionRepo = ref.read(translationVersionRepositoryProvider);
 
       final result = await versionRepo.filterUntranslatedIds(
         ids: unitIds,
+        projectLanguageId: projectLanguageId,
       );
 
       if (result.isOk) {
@@ -185,6 +187,7 @@ class TranslationBatchHelper {
     String? modelId,
     int? unitsPerBatch,
     int? parallelBatches,
+    bool? skipTranslationMemory,
   }) async {
     try {
       final projectRepo = ServiceLocator.get<ProjectRepository>();
@@ -267,6 +270,7 @@ class TranslationBatchHelper {
         glossaryEntries: glossaryEntries.isEmpty ? null : glossaryEntries,
         unitsPerBatch: unitsPerBatch ?? 0, // 0 = auto mode
         parallelBatches: parallelBatches ?? 1,
+        skipTranslationMemory: skipTranslationMemory ?? false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -287,6 +291,7 @@ class TranslationBatchHelper {
         targetLanguage: 'en',
         unitsPerBatch: unitsPerBatch ?? 0, // 0 = auto mode
         parallelBatches: parallelBatches ?? 1,
+        skipTranslationMemory: skipTranslationMemory ?? false,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );

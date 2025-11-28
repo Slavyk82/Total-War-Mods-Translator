@@ -81,19 +81,9 @@ class ProjectsScreen extends ConsumerWidget {
       return _buildEmptyState(context, theme, ref);
     }
 
-    return Column(
-      children: [
-        // Projects grid/list
-        Expanded(
-          child: ProjectGrid(
-            projects: projects,
-            onProjectTap: (projectId) => _navigateToProject(context, projectId),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Pagination controls
-        _buildPagination(context, ref, theme),
-      ],
+    return ProjectGrid(
+      projects: projects,
+      onProjectTap: (projectId) => _navigateToProject(context, projectId),
     );
   }
 
@@ -102,7 +92,8 @@ class ProjectsScreen extends ConsumerWidget {
     final hasActiveFilters = filter.searchQuery.isNotEmpty ||
         filter.gameFilters.isNotEmpty ||
         filter.languageFilters.isNotEmpty ||
-        filter.showOnlyWithUpdates;
+        filter.showOnlyWithUpdates ||
+        filter.quickFilter != ProjectQuickFilter.none;
 
     return Center(
       child: Column(
@@ -188,57 +179,6 @@ class ProjectsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPagination(
-    BuildContext context,
-    WidgetRef ref,
-    ThemeData theme,
-  ) {
-    final totalPagesAsync = ref.watch(totalPagesProvider);
-    final filter = ref.watch(projectsFilterProvider);
-
-    return totalPagesAsync.when(
-      data: (totalPages) {
-        if (totalPages <= 1) {
-          return const SizedBox.shrink();
-        }
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _PaginationButton(
-              icon: FluentIcons.chevron_left_24_regular,
-              onTap: filter.currentPage > 0
-                  ? () {
-                      ref.read(projectsFilterProvider.notifier).updatePage(
-                        filter.currentPage - 1,
-                      );
-                    }
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Text(
-              'Page ${filter.currentPage + 1} of $totalPages',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(width: 16),
-            _PaginationButton(
-              icon: FluentIcons.chevron_right_24_regular,
-              onTap: filter.currentPage < totalPages - 1
-                  ? () {
-                      ref.read(projectsFilterProvider.notifier).updatePage(
-                        filter.currentPage + 1,
-                      );
-                    }
-                  : null,
-            ),
-          ],
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (error, stackTrace) => const SizedBox.shrink(),
     );
   }
 
@@ -362,59 +302,6 @@ class ProjectsScreen extends ConsumerWidget {
         );
       }
     }
-  }
-}
-
-/// Pagination button with Fluent Design hover effect
-class _PaginationButton extends StatefulWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _PaginationButton({
-    required this.icon,
-    this.onTap,
-  });
-
-  @override
-  State<_PaginationButton> createState() => _PaginationButtonState();
-}
-
-class _PaginationButtonState extends State<_PaginationButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isEnabled = widget.onTap != null;
-
-    return MouseRegion(
-      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isEnabled && _isHovered
-                ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-            ),
-          ),
-          child: Icon(
-            widget.icon,
-            size: 20,
-            color: isEnabled
-                ? theme.colorScheme.onSurface
-                : theme.colorScheme.onSurface.withValues(alpha: 0.3),
-          ),
-        ),
-      ),
-    );
   }
 }
 

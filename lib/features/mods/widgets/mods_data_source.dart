@@ -214,8 +214,8 @@ class _ModImage extends StatelessWidget {
   Widget build(BuildContext context) {
     if (imageUrl == null || imageUrl!.isEmpty) {
       return Container(
-        width: 48,
-        height: 48,
+        width: 75,
+        height: 75,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(4),
@@ -238,12 +238,12 @@ class _ModImage extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         child: Image.file(
           File(imageUrl!),
-          width: 48,
-          height: 48,
+          width: 75,
+          height: 75,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => Container(
-            width: 48,
-            height: 48,
+            width: 75,
+            height: 75,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(4),
@@ -263,12 +263,12 @@ class _ModImage extends StatelessWidget {
       borderRadius: BorderRadius.circular(4),
       child: CachedNetworkImage(
         imageUrl: imageUrl!,
-        width: 48,
-        height: 48,
+        width: 75,
+        height: 75,
         fit: BoxFit.cover,
         placeholder: (context, url) => Container(
-          width: 48,
-          height: 48,
+          width: 75,
+          height: 75,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Center(
             child: SizedBox(
@@ -279,8 +279,8 @@ class _ModImage extends StatelessWidget {
           ),
         ),
         errorWidget: (context, url, error) => Container(
-          width: 48,
-          height: 48,
+          width: 75,
+          height: 75,
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(4),

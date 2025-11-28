@@ -436,6 +436,7 @@ class TranslationMemoryRepository
   /// [targetLanguageId] - Optional target language filter
   /// [limit] - Maximum number of results (default: 50)
   /// [offset] - Pagination offset (default: 0)
+  /// [orderBy] - SQL ORDER BY clause (default: 'usage_count DESC')
   ///
   /// Returns [Ok] with list of entries, [Err] with exception on failure.
   Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>>
@@ -443,6 +444,7 @@ class TranslationMemoryRepository
     String? targetLanguageId,
     int limit = 50,
     int offset = 0,
+    String orderBy = 'usage_count DESC',
   }) async {
     return executeQuery(() async {
       final whereConditions = <String>[];
@@ -460,7 +462,7 @@ class TranslationMemoryRepository
         tableName,
         where: whereClause,
         whereArgs: whereArgs.isEmpty ? null : whereArgs,
-        orderBy: 'last_used_at DESC',
+        orderBy: orderBy,
         limit: limit,
         offset: offset,
       );

@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/repositories/translation_unit_repository.dart';
+import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 
 part 'home_providers.g.dart';
@@ -12,12 +12,14 @@ class DashboardStats {
   final int totalTranslationUnits;
   final int translatedUnits;
   final int pendingUnits;
+  final int totalTranslatedWords;
 
   const DashboardStats({
     required this.totalProjects,
     required this.totalTranslationUnits,
     required this.translatedUnits,
     required this.pendingUnits,
+    required this.totalTranslatedWords,
   });
 
   double get translationProgress {
@@ -30,7 +32,8 @@ class DashboardStats {
 @riverpod
 Future<DashboardStats> dashboardStats(Ref ref) async {
   final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final translationUnitRepo = ServiceLocator.get<TranslationUnitRepository>();
+  final translationVersionRepo =
+      ServiceLocator.get<TranslationVersionRepository>();
 
   // Get all projects
   final projectsResult = await projectRepo.getAll();
@@ -38,20 +41,28 @@ Future<DashboardStats> dashboardStats(Ref ref) async {
 
   final totalProjects = projects.length;
 
-  // Get translation unit stats (simplified - would need to join with versions for real counts)
-  final unitsResult = await translationUnitRepo.getAll();
-  final units = unitsResult.isOk ? unitsResult.value : [];
+  // Get global statistics from translation_versions table
+  final statsResult =
+      await translationVersionRepo.getGlobalStatistics();
 
-  final totalTranslationUnits = units.length;
-  // This is simplified - in reality we'd need to check translation_versions table
-  final translatedUnits = (totalTranslationUnits * 0.6).floor(); // Placeholder
-  final pendingUnits = totalTranslationUnits - translatedUnits;
+  if (statsResult.isOk) {
+    final stats = statsResult.value;
+    return DashboardStats(
+      totalProjects: totalProjects,
+      totalTranslationUnits: stats.totalUnits,
+      translatedUnits: stats.translatedUnits,
+      pendingUnits: stats.pendingUnits,
+      totalTranslatedWords: stats.totalTranslatedWords,
+    );
+  }
 
+  // Fallback if query fails
   return DashboardStats(
     totalProjects: totalProjects,
-    totalTranslationUnits: totalTranslationUnits,
-    translatedUnits: translatedUnits,
-    pendingUnits: pendingUnits,
+    totalTranslationUnits: 0,
+    translatedUnits: 0,
+    pendingUnits: 0,
+    totalTranslatedWords: 0,
   );
 }
 

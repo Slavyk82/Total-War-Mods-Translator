@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
@@ -176,7 +177,12 @@ class RpfmCliManager {
     final rpfmPath = (rpfmPathResult as Ok<String, RpfmServiceException>).value;
 
     try {
-      final result = await Process.run(rpfmPath, ['--version']);
+      final result = await Process.run(
+        rpfmPath,
+        ['--version'],
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      );
 
       if (result.exitCode != 0) {
         return Err(RpfmServiceException(
@@ -426,7 +432,12 @@ class RpfmCliManager {
       }
 
       // Try to execute --version command
-      final result = await Process.run(customPath, ['--version']);
+      final result = await Process.run(
+        customPath,
+        ['--version'],
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      );
 
       if (result.exitCode != 0) {
         return Err(RpfmServiceException(

@@ -1,5 +1,6 @@
 import '../../../../models/domain/translation_version.dart';
 import '../../../../services/history/undo_redo_manager.dart';
+import '../../../../services/translation/utils/translation_text_utils.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
 import 'editor_actions_base.dart';
@@ -26,8 +27,11 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final currentVersion = versions.first;
       final oldText = currentVersion.translatedText ?? '';
 
+      // Normalize: \\n → \n
+      final normalizedText = TranslationTextUtils.normalizeTranslation(newText);
+
       // Don't update if text hasn't changed
-      if (oldText == newText) return;
+      if (oldText == normalizedText) return;
 
       final unitResult = await unitRepo.getById(unitId);
       if (unitResult.isErr) {
@@ -36,11 +40,11 @@ mixin EditorActionsCellEdit on EditorActionsBase {
 
       final unit = unitResult.unwrap();
 
-      // Update version with new text
+      // Update version with normalized text
       final updatedVersion = currentVersion.copyWith(
-        translatedText: newText,
+        translatedText: normalizedText,
         isManuallyEdited: true,
-        status: newText.isEmpty
+        status: normalizedText.isEmpty
             ? TranslationVersionStatus.pending
             : TranslationVersionStatus.translated,
         updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -55,7 +59,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final historyAction = TranslationEditAction(
         versionId: currentVersion.id,
         oldValue: oldText,
-        newValue: newText,
+        newValue: normalizedText,
         timestamp: DateTime.now(),
         repository: versionRepo,
       );
@@ -63,15 +67,15 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       refreshProviders();
 
       // Update TM with new translation (if not empty)
-      if (newText.isNotEmpty) {
+      if (normalizedText.isNotEmpty) {
         await _updateTranslationMemory(
           unit.sourceText,
-          newText,
+          normalizedText,
         );
       }
 
       refreshProviders();
-      _logCellEdit(unitId, newText);
+      _logCellEdit(unitId, normalizedText);
     } catch (e, stackTrace) {
       _handleCellEditError(e, stackTrace, 'Failed to update translation');
     }
@@ -97,8 +101,11 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final currentVersion = versions.first;
       final oldText = currentVersion.translatedText ?? '';
 
+      // Normalize: \\n → \n
+      final normalizedText = TranslationTextUtils.normalizeTranslation(targetText);
+
       // Don't update if text hasn't changed
-      if (oldText == targetText) return;
+      if (oldText == normalizedText) return;
 
       final unitResult = await unitRepo.getById(unitId);
       if (unitResult.isErr) {
@@ -115,7 +122,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       // Update version with suggested text (mark as TM-sourced, not manually edited)
       // Use the TM quality score as confidence score
       final updatedVersion = currentVersion.copyWith(
-        translatedText: targetText,
+        translatedText: normalizedText,
         isManuallyEdited: false,
         status: TranslationVersionStatus.translated,
         confidenceScore: qualityScore,
@@ -132,7 +139,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final historyAction = TranslationEditAction(
         versionId: currentVersion.id,
         oldValue: oldText,
-        newValue: targetText,
+        newValue: normalizedText,
         timestamp: DateTime.now(),
         repository: versionRepo,
       );
@@ -143,7 +150,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       await _incrementTmUsageCount(unit.sourceText);
 
       refreshProviders();
-      _logSuggestionApplied(unitId, targetText);
+      _logSuggestionApplied(unitId, normalizedText);
     } catch (e, stackTrace) {
       _handleCellEditError(e, stackTrace, 'Failed to apply TM suggestion');
     }

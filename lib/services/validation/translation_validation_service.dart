@@ -357,21 +357,81 @@ class TranslationValidationService implements ITranslationValidationService {
     return [];
   }
 
-  /// Check for missing numbers
+  /// Check for missing or modified numbers
+  ///
+  /// Detects:
+  /// - Numbers that are completely missing from translation
+  /// - Numbers that have been reformatted (e.g., "13140" → "13 140")
   List<ValidationIssue> _checkNumbers(String sourceText, String translatedText) {
+    final issues = <ValidationIssue>[];
+
     final sourceNumbers =
-        _numberPattern.allMatches(sourceText).map((m) => m.group(0)!).toSet();
+        _numberPattern.allMatches(sourceText).map((m) => m.group(0)!).toList();
 
     final translatedNumbers = _numberPattern
         .allMatches(translatedText)
         .map((m) => m.group(0)!)
-        .toSet();
+        .toList();
 
-    final missingNumbers = sourceNumbers.difference(translatedNumbers).toList();
+    // Check for exact number preservation (important for color codes, IDs, etc.)
+    final sourceNumbersSet = sourceNumbers.toSet();
+    final translatedNumbersSet = translatedNumbers.toSet();
 
+    final missingNumbers = sourceNumbersSet.difference(translatedNumbersSet).toList();
+
+    // Check if missing numbers might have been reformatted with separators
+    // e.g., "13140" → "13 140" or "1000000" → "1 000 000"
+    final modifiedNumbers = <String, String>{};
+
+    for (final sourceNum in missingNumbers.toList()) {
+      // Check if the number might have been split by spaces/separators
+      // Remove all spaces, non-breaking spaces, and common separators from translated text
+      final normalizedTranslated = translatedText
+          .replaceAll(' ', '')
+          .replaceAll('\u00A0', '') // non-breaking space
+          .replaceAll('\u202F', '') // narrow non-breaking space
+          .replaceAll(',', '')
+          .replaceAll('.', '');
+
+      if (normalizedTranslated.contains(sourceNum)) {
+        // The number exists when separators are removed - it was reformatted
+        // Try to find the original formatted version in the translation
+        final formattedVersion = _findFormattedNumber(translatedText, sourceNum);
+        if (formattedVersion != null && formattedVersion != sourceNum) {
+          modifiedNumbers[sourceNum] = formattedVersion;
+          missingNumbers.remove(sourceNum);
+        }
+      }
+    }
+
+    // Report modified numbers as errors (important for color codes, IDs)
+    if (modifiedNumbers.isNotEmpty) {
+      final modifiedStr = modifiedNumbers.entries
+          .map((e) => '"${e.key}" → "${e.value}"')
+          .join(', ');
+
+      issues.add(
+        ValidationIssue(
+          type: ValidationIssueType.modifiedNumbers,
+          severity: ValidationSeverity.error,
+          description: 'Numbers reformatted: $modifiedStr',
+          suggestion:
+              'Numbers must be preserved exactly as in source text. '
+              'Do not add thousand separators or spaces. '
+              'These may be color codes, IDs, or other technical values.',
+          autoFixable: true,
+          autoFixValue: _fixModifiedNumbers(translatedText, modifiedNumbers),
+          metadata: {
+            'modified_numbers': modifiedNumbers,
+          },
+        ),
+      );
+    }
+
+    // Report truly missing numbers
     if (missingNumbers.isNotEmpty) {
       final missingNumStr = missingNumbers.join(', ');
-      return [
+      issues.add(
         ValidationIssue(
           type: ValidationIssueType.missingNumbers,
           severity: ValidationSeverity.warning,
@@ -383,9 +443,40 @@ class TranslationValidationService implements ITranslationValidationService {
             'missing_numbers': missingNumbers,
           },
         ),
-      ];
+      );
     }
 
-    return [];
+    return issues;
+  }
+
+  /// Find the formatted version of a number in text
+  /// e.g., find "13 140" when looking for "13140"
+  String? _findFormattedNumber(String text, String number) {
+    // Build a regex pattern that matches the number with optional separators
+    // For "13140", match "1[sep]?3[sep]?1[sep]?4[sep]?0"
+    final separatorPattern = r'[\s\u00A0\u202F,.]?';
+    final patternStr = number.split('').join(separatorPattern);
+    final pattern = RegExp(patternStr);
+
+    final match = pattern.firstMatch(text);
+    if (match != null) {
+      final found = match.group(0)!;
+      // Only return if it actually contains separators (is different from source)
+      if (found != number && found.replaceAll(RegExp(r'[\s\u00A0\u202F,.]'), '') == number) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  /// Fix modified numbers by replacing formatted versions with original
+  String _fixModifiedNumbers(String text, Map<String, String> modifiedNumbers) {
+    String result = text;
+    for (final entry in modifiedNumbers.entries) {
+      final original = entry.key;
+      final formatted = entry.value;
+      result = result.replaceAll(formatted, original);
+    }
+    return result;
   }
 }

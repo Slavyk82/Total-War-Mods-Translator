@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -24,6 +25,7 @@ class TranslationProgressScreen extends ConsumerStatefulWidget {
     required this.orchestrator,
     required this.onComplete,
     this.preparationCallback,
+    this.projectName,
   });
 
   final String? batchId;
@@ -32,6 +34,7 @@ class TranslationProgressScreen extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
   final Future<({String batchId, TranslationContext context})?> Function()?
       preparationCallback;
+  final String? projectName;
 
   @override
   ConsumerState<TranslationProgressScreen> createState() =>
@@ -58,6 +61,9 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
   /// Captured notifier reference for safe disposal
   TranslationInProgress? _translationNotifier;
 
+  /// Timer for updating elapsed time display every second
+  Timer? _elapsedTimer;
+
   String get _effectiveBatchId => _preparedBatchId ?? widget.batchId ?? '';
 
   @override
@@ -70,10 +76,17 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
       _translationNotifier?.setInProgress(true);
     });
     _initializeTranslation();
+
+    // Start timer to update elapsed time every second
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _elapsedTimer?.cancel();
+
     // Defer provider modification to avoid "modifying during finalize" error
     // Use captured notifier reference (safe to use after unmount)
     final notifier = _translationNotifier;
@@ -157,35 +170,6 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
     );
   }
 
-  /// Build the control buttons (Stop) for the central area
-  Widget _buildControlButtons() {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Stop button
-          _ControlButton(
-            icon: FluentIcons.stop_24_filled,
-            label: _isStopping ? 'Stopping...' : 'Stop',
-            color: theme.colorScheme.error,
-            onPressed: _isStopping ? null : _handleStop,
-            isLoading: _isStopping,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildProgressBody() {
     return StreamBuilder<
         Result<TranslationProgress, TranslationOrchestrationException>>(
@@ -193,42 +177,52 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
       builder: (context, snapshot) {
         _handleStreamData(snapshot);
 
-        return Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  buildProgressHeader(context, batchId: _effectiveBatchId),
-                  const SizedBox(height: 32),
-                  buildProgressSection(
-                    context,
-                    progress: _currentProgress,
-                    isPaused: _isPaused,
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Left side: Progress cards
+              Expanded(
+                flex: 3,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildProgressHeader(context, batchId: _effectiveBatchId),
+                      const SizedBox(height: 24),
+                      buildProgressSection(
+                        context,
+                        progress: _currentProgress,
+                        isPaused: _isPaused,
+                        onStop: _handleStop,
+                        isStopping: _isStopping,
+                        projectName: widget.projectName,
+                      ),
+                      const SizedBox(height: 20),
+                      buildStatsSection(context, progress: _currentProgress),
+                      const SizedBox(height: 20),
+                      buildPhaseSection(
+                        context,
+                        progress: _currentProgress,
+                        isPaused: _isPaused,
+                        elapsedTimeDisplay: getElapsedTimeDisplay(_startTime),
+                      ),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 20),
+                        buildErrorSection(context, errorMessage: _errorMessage!),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  // Control buttons in central area for better visibility
-                  _buildControlButtons(),
-                  const SizedBox(height: 24),
-                  buildStatsSection(context, progress: _currentProgress),
-                  const SizedBox(height: 24),
-                  buildPhaseSection(
-                    context,
-                    progress: _currentProgress,
-                    isPaused: _isPaused,
-                    elapsedTimeDisplay: getElapsedTimeDisplay(_startTime),
-                  ),
-                  const SizedBox(height: 24),
-                  const LogTerminal(),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 24),
-                    buildErrorSection(context, errorMessage: _errorMessage!),
-                  ],
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 24),
+              // Right side: Log terminal (full height)
+              const Expanded(
+                flex: 2,
+                child: LogTerminal(expand: true),
+              ),
+            ],
           ),
         );
       },
@@ -331,101 +325,3 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
   }
 }
 
-/// A prominent control button for the translation progress screen
-class _ControlButton extends StatefulWidget {
-  const _ControlButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onPressed,
-    this.isLoading = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-
-  @override
-  State<_ControlButton> createState() => _ControlButtonState();
-}
-
-class _ControlButtonState extends State<_ControlButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDisabled = widget.onPressed == null;
-
-    final backgroundColor = isDisabled
-        ? widget.color.withOpacity(0.3)
-        : _isPressed
-            ? widget.color.withOpacity(0.9)
-            : _isHovered
-                ? widget.color.withOpacity(0.85)
-                : widget.color;
-
-    return MouseRegion(
-      cursor: isDisabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() {
-        _isHovered = false;
-        _isPressed = false;
-      }),
-      child: GestureDetector(
-        onTapDown: isDisabled ? null : (_) => setState(() => _isPressed = true),
-        onTapUp: isDisabled ? null : (_) => setState(() => _isPressed = false),
-        onTapCancel: isDisabled ? null : () => setState(() => _isPressed = false),
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isDisabled
-                ? null
-                : [
-                    BoxShadow(
-                      color: widget.color.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.isLoading)
-                const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              else
-                Icon(
-                  widget.icon,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              const SizedBox(width: 12),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

@@ -67,8 +67,21 @@ class TmPaginationBar extends ConsumerWidget {
     final totalPages = (totalCount / _itemsPerPage).ceil();
     if (totalPages <= 1) return const SizedBox.shrink();
 
+    final pageNumbers = _computeVisiblePages(currentPage, totalPages);
+
     return Row(
       children: [
+        // First page button
+        FluentIconButton(
+          icon: const Icon(FluentIcons.chevron_double_left_20_regular),
+          onPressed: currentPage > 1
+              ? () {
+                  ref.read(tmPageStateProvider.notifier).setPage(1);
+                }
+              : null,
+          tooltip: 'First page',
+        ),
+
         // Previous button
         FluentIconButton(
           icon: const Icon(FluentIcons.chevron_left_24_regular),
@@ -80,23 +93,25 @@ class TmPaginationBar extends ConsumerWidget {
           tooltip: 'Previous page',
         ),
 
-        // Page numbers
-        ...List.generate(
-          totalPages.clamp(0, 5),
-          (index) {
-            final pageNumber = index + 1;
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-              child: _PageButton(
-                pageNumber: pageNumber,
-                isActive: pageNumber == currentPage,
-                onPressed: () {
-                  ref.read(tmPageStateProvider.notifier).setPage(pageNumber);
-                },
-              ),
+        // Page numbers with ellipses
+        ...pageNumbers.map((pageNum) {
+          if (pageNum == -1) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4.0),
+              child: Text('...'),
             );
-          },
-        ),
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: _PageButton(
+              pageNumber: pageNum,
+              isActive: pageNum == currentPage,
+              onPressed: () {
+                ref.read(tmPageStateProvider.notifier).setPage(pageNum);
+              },
+            ),
+          );
+        }),
 
         // Next button
         FluentIconButton(
@@ -108,8 +123,68 @@ class TmPaginationBar extends ConsumerWidget {
               : null,
           tooltip: 'Next page',
         ),
+
+        // Last page button
+        FluentIconButton(
+          icon: const Icon(FluentIcons.chevron_double_right_20_regular),
+          onPressed: currentPage < totalPages
+              ? () {
+                  ref.read(tmPageStateProvider.notifier).setPage(totalPages);
+                }
+              : null,
+          tooltip: 'Last page',
+        ),
       ],
     );
+  }
+
+  /// Computes visible page numbers with ellipses (-1 represents ellipsis)
+  List<int> _computeVisiblePages(int currentPage, int totalPages) {
+    const maxVisible = 7;
+
+    if (totalPages <= maxVisible) {
+      return List.generate(totalPages, (i) => i + 1);
+    }
+
+    final pages = <int>[];
+
+    // Always show first page
+    pages.add(1);
+
+    // Calculate range around current page
+    int start = currentPage - 2;
+    int end = currentPage + 2;
+
+    // Adjust range if near edges
+    if (start <= 2) {
+      start = 2;
+      end = 5;
+    } else if (end >= totalPages - 1) {
+      end = totalPages - 1;
+      start = totalPages - 4;
+    }
+
+    // Add ellipsis before range if needed
+    if (start > 2) {
+      pages.add(-1);
+    }
+
+    // Add pages in range
+    for (int i = start; i <= end; i++) {
+      if (i > 1 && i < totalPages) {
+        pages.add(i);
+      }
+    }
+
+    // Add ellipsis after range if needed
+    if (end < totalPages - 1) {
+      pages.add(-1);
+    }
+
+    // Always show last page
+    pages.add(totalPages);
+
+    return pages;
   }
 }
 

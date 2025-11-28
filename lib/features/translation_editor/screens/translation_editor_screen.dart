@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../providers/editor_providers.dart';
+import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_toolbar.dart';
 import '../widgets/editor_sidebar.dart';
 import '../widgets/editor_datagrid.dart';
@@ -34,6 +35,16 @@ class TranslationEditorScreen extends ConsumerStatefulWidget {
 
 class _TranslationEditorScreenState
   extends ConsumerState<TranslationEditorScreen> {
+  
+  @override
+  void initState() {
+    super.initState();
+    // Reset skipTranslationMemory to false when entering the editor
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(translationSettingsProvider.notifier).setSkipTranslationMemory(false);
+    });
+  }
+
   TranslationEditorActions _getActions() {
     return TranslationEditorActions(
       ref: ref,

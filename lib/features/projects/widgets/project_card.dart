@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import '../providers/projects_screen_providers.dart';
 import '../../../models/domain/project.dart';
 import '../../../models/domain/game_installation.dart';
@@ -84,9 +83,6 @@ class _ProjectCardState extends State<ProjectCard> {
     GameInstallation? gameInstallation,
   ) {
     final theme = Theme.of(context);
-    final lastModified = DateTime.fromMillisecondsSinceEpoch(
-      project.updatedAt * 1000,
-    );
     final mutedColor = theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
 
     return Row(
@@ -124,18 +120,6 @@ class _ProjectCardState extends State<ProjectCard> {
             style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
           ),
         ],
-        // Timestamp
-        const SizedBox(width: 12),
-        Icon(
-          FluentIcons.clock_24_regular,
-          size: 14,
-          color: mutedColor,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          timeago.format(lastModified),
-          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
-        ),
       ],
     );
   }
@@ -317,24 +301,24 @@ class _ProjectCardState extends State<ProjectCard> {
 
     Widget fallbackIcon() => Icon(
       _getGameIcon(gameInstallation?.gameCode),
-      size: 18,
+      size: 36,
       color: theme.colorScheme.onPrimaryContainer,
     );
 
     return Container(
-      width: 32,
-      height: 32,
+      width: 75,
+      height: 75,
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
       child: imagePath != null && imagePath.isNotEmpty
           ? Image.file(
               File(imagePath),
               fit: BoxFit.cover,
-              width: 32,
-              height: 32,
+              width: 75,
+              height: 75,
               errorBuilder: (context, error, stackTrace) => fallbackIcon(),
             )
           : fallbackIcon(),

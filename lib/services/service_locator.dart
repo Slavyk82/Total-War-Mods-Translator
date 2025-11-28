@@ -29,7 +29,6 @@ import 'file/file_import_export_service.dart';
 import 'settings/settings_service.dart';
 import 'shared/event_bus.dart';
 import 'shared/logging_service.dart';
-import 'shared/circuit_breaker.dart';
 
 // LLM Services
 import 'llm/i_llm_service.dart';
@@ -391,7 +390,6 @@ class ServiceLocator {
         providerFactory: _locator<LlmProviderFactory>(),
         batchAdjuster: _locator<LlmBatchAdjuster>(),
         settingsService: _locator<SettingsService>(),
-        circuitBreakerManager: _locator<CircuitBreakerManager>(),
         secureStorage: const FlutterSecureStorage(),
       ),
     );
@@ -646,11 +644,6 @@ class ServiceLocator {
 
     // Note: CacheService is generic and created per use case,
     // not registered as singleton
-
-    // Circuit Breaker Manager (shared infrastructure)
-    _locator.registerLazySingleton<CircuitBreakerManager>(
-      () => CircuitBreakerManager(),
-    );
 
     logging.info('Application services registered successfully');
   }

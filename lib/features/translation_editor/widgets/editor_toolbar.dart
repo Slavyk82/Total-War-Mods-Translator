@@ -5,6 +5,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../providers/editor_providers.dart';
+import '../providers/translation_settings_provider.dart';
 
 /// Top toolbar for the translation editor
 ///
@@ -120,6 +121,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           _buildModelSelector(),
           const SizedBox(width: 16),
 
+          // Skip TM checkbox
+          _buildSkipTmCheckbox(),
+          const SizedBox(width: 16),
+
           // Translation Settings button
           _buildActionButton(
             icon: FluentIcons.settings_24_regular,
@@ -151,8 +156,9 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           const SizedBox(width: 8),
           _buildActionButton(
             icon: FluentIcons.arrow_export_24_regular,
-            label: 'Export',
+            label: 'Generate pack',
             onPressed: widget.onExport,
+            color: Colors.green.shade700,
           ),
           const Spacer(),
 
@@ -214,8 +220,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
     required IconData icon,
     required String label,
     required VoidCallback? onPressed,
+    Color? color,
   }) {
     final isEnabled = onPressed != null;
+    final buttonColor = color ?? Theme.of(context).colorScheme.primary;
 
     return MouseRegion(
       cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -226,12 +234,12 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isEnabled
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+              ? buttonColor.withValues(alpha: 0.1)
               : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
               color: isEnabled
-                ? Theme.of(context).colorScheme.primary
+                ? buttonColor
                 : Colors.grey.withValues(alpha: 0.3),
             ),
           ),
@@ -242,7 +250,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                 icon,
                 size: 16,
                 color: isEnabled
-                  ? Theme.of(context).colorScheme.primary
+                  ? buttonColor
                   : Colors.grey,
               ),
               const SizedBox(width: 6),
@@ -252,7 +260,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                   color: isEnabled
-                    ? Theme.of(context).colorScheme.primary
+                    ? buttonColor
                     : Colors.grey,
                 ),
               ),
@@ -345,6 +353,63 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
         child: LinearProgressIndicator(),
       ),
       error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildSkipTmCheckbox() {
+    final settings = ref.watch(translationSettingsProvider);
+
+    return Tooltip(
+      message: 'Skip Translation Memory lookup\n(send all units directly to LLM)',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            ref.read(translationSettingsProvider.notifier)
+                .setSkipTranslationMemory(!settings.skipTranslationMemory);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: settings.skipTranslationMemory
+                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
+                  : Colors.transparent,
+              border: Border.all(
+                color: settings.skipTranslationMemory
+                    ? Theme.of(context).colorScheme.error
+                    : Theme.of(context).dividerColor,
+              ),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  settings.skipTranslationMemory
+                      ? FluentIcons.checkbox_checked_24_regular
+                      : FluentIcons.checkbox_unchecked_24_regular,
+                  size: 16,
+                  color: settings.skipTranslationMemory
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Skip TM',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: settings.skipTranslationMemory
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
