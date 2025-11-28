@@ -53,7 +53,7 @@ A professional-grade Windows desktop application for translating Total War Works
 
 ## Installation
 
-1. Download the latest release from [Releases](../../releases)
+1. Download the latest beta version from [twmt_0.1_beta.zip](twmt_0.1_beta.zip)
 2. Launch TWMT
 3. Configure all paths in Settings
 4. Select your default language for new projects
