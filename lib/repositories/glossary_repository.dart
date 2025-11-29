@@ -411,4 +411,46 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     final count = result.firstOrNull?['count'];
     return count is int ? count : 0;
   }
+
+  /// Increment usage count for a list of entry IDs
+  ///
+  /// [entryIds] - List of glossary entry IDs to increment usage count for
+  Future<void> incrementUsageCount(List<String> entryIds) async {
+    if (entryIds.isEmpty) return;
+
+    final placeholders = entryIds.map((_) => '?').join(',');
+    await database.rawUpdate('''
+      UPDATE $tableName
+      SET usage_count = usage_count + 1
+      WHERE id IN ($placeholders)
+    ''', entryIds);
+  }
+
+  /// Get usage statistics for a glossary
+  ///
+  /// Returns map with:
+  /// - usedCount: Number of entries with usage_count > 0
+  /// - unusedCount: Number of entries with usage_count = 0
+  /// - totalUsage: Sum of all usage_count values
+  Future<Map<String, int>> getUsageStats(String glossaryId) async {
+    final result = await database.rawQuery('''
+      SELECT
+        COUNT(CASE WHEN usage_count > 0 THEN 1 END) as used_count,
+        COUNT(CASE WHEN usage_count = 0 THEN 1 END) as unused_count,
+        COALESCE(SUM(usage_count), 0) as total_usage
+      FROM $tableName
+      WHERE glossary_id = ?
+    ''', [glossaryId]);
+
+    if (result.isEmpty) {
+      return {'usedCount': 0, 'unusedCount': 0, 'totalUsage': 0};
+    }
+
+    final row = result.first;
+    return {
+      'usedCount': (row['used_count'] as int?) ?? 0,
+      'unusedCount': (row['unused_count'] as int?) ?? 0,
+      'totalUsage': (row['total_usage'] as int?) ?? 0,
+    };
+  }
 }

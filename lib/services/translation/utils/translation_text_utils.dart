@@ -8,23 +8,32 @@ class TranslationTextUtils {
 
   /// Normalize translated text by applying standard post-processing rules
   ///
-  /// Converts actual newline characters to escaped format for .loc files.
-  /// Total War .loc files use `\n` (backslash + n, 2 chars) to represent newlines.
+  /// Keeps actual newline characters as-is for storage in the database.
+  /// The source text (English) is stored with actual newlines, so translated
+  /// text must also use actual newlines for consistency.
   ///
-  /// Handles multiple patterns from LLM responses:
-  /// - `\<newline>` (backslash + actual newline) → `\n` (removes the actual newline)
-  /// - Actual newlines alone → `\n`
-  /// - Carriage returns with newlines → `\r\n`
+  /// Escaping to `\n` sequences is done only at export time by the
+  /// LocFileService._escapeTsvText() method.
+  ///
+  /// Handles edge cases from LLM responses:
+  /// - `\<newline>` (backslash + actual newline) → actual newline (removes spurious backslash)
+  /// - `\n` (escaped sequence from LLM) → actual newline
+  /// - Normalizes Windows CRLF to Unix LF
   static String normalizeTranslation(String text) {
     // Step 1: Handle corrupted pattern where backslash precedes actual newline
-    // Pattern: `\` followed by actual newline → should become just `\n` (2 chars)
-    // This handles cases like byte sequence [92, 10] → [92, 110]
-    var result = text.replaceAll('\\\r\n', r'\r\n');
-    result = result.replaceAll('\\\n', r'\n');
+    // Pattern: `\` followed by actual newline → should become just newline
+    // This handles cases like byte sequence [92, 10] → [10]
+    var result = text.replaceAll('\\\r\n', '\n');
+    result = result.replaceAll('\\\n', '\n');
 
-    // Step 2: Handle remaining actual newlines (without preceding backslash)
-    result = result.replaceAll('\r\n', r'\r\n');
-    result = result.replaceAll('\n', r'\n');
+    // Step 2: Convert escaped sequences from LLM to actual newlines
+    // LLMs sometimes return \n as literal text instead of actual newlines
+    result = result.replaceAll(r'\r\n', '\n');
+    result = result.replaceAll(r'\n', '\n');
+
+    // Step 3: Normalize Windows CRLF to Unix LF for consistency
+    result = result.replaceAll('\r\n', '\n');
+    result = result.replaceAll('\r', '');
 
     return result;
   }

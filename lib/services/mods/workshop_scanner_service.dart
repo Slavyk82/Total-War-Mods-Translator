@@ -10,6 +10,7 @@ import 'package:twmt/models/domain/workshop_mod.dart';
 import 'package:twmt/models/domain/mod_scan_cache.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/mod_update_analysis_cache.dart';
+import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
@@ -109,16 +110,21 @@ class WorkshopScannerService {
       // Phase 1: Collect pack file info and check cache
       final modDataList = await _collectModData(modDirs);
 
-      // Phase 2: Batch fetch Steam Workshop data
+      // Phase 1.5: Get cached workshop mods to track previous timeUpdated values
+      final workshopIds = modDataList.map((m) => m.workshopId).toList();
+      final cachedModsMap = await _getCachedWorkshopMods(workshopIds);
+
+      // Phase 2: Batch fetch Steam Workshop data (will update cache)
       final workshopModsMap = await _fetchWorkshopData(
         modDataList,
         gameInstallation.steamAppId,
       );
 
-      // Phase 3: Build DetectedMod list
+      // Phase 3: Build DetectedMod list with cached timestamps for comparison
       final detectedMods = await _buildDetectedMods(
         modDataList,
         workshopModsMap,
+        cachedModsMap,
         existingWorkshopIds,
       );
 
@@ -132,6 +138,25 @@ class WorkshopScannerService {
         stackTrace: stackTrace,
       ));
     }
+  }
+
+  /// Get cached workshop mods from database before fetching new data.
+  /// This allows us to compare previous timestamps with new ones.
+  Future<Map<String, WorkshopMod>> _getCachedWorkshopMods(
+    List<String> workshopIds,
+  ) async {
+    if (workshopIds.isEmpty) {
+      return {};
+    }
+
+    final result = await _workshopModRepository.getByWorkshopIds(workshopIds);
+    if (result is Err) {
+      _logger.warning('Failed to get cached workshop mods: ${result.error.message}');
+      return {};
+    }
+
+    final cachedMods = result.value;
+    return {for (final mod in cachedMods) mod.workshopId: mod};
   }
 
   /// Get map of existing Steam Workshop IDs to projects.
@@ -329,9 +354,13 @@ class WorkshopScannerService {
   }
 
   /// Build list of DetectedMod from collected data.
+  ///
+  /// [cachedModsMap] contains the workshop mods from database BEFORE the API fetch,
+  /// allowing us to detect when Steam has a newer version by comparing timestamps.
   Future<List<DetectedMod>> _buildDetectedMods(
     List<ModLocalData> modDataList,
     Map<String, WorkshopMod> workshopModsMap,
+    Map<String, WorkshopMod> cachedModsMap,
     Map<String, Project> existingWorkshopIds,
   ) async {
     final detectedMods = <DetectedMod>[];
@@ -341,6 +370,11 @@ class WorkshopScannerService {
       String modTitle = _cleanModName(modData.packFileName);
       ProjectMetadata? metadata;
       int? timeUpdated;
+      int? cachedTimeUpdated;
+
+      // Get cached mod to compare timestamps
+      final cachedMod = cachedModsMap[workshopId];
+      cachedTimeUpdated = cachedMod?.timeUpdated;
 
       // Try to get Workshop data from batch fetch
       final workshopMod = workshopModsMap[workshopId];
@@ -359,14 +393,28 @@ class WorkshopScannerService {
         if (metadata != null) {
           modTitle = metadata.modTitle ?? modTitle;
         }
+        // Use cached timeUpdated if API fetch failed
+        timeUpdated = cachedTimeUpdated;
       }
 
       // Check if mod is already imported
       final existingProject = existingWorkshopIds[workshopId];
 
-      // Analyze changes for imported projects (uses cache when mod hasn't changed)
+      // Determine if we should analyze changes:
+      // Only analyze if:
+      // 1. Project is imported
+      // 2. Local file is up to date (not needing download)
+      // 3. Steam has a NEW update (timestamp differs from cache)
+      //    This prevents false positives when user has intentionally modified source texts
+      final localFileUpToDate = timeUpdated == null ||
+          modData.fileLastModified >= timeUpdated;
+      final hasNewSteamUpdate = cachedTimeUpdated != null &&
+          timeUpdated != null &&
+          timeUpdated != cachedTimeUpdated;
+
       ModUpdateAnalysis? updateAnalysis;
-      if (existingProject != null) {
+      if (existingProject != null && localFileUpToDate && hasNewSteamUpdate) {
+        _logger.info('New Steam update detected for $workshopId, analyzing changes...');
         updateAnalysis = await _analyzeProjectChanges(
           existingProject.id,
           modData.packFile.path,
@@ -375,7 +423,8 @@ class WorkshopScannerService {
         );
       }
 
-      detectedMods.add(DetectedMod(
+      // Log timestamps for debugging when there are changes or download needed
+      final mod = DetectedMod(
         workshopId: workshopId,
         name: modTitle,
         packFilePath: modData.packFile.path,
@@ -385,9 +434,21 @@ class WorkshopScannerService {
         existingProjectId: existingProject?.id,
         hasLocFiles: modData.hasLocFiles,
         timeUpdated: timeUpdated,
+        cachedTimeUpdated: cachedTimeUpdated,
         localFileLastModified: modData.fileLastModified,
         updateAnalysis: updateAnalysis,
-      ));
+      );
+
+      if (mod.updateStatus.requiresAction) {
+        _logger.info(
+          'Mod $workshopId ($modTitle) status=${mod.updateStatus.name}: '
+          'steamTime=${timeUpdated != null ? DateTime.fromMillisecondsSinceEpoch(timeUpdated * 1000).toIso8601String() : "null"}, '
+          'localTime=${DateTime.fromMillisecondsSinceEpoch(modData.fileLastModified * 1000).toIso8601String()}, '
+          'cachedTime=${cachedTimeUpdated != null ? DateTime.fromMillisecondsSinceEpoch(cachedTimeUpdated * 1000).toIso8601String() : "null"}',
+        );
+      }
+
+      detectedMods.add(mod);
     }
 
     return detectedMods;

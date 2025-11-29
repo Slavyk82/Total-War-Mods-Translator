@@ -32,8 +32,49 @@ class GlossaryStatisticsService {
         glossaryId: glossaryId,
       );
 
-      // Use statistics utility
-      final stats = GlossaryStatistics.calculateStats(entries);
+      // Get usage statistics from database
+      final usageStats = await _repository.getUsageStats(glossaryId);
+      final usedCount = usageStats['usedCount'] ?? 0;
+      final unusedCount = usageStats['unusedCount'] ?? 0;
+      final totalEntries = entries.length;
+
+      // Calculate usage rate
+      final usageRate = totalEntries > 0 ? usedCount / totalEntries : 0.0;
+
+      // Count duplicates (same source term, same language)
+      final termCounts = <String, int>{};
+      for (final entry in entries) {
+        final key = '${entry.targetLanguageCode}:${entry.sourceTerm.toLowerCase()}';
+        termCounts[key] = (termCounts[key] ?? 0) + 1;
+      }
+      final duplicatesDetected = termCounts.values.where((c) => c > 1).length;
+
+      // Count case-sensitive entries
+      final caseSensitiveTerms = entries.where((e) => e.caseSensitive).length;
+
+      // Count entries with missing translations (empty target term)
+      final missingTranslations = entries.where((e) => e.targetTerm.isEmpty).length;
+
+      // Forbidden terms count (from SQL since model doesn't map is_forbidden)
+      // For now, set to 0 since the feature isn't fully implemented
+      const forbiddenTerms = 0;
+
+      // Use statistics utility for language pair counts
+      final basicStats = GlossaryStatistics.calculateStats(entries);
+
+      // Build comprehensive statistics map
+      final stats = {
+        'totalEntries': totalEntries,
+        'entriesByLanguagePair': basicStats['entriesByLanguagePair'],
+        'usedInTranslations': usedCount,
+        'unusedEntries': unusedCount,
+        'usageRate': usageRate,
+        'consistencyScore': 1.0, // Placeholder for future implementation
+        'duplicatesDetected': duplicatesDetected,
+        'missingTranslations': missingTranslations,
+        'forbiddenTerms': forbiddenTerms,
+        'caseSensitiveTerms': caseSensitiveTerms,
+      };
 
       return Ok(stats);
     } catch (e) {

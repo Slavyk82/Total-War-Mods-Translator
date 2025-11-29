@@ -63,6 +63,12 @@ class GlossaryMatchingService {
       // Extract unique entries from matches
       final matchedEntries = matches.map((m) => m.entry).toSet().toList();
 
+      // Increment usage count for matched entries
+      if (matchedEntries.isNotEmpty) {
+        final entryIds = matchedEntries.map((e) => e.id).toList();
+        await _repository.incrementUsageCount(entryIds);
+      }
+
       return Ok(matchedEntries);
     } catch (e) {
       return Err(
@@ -124,6 +130,12 @@ class GlossaryMatchingService {
         targetText: targetText,
         matches: matches,
       );
+
+      // Increment usage count for matched entries
+      if (matches.isNotEmpty) {
+        final entryIds = matches.map((m) => m.entry.id).toSet().toList();
+        await _repository.incrementUsageCount(entryIds);
+      }
 
       return Ok(result);
     } catch (e) {

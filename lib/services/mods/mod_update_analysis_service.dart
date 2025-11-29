@@ -92,6 +92,15 @@ class ModUpdateAnalysisService {
         totalProjectUnits: existingUnits.length,
       );
 
+      // Log analysis results for debugging
+      if (analysis.hasChanges) {
+        _logger.info(
+          'ModUpdateAnalysis for project $projectId: '
+          '+$newUnitsCount new, -$removedUnitsCount removed, ~$modifiedUnitsCount modified '
+          '(pack: ${packUnits.length}, project: ${existingUnits.length})',
+        );
+      }
+
       return Ok(analysis);
     } catch (e, stackTrace) {
       _logger.error('Failed to analyze mod changes', e, stackTrace);

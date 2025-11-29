@@ -4,6 +4,7 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
+import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 
@@ -57,16 +58,20 @@ class DetectedModsDataSource extends DataGridSource {
             columnName: 'last_updated',
             value: _LastUpdatedData(
               timeUpdated: mod.timeUpdated,
-              needsUpdate: mod.needsUpdate,
+              localFileLastModified: mod.localFileLastModified,
+              updateStatus: mod.updateStatus,
             ),
           ),
           DataGridCell<bool>(
             columnName: 'imported',
             value: mod.isAlreadyImported,
           ),
-          DataGridCell<ModUpdateAnalysis?>(
+          DataGridCell<_ChangesData>(
             columnName: 'changes',
-            value: mod.updateAnalysis,
+            value: _ChangesData(
+              analysis: mod.updateAnalysis,
+              updateStatus: mod.updateStatus,
+            ),
           ),
         ],
       );
@@ -81,7 +86,7 @@ class DetectedModsDataSource extends DataGridSource {
     final subscribers = row.getCells()[3].value as int;
     final lastUpdatedData = row.getCells()[4].value as _LastUpdatedData;
     final isImported = row.getCells()[5].value as bool;
-    final updateAnalysis = row.getCells()[6].value as ModUpdateAnalysis?;
+    final changesData = row.getCells()[6].value as _ChangesData;
 
     return DataGridRowAdapter(
       cells: [
@@ -129,7 +134,7 @@ class DetectedModsDataSource extends DataGridSource {
         ),
         // Changes Analysis
         RepaintBoundary(
-          child: _ChangesCell(analysis: updateAnalysis, isImported: isImported),
+          child: _ChangesCell(data: changesData, isImported: isImported),
         ),
       ],
     );
@@ -139,11 +144,24 @@ class DetectedModsDataSource extends DataGridSource {
 /// Data class for last updated cell
 class _LastUpdatedData {
   final int? timeUpdated;
-  final bool needsUpdate;
+  final int? localFileLastModified;
+  final ModUpdateStatus updateStatus;
 
   const _LastUpdatedData({
     this.timeUpdated,
-    this.needsUpdate = false,
+    this.localFileLastModified,
+    this.updateStatus = ModUpdateStatus.unknown,
+  });
+}
+
+/// Data class for changes cell
+class _ChangesData {
+  final ModUpdateAnalysis? analysis;
+  final ModUpdateStatus updateStatus;
+
+  const _ChangesData({
+    this.analysis,
+    this.updateStatus = ModUpdateStatus.unknown,
   });
 }
 
@@ -153,10 +171,10 @@ class _LastUpdatedCell extends StatelessWidget {
 
   const _LastUpdatedCell({required this.data});
 
-  /// Format the number of days since the last update
-  String _formatDaysSinceUpdate(DateTime updatedDate) {
+  /// Format the time since a date in a human-readable way
+  String _formatTimeSince(DateTime date) {
     final now = DateTime.now();
-    final difference = now.difference(updatedDate);
+    final difference = now.difference(date);
     final days = difference.inDays;
 
     if (days == 0) {
@@ -178,6 +196,28 @@ class _LastUpdatedCell extends StatelessWidget {
     }
   }
 
+  /// Format a date for tooltip display
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  /// Build detailed tooltip with Steam and local dates
+  String _buildTooltip() {
+    final lines = <String>[];
+
+    if (data.timeUpdated != null && data.timeUpdated! > 0) {
+      final steamDate = DateTime.fromMillisecondsSinceEpoch(data.timeUpdated! * 1000);
+      lines.add('Steam Workshop: ${_formatDate(steamDate)}');
+    }
+
+    if (data.localFileLastModified != null && data.localFileLastModified! > 0) {
+      final localDate = DateTime.fromMillisecondsSinceEpoch(data.localFileLastModified! * 1000);
+      lines.add('Local file: ${_formatDate(localDate)}');
+    }
+
+    return lines.join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -193,27 +233,35 @@ class _LastUpdatedCell extends StatelessWidget {
       );
     }
 
-    final date = DateTime.fromMillisecondsSinceEpoch(data.timeUpdated! * 1000);
-    final daysSinceUpdate = _formatDaysSinceUpdate(date);
+    // Always display Steam Workshop update date in this column
+    final steamDate = DateTime.fromMillisecondsSinceEpoch(data.timeUpdated! * 1000);
+    final timeSinceSteamUpdate = _formatTimeSince(steamDate);
 
-    if (data.needsUpdate) {
+    // Show download required alert (red) when local file is outdated
+    if (data.updateStatus == ModUpdateStatus.needsDownload) {
+      final tooltipLines = [
+        'Steam version is newer than local file.',
+        'Launch the game to download the update.',
+        '',
+        _buildTooltip(),
+      ];
       return Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.all(8),
         child: Tooltip(
-          message: 'Steam version is newer than local file.\nLaunch the game to update this mod.',
+          message: tooltipLines.join('\n'),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                FluentIcons.arrow_sync_circle_24_filled,
+                FluentIcons.arrow_download_24_filled,
                 size: 16,
                 color: theme.colorScheme.error,
               ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  daysSinceUpdate,
+                  timeSinceSteamUpdate,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.error,
                     fontWeight: FontWeight.w600,
@@ -227,13 +275,55 @@ class _LastUpdatedCell extends StatelessWidget {
       );
     }
 
+    // Show changes detected indicator (orange/warning) when local file is current but has changes
+    if (data.updateStatus == ModUpdateStatus.hasChanges) {
+      final tooltipLines = [
+        'Translation differences detected between source and project.',
+        'Review changes to synchronize your translations.',
+        '',
+        _buildTooltip(),
+      ];
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Tooltip(
+          message: tooltipLines.join('\n'),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.arrow_sync_24_filled,
+                size: 16,
+                color: theme.colorScheme.tertiary,
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  timeSinceSteamUpdate,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.tertiary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Normal display - no issues
     return Container(
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.all(8),
-      child: Text(
-        daysSinceUpdate,
-        style: theme.textTheme.bodyMedium,
-        overflow: TextOverflow.ellipsis,
+      child: Tooltip(
+        message: _buildTooltip(),
+        child: Text(
+          timeSinceSteamUpdate,
+          style: theme.textTheme.bodyMedium,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -415,19 +505,21 @@ class _ImportedBadge extends StatelessWidget {
 
 /// Changes analysis cell widget
 class _ChangesCell extends StatelessWidget {
-  final ModUpdateAnalysis? analysis;
+  final _ChangesData data;
   final bool isImported;
 
   const _ChangesCell({
-    required this.analysis,
+    required this.data,
     required this.isImported,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final analysis = data.analysis;
+    final updateStatus = data.updateStatus;
 
-    // Not imported - no analysis
+    // Not imported - no analysis needed
     if (!isImported) {
       return Container(
         alignment: Alignment.centerLeft,
@@ -441,23 +533,23 @@ class _ChangesCell extends StatelessWidget {
       );
     }
 
-    // Imported but no analysis available
-    if (analysis == null) {
+    // Needs download - show download required instead of analysis
+    if (updateStatus == ModUpdateStatus.needsDownload) {
       return Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.all(8),
         child: Text(
-          'Analyzing...',
+          'Download required',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+            color: theme.colorScheme.error,
             fontStyle: FontStyle.italic,
           ),
         ),
       );
     }
 
-    // No changes
-    if (!analysis!.hasChanges) {
+    // Up to date (no new Steam update, so no analysis needed)
+    if (updateStatus == ModUpdateStatus.upToDate) {
       return Container(
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.all(8),
@@ -481,50 +573,65 @@ class _ChangesCell extends StatelessWidget {
       );
     }
 
-    // Has changes - build tooltip with details
-    final tooltipLines = <String>[];
-    if (analysis!.hasNewUnits) {
-      tooltipLines.add('+${analysis!.newUnitsCount} new translations to add');
-    }
-    if (analysis!.hasRemovedUnits) {
-      tooltipLines.add('-${analysis!.removedUnitsCount} translations removed');
-    }
-    if (analysis!.hasModifiedUnits) {
-      tooltipLines.add('~${analysis!.modifiedUnitsCount} source texts changed');
+    // Has changes status with analysis available
+    if (updateStatus == ModUpdateStatus.hasChanges && analysis != null) {
+      // Build tooltip with details
+      final tooltipLines = <String>[];
+      if (analysis.hasNewUnits) {
+        tooltipLines.add('+${analysis.newUnitsCount} new translations to add');
+      }
+      if (analysis.hasRemovedUnits) {
+        tooltipLines.add('-${analysis.removedUnitsCount} translations removed');
+      }
+      if (analysis.hasModifiedUnits) {
+        tooltipLines.add('~${analysis.modifiedUnitsCount} source texts changed');
+      }
+
+      return Container(
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.all(8),
+        child: Tooltip(
+          message: tooltipLines.join('\n'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.warning_24_filled,
+                  size: 14,
+                  color: theme.colorScheme.onErrorContainer,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    analysis.summary,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
+    // Unknown status or still analyzing
     return Container(
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.all(8),
-      child: Tooltip(
-        message: tooltipLines.join('\n'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.errorContainer,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.warning_24_filled,
-                size: 14,
-                color: theme.colorScheme.onErrorContainer,
-              ),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  analysis!.summary,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onErrorContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+      child: Text(
+        '-',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
     );
