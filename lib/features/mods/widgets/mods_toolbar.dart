@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 
 /// Toolbar for mods screen with search, filters, and actions
 class ModsToolbar extends StatefulWidget {
@@ -9,6 +10,13 @@ class ModsToolbar extends StatefulWidget {
   final bool isRefreshing;
   final int totalMods;
   final int filteredMods;
+  final ModsFilter currentFilter;
+  final Function(ModsFilter) onFilterChanged;
+  final int notImportedCount;
+  final int needsUpdateCount;
+  final bool showHidden;
+  final Function(bool) onShowHiddenChanged;
+  final int hiddenCount;
 
   const ModsToolbar({
     super.key,
@@ -18,6 +26,13 @@ class ModsToolbar extends StatefulWidget {
     this.isRefreshing = false,
     required this.totalMods,
     required this.filteredMods,
+    required this.currentFilter,
+    required this.onFilterChanged,
+    required this.notImportedCount,
+    required this.needsUpdateCount,
+    required this.showHidden,
+    required this.onShowHiddenChanged,
+    required this.hiddenCount,
   });
 
   @override
@@ -64,6 +79,14 @@ class _ModsToolbarState extends State<ModsToolbar> {
           ),
           const SizedBox(width: 16),
 
+          // Filter chips
+          _buildFilterChips(theme),
+          const SizedBox(width: 16),
+
+          // Hidden mods checkbox
+          _buildHiddenCheckbox(theme),
+          const SizedBox(width: 16),
+
           // Mod count
           _buildModCount(theme),
           const SizedBox(width: 16),
@@ -77,6 +100,34 @@ class _ModsToolbarState extends State<ModsToolbar> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterChips(ThemeData theme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _FilterChip(
+          label: 'All',
+          isSelected: widget.currentFilter == ModsFilter.all,
+          onTap: () => widget.onFilterChanged(ModsFilter.all),
+        ),
+        const SizedBox(width: 8),
+        _FilterChip(
+          label: 'Not imported',
+          count: widget.notImportedCount,
+          isSelected: widget.currentFilter == ModsFilter.notImported,
+          onTap: () => widget.onFilterChanged(ModsFilter.notImported),
+        ),
+        const SizedBox(width: 8),
+        _FilterChip(
+          label: 'Needs update',
+          count: widget.needsUpdateCount,
+          isSelected: widget.currentFilter == ModsFilter.needsUpdate,
+          onTap: () => widget.onFilterChanged(ModsFilter.needsUpdate),
+          highlightCount: widget.needsUpdateCount > 0,
+        ),
+      ],
     );
   }
 
@@ -133,6 +184,74 @@ class _ModsToolbarState extends State<ModsToolbar> {
             ),
           ),
           style: theme.textTheme.bodyMedium,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHiddenCheckbox(ThemeData theme) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => widget.onShowHiddenChanged(!widget.showHidden),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: widget.showHidden
+                ? theme.colorScheme.primaryContainer
+                : theme.colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: widget.showHidden
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.showHidden
+                    ? FluentIcons.eye_24_filled
+                    : FluentIcons.eye_off_24_regular,
+                size: 16,
+                color: widget.showHidden
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Hidden',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: widget.showHidden
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.onSurfaceVariant,
+                  fontWeight: widget.showHidden ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              if (widget.hiddenCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.showHidden
+                        ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${widget.hiddenCount}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: widget.showHidden
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -248,6 +367,100 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
                         ? theme.colorScheme.onPrimary
                         : theme.colorScheme.onSurface,
                   ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Filter chip with Fluent Design interactions
+class _FilterChip extends StatefulWidget {
+  final String label;
+  final int? count;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool highlightCount;
+
+  const _FilterChip({
+    required this.label,
+    this.count,
+    required this.isSelected,
+    required this.onTap,
+    this.highlightCount = false,
+  });
+
+  @override
+  State<_FilterChip> createState() => _FilterChipState();
+}
+
+class _FilterChipState extends State<_FilterChip> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? theme.colorScheme.primary
+                : _isHovered
+                    ? theme.colorScheme.surfaceContainerHigh
+                    : theme.colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: widget.isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: widget.isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurface,
+                  fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              if (widget.count != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: widget.isSelected
+                        ? theme.colorScheme.onPrimary.withValues(alpha: 0.2)
+                        : widget.highlightCount && widget.count! > 0
+                            ? theme.colorScheme.error.withValues(alpha: 0.15)
+                            : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${widget.count}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: widget.isSelected
+                          ? theme.colorScheme.onPrimary
+                          : widget.highlightCount && widget.count! > 0
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

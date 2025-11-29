@@ -363,12 +363,14 @@ CREATE TABLE IF NOT EXISTS workshop_mods (
     time_updated INTEGER,
     subscriptions INTEGER DEFAULT 0,
     tags TEXT,
+    is_hidden INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     last_checked_at INTEGER,
     CHECK (file_size IS NULL OR file_size >= 0),
     CHECK (subscriptions >= 0),
-    CHECK (created_at <= updated_at)
+    CHECK (created_at <= updated_at),
+    CHECK (is_hidden IN (0, 1))
 );
 
 -- ============================================================================

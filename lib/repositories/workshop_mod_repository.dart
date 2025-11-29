@@ -248,5 +248,32 @@ class WorkshopModRepository extends BaseRepository<WorkshopMod> {
       return maps.map((map) => fromMap(map)).toList();
     });
   }
+
+  /// Set hidden status for a mod by workshop ID
+  Future<Result<void, TWMTDatabaseException>> setHidden(
+      String workshopId, bool isHidden) async {
+    return executeQuery(() async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await database.update(
+        tableName,
+        {'is_hidden': isHidden ? 1 : 0, 'updated_at': now},
+        where: 'workshop_id = ?',
+        whereArgs: [workshopId],
+      );
+    });
+  }
+
+  /// Get all hidden workshop IDs
+  Future<Result<Set<String>, TWMTDatabaseException>> getHiddenWorkshopIds() async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        columns: ['workshop_id'],
+        where: 'is_hidden = 1',
+      );
+
+      return maps.map((map) => map['workshop_id'] as String).toSet();
+    });
+  }
 }
 

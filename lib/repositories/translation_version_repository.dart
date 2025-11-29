@@ -346,4 +346,38 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       return rowsAffected;
     });
   }
+
+  /// Reset status to pending for all translation versions of specified units.
+  ///
+  /// Used when source text has changed and translations need to be reviewed.
+  /// Does NOT clear the translated_text - only changes status to pending.
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> resetStatusForUnitKeys({
+    required String projectId,
+    required List<String> unitKeys,
+  }) async {
+    if (unitKeys.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeQuery(() async {
+      final placeholders = List.filled(unitKeys.length, '?').join(',');
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final rowsAffected = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET status = 'pending',
+            updated_at = ?
+        WHERE unit_id IN (
+          SELECT id FROM translation_units
+          WHERE project_id = ? AND key IN ($placeholders)
+        )
+        ''',
+        [now, projectId, ...unitKeys],
+      );
+
+      return rowsAffected;
+    });
+  }
 }

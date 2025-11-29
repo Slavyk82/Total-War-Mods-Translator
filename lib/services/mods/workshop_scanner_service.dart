@@ -113,6 +113,9 @@ class WorkshopScannerService {
       // Phase 1.5: Get cached workshop mods to track previous timeUpdated values
       final workshopIds = modDataList.map((m) => m.workshopId).toList();
       final cachedModsMap = await _getCachedWorkshopMods(workshopIds);
+      
+      // Phase 1.6: Get hidden workshop IDs
+      final hiddenWorkshopIds = await _getHiddenWorkshopIds();
 
       // Phase 2: Batch fetch Steam Workshop data (will update cache)
       final workshopModsMap = await _fetchWorkshopData(
@@ -126,6 +129,7 @@ class WorkshopScannerService {
         workshopModsMap,
         cachedModsMap,
         existingWorkshopIds,
+        hiddenWorkshopIds,
       );
 
       _logger.info('Scan complete: ${detectedMods.length} translatable mods');
@@ -157,6 +161,16 @@ class WorkshopScannerService {
 
     final cachedMods = result.value;
     return {for (final mod in cachedMods) mod.workshopId: mod};
+  }
+
+  /// Get set of hidden workshop IDs.
+  Future<Set<String>> _getHiddenWorkshopIds() async {
+    final result = await _workshopModRepository.getHiddenWorkshopIds();
+    if (result is Err) {
+      _logger.warning('Failed to get hidden workshop IDs: ${result.error.message}');
+      return {};
+    }
+    return result.value;
   }
 
   /// Get map of existing Steam Workshop IDs to projects.
@@ -362,6 +376,7 @@ class WorkshopScannerService {
     Map<String, WorkshopMod> workshopModsMap,
     Map<String, WorkshopMod> cachedModsMap,
     Map<String, Project> existingWorkshopIds,
+    Set<String> hiddenWorkshopIds,
   ) async {
     final detectedMods = <DetectedMod>[];
 
@@ -437,6 +452,7 @@ class WorkshopScannerService {
         cachedTimeUpdated: cachedTimeUpdated,
         localFileLastModified: modData.fileLastModified,
         updateAnalysis: updateAnalysis,
+        isHidden: hiddenWorkshopIds.contains(workshopId),
       );
 
       if (mod.updateStatus.requiresAction) {
@@ -481,6 +497,10 @@ class WorkshopScannerService {
   ///
   /// Uses cached analysis results when the pack file hasn't changed.
   /// Only performs expensive TSV extraction when the mod has been updated.
+  ///
+  /// When modified source texts are detected, this method automatically:
+  /// 1. Updates the source_text in translation_units
+  /// 2. Resets the status to 'pending' for all affected translation versions
   Future<ModUpdateAnalysis?> _analyzeProjectChanges(
     String projectId,
     String packFilePath,
@@ -510,7 +530,49 @@ class WorkshopScannerService {
     );
 
     return analysisResult.when(
-      ok: (analysis) {
+      ok: (analysis) async {
+        // If there are new units, add them automatically
+        // This creates TranslationUnit and TranslationVersion records with status 'pending'
+        if (analysis.hasNewUnits) {
+          _logger.info(
+            'Auto-adding ${analysis.newUnitsCount} new units for project $projectId',
+          );
+          final addResult = await _modUpdateAnalysisService.addNewUnits(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          if (addResult.isOk) {
+            _logger.info('Added ${addResult.value} new units');
+          } else {
+            _logger.warning(
+              'Failed to add new units: ${addResult.error.message}',
+            );
+          }
+        }
+
+        // If there are modified source texts, apply changes automatically
+        // This updates source texts and resets translation statuses to pending
+        if (analysis.hasModifiedUnits) {
+          _logger.info(
+            'Auto-applying ${analysis.modifiedUnitsCount} source text changes for project $projectId',
+          );
+          final applyResult = await _modUpdateAnalysisService.applyModifiedSourceTexts(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          if (applyResult.isOk) {
+            final result = applyResult.value;
+            _logger.info(
+              'Applied: ${result.sourceTextsUpdated} source texts updated, '
+              '${result.translationsReset} translations reset to pending',
+            );
+          } else {
+            _logger.warning(
+              'Failed to apply source text changes: ${applyResult.error.message}',
+            );
+          }
+        }
+
         // Cache the result
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
         final cacheEntry = ModUpdateAnalysisCache.fromAnalysis(

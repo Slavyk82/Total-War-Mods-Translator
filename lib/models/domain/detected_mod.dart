@@ -22,6 +22,9 @@ class DetectedMod {
   final int? localFileLastModified;
   /// Analysis of changes for imported projects (null if not analyzed or not imported)
   final ModUpdateAnalysis? updateAnalysis;
+  
+  /// Whether the mod is hidden from the main list by user preference
+  final bool isHidden;
 
   const DetectedMod({
     required this.workshopId,
@@ -36,6 +39,7 @@ class DetectedMod {
     this.cachedTimeUpdated,
     this.localFileLastModified,
     this.updateAnalysis,
+    this.isHidden = false,
   });
 
   /// Determines the update status based on Steam, cache, and local file timestamps.
@@ -117,6 +121,7 @@ class DetectedMod {
     int? cachedTimeUpdated,
     int? localFileLastModified,
     ModUpdateAnalysis? updateAnalysis,
+    bool? isHidden,
   }) {
     return DetectedMod(
       workshopId: workshopId ?? this.workshopId,
@@ -131,6 +136,7 @@ class DetectedMod {
       cachedTimeUpdated: cachedTimeUpdated ?? this.cachedTimeUpdated,
       localFileLastModified: localFileLastModified ?? this.localFileLastModified,
       updateAnalysis: updateAnalysis ?? this.updateAnalysis,
+      isHidden: isHidden ?? this.isHidden,
     );
   }
 }

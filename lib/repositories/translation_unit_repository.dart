@@ -230,4 +230,43 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
       return maps.map((map) => fromMap(map)).toList();
     });
   }
+
+  /// Update source text for multiple translation units by key.
+  ///
+  /// Used when the source mod is updated and source texts have changed.
+  /// Updates each key's source_text to the new value provided in the map.
+  ///
+  /// [projectId] - The project containing the units
+  /// [sourceTextUpdates] - Map of key -> new source text
+  ///
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> updateSourceTexts({
+    required String projectId,
+    required Map<String, String> sourceTextUpdates,
+  }) async {
+    if (sourceTextUpdates.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+
+      // Update each unit's source text
+      for (final entry in sourceTextUpdates.entries) {
+        final rowsAffected = await txn.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET source_text = ?,
+              updated_at = ?
+          WHERE project_id = ? AND key = ?
+          ''',
+          [entry.value, now, projectId, entry.key],
+        );
+        totalAffected += rowsAffected;
+      }
+
+      return totalAffected;
+    });
+  }
 }

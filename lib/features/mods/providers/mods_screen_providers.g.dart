@@ -8,6 +8,65 @@ part of 'mods_screen_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Filter state for mods screen
+
+@ProviderFor(ModsFilterState)
+const modsFilterStateProvider = ModsFilterStateProvider._();
+
+/// Filter state for mods screen
+final class ModsFilterStateProvider
+    extends $NotifierProvider<ModsFilterState, ModsFilter> {
+  /// Filter state for mods screen
+  const ModsFilterStateProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'modsFilterStateProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$modsFilterStateHash();
+
+  @$internal
+  @override
+  ModsFilterState create() => ModsFilterState();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ModsFilter value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ModsFilter>(value),
+    );
+  }
+}
+
+String _$modsFilterStateHash() => r'd8e0a297739808ad4f533931d4f1a27804b12149';
+
+/// Filter state for mods screen
+
+abstract class _$ModsFilterState extends $Notifier<ModsFilter> {
+  ModsFilter build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<ModsFilter, ModsFilter>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ModsFilter, ModsFilter>,
+              ModsFilter,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 /// Search query state for mods screen
 
 @ProviderFor(ModsSearchQuery)
@@ -67,12 +126,71 @@ abstract class _$ModsSearchQuery extends $Notifier<String> {
   }
 }
 
-/// Filtered mods based on search query
+/// Show hidden mods filter state
+
+@ProviderFor(ShowHiddenMods)
+const showHiddenModsProvider = ShowHiddenModsProvider._();
+
+/// Show hidden mods filter state
+final class ShowHiddenModsProvider
+    extends $NotifierProvider<ShowHiddenMods, bool> {
+  /// Show hidden mods filter state
+  const ShowHiddenModsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'showHiddenModsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$showHiddenModsHash();
+
+  @$internal
+  @override
+  ShowHiddenMods create() => ShowHiddenMods();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$showHiddenModsHash() => r'cc0423131033c63bf5e6069be2c5c1e600f2d5f3';
+
+/// Show hidden mods filter state
+
+abstract class _$ShowHiddenMods extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
+/// Filtered mods based on search query, filter, and hidden state
 
 @ProviderFor(filteredMods)
 const filteredModsProvider = FilteredModsProvider._();
 
-/// Filtered mods based on search query
+/// Filtered mods based on search query, filter, and hidden state
 
 final class FilteredModsProvider
     extends
@@ -84,7 +202,7 @@ final class FilteredModsProvider
     with
         $FutureModifier<List<DetectedMod>>,
         $FutureProvider<List<DetectedMod>> {
-  /// Filtered mods based on search query
+  /// Filtered mods based on search query, filter, and hidden state
   const FilteredModsProvider._()
     : super(
         from: null,
@@ -111,7 +229,161 @@ final class FilteredModsProvider
   }
 }
 
-String _$filteredModsHash() => r'6091b1570c5bac904bcaf42410ee41bb571d00e6';
+String _$filteredModsHash() => r'7e099664fe3def340adefe0b666db2226b4ed1df';
+
+/// Provider for total mods count (excluding hidden)
+
+@ProviderFor(totalModsCount)
+const totalModsCountProvider = TotalModsCountProvider._();
+
+/// Provider for total mods count (excluding hidden)
+
+final class TotalModsCountProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Provider for total mods count (excluding hidden)
+  const TotalModsCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'totalModsCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$totalModsCountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return totalModsCount(ref);
+  }
+}
+
+String _$totalModsCountHash() => r'12bfe0517c7973432b664eea1b619ea8daf562be';
+
+/// Provider for hidden mods count
+
+@ProviderFor(hiddenModsCount)
+const hiddenModsCountProvider = HiddenModsCountProvider._();
+
+/// Provider for hidden mods count
+
+final class HiddenModsCountProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Provider for hidden mods count
+  const HiddenModsCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'hiddenModsCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$hiddenModsCountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return hiddenModsCount(ref);
+  }
+}
+
+String _$hiddenModsCountHash() => r'561ea8aa67a3499a42fcccfdebfeca3a3f75132d';
+
+/// Provider for not imported mods count (respects hidden filter)
+
+@ProviderFor(notImportedModsCount)
+const notImportedModsCountProvider = NotImportedModsCountProvider._();
+
+/// Provider for not imported mods count (respects hidden filter)
+
+final class NotImportedModsCountProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Provider for not imported mods count (respects hidden filter)
+  const NotImportedModsCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'notImportedModsCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$notImportedModsCountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return notImportedModsCount(ref);
+  }
+}
+
+String _$notImportedModsCountHash() =>
+    r'c60aaa5a09ed76437ecda9067685cbc43b7c8bc3';
+
+/// Provider for mods needing update count (respects hidden filter)
+
+@ProviderFor(needsUpdateModsCount)
+const needsUpdateModsCountProvider = NeedsUpdateModsCountProvider._();
+
+/// Provider for mods needing update count (respects hidden filter)
+
+final class NeedsUpdateModsCountProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Provider for mods needing update count (respects hidden filter)
+  const NeedsUpdateModsCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'needsUpdateModsCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$needsUpdateModsCountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return needsUpdateModsCount(ref);
+  }
+}
+
+String _$needsUpdateModsCountHash() =>
+    r'4eca06098ef9f967460938bf7d069267c679558a';
 
 /// Refresh trigger for mods list
 
@@ -229,5 +501,56 @@ abstract class _$ModsLoadingState extends $Notifier<bool> {
               Object?
             >;
     element.handleValue(ref, created);
+  }
+}
+
+/// Toggle mod hidden status
+
+@ProviderFor(ModHiddenToggle)
+const modHiddenToggleProvider = ModHiddenToggleProvider._();
+
+/// Toggle mod hidden status
+final class ModHiddenToggleProvider
+    extends $AsyncNotifierProvider<ModHiddenToggle, void> {
+  /// Toggle mod hidden status
+  const ModHiddenToggleProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'modHiddenToggleProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$modHiddenToggleHash();
+
+  @$internal
+  @override
+  ModHiddenToggle create() => ModHiddenToggle();
+}
+
+String _$modHiddenToggleHash() => r'0cecd4fd19e57970a4d2f77aaf6dc1d5c19b4336';
+
+/// Toggle mod hidden status
+
+abstract class _$ModHiddenToggle extends $AsyncNotifier<void> {
+  FutureOr<void> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    build();
+    final ref = this.ref as $Ref<AsyncValue<void>, void>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, void>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, null);
   }
 }

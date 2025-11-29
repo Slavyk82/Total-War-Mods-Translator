@@ -8,13 +8,17 @@ import 'detected_mods_data_source.dart';
 class DetectedModsDataGrid extends StatefulWidget {
   final List<DetectedMod> mods;
   final Function(String workshopId) onRowTap;
+  final Function(String workshopId, bool hide)? onToggleHidden;
   final bool isLoading;
+  final bool showingHidden;
 
   const DetectedModsDataGrid({
     super.key,
     required this.mods,
     required this.onRowTap,
+    this.onToggleHidden,
     this.isLoading = false,
+    this.showingHidden = false,
   });
 
   @override
@@ -46,6 +50,43 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
   void dispose() {
     _dataGridController.dispose();
     super.dispose();
+  }
+
+  void _showContextMenu(BuildContext context, Offset position, DetectedMod mod) {
+    final theme = Theme.of(context);
+    final isHidden = mod.isHidden;
+    
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: [
+        PopupMenuItem<String>(
+          value: 'toggle_hidden',
+          child: Row(
+            children: [
+              Icon(
+                isHidden
+                    ? FluentIcons.eye_24_regular
+                    : FluentIcons.eye_off_24_regular,
+                size: 20,
+                color: theme.colorScheme.onSurface,
+              ),
+              const SizedBox(width: 12),
+              Text(isHidden ? 'Unhide mod' : 'Hide mod'),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'toggle_hidden' && widget.onToggleHidden != null) {
+        widget.onToggleHidden!(mod.workshopId, !isHidden);
+      }
+    });
   }
 
   @override
@@ -84,25 +125,37 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: SfDataGrid(
-          source: _dataSource,
-          controller: _dataGridController,
-          gridLinesVisibility: GridLinesVisibility.horizontal,
-          headerGridLinesVisibility: GridLinesVisibility.horizontal,
-          allowSorting: true,
-          allowMultiColumnSorting: false,
-          selectionMode: SelectionMode.single,
-          navigationMode: GridNavigationMode.row,
-          onCellTap: (details) {
-            if (details.rowColumnIndex.rowIndex > 0) {
-              final rowIndex = details.rowColumnIndex.rowIndex - 1;
-              if (rowIndex < widget.mods.length) {
-                widget.onRowTap(widget.mods[rowIndex].workshopId);
+        child: GestureDetector(
+          onSecondaryTapDown: (details) {
+            // Find which row was clicked based on Y position
+            // Account for header row (56px) and row height (64px)
+            final localY = details.localPosition.dy;
+            if (localY > 56) { // Skip header
+              final rowIndex = ((localY - 56) / 64).floor();
+              if (rowIndex >= 0 && rowIndex < widget.mods.length) {
+                _showContextMenu(context, details.globalPosition, widget.mods[rowIndex]);
               }
             }
           },
-          headerRowHeight: 56,
-          rowHeight: 64,
+          child: SfDataGrid(
+            source: _dataSource,
+            controller: _dataGridController,
+            gridLinesVisibility: GridLinesVisibility.horizontal,
+            headerGridLinesVisibility: GridLinesVisibility.horizontal,
+            allowSorting: true,
+            allowMultiColumnSorting: false,
+            selectionMode: SelectionMode.single,
+            navigationMode: GridNavigationMode.row,
+            onCellTap: (details) {
+              if (details.rowColumnIndex.rowIndex > 0) {
+                final rowIndex = details.rowColumnIndex.rowIndex - 1;
+                if (rowIndex < widget.mods.length) {
+                  widget.onRowTap(widget.mods[rowIndex].workshopId);
+                }
+              }
+            },
+            headerRowHeight: 56,
+            rowHeight: 64,
           columns: <GridColumn>[
             GridColumn(
               columnName: 'image',
@@ -292,32 +345,39 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildEmptyState(ThemeData theme) {
+    final isShowingHidden = widget.showingHidden;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            FluentIcons.cube_24_regular,
+            isShowingHidden 
+                ? FluentIcons.eye_off_24_regular 
+                : FluentIcons.cube_24_regular,
             size: 64,
             color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            'No mods found',
+            isShowingHidden ? 'No hidden mods' : 'No mods found',
             style: theme.textTheme.headlineMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Subscribe to mods on Steam Workshop or download them manually',
+            isShowingHidden
+                ? 'Right-click on a mod to hide it from the list'
+                : 'Subscribe to mods on Steam Workshop or download them manually',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodySmall?.color,
             ),

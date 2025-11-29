@@ -11,6 +11,7 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/detected_mods_datagrid.dart';
+import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
@@ -38,6 +39,12 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     final filteredModsAsync = ref.watch(filteredModsProvider);
     final searchQuery = ref.watch(modsSearchQueryProvider);
     final isRefreshing = ref.watch(modsLoadingStateProvider);
+    final currentFilter = ref.watch(modsFilterStateProvider);
+    final totalModsAsync = ref.watch(totalModsCountProvider);
+    final notImportedCountAsync = ref.watch(notImportedModsCountProvider);
+    final needsUpdateCountAsync = ref.watch(needsUpdateModsCountProvider);
+    final showHidden = ref.watch(showHiddenModsProvider);
+    final hiddenCountAsync = ref.watch(hiddenModsCountProvider);
 
     return CallbackShortcuts(
       bindings: {
@@ -71,8 +78,19 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                     },
                     onRefresh: () => _handleRefresh(),
                     isRefreshing: isRefreshing,
-                    totalMods: filteredMods.length,
+                    totalMods: totalModsAsync.value ?? 0,
                     filteredMods: filteredMods.length,
+                    currentFilter: currentFilter,
+                    onFilterChanged: (filter) {
+                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                    },
+                    notImportedCount: notImportedCountAsync.value ?? 0,
+                    needsUpdateCount: needsUpdateCountAsync.value ?? 0,
+                    showHidden: showHidden,
+                    onShowHiddenChanged: (value) {
+                      ref.read(showHiddenModsProvider.notifier).set(value);
+                    },
+                    hiddenCount: hiddenCountAsync.value ?? 0,
                   ),
                   loading: () => ModsToolbar(
                     searchQuery: searchQuery,
@@ -83,6 +101,17 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                     isRefreshing: true,
                     totalMods: 0,
                     filteredMods: 0,
+                    currentFilter: currentFilter,
+                    onFilterChanged: (filter) {
+                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                    },
+                    notImportedCount: 0,
+                    needsUpdateCount: 0,
+                    showHidden: showHidden,
+                    onShowHiddenChanged: (value) {
+                      ref.read(showHiddenModsProvider.notifier).set(value);
+                    },
+                    hiddenCount: 0,
                   ),
                   error: (error, stack) => ModsToolbar(
                     searchQuery: searchQuery,
@@ -93,6 +122,17 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                     isRefreshing: false,
                     totalMods: 0,
                     filteredMods: 0,
+                    currentFilter: currentFilter,
+                    onFilterChanged: (filter) {
+                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                    },
+                    notImportedCount: 0,
+                    needsUpdateCount: 0,
+                    showHidden: showHidden,
+                    onShowHiddenChanged: (value) {
+                      ref.read(showHiddenModsProvider.notifier).set(value);
+                    },
+                    hiddenCount: 0,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -103,12 +143,15 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                     data: (mods) => DetectedModsDataGrid(
                       mods: mods,
                       onRowTap: (workshopId) => _openCreateProjectDialog(context, mods, workshopId),
+                      onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
                       isLoading: false,
+                      showingHidden: showHidden,
                     ),
                     loading: () => DetectedModsDataGrid(
                       mods: const [],
                       onRowTap: _dummyCallback,
                       isLoading: true,
+                      showingHidden: showHidden,
                     ),
                     error: (error, stack) => _buildErrorState(theme, error),
                   ),
@@ -217,6 +260,15 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
         ref.read(modsLoadingStateProvider.notifier).setLoading(false);
       }
     });
+  }
+
+  Future<void> _handleToggleHidden(String workshopId, bool hide) async {
+    await ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
+    
+    // Refresh to reflect the change immediately
+    if (mounted) {
+      ref.invalidate(detectedModsProvider);
+    }
   }
 
   Future<void> _openCreateProjectDialog(

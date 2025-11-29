@@ -317,6 +317,12 @@ class MigrationService {
 
     // Fix escaped newlines in existing translations
     await _fixEscapedNewlinesInTranslations();
+
+    // Fix backslash-before-newline pattern from LLM translations
+    await _fixBackslashBeforeNewlines();
+
+    // Ensure is_hidden column exists on workshop_mods
+    await _ensureWorkshopModsHiddenColumn();
   }
 
   /// Ensure mod_update_analysis_cache table exists for existing databases.
@@ -542,6 +548,92 @@ class MigrationService {
     } catch (e, stackTrace) {
       logging.error('Failed to fix escaped newlines', e, stackTrace);
       // Non-fatal: translations will still work, just display incorrectly
+    }
+  }
+
+  /// Fix backslash-before-newline pattern in translations.
+  ///
+  /// Some LLM translations incorrectly produced backslash + newline sequences
+  /// like `text.\<newline>` instead of just `text.<newline>`.
+  /// This causes `\\` to appear before line breaks in game.
+  ///
+  /// This migration removes spurious backslashes before newlines.
+  static Future<void> _fixBackslashBeforeNewlines() async {
+    final logging = LoggingService.instance;
+
+    try {
+      logging.debug('Checking for backslash-before-newline patterns...');
+
+      // Check for backslash followed by newline (char 92 + char 10)
+      final countResult = await DatabaseService.database.rawQuery('''
+        SELECT COUNT(*) as cnt FROM translation_versions
+        WHERE INSTR(translated_text, char(92) || char(10)) > 0
+      ''');
+      final count = countResult.first['cnt'] as int;
+
+      logging.debug('Found $count translations with backslash-before-newline');
+
+      if (count == 0) {
+        return;
+      }
+
+      logging.info('Fixing backslash-before-newline in $count translations...');
+
+      // Replace backslash + newline with just newline
+      // Process in batches
+      const batchSize = 500;
+      var totalProcessed = 0;
+
+      while (true) {
+        final updated = await DatabaseService.database.rawUpdate('''
+          UPDATE translation_versions
+          SET translated_text = REPLACE(translated_text, char(92) || char(10), char(10))
+          WHERE id IN (
+            SELECT id FROM translation_versions
+            WHERE INSTR(translated_text, char(92) || char(10)) > 0
+            LIMIT $batchSize
+          )
+        ''');
+
+        if (updated == 0) break;
+
+        totalProcessed += updated;
+        logging.debug('Processed $totalProcessed / $count translations');
+
+        // Yield to UI thread
+        await Future.delayed(Duration.zero);
+      }
+
+      logging.info('Fixed backslash-before-newline in $totalProcessed translations');
+    } catch (e, stackTrace) {
+      logging.error('Failed to fix backslash-before-newline', e, stackTrace);
+      // Non-fatal
+    }
+  }
+
+  /// Ensure is_hidden column exists on workshop_mods table.
+  ///
+  /// This column allows users to hide mods from the main list.
+  static Future<void> _ensureWorkshopModsHiddenColumn() async {
+    final logging = LoggingService.instance;
+
+    try {
+      // Check if column exists
+      final columns = await DatabaseService.database.rawQuery(
+        "PRAGMA table_info(workshop_mods)"
+      );
+      final hasColumn = columns.any((col) => col['name'] == 'is_hidden');
+
+      if (!hasColumn) {
+        await DatabaseService.execute('''
+          ALTER TABLE workshop_mods
+          ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0
+        ''');
+        logging.info('Added is_hidden column to workshop_mods');
+      }
+    } catch (e, stackTrace) {
+      logging.error('Failed to add is_hidden column', e, stackTrace);
+      // Non-fatal: hiding feature will be unavailable but app still works
     }
   }
 

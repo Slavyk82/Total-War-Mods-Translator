@@ -43,6 +43,9 @@ class WorkshopMod {
   /// When metadata was last checked against Steam API
   final int? lastCheckedAt;
 
+  /// Whether the mod is hidden from the main mod list
+  final bool isHidden;
+
   const WorkshopMod({
     required this.id,
     required this.workshopId,
@@ -57,6 +60,7 @@ class WorkshopMod {
     required this.createdAt,
     required this.updatedAt,
     this.lastCheckedAt,
+    this.isHidden = false,
   });
 
   /// Convert from JSON map (database)
@@ -77,6 +81,7 @@ class WorkshopMod {
       createdAt: json['created_at'] as int,
       updatedAt: json['updated_at'] as int,
       lastCheckedAt: json['last_checked_at'] as int?,
+      isHidden: (json['is_hidden'] as int?) == 1,
     );
   }
 
@@ -96,6 +101,7 @@ class WorkshopMod {
       'created_at': createdAt,
       'updated_at': updatedAt,
       'last_checked_at': lastCheckedAt,
+      'is_hidden': isHidden ? 1 : 0,
     };
   }
 
@@ -114,6 +120,7 @@ class WorkshopMod {
     int? createdAt,
     int? updatedAt,
     int? lastCheckedAt,
+    bool? isHidden,
   }) {
     return WorkshopMod(
       id: id ?? this.id,
@@ -129,6 +136,7 @@ class WorkshopMod {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+      isHidden: isHidden ?? this.isHidden,
     );
   }
 

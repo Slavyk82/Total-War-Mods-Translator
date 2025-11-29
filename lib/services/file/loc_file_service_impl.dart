@@ -490,17 +490,17 @@ class LocFileServiceImpl implements ILocFileService {
     return '$dir/$newFileName';
   }
 
-  /// Escape text for TSV format
+  /// Escape text for TSV format compatible with RPFM
   ///
-  /// TSV format requires:
-  /// - Tabs replaced with \\t (literal backslash-t, not tab character)
-  /// - Newlines replaced with \\n (literal backslash-n)
-  /// - No need to escape quotes in TSV
+  /// RPFM TSV format uses double-backslash for escape sequences:
+  /// - Existing backslash → \\\\ (two backslashes in file)
+  /// - Real newline (char 10) → \\n (backslash, backslash, n in file)
+  /// - Real tab (char 9) → \\t (backslash, backslash, t in file)
   String _escapeTsvText(String text) {
     return text
-        .replaceAll('\\', '\\\\')  // Escape backslashes first
-        .replaceAll('\t', '\\t')   // Escape tabs
-        .replaceAll('\n', '\\n')   // Escape newlines
+        .replaceAll('\\', '\\\\')  // Escape existing backslashes: \ → \\
+        .replaceAll('\t', '\\\\t') // Escape tabs: tab → \\t
+        .replaceAll('\n', '\\\\n') // Escape newlines: newline → \\n
         .replaceAll('\r', '');     // Remove carriage returns
   }
 }

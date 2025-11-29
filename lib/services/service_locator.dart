@@ -440,6 +440,8 @@ class ServiceLocator {
         rpfmService: _locator<IRpfmService>(),
         locParser: _locator<ILocalizationParser>(),
         unitRepository: _locator<TranslationUnitRepository>(),
+        versionRepository: _locator<TranslationVersionRepository>(),
+        languageRepository: _locator<ProjectLanguageRepository>(),
       ),
     );
 
