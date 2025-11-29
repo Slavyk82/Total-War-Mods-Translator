@@ -5,7 +5,7 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../projects/providers/project_detail_providers.dart'
     show projectDetailsProvider;
 import '../../../projects/providers/projects_screen_providers.dart'
-    show projectsWithDetailsProvider;
+    show projectsWithDetailsProvider, translationStatsVersionProvider;
 import '../../providers/editor_providers.dart';
 
 /// Base mixin providing common functionality for editor actions
@@ -42,6 +42,8 @@ mixin EditorActionsBase {
     ref.invalidate(translationRowsProvider(projectId, languageId));
     ref.invalidate(projectDetailsProvider(projectId));
     ref.invalidate(projectsWithDetailsProvider);
+    // Increment version to trigger refresh of pack compilation stats
+    ref.read(translationStatsVersionProvider.notifier).increment();
   }
 
   /// Convert validation issue type to readable label

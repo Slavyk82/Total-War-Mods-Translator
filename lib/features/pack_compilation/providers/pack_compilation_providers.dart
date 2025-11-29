@@ -19,6 +19,8 @@ import '../../../services/file/i_loc_file_service.dart';
 import '../../../services/file/pack_export_utils.dart';
 import '../../../services/rpfm/i_rpfm_service.dart';
 import '../../../services/shared/logging_service.dart';
+import '../../projects/providers/projects_screen_providers.dart'
+    show translationStatsVersionProvider;
 
 /// Repository providers
 final compilationRepositoryProvider = Provider<CompilationRepository>((ref) {
@@ -172,6 +174,7 @@ class CompilationEditorState {
   final String? selectedLanguageId;
   final Set<String> selectedProjectIds;
   final bool isCompiling;
+  final bool isCancelled;
   final double progress;
   final String? currentStep;
   final String? errorMessage;
@@ -185,6 +188,7 @@ class CompilationEditorState {
     this.selectedLanguageId,
     this.selectedProjectIds = const {},
     this.isCompiling = false,
+    this.isCancelled = false,
     this.progress = 0.0,
     this.currentStep,
     this.errorMessage,
@@ -204,6 +208,7 @@ class CompilationEditorState {
     String? selectedLanguageId,
     Set<String>? selectedProjectIds,
     bool? isCompiling,
+    bool? isCancelled,
     double? progress,
     String? currentStep,
     String? errorMessage,
@@ -217,6 +222,7 @@ class CompilationEditorState {
       selectedLanguageId: selectedLanguageId ?? this.selectedLanguageId,
       selectedProjectIds: selectedProjectIds ?? this.selectedProjectIds,
       isCompiling: isCompiling ?? this.isCompiling,
+      isCancelled: isCancelled ?? this.isCancelled,
       progress: progress ?? this.progress,
       currentStep: currentStep ?? this.currentStep,
       errorMessage: errorMessage,
@@ -321,6 +327,16 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     state = state.copyWith(errorMessage: null, successMessage: null);
   }
 
+  /// Request cancellation of the current compilation
+  void cancelCompilation() {
+    if (state.isCompiling) {
+      state = state.copyWith(
+        isCancelled: true,
+        currentStep: 'Cancelling...',
+      );
+    }
+  }
+
   Future<bool> saveCompilation(String gameInstallationId) async {
     if (!state.canSave) return false;
 
@@ -416,6 +432,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
     state = state.copyWith(
       isCompiling: true,
+      isCancelled: false,
       progress: 0.0,
       currentStep: 'Preparing...',
       errorMessage: null,
@@ -458,6 +475,19 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
       // Process each project - only for the selected language
       for (final projectId in projectIds) {
+        // Check for cancellation
+        if (state.isCancelled) {
+          logger.info('Pack compilation cancelled by user');
+          state = state.copyWith(
+            isCompiling: false,
+            isCancelled: false,
+            progress: 0.0,
+            currentStep: null,
+            errorMessage: 'Compilation cancelled',
+          );
+          return false;
+        }
+
         final projectResult = await projectRepo.getById(projectId);
         if (projectResult.isErr) {
           logger.warning('Project not found: $projectId');
@@ -494,6 +524,19 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
       }
 
       logger.info('Total loc files generated: $totalFilesGenerated');
+
+      // Check for cancellation before pack creation
+      if (state.isCancelled) {
+        logger.info('Pack compilation cancelled by user');
+        state = state.copyWith(
+          isCompiling: false,
+          isCancelled: false,
+          progress: 0.0,
+          currentStep: null,
+          errorMessage: 'Compilation cancelled',
+        );
+        return false;
+      }
 
       state = state.copyWith(
         currentStep: 'Creating pack file...',
@@ -560,6 +603,13 @@ final compilationEditorProvider =
   CompilationEditorNotifier.new,
 );
 
+/// Provider that exposes whether pack compilation is in progress.
+/// Used by MainLayoutRouter to block navigation during compilation.
+final compilationInProgressProvider = Provider<bool>((ref) {
+  final state = ref.watch(compilationEditorProvider);
+  return state.isCompiling;
+});
+
 /// Parameters for filtering projects
 class ProjectFilterParams {
   final String? gameInstallationId;
@@ -588,6 +638,9 @@ class ProjectFilterParams {
 final projectsWithTranslationProvider =
     FutureProvider.family<List<ProjectWithTranslationInfo>, ProjectFilterParams>(
   (ref, params) async {
+    // Watch version to trigger refresh when translations change
+    ref.watch(translationStatsVersionProvider);
+    
     if (params.gameInstallationId == null || params.languageId == null) {
       return [];
     }

@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
 import '../providers/editor_providers.dart';
-import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
+import '../../projects/providers/projects_screen_providers.dart'
+    show projectsWithDetailsProvider, translationStatsVersionProvider;
 import 'editor_data_source.dart';
 
 /// Handler for grid actions (copy, paste, validate, clear, delete)
@@ -169,6 +170,8 @@ class GridActionsHandler {
   void _refreshProviders() {
     ref.invalidate(translationRowsProvider(projectId, languageId));
     ref.invalidate(projectsWithDetailsProvider);
+    // Increment version to trigger refresh of pack compilation stats
+    ref.read(translationStatsVersionProvider.notifier).increment();
   }
 
   /// Clear translation text for selected rows using batch SQL update

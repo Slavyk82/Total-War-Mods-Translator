@@ -166,6 +166,22 @@ class ProjectLanguageWithInfo {
   bool get isComplete => totalUnits > 0 && translatedUnits >= totalUnits;
 }
 
+/// Notifier for translation statistics version counter.
+/// Increment this to trigger refresh of all translation-related providers.
+class TranslationStatsVersionNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void increment() => state++;
+}
+
+/// Global version counter for translation statistics.
+/// Used by pack compilation and other screens that display translation progress.
+final translationStatsVersionProvider =
+    NotifierProvider<TranslationStatsVersionNotifier, int>(
+  TranslationStatsVersionNotifier.new,
+);
+
 /// Provider for project repository
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
   return ProjectRepository();

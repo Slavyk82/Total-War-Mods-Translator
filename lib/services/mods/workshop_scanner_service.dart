@@ -164,7 +164,7 @@ class WorkshopScannerService {
     // Fetch cache entries for all pack files in batch
     final packFilePaths = packFileInfos.map((info) => info.packFile.path).toList();
     final cacheResult = await _modScanCacheRepository.getByPackFilePaths(packFilePaths);
-    final cacheMap = cacheResult is Ok<Map<String, ModScanCache>, dynamic>
+    final cacheMap = cacheResult.isOk
         ? cacheResult.value
         : <String, ModScanCache>{};
 

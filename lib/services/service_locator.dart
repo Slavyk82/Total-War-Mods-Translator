@@ -585,6 +585,7 @@ class ServiceLocator {
         unitRepository: _locator<TranslationUnitRepository>(),
         versionRepository: _locator<TranslationVersionRepository>(),
         languageRepository: _locator<ProjectLanguageRepository>(),
+        analysisCacheRepository: _locator<ModUpdateAnalysisCacheRepository>(),
       ),
     );
 

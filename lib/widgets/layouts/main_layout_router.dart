@@ -8,6 +8,7 @@ import '../navigation_sidebar_router.dart';
 import '../fluent/fluent_widgets.dart';
 import '../../config/router/app_router.dart';
 import '../../features/translation_editor/providers/editor_providers.dart';
+import '../../features/pack_compilation/providers/pack_compilation_providers.dart';
 
 /// Router-aware main layout with breadcrumbs and keyboard shortcuts
 ///
@@ -35,6 +36,16 @@ class MainLayoutRouter extends ConsumerWidget {
       );
       return false;
     }
+
+    final isCompiling = ref.read(compilationInProgressProvider);
+    if (isCompiling) {
+      FluentToast.warning(
+        context,
+        'Pack generation in progress. Stop the generation first.',
+      );
+      return false;
+    }
+
     return true;
   }
 

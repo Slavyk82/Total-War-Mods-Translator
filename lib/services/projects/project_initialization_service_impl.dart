@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
+import 'package:twmt/models/domain/mod_update_analysis_cache.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
@@ -24,6 +26,7 @@ class ProjectInitializationServiceImpl
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _languageRepository;
+  final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final LoggingService _logger;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
@@ -38,12 +41,14 @@ class ProjectInitializationServiceImpl
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
+    required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     LoggingService? logger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _languageRepository = languageRepository,
+        _analysisCacheRepository = analysisCacheRepository,
         _logger = logger ?? LoggingService.instance;
 
   @override
@@ -273,6 +278,14 @@ class ProjectInitializationServiceImpl
         });
       }
 
+      // Populate analysis cache to prevent re-extraction when returning to Mods screen
+      // For a newly created project, there are no changes (0 new/removed/modified)
+      await _populateAnalysisCache(
+        projectId: projectId,
+        packFilePath: packFilePath,
+        totalUnits: totalUnitsImported,
+      );
+
       _progressController.add(1.0);
 
       final duration = DateTime.now().difference(startTime).inMilliseconds;
@@ -301,6 +314,56 @@ class ProjectInitializationServiceImpl
     _logger.info('Cancelling project initialization');
     _isCancelled = true;
     await _rpfmService.cancel();
+  }
+
+  /// Populate the analysis cache for a newly initialized project.
+  ///
+  /// Creates a cache entry showing no changes (0 new/removed/modified units)
+  /// since the project was just created from the pack file.
+  /// This prevents re-extraction when returning to the Mods screen.
+  Future<void> _populateAnalysisCache({
+    required String projectId,
+    required String packFilePath,
+    required int totalUnits,
+  }) async {
+    try {
+      final packFile = File(packFilePath);
+      if (!await packFile.exists()) {
+        _logger.warning('Pack file not found for analysis cache', {
+          'packFilePath': packFilePath,
+        });
+        return;
+      }
+
+      final fileStat = await packFile.stat();
+      final fileLastModified = fileStat.modified.millisecondsSinceEpoch ~/ 1000;
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final cacheEntry = ModUpdateAnalysisCache(
+        id: const Uuid().v4(),
+        projectId: projectId,
+        packFilePath: packFilePath,
+        fileLastModified: fileLastModified,
+        newUnitsCount: 0,
+        removedUnitsCount: 0,
+        modifiedUnitsCount: 0,
+        totalPackUnits: totalUnits,
+        totalProjectUnits: totalUnits,
+        analyzedAt: now,
+      );
+
+      await _analysisCacheRepository.upsert(cacheEntry);
+      _logger.debug('Populated analysis cache for new project', {
+        'projectId': projectId,
+        'totalUnits': totalUnits,
+      });
+    } catch (e) {
+      // Non-critical - cache miss will just trigger re-analysis
+      _logger.warning('Failed to populate analysis cache', {
+        'projectId': projectId,
+        'error': e,
+      });
+    }
   }
 
   /// Dispose resources

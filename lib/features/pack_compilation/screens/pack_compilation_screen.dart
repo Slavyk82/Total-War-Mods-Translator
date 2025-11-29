@@ -31,21 +31,29 @@ class _PackCompilationScreenState extends ConsumerState<PackCompilationScreen> {
     final editorState = ref.watch(compilationEditorProvider);
 
     if (_showEditor) {
+      // Block navigation during compilation
+      final canNavigate = !editorState.isCompiling;
+
       return FluentScaffold(
         backgroundColor: theme.colorScheme.surfaceContainerLow,
         header: FluentHeader(
           backgroundColor: theme.colorScheme.surface,
           leading: FluentIconButton(
-            icon: const Icon(FluentIcons.arrow_left_24_regular),
-            onPressed: () => _hideEditor(),
-            tooltip: 'Back',
+            icon: Icon(
+              FluentIcons.arrow_left_24_regular,
+              color: canNavigate
+                  ? null
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
+            onPressed: canNavigate ? () => _hideEditor() : null,
+            tooltip: canNavigate ? 'Back' : 'Stop generation to go back',
           ),
           title: editorState.isEditing ? editorState.name : 'New Compilation',
         ),
         body: Padding(
           padding: const EdgeInsets.all(24.0),
           child: CompilationEditor(
-            onCancel: () => _hideEditor(),
+            onCancel: canNavigate ? () => _hideEditor() : null,
             onSaved: () => _onSaved(),
           ),
         ),

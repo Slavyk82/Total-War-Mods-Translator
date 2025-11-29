@@ -296,7 +296,7 @@ class SearchServiceImpl implements ISearchService {
       // Combine results
       final allResults = <SearchResult>[];
       for (final result in results) {
-        if (result is Ok<List<SearchResult>, SearchServiceException>) {
+        if (result.isOk) {
           allResults.addAll(result.value);
         }
       }

@@ -12,11 +12,11 @@ import '../providers/pack_compilation_providers.dart';
 class CompilationEditor extends ConsumerWidget {
   const CompilationEditor({
     super.key,
-    required this.onCancel,
+    this.onCancel,
     required this.onSaved,
   });
 
-  final VoidCallback onCancel;
+  final VoidCallback? onCancel;
   final VoidCallback onSaved;
 
   @override
@@ -25,6 +25,47 @@ class CompilationEditor extends ConsumerWidget {
     final languagesAsync = ref.watch(allLanguagesProvider);
     final currentGameAsync = ref.watch(currentGameInstallationProvider);
 
+    // When compiling, show simplified layout with progress and stop button
+    if (state.isCompiling) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left panel - Progress, Stop button, and Logs
+          Expanded(
+            flex: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CompilationProgressSection(
+                  state: state,
+                  onStop: () => ref
+                      .read(compilationEditorProvider.notifier)
+                      .cancelCompilation(),
+                ),
+                const SizedBox(height: 16),
+                const Expanded(
+                  child: LogTerminal(expand: true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Right panel - Project selection (read-only view)
+          Expanded(
+            flex: 2,
+            child: _ProjectSelectionSection(
+              state: state,
+              currentGameAsync: currentGameAsync,
+              onToggle: (_) {}, // Disabled during compilation
+              onSelectAll: (_) {},
+              onDeselectAll: () {},
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Normal editing mode
     final configAndProjectsRow = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -99,20 +140,6 @@ class CompilationEditor extends ConsumerWidget {
         ),
       ],
     );
-
-    // When compiling, show log terminal below the config/projects section
-    if (state.isCompiling) {
-      return Column(
-        children: [
-          Expanded(child: configAndProjectsRow),
-          const SizedBox(height: 16),
-          const SizedBox(
-            height: 300,
-            child: LogTerminal(expand: true),
-          ),
-        ],
-      );
-    }
 
     return configAndProjectsRow;
   }
@@ -257,20 +284,200 @@ class _ConfigSection extends StatelessWidget {
   }
 }
 
+/// Section displayed during compilation with progress and stop button.
+class _CompilationProgressSection extends StatelessWidget {
+  const _CompilationProgressSection({
+    required this.state,
+    required this.onStop,
+  });
+
+  final CompilationEditorState state;
+  final VoidCallback onStop;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Generating Pack...',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: state.progress,
+              minHeight: 8,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Progress info
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  state.currentStep ?? 'Processing...',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${(state.progress * 100).toInt()}%',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Selection summary
+          _SelectionSummary(count: state.selectedProjectIds.length),
+          const SizedBox(height: 20),
+
+          // Stop button
+          SizedBox(
+            width: double.infinity,
+            child: _StopButton(
+              onTap: state.isCancelled ? null : onStop,
+              isCancelling: state.isCancelled,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Stop button for cancelling compilation.
+class _StopButton extends StatefulWidget {
+  const _StopButton({
+    required this.onTap,
+    required this.isCancelling,
+  });
+
+  final VoidCallback? onTap;
+  final bool isCancelling;
+
+  @override
+  State<_StopButton> createState() => _StopButtonState();
+}
+
+class _StopButtonState extends State<_StopButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isEnabled = widget.onTap != null && !widget.isCancelling;
+
+    return MouseRegion(
+      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: isEnabled ? widget.onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isEnabled
+                ? (_isHovered
+                    ? theme.colorScheme.error.withValues(alpha: 0.9)
+                    : theme.colorScheme.error)
+                : theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (widget.isCancelling) ...[
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.onError,
+                  ),
+                ),
+              ] else ...[
+                Icon(
+                  FluentIcons.stop_24_regular,
+                  size: 18,
+                  color: isEnabled
+                      ? theme.colorScheme.onError
+                      : theme.textTheme.bodyMedium!.color!.withValues(alpha: 0.5),
+                ),
+              ],
+              const SizedBox(width: 8),
+              Text(
+                widget.isCancelling ? 'Cancelling...' : 'Stop Generation',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isEnabled
+                      ? theme.colorScheme.onError
+                      : theme.textTheme.bodyMedium!.color!.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ActionSection extends StatelessWidget {
   const _ActionSection({
     required this.state,
     required this.currentGameAsync,
     required this.onSave,
     required this.onGenerate,
-    required this.onCancel,
+    this.onCancel,
   });
 
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
   final void Function(String gameInstallationId) onSave;
   final void Function(String gameInstallationId) onGenerate;
-  final VoidCallback onCancel;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
