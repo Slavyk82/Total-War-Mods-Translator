@@ -105,7 +105,7 @@ CREATE TABLE projects (
     FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE RESTRICT,
     CHECK (status IN ('draft', 'translating', 'reviewing', 'completed')),
     CHECK (batch_size > 0 AND batch_size <= 100),
-    CHECK (parallel_batches > 0 AND parallel_batches <= 10),
+    CHECK (parallel_batches > 0 AND parallel_batches <= 20),
     CHECK (created_at <= updated_at)
 );
 

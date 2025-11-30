@@ -53,9 +53,9 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
     final prefs = await SharedPreferences.getInstance();
     // 0 = auto mode (default)
     final unitsPerBatch = prefs.getInt('translation_units_per_batch') ?? 0;
-    // Limit parallelBatches to 1-5 range for safety
+    // Limit parallelBatches to 1-20 range for safety
     final savedParallel = prefs.getInt('translation_parallel_batches') ?? 5;
-    final parallelBatches = savedParallel.clamp(1, 5);
+    final parallelBatches = savedParallel.clamp(1, 20);
     // skipTranslationMemory is NOT loaded from prefs - always starts as false
 
     debugPrint('[TranslationSettings] Loaded from prefs: units=$unitsPerBatch, parallel=$parallelBatches');
@@ -72,8 +72,8 @@ class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
     required int unitsPerBatch,
     required int parallelBatches,
   }) async {
-    // Limit parallelBatches to 1-5 range for safety
-    final safeParallelBatches = parallelBatches.clamp(1, 5);
+    // Limit parallelBatches to 1-20 range for safety
+    final safeParallelBatches = parallelBatches.clamp(1, 20);
 
     debugPrint('[TranslationSettings] Saving: units=$unitsPerBatch, parallel=$safeParallelBatches');
 

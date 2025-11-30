@@ -207,7 +207,7 @@ class AppConstants {
   ///
   /// Prevents users from requesting too many parallel batches which
   /// could overwhelm the system or hit provider rate limits.
-  static const int maxParallelBatchLimit = 10;
+  static const int maxParallelBatchLimit = 20;
 
   /// Estimated translation units processed per minute (for duration estimates)
   ///

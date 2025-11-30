@@ -160,9 +160,9 @@ class SettingsService {
   Future<Result<void, TWMTDatabaseException>> setDefaultParallelBatches(
     int count,
   ) async {
-    if (count < 1 || count > 10) {
+    if (count < 1 || count > 20) {
       return Err(
-        TWMTDatabaseException('Parallel batches must be between 1 and 10'),
+        TWMTDatabaseException('Parallel batches must be between 1 and 20'),
       );
     }
     return await setInt('default_parallel_batches', count);

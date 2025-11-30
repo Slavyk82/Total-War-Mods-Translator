@@ -183,7 +183,7 @@ Mod translation projects.
 - `output_file_path` (TEXT): Output directory
 - `status` (TEXT): draft, translating, reviewing, completed
 - `batch_size` (INTEGER): Units per batch (1-100)
-- `parallel_batches` (INTEGER): Concurrent batches (1-10)
+- `parallel_batches` (INTEGER): Concurrent batches (1-20)
 - `custom_prompt` (TEXT): Project-specific translation prompt
 - `created_at` (INTEGER): Unix timestamp
 - `updated_at` (INTEGER): Unix timestamp

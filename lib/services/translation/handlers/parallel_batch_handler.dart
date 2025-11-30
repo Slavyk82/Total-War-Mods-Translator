@@ -29,7 +29,7 @@ class ParallelBatchHandler {
   ///
   /// [batchIds]: List of batch IDs to process
   /// [context]: Translation context for all batches
-  /// [maxParallel]: Maximum concurrent batches (clamped to 1-10)
+  /// [maxParallel]: Maximum concurrent batches (clamped to 1-20)
   /// [translateBatch]: Function to translate a single batch
   Stream<Result<TranslationProgress, TranslationOrchestrationException>>
       translateBatchesParallel({

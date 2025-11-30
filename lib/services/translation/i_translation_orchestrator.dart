@@ -47,7 +47,7 @@ abstract class ITranslationOrchestrator {
   /// Processes multiple batches concurrently with configurable parallelism.
   /// Each batch emits its own progress events independently.
   ///
-  /// [maxParallel]: Maximum number of batches to process simultaneously (1-10)
+  /// [maxParallel]: Maximum number of batches to process simultaneously (1-20)
   ///
   /// Returns a stream of progress events for all batches combined.
   /// Each event includes the batch ID to distinguish between batches.

@@ -32,7 +32,7 @@ abstract class ILlmService {
   /// Yields results as they complete.
   ///
   /// [requests] - List of translation requests
-  /// [maxParallel] - Maximum concurrent requests (1-10, default 3)
+  /// [maxParallel] - Maximum concurrent requests (1-20, default 3)
   ///
   /// Returns stream of results (success or error for each batch)
   Stream<Result<BatchTranslationResult, LlmServiceException>>

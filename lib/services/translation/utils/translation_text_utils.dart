@@ -20,18 +20,25 @@ class TranslationTextUtils {
   /// - `\n` (escaped sequence from LLM) → actual newline
   /// - Normalizes Windows CRLF to Unix LF
   static String normalizeTranslation(String text) {
-    // Step 1: Handle corrupted pattern where backslash precedes actual newline
-    // Pattern: `\` followed by actual newline → should become just newline
-    // This handles cases like byte sequence [92, 10] → [10]
-    var result = text.replaceAll('\\\r\n', '\n');
-    result = result.replaceAll('\\\n', '\n');
+    // Step 1: Handle double-backslash escape sequences from LLM
+    // Pattern: `\\n` (3 chars: backslash, backslash, n) → actual newline
+    // Must be done BEFORE single backslash handling to avoid leaving stray backslashes
+    var result = text.replaceAll(r'\\r\\n', '\n');
+    result = result.replaceAll(r'\\n', '\n');
+    result = result.replaceAll(r'\\r', '');
 
-    // Step 2: Convert escaped sequences from LLM to actual newlines
-    // LLMs sometimes return \n as literal text instead of actual newlines
+    // Step 2: Handle single-backslash escape sequences from LLM
+    // Pattern: `\n` (2 chars: backslash, n) → actual newline
     result = result.replaceAll(r'\r\n', '\n');
     result = result.replaceAll(r'\n', '\n');
 
-    // Step 3: Normalize Windows CRLF to Unix LF for consistency
+    // Step 3: Handle corrupted pattern where backslash precedes actual newline
+    // Pattern: `\` + actual newline → just newline
+    // This handles cases like byte sequence [92, 10] → [10]
+    result = result.replaceAll('\\\r\n', '\n');
+    result = result.replaceAll('\\\n', '\n');
+
+    // Step 4: Normalize Windows CRLF to Unix LF for consistency
     result = result.replaceAll('\r\n', '\n');
     result = result.replaceAll('\r', '');
 

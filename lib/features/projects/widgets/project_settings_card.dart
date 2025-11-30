@@ -129,7 +129,7 @@ class _ProjectSettingsCardState extends State<ProjectSettingsCard> {
                 }
                 final intValue = int.tryParse(value);
                 if (intValue == null || intValue < 1 || intValue > 10) {
-                  return 'Parallel batches must be between 1 and 10';
+                  return 'Parallel batches must be between 1 and 20';
                 }
                 return null;
               },
