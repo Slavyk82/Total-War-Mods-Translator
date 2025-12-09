@@ -348,6 +348,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     // Refresh data when returning from editor to ensure stats are up to date
     if (mounted) {
       ref.invalidate(projectDetailsProvider(widget.projectId));
+      ref.invalidate(projectsWithDetailsProvider);
     }
   }
 

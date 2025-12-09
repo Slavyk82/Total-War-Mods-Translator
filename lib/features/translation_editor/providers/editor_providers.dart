@@ -452,41 +452,44 @@ Future<List<TranslationRow>> filteredTranslationRows(
 }
 
 /// Provider for editor statistics
+/// Uses database statistics for consistency with project list (excludes bracket-only units)
 @riverpod
 Future<EditorStats> editorStats(
   Ref ref,
   String projectId,
   String languageId,
 ) async {
-  // Get all translation rows to calculate statistics
-  final rows = await ref.watch(translationRowsProvider(projectId, languageId).future);
+  // Watch translation rows to trigger refresh when translations change
+  await ref.watch(translationRowsProvider(projectId, languageId).future);
 
-  if (rows.isEmpty) {
+  final projectLanguageRepo = ref.watch(projectLanguageRepositoryProvider);
+  final versionRepo = ref.watch(translationVersionRepositoryProvider);
+
+  // Get project language ID
+  final projectLanguagesResult = await projectLanguageRepo.getByProject(projectId);
+  if (projectLanguagesResult.isErr) {
     return EditorStats.empty();
   }
 
-  // Count by status
-  int pendingCount = 0;
-  int translatedCount = 0;
-  int needsReviewCount = 0;
-
-  for (final row in rows) {
-    switch (row.status) {
-      case TranslationVersionStatus.pending:
-        pendingCount++;
-        break;
-      case TranslationVersionStatus.translated:
-        translatedCount++;
-        break;
-      case TranslationVersionStatus.needsReview:
-        needsReviewCount++;
-        break;
-    }
+  final projectLanguages = projectLanguagesResult.unwrap();
+  final projectLanguage = projectLanguages.where((pl) => pl.languageId == languageId).firstOrNull;
+  if (projectLanguage == null) {
+    return EditorStats.empty();
   }
 
+  // Get statistics from repository (excludes bracket-only units)
+  final statsResult = await versionRepo.getLanguageStatistics(projectLanguage.id);
+  if (statsResult.isErr) {
+    return EditorStats.empty();
+  }
+
+  final stats = statsResult.unwrap();
+  final totalUnits = stats.totalCount;
+  final translatedCount = stats.translatedCount;
+  final pendingCount = stats.pendingCount;
+  final needsReviewCount = stats.errorCount;
+
   // Calculate completion percentage
-  // Consider translated as "completed" (needsReview still needs attention)
-  final totalUnits = rows.length;
   final completionPercentage =
       totalUnits > 0 ? (translatedCount / totalUnits) * 100 : 0.0;
 

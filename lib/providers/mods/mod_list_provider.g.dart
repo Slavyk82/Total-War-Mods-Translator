@@ -52,7 +52,7 @@ final class DetectedModsProvider
   }
 }
 
-String _$detectedModsHash() => r'93b93c82e56840df610242f0ee00ece2ee451809';
+String _$detectedModsHash() => r'fa839cbc616e6f72726d03b29225e62901312e96';
 
 /// Provides list of all projects from database
 
@@ -178,11 +178,13 @@ final class ModUpdateAvailableFamily extends $Family
 }
 
 /// Provides list of projects with available updates
+/// Performance: Uses single pass filter instead of N+1 provider calls
 
 @ProviderFor(modsWithUpdates)
 const modsWithUpdatesProvider = ModsWithUpdatesProvider._();
 
 /// Provides list of projects with available updates
+/// Performance: Uses single pass filter instead of N+1 provider calls
 
 final class ModsWithUpdatesProvider
     extends
@@ -193,6 +195,7 @@ final class ModsWithUpdatesProvider
         >
     with $FutureModifier<List<Project>>, $FutureProvider<List<Project>> {
   /// Provides list of projects with available updates
+  /// Performance: Uses single pass filter instead of N+1 provider calls
   const ModsWithUpdatesProvider._()
     : super(
         from: null,
@@ -219,7 +222,7 @@ final class ModsWithUpdatesProvider
   }
 }
 
-String _$modsWithUpdatesHash() => r'2e3c9d4e164bd54d80156e34eda9160dfe406425';
+String _$modsWithUpdatesHash() => r'e97f6d2c07988f8febdda41e6c421ac4caecab11';
 
 /// Provider for update banner visibility state
 

@@ -19,6 +19,7 @@ class ContextMenuBuilder {
     required Future<void> Function() onDelete,
     Future<void> Function()? onForceRetranslate,
     Future<void> Function()? onViewPrompt,
+    Future<void> Function()? onMarkAsTranslated,
   }) {
     final hasSelection = selectionCount > 0;
     final isSingleSelection = selectionCount == 1;
@@ -71,6 +72,27 @@ class ContextMenuBuilder {
                       ? 'Force Retranslate ($selectionCount)'
                       : 'Force Retranslate',
                   style: TextStyle(color: hasSelection ? null : Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        if (onMarkAsTranslated != null)
+          PopupMenuItem(
+            value: 'mark_as_translated',
+            enabled: hasSelection,
+            child: Row(
+              children: [
+                Icon(
+                  FluentIcons.checkmark_circle_24_regular,
+                  size: 16,
+                  color: hasSelection ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  selectionCount > 1
+                      ? 'Mark as Translated ($selectionCount)'
+                      : 'Mark as Translated',
+                  style: TextStyle(color: hasSelection ? Colors.green : Colors.grey),
                 ),
               ],
             ),
@@ -157,6 +179,11 @@ class ContextMenuBuilder {
             print('[DEBUG] Context menu: onForceRetranslate completed');
           } else {
             print('[DEBUG] Context menu: onForceRetranslate is null!');
+          }
+          break;
+        case 'mark_as_translated':
+          if (onMarkAsTranslated != null) {
+            await onMarkAsTranslated();
           }
           break;
         case 'clear':

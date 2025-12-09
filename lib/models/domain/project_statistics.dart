@@ -33,7 +33,11 @@ class GlobalStatistics {
 /// Statistics for a project's translation progress.
 ///
 /// Aggregated counts from translation_versions table for a specific project.
+/// Excludes bracket-only units (e.g., "[hidden]") from all counts.
 class ProjectStatistics {
+  /// Total number of translatable units (excluding bracket-only)
+  final int totalCount;
+
   /// Number of translated units (has translated_text)
   final int translatedCount;
 
@@ -47,6 +51,7 @@ class ProjectStatistics {
   final int errorCount;
 
   const ProjectStatistics({
+    this.totalCount = 0,
     required this.translatedCount,
     required this.pendingCount,
     required this.validatedCount,
@@ -55,6 +60,7 @@ class ProjectStatistics {
 
   /// Empty statistics (all zeros)
   factory ProjectStatistics.empty() => const ProjectStatistics(
+        totalCount: 0,
         translatedCount: 0,
         pendingCount: 0,
         validatedCount: 0,

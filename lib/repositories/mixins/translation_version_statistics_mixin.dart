@@ -9,7 +9,16 @@ export '../../models/domain/project_statistics.dart' show GlobalStatistics;
 ///
 /// Extracts complex aggregation queries from the main repository to maintain
 /// single responsibility and keep file sizes manageable.
+///
+/// Note: Statistics exclude "bracket-only" units where source_text is entirely
+/// wrapped in square brackets (e.g., "[hidden]", "[PLACEHOLDER]"). These are
+/// non-translatable markers that should not count toward translation progress.
 mixin TranslationVersionStatisticsMixin {
+  /// SQL condition to exclude bracket-only source texts from statistics.
+  /// Matches texts like "[hidden]", "[PLACEHOLDER]" but not "Hello [world]".
+  static const String _excludeBracketOnlyCondition =
+      "NOT (TRIM(tu.source_text) LIKE '[%]' AND LENGTH(TRIM(tu.source_text)) > 2)";
+
   /// Database instance - must be provided by implementing class
   Database get database;
 
@@ -161,6 +170,7 @@ mixin TranslationVersionStatisticsMixin {
   /// Get all translation statistics for a project in a single optimized query.
   ///
   /// Consolidates 4 separate COUNT queries into 1 for 3-4x performance improvement.
+  /// Excludes bracket-only units (e.g., "[hidden]") from statistics.
   Future<Result<ProjectStatistics, TWMTDatabaseException>> getProjectStatistics(
       String projectId) async {
     return executeQuery(() async {
@@ -186,6 +196,7 @@ mixin TranslationVersionStatisticsMixin {
           FROM translation_units tu
           INNER JOIN $tableName tv ON tv.unit_id = tu.id
           WHERE tu.project_id = ?
+            AND $_excludeBracketOnlyCondition
           GROUP BY tu.id
         )
         SELECT
@@ -213,12 +224,14 @@ mixin TranslationVersionStatisticsMixin {
   }
 
   /// Get translation statistics for a specific project language.
+  /// Excludes bracket-only units (e.g., "[hidden]") from statistics.
   Future<Result<ProjectStatistics, TWMTDatabaseException>> getLanguageStatistics(
       String projectLanguageId) async {
     return executeQuery(() async {
       final result = await database.rawQuery(
         '''
         SELECT
+          COUNT(*) as total_count,
           COUNT(CASE WHEN tv.status = 'translated' THEN 1 END) as translated_count,
           COUNT(CASE WHEN tv.status IN ('pending', 'translating') THEN 1 END) as pending_count,
           COUNT(CASE WHEN tv.status IN ('approved', 'reviewed') THEN 1 END) as validated_count,
@@ -227,6 +240,7 @@ mixin TranslationVersionStatisticsMixin {
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tv.project_language_id = ?
           AND tu.is_obsolete = 0
+          AND $_excludeBracketOnlyCondition
         ''',
         [projectLanguageId],
       );
@@ -237,6 +251,7 @@ mixin TranslationVersionStatisticsMixin {
 
       final row = result.first;
       return ProjectStatistics(
+        totalCount: (row['total_count'] as int?) ?? 0,
         translatedCount: (row['translated_count'] as int?) ?? 0,
         pendingCount: (row['pending_count'] as int?) ?? 0,
         validatedCount: (row['validated_count'] as int?) ?? 0,
@@ -249,6 +264,7 @@ mixin TranslationVersionStatisticsMixin {
   ///
   /// Counts unique translation units and their translation status.
   /// Word count is approximated by counting spaces + 1 in translated texts.
+  /// Excludes bracket-only units (e.g., "[hidden]") from statistics.
   Future<Result<GlobalStatistics, TWMTDatabaseException>>
       getGlobalStatistics() async {
     return executeQuery(() async {
@@ -270,6 +286,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM translation_units tu
         LEFT JOIN $tableName tv ON tv.unit_id = tu.id
         WHERE tu.is_obsolete = 0
+          AND $_excludeBracketOnlyCondition
         ''',
       );
 

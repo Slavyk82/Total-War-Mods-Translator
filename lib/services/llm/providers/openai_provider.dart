@@ -342,6 +342,7 @@ class OpenAiProvider implements ILlmProvider {
     parts.add('\n\nCRITICAL: You must preserve ALL formatting tags exactly as they appear in the source text.');
     parts.add('This includes: [[col:red]], [[col:yellow]], [%s], <tags>, etc.');
     parts.add('For {{...}} template expressions: preserve structure/code but you may translate quoted display strings inside.');
+    parts.add('IMPORTANT: When translating, use correct hyphenated forms for compound words (e.g., "lui-même", not "luimême" or "lui même").');
     parts.add('\nYou must respond with valid JSON only. '
         'Return a JSON object with the same keys as the input, with translated values.');
 

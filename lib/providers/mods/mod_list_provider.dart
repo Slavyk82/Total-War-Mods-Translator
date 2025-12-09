@@ -8,6 +8,8 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/mods/workshop_scanner_service.dart';
 import 'package:twmt/services/mods/game_installation_sync_service.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
+    show projectsWithDetailsProvider, translationStatsVersionProvider;
 
 part 'mod_list_provider.g.dart';
 
@@ -30,7 +32,14 @@ Future<List<DetectedMod>> detectedMods(Ref ref) async {
       // Scan Workshop folder and return detected mods
       final scanResult = await workshopScanner.scanMods(selectedGame.code);
       return scanResult.when(
-        ok: (mods) => mods,
+        ok: (result) {
+          // If translation statistics changed during scan, invalidate project providers
+          if (result.translationStatsChanged) {
+            ref.invalidate(projectsWithDetailsProvider);
+            ref.read(translationStatsVersionProvider.notifier).increment();
+          }
+          return result.mods;
+        },
         err: (_) => <DetectedMod>[],
       );
     }
@@ -68,21 +77,18 @@ Future<bool> modUpdateAvailable(Ref ref, String projectId) async {
 }
 
 /// Provides list of projects with available updates
+/// Performance: Uses single pass filter instead of N+1 provider calls
 @riverpod
 Future<List<Project>> modsWithUpdates(Ref ref) async {
   final allProjectsList = await ref.watch(allProjectsProvider.future);
-  final projectsWithUpdates = <Project>[];
 
-  for (final project in allProjectsList) {
-    if (project.modSteamId != null) {
-      final hasUpdate = await ref.watch(modUpdateAvailableProvider(project.id).future);
-      if (hasUpdate) {
-        projectsWithUpdates.add(project);
-      }
-    }
-  }
-
-  return projectsWithUpdates;
+  // Single pass filter - O(n) instead of N+1 database queries
+  // Projects already have sourceModUpdated field loaded
+  return allProjectsList
+      .where((project) =>
+          project.modSteamId != null &&
+          project.sourceModUpdated != null)
+      .toList();
 }
 
 /// Provider for update banner visibility state

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
@@ -11,6 +12,7 @@ import 'package:twmt/models/domain/mod_scan_cache.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/mod_update_analysis_cache.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
+import 'package:twmt/models/domain/mod_scan_result.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
@@ -24,6 +26,15 @@ import 'package:twmt/services/mods/mod_update_analysis_service.dart';
 import 'package:twmt/services/mods/utils/workshop_scan_models.dart';
 import 'package:twmt/services/mods/utils/mod_image_finder.dart';
 import 'package:twmt/services/mods/utils/workshop_mod_processor.dart';
+import 'package:twmt/features/mods/models/scan_log_message.dart';
+
+/// Result of analyzing a project for changes.
+class _AnalysisResult {
+  final ModUpdateAnalysis? analysis;
+  final bool statsChanged;
+
+  const _AnalysisResult({this.analysis, this.statsChanged = false});
+}
 
 /// Service for scanning Steam Workshop folders and discovering mods.
 class WorkshopScannerService {
@@ -37,6 +48,18 @@ class WorkshopScannerService {
   final WorkshopModProcessor _workshopModProcessor;
   final LoggingService _logger = LoggingService.instance;
   final Uuid _uuid = const Uuid();
+
+  /// Stream controller for scan progress logs
+  final StreamController<ScanLogMessage> _scanLogController =
+      StreamController<ScanLogMessage>.broadcast();
+
+  /// Stream of scan log messages for UI consumption
+  Stream<ScanLogMessage> get scanLogStream => _scanLogController.stream;
+
+  /// Emit a log message to the scan log stream
+  void _emitLog(String message, [ScanLogLevel level = ScanLogLevel.info]) {
+    _scanLogController.add(ScanLogMessage(message: message, level: level));
+  }
 
   WorkshopScannerService({
     required ProjectRepository projectRepository,
@@ -60,11 +83,15 @@ class WorkshopScannerService {
         );
 
   /// Scan Workshop folder for a game and return detected mods without creating projects.
-  Future<Result<List<DetectedMod>, ServiceException>> scanMods(
+  ///
+  /// Returns [ModScanResult] containing the list of mods and whether translation
+  /// statistics changed (units added or statuses reset to pending).
+  Future<Result<ModScanResult, ServiceException>> scanMods(
     String gameCode,
   ) async {
     try {
       _logger.info('Scanning Workshop folder for game: $gameCode');
+      _emitLog('Starting scan for game: $gameCode');
 
       // Get game installation from database
       final gameInstallationResult =
@@ -73,6 +100,7 @@ class WorkshopScannerService {
       if (gameInstallationResult is Err) {
         final error = gameInstallationResult.error;
         _logger.error('Game installation not found for $gameCode: ${error.message}');
+        _emitLog('Game installation not found: ${error.message}', ScanLogLevel.error);
         throw ServiceException(
           'Game installation not found: ${error.message}',
           error: error,
@@ -84,21 +112,26 @@ class WorkshopScannerService {
       // Check if Workshop path is configured
       if (!gameInstallation.hasWorkshopPath) {
         _logger.debug('No Workshop path configured for $gameCode');
-        return const Ok([]);
+        _emitLog('No Workshop path configured', ScanLogLevel.warning);
+        return const Ok(ModScanResult.empty);
       }
 
       final workshopPath = gameInstallation.steamWorkshopPath!;
       final gameWorkshopDir = Directory(workshopPath);
+      _emitLog('Scanning: $workshopPath');
 
       if (!await gameWorkshopDir.exists()) {
         _logger.debug('Workshop folder does not exist: $workshopPath');
-        return const Ok([]);
+        _emitLog('Workshop folder does not exist', ScanLogLevel.warning);
+        return const Ok(ModScanResult.empty);
       }
 
       // Get existing projects to mark which mods are already imported
+      _emitLog('Loading existing projects...');
       final existingWorkshopIds = await _getExistingWorkshopIds();
 
       // Scan Workshop folder for mod directories
+      _emitLog('Listing Workshop directories...');
       final modDirs = await gameWorkshopDir
           .list()
           .where((entity) => entity is Directory)
@@ -106,9 +139,12 @@ class WorkshopScannerService {
           .toList();
 
       _logger.info('Found ${modDirs.length} Workshop items');
+      _emitLog('Found ${modDirs.length} Workshop items');
 
       // Phase 1: Collect pack file info and check cache
+      _emitLog('Scanning pack files for localization data...');
       final modDataList = await _collectModData(modDirs);
+      _emitLog('Found ${modDataList.length} mods with localization files');
 
       // Phase 1.5: Get cached workshop mods to track previous timeUpdated values
       final workshopIds = modDataList.map((m) => m.workshopId).toList();
@@ -118,13 +154,16 @@ class WorkshopScannerService {
       final hiddenWorkshopIds = await _getHiddenWorkshopIds();
 
       // Phase 2: Batch fetch Steam Workshop data (will update cache)
+      _emitLog('Fetching Steam Workshop metadata...');
       final workshopModsMap = await _fetchWorkshopData(
         modDataList,
         gameInstallation.steamAppId,
       );
+      _emitLog('Retrieved data for ${workshopModsMap.length} mods from Steam');
 
       // Phase 3: Build DetectedMod list with cached timestamps for comparison
-      final detectedMods = await _buildDetectedMods(
+      _emitLog('Analyzing mod updates...');
+      final buildResult = await _buildDetectedMods(
         modDataList,
         workshopModsMap,
         cachedModsMap,
@@ -132,10 +171,16 @@ class WorkshopScannerService {
         hiddenWorkshopIds,
       );
 
-      _logger.info('Scan complete: ${detectedMods.length} translatable mods');
-      return Ok(detectedMods);
+      _logger.info('Scan complete: ${buildResult.mods.length} translatable mods');
+      _emitLog('Scan complete: ${buildResult.mods.length} translatable mods');
+      if (buildResult.translationStatsChanged) {
+        _logger.info('Translation statistics changed during scan');
+        _emitLog('Translation statistics updated');
+      }
+      return Ok(buildResult);
     } catch (e, stackTrace) {
       _logger.error('Failed to scan Workshop folder: $e', stackTrace);
+      _emitLog('Scan failed: $e', ScanLogLevel.error);
       return Err(ServiceException(
         'Failed to scan Workshop folder: $e',
         error: e,
@@ -266,8 +311,11 @@ class WorkshopScannerService {
     final cacheUpdates = <ModScanCache>[];
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     int cacheHits = 0, cacheMisses = 0, cacheSkipped = 0;
+    int processed = 0;
+    final total = packFileInfos.length;
 
     for (final info in packFileInfos) {
+      processed++;
       final cacheEntry = cacheMap[info.packFile.path];
       bool hasLocFiles = false;
 
@@ -284,6 +332,7 @@ class WorkshopScannerService {
       } else if (rpfmAvailable) {
         // Cache miss or invalidated - need to scan
         cacheMisses++;
+        _emitLog('[$processed/$total] Scanning: ${info.packFileName}.pack');
         hasLocFiles = await _scanPackForLocFiles(info);
 
         // Update cache with scan result
@@ -322,6 +371,9 @@ class WorkshopScannerService {
     }
 
     _logger.debug('Cache: hits=$cacheHits, misses=$cacheMisses, skipped=$cacheSkipped');
+    if (cacheMisses > 0) {
+      _emitLog('Cache: $cacheHits hits, $cacheMisses scans, $cacheSkipped skipped');
+    }
     return modDataList;
   }
 
@@ -371,7 +423,9 @@ class WorkshopScannerService {
   ///
   /// [cachedModsMap] contains the workshop mods from database BEFORE the API fetch,
   /// allowing us to detect when Steam has a newer version by comparing timestamps.
-  Future<List<DetectedMod>> _buildDetectedMods(
+  ///
+  /// Returns [ModScanResult] with the mods list and whether translation stats changed.
+  Future<ModScanResult> _buildDetectedMods(
     List<ModLocalData> modDataList,
     Map<String, WorkshopMod> workshopModsMap,
     Map<String, WorkshopMod> cachedModsMap,
@@ -379,6 +433,7 @@ class WorkshopScannerService {
     Set<String> hiddenWorkshopIds,
   ) async {
     final detectedMods = <DetectedMod>[];
+    bool translationStatsChanged = false;
 
     for (final modData in modDataList) {
       final workshopId = modData.workshopId;
@@ -420,22 +475,51 @@ class WorkshopScannerService {
       // 1. Project is imported
       // 2. Local file is up to date (not needing download)
       // 3. Steam has a NEW update (timestamp differs from cache)
-      //    This prevents false positives when user has intentionally modified source texts
+      //    OR analysis cache is missing/invalidated (file was re-downloaded)
       final localFileUpToDate = timeUpdated == null ||
           modData.fileLastModified >= timeUpdated;
       final hasNewSteamUpdate = cachedTimeUpdated != null &&
           timeUpdated != null &&
           timeUpdated != cachedTimeUpdated;
 
+      // Check if analysis cache is missing or invalidated by file change
+      bool analysisCacheInvalid = false;
+      if (existingProject != null && localFileUpToDate && !hasNewSteamUpdate) {
+        final cacheResult = await _analysisCacheRepository.getByProjectAndPath(
+          existingProject.id,
+          modData.packFile.path,
+        );
+        if (cacheResult.isOk) {
+          final cachedAnalysis = cacheResult.value;
+          analysisCacheInvalid = cachedAnalysis == null ||
+              !cachedAnalysis.isValidFor(modData.fileLastModified);
+        } else {
+          analysisCacheInvalid = true;
+        }
+      }
+
       ModUpdateAnalysis? updateAnalysis;
-      if (existingProject != null && localFileUpToDate && hasNewSteamUpdate) {
-        _logger.info('New Steam update detected for $workshopId, analyzing changes...');
-        updateAnalysis = await _analyzeProjectChanges(
+      if (existingProject != null && localFileUpToDate && (hasNewSteamUpdate || analysisCacheInvalid)) {
+        if (hasNewSteamUpdate) {
+          _logger.info('New Steam update detected for $workshopId, analyzing changes...');
+          _emitLog('Update detected: $modTitle - analyzing changes...');
+        } else {
+          _logger.info('Analysis cache invalidated for $workshopId (file re-downloaded), analyzing changes...');
+          _emitLog('Re-analyzing: $modTitle');
+        }
+        final analysisResult = await _analyzeProjectChanges(
           existingProject.id,
           modData.packFile.path,
           workshopId,
           modData.fileLastModified,
         );
+        updateAnalysis = analysisResult.analysis;
+        if (analysisResult.statsChanged) {
+          translationStatsChanged = true;
+        }
+        if (updateAnalysis != null && updateAnalysis.hasChanges) {
+          _emitLog('  → ${updateAnalysis.newUnitsCount} new, ${updateAnalysis.modifiedUnitsCount} modified, ${updateAnalysis.removedUnitsCount} removed');
+        }
       }
 
       // Log timestamps for debugging when there are changes or download needed
@@ -467,7 +551,10 @@ class WorkshopScannerService {
       detectedMods.add(mod);
     }
 
-    return detectedMods;
+    return ModScanResult(
+      mods: detectedMods,
+      translationStatsChanged: translationStatsChanged,
+    );
   }
 
   /// Get metadata from database cache.
@@ -501,7 +588,9 @@ class WorkshopScannerService {
   /// When modified source texts are detected, this method automatically:
   /// 1. Updates the source_text in translation_units
   /// 2. Resets the status to 'pending' for all affected translation versions
-  Future<ModUpdateAnalysis?> _analyzeProjectChanges(
+  ///
+  /// Returns [_AnalysisResult] with the analysis and whether stats changed.
+  Future<_AnalysisResult> _analyzeProjectChanges(
     String projectId,
     String packFilePath,
     String workshopId,
@@ -518,7 +607,8 @@ class WorkshopScannerService {
       if (cachedAnalysis != null &&
           cachedAnalysis.isValidFor(fileLastModified)) {
         _logger.debug('Analysis cache hit for $workshopId');
-        return cachedAnalysis.toAnalysis();
+        // Cache hit means changes were already applied in a previous scan
+        return _AnalysisResult(analysis: cachedAnalysis.toAnalysis());
       }
     }
 
@@ -531,6 +621,8 @@ class WorkshopScannerService {
 
     return analysisResult.when(
       ok: (analysis) async {
+        bool statsChanged = false;
+
         // If there are new units, add them automatically
         // This creates TranslationUnit and TranslationVersion records with status 'pending'
         if (analysis.hasNewUnits) {
@@ -541,9 +633,10 @@ class WorkshopScannerService {
             projectId: projectId,
             analysis: analysis,
           );
-          if (addResult.isOk) {
+          if (addResult.isOk && addResult.value > 0) {
             _logger.info('Added ${addResult.value} new units');
-          } else {
+            statsChanged = true;
+          } else if (addResult.isErr) {
             _logger.warning(
               'Failed to add new units: ${addResult.error.message}',
             );
@@ -566,6 +659,9 @@ class WorkshopScannerService {
               'Applied: ${result.sourceTextsUpdated} source texts updated, '
               '${result.translationsReset} translations reset to pending',
             );
+            if (result.translationsReset > 0) {
+              statsChanged = true;
+            }
           } else {
             _logger.warning(
               'Failed to apply source text changes: ${applyResult.error.message}',
@@ -584,12 +680,12 @@ class WorkshopScannerService {
           analyzedAt: now,
         );
         _analysisCacheRepository.upsert(cacheEntry);
-        return analysis;
+        return _AnalysisResult(analysis: analysis, statsChanged: statsChanged);
       },
       err: (error) {
         _logger.warning(
             'Failed to analyze changes for $workshopId: ${error.message}');
-        return null;
+        return const _AnalysisResult();
       },
     );
   }

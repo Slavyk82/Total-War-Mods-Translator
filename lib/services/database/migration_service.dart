@@ -4,6 +4,7 @@ import '../../config/database_config.dart';
 import '../../models/common/service_exception.dart';
 import 'database_service.dart';
 import '../shared/logging_service.dart';
+import '../text/french_hyphen_fixer.dart';
 
 /// Migration service for database schema initialization.
 ///
@@ -323,6 +324,9 @@ class MigrationService {
 
     // Ensure is_hidden column exists on workshop_mods
     await _ensureWorkshopModsHiddenColumn();
+
+    // Fix missing hyphens in French translations
+    // DISABLED: await FrenchHyphenFixer.fixMissingHyphens();
   }
 
   /// Ensure mod_update_analysis_cache table exists for existing databases.

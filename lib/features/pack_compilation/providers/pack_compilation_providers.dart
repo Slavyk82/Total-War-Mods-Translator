@@ -11,8 +11,8 @@ import '../../../repositories/project_repository.dart';
 import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/game_installation_repository.dart';
 import '../../../repositories/language_repository.dart';
-import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
+import '../../../models/domain/project_statistics.dart';
 import '../../../providers/selected_game_provider.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/file/i_loc_file_service.dart';
@@ -23,36 +23,32 @@ import '../../projects/providers/projects_screen_providers.dart'
     show translationStatsVersionProvider;
 
 /// Repository providers
+/// All providers use ServiceLocator singletons to avoid creating new instances on each read.
 final compilationRepositoryProvider = Provider<CompilationRepository>((ref) {
-  return CompilationRepository();
+  return ServiceLocator.get<CompilationRepository>();
 });
 
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ProjectRepository();
+  return ServiceLocator.get<ProjectRepository>();
 });
 
 final gameInstallationRepositoryProvider =
     Provider<GameInstallationRepository>((ref) {
-  return GameInstallationRepository();
+  return ServiceLocator.get<GameInstallationRepository>();
 });
 
 final languageRepositoryProvider = Provider<LanguageRepository>((ref) {
-  return LanguageRepository();
+  return ServiceLocator.get<LanguageRepository>();
 });
 
 final projectLanguageRepositoryProvider =
     Provider<ProjectLanguageRepository>((ref) {
-  return ProjectLanguageRepository();
-});
-
-final translationUnitRepositoryProvider =
-    Provider<TranslationUnitRepository>((ref) {
-  return TranslationUnitRepository();
+  return ServiceLocator.get<ProjectLanguageRepository>();
 });
 
 final translationVersionRepositoryProvider =
     Provider<TranslationVersionRepository>((ref) {
-  return TranslationVersionRepository();
+  return ServiceLocator.get<TranslationVersionRepository>();
 });
 
 /// Project with translation statistics for a specific language
@@ -289,7 +285,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     }
 
     // Fetch the language to get its code and update the prefix
-    final langRepo = LanguageRepository();
+    final langRepo = ServiceLocator.get<LanguageRepository>();
     final result = await langRepo.getById(languageId);
 
     String newPrefix = state.prefix;
@@ -340,7 +336,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
   Future<bool> saveCompilation(String gameInstallationId) async {
     if (!state.canSave) return false;
 
-    final compilationRepo = CompilationRepository();
+    final compilationRepo = ServiceLocator.get<CompilationRepository>();
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     try {
@@ -424,10 +420,10 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     final logger = ServiceLocator.get<LoggingService>();
     final locFileService = ServiceLocator.get<ILocFileService>();
     final rpfmService = ServiceLocator.get<IRpfmService>();
-    final compilationRepo = CompilationRepository();
-    final projectRepo = ProjectRepository();
-    final gameRepo = GameInstallationRepository();
-    final langRepo = LanguageRepository();
+    final compilationRepo = ServiceLocator.get<CompilationRepository>();
+    final projectRepo = ServiceLocator.get<ProjectRepository>();
+    final gameRepo = ServiceLocator.get<GameInstallationRepository>();
+    final langRepo = ServiceLocator.get<LanguageRepository>();
     final packUtils = PackExportUtils(logger: logger);
 
     state = state.copyWith(
@@ -540,7 +536,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
       state = state.copyWith(
         currentStep: 'Creating pack file...',
-        progress: 0.85,
+        progress: 0.80,
       );
 
       // Create pack file
@@ -550,10 +546,27 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
       logger.info('Creating pack file: ${state.fullPackName}');
       logger.info('Output path: $packPath');
 
+      // Progress range for pack creation: 0.80 to 0.95
+      const packProgressStart = 0.80;
+      const packProgressEnd = 0.95;
+      const packProgressRange = packProgressEnd - packProgressStart;
+
       final packResult = await rpfmService.createPack(
         inputDirectory: tempDir.path,
         outputPackPath: packPath,
         languageCode: language.code,
+        onProgress: (currentFile, totalFiles, fileName) {
+          if (totalFiles > 0) {
+            final fileProgress = currentFile / totalFiles;
+            final overallProgress = packProgressStart + (packProgressRange * fileProgress);
+            state = state.copyWith(
+              currentStep: fileName.isNotEmpty
+                  ? 'Adding: $fileName ($currentFile/$totalFiles)'
+                  : 'Creating pack file...',
+              progress: overallProgress,
+            );
+          }
+        },
       );
 
       if (packResult.isErr) {
@@ -647,7 +660,6 @@ final projectsWithTranslationProvider =
 
     final projectRepo = ref.watch(projectRepositoryProvider);
     final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
-    final unitRepo = ref.watch(translationUnitRepositoryProvider);
     final versionRepo = ref.watch(translationVersionRepositoryProvider);
 
     // Get all projects for the game
@@ -670,22 +682,21 @@ final projectsWithTranslationProvider =
 
       if (langResult.isOk) {
         final projectLanguage = langResult.unwrap();
-        
-        // Get total units for this project
-        final unitsResult = await unitRepo.getByProject(project.id);
-        final totalUnits = unitsResult.isOk
-            ? unitsResult.unwrap().where((u) => !u.isObsolete).length
-            : 0;
 
         // Get translation stats for this language
+        // Use stats.totalCount for consistency (excludes bracket-only and obsolete units)
         final statsResult =
             await versionRepo.getLanguageStatistics(projectLanguage.id);
-        final translatedUnits =
-            statsResult.isOk ? statsResult.unwrap().translatedCount : 0;
+        final stats = statsResult.isOk
+            ? statsResult.unwrap()
+            : ProjectStatistics.empty();
+
+        // Progress = translated + validated (all units with actual translations)
+        final translatedUnits = stats.translatedCount + stats.validatedCount;
 
         projectsWithInfo.add(ProjectWithTranslationInfo(
           project: project,
-          totalUnits: totalUnits,
+          totalUnits: stats.totalCount,
           translatedUnits: translatedUnits,
         ));
       }
@@ -710,7 +721,7 @@ final allGameInstallationsProvider =
 
 /// Delete a compilation
 Future<bool> deleteCompilation(String compilationId) async {
-  final compilationRepo = CompilationRepository();
+  final compilationRepo = ServiceLocator.get<CompilationRepository>();
   final result = await compilationRepo.delete(compilationId);
   return result.isOk;
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 /// A Fluent Design-style checkbox
 ///
@@ -90,7 +91,7 @@ class _FluentCheckboxState extends State<FluentCheckbox> {
           ),
           child: widget.value
               ? Icon(
-                  Icons.check,
+                  FluentIcons.checkmark_24_regular,
                   size: widget.size * 0.7,
                   color: isEnabled ? checkColor : checkColor.withValues(alpha: 0.5),
                 )

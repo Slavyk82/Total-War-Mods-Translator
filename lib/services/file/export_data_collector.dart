@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
@@ -39,19 +42,20 @@ class TranslationExportData {
     String sourceLanguageId = 'lang_en',
     required String targetLanguageId,
   }) {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     return TranslationMemoryEntry(
-      id: id.isNotEmpty ? id : DateTime.now().millisecondsSinceEpoch.toString(),
+      id: id.isNotEmpty ? id : const Uuid().v4(),
       sourceText: sourceText,
       translatedText: translatedText,
       sourceLanguageId: sourceLanguageId,
       targetLanguageId: targetLanguageId,
-      sourceHash: sourceText.hashCode.toString(),
+      sourceHash: sha256.convert(utf8.encode(sourceText)).toString(),
       qualityScore: null,
       usageCount: 0,
       translationProviderId: null,
-      createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      lastUsedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      createdAt: now,
+      lastUsedAt: now,
+      updatedAt: now,
     );
   }
 }

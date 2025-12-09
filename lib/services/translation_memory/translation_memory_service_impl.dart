@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
@@ -134,9 +137,9 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         );
       }
 
-      // Calculate source hash (using normalized text as deterministic hash)
+      // Calculate source hash using SHA256 for collision resistance
       final normalized = _normalizer.normalize(sourceText);
-      final sourceHash = normalized.hashCode.toString();
+      final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
 
       // Resolve language codes to database IDs
       final sourceLanguageId = await _resolveLanguageId(sourceLanguageCode);
@@ -202,10 +205,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         return Ok(updateResult.value);
       }
 
-      // Create new entry
+      // Create new entry with UUID for unique identification
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final entry = TranslationMemoryEntry(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: const Uuid().v4(),
         sourceText: sourceText,
         translatedText: targetText,
         sourceLanguageId: sourceLanguageId,
@@ -288,12 +291,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           continue;
         }
 
-        // Calculate source hash
+        // Calculate source hash using SHA256 for collision resistance
         final normalized = _normalizer.normalize(t.sourceText);
-        final sourceHash = normalized.hashCode.toString();
+        final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
 
         entries.add(TranslationMemoryEntry(
-          id: '${now}_${entries.length}', // Temporary ID, will be replaced if new
+          id: const Uuid().v4(), // Unique UUID for each entry
           sourceText: t.sourceText,
           translatedText: t.targetText,
           sourceLanguageId: sourceLanguageId,
@@ -553,8 +556,79 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     String? targetLanguageCode,
     int limit = AppConstants.defaultTmPageSize,
   }) async {
-    // TODO: Implement when repository supports FTS5 full-text search
-    // For now, do a simple in-memory search
+    try {
+      // Validate input
+      if (searchText.trim().isEmpty) {
+        return const Ok([]);
+      }
+
+      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
+      final targetLanguageId = targetLanguageCode != null
+          ? 'lang_$targetLanguageCode'
+          : null;
+
+      // Convert TmSearchScope enum to string for repository
+      final searchScope = switch (searchIn) {
+        TmSearchScope.source => 'source',
+        TmSearchScope.target => 'target',
+        TmSearchScope.both => 'both',
+      };
+
+      // Try FTS5 search first (O(log n) performance)
+      final ftsResult = await _repository.searchFts5(
+        searchText: searchText,
+        searchScope: searchScope,
+        targetLanguageId: targetLanguageId,
+        limit: limit,
+      );
+
+      if (ftsResult.isOk) {
+        _logger.debug(
+          'FTS5 search completed',
+          {
+            'query': searchText,
+            'scope': searchScope,
+            'resultsCount': ftsResult.value.length,
+          },
+        );
+        return Ok(ftsResult.value);
+      }
+
+      // FTS5 failed, fall back to in-memory search
+      _logger.warning(
+        'FTS5 search failed, falling back to in-memory search',
+        {'error': ftsResult.error.toString()},
+      );
+
+      return _searchEntriesInMemory(
+        searchText: searchText,
+        searchIn: searchIn,
+        targetLanguageId: targetLanguageId,
+        limit: limit,
+      );
+    } catch (e, stackTrace) {
+      return Err(
+        TmServiceException(
+          'Unexpected error searching entries: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  /// Fallback in-memory search when FTS5 is unavailable or fails.
+  ///
+  /// This method loads all entries and filters in-memory.
+  /// Performance: O(n) where n = total TM entries.
+  /// Use only as fallback when FTS5 search fails.
+  Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
+      _searchEntriesInMemory({
+    required String searchText,
+    required TmSearchScope searchIn,
+    String? targetLanguageId,
+    required int limit,
+  }) async {
     try {
       final allResult = await _repository.getAll();
 
@@ -569,6 +643,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
       final searchLower = searchText.toLowerCase();
       final filtered = allResult.value.where((entry) {
+        // Apply language filter if specified
+        if (targetLanguageId != null &&
+            entry.targetLanguageId != targetLanguageId) {
+          return false;
+        }
+
         final matchSource = searchIn == TmSearchScope.source ||
             searchIn == TmSearchScope.both;
         final matchTarget = searchIn == TmSearchScope.target ||
@@ -584,7 +664,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     } catch (e, stackTrace) {
       return Err(
         TmServiceException(
-          'Unexpected error searching entries: ${e.toString()}',
+          'Unexpected error in fallback search: ${e.toString()}',
           error: e,
           stackTrace: stackTrace,
         ),

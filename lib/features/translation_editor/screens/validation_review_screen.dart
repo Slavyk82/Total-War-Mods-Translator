@@ -7,8 +7,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 import '../widgets/validation_review_data_source.dart';
+import '../widgets/validation_review_header.dart';
+import '../widgets/validation_review_toolbar.dart';
+import '../widgets/validation_edit_dialog.dart';
 
-/// Full-screen validation review with DataGrid for efficient handling of many issues
+/// Full-screen validation review with DataGrid for efficient handling of many issues.
 class ValidationReviewScreen extends ConsumerStatefulWidget {
   final List<ValidationIssue> issues;
   final int totalValidated;
@@ -96,7 +99,6 @@ class _ValidationReviewScreenState
       isProcessing: (versionId) => _processingVersionIds.contains(versionId),
       onCheckboxTap: _handleCheckboxTap,
     );
-    // Connect action callbacks
     _dataSource.onAccept = _handleAccept;
     _dataSource.onReject = _handleReject;
     _dataSource.onEdit = _handleEdit;
@@ -173,9 +175,7 @@ class _ValidationReviewScreenState
 
     final result = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => _EditTranslationDialog(
-        issue: issue,
-      ),
+      builder: (dialogContext) => ValidationEditDialog(issue: issue),
     );
 
     if (result != null && mounted) {
@@ -231,6 +231,14 @@ class _ValidationReviewScreenState
     }
   }
 
+  void _setFilter(ValidationSeverityFilter filter) {
+    setState(() {
+      _severityFilter = filter;
+      _selectedVersionIds.clear();
+    });
+    _updateDataSource();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -245,10 +253,31 @@ class _ValidationReviewScreenState
       body: Column(
         children: [
           // Header
-          _buildHeader(theme, errorCount, warningCount, currentPassedCount),
+          ValidationReviewHeader(
+            totalValidated: widget.totalValidated,
+            activeIssuesCount: _activeIssues.length,
+            errorCount: errorCount,
+            warningCount: warningCount,
+            passedCount: currentPassedCount,
+            reviewedCount: _processedVersionIds.length,
+            onExport: _exportReport,
+            onClose: widget.onClose,
+          ),
 
           // Toolbar
-          _buildToolbar(theme),
+          ValidationReviewToolbar(
+            severityFilter: _severityFilter,
+            selectedCount: _selectedVersionIds.length,
+            onFilterChanged: _setFilter,
+            onSearchChanged: (value) {
+              setState(() => _searchQuery = value);
+              _updateDataSource();
+            },
+            onSelectAll: _selectAll,
+            onDeselectAll: _deselectAll,
+            onBulkAccept: _handleBulkAccept,
+            onBulkReject: _handleBulkReject,
+          ),
 
           // DataGrid
           Expanded(
@@ -257,424 +286,6 @@ class _ValidationReviewScreenState
                 : _buildDataGrid(theme),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(
-    ThemeData theme,
-    int errorCount,
-    int warningCount,
-    int passedCount,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title row with back button
-          Row(
-            children: [
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {
-                    if (widget.onClose != null) {
-                      widget.onClose!();
-                    } else {
-                      context.pop();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Icon(
-                      FluentIcons.arrow_left_24_regular,
-                      size: 20,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Icon(
-                FluentIcons.shield_checkmark_24_regular,
-                size: 28,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Validation Review',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              FluentTextButton(
-                onPressed: _exportReport,
-                icon: const Icon(FluentIcons.document_arrow_down_24_regular),
-                child: const Text('Export Report'),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Summary cards
-          Row(
-            children: [
-              _buildSummaryCard(
-                theme,
-                'Total Validated',
-                '${widget.totalValidated}',
-                FluentIcons.checkmark_circle_24_regular,
-                theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                theme,
-                'Issues Found',
-                '${_activeIssues.length}',
-                FluentIcons.info_24_regular,
-                Colors.blue[700]!,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                theme,
-                'Errors',
-                '$errorCount',
-                FluentIcons.error_circle_24_regular,
-                Colors.red[700]!,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                theme,
-                'Warnings',
-                '$warningCount',
-                FluentIcons.warning_24_regular,
-                Colors.orange[700]!,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                theme,
-                'Passed',
-                '$passedCount',
-                FluentIcons.checkmark_24_regular,
-                Colors.green[700]!,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                theme,
-                'Reviewed',
-                '${_processedVersionIds.length}',
-                FluentIcons.clipboard_checkmark_24_regular,
-                Colors.purple[700]!,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    ThemeData theme,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 24, color: color),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildToolbar(ThemeData theme) {
-    final hasSelection = _selectedVersionIds.isNotEmpty;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: theme.dividerColor),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Filter chips
-          _buildFilterChip(
-            theme,
-            'All',
-            null,
-            _severityFilter == ValidationSeverityFilter.all,
-            () => _setFilter(ValidationSeverityFilter.all),
-            theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            theme,
-            'Errors',
-            FluentIcons.error_circle_24_regular,
-            _severityFilter == ValidationSeverityFilter.errorsOnly,
-            () => _setFilter(ValidationSeverityFilter.errorsOnly),
-            Colors.red[700]!,
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            theme,
-            'Warnings',
-            FluentIcons.warning_24_regular,
-            _severityFilter == ValidationSeverityFilter.warningsOnly,
-            () => _setFilter(ValidationSeverityFilter.warningsOnly),
-            Colors.orange[700]!,
-          ),
-
-          const SizedBox(width: 24),
-
-          // Search
-          SizedBox(
-            width: 300,
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search by key, text, or description...',
-                prefixIcon: const Icon(FluentIcons.search_24_regular, size: 18),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide(color: theme.dividerColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide(color: theme.dividerColor),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-                _updateDataSource();
-              },
-            ),
-          ),
-
-          const Spacer(),
-
-          // Selection info and bulk actions
-          if (hasSelection) ...[
-            Text(
-              '${_selectedVersionIds.length} selected',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 16),
-            _buildActionButton(
-              theme,
-              'Accept All',
-              FluentIcons.checkmark_24_regular,
-              Colors.green[700]!,
-              _handleBulkAccept,
-            ),
-            const SizedBox(width: 8),
-            _buildActionButton(
-              theme,
-              'Reject All',
-              FluentIcons.dismiss_24_regular,
-              Colors.red[700]!,
-              _handleBulkReject,
-            ),
-            const SizedBox(width: 8),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _deselectAll,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: theme.dividerColor),
-                  ),
-                  child: const Text('Deselect'),
-                ),
-              ),
-            ),
-          ] else ...[
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: _selectAll,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: theme.dividerColor),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FluentIcons.checkbox_checked_24_regular,
-                        size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text('Select All'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  void _setFilter(ValidationSeverityFilter filter) {
-    setState(() {
-      _severityFilter = filter;
-      _selectedVersionIds.clear();
-    });
-    _updateDataSource();
-  }
-
-  Widget _buildFilterChip(
-    ThemeData theme,
-    String label,
-    IconData? icon,
-    bool isActive,
-    VoidCallback onTap,
-    Color color,
-  ) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? color.withValues(alpha: 0.1)
-                : theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isActive ? color : theme.dividerColor,
-              width: isActive ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isActive ? color : theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive ? color : theme.colorScheme.onSurface,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    ThemeData theme,
-    String label,
-    IconData icon,
-    Color color,
-    VoidCallback onPressed,
-  ) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: color),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -871,223 +482,6 @@ class _ValidationReviewScreenState
             child: const Text('Back to Editor'),
           ),
         ],
-      ),
-    );
-  }
-}
-
-enum ValidationSeverityFilter { all, errorsOnly, warningsOnly }
-
-/// Dialog for editing a translation manually
-class _EditTranslationDialog extends StatefulWidget {
-  final ValidationIssue issue;
-
-  const _EditTranslationDialog({required this.issue});
-
-  @override
-  State<_EditTranslationDialog> createState() => _EditTranslationDialogState();
-}
-
-class _EditTranslationDialogState extends State<_EditTranslationDialog> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.issue.translatedText);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Dialog(
-      child: Container(
-        width: 800,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                Icon(
-                  FluentIcons.edit_24_regular,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Edit Translation',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        widget.issue.unitKey,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Icon(
-                      FluentIcons.dismiss_24_regular,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            // Issue description
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: widget.issue.severity == ValidationSeverity.error
-                    ? Colors.red.withValues(alpha: 0.1)
-                    : Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: widget.issue.severity == ValidationSeverity.error
-                      ? Colors.red.withValues(alpha: 0.3)
-                      : Colors.orange.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    widget.issue.severity == ValidationSeverity.error
-                        ? FluentIcons.error_circle_24_regular
-                        : FluentIcons.warning_24_regular,
-                    size: 20,
-                    color: widget.issue.severity == ValidationSeverity.error
-                        ? Colors.red[700]
-                        : Colors.orange[700],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${widget.issue.issueType}: ${widget.issue.description}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: widget.issue.severity == ValidationSeverity.error
-                            ? Colors.red[700]
-                            : Colors.orange[700],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Source text (read-only)
-            Text(
-              'Source Text',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: SelectableText(
-                widget.issue.sourceText,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Translation text (editable)
-            Text(
-              'Translation',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: TextField(
-                controller: _controller,
-                maxLines: null,
-                minLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Enter corrected translation...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(color: theme.dividerColor),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(color: theme.dividerColor),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                    borderSide: BorderSide(
-                      color: theme.colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.all(12),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                FluentTextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                FluentButton(
-                  onPressed: () {
-                    final text = _controller.text.trim();
-                    if (text.isNotEmpty) {
-                      Navigator.of(context).pop(text);
-                    }
-                  },
-                  icon: const Icon(FluentIcons.checkmark_24_regular),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

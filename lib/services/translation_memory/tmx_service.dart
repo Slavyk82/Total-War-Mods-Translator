@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
+import 'package:uuid/uuid.dart';
 import 'package:xml/xml.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
@@ -357,9 +359,9 @@ class TmxService {
       for (int i = 0; i < total; i++) {
         final entry = entries[i];
 
-        // Calculate source hash
+        // Calculate source hash using SHA256 for collision resistance
         final normalized = _normalizer.normalize(entry.sourceText);
-        final sourceHash = normalized.hashCode.toString();
+        final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
 
         // Check if entry already exists
         final existingResult = await _repository.findByHash(
@@ -379,9 +381,9 @@ class TmxService {
             ),
           });
         } else {
-          // Create new entry
+          // Create new entry with UUID for unique identification
           final tmEntry = TranslationMemoryEntry(
-            id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
+            id: const Uuid().v4(),
             sourceText: entry.sourceText,
             translatedText: entry.targetText,
             sourceLanguageId: entry.sourceLanguage,

@@ -180,10 +180,28 @@ class ExportOrchestratorService {
       );
       final packPath = path.join(gameDataPath, packFileName);
 
+      // Progress range for pack creation: 0.6 to 0.85
+      const packProgressStart = 0.6;
+      const packProgressEnd = 0.85;
+      const packProgressRange = packProgressEnd - packProgressStart;
+
       final packResult = await _rpfmService.createPack(
         inputDirectory: tempDir.path,
         outputPackPath: packPath,
         languageCode: languageCodes.first,
+        onProgress: (currentFile, totalFiles, fileName) {
+          if (totalFiles > 0) {
+            final fileProgress = currentFile / totalFiles;
+            final overallProgress = packProgressStart + (packProgressRange * fileProgress);
+            onProgress?.call(
+              'creatingPack',
+              overallProgress,
+              currentLanguage: fileName.isNotEmpty ? fileName : null,
+              currentIndex: currentFile,
+              total: totalFiles,
+            );
+          }
+        },
       );
 
       if (packResult is Err) {

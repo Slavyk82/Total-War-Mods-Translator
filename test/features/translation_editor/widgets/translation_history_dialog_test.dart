@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/translation_editor/widgets/translation_history_dialog.dart';
@@ -212,7 +213,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Find and tap the dismiss icon
-      final dismissIcons = find.byIcon(Icons.close);
+      final dismissIcons = find.byIcon(FluentIcons.dismiss_24_regular);
       if (dismissIcons.evaluate().isNotEmpty) {
         await tester.tap(dismissIcons.first);
         await tester.pumpAndSettle();

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
+import '../repositories/compilation_repository.dart';
 import '../repositories/game_installation_repository.dart';
 import '../repositories/glossary_repository.dart';
 import '../repositories/language_repository.dart';
@@ -284,6 +285,10 @@ class ServiceLocator {
       () => LanguageRepository(),
     );
 
+    _locator.registerLazySingleton<CompilationRepository>(
+      () => CompilationRepository(),
+    );
+
     _locator.registerLazySingleton<TranslationProviderRepository>(
       () => TranslationProviderRepository(),
     );
@@ -467,7 +472,10 @@ class ServiceLocator {
 
     // Translation Services
     _locator.registerLazySingleton<IPromptBuilderService>(
-      () => PromptBuilderServiceImpl(_locator<TokenCalculator>()),
+      () => PromptBuilderServiceImpl(
+        _locator<TokenCalculator>(),
+        _locator<GlossaryRepository>(),
+      ),
     );
 
     _locator.registerLazySingleton<IValidationService>(

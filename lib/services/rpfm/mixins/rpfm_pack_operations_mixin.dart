@@ -20,6 +20,7 @@ mixin RpfmPackOperationsMixin {
     required String inputDirectory,
     required String languageCode,
     required String outputPackPath,
+    void Function(int currentFile, int totalFiles, String fileName)? onProgress,
   }) async {
     try {
       // Validate input directory exists
@@ -99,10 +100,15 @@ mixin RpfmPackOperationsMixin {
         final locFiles = allFiles.where((f) => f.toLowerCase().endsWith('.loc')).toList();
         if (locFiles.isNotEmpty) {
           logger.warning('No TSV files found, falling back to .loc files (may cause issues)');
-          for (final filePath in locFiles) {
+          final totalLocFiles = locFiles.length;
+          for (var i = 0; i < locFiles.length; i++) {
+            final filePath = locFiles[i];
             final relativePath = path.relative(filePath, from: inputDirectory);
             final packPath = relativePath.replaceAll('\\', '/');
             final filePathArg = '$filePath;$packPath';
+
+            // Emit progress
+            onProgress?.call(i, totalLocFiles, path.basename(filePath));
 
             result = await Process.run(
               rpfmPath,
@@ -117,10 +123,14 @@ mixin RpfmPackOperationsMixin {
               logger.warning('Failed to add .loc file: $error');
             }
           }
+          // Final progress
+          onProgress?.call(totalLocFiles, totalLocFiles, '');
         }
       } else {
         // Add TSV files with --tsv-to-binary conversion
-        for (final tsvFilePath in tsvFiles) {
+        final totalTsvFiles = tsvFiles.length;
+        for (var i = 0; i < tsvFiles.length; i++) {
+          final tsvFilePath = tsvFiles[i];
           // Get relative path from input directory
           final relativePath = path.relative(tsvFilePath, from: inputDirectory);
 
@@ -128,6 +138,9 @@ mixin RpfmPackOperationsMixin {
           final targetPath = relativePath.replaceAll('.tsv', '').replaceAll('\\', '/');
 
           logger.info('Adding TSV: $relativePath -> $targetPath');
+
+          // Emit progress before processing this file
+          onProgress?.call(i, totalTsvFiles, path.basename(tsvFilePath));
 
           final filePathArg = '$tsvFilePath;$targetPath';
 
@@ -152,6 +165,8 @@ mixin RpfmPackOperationsMixin {
 
           logger.info('Successfully added: $targetPath');
         }
+        // Final progress
+        onProgress?.call(totalTsvFiles, totalTsvFiles, '');
       }
 
       // Verify pack was created and has content

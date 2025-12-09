@@ -154,6 +154,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   void dispose() {
     _batchCompletedSubscription?.cancel();
     _batchProgressSubscription?.cancel();
+    _dataSource.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -370,6 +371,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       onDelete: _handleDeleteConfirmation,
       onForceRetranslate: widget.onForceRetranslate,
       onViewPrompt: () => _handleViewPrompt(row),
+      onMarkAsTranslated: _handleValidate,
     );
   }
 

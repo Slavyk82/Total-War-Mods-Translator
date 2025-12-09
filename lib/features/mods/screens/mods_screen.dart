@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/detected_mods_datagrid.dart';
+import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
@@ -144,14 +147,18 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                       mods: mods,
                       onRowTap: (workshopId) => _openCreateProjectDialog(context, mods, workshopId),
                       onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
+                      onForceRedownload: (packFilePath) => _handleForceRedownload(context, packFilePath),
                       isLoading: false,
+                      isScanning: isRefreshing,
                       showingHidden: showHidden,
+                      scanLogStream: isRefreshing ? ref.watch(scanLogStreamProvider) : null,
                     ),
                     loading: () => DetectedModsDataGrid(
                       mods: const [],
                       onRowTap: _dummyCallback,
                       isLoading: true,
                       showingHidden: showHidden,
+                      scanLogStream: ref.watch(scanLogStreamProvider),
                     ),
                     error: (error, stack) => _buildErrorState(theme, error),
                   ),
@@ -253,13 +260,20 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
   void _handleRefresh() {
     ref.read(modsLoadingStateProvider.notifier).setLoading(true);
     ref.read(modsRefreshTriggerProvider.notifier).refresh();
-
-    // Reset loading state after a brief delay
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        ref.read(modsLoadingStateProvider.notifier).setLoading(false);
-      }
-    });
+    
+    // Listen for completion and reset loading state
+    late final ProviderSubscription<AsyncValue<List<DetectedMod>>> subscription;
+    subscription = ref.listenManual(
+      filteredModsProvider,
+      (previous, next) {
+        // When data arrives, reset loading state and close subscription
+        if (next.hasValue && mounted) {
+          ref.read(modsLoadingStateProvider.notifier).setLoading(false);
+          subscription.close();
+        }
+      },
+      fireImmediately: false,
+    );
   }
 
   Future<void> _handleToggleHidden(String workshopId, bool hide) async {
@@ -268,6 +282,30 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     // Refresh to reflect the change immediately
     if (mounted) {
       ref.invalidate(detectedModsProvider);
+    }
+  }
+
+  Future<void> _handleForceRedownload(BuildContext context, String packFilePath) async {
+    try {
+      final file = File(packFilePath);
+      if (await file.exists()) {
+        await file.delete();
+        if (mounted) {
+          FluentToast.success(
+            context,
+            'Pack file deleted. Launch the game to redownload.',
+          );
+          _handleRefresh();
+        }
+      } else {
+        if (mounted) {
+          FluentToast.warning(context, 'File not found: $packFilePath');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Failed to delete file: $e');
+      }
     }
   }
 

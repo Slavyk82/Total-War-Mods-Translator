@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
+import 'package:twmt/models/domain/mod_update_status.dart';
+import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'detected_mods_data_source.dart';
 
 /// Syncfusion DataGrid for displaying detected mods with sorting and filtering
@@ -9,16 +12,22 @@ class DetectedModsDataGrid extends StatefulWidget {
   final List<DetectedMod> mods;
   final Function(String workshopId) onRowTap;
   final Function(String workshopId, bool hide)? onToggleHidden;
+  final Function(String packFilePath)? onForceRedownload;
   final bool isLoading;
+  final bool isScanning;
   final bool showingHidden;
+  final Stream<ScanLogMessage>? scanLogStream;
 
   const DetectedModsDataGrid({
     super.key,
     required this.mods,
     required this.onRowTap,
     this.onToggleHidden,
+    this.onForceRedownload,
     this.isLoading = false,
+    this.isScanning = false,
     this.showingHidden = false,
+    this.scanLogStream,
   });
 
   @override
@@ -55,6 +64,7 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
   void _showContextMenu(BuildContext context, Offset position, DetectedMod mod) {
     final theme = Theme.of(context);
     final isHidden = mod.isHidden;
+    final needsDownload = mod.updateStatus == ModUpdateStatus.needsDownload;
     
     showMenu<String>(
       context: context,
@@ -65,6 +75,22 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
         position.dy + 1,
       ),
       items: [
+        // Force redownload option - only show when download is required
+        if (needsDownload && widget.onForceRedownload != null)
+          PopupMenuItem<String>(
+            value: 'force_redownload',
+            child: Row(
+              children: [
+                Icon(
+                  FluentIcons.arrow_download_24_regular,
+                  size: 20,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: 12),
+                const Text('Force redownload'),
+              ],
+            ),
+          ),
         PopupMenuItem<String>(
           value: 'toggle_hidden',
           child: Row(
@@ -85,6 +111,8 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
     ).then((value) {
       if (value == 'toggle_hidden' && widget.onToggleHidden != null) {
         widget.onToggleHidden!(mod.workshopId, !isHidden);
+      } else if (value == 'force_redownload' && widget.onForceRedownload != null) {
+        widget.onForceRedownload!(mod.packFilePath);
       }
     });
   }
@@ -93,7 +121,14 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Initial loading state - show only terminal
     if (widget.isLoading) {
+      if (widget.scanLogStream != null) {
+        return ScanTerminalWidget(
+          logStream: widget.scanLogStream!,
+          title: 'Scanning Workshop...',
+        );
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -112,9 +147,40 @@ class _DetectedModsDataGridState extends State<DetectedModsDataGrid> {
     }
 
     if (widget.mods.isEmpty) {
+      // If scanning with no data yet, show terminal
+      if (widget.isScanning && widget.scanLogStream != null) {
+        return ScanTerminalWidget(
+          logStream: widget.scanLogStream!,
+          title: 'Scanning Workshop...',
+        );
+      }
       return _buildEmptyState(theme);
     }
 
+    // Has data - show grid, with terminal overlay if scanning
+    final gridWidget = _buildDataGrid(theme);
+    
+    if (widget.isScanning && widget.scanLogStream != null) {
+      return Stack(
+        children: [
+          // Grid in background (slightly dimmed)
+          Opacity(
+            opacity: 0.4,
+            child: gridWidget,
+          ),
+          // Terminal overlay
+          ScanTerminalWidget(
+            logStream: widget.scanLogStream!,
+            title: 'Refreshing...',
+          ),
+        ],
+      );
+    }
+
+    return gridWidget;
+  }
+
+  Widget _buildDataGrid(ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,

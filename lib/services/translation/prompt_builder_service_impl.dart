@@ -1,6 +1,7 @@
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
+import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
 import 'package:twmt/services/glossary/utils/glossary_matcher.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
@@ -18,8 +19,9 @@ import 'package:twmt/services/translation/models/translation_exceptions.dart';
 /// - Structured output format
 class PromptBuilderServiceImpl implements IPromptBuilderService {
   final TokenCalculator _tokenCalculator;
+  final GlossaryRepository? _glossaryRepository;
 
-  PromptBuilderServiceImpl(this._tokenCalculator);
+  PromptBuilderServiceImpl(this._tokenCalculator, [this._glossaryRepository]);
 
   @override
   Future<Result<BuiltPrompt, PromptBuildingException>> buildPrompt({
@@ -140,13 +142,14 @@ CRITICAL RULES:
    - PRESERVE: function names, property names, operators, syntax (CcoCampaignEventDilemma, GetIfElse, Filter, Size, etc.)
    - MAY TRANSLATE: quoted strings that will display to users (e.g., "Tradeable resources:" → "Ressources échangeables :")
    - Example: {{GetIfElse(x, "Landmarks:", "")}} → {{GetIfElse(x, "Monuments :", "")}}
-3. Maintain the same tone and style as the source
-4. Use glossary terms when provided
-5. Keep translations culturally appropriate for gaming context
-6. Preserve line breaks (\\n) and special characters
-7. Do NOT add explanations or notes
-8. Output ONLY the JSON response in the specified format
-9. If source text has unbalanced tags (e.g., [[/col]] without opening tag), preserve them as-is
+4. When translating, preserve HYPHENS in compound words. Many languages use hyphenated compound words (e.g., French: "lui-même", "peut-être", "c'est-à-dire"; German: "Halb-Gott"; English: "self-proclaimed"). Output the correct hyphenated form - never merge into one word ("luimême") or split with spaces ("lui même").
+5. Maintain the same tone and style as the source
+6. Use glossary terms when provided
+7. Keep translations culturally appropriate for gaming context
+8. Preserve line breaks (\\n) and special characters
+9. Do NOT add explanations or notes
+10. Output ONLY the JSON response in the specified format
+11. If source text has unbalanced tags (e.g., [[/col]] without opening tag), preserve them as-is
 
 EXAMPLES OF TAG PRESERVATION:
 - "[[col:red]]Warning" → "[[col:red]]Avertissement"
@@ -302,6 +305,24 @@ QUALITY EXPECTATIONS:
 
     if (relevantEntries.isEmpty) {
       return '';
+    }
+
+    // Increment usage count for matched glossary entries
+    if (_glossaryRepository != null) {
+      final matchedEntryIds = <String>[];
+      for (final entry in relevantEntries) {
+        for (final variant in entry.variants) {
+          matchedEntryIds.add(variant.entryId);
+        }
+      }
+      if (matchedEntryIds.isNotEmpty) {
+        try {
+          await _glossaryRepository.incrementUsageCount(matchedEntryIds);
+        } catch (e) {
+          // Log but don't fail translation due to stats update failure
+          print('[PromptBuilderService] Failed to increment glossary usage: $e');
+        }
+      }
     }
 
     // Build formatted glossary section

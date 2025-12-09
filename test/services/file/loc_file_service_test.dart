@@ -59,7 +59,7 @@ void main() {
       unitId: 'unit-1',
       projectLanguageId: projectLanguageId,
       translatedText: 'Lanciers',
-      status: TranslationVersionStatus.approved,
+      status: TranslationVersionStatus.translated,
       createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );

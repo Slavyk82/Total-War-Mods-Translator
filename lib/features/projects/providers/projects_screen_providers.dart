@@ -13,7 +13,6 @@ import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/language_repository.dart';
 import '../../../repositories/game_installation_repository.dart';
 import '../../../repositories/workshop_mod_repository.dart';
-import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
@@ -183,28 +182,33 @@ final translationStatsVersionProvider =
 );
 
 /// Provider for project repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ProjectRepository();
+  return ServiceLocator.get<ProjectRepository>();
 });
 
 /// Provider for project language repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final projectLanguageRepositoryProvider = Provider<ProjectLanguageRepository>((ref) {
-  return ProjectLanguageRepository();
+  return ServiceLocator.get<ProjectLanguageRepository>();
 });
 
 /// Provider for language repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final languageRepositoryProvider = Provider<LanguageRepository>((ref) {
-  return LanguageRepository();
+  return ServiceLocator.get<LanguageRepository>();
 });
 
 /// Provider for game installation repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final gameInstallationRepositoryProvider = Provider<GameInstallationRepository>((ref) {
-  return GameInstallationRepository();
+  return ServiceLocator.get<GameInstallationRepository>();
 });
 
 /// Provider for workshop mod repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final workshopModRepositoryProvider = Provider<WorkshopModRepository>((ref) {
-  return WorkshopModRepository();
+  return ServiceLocator.get<WorkshopModRepository>();
 });
 
 /// State notifier for projects filter
@@ -264,6 +268,9 @@ final projectsFilterProvider =
 
 /// Provider for all projects with details
 final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {
+  // Watch translation stats version to refresh when stats change (e.g., mod update resets units)
+  ref.watch(translationStatsVersionProvider);
+  
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting projectsWithDetailsProvider');
   final projectRepo = ref.watch(projectRepositoryProvider);
@@ -271,8 +278,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   final langRepo = ref.watch(languageRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
   final workshopModRepo = ref.watch(workshopModRepositoryProvider);
-  final unitRepo = TranslationUnitRepository();
-  final versionRepo = TranslationVersionRepository();
+  final versionRepo = ServiceLocator.get<TranslationVersionRepository>();
   final updateAnalysisService = ServiceLocator.get<ModUpdateAnalysisService>();
 
   // Fetch all projects
@@ -287,14 +293,29 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   logging.debug('Loaded projects', {'count': projects.length});
   final List<ProjectWithDetails> projectsWithDetails = [];
 
+  // Optimization: Pre-load all languages once to avoid N+1 queries
+  // Languages are a small fixed set, so loading all is efficient
+  final allLanguagesResult = await langRepo.getAll();
+  final languagesMap = <String, Language>{};
+  if (allLanguagesResult.isOk) {
+    for (final lang in allLanguagesResult.unwrap()) {
+      languagesMap[lang.id] = lang;
+    }
+  }
+
+  // Optimization: Pre-load all game installations to avoid N+1 queries
+  final allGamesResult = await gameRepo.getAll();
+  final gamesMap = <String, GameInstallation>{};
+  if (allGamesResult.isOk) {
+    for (final game in allGamesResult.unwrap()) {
+      gamesMap[game.id] = game;
+    }
+  }
+
   // Load details for each project
   for (var project in projects) {
-    // Get game installation
-    GameInstallation? gameInstallation;
-    final gameResult = await gameRepo.getById(project.gameInstallationId);
-    if (gameResult.isOk) {
-      gameInstallation = gameResult.unwrap();
-    }
+    // Get game installation from pre-loaded map (O(1) instead of database query)
+    final gameInstallation = gamesMap[project.gameInstallationId];
 
     // Auto-fill missing image URL from workshop folder if available
     if (project.imageUrl == null && project.sourceFilePath != null) {
@@ -315,12 +336,6 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
       }
     }
 
-    // Get total units count for this project
-    final unitsResult = await unitRepo.getByProject(project.id);
-    final totalUnits = unitsResult.isOk
-        ? unitsResult.unwrap().where((u) => !u.isObsolete).length
-        : 0;
-
     // Get project languages
     final langResult = await projectLangRepo.getByProject(project.id);
     final List<ProjectLanguageWithInfo> languagesWithInfo = [];
@@ -330,13 +345,11 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
 
       // Load language info and stats for each project language
       for (final projLang in projectLanguages) {
-        Language? language;
-        final langInfoResult = await langRepo.getById(projLang.languageId);
-        if (langInfoResult.isOk) {
-          language = langInfoResult.unwrap();
-        }
+        // Get language from pre-loaded map (O(1) instead of database query)
+        final language = languagesMap[projLang.languageId];
 
         // Get per-language translation stats
+        // Statistics include totalCount which excludes bracket-only units
         final statsResult = await versionRepo.getLanguageStatistics(projLang.id);
         final stats = statsResult.isOk
             ? statsResult.unwrap()
@@ -345,7 +358,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
         languagesWithInfo.add(ProjectLanguageWithInfo(
           projectLanguage: projLang,
           language: language,
-          totalUnits: totalUnits,
+          totalUnits: stats.totalCount,
           translatedUnits: stats.translatedCount,
           validatedUnits: stats.validatedCount,
         ));

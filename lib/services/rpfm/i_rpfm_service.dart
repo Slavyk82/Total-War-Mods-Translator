@@ -14,6 +14,17 @@ class RpfmLogMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
+/// Progress callback for pack creation
+///
+/// [currentFile] - Index of current file being processed (0-based)
+/// [totalFiles] - Total number of files to process
+/// [fileName] - Name of the file being processed
+typedef PackProgressCallback = void Function(
+  int currentFile,
+  int totalFiles,
+  String fileName,
+);
+
 /// Interface for RPFM (Rusted PackFile Manager) service
 ///
 /// Handles extraction and creation of Total War .pack files
@@ -71,12 +82,14 @@ abstract class IRpfmService {
   /// [inputDirectory] - Directory containing files to pack
   /// [outputPackPath] - Path for output .pack file
   /// [languageCode] - Language code for file prefixing (e.g., "fr", "de")
+  /// [onProgress] - Optional callback for progress updates during file processing
   ///
   /// Returns [Ok(packFilePath)] or [Err(RpfmServiceException)]
   Future<Result<String, RpfmServiceException>> createPack({
     required String inputDirectory,
     required String outputPackPath,
     required String languageCode,
+    void Function(int currentFile, int totalFiles, String fileName)? onProgress,
   });
 
   /// Get metadata about a .pack file

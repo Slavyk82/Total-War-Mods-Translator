@@ -6,6 +6,7 @@ import '../../../models/domain/game_installation.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
+import '../../../services/service_locator.dart';
 import 'projects_screen_providers.dart';
 
 /// Extended project details with all related information
@@ -77,22 +78,26 @@ class TranslationStats {
 }
 
 /// Provider for translation unit repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final translationUnitRepositoryProvider = Provider<TranslationUnitRepository>((ref) {
-  return TranslationUnitRepository();
+  return ServiceLocator.get<TranslationUnitRepository>();
 });
 
 /// Provider for translation version repository
+/// Uses ServiceLocator singleton to avoid creating new instances on each read.
 final translationVersionRepositoryProvider = Provider<TranslationVersionRepository>((ref) {
-  return TranslationVersionRepository();
+  return ServiceLocator.get<TranslationVersionRepository>();
 });
 
 /// Provider for fetching project details by ID
 final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((ref, projectId) async {
+  // Watch translation stats version to refresh when stats change (e.g., mod update resets units)
+  ref.watch(translationStatsVersionProvider);
+  
   final projectRepo = ref.watch(projectRepositoryProvider);
   final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
   final langRepo = ref.watch(languageRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
-  final translationUnitRepo = ref.watch(translationUnitRepositoryProvider);
   final translationVersionRepo = ref.watch(translationVersionRepositoryProvider);
 
   // Fetch project
@@ -108,12 +113,6 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
   if (gameResult.isOk) {
     gameInstallation = gameResult.unwrap();
   }
-
-  // Fetch translation units count for the project
-  final unitsResult = await translationUnitRepo.getByProject(projectId);
-  final totalUnits = unitsResult.isOk 
-      ? unitsResult.unwrap().where((u) => !u.isObsolete).length 
-      : 0;
 
   // Fetch project languages with language details and per-language statistics
   final List<ProjectLanguageDetails> languageDetails = [];
@@ -137,6 +136,7 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
         final language = languagesMap[projLang.languageId];
         if (language != null) {
           // Get statistics for this specific project language
+          // Statistics include totalCount which excludes bracket-only units
           final langStatsResult = await translationVersionRepo.getLanguageStatistics(projLang.id);
           final langStats = langStatsResult.isOk 
               ? langStatsResult.unwrap() 
@@ -145,7 +145,7 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
           languageDetails.add(ProjectLanguageDetails(
             projectLanguage: projLang,
             language: language,
-            totalUnits: totalUnits,
+            totalUnits: langStats.totalCount,
             translatedUnits: langStats.translatedCount,
             pendingUnits: langStats.pendingCount,
             validatedUnits: langStats.validatedCount,
@@ -154,6 +154,9 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
       }
     }
   }
+
+  // Get total units from the first language stats (consistent with bracket-only exclusion)
+  final totalUnits = languageDetails.isNotEmpty ? languageDetails.first.totalUnits : 0;
 
   // Fetch project-level translation statistics
   final statsResult = await translationVersionRepo.getProjectStatistics(projectId);
@@ -190,6 +193,8 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
 });
 
 /// Provider for project languages by project ID
+///
+/// Uses batch fetching (getByIds) to avoid N+1 query pattern.
 final projectLanguagesProvider = FutureProvider.family<List<ProjectLanguageDetails>, String>((ref, projectId) async {
   final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
   final langRepo = ref.watch(languageRepositoryProvider);
@@ -200,14 +205,29 @@ final projectLanguagesProvider = FutureProvider.family<List<ProjectLanguageDetai
   }
 
   final projectLanguages = langResult.unwrap();
-  final List<ProjectLanguageDetails> languageDetails = [];
 
+  // Optimized: Batch fetch all languages in single query to avoid N+1 problem
+  final languageIds = projectLanguages.map((pl) => pl.languageId).toList();
+  final languagesResult = await langRepo.getByIds(languageIds);
+
+  if (languagesResult.isErr) {
+    throw Exception('Failed to load languages');
+  }
+
+  // Create lookup map for O(1) access
+  final languagesMap = <String, Language>{};
+  for (final lang in languagesResult.unwrap()) {
+    languagesMap[lang.id] = lang;
+  }
+
+  // Build details list with fast lookups
+  final List<ProjectLanguageDetails> languageDetails = [];
   for (final projLang in projectLanguages) {
-    final langInfoResult = await langRepo.getById(projLang.languageId);
-    if (langInfoResult.isOk) {
+    final language = languagesMap[projLang.languageId];
+    if (language != null) {
       languageDetails.add(ProjectLanguageDetails(
         projectLanguage: projLang,
-        language: langInfoResult.unwrap(),
+        language: language,
       ));
     }
   }

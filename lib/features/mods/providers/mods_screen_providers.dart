@@ -1,11 +1,20 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/mods/workshop_scanner_service.dart';
+import 'package:twmt/features/mods/models/scan_log_message.dart';
 
 part 'mods_screen_providers.g.dart';
+
+/// Provider for the scan log stream from WorkshopScannerService
+final scanLogStreamProvider = Provider<Stream<ScanLogMessage>>((ref) {
+  final scannerService = ServiceLocator.get<WorkshopScannerService>();
+  return scannerService.scanLogStream;
+});
 
 /// Filter options for mods list
 enum ModsFilter {

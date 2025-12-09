@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/language_repository.dart';
@@ -59,9 +61,9 @@ class TmMatchingService {
     required String targetLanguageCode,
   }) async {
     try {
-      // Calculate source hash (using normalized text)
+      // Calculate source hash using SHA256 for collision resistance
       final normalized = _normalizer.normalize(sourceText);
-      final sourceHash = normalized.hashCode.toString();
+      final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
 
       // Resolve language code to database ID
       final targetLanguageId = await _resolveLanguageId(targetLanguageCode);

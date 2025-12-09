@@ -500,6 +500,112 @@ class TranslationMemoryRepository
     });
   }
 
+  /// Search translation memory entries using FTS5 full-text search.
+  ///
+  /// This method provides fast, indexed search across source and/or target text
+  /// using SQLite FTS5. Performance is O(log n) instead of O(n) for in-memory search.
+  ///
+  /// [searchText] - Text to search for
+  /// [searchScope] - Where to search: 'source', 'target', or 'both'
+  /// [targetLanguageId] - Optional target language filter
+  /// [limit] - Maximum number of results (default: 50)
+  ///
+  /// Returns [Ok] with list of matching entries ordered by BM25 rank,
+  /// [Err] with exception on failure.
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>> searchFts5({
+    required String searchText,
+    required String searchScope,
+    String? targetLanguageId,
+    int limit = 50,
+  }) async {
+    return executeQuery(() async {
+      // Build FTS5 query from search text
+      final ftsQuery = _buildFts5SearchQuery(searchText);
+
+      if (ftsQuery.isEmpty) {
+        return <TranslationMemoryEntry>[];
+      }
+
+      // Build the FTS5 MATCH clause based on search scope
+      String ftsMatchClause;
+      switch (searchScope) {
+        case 'source':
+          ftsMatchClause = 'source_text:$ftsQuery';
+          break;
+        case 'target':
+          ftsMatchClause = 'translated_text:$ftsQuery';
+          break;
+        case 'both':
+        default:
+          // Search in both columns using OR
+          ftsMatchClause = '{source_text translated_text}:$ftsQuery';
+          break;
+      }
+
+      // Build the full query with optional language filter
+      String sql;
+      List<dynamic> args;
+
+      if (targetLanguageId != null) {
+        sql = '''
+          SELECT tm.*
+          FROM $tableName tm
+          INNER JOIN translation_memory_fts fts ON fts.rowid = tm.rowid
+          WHERE translation_memory_fts MATCH ?
+            AND tm.target_language_id = ?
+          ORDER BY bm25(translation_memory_fts)
+          LIMIT ?
+        ''';
+        args = [ftsMatchClause, targetLanguageId, limit];
+      } else {
+        sql = '''
+          SELECT tm.*
+          FROM $tableName tm
+          INNER JOIN translation_memory_fts fts ON fts.rowid = tm.rowid
+          WHERE translation_memory_fts MATCH ?
+          ORDER BY bm25(translation_memory_fts)
+          LIMIT ?
+        ''';
+        args = [ftsMatchClause, limit];
+      }
+
+      final maps = await database.rawQuery(sql, args);
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
+
+  /// Build FTS5 search query from user input text.
+  ///
+  /// Tokenizes input, filters short words, and escapes special characters.
+  /// Uses prefix matching (*) for partial word matching.
+  String _buildFts5SearchQuery(String text) {
+    // Escape FTS5 special characters: " * ( ) :
+    String escaped = text
+        .replaceAll('"', ' ')
+        .replaceAll('*', ' ')
+        .replaceAll('(', ' ')
+        .replaceAll(')', ' ')
+        .replaceAll(':', ' ');
+
+    // Extract words, filter very short ones
+    final words = escaped
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.length >= 2)
+        .map((word) => word.trim())
+        .where((word) => word.isNotEmpty)
+        .toList();
+
+    if (words.isEmpty) {
+      // Fallback: use original text if no valid words
+      return escaped.trim();
+    }
+
+    // Build query with prefix matching for better partial matches
+    // Use OR for flexibility - matches any of the words
+    return words.map((w) => '"$w"*').join(' OR ');
+  }
+
   /// Batch upsert translation memory entries.
   ///
   /// Efficiently inserts or updates multiple TM entries in a single transaction.

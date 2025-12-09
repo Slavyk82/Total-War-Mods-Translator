@@ -20,12 +20,24 @@ class EditorDataSource extends DataGridSource {
   // Performance: Cache for DataGridRow objects to avoid rebuilding unchanged rows
   final Map<int, DataGridRow> _rowCache = {};
 
+  // Memory management: Track edit controllers to dispose them properly
+  TextEditingController? _activeEditController;
+
   EditorDataSource({
     required this.onCellEdit,
     required this.onCellTap,
     required this.onCheckboxTap,
     required this.isRowSelected,
   });
+
+  /// Dispose resources to prevent memory leaks
+  @override
+  void dispose() {
+    _activeEditController?.dispose();
+    _activeEditController = null;
+    _rowCache.clear();
+    super.dispose();
+  }
 
   /// Update the data rows
   /// Performance: Only notifies listeners if data actually changed
@@ -236,12 +248,16 @@ class EditorDataSource extends DataGridSource {
     final escapedText = _escapeForDisplay(rawText ?? '');
     newCellValue = rawText;
 
+    // Memory management: Dispose previous controller before creating new one
+    _activeEditController?.dispose();
+    _activeEditController = TextEditingController(text: escapedText);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
       alignment: Alignment.centerLeft,
       child: TextField(
         autofocus: true,
-        controller: TextEditingController(text: escapedText),
+        controller: _activeEditController,
         style: const TextStyle(fontSize: 13),
         maxLines: null,
         decoration: const InputDecoration(

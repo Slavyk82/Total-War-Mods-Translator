@@ -896,11 +896,13 @@ final class FilteredTranslationRowsFamily extends $Family
 }
 
 /// Provider for editor statistics
+/// Uses database statistics for consistency with project list (excludes bracket-only units)
 
 @ProviderFor(editorStats)
 const editorStatsProvider = EditorStatsFamily._();
 
 /// Provider for editor statistics
+/// Uses database statistics for consistency with project list (excludes bracket-only units)
 
 final class EditorStatsProvider
     extends
@@ -911,6 +913,7 @@ final class EditorStatsProvider
         >
     with $FutureModifier<EditorStats>, $FutureProvider<EditorStats> {
   /// Provider for editor statistics
+  /// Uses database statistics for consistency with project list (excludes bracket-only units)
   const EditorStatsProvider._({
     required EditorStatsFamily super.from,
     required (String, String) super.argument,
@@ -955,9 +958,10 @@ final class EditorStatsProvider
   }
 }
 
-String _$editorStatsHash() => r'0089b48190e84f9090c4eb9943d1816d197c736b';
+String _$editorStatsHash() => r'86d254d3c843d5906dfb0a803110657d18cb1dd4';
 
 /// Provider for editor statistics
+/// Uses database statistics for consistency with project list (excludes bracket-only units)
 
 final class EditorStatsFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<EditorStats>, (String, String)> {
@@ -971,6 +975,7 @@ final class EditorStatsFamily extends $Family
       );
 
   /// Provider for editor statistics
+  /// Uses database statistics for consistency with project list (excludes bracket-only units)
 
   EditorStatsProvider call(String projectId, String languageId) =>
       EditorStatsProvider._(argument: (projectId, languageId), from: this);

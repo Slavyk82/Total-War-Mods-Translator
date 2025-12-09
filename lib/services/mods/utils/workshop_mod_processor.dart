@@ -139,6 +139,7 @@ class WorkshopModProcessor {
       createdAt: createdAt,
       updatedAt: hasChanges ? now : (existingMod?.updatedAt ?? now),
       lastCheckedAt: now,
+      isHidden: existingMod?.isHidden ?? false,
     );
 
     // Only upsert if it's a new mod or if data has changed
