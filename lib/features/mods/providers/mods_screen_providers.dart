@@ -1,8 +1,11 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
+import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
+import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/mods/workshop_scanner_service.dart';
@@ -145,11 +148,63 @@ Future<int> notImportedModsCount(Ref ref) async {
 Future<int> needsUpdateModsCount(Ref ref) async {
   final detectedModsList = await ref.watch(detectedModsProvider.future);
   final showHidden = ref.watch(showHiddenModsProvider);
-  return detectedModsList.where((mod) => 
+  return detectedModsList.where((mod) =>
     mod.isHidden == showHidden &&
     (mod.updateStatus == ModUpdateStatus.needsDownload ||
      mod.updateStatus == ModUpdateStatus.hasChanges)
   ).length;
+}
+
+/// Provider for count of projects with pending changes.
+/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
+/// and checks if the cache has changes. This ensures consistency between screens.
+@riverpod
+Future<int> projectsWithPendingChangesCount(Ref ref) async {
+  // Watch the detected mods to refresh when mods are scanned
+  ref.watch(detectedModsProvider);
+
+  final projectRepo = ServiceLocator.get<ProjectRepository>();
+  final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
+  final cacheRepo = ServiceLocator.get<ModUpdateAnalysisCacheRepository>();
+
+  final projectsResult = await projectRepo.getAll();
+  if (projectsResult.isErr) return 0;
+
+  final projects = projectsResult.unwrap();
+  int pendingCount = 0;
+
+  for (final project in projects) {
+    if (project.sourceFilePath == null || project.modSteamId == null) continue;
+
+    // Get Steam Workshop timestamp from cache
+    int? steamTimestamp;
+    final workshopModResult = await workshopModRepo.getByWorkshopId(project.modSteamId!);
+    if (workshopModResult.isOk) {
+      steamTimestamp = workshopModResult.unwrap().timeUpdated;
+    }
+
+    // Get local file timestamp
+    int? localTimestamp;
+    final sourceFile = File(project.sourceFilePath!);
+    if (await sourceFile.exists()) {
+      final stat = await sourceFile.stat();
+      localTimestamp = stat.modified.millisecondsSinceEpoch ~/ 1000;
+    }
+
+    // Only count if Steam version is newer than local file (same logic as Projects screen)
+    if (steamTimestamp != null && localTimestamp != null && steamTimestamp > localTimestamp) {
+      // Check cache for pending changes (excludes auto-applied removals)
+      final cacheResult = await cacheRepo.getByProjectAndPath(project.id, project.sourceFilePath!);
+      if (cacheResult.isOk) {
+        final cache = cacheResult.unwrap();
+        if (cache != null && cache.hasPendingChanges) {
+          pendingCount++;
+        }
+      }
+    }
+  }
+
+  return pendingCount;
 }
 
 /// Refresh trigger for mods list
@@ -186,5 +241,13 @@ class ModHiddenToggle extends _$ModHiddenToggle {
   Future<void> toggleHidden(String workshopId, bool isHidden) async {
     final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
     await workshopModRepo.setHidden(workshopId, isHidden);
+
+    // Update the mod list locally without rescanning
+    // Use try-catch to handle potential provider disposal during async operation
+    try {
+      ref.read(detectedModsProvider.notifier).updateModHidden(workshopId, isHidden);
+    } catch (_) {
+      // Provider was disposed during async operation - state will refresh on next access
+    }
   }
 }

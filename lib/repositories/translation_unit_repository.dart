@@ -4,6 +4,11 @@ import '../models/common/service_exception.dart';
 import '../models/domain/translation_unit.dart';
 import 'base_repository.dart';
 
+/// Callback for reporting batch operation progress.
+/// [processed] is the number of items processed so far.
+/// [total] is the total number of items to process.
+typedef BatchProgressCallback = void Function(int processed, int total);
+
 /// Repository for managing TranslationUnit entities.
 ///
 /// Provides CRUD operations and custom queries for translation units,
@@ -199,6 +204,23 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
     });
   }
 
+  /// Get all obsolete translation units for a project.
+  ///
+  /// Returns [Ok] with list of obsolete translation units, ordered by key.
+  Future<Result<List<TranslationUnit>, TWMTDatabaseException>> getObsolete(
+      String projectId) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'project_id = ? AND is_obsolete = ?',
+        whereArgs: [projectId, 1],
+        orderBy: 'key ASC',
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
+
   /// Get multiple translation units by their IDs in a single query.
   ///
   /// This method uses SQL IN clause for batch fetching, avoiding N+1 query problems.
@@ -231,18 +253,22 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
     });
   }
 
-  /// Update source text for multiple translation units by key.
+  /// Reactivate multiple obsolete translation units by their keys.
   ///
-  /// Used when the source mod is updated and source texts have changed.
-  /// Updates each key's source_text to the new value provided in the map.
+  /// Used when units that were previously marked obsolete reappear in a mod update.
+  /// Also updates the source text to the new value.
+  ///
+  /// Note: Each unit may have different source text, so we use CASE/WHEN for batch updates.
   ///
   /// [projectId] - The project containing the units
-  /// [sourceTextUpdates] - Map of key -> new source text
+  /// [sourceTextUpdates] - Map of key -> new source text for reactivated units
+  /// [onProgress] - Optional callback for progress reporting
   ///
-  /// Returns the count of affected rows.
-  Future<Result<int, TWMTDatabaseException>> updateSourceTexts({
+  /// Returns the count of units reactivated.
+  Future<Result<int, TWMTDatabaseException>> reactivateByKeys({
     required String projectId,
     required Map<String, String> sourceTextUpdates,
+    BatchProgressCallback? onProgress,
   }) async {
     if (sourceTextUpdates.isEmpty) {
       return Ok(0);
@@ -250,23 +276,229 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
 
     return executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final keys = sourceTextUpdates.keys.toList();
       int totalAffected = 0;
 
-      // Update each unit's source text
-      for (final entry in sourceTextUpdates.entries) {
+      // SQLite has a limit on number of parameters (default 999)
+      // Each entry uses 2 params in CASE + 1 in IN clause
+      // Process in batches of 200 to stay well under the limit
+      const batchSize = 200;
+      final total = keys.length;
+
+      for (var i = 0; i < keys.length; i += batchSize) {
+        final batchKeys = keys.skip(i).take(batchSize).toList();
+
+        // Build CASE WHEN clause for source_text updates
+        final caseBuilder = StringBuffer('CASE key ');
+        final params = <Object>[];
+
+        for (final key in batchKeys) {
+          caseBuilder.write('WHEN ? THEN ? ');
+          params.add(key);
+          params.add(sourceTextUpdates[key]!);
+        }
+        caseBuilder.write('END');
+
+        final placeholders = List.filled(batchKeys.length, '?').join(',');
+
         final rowsAffected = await txn.rawUpdate(
           '''
           UPDATE $tableName
-          SET source_text = ?,
+          SET is_obsolete = 0,
+              source_text = $caseBuilder,
               updated_at = ?
-          WHERE project_id = ? AND key = ?
+          WHERE project_id = ? AND key IN ($placeholders) AND is_obsolete = 1
           ''',
-          [entry.value, now, projectId, entry.key],
+          [...params, now, projectId, ...batchKeys],
         );
         totalAffected += rowsAffected;
+
+        // Report progress after each batch
+        if (onProgress != null) {
+          final processed = (i + batchKeys.length).clamp(0, total);
+          onProgress(processed, total);
+        }
       }
 
       return totalAffected;
+    });
+  }
+
+  /// Mark multiple translation units as obsolete by their keys.
+  ///
+  /// Uses a single SQL UPDATE with IN clause for performance.
+  /// For large lists, batches the operation to avoid SQL parameter limits.
+  ///
+  /// [projectId] - The project containing the units
+  /// [keys] - List of unit keys to mark as obsolete
+  /// [onProgress] - Optional callback for progress reporting
+  ///
+  /// Returns the count of units marked obsolete.
+  Future<Result<int, TWMTDatabaseException>> markObsoleteByKeys({
+    required String projectId,
+    required List<String> keys,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    if (keys.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+
+      // SQLite has a limit on number of parameters (default 999)
+      // Process in batches of 500 to stay well under the limit
+      const batchSize = 500;
+      final total = keys.length;
+
+      for (var i = 0; i < keys.length; i += batchSize) {
+        final batch = keys.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(',');
+
+        final rowsAffected = await txn.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET is_obsolete = 1,
+              updated_at = ?
+          WHERE project_id = ? AND key IN ($placeholders) AND is_obsolete = 0
+          ''',
+          [now, projectId, ...batch],
+        );
+        totalAffected += rowsAffected;
+
+        // Report progress after each batch
+        if (onProgress != null) {
+          final processed = (i + batch.length).clamp(0, total);
+          onProgress(processed, total);
+        }
+      }
+
+      return totalAffected;
+    });
+  }
+
+  /// Update source text for multiple translation units by key.
+  ///
+  /// Uses CASE/WHEN for batch updates to improve performance.
+  ///
+  /// [projectId] - The project containing the units
+  /// [sourceTextUpdates] - Map of key -> new source text
+  /// [onProgress] - Optional callback for progress reporting
+  ///
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> updateSourceTexts({
+    required String projectId,
+    required Map<String, String> sourceTextUpdates,
+    BatchProgressCallback? onProgress,
+  }) async {
+    if (sourceTextUpdates.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final keys = sourceTextUpdates.keys.toList();
+      int totalAffected = 0;
+
+      // SQLite has a limit on number of parameters (default 999)
+      // Each entry uses 2 params in CASE + 1 in IN clause
+      // Process in batches of 200 to stay well under the limit
+      const batchSize = 200;
+      final total = keys.length;
+
+      for (var i = 0; i < keys.length; i += batchSize) {
+        final batchKeys = keys.skip(i).take(batchSize).toList();
+
+        // Build CASE WHEN clause for source_text updates
+        final caseBuilder = StringBuffer('CASE key ');
+        final params = <Object>[];
+
+        for (final key in batchKeys) {
+          caseBuilder.write('WHEN ? THEN ? ');
+          params.add(key);
+          params.add(sourceTextUpdates[key]!);
+        }
+        caseBuilder.write('END');
+
+        final placeholders = List.filled(batchKeys.length, '?').join(',');
+
+        final rowsAffected = await txn.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET source_text = $caseBuilder,
+              updated_at = ?
+          WHERE project_id = ? AND key IN ($placeholders)
+          ''',
+          [...params, now, projectId, ...batchKeys],
+        );
+        totalAffected += rowsAffected;
+
+        // Report progress after each batch
+        if (onProgress != null) {
+          final processed = (i + batchKeys.length).clamp(0, total);
+          onProgress(processed, total);
+        }
+      }
+
+      return totalAffected;
+    });
+  }
+
+  /// Get translation rows (units joined with versions) in a single SQL query.
+  ///
+  /// Performance optimization: Uses SQL INNER JOIN to avoid N+1 query problem.
+  /// Instead of separate queries for units and versions followed by in-memory join,
+  /// this fetches all data in a single database round-trip.
+  ///
+  /// Complexity: O(1) database query vs O(2) queries + O(n) Map operations.
+  /// For 10,000+ rows, this eliminates thousands of Map insertions and lookups.
+  ///
+  /// [projectId] - The project containing the translation units
+  /// [projectLanguageId] - The project language for the translation versions
+  ///
+  /// Returns a list of maps containing joined unit and version data.
+  /// Each map contains all columns from both tables with version columns prefixed.
+  Future<Result<List<Map<String, dynamic>>, TWMTDatabaseException>>
+      getTranslationRowsJoined({
+    required String projectId,
+    required String projectLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.rawQuery(
+        '''
+        SELECT
+          tu.id,
+          tu.project_id,
+          tu.key,
+          tu.source_text,
+          tu.context,
+          tu.notes,
+          tu.source_loc_file,
+          tu.is_obsolete,
+          tu.created_at,
+          tu.updated_at,
+          tv.id AS version_id,
+          tv.unit_id,
+          tv.project_language_id,
+          tv.translated_text,
+          tv.is_manually_edited,
+          tv.status,
+          tv.translation_source,
+          tv.validation_issues,
+          tv.created_at AS version_created_at,
+          tv.updated_at AS version_updated_at
+        FROM translation_units tu
+        INNER JOIN translation_versions tv ON tu.id = tv.unit_id
+        WHERE tu.project_id = ?
+          AND tv.project_language_id = ?
+          AND tu.is_obsolete = 0
+        ORDER BY tu.key ASC
+        ''',
+        [projectId, projectLanguageId],
+      );
+
+      return maps;
     });
   }
 }

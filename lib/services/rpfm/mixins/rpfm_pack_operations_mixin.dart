@@ -14,6 +14,10 @@ import 'package:twmt/services/shared/logging_service.dart';
 mixin RpfmPackOperationsMixin {
   RpfmCliManager get cliManager;
   LoggingService get logger;
+  bool get isCancelled;
+  set isCancelled(bool value);
+  Process? get currentProcess;
+  set currentProcess(Process? value);
 
   /// Create a .pack file from directory
   Future<Result<String, RpfmServiceException>> createPack({
@@ -22,6 +26,9 @@ mixin RpfmPackOperationsMixin {
     required String outputPackPath,
     void Function(int currentFile, int totalFiles, String fileName)? onProgress,
   }) async {
+    // Reset cancellation state at the start of a new operation
+    isCancelled = false;
+
     try {
       // Validate input directory exists
       if (!await Directory(inputDirectory).exists()) {
@@ -102,6 +109,16 @@ mixin RpfmPackOperationsMixin {
           logger.warning('No TSV files found, falling back to .loc files (may cause issues)');
           final totalLocFiles = locFiles.length;
           for (var i = 0; i < locFiles.length; i++) {
+            // Check for cancellation at the start of each iteration
+            if (isCancelled) {
+              logger.info('Pack creation cancelled by user');
+              // Clean up partial pack file
+              try {
+                await File(outputPackPath).delete();
+              } catch (_) {}
+              return Err(const RpfmPackingException('Pack creation cancelled'));
+            }
+
             final filePath = locFiles[i];
             final relativePath = path.relative(filePath, from: inputDirectory);
             final packPath = relativePath.replaceAll('\\', '/');
@@ -110,16 +127,31 @@ mixin RpfmPackOperationsMixin {
             // Emit progress
             onProgress?.call(i, totalLocFiles, path.basename(filePath));
 
-            result = await Process.run(
+            // Use Process.start for interruptible execution
+            final process = await Process.start(
               rpfmPath,
               ['--game', game, 'pack', 'add', '--pack-path', outputPackPath, '--file-path', filePathArg],
               runInShell: false,
-              stdoutEncoding: utf8,
-              stderrEncoding: utf8,
             );
+            currentProcess = process;
 
-            if (result.exitCode != 0) {
-              final error = RpfmOutputParser.parseErrorMessage(result.stderr);
+            // Capture stderr BEFORE waiting for exitCode to avoid deadlock
+            final stderrFuture = process.stderr.transform(utf8.decoder).join();
+            final exitCode = await process.exitCode;
+            currentProcess = null;
+
+            // Check if cancelled during process execution
+            if (isCancelled) {
+              logger.info('Pack creation cancelled by user');
+              try {
+                await File(outputPackPath).delete();
+              } catch (_) {}
+              return Err(const RpfmPackingException('Pack creation cancelled'));
+            }
+
+            if (exitCode != 0) {
+              final stderr = await stderrFuture;
+              final error = RpfmOutputParser.parseErrorMessage(stderr);
               logger.warning('Failed to add .loc file: $error');
             }
           }
@@ -130,6 +162,16 @@ mixin RpfmPackOperationsMixin {
         // Add TSV files with --tsv-to-binary conversion
         final totalTsvFiles = tsvFiles.length;
         for (var i = 0; i < tsvFiles.length; i++) {
+          // Check for cancellation at the start of each iteration
+          if (isCancelled) {
+            logger.info('Pack creation cancelled by user');
+            // Clean up partial pack file
+            try {
+              await File(outputPackPath).delete();
+            } catch (_) {}
+            return Err(const RpfmPackingException('Pack creation cancelled'));
+          }
+
           final tsvFilePath = tsvFiles[i];
           // Get relative path from input directory
           final relativePath = path.relative(tsvFilePath, from: inputDirectory);
@@ -144,19 +186,33 @@ mixin RpfmPackOperationsMixin {
 
           final filePathArg = '$tsvFilePath;$targetPath';
 
-          result = await Process.run(
+          // Use Process.start for interruptible execution
+          final process = await Process.start(
             rpfmPath,
             ['--game', game, 'pack', 'add', '--pack-path', outputPackPath, '--file-path', filePathArg, '--tsv-to-binary', schemaFile],
             runInShell: false,
-            stdoutEncoding: utf8,
-            stderrEncoding: utf8,
           );
+          currentProcess = process;
 
-          if (result.exitCode != 0) {
-            final error = RpfmOutputParser.parseErrorMessage(result.stderr);
+          // Capture stderr BEFORE waiting for exitCode to avoid deadlock
+          final stderrFuture = process.stderr.transform(utf8.decoder).join();
+          final exitCode = await process.exitCode;
+          currentProcess = null;
+
+          // Check if cancelled during process execution
+          if (isCancelled) {
+            logger.info('Pack creation cancelled by user');
+            try {
+              await File(outputPackPath).delete();
+            } catch (_) {}
+            return Err(const RpfmPackingException('Pack creation cancelled'));
+          }
+
+          if (exitCode != 0) {
+            final stderr = await stderrFuture;
+            final error = RpfmOutputParser.parseErrorMessage(stderr);
             logger.error('Failed to add TSV file: $error');
-            logger.error('RPFM stderr: ${result.stderr}');
-            logger.error('RPFM stdout: ${result.stdout}');
+            logger.error('RPFM stderr: $stderr');
             return Err(RpfmPackingException(
               'Failed to add TSV file to pack: $error\nFile: $tsvFilePath',
               outputPath: outputPackPath,

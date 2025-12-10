@@ -216,7 +216,6 @@ class ImportExportService {
         ExportColumn.status => ('status', version.statusDisplay),
         ExportColumn.notes => ('notes', unit.notes ?? ''),
         ExportColumn.context => ('context', unit.context ?? ''),
-        ExportColumn.qualityScore => ('quality_score', version.confidenceScore?.toString() ?? ''),
         ExportColumn.createdAt => ('created_at', DateTime.fromMillisecondsSinceEpoch(
             version.createdAt * 1000,
           ).toIso8601String()),
@@ -240,7 +239,6 @@ class ImportExportService {
       ExportColumn.status => 'status',
       ExportColumn.notes => 'notes',
       ExportColumn.context => 'context',
-      ExportColumn.qualityScore => 'quality_score',
       ExportColumn.createdAt => 'created_at',
       ExportColumn.updatedAt => 'updated_at',
       ExportColumn.changedBy => 'changed_by',

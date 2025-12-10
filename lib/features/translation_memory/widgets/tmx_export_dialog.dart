@@ -16,7 +16,6 @@ class TmxExportDialog extends ConsumerStatefulWidget {
 class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
   String? _outputPath;
   String? _targetLanguage;
-  double _minQuality = 0.7;
   ExportScope _exportScope = ExportScope.all;
   bool _includeMetadata = true;
   bool _includeStats = true;
@@ -51,11 +50,6 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
 
               // Export scope
               _buildExportScopeSection(context),
-
-              const SizedBox(height: 24),
-
-              // Quality filter
-              _buildQualityFilterSection(context),
 
               const SizedBox(height: 24),
 
@@ -164,7 +158,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
             ),
             // ignore: deprecated_member_use
             RadioListTile<ExportScope>(
-              value: ExportScope.highQualityOnly,
+              value: ExportScope.frequentlyUsed,
               // ignore: deprecated_member_use
               groupValue: _exportScope,
               // ignore: deprecated_member_use
@@ -173,49 +167,10 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
                   _exportScope = value!;
                 });
               },
-              title: const Text('High quality only (≥90%)'),
+              title: const Text('Frequently used only (>5 times)'),
               contentPadding: EdgeInsets.zero,
             ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQualityFilterSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Minimum Quality',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-            Text(
-              '${(_minQuality * 100).toInt()}%',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Slider(
-          value: _minQuality,
-          min: 0.0,
-          max: 1.0,
-          divisions: 20,
-          label: '${(_minQuality * 100).toInt()}%',
-          onChanged: (value) {
-            setState(() {
-              _minQuality = value;
-            });
-          },
         ),
       ],
     );
@@ -471,19 +426,14 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
   Future<void> _startExport() async {
     if (_outputPath == null) return;
 
-    final effectiveMinQuality = _exportScope == ExportScope.highQualityOnly
-        ? 0.9
-        : _minQuality;
-
     await ref.read(tmExportStateProvider.notifier).exportToTmx(
           outputPath: _outputPath!,
           targetLanguageCode: _targetLanguage,
-          minQuality: effectiveMinQuality,
         );
   }
 }
 
 enum ExportScope {
   all,
-  highQualityOnly,
+  frequentlyUsed,
 }

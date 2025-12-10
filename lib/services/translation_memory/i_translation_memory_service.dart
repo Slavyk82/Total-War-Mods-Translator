@@ -13,7 +13,7 @@ import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 /// - Fuzzy match lookup (3 algorithms: Levenshtein, Jaro-Winkler, Token-based)
 /// - Context-aware matching (game, category boost)
 /// - Auto-accept for >95% matches
-/// - Quality scoring and usage tracking
+/// - Usage tracking
 /// - Import/Export (.tmx format)
 abstract class ITranslationMemoryService {
   /// Add a translation to Translation Memory
@@ -26,7 +26,6 @@ abstract class ITranslationMemoryService {
   /// [sourceLanguageCode]: Source language (ISO 639-1), defaults to 'en'
   /// [targetLanguageCode]: Target language (ISO 639-1)
   /// [category]: Optional category (e.g., "UI", "narrative")
-  /// [quality]: Initial quality score (0.0 - 1.0), default 0.8
   ///
   /// Returns the created or updated TM entry
   Future<Result<TranslationMemoryEntry, TmAddException>> addTranslation({
@@ -35,7 +34,6 @@ abstract class ITranslationMemoryService {
     String sourceLanguageCode = 'en',
     required String targetLanguageCode,
     String? category,
-    double quality = 0.8,
   });
 
   /// Add multiple translations to Translation Memory in batch
@@ -44,20 +42,18 @@ abstract class ITranslationMemoryService {
   /// This is significantly faster than calling addTranslation() repeatedly.
   ///
   /// Automatically deduplicates based on source hash:
-  /// - Existing entries: updates quality (uses higher), increments usage count
+  /// - Existing entries: increments usage count
   /// - New entries: creates with provided values
   ///
   /// [translations]: List of translation pairs (sourceText, targetText)
   /// [sourceLanguageCode]: Source language (ISO 639-1), defaults to 'en'
   /// [targetLanguageCode]: Target language (ISO 639-1)
-  /// [quality]: Initial quality score (0.0 - 1.0), default 0.8
   ///
   /// Returns number of entries processed (inserted + updated)
   Future<Result<int, TmAddException>> addTranslationsBatch({
     required List<({String sourceText, String targetText})> translations,
     String sourceLanguageCode = 'en',
     required String targetLanguageCode,
-    double quality = 0.8,
   });
 
   /// Find exact match in Translation Memory
@@ -145,22 +141,6 @@ abstract class ITranslationMemoryService {
     required String entryId,
   });
 
-  /// Update quality score for a TM entry
-  ///
-  /// Quality score can be based on:
-  /// - User acceptance rate
-  /// - Manual quality rating
-  /// - Usage frequency
-  ///
-  /// [entryId]: TM entry identifier
-  /// [newQuality]: New quality score (0.0 - 1.0)
-  ///
-  /// Returns updated entry
-  Future<Result<TranslationMemoryEntry, TmServiceException>> updateQuality({
-    required String entryId,
-    required double newQuality,
-  });
-
   /// Delete a TM entry
   ///
   /// [entryId]: TM entry identifier
@@ -168,19 +148,15 @@ abstract class ITranslationMemoryService {
     required String entryId,
   });
 
-  /// Delete low-quality entries (cleanup)
+  /// Delete unused entries (cleanup)
   ///
   /// Removes entries with:
-  /// - Quality score below threshold
   /// - No usage in specified period
-  /// - Low acceptance rate
   ///
-  /// [minQuality]: Minimum quality threshold (default: 0.3)
   /// [unusedDays]: Days since last use (default: 365)
   ///
   /// Returns number of entries deleted
-  Future<Result<int, TmServiceException>> cleanupLowQualityEntries({
-    double minQuality = 0.3,
+  Future<Result<int, TmServiceException>> cleanupUnusedEntries({
     int unusedDays = 365,
   });
 
@@ -189,7 +165,6 @@ abstract class ITranslationMemoryService {
   /// Returns statistics about TM usage and effectiveness:
   /// - Total entries
   /// - Entries by language
-  /// - Average quality score
   /// - Total reuse count
   /// - Tokens saved
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
@@ -217,14 +192,12 @@ abstract class ITranslationMemoryService {
   /// [outputPath]: Path for output .tmx file
   /// [sourceLanguageCode]: Optional source language filter
   /// [targetLanguageCode]: Optional target language filter
-  /// [minQuality]: Optional minimum quality filter
   ///
   /// Returns number of entries exported
   Future<Result<int, TmExportException>> exportToTmx({
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    double? minQuality,
   });
 
   /// Get TM entries for review/editing
@@ -283,9 +256,6 @@ class TmStatistics {
   /// Entries by language pair
   final Map<String, int> entriesByLanguagePair;
 
-  /// Average quality score
-  final double averageQuality;
-
   /// Total times TM was reused
   final int totalReuseCount;
 
@@ -301,7 +271,6 @@ class TmStatistics {
   const TmStatistics({
     required this.totalEntries,
     required this.entriesByLanguagePair,
-    required this.averageQuality,
     required this.totalReuseCount,
     required this.tokensSaved,
     required this.averageFuzzyScore,
@@ -311,7 +280,6 @@ class TmStatistics {
   @override
   String toString() {
     return 'TmStatistics(entries: $totalEntries, '
-        'avgQuality: ${(averageQuality * 100).toStringAsFixed(0)}%, '
         'reuseRate: ${(reuseRate * 100).toStringAsFixed(1)}%, '
         'tokensSaved: $tokensSaved)';
   }

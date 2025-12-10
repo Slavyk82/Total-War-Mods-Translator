@@ -38,7 +38,6 @@ class TmxService {
   ///
   /// Creates a TMX 1.4b compliant XML file with all specified entries.
   /// Custom properties are used to store TWMT-specific metadata:
-  /// - x-quality-score: Translation quality (0.0-1.0)
   /// - x-usage-count: Number of times the entry was used
   /// - x-game-context: Game/mod context information
   ///
@@ -131,14 +130,6 @@ class TmxService {
   ) {
     builder.element('tu', nest: () {
       // Add custom properties
-      if (entry.qualityScore != null) {
-        builder.element('prop', attributes: {
-          'type': 'x-quality-score',
-        }, nest: () {
-          builder.text(entry.qualityScore!.toString());
-        });
-      }
-
       builder.element('prop', attributes: {
         'type': 'x-usage-count',
       }, nest: () {
@@ -310,9 +301,6 @@ class TmxService {
       }
 
       // Parse custom properties
-      final qualityScore = double.tryParse(
-        properties['x-quality-score'] ?? '',
-      );
       final usageCount = int.tryParse(
         properties['x-usage-count'] ?? '0',
       ) ?? 0;
@@ -323,7 +311,6 @@ class TmxService {
         targetLanguage: targetLanguage,
         sourceText: sourceText,
         targetText: targetText,
-        qualityScore: qualityScore,
         usageCount: usageCount,
         translationProviderId: providerId,
       );
@@ -389,7 +376,6 @@ class TmxService {
             sourceLanguageId: entry.sourceLanguage,
             targetLanguageId: entry.targetLanguage,
             sourceHash: sourceHash,
-            qualityScore: entry.qualityScore,
             usageCount: entry.usageCount,
             translationProviderId: entry.translationProviderId,
             createdAt: now,
@@ -439,7 +425,6 @@ class TmxEntry {
   final String targetLanguage;
   final String sourceText;
   final String targetText;
-  final double? qualityScore;
   final int usageCount;
   final String? translationProviderId;
 
@@ -448,7 +433,6 @@ class TmxEntry {
     required this.targetLanguage,
     required this.sourceText,
     required this.targetText,
-    this.qualityScore,
     this.usageCount = 0,
     this.translationProviderId,
   });

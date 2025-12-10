@@ -63,7 +63,7 @@ class ModsDataSource extends DataGridSource {
           ),
           DataGridCell<String>(
             columnName: 'status',
-            value: project.statusDisplay,
+            value: _getProjectStatusDisplay(project),
           ),
           DataGridCell<DateTime>(
             columnName: 'updated',
@@ -147,6 +147,19 @@ class ModsDataSource extends DataGridSource {
   Future<bool> handlePageChange(int oldPageIndex, int newPageIndex) async {
     // Page change support - can be implemented later
     return true;
+  }
+
+  /// Get the display status for a project based on its state
+  String _getProjectStatusDisplay(Project project) {
+    if (project.completedAt != null) {
+      return 'Completed';
+    }
+    // Check if the project has source files configured
+    if (!project.hasSourceFile) {
+      return 'Draft';
+    }
+    // Default to translating for active projects
+    return 'Translating';
   }
 
   /// Format the number of days since the last update

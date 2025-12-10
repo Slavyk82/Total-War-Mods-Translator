@@ -36,10 +36,6 @@ class TranslationMemoryEntry {
   @JsonKey(name: 'translation_provider_id')
   final String? translationProviderId;
 
-  /// Quality score of the translation (0.0 to 1.0)
-  @JsonKey(name: 'quality_score')
-  final double? qualityScore;
-
   /// Number of times this translation has been used
   @JsonKey(name: 'usage_count')
   final int usageCount;
@@ -64,19 +60,11 @@ class TranslationMemoryEntry {
     required this.targetLanguageId,
     required this.translatedText,
     this.translationProviderId,
-    this.qualityScore,
     this.usageCount = 0,
     required this.createdAt,
     required this.lastUsedAt,
     required this.updatedAt,
   });
-
-  /// Returns true if the entry has a quality score
-  bool get hasQualityScore => qualityScore != null;
-
-  /// Returns true if the quality score is high (>= 0.8)
-  bool get hasHighQuality =>
-      qualityScore != null && qualityScore! >= 0.8;
 
   /// Returns true if the entry has been used multiple times
   bool get isFrequentlyUsed => usageCount > 5;
@@ -84,10 +72,6 @@ class TranslationMemoryEntry {
   /// Returns true if the entry has a translation provider
   bool get hasProvider =>
       translationProviderId != null && translationProviderId!.isNotEmpty;
-
-  /// Returns the quality score as a percentage (0-100)
-  int? get qualityPercentage =>
-      qualityScore != null ? (qualityScore! * 100).round() : null;
 
   /// Returns the days since last use
   int get daysSinceLastUse {
@@ -136,7 +120,6 @@ class TranslationMemoryEntry {
     String? targetLanguageId,
     String? translatedText,
     String? translationProviderId,
-    double? qualityScore,
     int? usageCount,
     int? createdAt,
     int? lastUsedAt,
@@ -150,7 +133,6 @@ class TranslationMemoryEntry {
       targetLanguageId: targetLanguageId ?? this.targetLanguageId,
       translatedText: translatedText ?? this.translatedText,
       translationProviderId: translationProviderId ?? this.translationProviderId,
-      qualityScore: qualityScore ?? this.qualityScore,
       usageCount: usageCount ?? this.usageCount,
       createdAt: createdAt ?? this.createdAt,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
@@ -174,7 +156,6 @@ class TranslationMemoryEntry {
         other.targetLanguageId == targetLanguageId &&
         other.translatedText == translatedText &&
         other.translationProviderId == translationProviderId &&
-        other.qualityScore == qualityScore &&
         other.usageCount == usageCount &&
         other.createdAt == createdAt &&
         other.lastUsedAt == lastUsedAt &&
@@ -190,7 +171,6 @@ class TranslationMemoryEntry {
       targetLanguageId.hashCode ^
       translatedText.hashCode ^
       translationProviderId.hashCode ^
-      qualityScore.hashCode ^
       usageCount.hashCode ^
       createdAt.hashCode ^
       lastUsedAt.hashCode ^

@@ -50,7 +50,6 @@ class TranslationExportData {
       sourceLanguageId: sourceLanguageId,
       targetLanguageId: targetLanguageId,
       sourceHash: sha256.convert(utf8.encode(sourceText)).toString(),
-      qualityScore: null,
       usageCount: 0,
       translationProviderId: null,
       createdAt: now,

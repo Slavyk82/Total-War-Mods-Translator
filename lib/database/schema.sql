@@ -167,7 +167,6 @@ CREATE TABLE IF NOT EXISTS translation_versions (
     translated_text TEXT,
     is_manually_edited INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
-    confidence_score REAL,
     translation_source TEXT DEFAULT 'unknown',
     validation_issues TEXT,
     created_at INTEGER NOT NULL,
@@ -176,7 +175,6 @@ CREATE TABLE IF NOT EXISTS translation_versions (
     FOREIGN KEY (project_language_id) REFERENCES project_languages(id) ON DELETE CASCADE,
     UNIQUE(unit_id, project_language_id),
     CHECK (status IN ('pending', 'translating', 'translated', 'reviewed', 'approved', 'needs_review')),
-    CHECK (confidence_score IS NULL OR (confidence_score >= 0 AND confidence_score <= 1)),
     CHECK (translation_source IN ('unknown', 'manual', 'tm_exact', 'tm_fuzzy', 'llm')),
     CHECK (is_manually_edited IN (0, 1)),
     CHECK (created_at <= updated_at)
@@ -188,7 +186,6 @@ CREATE TABLE IF NOT EXISTS translation_version_history (
     version_id TEXT NOT NULL,
     translated_text TEXT NOT NULL,
     status TEXT NOT NULL,
-    confidence_score REAL,
     changed_by TEXT NOT NULL,
     change_reason TEXT,
     created_at INTEGER NOT NULL,
@@ -248,7 +245,6 @@ CREATE TABLE IF NOT EXISTS translation_memory (
     target_language_id TEXT NOT NULL,
     translated_text TEXT NOT NULL,
     translation_provider_id TEXT,
-    quality_score REAL,
     usage_count INTEGER NOT NULL DEFAULT 0,
     created_at INTEGER NOT NULL,
     last_used_at INTEGER NOT NULL,
@@ -257,7 +253,6 @@ CREATE TABLE IF NOT EXISTS translation_memory (
     FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
     FOREIGN KEY (translation_provider_id) REFERENCES translation_providers(id) ON DELETE SET NULL,
     UNIQUE(source_hash, target_language_id),
-    CHECK (quality_score IS NULL OR (quality_score >= 0 AND quality_score <= 1)),
     CHECK (usage_count >= 0)
 );
 
@@ -514,9 +509,18 @@ CREATE INDEX IF NOT EXISTS idx_translation_versions_proj_lang ON translation_ver
 CREATE INDEX IF NOT EXISTS idx_translation_versions_status ON translation_versions(status);
 -- Composite index for common JOIN pattern (unit + project_language)
 CREATE INDEX IF NOT EXISTS idx_translation_versions_unit_proj_lang ON translation_versions(unit_id, project_language_id);
+-- Index for filtering untranslated versions by project_language_id
+-- Used by getUntranslatedIds, filterUntranslatedIds, getTranslatedUnitIds
+CREATE INDEX IF NOT EXISTS idx_translation_versions_proj_lang_text ON translation_versions(project_language_id, translated_text)
+    WHERE translated_text IS NULL OR translated_text = '';
+-- Index for status inconsistency queries (reanalyzeAllStatuses, countInconsistentStatuses)
+CREATE INDEX IF NOT EXISTS idx_translation_versions_status_text ON translation_versions(status, is_manually_edited)
+    WHERE status IN ('pending', 'translating');
 
 -- Translation Version History
 CREATE INDEX IF NOT EXISTS idx_translation_version_history_version ON translation_version_history(version_id);
+-- Index for history lookup with chronological ordering
+CREATE INDEX IF NOT EXISTS idx_translation_version_history_version_time ON translation_version_history(version_id, created_at DESC);
 
 -- Translation Batches
 CREATE INDEX IF NOT EXISTS idx_batches_proj_lang ON translation_batches(project_language_id, status);
@@ -530,8 +534,12 @@ CREATE INDEX IF NOT EXISTS idx_batch_units_unit ON translation_batch_units(unit_
 CREATE INDEX IF NOT EXISTS idx_tm_hash_lang ON translation_memory(source_hash, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_source_lang ON translation_memory(source_language_id, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory(last_used_at DESC);
-CREATE INDEX IF NOT EXISTS idx_tm_lang_quality ON translation_memory(target_language_id, quality_score DESC, usage_count DESC) WHERE quality_score >= 0.85;
-CREATE INDEX IF NOT EXISTS idx_tm_target_lang_quality ON translation_memory(target_language_id, quality_score DESC);
+-- Index for target language filtering (getWithFilters, searchFts5)
+CREATE INDEX IF NOT EXISTS idx_tm_target_lang ON translation_memory(target_language_id);
+-- Index for source language filtering (deleteByLanguageId OR condition)
+CREATE INDEX IF NOT EXISTS idx_tm_source_lang_only ON translation_memory(source_language_id);
+-- Index for usage-based sorting with language filter
+CREATE INDEX IF NOT EXISTS idx_tm_target_lang_usage ON translation_memory(target_language_id, usage_count DESC);
 
 -- Translation Version TM Usage
 CREATE INDEX IF NOT EXISTS idx_tm_usage_version ON translation_version_tm_usage(version_id);

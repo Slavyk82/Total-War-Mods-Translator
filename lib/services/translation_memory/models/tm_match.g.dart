@@ -19,7 +19,6 @@ TmMatch _$TmMatchFromJson(Map<String, dynamic> json) => TmMatch(
   category: json['category'] as String?,
   usageCount: (json['usageCount'] as num).toInt(),
   lastUsedAt: DateTime.parse(json['lastUsedAt'] as String),
-  qualityScore: (json['qualityScore'] as num).toDouble(),
   autoApplied: json['autoApplied'] as bool? ?? false,
 );
 
@@ -34,7 +33,6 @@ Map<String, dynamic> _$TmMatchToJson(TmMatch instance) => <String, dynamic>{
   'category': instance.category,
   'usageCount': instance.usageCount,
   'lastUsedAt': instance.lastUsedAt.toIso8601String(),
-  'qualityScore': instance.qualityScore,
   'autoApplied': instance.autoApplied,
 };
 

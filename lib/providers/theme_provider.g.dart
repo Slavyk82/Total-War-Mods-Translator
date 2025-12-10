@@ -10,22 +10,22 @@ part of 'theme_provider.dart';
 // ignore_for_file: type=lint, type=warning
 /// Theme notifier using AsyncNotifier to properly handle async initialization
 ///
-/// This prevents the race condition where the UI displays with the default
-/// theme before the saved theme is loaded from SharedPreferences.
+/// Supports three modes: system (synced with Windows), light, and dark.
+/// Default is system mode to respect user's Windows preferences.
 
 @ProviderFor(ThemeNotifier)
 const themeProvider = ThemeNotifierProvider._();
 
 /// Theme notifier using AsyncNotifier to properly handle async initialization
 ///
-/// This prevents the race condition where the UI displays with the default
-/// theme before the saved theme is loaded from SharedPreferences.
+/// Supports three modes: system (synced with Windows), light, and dark.
+/// Default is system mode to respect user's Windows preferences.
 final class ThemeNotifierProvider
     extends $AsyncNotifierProvider<ThemeNotifier, ThemeMode> {
   /// Theme notifier using AsyncNotifier to properly handle async initialization
   ///
-  /// This prevents the race condition where the UI displays with the default
-  /// theme before the saved theme is loaded from SharedPreferences.
+  /// Supports three modes: system (synced with Windows), light, and dark.
+  /// Default is system mode to respect user's Windows preferences.
   const ThemeNotifierProvider._()
     : super(
         from: null,
@@ -45,12 +45,12 @@ final class ThemeNotifierProvider
   ThemeNotifier create() => ThemeNotifier();
 }
 
-String _$themeNotifierHash() => r'0d164bca5bc72977725105b4dcc3765d8d449c04';
+String _$themeNotifierHash() => r'41684adb029b6816bd7fa5a3ab96c15e482b1ac0';
 
 /// Theme notifier using AsyncNotifier to properly handle async initialization
 ///
-/// This prevents the race condition where the UI displays with the default
-/// theme before the saved theme is loaded from SharedPreferences.
+/// Supports three modes: system (synced with Windows), light, and dark.
+/// Default is system mode to respect user's Windows preferences.
 
 abstract class _$ThemeNotifier extends $AsyncNotifier<ThemeMode> {
   FutureOr<ThemeMode> build();

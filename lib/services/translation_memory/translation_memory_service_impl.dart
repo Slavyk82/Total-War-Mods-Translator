@@ -24,13 +24,13 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Adding translations with deduplication
 /// - Exact and fuzzy match lookup (delegated to TmMatchingService)
 /// - TMX import/export (delegated to TmImportExportService)
-/// - Quality scoring and usage tracking
+/// - Usage tracking
 /// - Cache management
 ///
 /// Service responsibilities:
 /// - Coordinate between repository, matching, and import/export services
 /// - Handle CRUD operations for TM entries
-/// - Manage entry validation and quality control
+/// - Manage entry validation
 /// - Provide statistics and maintenance operations
 class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   final TranslationMemoryRepository _repository;
@@ -106,7 +106,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     String sourceLanguageCode = 'en',
     required String targetLanguageCode,
     String? category,
-    double quality = AppConstants.defaultTmQuality,
   }) async {
     try {
       // Validate input
@@ -123,15 +122,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         return Err(
           TmAddException(
             'Target text cannot be empty',
-            sourceText: sourceText,
-          ),
-        );
-      }
-
-      if (quality < AppConstants.minQualityClamp || quality > AppConstants.maxQualityClamp) {
-        return Err(
-          TmAddException(
-            'Quality must be between ${AppConstants.minQualityClamp} and ${AppConstants.maxQualityClamp}',
             sourceText: sourceText,
           ),
         );
@@ -161,16 +151,9 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       );
 
       if (existingResult.isOk) {
-        // Entry exists, update usage and quality if needed
+        // Entry exists, update usage count
         final existing = existingResult.value;
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-        // Use higher quality between existing and new
-        final updatedQuality = existing.qualityScore != null
-            ? (existing.qualityScore! > quality
-                ? existing.qualityScore!
-                : quality)
-            : quality;
 
         final updatedEntry = TranslationMemoryEntry(
           id: existing.id,
@@ -179,7 +162,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           sourceLanguageId: existing.sourceLanguageId,
           targetLanguageId: targetLanguageId,
           sourceHash: sourceHash,
-          qualityScore: updatedQuality,
           usageCount: existing.usageCount + 1,
           createdAt: existing.createdAt,
           lastUsedAt: now,
@@ -199,7 +181,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
         _logger.debug(
           'Updated existing TM entry',
-          {'entryId': existing.id, 'newQuality': updatedQuality},
+          {'entryId': existing.id},
         );
 
         return Ok(updateResult.value);
@@ -214,7 +196,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         sourceLanguageId: sourceLanguageId,
         targetLanguageId: targetLanguageId,
         sourceHash: sourceHash,
-        qualityScore: quality,
         usageCount: 0,
         createdAt: now,
         lastUsedAt: now,
@@ -250,24 +231,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required List<({String sourceText, String targetText})> translations,
     String sourceLanguageCode = 'en',
     required String targetLanguageCode,
-    double quality = 0.8,
   }) async {
     if (translations.isEmpty) {
       return const Ok(0);
     }
 
     try {
-      // Validate quality
-      if (quality < AppConstants.minQualityClamp ||
-          quality > AppConstants.maxQualityClamp) {
-        return Err(
-          TmAddException(
-            'Quality must be between ${AppConstants.minQualityClamp} and ${AppConstants.maxQualityClamp}',
-            sourceText: 'batch',
-          ),
-        );
-      }
-
       // Resolve language codes to database IDs
       final sourceLanguageId = await _resolveLanguageId(sourceLanguageCode);
       final targetLanguageId = await _resolveLanguageId(targetLanguageCode);
@@ -302,7 +271,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           sourceLanguageId: sourceLanguageId,
           targetLanguageId: targetLanguageId,
           sourceHash: sourceHash,
-          qualityScore: quality,
           usageCount: 0,
           createdAt: now,
           lastUsedAt: now,
@@ -375,7 +343,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         sourceLanguageId: entry.sourceLanguageId,
         targetLanguageId: entry.targetLanguageId,
         sourceHash: entry.sourceHash,
-        qualityScore: entry.qualityScore,
         usageCount: entry.usageCount + 1,
         createdAt: entry.createdAt,
         lastUsedAt: now,
@@ -404,74 +371,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       return Err(
         TmServiceException(
           'Unexpected error incrementing usage count: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
-  @override
-  Future<Result<TranslationMemoryEntry, TmServiceException>> updateQuality({
-    required String entryId,
-    required double newQuality,
-  }) async {
-    try {
-      // Validate quality
-      if (newQuality < AppConstants.minQualityClamp || newQuality > AppConstants.maxQualityClamp) {
-        return Err(
-          TmServiceException(
-            'Quality must be between ${AppConstants.minQualityClamp} and ${AppConstants.maxQualityClamp}',
-          ),
-        );
-      }
-
-      // Get current entry
-      final getResult = await _repository.getById(entryId);
-
-      if (getResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to get entry: ${getResult.error}',
-            error: getResult.error,
-          ),
-        );
-      }
-
-      final entry = getResult.value;
-
-      // Update entry with new quality
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final updatedEntry = TranslationMemoryEntry(
-        id: entry.id,
-        sourceText: entry.sourceText,
-        translatedText: entry.translatedText,
-        sourceLanguageId: entry.sourceLanguageId,
-        targetLanguageId: entry.targetLanguageId,
-        sourceHash: entry.sourceHash,
-        qualityScore: newQuality,
-        usageCount: entry.usageCount,
-        createdAt: entry.createdAt,
-        lastUsedAt: entry.lastUsedAt,
-        updatedAt: now,
-      );
-
-      final updateResult = await _repository.update(updatedEntry);
-
-      if (updateResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to update quality: ${updateResult.error}',
-            error: updateResult.error,
-          ),
-        );
-      }
-
-      return Ok(updateResult.value);
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error updating quality: ${e.toString()}',
           error: e,
           stackTrace: stackTrace,
         ),
@@ -757,32 +656,20 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    double? minQuality,
   }) =>
       _importExportService.exportToTmx(
         outputPath: outputPath,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
-        minQuality: minQuality,
       );
 
   // ========== STATISTICS AND MAINTENANCE ==========
 
   @override
-  Future<Result<int, TmServiceException>> cleanupLowQualityEntries({
-    double minQuality = AppConstants.minTmCleanupQuality,
+  Future<Result<int, TmServiceException>> cleanupUnusedEntries({
     int unusedDays = AppConstants.unusedTmCleanupDays,
   }) async {
     try {
-      // Validate parameters
-      if (minQuality < 0.0 || minQuality > 1.0) {
-        return Err(
-          TmServiceException(
-            'minQuality must be between 0.0 and 1.0',
-          ),
-        );
-      }
-
       if (unusedDays < 0) {
         return Err(
           TmServiceException(
@@ -799,7 +686,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       _logger.info(
         'Starting TM cleanup',
         {
-          'minQuality': minQuality,
           'unusedDays': unusedDays,
           'cutoffDate': cutoffDate.toIso8601String(),
           'cutoffTimestamp': cutoffTimestamp,
@@ -808,7 +694,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
       // First, count candidates for diagnostic purposes
       final countResult = await _repository.countCleanupCandidates(
-        maxQuality: minQuality,
         unusedDays: unusedDays,
       );
 
@@ -818,16 +703,13 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           'TM cleanup candidates analysis',
           {
             'willBeDeleted': counts['willBeDeleted'],
-            'lowQualityOnly': counts['lowQualityOnly'],
             'unusedOnly': counts['unusedOnly'],
-            'ageFilterDisabled': counts['ageFilterDisabled'] == 1,
           },
         );
       }
 
-      // Delete low-quality, unused entries
-      final deleteResult = await _repository.deleteByQualityAndAge(
-        maxQuality: minQuality,
+      // Delete unused entries
+      final deleteResult = await _repository.deleteByAge(
         unusedDays: unusedDays,
       );
 
@@ -890,7 +772,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
       final statsData = statsResult.value;
       final totalEntries = statsData['total_entries'] as int;
-      final avgQuality = statsData['avg_quality'] as double;
       final totalUsage = statsData['total_usage'] as int;
 
       // Get entries by language
@@ -905,7 +786,24 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         );
       }
 
-      final entriesByLanguagePair = languagePairResult.value;
+      // Resolve language IDs to display names
+      final languageIds = languagePairResult.value.keys.toList();
+      final languagesResult = await _languageRepository.getByIds(languageIds);
+
+      // Build a map of ID -> display name
+      final idToDisplayName = <String, String>{};
+      if (languagesResult.isOk) {
+        for (final lang in languagesResult.value) {
+          idToDisplayName[lang.id] = lang.name;
+        }
+      }
+
+      // Convert UUIDs to display names in the result
+      final entriesByLanguagePair = <String, int>{};
+      for (final entry in languagePairResult.value.entries) {
+        final displayName = idToDisplayName[entry.key] ?? entry.key;
+        entriesByLanguagePair[displayName] = entry.value;
+      }
 
       // Calculate estimated token reuse
       // Assumption: Average entry saves ~50 tokens per reuse
@@ -920,7 +818,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       final stats = TmStatistics(
         totalEntries: totalEntries,
         entriesByLanguagePair: entriesByLanguagePair,
-        averageQuality: avgQuality,
         totalReuseCount: totalUsage,
         tokensSaved: tokensSaved,
         averageFuzzyScore: 0.0, // Would require separate tracking

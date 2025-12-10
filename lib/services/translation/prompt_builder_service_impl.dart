@@ -4,6 +4,7 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
 import 'package:twmt/services/glossary/utils/glossary_matcher.dart';
+import 'package:twmt/services/llm/llm_custom_rules_service.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -20,8 +21,13 @@ import 'package:twmt/services/translation/models/translation_exceptions.dart';
 class PromptBuilderServiceImpl implements IPromptBuilderService {
   final TokenCalculator _tokenCalculator;
   final GlossaryRepository? _glossaryRepository;
+  final LlmCustomRulesService? _customRulesService;
 
-  PromptBuilderServiceImpl(this._tokenCalculator, [this._glossaryRepository]);
+  PromptBuilderServiceImpl(
+    this._tokenCalculator, [
+    this._glossaryRepository,
+    this._customRulesService,
+  ]);
 
   @override
   Future<Result<BuiltPrompt, PromptBuildingException>> buildPrompt({
@@ -75,6 +81,9 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
 
       final formatInstructions = await buildFormatInstructions();
 
+      // Get custom rules if service is available (global + project-specific)
+      final customRulesText = await _buildCustomRulesSection(context.projectId);
+
       final userMessage = await buildUserMessage(units: units);
 
       // Combine all sections
@@ -84,6 +93,7 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
         projectContextText,
         glossaryText,
         formatInstructions,
+        customRulesText,
       );
 
       final fullUserMessage = _combineUserSections(
@@ -319,8 +329,10 @@ QUALITY EXPECTATIONS:
         try {
           await _glossaryRepository.incrementUsageCount(matchedEntryIds);
         } catch (e) {
-          // Log but don't fail translation due to stats update failure
-          print('[PromptBuilderService] Failed to increment glossary usage: $e');
+          // Non-critical: stats update failure shouldn't block translation
+          // Log the error for debugging purposes
+          // ignore: avoid_print
+          print('[PromptBuilder] Failed to increment glossary usage: $e');
         }
       }
     }
@@ -507,6 +519,7 @@ OUTPUT FORMAT (JSON only, no other text):
     String projectContext,
     String glossary,
     String formatInstructions,
+    String customRules,
   ) {
     final sections = <String>[systemMessage];
 
@@ -514,8 +527,28 @@ OUTPUT FORMAT (JSON only, no other text):
     if (projectContext.isNotEmpty) sections.add(projectContext);
     if (glossary.isNotEmpty) sections.add(glossary);
     sections.add(formatInstructions);
+    // Custom rules are added at the very end
+    if (customRules.isNotEmpty) sections.add(customRules);
 
     return sections.join('\n');
+  }
+
+  /// Build custom rules section from user-defined rules
+  ///
+  /// Includes both global rules and project-specific rules.
+  /// Global rules are applied first, followed by project-specific rules.
+  ///
+  /// Returns formatted section with all enabled custom rules,
+  /// or empty string if no rules are enabled or service unavailable.
+  Future<String> _buildCustomRulesSection(String projectId) async {
+    if (_customRulesService == null) return '';
+
+    final rulesText = await _customRulesService.getCombinedRulesTextForProject(projectId);
+    if (rulesText.isEmpty) return '';
+
+    return '''
+CUSTOM TRANSLATION RULES:
+$rulesText''';
   }
 
   /// Combine user message sections

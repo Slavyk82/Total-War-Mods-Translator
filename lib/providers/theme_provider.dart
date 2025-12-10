@@ -6,8 +6,8 @@ part 'theme_provider.g.dart';
 
 /// Theme notifier using AsyncNotifier to properly handle async initialization
 ///
-/// This prevents the race condition where the UI displays with the default
-/// theme before the saved theme is loaded from SharedPreferences.
+/// Supports three modes: system (synced with Windows), light, and dark.
+/// Default is system mode to respect user's Windows preferences.
 @riverpod
 class ThemeNotifier extends _$ThemeNotifier {
   static const String _themeModeKey = 'theme_mode';
@@ -19,33 +19,53 @@ class ThemeNotifier extends _$ThemeNotifier {
     final savedMode = prefs.getString(_themeModeKey);
 
     if (savedMode != null) {
-      return savedMode == 'dark' ? ThemeMode.dark : ThemeMode.light;
+      return _stringToThemeMode(savedMode);
     }
 
-    return ThemeMode.light;
+    // Default to system mode to sync with Windows theme
+    return ThemeMode.system;
   }
 
-  /// Check if current theme is dark mode
-  /// Returns false while loading
-  bool get isDarkMode {
-    final currentState = state;
-    return currentState.maybeWhen(
-      data: (mode) => mode == ThemeMode.dark,
-      orElse: () => false,
-    );
+  /// Convert string to ThemeMode
+  ThemeMode _stringToThemeMode(String value) {
+    switch (value) {
+      case 'dark':
+        return ThemeMode.dark;
+      case 'light':
+        return ThemeMode.light;
+      case 'system':
+      default:
+        return ThemeMode.system;
+    }
   }
 
-  /// Toggle between light and dark themes
-  Future<void> toggleTheme() async {
+  /// Convert ThemeMode to string for storage
+  String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.system:
+        return 'system';
+    }
+  }
+
+  /// Cycle through theme modes: system -> light -> dark -> system
+  Future<void> cycleTheme() async {
     final currentMode = await future;
-    final newMode = currentMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    final ThemeMode newMode;
 
-    // Update state optimistically
-    state = AsyncValue.data(newMode);
+    switch (currentMode) {
+      case ThemeMode.system:
+        newMode = ThemeMode.light;
+      case ThemeMode.light:
+        newMode = ThemeMode.dark;
+      case ThemeMode.dark:
+        newMode = ThemeMode.system;
+    }
 
-    // Persist to storage
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeModeKey, newMode == ThemeMode.dark ? 'dark' : 'light');
+    await setThemeMode(newMode);
   }
 
   /// Set theme mode explicitly
@@ -58,6 +78,6 @@ class ThemeNotifier extends _$ThemeNotifier {
 
     // Persist to storage
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeModeKey, mode == ThemeMode.dark ? 'dark' : 'light');
+    await prefs.setString(_themeModeKey, _themeModeToString(mode));
   }
 }

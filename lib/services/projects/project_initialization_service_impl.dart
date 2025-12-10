@@ -234,7 +234,6 @@ class ProjectInitializationServiceImpl
                 translatedText: null, // Empty for new imports
                 isManuallyEdited: false,
                 status: TranslationVersionStatus.pending,
-                confidenceScore: null,
                 validationIssues: null,
                 createdAt: now,
                 updatedAt: now,

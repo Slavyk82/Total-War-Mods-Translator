@@ -351,7 +351,6 @@ class TmLookupHandler {
           projectLanguageId: context.projectLanguageId,
           translatedText: normalizedText,
           status: TranslationVersionStatus.translated,
-          confidenceScore: pending.match.qualityScore,
           translationSource: translationSource,
           createdAt: now,
           updatedAt: now,
@@ -380,7 +379,6 @@ class TmLookupHandler {
           versionId: version.id,
           translatedText: version.translatedText ?? '',
           status: TranslationVersionStatus.translated.name,
-          confidenceScore: pending.match.qualityScore,
           changedBy: 'tm_$matchType',
           changeReason: 'TM $matchType match ($similarity% similarity)',
         );
@@ -446,7 +444,6 @@ class TmLookupHandler {
         projectLanguageId: context.projectLanguageId,
         translatedText: normalizedText,
         status: TranslationVersionStatus.translated,
-        confidenceScore: match.qualityScore,
         translationSource: translationSource,
         createdAt: DateTime.now().millisecondsSinceEpoch,
         updatedAt: DateTime.now().millisecondsSinceEpoch,

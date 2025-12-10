@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/settings_providers.dart';
 import 'llm_provider_section.dart';
+import 'llm_custom_rules_section.dart';
 
 /// LLM Providers tab for configuring API keys and provider settings.
 class LlmProvidersTab extends ConsumerStatefulWidget {
@@ -134,8 +135,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerName: 'DeepL',
               apiKeyController: _deeplKeyController,
               onSaveApiKey: _saveDeeplApiKey,
-              additionalSettings: _buildDeeplSettings(settings),
             ),
+            const SizedBox(height: 24),
+
+            // Custom Translation Rules Section
+            const LlmCustomRulesSection(),
             const SizedBox(height: 32),
 
             // Advanced Settings
@@ -143,52 +147,6 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildDeeplSettings(Map<String, String> settings) {
-    final deeplPlan = settings[SettingsKeys.deeplPlan] ?? 'free';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16),
-        Text(
-          'Plan',
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          initialValue: deeplPlan,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(4),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
-            ),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'free', child: Text('Free')),
-            DropdownMenuItem(value: 'pro', child: Text('Pro')),
-          ],
-          onChanged: (value) async {
-            if (value != null) {
-              try {
-                final notifier = ref.read(llmProviderSettingsProvider.notifier);
-                await notifier.updateDeeplPlan(value);
-              } catch (e) {
-                if (mounted) {
-                  FluentToast.error(context, 'Error saving DeepL plan: $e');
-                }
-              }
-            }
-          },
-        ),
-      ],
     );
   }
 

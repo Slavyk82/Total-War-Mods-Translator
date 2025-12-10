@@ -11,8 +11,6 @@ import 'models/concurrency_exceptions.dart';
 /// Provides transactional operations with automatic retry on conflict,
 /// rollback on error, and support for nested transactions via savepoints.
 class TransactionManager {
-  // ignore: unused_field
-  final DatabaseService _databaseService;
   final Uuid _uuid;
 
   /// Default maximum retry attempts
@@ -22,10 +20,8 @@ class TransactionManager {
   static const Duration defaultRetryDelay = Duration(milliseconds: 100);
 
   TransactionManager({
-    DatabaseService? databaseService,
     Uuid? uuid,
-  })  : _databaseService = databaseService ?? DatabaseService.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   Database get _db => DatabaseService.database;
 
@@ -330,11 +326,23 @@ class TransactionManager {
 
   /// Execute with timeout
   ///
-  /// Automatically cancels the transaction if it takes too long.
+  /// Attempts to limit transaction execution time using Dart's timeout mechanism.
+  ///
+  /// **IMPORTANT LIMITATION**: This timeout only abandons waiting for the result
+  /// in Dart - it does NOT cancel the underlying SQLite transaction. The transaction
+  /// will continue executing in the database until completion. This means:
+  /// - Database locks may be held longer than expected
+  /// - The transaction may still commit even after timeout is reported
+  /// - Resources may not be immediately freed
+  ///
+  /// For critical sections requiring strict timeouts, consider:
+  /// - Using shorter, atomic operations
+  /// - Implementing application-level cancellation checks within the action
+  /// - Setting appropriate SQLite busy_timeout via PRAGMA
   ///
   /// Parameters:
   /// - [action]: Transaction callback
-  /// - [timeout]: Maximum execution time
+  /// - [timeout]: Maximum execution time (Dart-side only)
   ///
   /// Returns:
   /// - [Ok]: Transaction result
@@ -350,8 +358,9 @@ class TransactionManager {
 
       return Ok(result);
     } on TimeoutException {
+      // Note: The transaction may still be running in SQLite
       return Err(TransactionException(
-        'Transaction timed out after ${timeout.inSeconds}s',
+        'Transaction timed out after ${timeout.inSeconds}s (note: SQLite transaction may still be executing)',
         originalError: TimeoutException('Transaction timeout'),
       ));
     } on DatabaseException catch (e) {

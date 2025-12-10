@@ -24,10 +24,6 @@ class TranslationVersionHistory {
   /// The status at this point in history
   final TranslationVersionStatus status;
 
-  /// The confidence score at this point in history
-  @JsonKey(name: 'confidence_score')
-  final double? confidenceScore;
-
   /// Who made this change (user ID, provider code, or 'system')
   @JsonKey(name: 'changed_by')
   final String changedBy;
@@ -45,7 +41,6 @@ class TranslationVersionHistory {
     required this.versionId,
     required this.translatedText,
     required this.status,
-    this.confidenceScore,
     required this.changedBy,
     this.changeReason,
     required this.createdAt,
@@ -64,13 +59,6 @@ class TranslationVersionHistory {
   /// Returns true if a change reason was provided
   bool get hasChangeReason =>
       changeReason != null && changeReason!.isNotEmpty;
-
-  /// Returns true if there's a confidence score
-  bool get hasConfidenceScore => confidenceScore != null;
-
-  /// Returns the confidence score as a percentage (0-100)
-  int? get confidencePercentage =>
-      confidenceScore != null ? (confidenceScore! * 100).round() : null;
 
   /// Returns a display string for who made the change
   String get changedByDisplay {
@@ -115,7 +103,6 @@ class TranslationVersionHistory {
     String? versionId,
     String? translatedText,
     TranslationVersionStatus? status,
-    double? confidenceScore,
     String? changedBy,
     String? changeReason,
     int? createdAt,
@@ -125,7 +112,6 @@ class TranslationVersionHistory {
       versionId: versionId ?? this.versionId,
       translatedText: translatedText ?? this.translatedText,
       status: status ?? this.status,
-      confidenceScore: confidenceScore ?? this.confidenceScore,
       changedBy: changedBy ?? this.changedBy,
       changeReason: changeReason ?? this.changeReason,
       createdAt: createdAt ?? this.createdAt,
@@ -145,7 +131,6 @@ class TranslationVersionHistory {
         other.versionId == versionId &&
         other.translatedText == translatedText &&
         other.status == status &&
-        other.confidenceScore == confidenceScore &&
         other.changedBy == changedBy &&
         other.changeReason == changeReason &&
         other.createdAt == createdAt;
@@ -157,7 +142,6 @@ class TranslationVersionHistory {
       versionId.hashCode ^
       translatedText.hashCode ^
       status.hashCode ^
-      confidenceScore.hashCode ^
       changedBy.hashCode ^
       changeReason.hashCode ^
       createdAt.hashCode;

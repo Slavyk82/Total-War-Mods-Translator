@@ -67,12 +67,13 @@ class ModUpdateAnalysisService {
   /// - New keys added in the pack
   /// - Keys removed from the pack
   /// - Keys with modified source text
+  /// - Obsolete keys that reappeared in the pack
   Future<Result<ModUpdateAnalysis, ServiceException>> analyzeChanges({
     required String projectId,
     required String packFilePath,
   }) async {
     try {
-      // Step 1: Get existing translation units from database
+      // Step 1: Get existing active translation units from database
       final existingUnitsResult = await _unitRepository.getActive(projectId);
       if (existingUnitsResult.isErr) {
         return Err(ServiceException(
@@ -84,6 +85,20 @@ class ModUpdateAnalysisService {
       final existingUnitsMap = <String, TranslationUnit>{};
       for (final unit in existingUnits) {
         existingUnitsMap[unit.key] = unit;
+      }
+
+      // Step 1b: Get obsolete translation units from database
+      final obsoleteUnitsResult = await _unitRepository.getObsolete(projectId);
+      if (obsoleteUnitsResult.isErr) {
+        return Err(ServiceException(
+          'Failed to get obsolete translation units: ${obsoleteUnitsResult.error}',
+        ));
+      }
+
+      final obsoleteUnits = obsoleteUnitsResult.value;
+      final obsoleteUnitsMap = <String, TranslationUnit>{};
+      for (final unit in obsoleteUnits) {
+        obsoleteUnitsMap[unit.key] = unit;
       }
 
       // Step 2: Extract and parse pack file
@@ -99,6 +114,8 @@ class ModUpdateAnalysisService {
       final newUnitsData = <NewUnitData>[];
       final modifiedUnitKeys = <String>[];
       final modifiedSourceTexts = <String, String>{};
+      final reactivatedUnitKeys = <String>[];
+      final reactivatedSourceTexts = <String, String>{};
       final packKeys = <String>{};
 
       for (final unitData in packUnits) {
@@ -107,18 +124,27 @@ class ModUpdateAnalysisService {
         packKeys.add(key);
 
         final existingUnit = existingUnitsMap[key];
-        if (existingUnit == null) {
-          // New key - collect complete data
+        final obsoleteUnit = obsoleteUnitsMap[key];
+
+        if (existingUnit != null) {
+          // Unit exists and is active
+          if (existingUnit.sourceText != packSourceText) {
+            // Modified source text
+            modifiedUnitKeys.add(key);
+            modifiedSourceTexts[key] = packSourceText;
+          }
+        } else if (obsoleteUnit != null) {
+          // Unit was obsolete but reappeared in pack - needs reactivation
+          reactivatedUnitKeys.add(key);
+          reactivatedSourceTexts[key] = packSourceText;
+        } else {
+          // Truly new key - collect complete data
           newUnitKeys.add(key);
           newUnitsData.add(NewUnitData(
             key: key,
             sourceText: packSourceText,
             sourceLocFile: unitData.sourceLocFile,
           ));
-        } else if (existingUnit.sourceText != packSourceText) {
-          // Modified source text
-          modifiedUnitKeys.add(key);
-          modifiedSourceTexts[key] = packSourceText;
         }
       }
 
@@ -134,6 +160,7 @@ class ModUpdateAnalysisService {
         newUnitsCount: newUnitKeys.length,
         removedUnitsCount: removedUnitKeys.length,
         modifiedUnitsCount: modifiedUnitKeys.length,
+        reactivatedUnitsCount: reactivatedUnitKeys.length,
         totalPackUnits: packUnits.length,
         totalProjectUnits: existingUnits.length,
         newUnitKeys: newUnitKeys,
@@ -141,13 +168,16 @@ class ModUpdateAnalysisService {
         removedUnitKeys: removedUnitKeys,
         modifiedUnitKeys: modifiedUnitKeys,
         modifiedSourceTexts: modifiedSourceTexts,
+        reactivatedUnitKeys: reactivatedUnitKeys,
+        reactivatedSourceTexts: reactivatedSourceTexts,
       );
 
       // Log analysis results for debugging
       if (analysis.hasChanges) {
         _logger.info(
           'ModUpdateAnalysis for project $projectId: '
-          '+${analysis.newUnitsCount} new, -${analysis.removedUnitsCount} removed, ~${analysis.modifiedUnitsCount} modified '
+          '+${analysis.newUnitsCount} new, -${analysis.removedUnitsCount} removed, '
+          '~${analysis.modifiedUnitsCount} modified, ↩${analysis.reactivatedUnitsCount} reactivated '
           '(pack: ${packUnits.length}, project: ${existingUnits.length})',
         );
       }
@@ -389,7 +419,6 @@ class ModUpdateAnalysisService {
             translatedText: null,
             isManuallyEdited: false,
             status: TranslationVersionStatus.pending,
-            confidenceScore: null,
             validationIssues: null,
             createdAt: now,
             updatedAt: now,
@@ -412,6 +441,130 @@ class ModUpdateAnalysisService {
       _logger.error('Failed to add new units', e, stackTrace);
       return Err(ServiceException(
         'Failed to add new units: $e',
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    }
+  }
+
+  /// Mark removed translation units as obsolete.
+  ///
+  /// For units that exist in the project but no longer in the mod pack:
+  /// - Marks them as obsolete (soft delete) to preserve translation history
+  /// - Obsolete units are excluded from active translation workflows
+  ///
+  /// [projectId] - The project containing the units
+  /// [analysis] - The analysis result containing removed unit keys
+  /// [onProgress] - Optional callback for progress reporting (processed, total)
+  ///
+  /// Returns the count of units marked as obsolete.
+  Future<Result<int, ServiceException>> markRemovedUnitsObsolete({
+    required String projectId,
+    required ModUpdateAnalysis analysis,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    try {
+      if (!analysis.hasRemovedUnits) {
+        return Ok(0);
+      }
+
+      _logger.info(
+        'Marking ${analysis.removedUnitsCount} units as obsolete for project $projectId',
+      );
+
+      final result = await _unitRepository.markObsoleteByKeys(
+        projectId: projectId,
+        keys: analysis.removedUnitKeys,
+        onProgress: onProgress,
+      );
+
+      if (result.isErr) {
+        return Err(ServiceException(
+          'Failed to mark units as obsolete: ${result.error}',
+        ));
+      }
+
+      final unitsMarked = result.value;
+      _logger.info('Marked $unitsMarked units as obsolete for project $projectId');
+      return Ok(unitsMarked);
+    } catch (e, stackTrace) {
+      _logger.error('Failed to mark removed units as obsolete', e, stackTrace);
+      return Err(ServiceException(
+        'Failed to mark removed units as obsolete: $e',
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    }
+  }
+
+  /// Reactivate obsolete translation units that reappeared in the mod.
+  ///
+  /// For units that were previously marked obsolete but now exist in the pack:
+  /// - Reactivates them (sets is_obsolete = false)
+  /// - Updates their source text to the new value
+  /// - Sets all translation versions to needsReview status
+  ///
+  /// [projectId] - The project containing the units
+  /// [analysis] - The analysis result containing reactivated unit data
+  /// [onProgress] - Optional callback for progress reporting (processed, total)
+  ///
+  /// Returns a record with counts of units reactivated and translations marked for review.
+  Future<Result<({int unitsReactivated, int translationsMarkedForReview}), ServiceException>>
+      reactivateObsoleteUnits({
+    required String projectId,
+    required ModUpdateAnalysis analysis,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    try {
+      if (!analysis.hasReactivatedUnits) {
+        return Ok((unitsReactivated: 0, translationsMarkedForReview: 0));
+      }
+
+      _logger.info(
+        'Reactivating ${analysis.reactivatedUnitsCount} obsolete units for project $projectId',
+      );
+
+      // Step 1: Reactivate units and update source texts
+      final reactivateResult = await _unitRepository.reactivateByKeys(
+        projectId: projectId,
+        sourceTextUpdates: analysis.reactivatedSourceTexts,
+        onProgress: onProgress,
+      );
+
+      if (reactivateResult.isErr) {
+        return Err(ServiceException(
+          'Failed to reactivate units: ${reactivateResult.error}',
+        ));
+      }
+
+      final unitsReactivated = reactivateResult.value;
+
+      // Step 2: Set status to needsReview for all translation versions
+      final reviewResult = await _versionRepository.setNeedsReviewForUnitKeys(
+        projectId: projectId,
+        unitKeys: analysis.reactivatedUnitKeys,
+      );
+
+      if (reviewResult.isErr) {
+        return Err(ServiceException(
+          'Failed to set translations to needsReview: ${reviewResult.error}',
+        ));
+      }
+
+      final translationsMarkedForReview = reviewResult.value;
+
+      _logger.info(
+        'Reactivated $unitsReactivated units, marked $translationsMarkedForReview translations for review',
+      );
+
+      return Ok((
+        unitsReactivated: unitsReactivated,
+        translationsMarkedForReview: translationsMarkedForReview,
+      ));
+    } catch (e, stackTrace) {
+      _logger.error('Failed to reactivate obsolete units', e, stackTrace);
+      return Err(ServiceException(
+        'Failed to reactivate obsolete units: $e',
         error: e,
         stackTrace: stackTrace,
       ));

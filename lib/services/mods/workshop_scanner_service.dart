@@ -58,7 +58,14 @@ class WorkshopScannerService {
 
   /// Emit a log message to the scan log stream
   void _emitLog(String message, [ScanLogLevel level = ScanLogLevel.info]) {
-    _scanLogController.add(ScanLogMessage(message: message, level: level));
+    if (!_scanLogController.isClosed) {
+      _scanLogController.add(ScanLogMessage(message: message, level: level));
+    }
+  }
+
+  /// Dispose resources
+  void dispose() {
+    _scanLogController.close();
   }
 
   WorkshopScannerService({
@@ -482,23 +489,32 @@ class WorkshopScannerService {
           timeUpdated != null &&
           timeUpdated != cachedTimeUpdated;
 
-      // Check if analysis cache is missing or invalidated by file change
+      // Check if we have a valid cached analysis with changes
+      // This is used to continue showing changes even after timeUpdated is synced
+      ModUpdateAnalysisCache? validCachedAnalysis;
       bool analysisCacheInvalid = false;
-      if (existingProject != null && localFileUpToDate && !hasNewSteamUpdate) {
+
+      if (existingProject != null && localFileUpToDate) {
         final cacheResult = await _analysisCacheRepository.getByProjectAndPath(
           existingProject.id,
           modData.packFile.path,
         );
         if (cacheResult.isOk) {
           final cachedAnalysis = cacheResult.value;
-          analysisCacheInvalid = cachedAnalysis == null ||
-              !cachedAnalysis.isValidFor(modData.fileLastModified);
+          if (cachedAnalysis != null &&
+              cachedAnalysis.isValidFor(modData.fileLastModified)) {
+            validCachedAnalysis = cachedAnalysis;
+          } else {
+            analysisCacheInvalid = true;
+          }
         } else {
           analysisCacheInvalid = true;
         }
       }
 
       ModUpdateAnalysis? updateAnalysis;
+
+      // If we have a new Steam update or cache is invalid, perform fresh analysis
       if (existingProject != null && localFileUpToDate && (hasNewSteamUpdate || analysisCacheInvalid)) {
         if (hasNewSteamUpdate) {
           _logger.info('New Steam update detected for $workshopId, analyzing changes...');
@@ -520,6 +536,24 @@ class WorkshopScannerService {
         if (updateAnalysis != null && updateAnalysis.hasChanges) {
           _emitLog('  → ${updateAnalysis.newUnitsCount} new, ${updateAnalysis.modifiedUnitsCount} modified, ${updateAnalysis.removedUnitsCount} removed');
         }
+
+        // Only sync timeUpdated AFTER analysis if there are NO changes
+        // If there are changes, we wait until they are dismissed by the user
+        if (updateAnalysis == null || !updateAnalysis.hasChanges) {
+          if (hasNewSteamUpdate) {
+            _logger.debug('Syncing timeUpdated for $workshopId (no changes): $cachedTimeUpdated -> $timeUpdated');
+            await _workshopModRepository.updateTimeUpdated(workshopId, timeUpdated);
+          }
+        }
+      } else if (validCachedAnalysis != null && validCachedAnalysis.hasChanges) {
+        // Use cached analysis that still has unprocessed changes
+        // This allows showing changes even after timeUpdated was synced
+        _logger.debug('Using cached analysis with changes for $workshopId');
+        updateAnalysis = validCachedAnalysis.toAnalysis();
+      } else if (localFileUpToDate && hasNewSteamUpdate) {
+        // No project imported but timestamps differ - just sync the timestamp
+        _logger.debug('Syncing timeUpdated for $workshopId (no project): $cachedTimeUpdated -> $timeUpdated');
+        await _workshopModRepository.updateTimeUpdated(workshopId, timeUpdated);
       }
 
       // Log timestamps for debugging when there are changes or download needed
@@ -606,9 +640,19 @@ class WorkshopScannerService {
       final cachedAnalysis = cacheResult.value;
       if (cachedAnalysis != null &&
           cachedAnalysis.isValidFor(fileLastModified)) {
-        _logger.debug('Analysis cache hit for $workshopId');
-        // Cache hit means changes were already applied in a previous scan
-        return _AnalysisResult(analysis: cachedAnalysis.toAnalysis());
+        // Cache hit - but the cache only stores counts, not the actual data
+        // If there are pending changes, we need to re-analyze to get the data
+        if (!cachedAnalysis.hasChanges) {
+          _logger.debug('Analysis cache hit for $workshopId (no changes)');
+          return _AnalysisResult(analysis: cachedAnalysis.toAnalysis());
+        }
+
+        // Cache indicates changes exist - we need to re-analyze to get the
+        // actual data (newUnitsData, modifiedSourceTexts) needed to apply them
+        _logger.debug(
+          'Analysis cache has changes for $workshopId, re-analyzing to get data...',
+        );
+        // Fall through to perform fresh analysis
       }
     }
 
@@ -626,6 +670,7 @@ class WorkshopScannerService {
         // If there are new units, add them automatically
         // This creates TranslationUnit and TranslationVersion records with status 'pending'
         if (analysis.hasNewUnits) {
+          _emitLog('  Adding ${analysis.newUnitsCount} new units...');
           _logger.info(
             'Auto-adding ${analysis.newUnitsCount} new units for project $projectId',
           );
@@ -634,6 +679,7 @@ class WorkshopScannerService {
             analysis: analysis,
           );
           if (addResult.isOk && addResult.value > 0) {
+            _emitLog('  ✓ Added ${addResult.value} new units');
             _logger.info('Added ${addResult.value} new units');
             statsChanged = true;
           } else if (addResult.isErr) {
@@ -646,6 +692,7 @@ class WorkshopScannerService {
         // If there are modified source texts, apply changes automatically
         // This updates source texts and resets translation statuses to pending
         if (analysis.hasModifiedUnits) {
+          _emitLog('  Updating ${analysis.modifiedUnitsCount} modified units...');
           _logger.info(
             'Auto-applying ${analysis.modifiedUnitsCount} source text changes for project $projectId',
           );
@@ -655,6 +702,7 @@ class WorkshopScannerService {
           );
           if (applyResult.isOk) {
             final result = applyResult.value;
+            _emitLog('  ✓ Updated ${result.sourceTextsUpdated} source texts');
             _logger.info(
               'Applied: ${result.sourceTextsUpdated} source texts updated, '
               '${result.translationsReset} translations reset to pending',
@@ -669,17 +717,77 @@ class WorkshopScannerService {
           }
         }
 
-        // Cache the result
+        // If there are removed units, mark them as obsolete
+        // This soft-deletes units that no longer exist in the mod pack
+        if (analysis.hasRemovedUnits) {
+          _emitLog('  Marking ${analysis.removedUnitsCount} removed units as obsolete...');
+          _logger.info(
+            'Auto-marking ${analysis.removedUnitsCount} removed units as obsolete for project $projectId',
+          );
+          final removeResult = await _modUpdateAnalysisService.markRemovedUnitsObsolete(
+            projectId: projectId,
+            analysis: analysis,
+            onProgress: (processed, total) {
+              _emitLog('  Marking obsolete: $processed/$total');
+            },
+          );
+          if (removeResult.isOk && removeResult.value > 0) {
+            _emitLog('  ✓ Marked ${removeResult.value} units as obsolete');
+            _logger.info('Marked ${removeResult.value} units as obsolete');
+            statsChanged = true;
+          } else if (removeResult.isErr) {
+            _logger.warning(
+              'Failed to mark removed units as obsolete: ${removeResult.error.message}',
+            );
+          }
+        }
+
+        // If there are reactivated units (previously obsolete, now back in pack),
+        // reactivate them and mark translations for review
+        if (analysis.hasReactivatedUnits) {
+          _emitLog('  Reactivating ${analysis.reactivatedUnitsCount} units...');
+          _logger.info(
+            'Auto-reactivating ${analysis.reactivatedUnitsCount} obsolete units for project $projectId',
+          );
+          final reactivateResult = await _modUpdateAnalysisService.reactivateObsoleteUnits(
+            projectId: projectId,
+            analysis: analysis,
+            onProgress: (processed, total) {
+              _emitLog('  Reactivating: $processed/$total');
+            },
+          );
+          if (reactivateResult.isOk) {
+            final result = reactivateResult.value;
+            if (result.unitsReactivated > 0) {
+              _emitLog('  ✓ Reactivated ${result.unitsReactivated} units');
+              _logger.info(
+                'Reactivated ${result.unitsReactivated} units, '
+                '${result.translationsMarkedForReview} translations marked for review',
+              );
+              statsChanged = true;
+            }
+          } else {
+            _logger.warning(
+              'Failed to reactivate obsolete units: ${reactivateResult.error.message}',
+            );
+          }
+        }
+
+        // Cache the result - but with zeroed counts if changes were applied
+        // This prevents stale "pending changes" badges after changes are processed
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final analysisToCache = statsChanged
+            ? ModUpdateAnalysis.empty  // Changes applied, cache as "no changes"
+            : analysis;  // No changes applied (or failed), cache original analysis
         final cacheEntry = ModUpdateAnalysisCache.fromAnalysis(
           id: _uuid.v4(),
           projectId: projectId,
           packFilePath: packFilePath,
           fileLastModified: fileLastModified,
-          analysis: analysis,
+          analysis: analysisToCache,
           analyzedAt: now,
         );
-        _analysisCacheRepository.upsert(cacheEntry);
+        await _analysisCacheRepository.upsert(cacheEntry);
         return _AnalysisResult(analysis: analysis, statsChanged: statsChanged);
       },
       err: (error) {

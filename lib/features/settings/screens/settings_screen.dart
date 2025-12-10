@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../widgets/general_settings_tab.dart';
+import '../widgets/folders_settings_tab.dart';
 import '../widgets/llm_providers_tab.dart';
 
 /// Settings screen with tabbed interface for General and LLM Providers.
@@ -19,7 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return FluentScaffold(
       body: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -57,6 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     label: 'General',
                   ),
                   _FluentTab(
+                    icon: FluentIcons.folder_24_regular,
+                    label: 'Folders',
+                  ),
+                  _FluentTab(
                     icon: FluentIcons.brain_circuit_24_regular,
                     label: 'LLM Providers',
                   ),
@@ -67,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: TabBarView(
                 children: [
                   GeneralSettingsTab(),
+                  FoldersSettingsTab(),
                   LlmProvidersTab(),
                 ],
               ),

@@ -16,7 +16,6 @@ class TmPaginationBar extends ConsumerWidget {
     final filterState = ref.watch(tmFilterStateProvider);
     final countAsync = ref.watch(tmEntriesCountProvider(
       targetLang: filterState.targetLanguage,
-      minQuality: filterState.effectiveMinQuality,
     ));
 
     return Container(

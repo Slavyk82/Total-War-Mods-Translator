@@ -290,26 +290,6 @@ class _TranslationHistoryDialogState
                 style: const TextStyle(fontSize: 13),
               ),
             ),
-            if (entry.hasConfidenceScore) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Icon(
-                    FluentIcons.checkmark_circle_24_regular,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Confidence: ${entry.confidencePercentage}%',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
             if (entry.hasChangeReason) ...[
               const SizedBox(height: 4),
               Row(

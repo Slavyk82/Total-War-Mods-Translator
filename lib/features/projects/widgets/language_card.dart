@@ -14,6 +14,7 @@ class LanguageCard extends StatefulWidget {
   final int translatedUnits;
   final int validatedUnits;
   final VoidCallback? onOpenEditor;
+  final VoidCallback? onDelete;
 
   const LanguageCard({
     super.key,
@@ -23,6 +24,7 @@ class LanguageCard extends StatefulWidget {
     required this.translatedUnits,
     this.validatedUnits = 0,
     this.onOpenEditor,
+    this.onDelete,
   });
 
   /// Calculate progress percentage based on actual translation counts
@@ -39,6 +41,7 @@ class LanguageCard extends StatefulWidget {
 class _LanguageCardState extends State<LanguageCard> {
   bool _isHovered = false;
   bool _buttonHovered = false;
+  bool _deleteButtonHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +98,10 @@ class _LanguageCardState extends State<LanguageCard> {
                   ),
                 ),
                 _buildStatusBadge(context),
+                if (widget.onDelete != null) ...[
+                  const SizedBox(width: 8),
+                  _buildDeleteButton(context),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -135,13 +142,17 @@ class _LanguageCardState extends State<LanguageCard> {
           ],
         ),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: SizedBox(
-            height: 8,
+        Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progressPercent / 100,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation<Color>(
                 _getProgressColor(theme, progressPercent),
               ),
@@ -213,6 +224,44 @@ class _LanguageCardState extends State<LanguageCard> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _deleteButtonHovered = true),
+      onExit: (_) => setState(() => _deleteButtonHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (widget.onDelete != null) {
+            widget.onDelete!();
+          }
+        },
+        child: Tooltip(
+          message: 'Delete language',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _deleteButtonHovered
+                  ? theme.colorScheme.errorContainer
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              FluentIcons.delete_24_regular,
+              size: 18,
+              color: _deleteButtonHovered
+                  ? theme.colorScheme.error
+                  : theme.colorScheme.outline,
+            ),
           ),
         ),
       ),

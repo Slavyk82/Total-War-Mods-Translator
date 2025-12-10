@@ -136,10 +136,16 @@ class WorkshopModRepository extends BaseRepository<WorkshopMod> {
   }
 
   /// Batch upsert multiple workshop mods
+  ///
+  /// Uses a transaction to ensure atomicity - all inserts succeed or none do.
   Future<Result<List<WorkshopMod>, TWMTDatabaseException>> upsertBatch(
       List<WorkshopMod> entities) async {
-    return executeQuery(() async {
-      final batch = database.batch();
+    if (entities.isEmpty) {
+      return const Ok([]);
+    }
+
+    return executeTransaction((txn) async {
+      final batch = txn.batch();
 
       for (final entity in entities) {
         final map = toMap(entity);
@@ -225,6 +231,23 @@ class WorkshopModRepository extends BaseRepository<WorkshopMod> {
       await database.update(
         tableName,
         {'last_checked_at': timestamp, 'updated_at': timestamp},
+        where: 'workshop_id = ?',
+        whereArgs: [workshopId],
+      );
+    });
+  }
+
+  /// Update time_updated timestamp (called when local file is confirmed current)
+  ///
+  /// This syncs the cached Steam timestamp with the actual Steam API value
+  /// after the user has re-downloaded the mod file.
+  Future<Result<void, TWMTDatabaseException>> updateTimeUpdated(
+      String workshopId, int timeUpdated) async {
+    return executeQuery(() async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await database.update(
+        tableName,
+        {'time_updated': timeUpdated, 'updated_at': now},
         where: 'workshop_id = ?',
         whereArgs: [workshopId],
       );

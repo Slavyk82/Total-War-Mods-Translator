@@ -119,7 +119,7 @@ class TranslationMemoryRepository
         tableName,
         where: 'source_hash = ? AND target_language_id = ?',
         whereArgs: [sourceHash, targetLanguageId],
-        orderBy: 'quality_score DESC, usage_count DESC',
+        orderBy: 'usage_count DESC',
         limit: 1,
       );
 
@@ -210,14 +210,10 @@ class TranslationMemoryRepository
         }
       }
 
-      // Step 4: Sort by similarity (descending), then quality + usage
+      // Step 4: Sort by similarity (descending), then usage
       matches.sort((a, b) {
         final simCompare = b.similarity.compareTo(a.similarity);
         if (simCompare != 0) return simCompare;
-
-        final qualityCompare = (b.entry.qualityScore ?? 0.0)
-            .compareTo(a.entry.qualityScore ?? 0.0);
-        if (qualityCompare != 0) return qualityCompare;
 
         return b.entry.usageCount.compareTo(a.entry.usageCount);
       });
@@ -260,47 +256,31 @@ class TranslationMemoryRepository
     return StringSimilarity.similarity(text1, text2, caseSensitive: false);
   }
 
-  /// Delete entries with low quality and optionally not recently used (bulk cleanup).
+  /// Delete entries not recently used (bulk cleanup).
   ///
-  /// This method removes TM entries based on:
-  /// - Quality score is below [maxQuality] threshold (NULL treated as 0)
-  /// - If [unusedDays] > 0: Also requires last used more than [unusedDays] days ago
-  /// - If [unusedDays] = 0: Age filter is disabled, deletes by quality only
+  /// This method removes TM entries not used within [unusedDays] days.
   ///
-  /// [maxQuality] - Maximum quality score for deletion (entries below this are deleted)
-  /// [unusedDays] - Minimum days since last use (0 = disabled, quality only)
+  /// [unusedDays] - Minimum days since last use
   ///
   /// Returns [Ok] with count of deleted entries, [Err] with exception on failure.
-  Future<Result<int, TWMTDatabaseException>> deleteByQualityAndAge({
-    required double maxQuality,
+  Future<Result<int, TWMTDatabaseException>> deleteByAge({
     required int unusedDays,
   }) async {
     return executeQuery(() async {
-      int rowsAffected;
-
       if (unusedDays <= 0) {
-        // Age filter disabled - delete by quality only
-        rowsAffected = await database.rawDelete(
-          '''
-          DELETE FROM $tableName
-          WHERE COALESCE(quality_score, 0) < ?
-          ''',
-          [maxQuality],
-        );
-      } else {
-        // Both filters active
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
-
-        rowsAffected = await database.rawDelete(
-          '''
-          DELETE FROM $tableName
-          WHERE COALESCE(quality_score, 0) < ?
-            AND COALESCE(last_used_at, 0) < ?
-          ''',
-          [maxQuality, cutoffTimestamp],
-        );
+        return 0;
       }
+
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
+
+      final rowsAffected = await database.rawDelete(
+        '''
+        DELETE FROM $tableName
+        WHERE COALESCE(last_used_at, 0) < ?
+        ''',
+        [cutoffTimestamp],
+      );
 
       return rowsAffected;
     });
@@ -310,45 +290,20 @@ class TranslationMemoryRepository
   ///
   /// Used for diagnostics/preview before actual deletion.
   Future<Result<Map<String, int>, TWMTDatabaseException>> countCleanupCandidates({
-    required double maxQuality,
     required int unusedDays,
   }) async {
     return executeQuery(() async {
-      // Count entries with low quality only
-      final lowQualityResult = await database.rawQuery(
-        '''
-        SELECT COUNT(*) as count FROM $tableName
-        WHERE COALESCE(quality_score, 0) < ?
-        ''',
-        [maxQuality],
-      );
-
-      final lowQualityCount = lowQualityResult.first['count'] as int;
-
       if (unusedDays <= 0) {
-        // Age filter disabled - only quality matters
         return {
-          'willBeDeleted': lowQualityCount,
-          'lowQualityOnly': lowQualityCount,
+          'willBeDeleted': 0,
           'unusedOnly': 0,
-          'ageFilterDisabled': 1,
         };
       }
 
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
 
-      // Count entries matching both criteria (will be deleted)
-      final bothResult = await database.rawQuery(
-        '''
-        SELECT COUNT(*) as count FROM $tableName
-        WHERE COALESCE(quality_score, 0) < ?
-          AND COALESCE(last_used_at, 0) < ?
-        ''',
-        [maxQuality, cutoffTimestamp],
-      );
-
-      // Count entries not used recently only
+      // Count entries not used recently
       final unusedResult = await database.rawQuery(
         '''
         SELECT COUNT(*) as count FROM $tableName
@@ -358,10 +313,8 @@ class TranslationMemoryRepository
       );
 
       return {
-        'willBeDeleted': bothResult.first['count'] as int,
-        'lowQualityOnly': lowQualityCount,
+        'willBeDeleted': unusedResult.first['count'] as int,
         'unusedOnly': unusedResult.first['count'] as int,
-        'ageFilterDisabled': 0,
       };
     });
   }
@@ -370,7 +323,6 @@ class TranslationMemoryRepository
   ///
   /// Returns aggregated statistics including:
   /// - Total number of entries
-  /// - Average quality score
   /// - Total usage count
   /// - Optional filtering by target language
   ///
@@ -396,7 +348,6 @@ class TranslationMemoryRepository
       final result = await database.rawQuery('''
         SELECT
           COUNT(*) as total_entries,
-          COALESCE(AVG(quality_score), 0.0) as avg_quality,
           COALESCE(SUM(usage_count), 0) as total_usage
         FROM $tableName
         ${whereClause != null ? 'WHERE $whereClause' : ''}
@@ -487,7 +438,7 @@ class TranslationMemoryRepository
         tableName,
         where: 'source_hash = ? AND target_language_id = ?',
         whereArgs: [sourceHash, targetLanguageId],
-        orderBy: 'quality_score DESC, usage_count DESC',
+        orderBy: 'usage_count DESC',
         limit: 1,
       );
 
@@ -606,13 +557,35 @@ class TranslationMemoryRepository
     return words.map((w) => '"$w"*').join(' OR ');
   }
 
+  /// Delete all translation memory entries for a specific language.
+  ///
+  /// This is used when deleting a custom language to clean up TM entries
+  /// that reference it (either as source or target language).
+  ///
+  /// [languageId] - The language ID to delete entries for
+  ///
+  /// Returns [Ok] with count of deleted entries, [Err] with exception on failure.
+  Future<Result<int, TWMTDatabaseException>> deleteByLanguageId(
+    String languageId,
+  ) async {
+    return executeQuery(() async {
+      final rowsAffected = await database.delete(
+        tableName,
+        where: 'source_language_id = ? OR target_language_id = ?',
+        whereArgs: [languageId, languageId],
+      );
+
+      return rowsAffected;
+    });
+  }
+
   /// Batch upsert translation memory entries.
   ///
   /// Efficiently inserts or updates multiple TM entries in a single transaction.
   /// Uses INSERT OR REPLACE with source_hash as conflict resolution key.
   ///
   /// For existing entries (same source_hash + target_language_id):
-  /// - Updates translated_text, quality_score, last_used_at, updated_at
+  /// - Updates translated_text, last_used_at, updated_at
   /// - Increments usage_count
   ///
   /// For new entries: Creates with provided values.
@@ -669,15 +642,10 @@ class TranslationMemoryRepository
 
         if (existing != null) {
           // Update existing entry
-          final updatedQuality = (existing.qualityScore ?? 0.0) > entry.qualityScore!
-              ? existing.qualityScore
-              : entry.qualityScore;
-
           await txn.update(
             tableName,
             {
               'translated_text': entry.translatedText,
-              'quality_score': updatedQuality,
               'usage_count': existing.usageCount + 1,
               'last_used_at': now,
               'updated_at': now,

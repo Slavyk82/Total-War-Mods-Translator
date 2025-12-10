@@ -14,8 +14,6 @@ import 'models/concurrency_exceptions.dart';
 /// Locks are automatically released after a timeout (default: 5 minutes)
 /// to prevent deadlocks from crashed sessions.
 class PessimisticLockManager {
-  // ignore: unused_field
-  final DatabaseService _databaseService;
   final Uuid _uuid;
 
   /// Default lock timeout (5 minutes)
@@ -25,10 +23,8 @@ class PessimisticLockManager {
   static const Duration maxTimeout = Duration(minutes: 30);
 
   PessimisticLockManager({
-    DatabaseService? databaseService,
     Uuid? uuid,
-  })  : _databaseService = databaseService ?? DatabaseService.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   Database get _db => DatabaseService.database;
 
@@ -62,74 +58,119 @@ class PessimisticLockManager {
     LockRequest request,
   ) async {
     try {
-      // Clean up expired locks first
+      // Clean up expired locks first (outside transaction - separate concern)
       await _cleanupExpiredLocks();
 
-      // Check if resource is already locked
-      final existingLock = await _getActiveLock(
-        request.resourceId,
-        request.resourceType,
-      );
+      // Use a transaction to make check-and-insert atomic
+      // This prevents race conditions where two processes could both
+      // see no lock exists and then both insert a new lock
+      final result = await _db.transaction<Result<LockInfo, ConcurrencyException>>(
+        (txn) async {
+          // Check if resource is already locked (within transaction)
+          final existingLockResults = await txn.query(
+            'entry_locks',
+            where: 'resource_id = ? AND resource_type = ? AND status = ?',
+            whereArgs: [
+              request.resourceId,
+              request.resourceType,
+              LockStatus.active.name,
+            ],
+            limit: 1,
+          );
 
-      if (existingLock != null) {
-        // Check if it's the same owner (lock renewal)
-        if (existingLock.ownerId == request.ownerId &&
-            existingLock.ownerType == request.ownerType) {
-          // Renew the lock
-          return await _renewLock(existingLock.id, request.timeout);
-        }
+          LockInfo? existingLock;
+          if (existingLockResults.isNotEmpty) {
+            final parsed = _parseLock(existingLockResults.first);
+            if (parsed.isActive) {
+              existingLock = parsed;
+            }
+          }
 
-        // Resource is locked by someone else
-        if (!request.force) {
-          return Err(ResourceLockedException(
-            'Resource is already locked by ${existingLock.ownerType}:${existingLock.ownerId}',
+          if (existingLock != null) {
+            // Check if it's the same owner (lock renewal)
+            if (existingLock.ownerId == request.ownerId &&
+                existingLock.ownerType == request.ownerType) {
+              // Renew the lock within the transaction
+              final newExpiresAt = DateTime.now().add(_clampDuration(
+                request.timeout,
+                const Duration(minutes: 1),
+                maxTimeout,
+              ));
+
+              await txn.update(
+                'entry_locks',
+                {'expires_at': newExpiresAt.millisecondsSinceEpoch},
+                where: 'id = ?',
+                whereArgs: [existingLock.id],
+              );
+
+              return Ok(existingLock.copyWith(expiresAt: newExpiresAt));
+            }
+
+            // Resource is locked by someone else
+            if (!request.force) {
+              return Err(ResourceLockedException(
+                'Resource is already locked by ${existingLock.ownerType}:${existingLock.ownerId}',
+                resourceId: request.resourceId,
+                lockedBy: existingLock.ownerId,
+                expiresAt: existingLock.expiresAt,
+              ));
+            }
+
+            // Force flag: break existing lock within transaction
+            await txn.update(
+              'entry_locks',
+              {
+                'status': LockStatus.broken.name,
+                'released_at': DateTime.now().millisecondsSinceEpoch,
+                'reason': 'Forced by ${request.ownerId}',
+              },
+              where: 'id = ?',
+              whereArgs: [existingLock.id],
+            );
+          }
+
+          // Create new lock (within transaction - atomic with check above)
+          final lockId = _uuid.v4();
+          final now = DateTime.now();
+          final timeout = _clampDuration(
+            request.timeout,
+            const Duration(minutes: 1),
+            maxTimeout,
+          );
+          final expiresAt = now.add(timeout);
+
+          await txn.insert('entry_locks', {
+            'id': lockId,
+            'lock_type': request.lockType.name,
+            'resource_id': request.resourceId,
+            'resource_type': request.resourceType,
+            'owner_id': request.ownerId,
+            'owner_type': request.ownerType,
+            'status': LockStatus.active.name,
+            'acquired_at': now.millisecondsSinceEpoch,
+            'expires_at': expiresAt.millisecondsSinceEpoch,
+            'reason': request.reason,
+          });
+
+          final lock = LockInfo(
+            id: lockId,
+            lockType: request.lockType,
             resourceId: request.resourceId,
-            lockedBy: existingLock.ownerId,
-            expiresAt: existingLock.expiresAt,
-          ));
-        }
+            resourceType: request.resourceType,
+            ownerId: request.ownerId,
+            ownerType: request.ownerType,
+            status: LockStatus.active,
+            acquiredAt: now,
+            expiresAt: expiresAt,
+            reason: request.reason,
+          );
 
-        // Force flag: break existing lock
-        await _breakLock(existingLock.id, 'Forced by ${request.ownerId}');
-      }
-
-      // Create new lock
-      final lockId = _uuid.v4();
-      final now = DateTime.now();
-      final timeout = _clampDuration(
-        request.timeout,
-        const Duration(minutes: 1),
-        maxTimeout,
-      );
-      final expiresAt = now.add(timeout);
-
-      await _db.insert('entry_locks', {
-        'id': lockId,
-        'lock_type': request.lockType.name,
-        'resource_id': request.resourceId,
-        'resource_type': request.resourceType,
-        'owner_id': request.ownerId,
-        'owner_type': request.ownerType,
-        'status': LockStatus.active.name,
-        'acquired_at': now.millisecondsSinceEpoch,
-        'expires_at': expiresAt.millisecondsSinceEpoch,
-        'reason': request.reason,
-      });
-
-      final lock = LockInfo(
-        id: lockId,
-        lockType: request.lockType,
-        resourceId: request.resourceId,
-        resourceType: request.resourceType,
-        ownerId: request.ownerId,
-        ownerType: request.ownerType,
-        status: LockStatus.active,
-        acquiredAt: now,
-        expiresAt: expiresAt,
-        reason: request.reason,
+          return Ok(lock);
+        },
       );
 
-      return Ok(lock);
+      return result;
     } on DatabaseException catch (e) {
       return Err(ConcurrencyException(
         'Failed to acquire lock: ${e.toString()}',

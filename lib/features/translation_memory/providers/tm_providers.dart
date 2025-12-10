@@ -17,10 +17,10 @@ class TmSort {
   /// Convert to SQL ORDER BY clause
   String toOrderBy() {
     final sqlColumn = switch (column) {
-      'quality' => 'quality_score',
       'source' => 'source_text',
       'target' => 'translated_text',
       'usage' => 'usage_count',
+      'lastUsed' => 'last_used_at',
       _ => 'usage_count',
     };
     return '$sqlColumn ${ascending ? 'ASC' : 'DESC'}';
@@ -55,18 +55,16 @@ class TmSortStateNotifier extends Notifier<TmSort> {
 Future<List<TranslationMemoryEntry>> tmEntries(
   Ref ref, {
   String? targetLang,
-  double? minQuality,
   int page = 1,
   int pageSize = 1000,
 }) async {
   // Get current sort state
   final sortState = ref.watch(tmSortStateProvider);
   final orderBy = sortState.toOrderBy();
-  
+
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting tmEntries provider', {
     'targetLang': targetLang,
-    'minQuality': minQuality,
     'page': page,
     'pageSize': pageSize,
     'orderBy': orderBy,
@@ -87,12 +85,6 @@ Future<List<TranslationMemoryEntry>> tmEntries(
         logging.debug('Successfully loaded TM entries', {
           'count': entries.length,
         });
-        // Apply quality filter if specified
-        if (minQuality != null) {
-          return entries
-              .where((e) => (e.qualityScore ?? 0.0) >= minQuality)
-              .toList();
-        }
         return entries;
       },
       err: (error) {
@@ -111,7 +103,6 @@ Future<List<TranslationMemoryEntry>> tmEntries(
 Future<int> tmEntriesCount(
   Ref ref, {
   String? targetLang,
-  double? minQuality,
 }) async {
   final service = ServiceLocator.get<ITranslationMemoryService>();
 
@@ -123,14 +114,7 @@ Future<int> tmEntriesCount(
   );
 
   return result.when(
-    ok: (entries) {
-      if (minQuality != null) {
-        return entries
-            .where((e) => (e.qualityScore ?? 0.0) >= minQuality)
-            .length;
-      }
-      return entries.length;
-    },
+    ok: (entries) => entries.length,
     err: (error) => 0,
   );
 }
@@ -221,14 +205,6 @@ class TmFilterState extends _$TmFilterState {
 
   void setTargetLanguage(String? lang) {
     state = state.copyWith(targetLanguage: lang);
-  }
-
-  void setMinQuality(double? quality) {
-    state = state.copyWith(minQuality: quality);
-  }
-
-  void setQualityFilter(QualityFilter filter) {
-    state = state.copyWith(qualityFilter: filter);
   }
 
   void setSearchText(String text) {
@@ -325,7 +301,6 @@ class TmExportState extends _$TmExportState {
   Future<void> exportToTmx({
     required String outputPath,
     String? targetLanguageCode,
-    double? minQuality,
   }) async {
     state = const AsyncValue.loading();
 
@@ -335,7 +310,6 @@ class TmExportState extends _$TmExportState {
       final result = await service.exportToTmx(
         outputPath: outputPath,
         targetLanguageCode: targetLanguageCode,
-        minQuality: minQuality,
       );
 
       final exportedCount = result.when(
@@ -368,7 +342,6 @@ class TmCleanupState extends _$TmCleanupState {
   AsyncValue<int?> build() => const AsyncValue.data(null);
 
   Future<void> cleanup({
-    double minQuality = 0.3,
     int unusedDays = 365,
   }) async {
     state = const AsyncValue.loading();
@@ -376,8 +349,7 @@ class TmCleanupState extends _$TmCleanupState {
     try {
       final service = ServiceLocator.get<ITranslationMemoryService>();
 
-      final result = await service.cleanupLowQualityEntries(
-        minQuality: minQuality,
+      final result = await service.cleanupUnusedEntries(
         unusedDays: unusedDays,
       );
 
@@ -410,54 +382,22 @@ class TmCleanupState extends _$TmCleanupState {
 /// TM filter configuration
 class TmFilters {
   final String? targetLanguage;
-  final double? minQuality;
-  final QualityFilter qualityFilter;
   final String searchText;
 
   const TmFilters({
     this.targetLanguage,
-    this.minQuality,
-    this.qualityFilter = QualityFilter.all,
     this.searchText = '',
   });
 
   TmFilters copyWith({
     String? targetLanguage,
-    double? minQuality,
-    QualityFilter? qualityFilter,
     String? searchText,
   }) {
     return TmFilters(
       targetLanguage: targetLanguage ?? this.targetLanguage,
-      minQuality: minQuality ?? this.minQuality,
-      qualityFilter: qualityFilter ?? this.qualityFilter,
       searchText: searchText ?? this.searchText,
     );
   }
-
-  double? get effectiveMinQuality {
-    switch (qualityFilter) {
-      case QualityFilter.all:
-        return minQuality;
-      case QualityFilter.highQuality:
-        return 0.9;
-      case QualityFilter.mediumQuality:
-        return 0.7;
-      case QualityFilter.lowQuality:
-        return 0.0;
-      case QualityFilter.unused:
-        return minQuality;
-    }
-  }
-}
-
-/// Quality filter options
-enum QualityFilter {
-  all,
-  highQuality,
-  mediumQuality,
-  lowQuality,
-  unused,
 }
 
 /// Import result

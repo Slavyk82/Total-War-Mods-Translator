@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/translation_version_history.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import '../../../services/toast_notification_service.dart';
-import '../providers/editor_providers.dart';
+import '../../../providers/history/history_providers.dart';
 
 /// History panel showing translation modification history
 ///
@@ -39,7 +39,7 @@ class _EditorHistoryPanelState extends ConsumerState<EditorHistoryPanel> {
 
     // Watch history entries from provider
     final historyAsync = ref.watch(
-      historyForVersionProvider(widget.selectedVersionId!),
+      versionHistoryProvider(widget.selectedVersionId!),
     );
 
     return historyAsync.when(
@@ -165,22 +165,6 @@ class _EditorHistoryPanelState extends ConsumerState<EditorHistoryPanel> {
                                   color: Colors.grey,
                                 ),
                               ),
-                              if (entry.confidenceScore != null) ...[
-                                const SizedBox(width: 8),
-                                Icon(
-                                  FluentIcons.star_24_regular,
-                                  size: 12,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${(entry.confidenceScore! * 100).round()}%',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
                             ],
                           ),
                         ],

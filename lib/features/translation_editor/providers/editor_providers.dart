@@ -8,7 +8,9 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/services/validation/i_translation_validation_service.dart';
+import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/services/search/i_search_service.dart';
 import 'package:twmt/services/history/undo_redo_manager.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -52,7 +54,6 @@ class TranslationRow {
   String get sourceText => unit.sourceText;
   String? get translatedText => version.translatedText;
   TranslationVersionStatus get status => version.status;
-  double? get confidence => version.confidenceScore;
   TranslationSource get translationSource => version.translationSource;
   bool get isManuallyEdited => version.isManuallyEdited;
   bool get hasValidationIssues => version.hasValidationIssues;
@@ -306,8 +307,8 @@ class EditorSelection extends _$EditorSelection {
 /// Get the TM source type from a translation row based on translation source field
 TmSourceType getTmSourceType(TranslationRow row) {
   if (row.isManuallyEdited) return TmSourceType.manual;
-  
-  // Use explicit translation source field if available
+
+  // Use explicit translation source field
   switch (row.translationSource) {
     case TranslationSource.tmExact:
       return TmSourceType.exactMatch;
@@ -318,17 +319,14 @@ TmSourceType getTmSourceType(TranslationRow row) {
     case TranslationSource.manual:
       return TmSourceType.manual;
     case TranslationSource.unknown:
-      // Fallback for legacy data: use confidence-based detection
-      if (row.confidence != null) {
-        if (row.confidence! >= 0.999) return TmSourceType.exactMatch;
-        if (row.confidence! >= 0.85) return TmSourceType.fuzzyMatch;
-        return TmSourceType.llm;
-      }
       return TmSourceType.none;
   }
 }
 
 /// Provider for translation rows (units + versions)
+///
+/// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+/// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
 @riverpod
 Future<List<TranslationRow>> translationRows(
   Ref ref,
@@ -336,16 +334,7 @@ Future<List<TranslationRow>> translationRows(
   String languageId,
 ) async {
   final unitRepo = ref.watch(translationUnitRepositoryProvider);
-  final versionRepo = ref.watch(translationVersionRepositoryProvider);
   final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
-
-  // Get all units for this project
-  final unitsResult = await unitRepo.getByProject(projectId);
-  if (unitsResult.isErr) {
-    throw Exception('Failed to load translation units: ${unitsResult.unwrapErr()}');
-  }
-
-  final units = unitsResult.unwrap();
 
   // First, find the project_language_id for this project and language
   final projectLanguagesResult = await projectLanguageRepo.getByProject(projectId);
@@ -354,42 +343,99 @@ Future<List<TranslationRow>> translationRows(
   }
 
   final projectLanguages = projectLanguagesResult.unwrap();
-  final projectLanguage = projectLanguages.firstWhere(
+  final projectLanguage = projectLanguages.where(
     (pl) => pl.languageId == languageId,
-    orElse: () => throw Exception('Project language not found for languageId: $languageId'),
+  ).firstOrNull;
+
+  if (projectLanguage == null) {
+    throw Exception('Project language not found for languageId: $languageId');
+  }
+
+  // Use optimized JOIN query to fetch all translation rows in a single query
+  // This eliminates:
+  // - 2 separate database queries (units + versions)
+  // - O(n) Map insertions for version lookup
+  // - O(n) Map lookups during join
+  // - Memory holding duplicate data during join operation
+  final joinedResult = await unitRepo.getTranslationRowsJoined(
+    projectId: projectId,
+    projectLanguageId: projectLanguage.id,
   );
 
-  // Get all versions for this project language using the correct project_language_id
-  final versionsResult = await versionRepo.getByProjectLanguage(projectLanguage.id);
-  if (versionsResult.isErr) {
-    throw Exception('Failed to load translation versions: ${versionsResult.unwrapErr()}');
+  if (joinedResult.isErr) {
+    throw Exception('Failed to load translation rows: ${joinedResult.unwrapErr()}');
   }
 
-  final versions = versionsResult.unwrap();
+  final joinedMaps = joinedResult.unwrap();
 
-  // Create a map of unit_id -> version for quick lookup
-  final versionMap = <String, TranslationVersion>{};
-  for (final version in versions) {
-    versionMap[version.unitId] = version;
-  }
-
-  // Join units with their versions
+  // Convert joined maps to TranslationRow objects
+  // Data is already sorted by key ASC from the SQL query
   final rows = <TranslationRow>[];
-  for (final unit in units) {
-    // Skip obsolete units
-    if (unit.isObsolete) continue;
+  for (final map in joinedMaps) {
+    // Build TranslationUnit from the joined data
+    final unit = TranslationUnit(
+      id: map['id'] as String,
+      projectId: map['project_id'] as String,
+      key: map['key'] as String,
+      sourceText: map['source_text'] as String,
+      context: map['context'] as String?,
+      notes: map['notes'] as String?,
+      sourceLocFile: map['source_loc_file'] as String?,
+      isObsolete: (map['is_obsolete'] as int) == 1,
+      createdAt: map['created_at'] as int,
+      updatedAt: map['updated_at'] as int,
+    );
 
-    // Find the version for this unit
-    final version = versionMap[unit.id];
-    if (version != null) {
-      rows.add(TranslationRow(unit: unit, version: version));
-    }
+    // Build TranslationVersion from the joined data (version columns are aliased)
+    final version = TranslationVersion(
+      id: map['version_id'] as String,
+      unitId: map['unit_id'] as String,
+      projectLanguageId: map['project_language_id'] as String,
+      translatedText: map['translated_text'] as String?,
+      isManuallyEdited: (map['is_manually_edited'] as int) == 1,
+      status: _parseStatus(map['status'] as String),
+      translationSource: _parseTranslationSource(map['translation_source'] as String?),
+      validationIssues: map['validation_issues'] as String?,
+      createdAt: map['version_created_at'] as int,
+      updatedAt: map['version_updated_at'] as int,
+    );
+
+    rows.add(TranslationRow(unit: unit, version: version));
   }
-
-  // Sort by key for consistent ordering
-  rows.sort((a, b) => a.key.compareTo(b.key));
 
   return rows;
+}
+
+/// Parse status string to enum
+TranslationVersionStatus _parseStatus(String status) {
+  switch (status) {
+    case 'pending':
+      return TranslationVersionStatus.pending;
+    case 'translated':
+      return TranslationVersionStatus.translated;
+    case 'needs_review':
+    case 'needsReview':
+      return TranslationVersionStatus.needsReview;
+    default:
+      return TranslationVersionStatus.pending;
+  }
+}
+
+/// Parse translation source string to enum
+TranslationSource _parseTranslationSource(String? source) {
+  if (source == null) return TranslationSource.unknown;
+  switch (source) {
+    case 'manual':
+      return TranslationSource.manual;
+    case 'tm_exact':
+      return TranslationSource.tmExact;
+    case 'tm_fuzzy':
+      return TranslationSource.tmFuzzy;
+    case 'llm':
+      return TranslationSource.llm;
+    default:
+      return TranslationSource.unknown;
+  }
 }
 
 /// Provider for filtered translation rows
@@ -594,4 +640,99 @@ class SelectedLlmModel extends _$SelectedLlmModel {
   void clear() {
     state = null;
   }
+}
+
+// =============================================================================
+// TM SUGGESTIONS PROVIDER
+// =============================================================================
+
+/// Provider for TM suggestions for a specific translation unit
+///
+/// Fetches both exact and fuzzy matches from Translation Memory
+/// for the given unit's source text.
+@riverpod
+Future<List<TmMatch>> tmSuggestionsForUnit(
+  Ref ref,
+  String unitId,
+  String sourceLanguageCode,
+  String targetLanguageCode,
+) async {
+  final unitRepo = ref.watch(translationUnitRepositoryProvider);
+  final tmService = ref.watch(translationMemoryServiceProvider);
+
+  // First get the translation unit to get its source text
+  final unitResult = await unitRepo.getById(unitId);
+  if (unitResult.isErr) {
+    throw Exception('Failed to load translation unit: ${unitResult.unwrapErr()}');
+  }
+  final unit = unitResult.unwrap();
+
+  // Collect all matches
+  final matches = <TmMatch>[];
+
+  // Try exact match first
+  final exactResult = await tmService.findExactMatch(
+    sourceText: unit.sourceText,
+    targetLanguageCode: targetLanguageCode,
+  );
+  if (exactResult.isOk) {
+    final exactMatch = exactResult.unwrap();
+    if (exactMatch != null) {
+      matches.add(exactMatch);
+    }
+  }
+
+  // Get fuzzy matches
+  final fuzzyResult = await tmService.findFuzzyMatches(
+    sourceText: unit.sourceText,
+    targetLanguageCode: targetLanguageCode,
+    minSimilarity: 0.70, // Lower threshold to show more suggestions
+    maxResults: 5,
+  );
+  if (fuzzyResult.isOk) {
+    final fuzzyMatches = fuzzyResult.unwrap();
+    // Add fuzzy matches that aren't duplicates of exact match
+    for (final match in fuzzyMatches) {
+      if (!matches.any((m) => m.entryId == match.entryId)) {
+        matches.add(match);
+      }
+    }
+  }
+
+  // Sort by similarity score descending
+  matches.sort((a, b) => b.similarityScore.compareTo(a.similarityScore));
+
+  return matches;
+}
+
+// =============================================================================
+// VALIDATION ISSUES PROVIDER
+// =============================================================================
+
+/// Provider for validation issues for a specific translation
+///
+/// Validates the translation against the source text and returns
+/// any issues found (errors, warnings, info).
+@riverpod
+Future<List<ValidationIssue>> validationIssues(
+  Ref ref,
+  String sourceText,
+  String translatedText,
+) async {
+  final validationSvc = ref.watch(validationServiceProvider);
+
+  final result = await validationSvc.validateTranslation(
+    sourceText: sourceText,
+    translatedText: translatedText,
+  );
+
+  return result.when(
+    ok: (issues) => issues,
+    err: (error) {
+      // Log error and return empty list
+      final logger = ref.read(loggingServiceProvider);
+      logger.error('Failed to validate translation: $error');
+      return <ValidationIssue>[];
+    },
+  );
 }

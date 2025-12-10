@@ -18,8 +18,8 @@ migrate_working_dir/
 *.iws
 .idea/
 .cursor/
-.claude
-claude.md
+.claude/
+CLAUDE.md
 
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
@@ -99,6 +99,32 @@ bld/
 # Installer files
 *.exe
 *.msi
+
+# ============================================================
+# Generated Code (Dart code generation)
+# ============================================================
+
+# Generated provider/model files from build_runner
+*.g.dart
+*.freezed.dart
+
+# ============================================================
+# Debug and Test Artifacts (NOT for distribution)
+# ============================================================
+
+# Debug scripts
+debug_*.dart
+
+# Test data and pack files
+test_pack/
+test_export.tsv
+*.tsv
+
+# Build artifacts
+deps_output.json
+
+# Debug screenshots
+flutter_*.png
 
 # ============================================================
 # TWMT Project Specific

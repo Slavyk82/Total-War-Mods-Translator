@@ -13,8 +13,7 @@ class TmCleanupDialog extends ConsumerStatefulWidget {
 }
 
 class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
-  double _minQuality = 0.3;
-  int _unusedDays = 0; // Default to 0 (disabled) for quality-only cleanup
+  int _unusedDays = 365; // Default to 365 days for unused entry cleanup
 
   @override
   Widget build(BuildContext context) {
@@ -38,41 +37,11 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Remove low-quality and unused entries to optimize your translation memory.',
+              'Remove unused entries to optimize your translation memory.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
 
             const SizedBox(height: 24),
-
-            // Minimum quality
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Minimum Quality',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                Text(
-                  '${(_minQuality * 100).toInt()}%',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                ),
-              ],
-            ),
-            Slider(
-              value: _minQuality,
-              min: 0.0,
-              max: 1.0,
-              divisions: 20,
-              onChanged: (value) {
-                setState(() {
-                  _minQuality = value;
-                });
-              },
-            ),
-
-            const SizedBox(height: 16),
 
             // Unused days
             Row(
@@ -107,7 +76,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Age filter disabled - will delete by quality only',
+                  'Age filter disabled - no entries will be deleted',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.secondary,
                         fontStyle: FontStyle.italic,
@@ -173,7 +142,6 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
               ? null
               : () async {
                   await ref.read(tmCleanupStateProvider.notifier).cleanup(
-                        minQuality: _minQuality,
                         unusedDays: _unusedDays,
                       );
                 },

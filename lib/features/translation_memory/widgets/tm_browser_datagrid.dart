@@ -45,7 +45,6 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     final entriesAsync = filtersState.searchText.isEmpty
         ? ref.watch(tmEntriesProvider(
             targetLang: filtersState.targetLanguage,
-            minQuality: filtersState.effectiveMinQuality,
             page: pageState,
             pageSize: 1000,
           ))
@@ -110,20 +109,6 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       rowHeight: 72,
       headerRowHeight: 56,
       columns: [
-        GridColumn(
-          columnName: 'quality',
-          width: 110,
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Quality',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
         GridColumn(
           columnName: 'source',
           label: Container(
@@ -233,8 +218,6 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildDetailRow('Quality Score', '${entry.qualityPercentage}%'),
-                const Divider(),
                 _buildDetailRow('Source Text', entry.sourceText),
                 const Divider(),
                 _buildDetailRow('Target Text', entry.translatedText),
@@ -366,7 +349,6 @@ class TmDataSource extends DataGridSource {
   void _buildDataGridRows() {
     _dataGridRows = _entries.map<DataGridRow>((entry) {
       return DataGridRow(cells: [
-        DataGridCell<TranslationMemoryEntry>(columnName: 'quality', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'source', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'target', value: entry),
         DataGridCell<TranslationMemoryEntry>(columnName: 'usage', value: entry),
@@ -402,52 +384,11 @@ class TmDataSource extends DataGridSource {
 
     return DataGridRowAdapter(
       cells: [
-        _buildQualityCell(entry),
         _buildTextCell(entry.sourceText, maxLines: 2),
         _buildTextCell(entry.translatedText, maxLines: 2),
         _buildUsageCell(entry),
         _buildActionsCell(entry),
       ],
-    );
-  }
-
-  Widget _buildQualityCell(TranslationMemoryEntry entry) {
-    final quality = entry.qualityScore ?? 0.0;
-    final percentage = (quality * 100).toInt();
-    final color = _getQualityColor(quality);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      alignment: Alignment.centerLeft,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$percentage%',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: quality,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                    minHeight: 4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -522,16 +463,6 @@ class TmDataSource extends DataGridSource {
 
   void _deleteEntry(TranslationMemoryEntry entry) {
     onDeleteEntry(entry);
-  }
-
-  Color _getQualityColor(double quality) {
-    if (quality >= 0.9) {
-      return Colors.green;
-    } else if (quality >= 0.7) {
-      return Colors.orange;
-    } else {
-      return Colors.red;
-    }
   }
 }
 

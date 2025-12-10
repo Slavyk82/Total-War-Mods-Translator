@@ -304,6 +304,11 @@ class DatabaseService {
   /// All operations in the callback will be executed atomically.
   /// If any operation fails, the entire transaction will be rolled back.
   ///
+  /// **Important**: The timeout uses Dart's `.timeout()` which stops waiting for
+  /// the result but does not cancel the underlying SQLite transaction. SQLite
+  /// handles rollback when the connection closes or on explicit ROLLBACK.
+  /// For busy database scenarios, configure SQLite's busy_timeout PRAGMA instead.
+  ///
   /// Example:
   /// ```dart
   /// await DatabaseService.transaction((txn) async {
@@ -323,6 +328,9 @@ class DatabaseService {
       return await database.transaction(action).timeout(
         effectiveTimeout,
         onTimeout: () {
+          LoggingService.instance.warning(
+            'Transaction timeout after ${effectiveTimeout.inSeconds}s - SQLite may still be processing',
+          );
           throw TWMTDatabaseException(
             'Transaction timeout after ${effectiveTimeout.inSeconds} seconds. '
             'Consider breaking into smaller transactions or increasing timeout.',

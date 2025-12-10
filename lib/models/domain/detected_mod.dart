@@ -73,19 +73,15 @@ class DetectedMod {
       return ModUpdateStatus.needsDownload;
     }
 
-    // Check if Steam has a NEW update since last scan
-    // Only if cachedTimeUpdated exists and differs from current timeUpdated
-    final hasNewSteamUpdate = cachedTimeUpdated != null &&
-        timeUpdated != cachedTimeUpdated;
-
-    // Local file is current - check for translation changes ONLY if:
+    // Local file is current - check for translation changes if:
     // 1. Project is already imported
-    // 2. Steam has a NEW update (timestamp changed since last scan)
-    // 3. Analysis shows actual changes
+    // 2. Analysis shows pending changes (new or modified units)
+    //
+    // Note: We use hasPendingChanges instead of hasChanges because removed
+    // and reactivated units are handled automatically and don't need user attention.
     if (isAlreadyImported &&
-        hasNewSteamUpdate &&
         updateAnalysis != null &&
-        updateAnalysis!.hasChanges) {
+        updateAnalysis!.hasPendingChanges) {
       return ModUpdateStatus.hasChanges;
     }
 
@@ -105,8 +101,8 @@ class DetectedMod {
     return timeUpdated! > localFileLastModified!;
   }
 
-  /// Returns true if there are translation changes to review
-  bool get hasTranslationChanges => updateAnalysis?.hasChanges ?? false;
+  /// Returns true if there are translation changes requiring user attention
+  bool get hasTranslationChanges => updateAnalysis?.hasPendingChanges ?? false;
 
   DetectedMod copyWith({
     String? workshopId,

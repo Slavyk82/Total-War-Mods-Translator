@@ -401,10 +401,10 @@ class OpenAiProvider implements ILlmProvider {
       // Parse translations
       final translations = _parseTranslations(content, request);
 
-      // Extract token usage
-      final usage = data['usage'] as Map<String, dynamic>;
-      final inputTokens = usage['prompt_tokens'] as int;
-      final outputTokens = usage['completion_tokens'] as int;
+      // Extract token usage with null safety
+      final usage = data['usage'] as Map<String, dynamic>? ?? {};
+      final inputTokens = usage['prompt_tokens'] as int? ?? 0;
+      final outputTokens = usage['completion_tokens'] as int? ?? 0;
 
       // Calculate processing time
       final processingTime = DateTime.now().difference(startTime).inMilliseconds;
@@ -493,22 +493,27 @@ class OpenAiProvider implements ILlmProvider {
         });
       }
 
-      // Check for missing keys but don't throw - return partial results
-      // This allows the caller to handle retrying only the missing keys
+      // Filter out empty string translations - treat as missing
+      // Empty translations likely indicate LLM failure to translate that key
+      final emptyKeys = translations.entries
+          .where((e) => e.value.trim().isEmpty)
+          .map((e) => e.key)
+          .toList();
+
+      for (final key in emptyKeys) {
+        translations.remove(key);
+      }
+
+      // Check for missing keys (including those we just removed as empty)
+      // Don't throw - return partial results so caller can retry missing keys
       final missingKeys = request.texts.keys.where(
         (key) => !translations.containsKey(key),
       ).toList();
 
-      if (missingKeys.isNotEmpty) {
-        // Log warning but continue with partial results
-        // ignore: avoid_print
-        print('[OpenAI] Warning: LLM response missing ${missingKeys.length} keys: ${missingKeys.take(3).join(", ")}${missingKeys.length > 3 ? "..." : ""}');
-      }
-
-      // Fail only if no translations were parsed at all
+      // Fail only if no valid translations were parsed at all
       if (translations.isEmpty && request.texts.isNotEmpty) {
         throw FormatException(
-          'No valid translations found in response',
+          'No valid translations found in response (${emptyKeys.length} empty, ${missingKeys.length - emptyKeys.length} missing)',
         );
       }
 

@@ -68,10 +68,6 @@ class TranslationVersion {
   /// Current status of the translation
   final TranslationVersionStatus status;
 
-  /// Confidence score from the translation provider (0.0 to 1.0)
-  @JsonKey(name: 'confidence_score')
-  final double? confidenceScore;
-
   /// Source of the translation (manual, tm_exact, tm_fuzzy, llm)
   @JsonKey(name: 'translation_source')
   final TranslationSource translationSource;
@@ -95,7 +91,6 @@ class TranslationVersion {
     this.translatedText,
     this.isManuallyEdited = false,
     this.status = TranslationVersionStatus.pending,
-    this.confidenceScore,
     this.translationSource = TranslationSource.unknown,
     this.validationIssues,
     required this.createdAt,
@@ -118,23 +113,9 @@ class TranslationVersion {
   bool get hasValidationIssues =>
       validationIssues != null && validationIssues!.isNotEmpty;
 
-  /// Returns true if the translation has a confidence score
-  bool get hasConfidenceScore => confidenceScore != null;
-
-  /// Returns true if the confidence score is low (below 0.8)
-  bool get hasLowConfidence =>
-      confidenceScore != null && confidenceScore! < 0.8;
-
-  /// Returns true if the translation quality seems questionable
-  bool get hasQualityIssues => hasValidationIssues || hasLowConfidence;
-
   /// Returns true if the translation is ready for use
   bool get isReadyForUse =>
-      isComplete && !hasQualityIssues && translatedText != null;
-
-  /// Returns the confidence score as a percentage (0-100)
-  int? get confidencePercentage =>
-      confidenceScore != null ? (confidenceScore! * 100).round() : null;
+      isComplete && !hasValidationIssues && translatedText != null;
 
   /// Returns the translated text or a placeholder
   String get displayText => translatedText ?? '(Not translated)';
@@ -158,7 +139,6 @@ class TranslationVersion {
     String? translatedText,
     bool? isManuallyEdited,
     TranslationVersionStatus? status,
-    double? confidenceScore,
     TranslationSource? translationSource,
     String? validationIssues,
     int? createdAt,
@@ -171,7 +151,6 @@ class TranslationVersion {
       translatedText: translatedText ?? this.translatedText,
       isManuallyEdited: isManuallyEdited ?? this.isManuallyEdited,
       status: status ?? this.status,
-      confidenceScore: confidenceScore ?? this.confidenceScore,
       translationSource: translationSource ?? this.translationSource,
       validationIssues: validationIssues ?? this.validationIssues,
       createdAt: createdAt ?? this.createdAt,
@@ -194,7 +173,6 @@ class TranslationVersion {
         other.translatedText == translatedText &&
         other.isManuallyEdited == isManuallyEdited &&
         other.status == status &&
-        other.confidenceScore == confidenceScore &&
         other.translationSource == translationSource &&
         other.validationIssues == validationIssues &&
         other.createdAt == createdAt &&
@@ -209,7 +187,6 @@ class TranslationVersion {
       translatedText.hashCode ^
       isManuallyEdited.hashCode ^
       status.hashCode ^
-      confidenceScore.hashCode ^
       translationSource.hashCode ^
       validationIssues.hashCode ^
       createdAt.hashCode ^

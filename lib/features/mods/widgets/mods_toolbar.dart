@@ -17,6 +17,8 @@ class ModsToolbar extends StatefulWidget {
   final bool showHidden;
   final Function(bool) onShowHiddenChanged;
   final int hiddenCount;
+  final int projectsWithPendingChanges;
+  final VoidCallback? onNavigateToProjects;
 
   const ModsToolbar({
     super.key,
@@ -33,6 +35,8 @@ class ModsToolbar extends StatefulWidget {
     required this.showHidden,
     required this.onShowHiddenChanged,
     required this.hiddenCount,
+    this.projectsWithPendingChanges = 0,
+    this.onNavigateToProjects,
   });
 
   @override
@@ -87,6 +91,12 @@ class _ModsToolbarState extends State<ModsToolbar> {
           _buildHiddenCheckbox(theme),
           const SizedBox(width: 16),
 
+          // Projects with pending changes badge
+          if (widget.projectsWithPendingChanges > 0)
+            _buildPendingProjectsBadge(theme),
+          if (widget.projectsWithPendingChanges > 0)
+            const SizedBox(width: 16),
+
           // Mod count
           _buildModCount(theme),
           const SizedBox(width: 16),
@@ -99,6 +109,52 @@ class _ModsToolbarState extends State<ModsToolbar> {
             isLoading: widget.isRefreshing,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPendingProjectsBadge(ThemeData theme) {
+    return Tooltip(
+      message: 'Projects with pending translation changes. Click to view.',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onNavigateToProjects,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.colorScheme.error.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.warning_24_filled,
+                  size: 16,
+                  color: theme.colorScheme.error,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${widget.projectsWithPendingChanges} project${widget.projectsWithPendingChanges > 1 ? 's' : ''} pending',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  FluentIcons.arrow_right_24_regular,
+                  size: 14,
+                  color: theme.colorScheme.error,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

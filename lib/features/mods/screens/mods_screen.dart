@@ -48,6 +48,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     final needsUpdateCountAsync = ref.watch(needsUpdateModsCountProvider);
     final showHidden = ref.watch(showHiddenModsProvider);
     final hiddenCountAsync = ref.watch(hiddenModsCountProvider);
+    final pendingProjectsCountAsync = ref.watch(projectsWithPendingChangesCountProvider);
 
     return CallbackShortcuts(
       bindings: {
@@ -94,6 +95,8 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                       ref.read(showHiddenModsProvider.notifier).set(value);
                     },
                     hiddenCount: hiddenCountAsync.value ?? 0,
+                    projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
+                    onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
                   ),
                   loading: () => ModsToolbar(
                     searchQuery: searchQuery,
@@ -115,6 +118,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                       ref.read(showHiddenModsProvider.notifier).set(value);
                     },
                     hiddenCount: 0,
+                    projectsWithPendingChanges: 0,
                   ),
                   error: (error, stack) => ModsToolbar(
                     searchQuery: searchQuery,
@@ -136,6 +140,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
                       ref.read(showHiddenModsProvider.notifier).set(value);
                     },
                     hiddenCount: 0,
+                    projectsWithPendingChanges: 0,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -260,7 +265,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
   void _handleRefresh() {
     ref.read(modsLoadingStateProvider.notifier).setLoading(true);
     ref.read(modsRefreshTriggerProvider.notifier).refresh();
-    
+
     // Listen for completion and reset loading state
     late final ProviderSubscription<AsyncValue<List<DetectedMod>>> subscription;
     subscription = ref.listenManual(
@@ -276,13 +281,16 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     );
   }
 
+  void _navigateToProjectsWithFilter(BuildContext context) {
+    // Set the quick filter to show only projects with updates
+    ref.read(projectsFilterProvider.notifier).setQuickFilter(ProjectQuickFilter.needsUpdate);
+    // Navigate to projects screen
+    GoRouter.of(context).go('/projects');
+  }
+
   Future<void> _handleToggleHidden(String workshopId, bool hide) async {
     await ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
-    
-    // Refresh to reflect the change immediately
-    if (mounted) {
-      ref.invalidate(detectedModsProvider);
-    }
+    // No need to invalidate - the mod list is updated locally by the provider
   }
 
   Future<void> _handleForceRedownload(BuildContext context, String packFilePath) async {

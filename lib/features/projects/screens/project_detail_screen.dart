@@ -40,7 +40,11 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
         backgroundColor: Theme.of(context).colorScheme.surface,
         leading: FluentIconButton(
           icon: const Icon(FluentIcons.arrow_left_24_regular),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            // Increment stats version to force refresh of all dependent providers
+            ref.read(translationStatsVersionProvider.notifier).increment();
+            Navigator.of(context).pop();
+          },
           tooltip: 'Back',
         ),
         title: projectDetailsAsync.when(
@@ -158,6 +162,11 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
             context,
             details.project.id,
             langDetails.projectLanguage.languageId,
+          ),
+          onDelete: () => _handleDeleteLanguage(
+            context,
+            details,
+            langDetails,
           ),
         );
       },
@@ -419,6 +428,110 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                     'Failed to delete project: ${result.error}',
                   );
                 }
+              }
+            },
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDeleteLanguage(
+    BuildContext context,
+    ProjectDetails details,
+    ProjectLanguageDetails langDetails,
+  ) {
+    final languageName = langDetails.language.displayName;
+    final translatedCount = langDetails.translatedUnits;
+    final hasTranslations = translatedCount > 0;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Language'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "$languageName" from this project?',
+            ),
+            if (hasTranslations) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      FluentIcons.warning_24_regular,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This will permanently delete $translatedCount translation(s).',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          FluentTextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FluentTextButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+
+              // Delete the project language
+              final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
+              final result = await projectLangRepo.delete(langDetails.projectLanguage.id);
+
+              if (!context.mounted) return;
+
+              if (result.isOk) {
+                // Force refresh project details immediately
+                ref.invalidate(projectDetailsProvider(widget.projectId));
+                ref.invalidate(projectsWithDetailsProvider);
+                // Trigger re-read to force UI update
+                ref.read(projectDetailsProvider(widget.projectId));
+
+                FluentToast.success(
+                  context,
+                  '"$languageName" removed from project',
+                );
+              } else {
+                FluentToast.error(
+                  context,
+                  'Failed to delete language: ${result.error}',
+                );
               }
             },
             child: Text(

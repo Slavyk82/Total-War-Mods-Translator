@@ -4,8 +4,10 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import '../../settings/providers/settings_providers.dart';
+import '../../settings/providers/llm_custom_rules_providers.dart';
 import '../providers/editor_providers.dart';
 import '../providers/translation_settings_provider.dart';
+import 'mod_rule_editor_dialog.dart';
 
 /// Top toolbar for the translation editor
 ///
@@ -131,6 +133,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
             label: 'Settings',
             onPressed: widget.onTranslationSettings,
           ),
+          const SizedBox(width: 8),
+
+          // Mod Rule button
+          _buildModRuleButton(),
           const SizedBox(width: 16),
 
           // Action buttons
@@ -450,5 +456,80 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
 
     // Final fallback: first model
     return models.first;
+  }
+
+  Widget _buildModRuleButton() {
+    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
+    final hasRuleAsync = ref.watch(hasProjectRuleProvider(widget.projectId));
+
+    return projectAsync.when(
+      data: (project) {
+        final hasRule = hasRuleAsync.whenOrNull(data: (v) => v) ?? false;
+
+        return Tooltip(
+          message: hasRule
+              ? 'Edit mod-specific translation rule'
+              : 'Add mod-specific translation rule',
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => _showModRuleDialog(project.name),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: hasRule
+                      ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                      : Colors.transparent,
+                  border: Border.all(
+                    color: hasRule
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).dividerColor,
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasRule
+                          ? FluentIcons.text_bullet_list_ltr_24_filled
+                          : FluentIcons.text_bullet_list_ltr_24_regular,
+                      size: 16,
+                      color: hasRule
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Mod Rule',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: hasRule
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showModRuleDialog(String projectName) {
+    showDialog(
+      context: context,
+      builder: (context) => ModRuleEditorDialog(
+        projectId: widget.projectId,
+        projectName: projectName,
+      ),
+    );
   }
 }

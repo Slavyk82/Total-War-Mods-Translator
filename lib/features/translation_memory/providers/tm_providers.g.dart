@@ -28,8 +28,7 @@ final class TmEntriesProvider
   /// TM entries list with filtering and pagination
   const TmEntriesProvider._({
     required TmEntriesFamily super.from,
-    required ({String? targetLang, double? minQuality, int page, int pageSize})
-    super.argument,
+    required ({String? targetLang, int page, int pageSize}) super.argument,
   }) : super(
          retry: null,
          name: r'tmEntriesProvider',
@@ -57,17 +56,10 @@ final class TmEntriesProvider
   @override
   FutureOr<List<TranslationMemoryEntry>> create(Ref ref) {
     final argument =
-        this.argument
-            as ({
-              String? targetLang,
-              double? minQuality,
-              int page,
-              int pageSize,
-            });
+        this.argument as ({String? targetLang, int page, int pageSize});
     return tmEntries(
       ref,
       targetLang: argument.targetLang,
-      minQuality: argument.minQuality,
       page: argument.page,
       pageSize: argument.pageSize,
     );
@@ -84,7 +76,7 @@ final class TmEntriesProvider
   }
 }
 
-String _$tmEntriesHash() => r'82c02975a2992abdcfca6d039123bacfe611f9d1';
+String _$tmEntriesHash() => r'9914cf5fa5fa864622a0167372ba829f0b9d7056';
 
 /// TM entries list with filtering and pagination
 
@@ -92,7 +84,7 @@ final class TmEntriesFamily extends $Family
     with
         $FunctionalFamilyOverride<
           FutureOr<List<TranslationMemoryEntry>>,
-          ({String? targetLang, double? minQuality, int page, int pageSize})
+          ({String? targetLang, int page, int pageSize})
         > {
   const TmEntriesFamily._()
     : super(
@@ -107,16 +99,10 @@ final class TmEntriesFamily extends $Family
 
   TmEntriesProvider call({
     String? targetLang,
-    double? minQuality,
     int page = 1,
     int pageSize = 1000,
   }) => TmEntriesProvider._(
-    argument: (
-      targetLang: targetLang,
-      minQuality: minQuality,
-      page: page,
-      pageSize: pageSize,
-    ),
+    argument: (targetLang: targetLang, page: page, pageSize: pageSize),
     from: this,
   );
 
@@ -137,7 +123,7 @@ final class TmEntriesCountProvider
   /// Total count of TM entries (for pagination)
   const TmEntriesCountProvider._({
     required TmEntriesCountFamily super.from,
-    required ({String? targetLang, double? minQuality}) super.argument,
+    required String? super.argument,
   }) : super(
          retry: null,
          name: r'tmEntriesCountProvider',
@@ -153,7 +139,7 @@ final class TmEntriesCountProvider
   String toString() {
     return r'tmEntriesCountProvider'
         ''
-        '$argument';
+        '($argument)';
   }
 
   @$internal
@@ -163,13 +149,8 @@ final class TmEntriesCountProvider
 
   @override
   FutureOr<int> create(Ref ref) {
-    final argument =
-        this.argument as ({String? targetLang, double? minQuality});
-    return tmEntriesCount(
-      ref,
-      targetLang: argument.targetLang,
-      minQuality: argument.minQuality,
-    );
+    final argument = this.argument as String?;
+    return tmEntriesCount(ref, targetLang: argument);
   }
 
   @override
@@ -183,16 +164,12 @@ final class TmEntriesCountProvider
   }
 }
 
-String _$tmEntriesCountHash() => r'30940867eb6b25da156eace1a1995c43c1aa6e3a';
+String _$tmEntriesCountHash() => r'3e4b8e1099931a8528cf40a821d539123526cb94';
 
 /// Total count of TM entries (for pagination)
 
 final class TmEntriesCountFamily extends $Family
-    with
-        $FunctionalFamilyOverride<
-          FutureOr<int>,
-          ({String? targetLang, double? minQuality})
-        > {
+    with $FunctionalFamilyOverride<FutureOr<int>, String?> {
   const TmEntriesCountFamily._()
     : super(
         retry: null,
@@ -204,11 +181,8 @@ final class TmEntriesCountFamily extends $Family
 
   /// Total count of TM entries (for pagination)
 
-  TmEntriesCountProvider call({String? targetLang, double? minQuality}) =>
-      TmEntriesCountProvider._(
-        argument: (targetLang: targetLang, minQuality: minQuality),
-        from: this,
-      );
+  TmEntriesCountProvider call({String? targetLang}) =>
+      TmEntriesCountProvider._(argument: targetLang, from: this);
 
   @override
   String toString() => r'tmEntriesCountProvider';
@@ -520,7 +494,7 @@ final class TmFilterStateProvider
   }
 }
 
-String _$tmFilterStateHash() => r'e0af8cbcfb31b7b0f7e16449091966a6db6e4438';
+String _$tmFilterStateHash() => r'f6945b30aceaa9bf1d8b5b45b61eaab58130419b';
 
 /// Current filter state
 
@@ -701,7 +675,7 @@ final class TmExportStateProvider
   }
 }
 
-String _$tmExportStateHash() => r'f48b2fbd608f93d6db652f4af30229e85dbeb1ae';
+String _$tmExportStateHash() => r'7f9e8836188c1a320c850449fedb9a6760e7ecfc';
 
 /// Export state
 
@@ -765,7 +739,7 @@ final class TmCleanupStateProvider
   }
 }
 
-String _$tmCleanupStateHash() => r'fce065c7b0a50bd91c75c6b813dcf4f20c249df5';
+String _$tmCleanupStateHash() => r'a42b0fd71c75c2f92c1bd84369ce81d21e333bf2';
 
 /// Cleanup state
 

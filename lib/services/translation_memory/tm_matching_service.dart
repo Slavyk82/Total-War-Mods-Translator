@@ -18,7 +18,6 @@ import 'package:twmt/services/translation_memory/isolate_similarity_service.dart
 /// - Fuzzy match lookup (3 algorithms combined)
 /// - Best match selection
 /// - Context-aware matching
-/// - Quality scoring
 class TmMatchingService {
   final TranslationMemoryRepository _repository;
   final LanguageRepository _languageRepository;
@@ -114,7 +113,6 @@ class TmMatchingService {
         breakdown: breakdown,
         usageCount: entry.usageCount,
         lastUsedAt: DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
-        qualityScore: entry.qualityScore ?? AppConstants.defaultTmQuality,
         autoApplied: true,
       );
 
@@ -222,7 +220,6 @@ class TmMatchingService {
           usageCount: candidate.usageCount,
           lastUsedAt:
               DateTime.fromMillisecondsSinceEpoch(candidate.lastUsedAt * 1000),
-          qualityScore: candidate.qualityScore ?? AppConstants.defaultTmQuality,
           autoApplied: score.combinedScore >= AppConstants.autoAcceptTmThreshold,
         );
 
@@ -302,7 +299,6 @@ class TmMatchingService {
           translatedText: c.translatedText,
           usageCount: c.usageCount,
           lastUsedAt: c.lastUsedAt,
-          qualityScore: c.qualityScore ?? AppConstants.defaultTmQuality,
         )).toList();
 
         // Calculate similarity in isolate
@@ -340,7 +336,6 @@ class TmMatchingService {
           breakdown: breakdown,
           usageCount: bestCandidate.usageCount,
           lastUsedAt: DateTime.fromMillisecondsSinceEpoch(bestCandidate.lastUsedAt * 1000),
-          qualityScore: bestCandidate.qualityScore ?? AppConstants.defaultTmQuality,
           autoApplied: bestResult.combinedScore >= AppConstants.autoAcceptTmThreshold,
         );
       }
@@ -409,7 +404,6 @@ class TmMatchingService {
         translatedText: c.translatedText,
         usageCount: c.usageCount,
         lastUsedAt: c.lastUsedAt,
-        qualityScore: c.qualityScore ?? AppConstants.defaultTmQuality,
       )).toList();
 
       final similarityResults = await isolateService.calculateBatchSimilarity(
@@ -442,7 +436,6 @@ class TmMatchingService {
           breakdown: breakdown,
           usageCount: candidate.usageCount,
           lastUsedAt: DateTime.fromMillisecondsSinceEpoch(candidate.lastUsedAt * 1000),
-          qualityScore: candidate.qualityScore ?? AppConstants.defaultTmQuality,
           autoApplied: result.combinedScore >= AppConstants.autoAcceptTmThreshold,
         ));
       }

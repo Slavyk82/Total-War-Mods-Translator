@@ -157,7 +157,6 @@ class ValidationPersistenceHandler {
           projectLanguageId: context.projectLanguageId,
           translatedText: llmTranslation,
           status: status,
-          confidenceScore: cachedUnitIds.contains(unit.id) ? 1.0 : 0.8,
           translationSource: translationSource,
           validationIssues: validationIssuesJson,
           createdAt: now,
@@ -187,7 +186,6 @@ class ValidationPersistenceHandler {
               versionId: version.id,
               translatedText: llmTranslation,
               status: status.name,
-              confidenceScore: isCached ? 1.0 : 0.8,
               changedBy: isCached ? 'tm_exact' : 'provider_${context.providerCode}',
               changeReason: isCached
                   ? 'TM exact match (100% similarity, batch deduplication)'
@@ -237,7 +235,6 @@ class ValidationPersistenceHandler {
         final tmResult = await _tmService.addTranslationsBatch(
           translations: tmBatchEntries,
           targetLanguageCode: context.targetLanguage,
-          quality: 0.8,
         );
 
         if (tmResult.isErr) {

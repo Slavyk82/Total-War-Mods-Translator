@@ -99,33 +99,38 @@ class WorkshopModProcessor {
     final bool isNewMod;
     final String modId;
     final int createdAt;
-    final bool hasChanges;
 
     WorkshopMod? existingMod;
     if (existingModResult is Ok) {
-      // Mod exists, check if data has changed
+      // Mod exists
       existingMod = existingModResult.value;
       modId = existingMod.id;
       createdAt = existingMod.createdAt;
       isNewMod = false;
-
-      // Compare relevant fields (excluding internal timestamps)
-      hasChanges = existingMod.title != modInfo.title ||
-          existingMod.workshopUrl != modInfo.workshopUrl ||
-          existingMod.fileSize != modInfo.fileSize ||
-          existingMod.timeCreated != modInfo.timeCreated ||
-          existingMod.timeUpdated != modInfo.timeUpdated ||
-          existingMod.subscriptions != modInfo.subscriptions ||
-          !_tagsEqual(existingMod.tags, modInfo.tags);
     } else {
       // New mod, generate new ID
       modId = _uuid.v4();
       createdAt = now;
       isNewMod = true;
-      hasChanges = true;
     }
 
-    final workshopMod = WorkshopMod(
+    // For the database, keep the existing timeUpdated to preserve update detection
+    // The timeUpdated in DB should only be updated when the local file is current
+    // (handled by WorkshopScannerService after verifying local file timestamp)
+    final dbTimeUpdated = existingMod?.timeUpdated ?? modInfo.timeUpdated;
+
+    // Check if non-timestamp fields have changed (for DB update decision)
+    final nonTimestampChanges = isNewMod ||
+        (existingMod != null && (
+            existingMod.title != modInfo.title ||
+            existingMod.workshopUrl != modInfo.workshopUrl ||
+            existingMod.fileSize != modInfo.fileSize ||
+            existingMod.timeCreated != modInfo.timeCreated ||
+            existingMod.subscriptions != modInfo.subscriptions ||
+            !_tagsEqual(existingMod.tags, modInfo.tags)));
+
+    // WorkshopMod for database storage (preserves old timeUpdated)
+    final workshopModForDb = WorkshopMod(
       id: modId,
       workshopId: modInfo.workshopId,
       title: modInfo.title,
@@ -133,18 +138,18 @@ class WorkshopModProcessor {
       workshopUrl: modInfo.workshopUrl,
       fileSize: modInfo.fileSize,
       timeCreated: modInfo.timeCreated,
-      timeUpdated: modInfo.timeUpdated,
+      timeUpdated: dbTimeUpdated, // Keep existing timeUpdated
       subscriptions: modInfo.subscriptions,
       tags: modInfo.tags,
       createdAt: createdAt,
-      updatedAt: hasChanges ? now : (existingMod?.updatedAt ?? now),
+      updatedAt: nonTimestampChanges ? now : (existingMod?.updatedAt ?? now),
       lastCheckedAt: now,
       isHidden: existingMod?.isHidden ?? false,
     );
 
-    // Only upsert if it's a new mod or if data has changed
-    if (isNewMod || hasChanges) {
-      final result = await _workshopModRepository.upsert(workshopMod);
+    // Only upsert if it's a new mod or if non-timestamp data has changed
+    if (isNewMod || nonTimestampChanges) {
+      final result = await _workshopModRepository.upsert(workshopModForDb);
       result.when(
         ok: (_) {},
         err: (error) =>
@@ -160,7 +165,23 @@ class WorkshopModProcessor {
       );
     }
 
-    return workshopMod;
+    // Return WorkshopMod with fresh API timeUpdated for comparison in scanner
+    return WorkshopMod(
+      id: modId,
+      workshopId: modInfo.workshopId,
+      title: modInfo.title,
+      appId: appId,
+      workshopUrl: modInfo.workshopUrl,
+      fileSize: modInfo.fileSize,
+      timeCreated: modInfo.timeCreated,
+      timeUpdated: modInfo.timeUpdated, // Fresh API timestamp for comparison
+      subscriptions: modInfo.subscriptions,
+      tags: modInfo.tags,
+      createdAt: createdAt,
+      updatedAt: workshopModForDb.updatedAt,
+      lastCheckedAt: now,
+      isHidden: existingMod?.isHidden ?? false,
+    );
   }
 
   /// Compare two tag lists for equality.

@@ -15,38 +15,55 @@ part 'mod_list_provider.g.dart';
 
 /// Provides list of detected mods after scanning Workshop folder (without creating projects)
 @riverpod
-Future<List<DetectedMod>> detectedMods(Ref ref) async {
-  final gameInstallationSyncService = ServiceLocator.get<GameInstallationSyncService>();
-  final workshopScanner = ServiceLocator.get<WorkshopScannerService>();
-  
-  // Watch the selected game to trigger rescan when it changes
-  final selectedGame = await ref.watch(selectedGameProvider.future);
-  
-  // If a game is selected, sync it to database and scan its Workshop folder
-  if (selectedGame != null) {
-    // First, sync the game from settings to database
-    final syncResult = await gameInstallationSyncService.syncGame(selectedGame.code);
-    
-    // Only scan if sync was successful
-    if (syncResult is Ok) {
-      // Scan Workshop folder and return detected mods
-      final scanResult = await workshopScanner.scanMods(selectedGame.code);
-      return scanResult.when(
-        ok: (result) {
-          // If translation statistics changed during scan, invalidate project providers
-          if (result.translationStatsChanged) {
-            ref.invalidate(projectsWithDetailsProvider);
-            ref.read(translationStatsVersionProvider.notifier).increment();
-          }
-          return result.mods;
-        },
-        err: (_) => <DetectedMod>[],
-      );
+class DetectedMods extends _$DetectedMods {
+  @override
+  Future<List<DetectedMod>> build() async {
+    final gameInstallationSyncService = ServiceLocator.get<GameInstallationSyncService>();
+    final workshopScanner = ServiceLocator.get<WorkshopScannerService>();
+
+    // Watch the selected game to trigger rescan when it changes
+    final selectedGame = await ref.watch(selectedGameProvider.future);
+
+    // If a game is selected, sync it to database and scan its Workshop folder
+    if (selectedGame != null) {
+      // First, sync the game from settings to database
+      final syncResult = await gameInstallationSyncService.syncGame(selectedGame.code);
+
+      // Only scan if sync was successful
+      if (syncResult is Ok) {
+        // Scan Workshop folder and return detected mods
+        final scanResult = await workshopScanner.scanMods(selectedGame.code);
+        return scanResult.when(
+          ok: (result) {
+            // If translation statistics changed during scan, invalidate project providers
+            if (result.translationStatsChanged) {
+              ref.invalidate(projectsWithDetailsProvider);
+              ref.read(translationStatsVersionProvider.notifier).increment();
+            }
+            return result.mods;
+          },
+          err: (_) => <DetectedMod>[],
+        );
+      }
+    }
+
+    // No game selected or sync failed
+    return <DetectedMod>[];
+  }
+
+  /// Update the hidden status of a mod locally without rescanning
+  void updateModHidden(String workshopId, bool isHidden) {
+    final currentState = state;
+    if (currentState is AsyncData<List<DetectedMod>>) {
+      final updatedMods = currentState.value.map((mod) {
+        if (mod.workshopId == workshopId) {
+          return mod.copyWith(isHidden: isHidden);
+        }
+        return mod;
+      }).toList();
+      state = AsyncData(updatedMods);
     }
   }
-  
-  // No game selected or sync failed
-  return <DetectedMod>[];
 }
 
 /// Provides list of all projects from database

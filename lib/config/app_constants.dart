@@ -116,18 +116,6 @@ class AppConstants {
   /// manual review. High threshold ensures quality is maintained.
   static const double autoAcceptTmThreshold = 0.95;
 
-  /// Default quality score for new TM entries (0.8 = 80%)
-  ///
-  /// Quality score assigned to newly created translation memory entries.
-  /// Can be adjusted later based on feedback and usage.
-  static const double defaultTmQuality = 0.8;
-
-  /// Minimum quality threshold for TM cleanup (0.3 = 30%)
-  ///
-  /// During cleanup operations, entries with quality below this threshold
-  /// may be candidates for deletion if they're also rarely used.
-  static const double minTmCleanupQuality = 0.3;
-
   /// Maximum number of fuzzy match results to return
   ///
   /// Limits the number of TM suggestions shown to user to prevent
@@ -293,16 +281,6 @@ class AppConstants {
   ///
   /// Upper bound for similarity scores in validation checks.
   static const double maxSimilarityClamp = 1.0;
-
-  /// Minimum quality clamp value
-  ///
-  /// Lower bound for quality scores in validation checks.
-  static const double minQualityClamp = 0.0;
-
-  /// Maximum quality clamp value
-  ///
-  /// Upper bound for quality scores in validation checks.
-  static const double maxQualityClamp = 1.0;
 
   // ========== VALIDATION CONSTANTS ==========
 

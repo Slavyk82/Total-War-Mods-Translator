@@ -351,8 +351,6 @@ class _ExportTranslationsDialogState
         return 'Notes';
       case export_models.ExportColumn.context:
         return 'Context';
-      case export_models.ExportColumn.qualityScore:
-        return 'Quality Score';
       case export_models.ExportColumn.createdAt:
         return 'Created At';
       case export_models.ExportColumn.updatedAt:

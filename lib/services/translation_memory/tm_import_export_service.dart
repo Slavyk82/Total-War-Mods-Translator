@@ -91,14 +91,12 @@ class TmImportExportService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    double? minQuality,
   }) async {
     try {
       _logger.info('Starting TMX export process', {
         'outputPath': outputPath,
         'sourceLanguageCode': sourceLanguageCode,
         'targetLanguageCode': targetLanguageCode,
-        'minQuality': minQuality,
       });
 
       // Get all entries from repository
@@ -121,7 +119,6 @@ class TmImportExportService {
         entries,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
-        minQuality: minQuality,
       );
 
       if (entries.isEmpty) {
@@ -178,7 +175,6 @@ class TmImportExportService {
     List<TranslationMemoryEntry> entries, {
     String? sourceLanguageCode,
     String? targetLanguageCode,
-    double? minQuality,
   }) {
     var filtered = entries;
 
@@ -187,13 +183,6 @@ class TmImportExportService {
     if (targetLanguageCode != null) {
       filtered = filtered
           .where((e) => e.targetLanguageId == targetLanguageCode)
-          .toList();
-    }
-
-    if (minQuality != null) {
-      filtered = filtered
-          .where((e) =>
-              e.qualityScore != null && e.qualityScore! >= minQuality)
           .toList();
     }
 

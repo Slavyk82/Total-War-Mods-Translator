@@ -19,8 +19,8 @@ class EditorBottomPanel extends ConsumerStatefulWidget {
   final String? sourceText;
   final String? translatedText;
   /// Callback when applying a TM suggestion
-  /// Parameters: unitId, targetText, qualityScore, isExactMatch
-  final Function(String unitId, String targetText, double qualityScore, bool isExactMatch)? onApplySuggestion;
+  /// Parameters: unitId, targetText, isExactMatch
+  final Function(String unitId, String targetText, bool isExactMatch)? onApplySuggestion;
 
   const EditorBottomPanel({
     super.key,
@@ -177,7 +177,6 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
             widget.onApplySuggestion!(
               widget.selectedUnitId!,
               match.targetText,
-              match.qualityScore,
               match.matchType == TmMatchType.exact,
             );
 
@@ -303,25 +302,6 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
                       ),
                     ],
                   ),
-                  if (match.qualityScore > 0)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          FluentIcons.star_24_regular,
-                          size: 12,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Quality: ${(match.qualityScore * 100).round()}%',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
                 ],
               ),
             ],
@@ -355,7 +335,7 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
         // Handle revert - this would need to be wired up to the parent
         if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
           // History reverts are treated as manual edits
-          widget.onApplySuggestion!(widget.selectedUnitId!, translatedText, 1.0, false);
+          widget.onApplySuggestion!(widget.selectedUnitId!, translatedText, false);
         }
       },
     );
@@ -376,7 +356,7 @@ class _EditorBottomPanelState extends ConsumerState<EditorBottomPanel>
         // Handle auto-fix
         if (widget.onApplySuggestion != null && widget.selectedUnitId != null) {
           // Validation fixes are treated as manual edits
-          widget.onApplySuggestion!(widget.selectedUnitId!, fixedText, 1.0, false);
+          widget.onApplySuggestion!(widget.selectedUnitId!, fixedText, false);
         }
       },
       onValidate: () {

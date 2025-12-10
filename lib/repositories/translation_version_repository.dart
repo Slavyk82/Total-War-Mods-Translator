@@ -125,10 +125,10 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         final existingId = existing['id'] as String;
         final existingCreatedAt = existing['created_at'] as int;
 
+        // Create update map without ID (ID is used in WHERE clause, not updated)
         final map = toMap(entity);
-        map['id'] = existingId;
-        map['created_at'] = existingCreatedAt;
-        map.remove('id'); // Remove from UPDATE fields
+        map.remove('id'); // Remove ID - it's used in WHERE clause, not updated
+        map['created_at'] = existingCreatedAt; // Preserve original creation time
 
         await txn.update(
           tableName,
@@ -378,6 +378,133 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       );
 
       return rowsAffected;
+    });
+  }
+
+  /// Set status to needsReview for all translation versions of specified units.
+  ///
+  /// Used when obsolete units are reactivated and need review.
+  /// Does NOT clear the translated_text - only changes status to needsReview.
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> setNeedsReviewForUnitKeys({
+    required String projectId,
+    required List<String> unitKeys,
+  }) async {
+    if (unitKeys.isEmpty) {
+      return Ok(0);
+    }
+
+    return executeQuery(() async {
+      final placeholders = List.filled(unitKeys.length, '?').join(',');
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final rowsAffected = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET status = 'needsReview',
+            updated_at = ?
+        WHERE unit_id IN (
+          SELECT id FROM translation_units
+          WHERE project_id = ? AND key IN ($placeholders)
+        )
+        ''',
+        [now, projectId, ...unitKeys],
+      );
+
+      return rowsAffected;
+    });
+  }
+
+  /// Reanalyze all translation versions to fix status inconsistencies.
+  ///
+  /// This method:
+  /// 1. Sets status to 'pending' for versions with empty/null translated_text
+  ///    but non-pending status
+  /// 2. Sets status to 'translated' for versions with non-empty translated_text
+  ///    but 'pending' or 'translating' status (and not manually edited/validated)
+  ///
+  /// Returns a record with the count of fixed entries and total analyzed.
+  Future<Result<({int fixedToPending, int fixedToTranslated, int total}),
+      TWMTDatabaseException>> reanalyzeAllStatuses() async {
+    return executeQuery(() async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      // Count total versions
+      final countResult = await database.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableName',
+      );
+      final total = (countResult.first['count'] as int?) ?? 0;
+
+      // Fix versions that have no translation but non-pending status
+      // (excluding 'translating' which is a valid in-progress state)
+      final fixedToPending = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET status = 'pending',
+            updated_at = ?
+        WHERE (translated_text IS NULL OR translated_text = '')
+          AND status NOT IN ('pending', 'translating')
+        ''',
+        [now],
+      );
+
+      // Fix versions that have translation but still show as pending
+      // Don't touch manually edited or validated entries
+      final fixedToTranslated = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET status = 'translated',
+            updated_at = ?
+        WHERE translated_text IS NOT NULL
+          AND translated_text != ''
+          AND status IN ('pending', 'translating')
+          AND is_manually_edited = 0
+        ''',
+        [now],
+      );
+
+      return (
+        fixedToPending: fixedToPending,
+        fixedToTranslated: fixedToTranslated,
+        total: total,
+      );
+    });
+  }
+
+  /// Count versions with inconsistent status.
+  ///
+  /// Returns the count of versions where status doesn't match translated_text state.
+  Future<Result<({int pendingWithText, int nonPendingWithoutText}),
+      TWMTDatabaseException>> countInconsistentStatuses() async {
+    return executeQuery(() async {
+      // Versions with translation but pending/translating status
+      final pendingWithTextResult = await database.rawQuery(
+        '''
+        SELECT COUNT(*) as count FROM $tableName
+        WHERE translated_text IS NOT NULL
+          AND translated_text != ''
+          AND status IN ('pending', 'translating')
+          AND is_manually_edited = 0
+        ''',
+      );
+      final pendingWithText =
+          (pendingWithTextResult.first['count'] as int?) ?? 0;
+
+      // Versions without translation but non-pending status
+      final nonPendingResult = await database.rawQuery(
+        '''
+        SELECT COUNT(*) as count FROM $tableName
+        WHERE (translated_text IS NULL OR translated_text = '')
+          AND status NOT IN ('pending', 'translating')
+        ''',
+      );
+      final nonPendingWithoutText =
+          (nonPendingResult.first['count'] as int?) ?? 0;
+
+      return (
+        pendingWithText: pendingWithText,
+        nonPendingWithoutText: nonPendingWithoutText,
+      );
     });
   }
 }

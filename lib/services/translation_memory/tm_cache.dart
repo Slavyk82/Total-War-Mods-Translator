@@ -215,7 +215,6 @@ class TmCache {
         category: null, // Not stored in TranslationMemoryEntry model
         usageCount: entry.usageCount,
         lastUsedAt: DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
-        qualityScore: entry.qualityScore ?? 0.8,
         autoApplied: true,
       );
 

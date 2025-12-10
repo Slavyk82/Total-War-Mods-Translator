@@ -7,7 +7,6 @@ class TranslationAddedEvent extends DomainEvent {
   final String projectLanguageId;
   final String translatedText;
   final String? providerId;
-  final double? confidenceScore;
 
   TranslationAddedEvent({
     required this.versionId,
@@ -15,7 +14,6 @@ class TranslationAddedEvent extends DomainEvent {
     required this.projectLanguageId,
     required this.translatedText,
     this.providerId,
-    this.confidenceScore,
   }) : super.now();
 
   bool get isProviderGenerated => providerId != null;
@@ -26,8 +24,7 @@ class TranslationAddedEvent extends DomainEvent {
 
   @override
   String toString() =>
-      'TranslationAddedEvent(versionId: $versionId, provider: $providerId, '
-      'confidence: ${confidenceScore?.toStringAsFixed(2)})';
+      'TranslationAddedEvent(versionId: $versionId, provider: $providerId)';
 }
 
 /// Event emitted when a translation is manually edited
@@ -144,19 +141,16 @@ class TranslationQualityIssueDetectedEvent extends DomainEvent {
   final String versionId;
   final String unitId;
   final List<String> issues;
-  final double? confidenceScore;
   final bool requiresReview;
 
   TranslationQualityIssueDetectedEvent({
     required this.versionId,
     required this.unitId,
     required this.issues,
-    this.confidenceScore,
     required this.requiresReview,
   }) : super.now();
 
   int get issueCount => issues.length;
-  bool get isLowConfidence => confidenceScore != null && confidenceScore! < 0.7;
   @override
   Map<String, dynamic> toJson() {
     throw UnimplementedError('toJson() must be implemented');

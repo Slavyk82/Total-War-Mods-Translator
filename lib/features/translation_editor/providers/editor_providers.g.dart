@@ -706,11 +706,17 @@ abstract class _$EditorSelection extends $Notifier<EditorSelectionState> {
 }
 
 /// Provider for translation rows (units + versions)
+///
+/// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+/// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
 
 @ProviderFor(translationRows)
 const translationRowsProvider = TranslationRowsFamily._();
 
 /// Provider for translation rows (units + versions)
+///
+/// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+/// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
 
 final class TranslationRowsProvider
     extends
@@ -723,6 +729,9 @@ final class TranslationRowsProvider
         $FutureModifier<List<TranslationRow>>,
         $FutureProvider<List<TranslationRow>> {
   /// Provider for translation rows (units + versions)
+  ///
+  /// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+  /// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
   const TranslationRowsProvider._({
     required TranslationRowsFamily super.from,
     required (String, String) super.argument,
@@ -767,9 +776,12 @@ final class TranslationRowsProvider
   }
 }
 
-String _$translationRowsHash() => r'18273cf1fff73ac0773924e2d041732baff3f33e';
+String _$translationRowsHash() => r'e7a7e4a9f705538e4ce187ef432b1142e08f7d31';
 
 /// Provider for translation rows (units + versions)
+///
+/// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+/// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
 
 final class TranslationRowsFamily extends $Family
     with
@@ -787,6 +799,9 @@ final class TranslationRowsFamily extends $Family
       );
 
   /// Provider for translation rows (units + versions)
+  ///
+  /// Uses optimized SQL JOIN query to fetch all data in a single database round-trip.
+  /// This eliminates the N+1 query pattern and reduces memory overhead from in-memory joins.
 
   TranslationRowsProvider call(String projectId, String languageId) =>
       TranslationRowsProvider._(argument: (projectId, languageId), from: this);
@@ -1522,4 +1537,222 @@ abstract class _$SelectedLlmModel extends $Notifier<String?> {
             >;
     element.handleValue(ref, created);
   }
+}
+
+/// Provider for TM suggestions for a specific translation unit
+///
+/// Fetches both exact and fuzzy matches from Translation Memory
+/// for the given unit's source text.
+
+@ProviderFor(tmSuggestionsForUnit)
+const tmSuggestionsForUnitProvider = TmSuggestionsForUnitFamily._();
+
+/// Provider for TM suggestions for a specific translation unit
+///
+/// Fetches both exact and fuzzy matches from Translation Memory
+/// for the given unit's source text.
+
+final class TmSuggestionsForUnitProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TmMatch>>,
+          List<TmMatch>,
+          FutureOr<List<TmMatch>>
+        >
+    with $FutureModifier<List<TmMatch>>, $FutureProvider<List<TmMatch>> {
+  /// Provider for TM suggestions for a specific translation unit
+  ///
+  /// Fetches both exact and fuzzy matches from Translation Memory
+  /// for the given unit's source text.
+  const TmSuggestionsForUnitProvider._({
+    required TmSuggestionsForUnitFamily super.from,
+    required (String, String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'tmSuggestionsForUnitProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$tmSuggestionsForUnitHash();
+
+  @override
+  String toString() {
+    return r'tmSuggestionsForUnitProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TmMatch>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TmMatch>> create(Ref ref) {
+    final argument = this.argument as (String, String, String);
+    return tmSuggestionsForUnit(ref, argument.$1, argument.$2, argument.$3);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TmSuggestionsForUnitProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$tmSuggestionsForUnitHash() =>
+    r'1a2bcc11a4b6802764a7ca31be232b55a8192fae';
+
+/// Provider for TM suggestions for a specific translation unit
+///
+/// Fetches both exact and fuzzy matches from Translation Memory
+/// for the given unit's source text.
+
+final class TmSuggestionsForUnitFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<TmMatch>>,
+          (String, String, String)
+        > {
+  const TmSuggestionsForUnitFamily._()
+    : super(
+        retry: null,
+        name: r'tmSuggestionsForUnitProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Provider for TM suggestions for a specific translation unit
+  ///
+  /// Fetches both exact and fuzzy matches from Translation Memory
+  /// for the given unit's source text.
+
+  TmSuggestionsForUnitProvider call(
+    String unitId,
+    String sourceLanguageCode,
+    String targetLanguageCode,
+  ) => TmSuggestionsForUnitProvider._(
+    argument: (unitId, sourceLanguageCode, targetLanguageCode),
+    from: this,
+  );
+
+  @override
+  String toString() => r'tmSuggestionsForUnitProvider';
+}
+
+/// Provider for validation issues for a specific translation
+///
+/// Validates the translation against the source text and returns
+/// any issues found (errors, warnings, info).
+
+@ProviderFor(validationIssues)
+const validationIssuesProvider = ValidationIssuesFamily._();
+
+/// Provider for validation issues for a specific translation
+///
+/// Validates the translation against the source text and returns
+/// any issues found (errors, warnings, info).
+
+final class ValidationIssuesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<ValidationIssue>>,
+          List<ValidationIssue>,
+          FutureOr<List<ValidationIssue>>
+        >
+    with
+        $FutureModifier<List<ValidationIssue>>,
+        $FutureProvider<List<ValidationIssue>> {
+  /// Provider for validation issues for a specific translation
+  ///
+  /// Validates the translation against the source text and returns
+  /// any issues found (errors, warnings, info).
+  const ValidationIssuesProvider._({
+    required ValidationIssuesFamily super.from,
+    required (String, String) super.argument,
+  }) : super(
+         retry: null,
+         name: r'validationIssuesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$validationIssuesHash();
+
+  @override
+  String toString() {
+    return r'validationIssuesProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<List<ValidationIssue>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<ValidationIssue>> create(Ref ref) {
+    final argument = this.argument as (String, String);
+    return validationIssues(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ValidationIssuesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$validationIssuesHash() => r'b2cdea3d21e38d372befe15f3de33b0136279503';
+
+/// Provider for validation issues for a specific translation
+///
+/// Validates the translation against the source text and returns
+/// any issues found (errors, warnings, info).
+
+final class ValidationIssuesFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<List<ValidationIssue>>,
+          (String, String)
+        > {
+  const ValidationIssuesFamily._()
+    : super(
+        retry: null,
+        name: r'validationIssuesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Provider for validation issues for a specific translation
+  ///
+  /// Validates the translation against the source text and returns
+  /// any issues found (errors, warnings, info).
+
+  ValidationIssuesProvider call(String sourceText, String translatedText) =>
+      ValidationIssuesProvider._(
+        argument: (sourceText, translatedText),
+        from: this,
+      );
+
+  @override
+  String toString() => r'validationIssuesProvider';
 }

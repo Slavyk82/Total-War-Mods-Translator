@@ -101,94 +101,104 @@ class LlmServiceImpl implements ILlmService {
     final concurrency = maxParallel.clamp(1, AppConstants.maxConcurrentLlmRequests);
 
     // Create stream controller for results
-    StreamController<Result<BatchTranslationResult, LlmServiceException>>? controller;
-    ConcurrencySemaphore? semaphore;
+    final controller = StreamController<Result<BatchTranslationResult, LlmServiceException>>();
+    final semaphore = ConcurrencySemaphore(maxConcurrent: concurrency);
 
-    try {
-      controller = StreamController<Result<BatchTranslationResult, LlmServiceException>>();
-      semaphore = ConcurrencySemaphore(maxConcurrent: concurrency);
+    // Track active futures for cleanup
+    final activeFutures = <Future<void>>[];
+    var isProcessingComplete = false;
 
-      // Track active futures
-      final activeFutures = <Future<void>>[];
+    // Process all requests with controlled concurrency
+    Future<void> processRequests() async {
+      try {
+        for (var i = 0; i < requests.length; i++) {
+          final request = requests[i];
 
-      // Process all requests with controlled concurrency
-      for (var i = 0; i < requests.length; i++) {
-        final request = requests[i];
+          // Wait for semaphore slot
+          final future = semaphore.acquire().then((_) async {
+            try {
+              final startTime = DateTime.now();
+              final result = await translateBatch(request);
+              final endTime = DateTime.now();
 
-        // Wait for semaphore slot
-        final future = semaphore.acquire().then((_) async {
-          try {
-            final startTime = DateTime.now();
-            final result = await translateBatch(request);
-            final endTime = DateTime.now();
-
-            // Only add to controller if not yet closed
-            if (!controller!.isClosed) {
-              if (result.isOk) {
-                final response = result.value;
-                controller.add(Ok(BatchTranslationResult(
-                  batchId: request.requestId,
-                  totalUnits: response.translations.length,
-                  successfulUnits: response.translations.length,
-                  failedUnits: 0,
-                  responses: [response],
-                  errors: {},
-                  totalTokens: response.totalTokens,
-                  totalProcessingTimeMs: response.processingTimeMs,
-                  startTime: startTime,
-                  endTime: endTime,
-                )));
-              } else {
-                controller.add(Ok(BatchTranslationResult(
-                  batchId: request.requestId,
-                  totalUnits: request.texts.length,
-                  successfulUnits: 0,
-                  failedUnits: request.texts.length,
-                  responses: [],
-                  errors: {request.requestId: result.error.message},
-                  totalTokens: 0,
-                  totalProcessingTimeMs: endTime.difference(startTime).inMilliseconds,
-                  startTime: startTime,
-                  endTime: endTime,
-                )));
+              // Only add to controller if not yet closed
+              if (!controller.isClosed) {
+                // Use pattern matching for safer Result handling
+                result.when(
+                  ok: (response) {
+                    controller.add(Ok(BatchTranslationResult(
+                      batchId: request.requestId,
+                      totalUnits: response.translations.length,
+                      successfulUnits: response.translations.length,
+                      failedUnits: 0,
+                      responses: [response],
+                      errors: {},
+                      totalTokens: response.totalTokens,
+                      totalProcessingTimeMs: response.processingTimeMs,
+                      startTime: startTime,
+                      endTime: endTime,
+                    )));
+                  },
+                  err: (error) {
+                    controller.add(Ok(BatchTranslationResult(
+                      batchId: request.requestId,
+                      totalUnits: request.texts.length,
+                      successfulUnits: 0,
+                      failedUnits: request.texts.length,
+                      responses: [],
+                      errors: {request.requestId: error.message},
+                      totalTokens: 0,
+                      totalProcessingTimeMs: endTime.difference(startTime).inMilliseconds,
+                      startTime: startTime,
+                      endTime: endTime,
+                    )));
+                  },
+                );
               }
+            } catch (e, stackTrace) {
+              // Handle unexpected errors during batch processing
+              if (!controller.isClosed) {
+                controller.add(Err(
+                  LlmServiceException(
+                    'Unexpected error during batch translation: ${e.toString()}',
+                    stackTrace: stackTrace,
+                  ),
+                ));
+              }
+            } finally {
+              // Always release semaphore slot
+              semaphore.release();
             }
-          } catch (e, stackTrace) {
-            // Handle unexpected errors during batch processing
-            if (!controller!.isClosed) {
-              controller.add(Err(
-                LlmServiceException(
-                  'Unexpected error during batch translation: ${e.toString()}',
-                  stackTrace: stackTrace,
-                ),
-              ));
-            }
-          } finally {
-            // Always release semaphore slot
-            semaphore!.release();
-          }
-        });
+          });
 
-        activeFutures.add(future);
+          activeFutures.add(future);
+        }
+
+        // Wait for all requests to complete
+        await Future.wait(activeFutures, eagerError: false);
+      } catch (e, stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(e, stackTrace);
+        }
+      } finally {
+        isProcessingComplete = true;
+        // Close controller after all processing is done
+        if (!controller.isClosed) {
+          await controller.close();
+        }
       }
+    }
 
-      // Wait for all requests to complete, then close the stream
-      Future.wait(activeFutures).then((_) {
-        if (!controller!.isClosed) {
-          controller.close();
-        }
-      }).catchError((error, stackTrace) {
-        if (!controller!.isClosed) {
-          controller.addError(error, stackTrace);
-          controller.close();
-        }
-      });
+    // Start processing in background
+    // ignore: unawaited_futures
+    processRequests();
 
-      // Yield results as they become available
+    // Yield results as they become available
+    try {
       yield* controller.stream;
     } finally {
-      // Ensure cleanup of resources
-      if (controller != null && !controller.isClosed) {
+      // Ensure cleanup if stream is cancelled before processing completes
+      if (!isProcessingComplete && !controller.isClosed) {
         await controller.close();
       }
     }

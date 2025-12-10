@@ -226,4 +226,32 @@ class ModUpdateAnalysisCacheRepository
       );
     });
   }
+
+  /// Delete all cache entries that have pending changes.
+  /// Use this to clean up stale entries that were never properly cleared.
+  Future<Result<int, TWMTDatabaseException>> deleteAllWithChanges() async {
+    return executeQuery(() async {
+      return await database.delete(
+        tableName,
+        where: 'new_units_count > 0 OR removed_units_count > 0 OR modified_units_count > 0',
+      );
+    });
+  }
+
+  /// Clear changes for a specific project by setting all counts to zero.
+  Future<Result<void, TWMTDatabaseException>> clearChangesForProject(
+      String projectId, String packFilePath) async {
+    return executeQuery(() async {
+      await database.update(
+        tableName,
+        {
+          'new_units_count': 0,
+          'removed_units_count': 0,
+          'modified_units_count': 0,
+        },
+        where: 'project_id = ? AND pack_file_path = ?',
+        whereArgs: [projectId, packFilePath],
+      );
+    });
+  }
 }

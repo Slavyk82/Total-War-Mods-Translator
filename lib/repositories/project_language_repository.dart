@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/project_language.dart';
+import '../services/projects/project_language_deletion_service.dart';
 import 'base_repository.dart';
 
 /// Repository for managing ProjectLanguage entities.
@@ -9,6 +10,9 @@ import 'base_repository.dart';
 /// Provides CRUD operations and custom queries for project languages,
 /// including filtering by project and updating progress.
 class ProjectLanguageRepository extends BaseRepository<ProjectLanguage> {
+  final ProjectLanguageDeletionService _deletionService =
+      ProjectLanguageDeletionService();
+
   @override
   String get tableName => 'project_languages';
 
@@ -90,18 +94,8 @@ class ProjectLanguageRepository extends BaseRepository<ProjectLanguage> {
 
   @override
   Future<Result<void, TWMTDatabaseException>> delete(String id) async {
-    return executeQuery(() async {
-      final rowsAffected = await database.delete(
-        tableName,
-        where: 'id = ?',
-        whereArgs: [id],
-      );
-
-      if (rowsAffected == 0) {
-        throw TWMTDatabaseException(
-            'Project language not found for deletion: $id');
-      }
-    });
+    // Use optimized deletion service to avoid long database locks
+    return _deletionService.deleteProjectLanguage(id);
   }
 
   /// Get all project languages for a specific project.

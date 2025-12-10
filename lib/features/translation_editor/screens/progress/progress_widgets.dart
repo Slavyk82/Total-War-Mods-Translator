@@ -511,8 +511,14 @@ class _LogTerminalState extends State<LogTerminal> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    const terminalBg = Color(0xFF1E1E1E);
-    const headerBg = Color(0xFF2D2D2D);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Theme-aware colors
+    final terminalBg = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
+    final headerBg = isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8);
+    final headerTextColor = isDark ? Colors.grey.shade300 : Colors.grey.shade700;
+    final headerIconColor = isDark ? Colors.grey.shade400 : Colors.grey.shade600;
+    final secondaryIconColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
 
     final terminalContent = Container(
       decoration: BoxDecoration(
@@ -528,9 +534,9 @@ class _LogTerminalState extends State<LogTerminal> {
           // Header bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: headerBg,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(8),
                 topRight: Radius.circular(8),
               ),
@@ -540,13 +546,13 @@ class _LogTerminalState extends State<LogTerminal> {
                 Icon(
                   FluentIcons.code_24_regular,
                   size: 16,
-                  color: Colors.grey.shade400,
+                  color: headerIconColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Logs',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: headerTextColor,
                     fontFamily: 'Consolas, monospace',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -579,16 +585,16 @@ class _LogTerminalState extends State<LogTerminal> {
                             FluentIcons.arrow_down_24_regular,
                             size: 12,
                             color: _autoScroll
-                                ? Colors.green.shade400
-                                : Colors.grey.shade500,
+                                ? Colors.green.shade600
+                                : secondaryIconColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'Auto-scroll',
                             style: TextStyle(
                               color: _autoScroll
-                                  ? Colors.green.shade400
-                                  : Colors.grey.shade500,
+                                  ? Colors.green.shade600
+                                  : secondaryIconColor,
                               fontSize: 10,
                             ),
                           ),
@@ -606,7 +612,7 @@ class _LogTerminalState extends State<LogTerminal> {
                     child: Icon(
                       FluentIcons.delete_24_regular,
                       size: 14,
-                      color: Colors.grey.shade500,
+                      color: secondaryIconColor,
                     ),
                   ),
                 ),
@@ -615,10 +621,10 @@ class _LogTerminalState extends State<LogTerminal> {
           ),
           // Terminal content
           widget.expand
-              ? Expanded(child: _buildTerminalContent())
+              ? Expanded(child: _buildTerminalContent(isDark))
               : SizedBox(
                   height: widget.height ?? 150,
-                  child: _buildTerminalContent(),
+                  child: _buildTerminalContent(isDark),
                 ),
         ],
       ),
@@ -627,7 +633,9 @@ class _LogTerminalState extends State<LogTerminal> {
     return terminalContent;
   }
 
-  Widget _buildTerminalContent() {
+  Widget _buildTerminalContent(bool isDark) {
+    final placeholderColor = isDark ? Colors.grey.shade600 : Colors.grey.shade500;
+
     return Container(
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.only(
@@ -640,7 +648,7 @@ class _LogTerminalState extends State<LogTerminal> {
               child: Text(
                 'Waiting for logs...',
                 style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: placeholderColor,
                   fontFamily: 'Consolas, monospace',
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
@@ -653,13 +661,13 @@ class _LogTerminalState extends State<LogTerminal> {
               itemCount: _logs.length,
               itemBuilder: (context, index) {
                 final entry = _logs[index];
-                return _buildLogLine(entry);
+                return _buildLogLine(entry, isDark);
               },
             ),
     );
   }
 
-  Widget _buildLogLine(LogEntry entry) {
+  Widget _buildLogLine(LogEntry entry, bool isDark) {
     // Format timestamp as HH:mm:ss.SSS
     final time = entry.timestamp;
     final timeStr =
@@ -669,6 +677,9 @@ class _LogTerminalState extends State<LogTerminal> {
         '${time.millisecond.toString().padLeft(3, '0')}';
 
     final levelColor = Color(entry.levelColor);
+    final timestampColor = isDark ? Colors.grey.shade600 : Colors.grey.shade500;
+    final messageColor = isDark ? Colors.grey.shade300 : Colors.grey.shade800;
+    final dataColor = isDark ? Colors.grey.shade500 : Colors.grey.shade600;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
@@ -683,7 +694,7 @@ class _LogTerminalState extends State<LogTerminal> {
             // Timestamp
             TextSpan(
               text: '[$timeStr] ',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: timestampColor),
             ),
             // Level
             TextSpan(
@@ -696,13 +707,13 @@ class _LogTerminalState extends State<LogTerminal> {
             // Message
             TextSpan(
               text: entry.message,
-              style: TextStyle(color: Colors.grey.shade300),
+              style: TextStyle(color: messageColor),
             ),
             // Data (if present)
             if (entry.data != null)
               TextSpan(
                 text: ' | ${entry.data}',
-                style: TextStyle(color: Colors.grey.shade500),
+                style: TextStyle(color: dataColor),
               ),
           ],
         ),

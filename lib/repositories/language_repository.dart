@@ -160,4 +160,37 @@ class LanguageRepository extends BaseRepository<Language> {
       return maps.map((map) => fromMap(map)).toList();
     });
   }
+
+  /// Check if a language code already exists.
+  ///
+  /// Returns [Ok] with true if the code exists, false otherwise.
+  Future<Result<bool, TWMTDatabaseException>> codeExists(String code) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        columns: ['id'],
+        where: 'code = ?',
+        whereArgs: [code],
+        limit: 1,
+      );
+
+      return maps.isNotEmpty;
+    });
+  }
+
+  /// Get all custom languages (user-added).
+  ///
+  /// Returns [Ok] with list of languages where is_custom = 1, ordered by name.
+  Future<Result<List<Language>, TWMTDatabaseException>> getCustomLanguages() async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'is_custom = ?',
+        whereArgs: [1],
+        orderBy: 'name ASC',
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
 }

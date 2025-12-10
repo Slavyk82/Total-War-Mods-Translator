@@ -19,11 +19,25 @@ import '../widgets/export_project_dialog.dart';
 /// - Create new project wizard
 /// - Navigate to project details
 /// - Export and delete actions
-class ProjectsScreen extends ConsumerWidget {
+class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Reset filters when navigating to this screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(projectsFilterProvider.notifier).resetAll();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final projectsAsync = ref.watch(paginatedProjectsProvider);
 
@@ -42,7 +56,7 @@ class ProjectsScreen extends ConsumerWidget {
             // Projects grid/list
             Expanded(
               child: projectsAsync.when(
-                data: (projects) => _buildContent(context, ref, projects),
+                data: (projects) => _buildContent(context, projects),
                 loading: () => _buildLoading(theme),
                 error: (error, stack) => _buildError(theme, error),
               ),
@@ -72,13 +86,12 @@ class ProjectsScreen extends ConsumerWidget {
 
   Widget _buildContent(
     BuildContext context,
-    WidgetRef ref,
     List<ProjectWithDetails> projects,
   ) {
     final theme = Theme.of(context);
 
     if (projects.isEmpty) {
-      return _buildEmptyState(context, theme, ref);
+      return _buildEmptyState(context, theme);
     }
 
     return ProjectGrid(
@@ -87,7 +100,7 @@ class ProjectsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, ThemeData theme, WidgetRef ref) {
+  Widget _buildEmptyState(BuildContext context, ThemeData theme) {
     final filter = ref.watch(projectsFilterProvider);
     final hasActiveFilters = filter.searchQuery.isNotEmpty ||
         filter.gameFilters.isNotEmpty ||
@@ -202,7 +215,6 @@ class ProjectsScreen extends ConsumerWidget {
 
   void _confirmDeleteProject(
     BuildContext context,
-    WidgetRef ref,
     String projectId,
   ) {
     print('DEBUG: _confirmDeleteProject called for project: $projectId');
@@ -238,7 +250,7 @@ class ProjectsScreen extends ConsumerWidget {
             label: 'Delete',
             onTap: () {
               Navigator.of(dialogContext).pop();
-              _deleteProject(context, ref, projectId);
+              _deleteProject(context, projectId);
             },
           ),
         ],
@@ -246,7 +258,7 @@ class ProjectsScreen extends ConsumerWidget {
     );
   }
 
-  void _deleteProject(BuildContext context, WidgetRef ref, String projectId) async {
+  void _deleteProject(BuildContext context, String projectId) async {
     print('DEBUG: _deleteProject called for project: $projectId');
     final projectRepo = ref.read(projectRepositoryProvider);
     print('DEBUG: projectRepo obtained');

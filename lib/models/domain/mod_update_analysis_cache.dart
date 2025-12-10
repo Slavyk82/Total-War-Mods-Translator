@@ -65,6 +65,14 @@ class ModUpdateAnalysisCache {
     return fileLastModified == currentFileLastModified;
   }
 
+  /// Returns true if the cache indicates there are any changes (including auto-applied).
+  bool get hasChanges =>
+      newUnitsCount > 0 || removedUnitsCount > 0 || modifiedUnitsCount > 0;
+
+  /// Returns true if the cache indicates there are changes requiring user attention.
+  /// Excludes removed units since those are handled automatically.
+  bool get hasPendingChanges => newUnitsCount > 0 || modifiedUnitsCount > 0;
+
   /// Convert cached data to ModUpdateAnalysis domain object.
   ModUpdateAnalysis toAnalysis() {
     return ModUpdateAnalysis(

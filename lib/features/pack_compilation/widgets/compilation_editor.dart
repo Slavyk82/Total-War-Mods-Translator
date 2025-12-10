@@ -91,8 +91,6 @@ class CompilationEditor extends ConsumerWidget {
                       .updateLanguage(v),
                 ),
                 const SizedBox(height: 24),
-                const CompilationBBCodeSection(),
-                const SizedBox(height: 24),
                 CompilationActionSection(
                   state: state,
                   currentGameAsync: currentGameAsync,
@@ -114,6 +112,8 @@ class CompilationEditor extends ConsumerWidget {
                   },
                   onCancel: onCancel,
                 ),
+                const SizedBox(height: 24),
+                const CompilationBBCodeSection(),
               ],
             ),
           ),

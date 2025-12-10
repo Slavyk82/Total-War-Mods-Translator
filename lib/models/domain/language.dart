@@ -28,12 +28,18 @@ class Language {
   @BoolIntConverter()
   final bool isActive;
 
+  /// Whether this is a custom language added by the user
+  @JsonKey(name: 'is_custom')
+  @BoolIntConverter()
+  final bool isCustom;
+
   const Language({
     required this.id,
     required this.code,
     required this.name,
     required this.nativeName,
     this.isActive = true,
+    this.isCustom = false,
   });
 
   /// Returns true if the language is currently active
@@ -50,6 +56,7 @@ class Language {
     String? name,
     String? nativeName,
     bool? isActive,
+    bool? isCustom,
   }) {
     return Language(
       id: id ?? this.id,
@@ -57,6 +64,7 @@ class Language {
       name: name ?? this.name,
       nativeName: nativeName ?? this.nativeName,
       isActive: isActive ?? this.isActive,
+      isCustom: isCustom ?? this.isCustom,
     );
   }
 
@@ -75,7 +83,8 @@ class Language {
         other.code == code &&
         other.name == name &&
         other.nativeName == nativeName &&
-        other.isActive == isActive;
+        other.isActive == isActive &&
+        other.isCustom == isCustom;
   }
 
   @override
@@ -84,10 +93,11 @@ class Language {
       code.hashCode ^
       name.hashCode ^
       nativeName.hashCode ^
-      isActive.hashCode;
+      isActive.hashCode ^
+      isCustom.hashCode;
 
   @override
   String toString() {
-    return 'Language(id: $id, code: $code, name: $name, nativeName: $nativeName, isActive: $isActive)';
+    return 'Language(id: $id, code: $code, name: $name, nativeName: $nativeName, isActive: $isActive, isCustom: $isCustom)';
   }
 }

@@ -57,20 +57,27 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Theme-aware colors
+    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
+    final headerColor = isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8);
+    final titleColor = isDark ? Colors.white : Colors.black87;
+    final iconColor = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black54;
 
     return Center(
       child: Container(
         width: 600,
         constraints: const BoxConstraints(maxHeight: 400),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.15),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -83,25 +90,25 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
             // Terminal header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFF2D2D2D),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(7)),
+              decoration: BoxDecoration(
+                color: headerColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
               ),
               child: Row(
                 children: [
-                  const SizedBox(
+                  SizedBox(
                     width: 16,
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF3794FF),
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: titleColor,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -110,7 +117,7 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
                   Icon(
                     FluentIcons.window_console_20_regular,
                     size: 18,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: iconColor,
                   ),
                 ],
               ),
@@ -120,11 +127,11 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
               child: Container(
                 constraints: const BoxConstraints(minHeight: 150),
                 child: _logs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
                           'Initializing...',
                           style: TextStyle(
-                            color: Color(0xFF808080),
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                             fontSize: 12,
                             fontFamily: 'Consolas',
                           ),
@@ -136,7 +143,7 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
                         shrinkWrap: true,
                         itemCount: _logs.length,
                         itemBuilder: (context, index) {
-                          return _buildLogLine(_logs[index]);
+                          return _buildLogLine(_logs[index], isDark);
                         },
                       ),
               ),
@@ -147,28 +154,26 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
     );
   }
 
-  Widget _buildLogLine(ScanLogMessage log) {
+  Widget _buildLogLine(ScanLogMessage log, bool isDark) {
     Color textColor;
     String prefix;
 
     switch (log.level) {
       case ScanLogLevel.error:
-        textColor = const Color(0xFFF14C4C);
+        textColor = isDark ? const Color(0xFFF14C4C) : const Color(0xFFD32F2F);
         prefix = '✕';
         break;
       case ScanLogLevel.warning:
-        textColor = const Color(0xFFCCA700);
+        textColor = isDark ? const Color(0xFFCCA700) : const Color(0xFFB8860B);
         prefix = '⚠';
         break;
       case ScanLogLevel.debug:
-        textColor = const Color(0xFF808080);
+        textColor = isDark ? const Color(0xFF808080) : const Color(0xFF9E9E9E);
         prefix = '·';
         break;
       case ScanLogLevel.info:
-      default:
-        textColor = const Color(0xFFCCCCCC);
+        textColor = isDark ? const Color(0xFFCCCCCC) : const Color(0xFF424242);
         prefix = '›';
-        break;
     }
 
     return Padding(

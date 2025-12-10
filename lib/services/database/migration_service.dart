@@ -325,8 +325,30 @@ class MigrationService {
     // Ensure is_hidden column exists on workshop_mods
     await _ensureWorkshopModsHiddenColumn();
 
+    // Ensure llm_custom_rules table exists
+    await _ensureLlmCustomRulesTable();
+
+    // Ensure is_custom column exists on languages table
+    await _ensureLanguagesCustomColumn();
+
     // Fix missing hyphens in French translations
     // DISABLED: await FrenchHyphenFixer.fixMissingHyphens();
+
+    // Remove deprecated score columns from database
+    await _removeScoreColumns();
+  }
+
+  /// Remove deprecated quality_score and confidence_score columns.
+  ///
+  /// These columns are no longer used in the application.
+  /// SQLite doesn't support DROP COLUMN directly, but we leave the columns
+  /// in place as they don't harm functionality. The application code
+  /// no longer references them.
+  static Future<void> _removeScoreColumns() async {
+    final logging = LoggingService.instance;
+    logging.debug('Score columns are deprecated but left in place for backward compatibility');
+    // Note: SQLite doesn't support DROP COLUMN. The columns remain but are unused.
+    // Future database recreations will not include these columns.
   }
 
   /// Ensure mod_update_analysis_cache table exists for existing databases.
@@ -453,13 +475,17 @@ class MigrationService {
       ''');
 
       // Add language_id column if it doesn't exist (migration for existing databases)
-      try {
+      final compilationColumns = await DatabaseService.database.rawQuery(
+        "PRAGMA table_info(compilations)"
+      );
+      final hasLanguageIdColumn = compilationColumns.any((col) => col['name'] == 'language_id');
+
+      if (!hasLanguageIdColumn) {
         await DatabaseService.execute('''
           ALTER TABLE compilations ADD COLUMN language_id TEXT
             REFERENCES languages(id) ON DELETE SET NULL
         ''');
-      } catch (_) {
-        // Column already exists, ignore
+        logging.info('Added language_id column to compilations');
       }
 
       logging.debug('Compilation tables verified/created');
@@ -638,6 +664,87 @@ class MigrationService {
     } catch (e, stackTrace) {
       logging.error('Failed to add is_hidden column', e, stackTrace);
       // Non-fatal: hiding feature will be unavailable but app still works
+    }
+  }
+
+  /// Ensure llm_custom_rules table exists for existing databases.
+  ///
+  /// This table stores custom rules that users can add to LLM translation prompts.
+  /// Rules can be global (project_id = NULL) or project-specific.
+  static Future<void> _ensureLlmCustomRulesTable() async {
+    final logging = LoggingService.instance;
+
+    try {
+      await DatabaseService.execute('''
+        CREATE TABLE IF NOT EXISTS llm_custom_rules (
+          id TEXT PRIMARY KEY,
+          rule_text TEXT NOT NULL,
+          is_enabled INTEGER NOT NULL DEFAULT 1,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          project_id TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          CHECK (is_enabled IN (0, 1)),
+          FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Add project_id column if it doesn't exist (migration for existing databases)
+      final rulesColumns = await DatabaseService.database.rawQuery(
+        "PRAGMA table_info(llm_custom_rules)"
+      );
+      final hasProjectIdColumn = rulesColumns.any((col) => col['name'] == 'project_id');
+
+      if (!hasProjectIdColumn) {
+        await DatabaseService.execute('''
+          ALTER TABLE llm_custom_rules ADD COLUMN project_id TEXT
+            REFERENCES projects(id) ON DELETE CASCADE
+        ''');
+        logging.info('Added project_id column to llm_custom_rules');
+      }
+
+      await DatabaseService.execute('''
+        CREATE INDEX IF NOT EXISTS idx_llm_custom_rules_enabled_order
+        ON llm_custom_rules(is_enabled, sort_order)
+      ''');
+
+      // Index for project-specific rules queries
+      await DatabaseService.execute('''
+        CREATE INDEX IF NOT EXISTS idx_llm_custom_rules_project
+        ON llm_custom_rules(project_id)
+      ''');
+
+      logging.debug('llm_custom_rules table verified/created');
+    } catch (e, stackTrace) {
+      logging.error('Failed to create llm_custom_rules table', e, stackTrace);
+      // Non-fatal: custom rules feature will be unavailable but app still works
+    }
+  }
+
+  /// Ensure is_custom column exists on languages table.
+  ///
+  /// This column allows users to add custom languages that can be deleted,
+  /// while system languages (is_custom = 0) are read-only.
+  static Future<void> _ensureLanguagesCustomColumn() async {
+    final logging = LoggingService.instance;
+
+    try {
+      // Check if column exists
+      final columns = await DatabaseService.database.rawQuery(
+        "PRAGMA table_info(languages)"
+      );
+      final hasColumn = columns.any((col) => col['name'] == 'is_custom');
+
+      if (!hasColumn) {
+        await DatabaseService.execute('''
+          ALTER TABLE languages
+          ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0
+        ''');
+        logging.info('Added is_custom column to languages');
+      }
+    } catch (e, stackTrace) {
+      logging.error('Failed to add is_custom column to languages', e, stackTrace);
+      // Non-fatal: custom languages feature will be unavailable but app still works
     }
   }
 

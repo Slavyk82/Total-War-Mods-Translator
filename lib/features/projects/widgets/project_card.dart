@@ -191,14 +191,17 @@ class _ProjectCardState extends State<ProjectCard> {
           ],
         ),
         const SizedBox(height: 3),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(2),
-          child: SizedBox(
-            height: 4,
+        Container(
+          height: 6,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
             child: LinearProgressIndicator(
               value: progressPercent / 100,
-              backgroundColor:
-                  theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation<Color>(
                 _getProgressColor(theme, progressPercent),
               ),
@@ -219,8 +222,8 @@ class _ProjectCardState extends State<ProjectCard> {
       return const SizedBox.shrink();
     }
 
-    // No changes - show "Up to date" with green checkmark
-    if (!analysis.hasChanges) {
+    // No pending changes - show "Up to date" with green checkmark
+    if (!analysis.hasPendingChanges) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(

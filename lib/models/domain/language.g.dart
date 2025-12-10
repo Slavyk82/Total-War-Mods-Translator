@@ -14,6 +14,9 @@ Language _$LanguageFromJson(Map<String, dynamic> json) => Language(
   isActive: json['is_active'] == null
       ? true
       : const BoolIntConverter().fromJson(json['is_active']),
+  isCustom: json['is_custom'] == null
+      ? false
+      : const BoolIntConverter().fromJson(json['is_custom']),
 );
 
 Map<String, dynamic> _$LanguageToJson(Language instance) => <String, dynamic>{
@@ -22,4 +25,5 @@ Map<String, dynamic> _$LanguageToJson(Language instance) => <String, dynamic>{
   'name': instance.name,
   'native_name': instance.nativeName,
   'is_active': const BoolIntConverter().toJson(instance.isActive),
+  'is_custom': const BoolIntConverter().toJson(instance.isCustom),
 };

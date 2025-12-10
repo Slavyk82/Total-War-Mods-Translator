@@ -8,15 +8,22 @@ import '../../../models/domain/language.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../models/domain/mod_update_analysis.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../repositories/project_language_repository.dart';
-import '../../../repositories/language_repository.dart';
-import '../../../repositories/game_installation_repository.dart';
-import '../../../repositories/workshop_mod_repository.dart';
+import '../../../providers/shared/repository_providers.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
 import '../../../services/mods/mod_update_analysis_service.dart';
+
+// Re-export shared repository providers for backward compatibility
+export '../../../providers/shared/repository_providers.dart'
+    show
+        projectRepositoryProvider,
+        projectLanguageRepositoryProvider,
+        languageRepositoryProvider,
+        gameInstallationRepositoryProvider,
+        workshopModRepositoryProvider,
+        allLanguagesProvider,
+        allGameInstallationsProvider;
 
 /// View modes for displaying projects
 enum ProjectViewMode { grid, list }
@@ -120,9 +127,9 @@ class ProjectWithDetails {
     return sum / languages.length;
   }
 
-  /// Check if there are changes to apply (same logic as Mods screen)
+  /// Check if there are pending changes to apply (excludes auto-applied changes)
   bool get hasUpdates {
-    return updateAnalysis?.hasChanges ?? false;
+    return updateAnalysis?.hasPendingChanges ?? false;
   }
 
   /// Check if all configured languages are 100% translated
@@ -181,36 +188,6 @@ final translationStatsVersionProvider =
   TranslationStatsVersionNotifier.new,
 );
 
-/// Provider for project repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ServiceLocator.get<ProjectRepository>();
-});
-
-/// Provider for project language repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final projectLanguageRepositoryProvider = Provider<ProjectLanguageRepository>((ref) {
-  return ServiceLocator.get<ProjectLanguageRepository>();
-});
-
-/// Provider for language repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final languageRepositoryProvider = Provider<LanguageRepository>((ref) {
-  return ServiceLocator.get<LanguageRepository>();
-});
-
-/// Provider for game installation repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final gameInstallationRepositoryProvider = Provider<GameInstallationRepository>((ref) {
-  return ServiceLocator.get<GameInstallationRepository>();
-});
-
-/// Provider for workshop mod repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final workshopModRepositoryProvider = Provider<WorkshopModRepository>((ref) {
-  return ServiceLocator.get<WorkshopModRepository>();
-});
-
 /// State notifier for projects filter
 class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
   @override
@@ -258,6 +235,12 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
       showOnlyWithUpdates: false,
       quickFilter: ProjectQuickFilter.none,
     );
+  }
+
+  /// Reset all filters including search query to default state.
+  /// Called when navigating to the Projects screen.
+  void resetAll() {
+    state = const ProjectsFilterState();
   }
 }
 
@@ -492,43 +475,6 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
 /// Provider for all projects (no pagination)
 final paginatedProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {
   return ref.watch(filteredProjectsProvider.future);
-});
-
-
-/// Provider for all game installations (for filter dropdown)
-final allGameInstallationsProvider = FutureProvider<List<GameInstallation>>((ref) async {
-  final gameRepo = ref.watch(gameInstallationRepositoryProvider);
-  final result = await gameRepo.getAll();
-
-  if (result.isErr) {
-    throw Exception('Failed to load game installations');
-  }
-
-  return result.unwrap();
-});
-
-/// Provider for all languages (for filter dropdown)
-final allLanguagesProvider = FutureProvider<List<Language>>((ref) async {
-  try {
-    final langRepo = ref.watch(languageRepositoryProvider);
-    final result = await langRepo.getAll();
-
-    if (result.isErr) {
-      final error = result.unwrapErr();
-      throw Exception('Failed to load languages: ${error.message}');
-    }
-
-    final languages = result.unwrap();
-    if (languages.isEmpty) {
-      // Return empty list instead of throwing - this is a valid state
-      return languages;
-    }
-
-    return languages;
-  } catch (e) {
-    // Re-throw with more context
-    throw Exception('Error loading languages: $e');
-  }
 });
 
 /// Find mod preview image in the mod directory.

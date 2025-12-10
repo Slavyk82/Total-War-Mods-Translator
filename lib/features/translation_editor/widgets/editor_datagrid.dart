@@ -296,11 +296,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     width: 120,
                     label: _buildColumnHeader('TM Source'),
                   ),
-                  GridColumn(
-                    columnName: 'confidence',
-                    width: 90,
-                    label: _buildColumnHeader('Score'),
-                  ),
                 ],
               ),
             ),
@@ -593,7 +588,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     const minHeight = 56.0;
     
     // Get the width available for text columns
-    final fixedColumnsWidth = 50 + 60 + 150 + 120 + 90 + 150; // = 620
+    final fixedColumnsWidth = 50 + 60 + 150 + 120 + 150; // = 530 (removed confidence column)
     final screenWidth = MediaQuery.of(context).size.width;
     final availableWidth = screenWidth > fixedColumnsWidth 
         ? screenWidth - fixedColumnsWidth 

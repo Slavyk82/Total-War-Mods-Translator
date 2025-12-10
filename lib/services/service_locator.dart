@@ -20,6 +20,7 @@ import '../repositories/workshop_mod_repository.dart';
 import '../repositories/mod_scan_cache_repository.dart';
 import '../repositories/mod_update_analysis_cache_repository.dart';
 import '../repositories/llm_provider_model_repository.dart';
+import '../repositories/llm_custom_rule_repository.dart';
 import 'database/database_service.dart';
 import 'database/migration_service.dart';
 import 'file/file_service.dart';
@@ -37,6 +38,7 @@ import 'llm/llm_service_impl.dart';
 import 'llm/llm_provider_factory.dart';
 import 'llm/llm_batch_adjuster.dart';
 import 'llm/llm_model_management_service.dart';
+import 'llm/llm_custom_rules_service.dart';
 import 'llm/utils/token_calculator.dart';
 
 // RPFM Services
@@ -113,8 +115,10 @@ import 'validation/translation_validation_service.dart';
 
 // Shared Services (Category 10)
 import 'shared/process_service.dart';
-import 'shared/notification_service.dart';
 import 'shared/background_worker_service.dart';
+
+// Update Services
+import 'updates/app_update_service.dart';
 
 /// Service locator for dependency injection.
 ///
@@ -361,6 +365,10 @@ class ServiceLocator {
       () => LlmProviderModelRepository(),
     );
 
+    _locator.registerLazySingleton<LlmCustomRuleRepository>(
+      () => LlmCustomRuleRepository(),
+    );
+
     logging.info('Repositories registered successfully');
   }
 
@@ -403,6 +411,13 @@ class ServiceLocator {
       () => LlmModelManagementService(
         _locator<LlmProviderModelRepository>(),
         _locator<LoggingService>(),
+      ),
+    );
+
+    _locator.registerLazySingleton<LlmCustomRulesService>(
+      () => LlmCustomRulesService(
+        repository: _locator<LlmCustomRuleRepository>(),
+        logging: _locator<LoggingService>(),
       ),
     );
 
@@ -475,6 +490,7 @@ class ServiceLocator {
       () => PromptBuilderServiceImpl(
         _locator<TokenCalculator>(),
         _locator<GlossaryRepository>(),
+        _locator<LlmCustomRulesService>(),
       ),
     );
 
@@ -645,12 +661,13 @@ class ServiceLocator {
       () => ProcessService.instance,
     );
 
-    _locator.registerLazySingleton<NotificationService>(
-      () => NotificationService.instance,
-    );
-
     _locator.registerLazySingleton<BackgroundWorkerService>(
       () => BackgroundWorkerService.instance,
+    );
+
+    // Update Services
+    _locator.registerLazySingleton<AppUpdateService>(
+      () => AppUpdateService(),
     );
 
     // Note: CacheService is generic and created per use case,
@@ -695,6 +712,18 @@ class ServiceLocator {
   static Future<void> dispose() async {
     final logging = _locator<LoggingService>();
     logging.info('Service locator shutting down');
+
+    // Dispose services with stream controllers
+    if (_locator.isRegistered<IRpfmService>()) {
+      final rpfmService = _locator<IRpfmService>();
+      if (rpfmService is RpfmServiceImpl) {
+        rpfmService.dispose();
+      }
+    }
+
+    if (_locator.isRegistered<WorkshopScannerService>()) {
+      _locator<WorkshopScannerService>().dispose();
+    }
 
     // Close event bus
     if (_locator.isRegistered<EventBus>()) {

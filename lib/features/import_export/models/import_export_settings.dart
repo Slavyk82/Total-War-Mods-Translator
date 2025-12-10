@@ -72,8 +72,6 @@ enum ExportColumn {
   notes,
   @JsonValue('context')
   context,
-  @JsonValue('quality_score')
-  qualityScore,
   @JsonValue('created_at')
   createdAt,
   @JsonValue('updated_at')

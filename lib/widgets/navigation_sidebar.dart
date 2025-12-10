@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/providers/app_version_provider.dart';
 import 'package:twmt/providers/theme_provider.dart';
-import 'package:twmt/widgets/fluent/fluent_toggle_switch.dart';
 
 class NavigationSidebar extends ConsumerWidget {
   const NavigationSidebar({
@@ -63,11 +63,20 @@ class NavigationSidebar extends ConsumerWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'V. BETA 0.1.1',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-              ),
+            child: Consumer(
+              builder: (context, ref, child) {
+                final versionAsync = ref.watch(appVersionProvider);
+                return Text(
+                  versionAsync.when(
+                    data: (version) => 'v$version',
+                    loading: () => '',
+                    error: (error, stack) => '',
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -77,9 +86,9 @@ class NavigationSidebar extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
     final themeModeAsync = ref.watch(themeProvider);
-    final isDark = themeModeAsync.maybeWhen(
-      data: (mode) => mode == ThemeMode.dark,
-      orElse: () => false,
+    final themeMode = themeModeAsync.maybeWhen(
+      data: (mode) => mode,
+      orElse: () => ThemeMode.system,
     );
 
     return Padding(
@@ -100,16 +109,9 @@ class NavigationSidebar extends ConsumerWidget {
               ),
             ),
           ),
-          Icon(
-            isDark ? FluentIcons.weather_moon_24_regular : FluentIcons.weather_sunny_24_regular,
-            size: 20,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          FluentToggleSwitch(
-            key: const ValueKey('theme_switch'),
-            value: isDark,
-            onChanged: (value) => ref.read(themeProvider.notifier).toggleTheme(),
+          _ThemeModeButton(
+            themeMode: themeMode,
+            onPressed: () => ref.read(themeProvider.notifier).cycleTheme(),
           ),
         ],
       ),
@@ -217,6 +219,78 @@ class _FluentNavigationItemState extends State<_FluentNavigationItem> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Button that displays and cycles through theme modes (system, light, dark)
+class _ThemeModeButton extends StatefulWidget {
+  const _ThemeModeButton({
+    required this.themeMode,
+    required this.onPressed,
+  });
+
+  final ThemeMode themeMode;
+  final VoidCallback onPressed;
+
+  @override
+  State<_ThemeModeButton> createState() => _ThemeModeButtonState();
+}
+
+class _ThemeModeButtonState extends State<_ThemeModeButton> {
+  bool _isHovered = false;
+
+  IconData _getIcon() {
+    switch (widget.themeMode) {
+      case ThemeMode.system:
+        return FluentIcons.desktop_24_regular;
+      case ThemeMode.light:
+        return FluentIcons.weather_sunny_24_regular;
+      case ThemeMode.dark:
+        return FluentIcons.weather_moon_24_regular;
+    }
+  }
+
+  String _getTooltip() {
+    switch (widget.themeMode) {
+      case ThemeMode.system:
+        return 'Theme: System (click to change)';
+      case ThemeMode.light:
+        return 'Theme: Light (click to change)';
+      case ThemeMode.dark:
+        return 'Theme: Dark (click to change)';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: _getTooltip(),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onPressed,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Icon(
+              _getIcon(),
+              size: 20,
+              color: theme.colorScheme.primary,
             ),
           ),
         ),

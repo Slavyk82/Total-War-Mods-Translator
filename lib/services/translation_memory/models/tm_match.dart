@@ -38,9 +38,6 @@ class TmMatch {
   /// When this TM entry was last used
   final DateTime lastUsedAt;
 
-  /// Quality score of this TM entry (0.0 - 1.0)
-  final double qualityScore;
-
   /// Whether this match was auto-applied (>95% similarity)
   final bool autoApplied;
 
@@ -55,7 +52,6 @@ class TmMatch {
     this.category,
     required this.usageCount,
     required this.lastUsedAt,
-    required this.qualityScore,
     this.autoApplied = false,
   });
 
@@ -89,7 +85,6 @@ class TmMatch {
     String? category,
     int? usageCount,
     DateTime? lastUsedAt,
-    double? qualityScore,
     bool? autoApplied,
   }) {
     return TmMatch(
@@ -103,7 +98,6 @@ class TmMatch {
       category: category ?? this.category,
       usageCount: usageCount ?? this.usageCount,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
-      qualityScore: qualityScore ?? this.qualityScore,
       autoApplied: autoApplied ?? this.autoApplied,
     );
   }
@@ -122,7 +116,7 @@ class TmMatch {
   @override
   String toString() {
     return 'TmMatch(entryId: $entryId, similarity: ${(similarityScore * 100).toStringAsFixed(1)}%, '
-        'type: $matchType, quality: ${(qualityScore * 100).toStringAsFixed(0)}%)';
+        'type: $matchType)';
   }
 }
 

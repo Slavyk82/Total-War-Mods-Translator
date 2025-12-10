@@ -10,21 +10,12 @@ part of 'mod_list_provider.dart';
 // ignore_for_file: type=lint, type=warning
 /// Provides list of detected mods after scanning Workshop folder (without creating projects)
 
-@ProviderFor(detectedMods)
+@ProviderFor(DetectedMods)
 const detectedModsProvider = DetectedModsProvider._();
 
 /// Provides list of detected mods after scanning Workshop folder (without creating projects)
-
 final class DetectedModsProvider
-    extends
-        $FunctionalProvider<
-          AsyncValue<List<DetectedMod>>,
-          List<DetectedMod>,
-          FutureOr<List<DetectedMod>>
-        >
-    with
-        $FutureModifier<List<DetectedMod>>,
-        $FutureProvider<List<DetectedMod>> {
+    extends $AsyncNotifierProvider<DetectedMods, List<DetectedMod>> {
   /// Provides list of detected mods after scanning Workshop folder (without creating projects)
   const DetectedModsProvider._()
     : super(
@@ -42,17 +33,32 @@ final class DetectedModsProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<DetectedMod>> $createElement(
-    $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
-
-  @override
-  FutureOr<List<DetectedMod>> create(Ref ref) {
-    return detectedMods(ref);
-  }
+  DetectedMods create() => DetectedMods();
 }
 
-String _$detectedModsHash() => r'fa839cbc616e6f72726d03b29225e62901312e96';
+String _$detectedModsHash() => r'b9a1c461469dc06228088a1dcef264c407b293e4';
+
+/// Provides list of detected mods after scanning Workshop folder (without creating projects)
+
+abstract class _$DetectedMods extends $AsyncNotifier<List<DetectedMod>> {
+  FutureOr<List<DetectedMod>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref as $Ref<AsyncValue<List<DetectedMod>>, List<DetectedMod>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<List<DetectedMod>>, List<DetectedMod>>,
+              AsyncValue<List<DetectedMod>>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
 
 /// Provides list of all projects from database
 

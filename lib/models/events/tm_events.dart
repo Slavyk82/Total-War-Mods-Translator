@@ -9,7 +9,6 @@ class TranslationAddedToTmEvent extends DomainEvent {
   final String translatedText;
   final String targetLanguageId;
   final String gameContext;
-  final double? qualityScore;
 
   TranslationAddedToTmEvent({
     required this.versionId,
@@ -19,7 +18,6 @@ class TranslationAddedToTmEvent extends DomainEvent {
     required this.translatedText,
     required this.targetLanguageId,
     required this.gameContext,
-    this.qualityScore,
   }) : super.now();
   @override
   Map<String, dynamic> toJson() {
@@ -29,7 +27,7 @@ class TranslationAddedToTmEvent extends DomainEvent {
   @override
   String toString() =>
       'TranslationAddedToTmEvent(versionId: $versionId, tmId: $tmId, '
-      'context: $gameContext, quality: ${qualityScore?.toStringAsFixed(2) ?? "N/A"})';
+      'context: $gameContext)';
 }
 
 /// Event emitted when a new translation memory entry is added
@@ -38,14 +36,12 @@ class TmEntryAddedEvent extends DomainEvent {
   final String sourceHash;
   final String targetLanguageId;
   final String gameContext;
-  final double? qualityScore;
 
   TmEntryAddedEvent({
     required this.tmId,
     required this.sourceHash,
     required this.targetLanguageId,
     required this.gameContext,
-    this.qualityScore,
   }) : super.now();
   @override
   Map<String, dynamic> toJson() {
@@ -54,8 +50,7 @@ class TmEntryAddedEvent extends DomainEvent {
 
   @override
   String toString() =>
-      'TmEntryAddedEvent(tmId: $tmId, context: $gameContext, '
-      'quality: ${qualityScore?.toStringAsFixed(2) ?? "N/A"})';
+      'TmEntryAddedEvent(tmId: $tmId, context: $gameContext)';
 }
 
 /// Event emitted when a TM match is found and used
@@ -89,17 +84,15 @@ class TmMatchFoundEvent extends DomainEvent {
       'match: $matchType (${(matchConfidence * 100).toStringAsFixed(1)}%))';
 }
 
-/// Event emitted when a TM entry is updated (quality, usage count)
+/// Event emitted when a TM entry is updated (usage count)
 class TmEntryUpdatedEvent extends DomainEvent {
   final String tmId;
   final int newUsageCount;
-  final double? newQualityScore;
   final String updateReason;
 
   TmEntryUpdatedEvent({
     required this.tmId,
     required this.newUsageCount,
-    this.newQualityScore,
     required this.updateReason,
   }) : super.now();
   @override
@@ -110,7 +103,6 @@ class TmEntryUpdatedEvent extends DomainEvent {
   @override
   String toString() =>
       'TmEntryUpdatedEvent(tmId: $tmId, usage: $newUsageCount, '
-      'quality: ${newQualityScore?.toStringAsFixed(2) ?? "N/A"}, '
       'reason: $updateReason)';
 }
 
@@ -145,19 +137,16 @@ class TmSuggestion {
   final String tmId;
   final String translatedText;
   final double matchConfidence;
-  final double? qualityScore;
   final int usageCount;
 
   const TmSuggestion({
     required this.tmId,
     required this.translatedText,
     required this.matchConfidence,
-    this.qualityScore,
     required this.usageCount,
   });
 
   bool get isExactMatch => matchConfidence >= 0.99;
-  bool get isHighQuality => qualityScore != null && qualityScore! >= 0.8;
   bool get isFrequentlyUsed => usageCount >= 5;
   Map<String, dynamic> toJson() {
     throw UnimplementedError('toJson() must be implemented');
@@ -166,7 +155,6 @@ class TmSuggestion {
   @override
   String toString() =>
       'TmSuggestion(match: ${(matchConfidence * 100).toStringAsFixed(1)}%, '
-      'quality: ${qualityScore?.toStringAsFixed(2) ?? "N/A"}, '
       'usage: $usageCount)';
 }
 

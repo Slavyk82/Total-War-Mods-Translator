@@ -31,7 +31,6 @@ class HistoryServiceImpl implements IHistoryService {
     required String versionId,
     required String translatedText,
     required String status,
-    double? confidenceScore,
     required String changedBy,
     String? changeReason,
   }) async {
@@ -44,7 +43,6 @@ class HistoryServiceImpl implements IHistoryService {
         versionId: versionId,
         translatedText: translatedText,
         status: statusEnum,
-        confidenceScore: confidenceScore,
         changedBy: changedBy,
         changeReason: changeReason,
         createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -110,7 +108,6 @@ class HistoryServiceImpl implements IHistoryService {
         versionId: versionId,
         translatedText: currentVersion.translatedText ?? '',
         status: currentVersion.status.name,
-        confidenceScore: currentVersion.confidenceScore,
         changedBy: changedBy,
         changeReason: 'Before revert to version $historyId',
       );
@@ -123,7 +120,6 @@ class HistoryServiceImpl implements IHistoryService {
       final updatedVersion = currentVersion.copyWith(
         translatedText: historyEntry.translatedText,
         status: historyEntry.status,
-        confidenceScore: historyEntry.confidenceScore,
         updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       );
 
@@ -138,7 +134,6 @@ class HistoryServiceImpl implements IHistoryService {
         versionId: versionId,
         translatedText: historyEntry.translatedText,
         status: historyEntry.status.name,
-        confidenceScore: historyEntry.confidenceScore,
         changedBy: changedBy,
         changeReason: 'Reverted to version $historyId',
       );

@@ -49,7 +49,6 @@ void main() {
           sourceLanguageId: 'en',
           targetLanguageId: 'fr',
           sourceHash: 'hash1',
-          qualityScore: 0.95,
           usageCount: 15,
           createdAt: 1234567890,
           lastUsedAt: 1234567890,
@@ -62,7 +61,6 @@ void main() {
           sourceLanguageId: 'en',
           targetLanguageId: 'fr',
           sourceHash: 'hash2',
-          qualityScore: 0.92,
           usageCount: 10,
           createdAt: 1234567890,
           lastUsedAt: 1234567890,
@@ -99,7 +97,6 @@ void main() {
       expect(content, contains('Ouvrir le fichier'));
       expect(content, contains('Save File'));
       expect(content, contains('Enregistrer le fichier'));
-      expect(content, contains('x-quality-score'));
       expect(content, contains('x-usage-count'));
 
       // Cleanup
@@ -151,7 +148,6 @@ void main() {
     o-tmf="TWMT"/>
   <body>
     <tu>
-      <prop type="x-quality-score">0.95</prop>
       <prop type="x-usage-count">15</prop>
       <prop type="x-game-context">UI</prop>
       <tuv xml:lang="en">
@@ -162,7 +158,6 @@ void main() {
       </tuv>
     </tu>
     <tu>
-      <prop type="x-quality-score">0.92</prop>
       <prop type="x-usage-count">10</prop>
       <tuv xml:lang="en">
         <seg>Save File</seg>
@@ -192,7 +187,6 @@ void main() {
       expect(entries[0].targetLanguage, 'fr');
       expect(entries[0].sourceText, 'Open File');
       expect(entries[0].targetText, 'Ouvrir le fichier');
-      expect(entries[0].qualityScore, 0.95);
       expect(entries[0].usageCount, 15);
 
       // Verify second entry
@@ -200,7 +194,6 @@ void main() {
       expect(entries[1].targetLanguage, 'fr');
       expect(entries[1].sourceText, 'Save File');
       expect(entries[1].targetText, 'Enregistrer le fichier');
-      expect(entries[1].qualityScore, 0.92);
       expect(entries[1].usageCount, 10);
 
       // Cleanup
@@ -290,7 +283,6 @@ void main() {
           sourceLanguageId: 'en',
           targetLanguageId: 'de',
           sourceHash: 'hash1',
-          qualityScore: 0.88,
           usageCount: 5,
           createdAt: 1234567890,
           lastUsedAt: 1234567890,
@@ -324,7 +316,6 @@ void main() {
       expect(imported.sourceText, originalEntries[0].sourceText);
       expect(imported.targetText, originalEntries[0].translatedText);
       expect(imported.targetLanguage, originalEntries[0].targetLanguageId);
-      expect(imported.qualityScore, originalEntries[0].qualityScore);
       expect(imported.usageCount, originalEntries[0].usageCount);
 
       // Cleanup

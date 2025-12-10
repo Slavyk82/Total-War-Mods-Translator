@@ -342,7 +342,6 @@ class ExampleProjectRepository {
     required String versionId,
     required String translatedText,
     required String status,
-    double? confidenceScore,
     required String changedBy,
     String? changeReason,
   }) async {
@@ -356,7 +355,6 @@ class ExampleProjectRepository {
           {
             'translated_text': translatedText,
             'status': status,
-            'confidence_score': confidenceScore,
             'updated_at': timestamp,
           },
           where: 'id = ?',
@@ -369,7 +367,6 @@ class ExampleProjectRepository {
           'version_id': versionId,
           'translated_text': translatedText,
           'status': status,
-          'confidence_score': confidenceScore,
           'changed_by': changedBy,
           'change_reason': changeReason,
           'created_at': timestamp,

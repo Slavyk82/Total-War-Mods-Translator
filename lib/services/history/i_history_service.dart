@@ -16,7 +16,6 @@ abstract class IHistoryService {
   /// [versionId] - ID of the translation version being changed
   /// [translatedText] - The translated text at this point
   /// [status] - Status of the translation (pending, translated, validated, etc.)
-  /// [confidenceScore] - Optional confidence score (0.0-1.0)
   /// [changedBy] - Who made the change ('user', 'provider_anthropic', 'system')
   /// [changeReason] - Optional reason for change ('Manual edit', 'LLM translation', etc.)
   ///
@@ -25,7 +24,6 @@ abstract class IHistoryService {
     required String versionId,
     required String translatedText,
     required String status,
-    double? confidenceScore,
     required String changedBy,
     String? changeReason,
   });

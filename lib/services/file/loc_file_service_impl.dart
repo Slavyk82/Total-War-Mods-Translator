@@ -63,8 +63,8 @@ class LocFileServiceImpl implements ILocFileService {
         ),
       );
 
-      // Get all translation units for the project
-      final unitsResult = await _unitRepository.getByProject(projectId);
+      // Get all active (non-obsolete) translation units for the project
+      final unitsResult = await _unitRepository.getActive(projectId);
 
       if (unitsResult.isErr) {
         return Err(FileServiceException(
@@ -82,21 +82,18 @@ class LocFileServiceImpl implements ILocFileService {
 
       // Build TSV content in RPFM format
       final buffer = StringBuffer();
-      
+
       // TSV Header row
       buffer.writeln('key\ttext\ttooltip');
-      
+
       // Metadata row - RPFM format: #Loc;version;internal_path
       // The internal path will be set by RPFM when adding to pack
       final langLower = languageCode.toLowerCase();
       buffer.writeln('#Loc;1;text/db/!!!!!!!!!!_${langLower}_twmt_text.loc\t\t');
-      
+
       int exportedCount = 0;
 
       for (final unit in units) {
-        // Skip obsolete units
-        if (unit.isObsolete) continue;
-
         // Get translation version for this unit and language
         final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
           unitId: unit.id,
@@ -237,8 +234,8 @@ class LocFileServiceImpl implements ILocFileService {
         ),
       );
 
-      // Get all translation units for the project
-      final unitsResult = await _unitRepository.getByProject(projectId);
+      // Get all active (non-obsolete) translation units for the project
+      final unitsResult = await _unitRepository.getActive(projectId);
 
       if (unitsResult.isErr) {
         return Err(FileServiceException(
@@ -251,9 +248,6 @@ class LocFileServiceImpl implements ILocFileService {
       int count = 0;
 
       for (final unit in units) {
-        // Skip obsolete units
-        if (unit.isObsolete) continue;
-
         // Get translation version for this unit and language
         final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
           unitId: unit.id,
@@ -329,8 +323,8 @@ class LocFileServiceImpl implements ILocFileService {
         ),
       );
 
-      // Get all translation units for the project
-      final unitsResult = await _unitRepository.getByProject(projectId);
+      // Get all active (non-obsolete) translation units for the project
+      final unitsResult = await _unitRepository.getActive(projectId);
 
       if (unitsResult.isErr) {
         return Err(FileServiceException(
@@ -351,9 +345,6 @@ class LocFileServiceImpl implements ILocFileService {
       final langLower = languageCode.toLowerCase();
 
       for (final unit in units) {
-        // Skip obsolete units
-        if (unit.isObsolete) continue;
-
         // Get translation version for this unit and language
         final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
           unitId: unit.id,

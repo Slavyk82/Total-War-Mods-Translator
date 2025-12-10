@@ -118,8 +118,10 @@ class EventBus {
           // Log but don't throw - event persistence is best-effort
           // The event has already been broadcast to listeners, which is the primary goal
           // Persistence failure should not crash the caller
-          // ignore: avoid_print
-          print('⚠️ Failed to persist event ${event.runtimeType}: $e');
+          LoggingService.instance.warning(
+            'Failed to persist event ${event.runtimeType}',
+            {'error': e.toString()},
+          );
         }),
       );
     }

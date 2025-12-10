@@ -141,7 +141,6 @@ const _$ExportColumnEnumMap = {
   ExportColumn.status: 'status',
   ExportColumn.notes: 'notes',
   ExportColumn.context: 'context',
-  ExportColumn.qualityScore: 'quality_score',
   ExportColumn.createdAt: 'created_at',
   ExportColumn.updatedAt: 'updated_at',
   ExportColumn.changedBy: 'changed_by',

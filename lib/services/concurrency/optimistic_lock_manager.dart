@@ -13,12 +13,7 @@ import 'models/concurrency_exceptions.dart';
 /// This is lighter than pessimistic locking and works well for scenarios
 /// where conflicts are rare.
 class OptimisticLockManager {
-  // ignore: unused_field
-  final DatabaseService _databaseService;
-
-  OptimisticLockManager({
-    DatabaseService? databaseService,
-  }) : _databaseService = databaseService ?? DatabaseService.instance;
+  OptimisticLockManager();
 
   Database get _db => DatabaseService.database;
 
@@ -236,6 +231,7 @@ class OptimisticLockManager {
   /// Increment version without other changes
   ///
   /// Useful for marking a record as "touched" without actual data changes.
+  /// Uses atomic SQL increment to prevent race conditions.
   ///
   /// Parameters:
   /// - [tableName]: Table name
@@ -249,25 +245,28 @@ class OptimisticLockManager {
     String recordId,
   ) async {
     try {
+      // Use atomic SQL increment to prevent race conditions
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final count = await _db.rawUpdate(
+        'UPDATE $tableName SET version = version + 1, updated_at = ? WHERE id = ?',
+        [now, recordId],
+      );
+
+      if (count == 0) {
+        return Err(ConcurrencyException(
+          'Record not found',
+          code: 'RECORD_NOT_FOUND',
+          details: {'table': tableName, 'id': recordId},
+        ));
+      }
+
+      // Fetch the new version after atomic increment
       final versionResult = await getCurrentVersion(tableName, recordId);
       if (versionResult is Err) {
         return Err(versionResult.error);
       }
 
-      final currentVersion = (versionResult as Ok<int, ConcurrencyException>).value;
-      final newVersion = currentVersion + 1;
-
-      await _db.update(
-        tableName,
-        {
-          'version': newVersion,
-          'updated_at': DateTime.now().millisecondsSinceEpoch,
-        },
-        where: 'id = ?',
-        whereArgs: [recordId],
-      );
-
-      return Ok(newVersion);
+      return Ok((versionResult as Ok<int, ConcurrencyException>).value);
     } on DatabaseException catch (e) {
       return Err(ConcurrencyException(
         'Failed to increment version: ${e.toString()}',

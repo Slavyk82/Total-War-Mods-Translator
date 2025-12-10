@@ -5,7 +5,6 @@ import '../providers/editor_providers.dart';
 import 'cell_renderers/checkbox_cell_renderer.dart';
 import 'cell_renderers/status_cell_renderer.dart';
 import 'cell_renderers/text_cell_renderer.dart';
-import 'cell_renderers/confidence_cell_renderer.dart';
 
 /// DataSource for Syncfusion DataGrid
 ///
@@ -96,10 +95,6 @@ class EditorDataSource extends DataGridSource {
             columnName: 'tmSource',
             value: _getTmSourceText(row),
           ),
-          DataGridCell<double?>(
-            columnName: 'confidence',
-            value: row.confidence,
-          ),
           DataGridCell<String>(
             columnName: 'actions',
             value: row.id,
@@ -112,8 +107,8 @@ class EditorDataSource extends DataGridSource {
   // Performance: Static method to avoid closure allocation
   static String _getTmSourceText(TranslationRow row) {
     if (row.isManuallyEdited) return 'Manual';
-    
-    // Use explicit translation source field if available
+
+    // Use explicit translation source field
     switch (row.translationSource) {
       case TranslationSource.tmExact:
         return 'Exact Match';
@@ -124,12 +119,6 @@ class EditorDataSource extends DataGridSource {
       case TranslationSource.manual:
         return 'Manual';
       case TranslationSource.unknown:
-        // Fallback for legacy data: use confidence-based detection
-        if (row.confidence != null) {
-          if (row.confidence! >= 0.999) return 'Exact Match';
-          if (row.confidence! >= 0.85) return 'Fuzzy Match';
-          return 'LLM';
-        }
         return 'None';
     }
   }
@@ -143,7 +132,6 @@ class EditorDataSource extends DataGridSource {
     final sourceTextCell = row.getCells()[4];
     final translatedTextCell = row.getCells()[5];
     final tmSourceCell = row.getCells()[6];
-    final confidenceCell = row.getCells()[7];
 
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
@@ -165,7 +153,6 @@ class EditorDataSource extends DataGridSource {
         TextCellRenderer(text: sourceTextCell.value),
         TextCellRenderer(text: translatedTextCell.value),
         RepaintBoundary(child: TextCellRenderer(text: tmSourceCell.value)),
-        RepaintBoundary(child: ConfidenceCellRenderer(confidence: confidenceCell.value)),
       ],
     );
   }

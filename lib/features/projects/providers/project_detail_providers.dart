@@ -4,10 +4,12 @@ import '../../../models/domain/project_language.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../models/domain/project_statistics.dart';
-import '../../../repositories/translation_unit_repository.dart';
-import '../../../repositories/translation_version_repository.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/repository_providers.dart';
 import 'projects_screen_providers.dart';
+
+// Re-export shared repository providers for backward compatibility
+export '../../../providers/shared/repository_providers.dart'
+    show translationUnitRepositoryProvider, translationVersionRepositoryProvider;
 
 /// Extended project details with all related information
 class ProjectDetails {
@@ -76,18 +78,6 @@ class TranslationStats {
     return (translatedUnits / totalUnits) * 100;
   }
 }
-
-/// Provider for translation unit repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final translationUnitRepositoryProvider = Provider<TranslationUnitRepository>((ref) {
-  return ServiceLocator.get<TranslationUnitRepository>();
-});
-
-/// Provider for translation version repository
-/// Uses ServiceLocator singleton to avoid creating new instances on each read.
-final translationVersionRepositoryProvider = Provider<TranslationVersionRepository>((ref) {
-  return ServiceLocator.get<TranslationVersionRepository>();
-});
 
 /// Provider for fetching project details by ID
 final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((ref, projectId) async {

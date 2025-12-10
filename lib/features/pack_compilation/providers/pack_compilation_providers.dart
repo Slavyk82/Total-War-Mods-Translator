@@ -5,15 +5,13 @@ import 'package:uuid/uuid.dart';
 import '../../../models/domain/compilation.dart';
 import '../../../models/domain/project.dart';
 import '../../../models/domain/game_installation.dart';
-import '../../../models/domain/language.dart';
-import '../../../repositories/compilation_repository.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../repositories/project_language_repository.dart';
-import '../../../repositories/game_installation_repository.dart';
-import '../../../repositories/language_repository.dart';
-import '../../../repositories/translation_version_repository.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../providers/selected_game_provider.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../repositories/compilation_repository.dart';
+import '../../../repositories/game_installation_repository.dart';
+import '../../../repositories/language_repository.dart';
+import '../../../repositories/project_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/file/i_loc_file_service.dart';
 import '../../../services/file/pack_export_utils.dart';
@@ -22,34 +20,18 @@ import '../../../services/shared/logging_service.dart';
 import '../../projects/providers/projects_screen_providers.dart'
     show translationStatsVersionProvider;
 
-/// Repository providers
-/// All providers use ServiceLocator singletons to avoid creating new instances on each read.
-final compilationRepositoryProvider = Provider<CompilationRepository>((ref) {
-  return ServiceLocator.get<CompilationRepository>();
-});
-
-final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ServiceLocator.get<ProjectRepository>();
-});
-
-final gameInstallationRepositoryProvider =
-    Provider<GameInstallationRepository>((ref) {
-  return ServiceLocator.get<GameInstallationRepository>();
-});
-
-final languageRepositoryProvider = Provider<LanguageRepository>((ref) {
-  return ServiceLocator.get<LanguageRepository>();
-});
-
-final projectLanguageRepositoryProvider =
-    Provider<ProjectLanguageRepository>((ref) {
-  return ServiceLocator.get<ProjectLanguageRepository>();
-});
-
-final translationVersionRepositoryProvider =
-    Provider<TranslationVersionRepository>((ref) {
-  return ServiceLocator.get<TranslationVersionRepository>();
-});
+// Re-export shared repository providers for backward compatibility
+export '../../../providers/shared/repository_providers.dart'
+    show
+        compilationRepositoryProvider,
+        projectRepositoryProvider,
+        gameInstallationRepositoryProvider,
+        languageRepositoryProvider,
+        projectLanguageRepositoryProvider,
+        translationVersionRepositoryProvider,
+        activeLanguagesProvider,
+        allLanguagesProvider,
+        allGameInstallationsProvider;
 
 /// Project with translation statistics for a specific language
 class ProjectWithTranslationInfo {
@@ -86,17 +68,6 @@ final currentGameInstallationProvider =
   return result.unwrap();
 });
 
-/// Provider for all active languages
-final allLanguagesProvider = FutureProvider<List<Language>>((ref) async {
-  final langRepo = ref.watch(languageRepositoryProvider);
-  final result = await langRepo.getActive();
-
-  if (result.isErr) {
-    throw Exception('Failed to load languages');
-  }
-
-  return result.unwrap();
-});
 
 /// Compilation with related data
 class CompilationWithDetails {
@@ -324,12 +295,16 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
   }
 
   /// Request cancellation of the current compilation
-  void cancelCompilation() {
+  /// This immediately kills any running RPFM process
+  Future<void> cancelCompilation() async {
     if (state.isCompiling) {
       state = state.copyWith(
         isCancelled: true,
         currentStep: 'Cancelling...',
       );
+      // Immediately cancel the RPFM service to kill any running process
+      final rpfmService = ServiceLocator.get<IRpfmService>();
+      await rpfmService.cancel();
     }
   }
 
@@ -705,19 +680,6 @@ final projectsWithTranslationProvider =
     return projectsWithInfo;
   },
 );
-
-/// Provider for all game installations
-final allGameInstallationsProvider =
-    FutureProvider<List<GameInstallation>>((ref) async {
-  final gameRepo = ref.watch(gameInstallationRepositoryProvider);
-  final result = await gameRepo.getAll();
-
-  if (result.isErr) {
-    throw Exception('Failed to load game installations');
-  }
-
-  return result.unwrap();
-});
 
 /// Delete a compilation
 Future<bool> deleteCompilation(String compilationId) async {

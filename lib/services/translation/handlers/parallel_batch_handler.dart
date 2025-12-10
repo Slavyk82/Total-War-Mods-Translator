@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/shared/logging_service.dart';
@@ -46,33 +47,55 @@ class ParallelBatchHandler {
     // Validate maxParallel
     final parallelism = maxParallel.clamp(1, AppConstants.maxParallelBatchLimit);
 
-    // Use proper semaphore pattern with Completers to track completion
+    // Use StreamController for result aggregation
     final controller = StreamController<
         Result<TranslationProgress, TranslationOrchestrationException>>();
-    final activeCompleters = <Completer<void>>[];
+    final activeFutures = <Future<void>>[];
+    var activeCount = 0;
     var completedCount = 0;
     var hasError = false;
+
+    // Queue of completers for proper slot signaling (FIFO order)
+    // Each waiter gets its own completer to prevent race conditions
+    final slotWaiters = Queue<Completer<void>>();
+
+    /// Signal that a slot has become available
+    void signalSlotAvailable() {
+      if (slotWaiters.isNotEmpty) {
+        final waiter = slotWaiters.removeFirst();
+        if (!waiter.isCompleted) {
+          waiter.complete();
+        }
+      }
+    }
+
+    /// Wait for a slot to become available
+    Future<void> waitForSlot() async {
+      final completer = Completer<void>();
+      slotWaiters.add(completer);
+      await completer.future;
+    }
 
     // Process batches maintaining parallel limit
     Future<void> processBatches() async {
       try {
         for (final batchId in batchIds) {
-          // Wait if we've hit the parallelism limit
-          while (activeCompleters.length >= parallelism) {
-            // Wait for the first task to complete
-            await Future.any(
-              activeCompleters.map((c) => c.future),
-            );
-            // Remove the completed completer
-            activeCompleters.removeWhere((c) => c.isCompleted);
+          // Check if consumer cancelled the stream
+          if (controller.isClosed) {
+            _logger.info('Stream cancelled by consumer, stopping batch processing');
+            break;
           }
 
-          // Create a completer to track this batch's completion
-          final completer = Completer<void>();
-          activeCompleters.add(completer);
+          // Wait if we've hit the parallelism limit
+          while (activeCount >= parallelism) {
+            await waitForSlot();
+          }
+
+          // Increment active count before starting
+          activeCount++;
 
           // Start batch processing (don't await - run in parallel)
-          _processBatchWithStreaming(
+          final future = _processBatchWithStreaming(
             batchId,
             context,
             controller,
@@ -82,28 +105,43 @@ class ParallelBatchHandler {
             _logger.info('Batch completed ($completedCount/${batchIds.length})', {
               'batchId': batchId,
             });
-            if (!completer.isCompleted) {
-              completer.complete();
-            }
-          }).catchError((error, stackTrace) {
+          }).catchError((Object error, StackTrace stackTrace) {
             hasError = true;
             _logger.error('Batch failed in parallel execution', error, stackTrace);
-            if (!completer.isCompleted) {
-              completer.completeError(error, stackTrace);
+            // Propagate error to the stream so caller knows which batch failed
+            if (!controller.isClosed) {
+              controller.add(Err(TranslationOrchestrationException(
+                'Batch $batchId failed: $error',
+                error: error,
+                stackTrace: stackTrace,
+              )));
             }
+          }).whenComplete(() {
+            // Decrement active count and signal slot available
+            activeCount--;
+            signalSlotAvailable();
           });
+
+          activeFutures.add(future);
         }
 
         // Wait for all remaining batches to complete
-        if (activeCompleters.isNotEmpty) {
-          await Future.wait(
-            activeCompleters.map((c) => c.future),
-            eagerError: false,
-          );
+        if (activeFutures.isNotEmpty) {
+          await Future.wait(activeFutures, eagerError: false);
         }
       } finally {
         // Always close the controller when done
-        await controller.close();
+        if (!controller.isClosed) {
+          await controller.close();
+        }
+
+        // Complete any remaining waiters to prevent hanging
+        while (slotWaiters.isNotEmpty) {
+          final waiter = slotWaiters.removeFirst();
+          if (!waiter.isCompleted) {
+            waiter.complete();
+          }
+        }
 
         _logger.info('Parallel batch translation completed', {
           'totalBatches': batchIds.length,
@@ -118,8 +156,16 @@ class ParallelBatchHandler {
     processBatches();
 
     // Yield all progress events from the controller
-    await for (final result in controller.stream) {
-      yield result;
+    // Use try-finally to ensure cleanup if the consumer cancels the stream
+    try {
+      await for (final result in controller.stream) {
+        yield result;
+      }
+    } finally {
+      // If consumer cancelled early, close the controller to stop processing
+      if (!controller.isClosed) {
+        await controller.close();
+      }
     }
   }
 

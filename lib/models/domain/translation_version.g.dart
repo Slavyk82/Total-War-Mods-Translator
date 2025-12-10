@@ -21,7 +21,6 @@ TranslationVersion _$TranslationVersionFromJson(Map<String, dynamic> json) =>
             json['status'],
           ) ??
           TranslationVersionStatus.pending,
-      confidenceScore: (json['confidence_score'] as num?)?.toDouble(),
       translationSource:
           $enumDecodeNullable(
             _$TranslationSourceEnumMap,
@@ -44,7 +43,6 @@ Map<String, dynamic> _$TranslationVersionToJson(
     instance.isManuallyEdited,
   ),
   'status': _$TranslationVersionStatusEnumMap[instance.status]!,
-  'confidence_score': instance.confidenceScore,
   'translation_source': _$TranslationSourceEnumMap[instance.translationSource]!,
   'validation_issues': instance.validationIssues,
   'created_at': instance.createdAt,

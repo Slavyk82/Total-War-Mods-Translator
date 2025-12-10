@@ -385,6 +385,52 @@ final class NeedsUpdateModsCountProvider
 String _$needsUpdateModsCountHash() =>
     r'4eca06098ef9f967460938bf7d069267c679558a';
 
+/// Provider for count of projects with pending changes.
+/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
+/// and checks if the cache has changes. This ensures consistency between screens.
+
+@ProviderFor(projectsWithPendingChangesCount)
+const projectsWithPendingChangesCountProvider =
+    ProjectsWithPendingChangesCountProvider._();
+
+/// Provider for count of projects with pending changes.
+/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
+/// and checks if the cache has changes. This ensures consistency between screens.
+
+final class ProjectsWithPendingChangesCountProvider
+    extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
+    with $FutureModifier<int>, $FutureProvider<int> {
+  /// Provider for count of projects with pending changes.
+  /// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
+  /// and checks if the cache has changes. This ensures consistency between screens.
+  const ProjectsWithPendingChangesCountProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'projectsWithPendingChangesCountProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$projectsWithPendingChangesCountHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<int> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<int> create(Ref ref) {
+    return projectsWithPendingChangesCount(ref);
+  }
+}
+
+String _$projectsWithPendingChangesCountHash() =>
+    r'1fd9664b50be5b5750bad64eb42f55b4c96a7c03';
+
 /// Refresh trigger for mods list
 
 @ProviderFor(ModsRefreshTrigger)
@@ -532,7 +578,7 @@ final class ModHiddenToggleProvider
   ModHiddenToggle create() => ModHiddenToggle();
 }
 
-String _$modHiddenToggleHash() => r'0cecd4fd19e57970a4d2f77aaf6dc1d5c19b4336';
+String _$modHiddenToggleHash() => r'84cc1c4068118d1c013e53de8e1eb7c0add5bbb7';
 
 /// Toggle mod hidden status
 

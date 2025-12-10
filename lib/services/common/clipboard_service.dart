@@ -11,7 +11,7 @@ import '../../models/domain/translation_unit.dart';
 class ClipboardService {
   /// Copy selected units to clipboard in TSV format
   ///
-  /// Format: Key\tSource Text\tTranslated Text\tStatus\tConfidence
+  /// Format: Key\tSource Text\tTranslated Text\tStatus
   /// This format is Excel-compatible and can be pasted directly into spreadsheets.
   ///
   /// [units] - Translation units with source text
@@ -30,21 +30,20 @@ class ClipboardService {
     final buffer = StringBuffer();
 
     // Add header row
-    buffer.writeln('Key\tSource Text\tTranslated Text\tStatus\tConfidence');
+    buffer.writeln('Key\tSource Text\tTranslated Text\tStatus');
 
     // Add data rows
     for (final unit in units) {
       final version = versionMap[unit.id];
       final translatedText = version?.translatedText ?? '';
       final status = version?.statusDisplay ?? 'Pending';
-      final confidence = version?.confidencePercentage?.toString() ?? '';
 
       // Escape any tabs or newlines in the data
       final key = _escapeTsvField(unit.key);
       final sourceText = _escapeTsvField(unit.sourceText);
       final translated = _escapeTsvField(translatedText);
 
-      buffer.writeln('$key\t$sourceText\t$translated\t$status\t$confidence');
+      buffer.writeln('$key\t$sourceText\t$translated\t$status');
     }
 
     // Copy to clipboard
@@ -56,23 +55,22 @@ class ClipboardService {
   /// Simplified version when only translation versions are available
   /// (without full unit details).
   ///
-  /// Format: Unit ID\tTranslated Text\tStatus\tConfidence
+  /// Format: Unit ID\tTranslated Text\tStatus
   static Future<void> copyVersionsToClipboard(
     List<TranslationVersion> versions,
   ) async {
     final buffer = StringBuffer();
 
     // Add header row
-    buffer.writeln('Unit ID\tTranslated Text\tStatus\tConfidence');
+    buffer.writeln('Unit ID\tTranslated Text\tStatus');
 
     // Add data rows
     for (final version in versions) {
       final translatedText = _escapeTsvField(version.translatedText ?? '');
       final status = version.statusDisplay;
-      final confidence = version.confidencePercentage?.toString() ?? '';
 
       buffer.writeln(
-        '${version.unitId}\t$translatedText\t$status\t$confidence',
+        '${version.unitId}\t$translatedText\t$status',
       );
     }
 
@@ -108,20 +106,19 @@ class ClipboardService {
     final buffer = StringBuffer();
 
     // Add header row
-    buffer.writeln('"Key","Source Text","Translated Text","Status","Confidence"');
+    buffer.writeln('"Key","Source Text","Translated Text","Status"');
 
     // Add data rows
     for (final unit in units) {
       final version = versionMap[unit.id];
       final translatedText = version?.translatedText ?? '';
       final status = version?.statusDisplay ?? 'Pending';
-      final confidence = version?.confidencePercentage?.toString() ?? '';
 
       final key = _escapeCsvField(unit.key);
       final sourceText = _escapeCsvField(unit.sourceText);
       final translated = _escapeCsvField(translatedText);
 
-      buffer.writeln('$key,$sourceText,$translated,"$status","$confidence"');
+      buffer.writeln('$key,$sourceText,$translated,"$status"');
     }
 
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
@@ -144,7 +141,6 @@ class ClipboardService {
         'sourceText': unit.sourceText,
         'translatedText': version?.translatedText,
         'status': version?.statusDisplay,
-        'confidence': version?.confidencePercentage,
       };
     }).toList();
 
@@ -157,8 +153,7 @@ class ClipboardService {
       buffer.write('"key": "${_escapeJson(item['key'])}", ');
       buffer.write('"sourceText": "${_escapeJson(item['sourceText'])}", ');
       buffer.write('"translatedText": "${_escapeJson(item['translatedText'])}", ');
-      buffer.write('"status": "${item['status']}", ');
-      buffer.write('"confidence": ${item['confidence']}');
+      buffer.write('"status": "${item['status']}"');
       buffer.write('}');
       if (i < items.length - 1) buffer.write(',');
       buffer.writeln();

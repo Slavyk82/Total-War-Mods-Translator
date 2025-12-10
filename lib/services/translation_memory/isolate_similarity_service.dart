@@ -23,7 +23,6 @@ class CandidateData {
   final String translatedText;
   final int usageCount;
   final int lastUsedAt;
-  final double qualityScore;
 
   const CandidateData({
     required this.id,
@@ -31,7 +30,6 @@ class CandidateData {
     required this.translatedText,
     required this.usageCount,
     required this.lastUsedAt,
-    required this.qualityScore,
   });
 }
 
@@ -60,8 +58,22 @@ class IsolateSimilarityService {
   static IsolateSimilarityService? _instance;
   Isolate? _isolate;
   SendPort? _sendPort;
+
+  /// Pre-compiled RegExp patterns for performance optimization.
+  /// These patterns are used frequently in similarity calculations,
+  /// so compiling them once avoids repeated compilation overhead.
+  static final RegExp _nonWordPattern = RegExp(r'[^\w\s]');
+  static final RegExp _whitespacePattern = RegExp(r'\s+');
   final _responseCompleter = <int, Completer<List<SimilarityResult>>>{};
+  final _requestTimestamps = <int, DateTime>{};
   int _requestId = 0;
+  Timer? _cleanupTimer;
+
+  /// Default timeout for similarity calculations
+  static const Duration defaultTimeout = Duration(seconds: 30);
+
+  /// Maximum age for orphaned completers before cleanup
+  static const Duration orphanedCompleterMaxAge = Duration(seconds: 60);
 
   IsolateSimilarityService._();
 
@@ -85,28 +97,82 @@ class IsolateSimilarityService {
       if (message is SendPort) {
         completer.complete(message);
       } else if (message is _IsolateResponse) {
-        final completer = _responseCompleter.remove(message.requestId);
-        completer?.complete(message.results);
+        final responseCompleter = _responseCompleter.remove(message.requestId);
+        _requestTimestamps.remove(message.requestId);
+        responseCompleter?.complete(message.results);
       }
     });
 
     _sendPort = await completer.future;
+
+    // Start periodic cleanup of orphaned completers
+    _startCleanupTimer();
+  }
+
+  /// Start periodic cleanup timer for orphaned completers
+  void _startCleanupTimer() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _cleanupOrphanedCompleters(),
+    );
+  }
+
+  /// Clean up completers that have been waiting too long
+  void _cleanupOrphanedCompleters() {
+    final now = DateTime.now();
+    final orphanedRequestIds = <int>[];
+
+    for (final entry in _requestTimestamps.entries) {
+      if (now.difference(entry.value) > orphanedCompleterMaxAge) {
+        orphanedRequestIds.add(entry.key);
+      }
+    }
+
+    for (final requestId in orphanedRequestIds) {
+      final completer = _responseCompleter.remove(requestId);
+      _requestTimestamps.remove(requestId);
+      if (completer != null && !completer.isCompleted) {
+        completer.completeError(
+          TimeoutException(
+            'Similarity calculation orphaned after ${orphanedCompleterMaxAge.inSeconds}s',
+            orphanedCompleterMaxAge,
+          ),
+        );
+      }
+    }
   }
 
   /// Dispose of the isolate
   void dispose() {
+    _cleanupTimer?.cancel();
+    _cleanupTimer = null;
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
     _sendPort = null;
+
+    // Complete any pending completers with an error before clearing
+    for (final completer in _responseCompleter.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          StateError('IsolateSimilarityService was disposed'),
+        );
+      }
+    }
     _responseCompleter.clear();
+    _requestTimestamps.clear();
   }
 
-  /// Calculate similarity for a batch of candidates in the isolate
+  /// Calculate similarity for a batch of candidates in the isolate.
+  ///
+  /// The [timeout] parameter controls how long to wait for results before
+  /// throwing a [TimeoutException]. Defaults to 30 seconds.
   Future<List<SimilarityResult>> calculateBatchSimilarity({
     required String sourceText,
     required List<CandidateData> candidates,
     required double minSimilarity,
     String? category,
+    Duration timeout = defaultTimeout,
   }) async {
     if (_sendPort == null) {
       await initialize();
@@ -115,6 +181,7 @@ class IsolateSimilarityService {
     final requestId = _requestId++;
     final completer = Completer<List<SimilarityResult>>();
     _responseCompleter[requestId] = completer;
+    _requestTimestamps[requestId] = DateTime.now();
 
     _sendPort!.send(_IsolateRequest(
       requestId: requestId,
@@ -124,7 +191,24 @@ class IsolateSimilarityService {
       category: category,
     ));
 
-    return completer.future;
+    try {
+      return await completer.future.timeout(
+        timeout,
+        onTimeout: () {
+          _responseCompleter.remove(requestId);
+          _requestTimestamps.remove(requestId);
+          throw TimeoutException(
+            'Similarity calculation timed out after ${timeout.inSeconds}s',
+            timeout,
+          );
+        },
+      );
+    } catch (e) {
+      // Ensure cleanup on any error (including timeout)
+      _responseCompleter.remove(requestId);
+      _requestTimestamps.remove(requestId);
+      rethrow;
+    }
   }
 
   /// Entry point for the background isolate
@@ -201,8 +285,8 @@ class IsolateSimilarityService {
   static String _normalize(String text) {
     return text
         .toLowerCase()
-        .replaceAll(RegExp(r'[^\w\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(_nonWordPattern, ' ')
+        .replaceAll(_whitespacePattern, ' ')
         .trim();
   }
 
@@ -313,8 +397,8 @@ class IsolateSimilarityService {
     if (s1 == s2) return 1.0;
     if (s1.isEmpty || s2.isEmpty) return 0.0;
 
-    final tokens1 = s1.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toSet();
-    final tokens2 = s2.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toSet();
+    final tokens1 = s1.split(_whitespacePattern).where((t) => t.isNotEmpty).toSet();
+    final tokens2 = s2.split(_whitespacePattern).where((t) => t.isNotEmpty).toSet();
 
     if (tokens1.isEmpty || tokens2.isEmpty) return 0.0;
 
