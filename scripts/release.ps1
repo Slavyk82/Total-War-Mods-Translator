@@ -217,10 +217,10 @@ if (-not $SkipInstaller) {
     # Check if inno_bundle is available
     $innoOutput = dart run inno_bundle:build --release 2>&1
     if ($LASTEXITCODE -eq 0) {
-        # Find the generated installer
+        # Find the generated installer (search recursively)
         $installerPattern = Join-Path $InstallerDir "*.exe"
-        $installers = Get-ChildItem -Path $InstallerDir -Filter "*.exe" -ErrorAction SilentlyContinue |
-                      Where-Object { $_.Name -match "twmt|TWMT|setup|installer" }
+        $installers = Get-ChildItem -Path $InstallerDir -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue |
+                      Where-Object { $_.Name -match "installer" -and $_.Name -notmatch "CompilerId" }
 
         if ($installers) {
             $installer = $installers | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -265,6 +265,19 @@ $releaseNotesText = "Release version $Version"
 
 # Step 7: Create GitHub release
 Write-Step "Creating GitHub release..."
+
+# Check if release already exists and delete it
+$existingRelease = gh release view "v$Version" 2>&1
+if ($LASTEXITCODE -eq 0) {
+    Write-Warning "Release v$Version already exists, deleting it..."
+    gh release delete "v$Version" --yes
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Existing release deleted"
+    } else {
+        Write-Error "Failed to delete existing release"
+        exit 1
+    }
+}
 
 $ghArgs = @(
     "release", "create",

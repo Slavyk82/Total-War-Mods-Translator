@@ -24,14 +24,14 @@ class WelcomeCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Welcome to TWMT',
+                    'Welcome to Total War Mods Translator',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Total War Mods Translator - Your AI-powered translation assistant for Total War game mods',
+                    'Your AI-powered translation assistant for Total War game mods',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
