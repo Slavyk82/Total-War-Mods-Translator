@@ -39,7 +39,6 @@ CLAUDE.md
 /coverage/
 /scripts/
 /windows/
-/test/
 
 # Symbolication related
 app.*.symbols
