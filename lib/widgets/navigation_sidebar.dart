@@ -95,10 +95,10 @@ class NavigationSidebar extends ConsumerWidget {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          Icon(
-            FluentIcons.translate_24_filled,
-            size: 28,
-            color: Theme.of(context).colorScheme.primary,
+          Image.asset(
+            'assets/twmt_icon.png',
+            width: 32,
+            height: 32,
           ),
           const SizedBox(width: 12),
           Expanded(

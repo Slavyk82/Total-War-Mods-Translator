@@ -114,6 +114,11 @@ class MainLayoutRouter extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    // Don't show breadcrumbs in translation editor (has its own header)
+    if (location.contains('/editor/')) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(

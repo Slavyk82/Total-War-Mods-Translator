@@ -56,11 +56,18 @@ class _TranslationEditorScreenState
 
   @override
   Widget build(BuildContext context) {
-    final undoRedoManager = ref.watch(undoRedoManagerProvider);
+    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
+    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
+
+    final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
+    final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
+    final subtitle = projectName.isNotEmpty && languageName.isNotEmpty
+        ? ' — $languageName — $projectName'
+        : '';
 
     return FluentScaffold(
       header: FluentHeader(
-        title: 'Translation Editor',
+        title: 'Translation Editor$subtitle',
         leading: FluentIconButton(
           icon: FluentIcons.arrow_left_24_regular,
           onPressed: () => Navigator.of(context).pop(),

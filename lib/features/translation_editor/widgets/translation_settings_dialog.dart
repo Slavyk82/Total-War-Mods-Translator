@@ -244,7 +244,7 @@ class _TranslationSettingsDialogState extends State<TranslationSettingsDialog> {
                     child: Text(
                       _isAutoMode
                           ? 'Auto mode calculates optimal batch size based on token limits for each request.'
-                          : 'Recommended: 3-5 parallel batches for optimal speed. Use Auto mode for best results.',
+                          : 'Recommended: 3-5 parallel batches for optimal speed. Use Auto mode for best results. If there are a lot of timeouts error, force a lower batch size like 10 units per batch and even 1 but it will consume more tokens.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.primary,
                       ),

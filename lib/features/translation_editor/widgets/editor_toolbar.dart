@@ -11,7 +11,7 @@ import 'mod_rule_editor_dialog.dart';
 
 /// Top toolbar for the translation editor
 ///
-/// Contains project breadcrumb, language selector, action buttons, and search
+/// Contains LLM model selector, action buttons, and search
 class EditorToolbar extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
@@ -47,8 +47,6 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
 
   @override
   Widget build(BuildContext context) {
-    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
-    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
     final selectionState = ref.watch(editorSelectionProvider);
 
     return Container(
@@ -64,59 +62,6 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
       ),
       child: Row(
         children: [
-          // Breadcrumb - flexible to shrink when space is limited
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    FluentIcons.folder_24_regular,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: projectAsync.when(
-                      data: (project) => Text(
-                        project.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      loading: () => const SizedBox(
-                        width: 100,
-                        height: 16,
-                        child: LinearProgressIndicator(),
-                      ),
-                      error: (_, __) => const Text('Error'),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Icon(FluentIcons.chevron_right_24_regular, size: 16),
-                  ),
-                  Flexible(
-                    child: languageAsync.when(
-                      data: (language) => Text(
-                        language.name,
-                        style: const TextStyle(fontSize: 14),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      loading: () => const SizedBox(
-                        width: 60,
-                        height: 16,
-                        child: LinearProgressIndicator(),
-                      ),
-                      error: (_, __) => const Text('Error'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
           const SizedBox(width: 16),
 
           // LLM Model selector

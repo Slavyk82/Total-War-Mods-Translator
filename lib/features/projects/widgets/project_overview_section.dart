@@ -29,31 +29,14 @@ class ProjectOverviewSection extends StatelessWidget {
           color: theme.colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      project.name,
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (onDelete != null) _buildDeleteButton(context),
-            ],
+          Expanded(
+            child: project.modSteamId != null
+                ? _buildSteamInfo(context)
+                : const SizedBox.shrink(),
           ),
-          if (project.modSteamId != null) ...[
-            const SizedBox(height: 16),
-            _buildSteamInfo(context),
-          ],
+          if (onDelete != null) _buildDeleteButton(context),
         ],
       ),
     );

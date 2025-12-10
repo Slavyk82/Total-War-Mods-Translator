@@ -3,9 +3,9 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/providers/app_version_provider.dart';
 import 'package:twmt/providers/theme_provider.dart';
 import 'package:twmt/widgets/game_selector_dropdown.dart';
+import 'package:twmt/widgets/sidebar_update_checker.dart';
 
 /// Router-aware navigation sidebar
 ///
@@ -126,26 +126,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Consumer(
-                builder: (context, ref, child) {
-                  final versionAsync = ref.watch(appVersionProvider);
-                  return Text(
-                    versionAsync.when(
-                      data: (version) => 'v$version',
-                      loading: () => '',
-                      error: (error, stack) => '',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+          const SidebarUpdateChecker(),
         ],
       ),
     );
@@ -162,10 +143,10 @@ class NavigationSidebarRouter extends ConsumerWidget {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          Icon(
-            FluentIcons.translate_24_filled,
-            size: 28,
-            color: Theme.of(context).colorScheme.primary,
+          Image.asset(
+            'assets/twmt_icon.png',
+            width: 32,
+            height: 32,
           ),
           const SizedBox(width: 12),
           Expanded(

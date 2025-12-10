@@ -84,14 +84,23 @@ class CompilationWithDetails {
   });
 }
 
-/// Provider for all compilations with details
+/// Provider for all compilations with details (filtered by selected game)
 final compilationsWithDetailsProvider =
     FutureProvider<List<CompilationWithDetails>>((ref) async {
   final compilationRepo = ref.watch(compilationRepositoryProvider);
   final projectRepo = ref.watch(projectRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
 
-  final compilationsResult = await compilationRepo.getAll();
+  // Watch the selected game to filter compilations
+  final currentGameInstallation =
+      await ref.watch(currentGameInstallationProvider.future);
+  if (currentGameInstallation == null) {
+    return <CompilationWithDetails>[];
+  }
+
+  // Fetch compilations for the selected game only
+  final compilationsResult =
+      await compilationRepo.getByGameInstallation(currentGameInstallation.id);
   if (compilationsResult.isErr) {
     throw Exception('Failed to load compilations');
   }

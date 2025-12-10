@@ -9,6 +9,7 @@ import '../../../models/domain/game_installation.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../models/domain/mod_update_analysis.dart';
 import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/selected_game_provider.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
@@ -253,7 +254,7 @@ final projectsFilterProvider =
 final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {
   // Watch translation stats version to refresh when stats change (e.g., mod update resets units)
   ref.watch(translationStatsVersionProvider);
-  
+
   final logging = ServiceLocator.get<LoggingService>();
   logging.debug('Starting projectsWithDetailsProvider');
   final projectRepo = ref.watch(projectRepositoryProvider);
@@ -264,8 +265,23 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   final versionRepo = ServiceLocator.get<TranslationVersionRepository>();
   final updateAnalysisService = ServiceLocator.get<ModUpdateAnalysisService>();
 
-  // Fetch all projects
-  final projectsResult = await projectRepo.getAll();
+  // Watch the selected game to filter projects
+  final selectedGame = await ref.watch(selectedGameProvider.future);
+  if (selectedGame == null) {
+    logging.debug('No game selected, returning empty project list');
+    return <ProjectWithDetails>[];
+  }
+
+  // Get the GameInstallation for the selected game
+  final gameInstallationResult = await gameRepo.getByGameCode(selectedGame.code);
+  if (gameInstallationResult.isErr) {
+    logging.debug('No game installation found for ${selectedGame.code}');
+    return <ProjectWithDetails>[];
+  }
+  final gameInstallation = gameInstallationResult.unwrap();
+
+  // Fetch projects for the selected game only
+  final projectsResult = await projectRepo.getByGameInstallation(gameInstallation.id);
   if (projectsResult.isErr) {
     final error = projectsResult.unwrapErr();
     logging.error('Failed to fetch projects', error);

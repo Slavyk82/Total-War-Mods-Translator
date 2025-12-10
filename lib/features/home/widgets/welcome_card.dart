@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 /// Welcome card for home dashboard
 class WelcomeCard extends StatelessWidget {
@@ -14,10 +13,10 @@ class WelcomeCard extends StatelessWidget {
         padding: const EdgeInsets.all(24.0),
         child: Row(
           children: [
-            Icon(
-              FluentIcons.translate_24_filled,
-              size: 48,
-              color: theme.colorScheme.primary,
+            Image.asset(
+              'assets/twmt_icon.png',
+              width: 48,
+              height: 48,
             ),
             const SizedBox(width: 24),
             Expanded(

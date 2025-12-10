@@ -22,8 +22,8 @@ void main() async {
     // Initialize window manager
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(
-      size: Size(1400, 850),
-      minimumSize: Size(1280, 720),
+      size: Size(1600, 850),
+      minimumSize: Size(1600, 850),
       center: true,
       title: 'TWMT - Total War Mods Translator',
       titleBarStyle: TitleBarStyle.normal,
@@ -113,8 +113,12 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   }
 
   void _triggerStartupTasks() {
-    // Trigger auto-update check (runs in background after 5s delay)
-    ref.read(autoUpdateCheckProvider);
+    // Trigger auto-update check directly
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        ref.read(updateCheckerProvider.notifier).checkForUpdates();
+      }
+    });
 
     // Trigger cleanup of old installer files
     ref.read(cleanupOldInstallersProvider);

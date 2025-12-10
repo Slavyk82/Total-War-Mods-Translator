@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/settings_providers.dart';
 import 'general/language_preferences_section.dart';
-import 'general/application_settings_section.dart';
 import 'general/maintenance_section.dart';
 
-/// General settings tab for configuring languages, application settings, and maintenance.
+/// General settings tab for configuring languages and maintenance.
 ///
 /// Delegates to specialized section widgets for each configuration area.
+/// Note: Application update checking is now in the navigation sidebar.
 class GeneralSettingsTab extends ConsumerWidget {
   const GeneralSettingsTab({super.key});
 
@@ -25,8 +25,6 @@ class GeneralSettingsTab extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           children: [
             const LanguagePreferencesSection(),
-            const SizedBox(height: 32),
-            const ApplicationSettingsSection(),
             const SizedBox(height: 32),
             const MaintenanceSection(),
           ],
