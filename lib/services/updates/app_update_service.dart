@@ -185,17 +185,67 @@ class AppUpdateService {
         return Err(const ServiceException('Installer file not found'));
       }
 
-      // Launch installer
-      await Process.start(
-        installerPath,
-        [],
-        mode: ProcessStartMode.detached,
-      );
+      final extension = path.extension(installerPath).toLowerCase();
+
+      // Handle different installer types
+      if (extension == '.zip') {
+        // For zip files, open the containing folder
+        final directory = path.dirname(installerPath);
+        await Process.start(
+          'explorer.exe',
+          [directory],
+          mode: ProcessStartMode.detached,
+        );
+      } else {
+        // For .exe, .msi, .msix - launch directly
+        await Process.start(
+          installerPath,
+          [],
+          mode: ProcessStartMode.detached,
+        );
+      }
 
       return const Ok(null);
     } catch (e) {
       return Err(ServiceException('Failed to launch installer: $e'));
     }
+  }
+
+  /// Clean up old installer files from the temp directory.
+  ///
+  /// Removes files older than [maxAge] (default: 7 days).
+  Future<void> cleanupOldInstallers({Duration? maxAge}) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final twmtTempDir = Directory(path.join(tempDir.path, 'TWMT'));
+
+      if (!await twmtTempDir.exists()) {
+        return;
+      }
+
+      final cutoffDate = DateTime.now().subtract(maxAge ?? const Duration(days: 7));
+
+      await for (final entity in twmtTempDir.list()) {
+        if (entity is File) {
+          final stat = await entity.stat();
+          if (stat.modified.isBefore(cutoffDate)) {
+            try {
+              await entity.delete();
+            } catch (_) {
+              // Ignore errors deleting individual files
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Silently ignore cleanup errors
+    }
+  }
+
+  /// Get the temp directory path for installers.
+  Future<String> getInstallerTempPath() async {
+    final tempDir = await getTemporaryDirectory();
+    return path.join(tempDir.path, 'TWMT');
   }
 
   void dispose() {

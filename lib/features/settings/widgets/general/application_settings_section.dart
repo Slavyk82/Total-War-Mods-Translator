@@ -16,13 +16,14 @@ class ApplicationSettingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final updateState = ref.watch(updateCheckerProvider);
     final downloadState = ref.watch(updateDownloaderProvider);
+    final versionAsync = ref.watch(currentAppVersionProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SettingsSectionHeader(title: 'Application'),
         const SizedBox(height: 16),
-        _buildVersionInfo(context),
+        _buildVersionInfo(context, versionAsync),
         const SizedBox(height: 16),
         _buildCheckUpdateButton(context, ref, updateState),
         if (updateState.hasUpdate) ...[
@@ -41,7 +42,13 @@ class ApplicationSettingsSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildVersionInfo(BuildContext context) {
+  Widget _buildVersionInfo(BuildContext context, AsyncValue<String> versionAsync) {
+    final version = versionAsync.when(
+      data: (v) => v,
+      loading: () => '...',
+      error: (e, st) => 'Unknown',
+    );
+
     return Row(
       children: [
         Icon(
@@ -51,7 +58,7 @@ class ApplicationSettingsSection extends ConsumerWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          'Version: $appVersion',
+          'Version: $version',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       ],

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../models/domain/github_release.dart';
@@ -8,8 +9,12 @@ import '../../../services/service_locator.dart';
 
 part 'update_providers.g.dart';
 
-/// Current application version from pubspec.yaml.
-const String appVersion = '1.0.0';
+/// Provider for the current application version from pubspec.yaml.
+@riverpod
+Future<String> currentAppVersion(Ref ref) async {
+  final packageInfo = await PackageInfo.fromPlatform();
+  return packageInfo.version;
+}
 
 /// Provider for the update service.
 @riverpod
@@ -63,8 +68,10 @@ class UpdateChecker extends _$UpdateChecker {
     state = state.copyWith(isChecking: true, clearError: true);
 
     try {
+      // Get current version dynamically
+      final currentVersion = await ref.read(currentAppVersionProvider.future);
       final service = ref.read(appUpdateServiceProvider);
-      final result = await service.checkForUpdate(appVersion);
+      final result = await service.checkForUpdate(currentVersion);
 
       result.when(
         ok: (release) {
@@ -217,9 +224,23 @@ class UpdateDownloader extends _$UpdateDownloader {
 }
 
 /// Provider that checks for updates on startup.
+///
+/// This provider should be watched from the main app widget to trigger
+/// automatic update checks when the app starts.
 @riverpod
 Future<void> autoUpdateCheck(Ref ref) async {
   // Small delay to not block app startup
-  await Future.delayed(const Duration(seconds: 3));
+  await Future.delayed(const Duration(seconds: 5));
   await ref.read(updateCheckerProvider.notifier).checkForUpdates();
+}
+
+/// Provider that cleans up old installer files from temp directory.
+@riverpod
+Future<void> cleanupOldInstallers(Ref ref) async {
+  try {
+    final service = ref.read(appUpdateServiceProvider);
+    await service.cleanupOldInstallers();
+  } catch (e) {
+    // Silently ignore cleanup errors - not critical
+  }
 }

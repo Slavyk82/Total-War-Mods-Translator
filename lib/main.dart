@@ -9,6 +9,7 @@ import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/features/settings/providers/update_providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,7 @@ class MyApp extends ConsumerWidget {
         darkTheme: AppTheme.darkTheme,
         themeMode: themeMode,
         routerConfig: router,
+        builder: (context, child) => _AppStartupTasks(child: child!),
       ),
       loading: () => MaterialApp(
         home: Scaffold(
@@ -82,6 +84,45 @@ class MyApp extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Widget that triggers startup tasks like auto-update check and cleanup.
+class _AppStartupTasks extends ConsumerStatefulWidget {
+  final Widget child;
+
+  const _AppStartupTasks({required this.child});
+
+  @override
+  ConsumerState<_AppStartupTasks> createState() => _AppStartupTasksState();
+}
+
+class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
+  bool _tasksTriggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Use addPostFrameCallback to ensure providers are ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_tasksTriggered) {
+        _tasksTriggered = true;
+        _triggerStartupTasks();
+      }
+    });
+  }
+
+  void _triggerStartupTasks() {
+    // Trigger auto-update check (runs in background after 5s delay)
+    ref.read(autoUpdateCheckProvider);
+
+    // Trigger cleanup of old installer files
+    ref.read(cleanupOldInstallersProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }
 

@@ -47,16 +47,68 @@ class GitHubRelease {
   }
 
   /// Find the Windows installer asset.
+  ///
+  /// Priority order:
+  /// 1. .exe with "installer" or "setup" in name
+  /// 2. .msix file (Windows App Package)
+  /// 3. .msi file (Windows Installer)
+  /// 4. Any .exe file
+  /// 5. .zip file with "windows" in name
+  /// 6. Any .zip file
   GitHubAsset? get windowsInstaller {
-    return assets.firstWhere(
-      (asset) =>
-          asset.name.toLowerCase().endsWith('.exe') &&
-          asset.name.toLowerCase().contains('installer'),
-      orElse: () => assets.firstWhere(
-        (asset) => asset.name.toLowerCase().endsWith('.exe'),
-        orElse: () => const GitHubAsset.empty(),
-      ),
-    );
+    final lowerAssets = assets.map((a) => (a, a.name.toLowerCase())).toList();
+
+    // Priority 1: .exe with "installer" or "setup" in name
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.exe') &&
+          (name.contains('installer') || name.contains('setup'))) {
+        return asset;
+      }
+    }
+
+    // Priority 2: .msix file (modern Windows package)
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.msix')) {
+        return asset;
+      }
+    }
+
+    // Priority 3: .msi file (Windows Installer)
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.msi')) {
+        return asset;
+      }
+    }
+
+    // Priority 4: Any .exe file
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.exe')) {
+        return asset;
+      }
+    }
+
+    // Priority 5: .zip with "windows" in name
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.zip') && name.contains('windows')) {
+        return asset;
+      }
+    }
+
+    // Priority 6: Any .zip file (fallback)
+    for (final (asset, name) in lowerAssets) {
+      if (name.endsWith('.zip')) {
+        return asset;
+      }
+    }
+
+    return const GitHubAsset.empty();
+  }
+
+  /// Check if the installer requires extraction (e.g., .zip files).
+  bool get installerRequiresExtraction {
+    final asset = windowsInstaller;
+    if (asset == null || asset.isEmpty) return false;
+    return asset.name.toLowerCase().endsWith('.zip');
   }
 }
 
