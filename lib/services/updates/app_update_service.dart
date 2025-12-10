@@ -11,8 +11,8 @@ import '../../models/common/service_exception.dart';
 
 /// Service for checking and downloading application updates from GitHub.
 class AppUpdateService {
-  static const String _owner = 'slavyk82';
-  static const String _repo = 'twmt';
+  static const String _owner = 'Slavyk82';
+  static const String _repo = 'Total-War-Mods-Translator';
   static const String _apiBaseUrl = 'https://api.github.com';
 
   final http.Client _httpClient;
