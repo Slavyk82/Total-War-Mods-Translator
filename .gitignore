@@ -37,6 +37,8 @@ CLAUDE.md
 .pub/
 /build/
 /coverage/
+/scripts/
+/windows/
 
 # Symbolication related
 app.*.symbols
