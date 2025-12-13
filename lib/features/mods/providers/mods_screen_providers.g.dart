@@ -186,23 +186,24 @@ abstract class _$ShowHiddenMods extends $Notifier<bool> {
 }
 
 /// Filtered mods based on search query, filter, and hidden state
+/// Uses cached data for instant filtering without waiting for async resolution
 
 @ProviderFor(filteredMods)
 const filteredModsProvider = FilteredModsProvider._();
 
 /// Filtered mods based on search query, filter, and hidden state
+/// Uses cached data for instant filtering without waiting for async resolution
 
 final class FilteredModsProvider
     extends
         $FunctionalProvider<
-          AsyncValue<List<DetectedMod>>,
           List<DetectedMod>,
-          FutureOr<List<DetectedMod>>
+          List<DetectedMod>,
+          List<DetectedMod>
         >
-    with
-        $FutureModifier<List<DetectedMod>>,
-        $FutureProvider<List<DetectedMod>> {
+    with $Provider<List<DetectedMod>> {
   /// Filtered mods based on search query, filter, and hidden state
+  /// Uses cached data for instant filtering without waiting for async resolution
   const FilteredModsProvider._()
     : super(
         from: null,
@@ -219,17 +220,116 @@ final class FilteredModsProvider
 
   @$internal
   @override
-  $FutureProviderElement<List<DetectedMod>> $createElement(
+  $ProviderElement<List<DetectedMod>> $createElement(
     $ProviderPointer pointer,
-  ) => $FutureProviderElement(pointer);
+  ) => $ProviderElement(pointer);
 
   @override
-  FutureOr<List<DetectedMod>> create(Ref ref) {
+  List<DetectedMod> create(Ref ref) {
     return filteredMods(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<DetectedMod> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<DetectedMod>>(value),
+    );
   }
 }
 
-String _$filteredModsHash() => r'7e099664fe3def340adefe0b666db2226b4ed1df';
+String _$filteredModsHash() => r'80122645ef3ac8e845c58f1515f8e5f5639612e0';
+
+/// Provider to check if mods are still loading (for UI feedback)
+
+@ProviderFor(modsIsLoading)
+const modsIsLoadingProvider = ModsIsLoadingProvider._();
+
+/// Provider to check if mods are still loading (for UI feedback)
+
+final class ModsIsLoadingProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Provider to check if mods are still loading (for UI feedback)
+  const ModsIsLoadingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'modsIsLoadingProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$modsIsLoadingHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return modsIsLoading(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$modsIsLoadingHash() => r'd756e6328c382563fba27e537264a969e87835f1';
+
+/// Provider to check if mods have error (for UI feedback)
+
+@ProviderFor(modsError)
+const modsErrorProvider = ModsErrorProvider._();
+
+/// Provider to check if mods have error (for UI feedback)
+
+final class ModsErrorProvider
+    extends $FunctionalProvider<Object?, Object?, Object?>
+    with $Provider<Object?> {
+  /// Provider to check if mods have error (for UI feedback)
+  const ModsErrorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'modsErrorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$modsErrorHash();
+
+  @$internal
+  @override
+  $ProviderElement<Object?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Object? create(Ref ref) {
+    return modsError(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Object? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Object?>(value),
+    );
+  }
+}
+
+String _$modsErrorHash() => r'a196395264ad19ad1b74c4a4317c4ffa0d7e5e71';
 
 /// Provider for total mods count (excluding hidden)
 
@@ -568,7 +668,7 @@ final class ModHiddenToggleProvider
         argument: null,
         retry: null,
         name: r'modHiddenToggleProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -581,7 +681,7 @@ final class ModHiddenToggleProvider
   ModHiddenToggle create() => ModHiddenToggle();
 }
 
-String _$modHiddenToggleHash() => r'84cc1c4068118d1c013e53de8e1eb7c0add5bbb7';
+String _$modHiddenToggleHash() => r'c18643053140f51220dc61b911ef0aad14762301';
 
 /// Toggle mod hidden status
 

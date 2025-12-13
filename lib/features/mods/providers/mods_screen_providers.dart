@@ -68,13 +68,20 @@ class ShowHiddenMods extends _$ShowHiddenMods {
 }
 
 /// Filtered mods based on search query, filter, and hidden state
+/// Uses cached data for instant filtering without waiting for async resolution
 @riverpod
-Future<List<DetectedMod>> filteredMods(Ref ref) async {
-  final detectedModsList = await ref.watch(detectedModsProvider.future);
+List<DetectedMod> filteredMods(Ref ref) {
+  print('=== filteredMods provider computing ===');
+  // Watch the async state - use cached value for instant filtering
+  final detectedModsAsync = ref.watch(detectedModsProvider);
   final searchQuery = ref.watch(modsSearchQueryProvider).toLowerCase();
   final filter = ref.watch(modsFilterStateProvider);
   final showHidden = ref.watch(showHiddenModsProvider);
+  print('=== showHidden value: $showHidden ===');
 
+  // Use cached data or empty list if not yet loaded
+  final detectedModsList = detectedModsAsync.value ?? <DetectedMod>[];
+  print('=== detectedModsList count: ${detectedModsList.length}, hasValue: ${detectedModsAsync.hasValue} ===');
   var result = detectedModsList;
 
   // Apply hidden filter first
@@ -116,6 +123,22 @@ Future<List<DetectedMod>> filteredMods(Ref ref) async {
   }
 
   return result;
+}
+
+/// Provider to check if mods are still loading (for UI feedback)
+@riverpod
+bool modsIsLoading(Ref ref) {
+  final detectedModsAsync = ref.watch(detectedModsProvider);
+  return detectedModsAsync.isLoading && !detectedModsAsync.hasValue;
+}
+
+/// Provider to check if mods have error (for UI feedback)
+@riverpod
+Object? modsError(Ref ref) {
+  final detectedModsAsync = ref.watch(detectedModsProvider);
+  return detectedModsAsync.hasError && !detectedModsAsync.hasValue
+      ? detectedModsAsync.error
+      : null;
 }
 
 /// Provider for total mods count (excluding hidden)
@@ -240,21 +263,26 @@ class ModsLoadingState extends _$ModsLoadingState {
 }
 
 /// Toggle mod hidden status
-@riverpod
+@Riverpod(keepAlive: true)
 class ModHiddenToggle extends _$ModHiddenToggle {
   @override
   Future<void> build() async {}
 
   /// Toggle the hidden status of a mod
   Future<void> toggleHidden(String workshopId, bool isHidden) async {
+    print('=== toggleHidden called: workshopId=$workshopId, isHidden=$isHidden ===');
     final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
     await workshopModRepo.setHidden(workshopId, isHidden);
+    print('=== DB updated ===');
 
     // Update the mod list locally without rescanning
     // Use try-catch to handle potential provider disposal during async operation
     try {
+      print('=== Calling updateModHidden ===');
       ref.read(detectedModsProvider.notifier).updateModHidden(workshopId, isHidden);
-    } catch (_) {
+      print('=== updateModHidden completed ===');
+    } catch (e) {
+      print('=== ERROR in updateModHidden: $e ===');
       // Provider was disposed during async operation - state will refresh on next access
     }
   }

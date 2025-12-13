@@ -11,6 +11,7 @@ import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
+import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/widgets/detected_mods_datagrid.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
@@ -35,8 +36,14 @@ class ModsScreen extends ConsumerStatefulWidget {
 class _ModsScreenState extends ConsumerState<ModsScreen> {
   @override
   Widget build(BuildContext context) {
+    print('=== ModsScreen build() called ===');
     final theme = Theme.of(context);
-    final filteredModsAsync = ref.watch(filteredModsProvider);
+    // Synchronous filtered mods - instant filtering
+    final filteredMods = ref.watch(filteredModsProvider);
+    print('=== filteredMods count: ${filteredMods.length} ===');
+    // Loading/error state from source provider
+    final isInitialLoading = ref.watch(modsIsLoadingProvider);
+    final modsError = ref.watch(modsErrorProvider);
     final searchQuery = ref.watch(modsSearchQueryProvider);
     final isRefreshing = ref.watch(modsLoadingStateProvider);
     final currentFilter = ref.watch(modsFilterStateProvider);
@@ -57,108 +64,54 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
             _buildHeader(theme),
             const SizedBox(height: 24),
 
-            // Toolbar
-            filteredModsAsync.when(
-              data: (filteredMods) => ModsToolbar(
-                searchQuery: searchQuery,
-                onSearchChanged: (query) {
-                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                },
-                onRefresh: () => _handleRefresh(),
-                isRefreshing: isRefreshing,
-                totalMods: totalModsAsync.value ?? 0,
-                filteredMods: filteredMods.length,
-                currentFilter: currentFilter,
-                onFilterChanged: (filter) {
-                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                },
-                notImportedCount: notImportedCountAsync.value ?? 0,
-                needsUpdateCount: needsUpdateCountAsync.value ?? 0,
-                showHidden: showHidden,
-                onShowHiddenChanged: (value) {
-                  ref.read(showHiddenModsProvider.notifier).set(value);
-                },
-                hiddenCount: hiddenCountAsync.value ?? 0,
-                projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
-                onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
-              ),
-              loading: () => ModsToolbar(
-                searchQuery: searchQuery,
-                onSearchChanged: (query) {
-                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                },
-                onRefresh: () => _handleRefresh(),
-                isRefreshing: true,
-                totalMods: 0,
-                filteredMods: 0,
-                currentFilter: currentFilter,
-                onFilterChanged: (filter) {
-                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                },
-                notImportedCount: 0,
-                needsUpdateCount: 0,
-                showHidden: showHidden,
-                onShowHiddenChanged: (value) {
-                  ref.read(showHiddenModsProvider.notifier).set(value);
-                },
-                hiddenCount: 0,
-                projectsWithPendingChanges: 0,
-              ),
-              error: (error, stack) => ModsToolbar(
-                searchQuery: searchQuery,
-                onSearchChanged: (query) {
-                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                },
-                onRefresh: () => _handleRefresh(),
-                isRefreshing: false,
-                totalMods: 0,
-                filteredMods: 0,
-                currentFilter: currentFilter,
-                onFilterChanged: (filter) {
-                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                },
-                notImportedCount: 0,
-                needsUpdateCount: 0,
-                showHidden: showHidden,
-                onShowHiddenChanged: (value) {
-                  ref.read(showHiddenModsProvider.notifier).set(value);
-                },
-                hiddenCount: 0,
-                projectsWithPendingChanges: 0,
-              ),
+            // Toolbar - always responsive, uses sync filtered mods
+            ModsToolbar(
+              searchQuery: searchQuery,
+              onSearchChanged: (query) {
+                ref.read(modsSearchQueryProvider.notifier).setQuery(query);
+              },
+              onRefresh: () => _handleRefresh(),
+              isRefreshing: isRefreshing || isInitialLoading,
+              totalMods: totalModsAsync.value ?? 0,
+              filteredMods: filteredMods.length,
+              currentFilter: currentFilter,
+              onFilterChanged: (filter) {
+                ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+              },
+              notImportedCount: notImportedCountAsync.value ?? 0,
+              needsUpdateCount: needsUpdateCountAsync.value ?? 0,
+              showHidden: showHidden,
+              onShowHiddenChanged: (value) {
+                print('=== onShowHiddenChanged called with: $value ===');
+                ref.read(showHiddenModsProvider.notifier).set(value);
+                print('=== showHiddenModsProvider.set() done ===');
+              },
+              hiddenCount: hiddenCountAsync.value ?? 0,
+              projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
+              onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
             ),
             const SizedBox(height: 16),
 
             // DataGrid
             Expanded(
-              child: filteredModsAsync.when(
-                data: (mods) => DetectedModsDataGrid(
-                  mods: mods,
-                  onRowTap: (workshopId) => _openCreateProjectDialog(context, mods, workshopId),
-                  onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
-                  onForceRedownload: (packFilePath) => _handleForceRedownload(context, packFilePath),
-                  isLoading: false,
-                  isScanning: isRefreshing,
-                  showingHidden: showHidden,
-                  scanLogStream: isRefreshing ? ref.watch(scanLogStreamProvider) : null,
-                ),
-                loading: () => DetectedModsDataGrid(
-                  mods: const [],
-                  onRowTap: _dummyCallback,
-                  isLoading: true,
-                  showingHidden: showHidden,
-                  scanLogStream: ref.watch(scanLogStreamProvider),
-                ),
-                error: (error, stack) => _buildErrorState(theme, error),
-              ),
+              child: modsError != null
+                  ? _buildErrorState(theme, modsError)
+                  : DetectedModsDataGrid(
+                      mods: filteredMods,
+                      onRowTap: (workshopId) => _openCreateProjectDialog(context, filteredMods, workshopId),
+                      onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
+                      onForceRedownload: (packFilePath) => _handleForceRedownload(context, packFilePath),
+                      isLoading: isInitialLoading,
+                      isScanning: isRefreshing,
+                      showingHidden: showHidden,
+                      scanLogStream: (isRefreshing || isInitialLoading) ? ref.watch(scanLogStreamProvider) : null,
+                    ),
             ),
           ],
         ),
       ),
     );
   }
-
-  void _dummyCallback(String _) {}
 
   Widget _buildHeader(ThemeData theme) {
     return Row(
@@ -251,7 +204,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     // Listen for completion and reset loading state
     late final ProviderSubscription<AsyncValue<List<DetectedMod>>> subscription;
     subscription = ref.listenManual(
-      filteredModsProvider,
+      detectedModsProvider,
       (previous, next) {
         // When data arrives, reset loading state and close subscription
         if (next.hasValue && mounted) {
@@ -271,7 +224,9 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
   }
 
   Future<void> _handleToggleHidden(String workshopId, bool hide) async {
+    print('=== _handleToggleHidden called: workshopId=$workshopId, hide=$hide ===');
     await ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
+    print('=== _handleToggleHidden done ===');
     // No need to invalidate - the mod list is updated locally by the provider
   }
 

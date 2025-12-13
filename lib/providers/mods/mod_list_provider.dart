@@ -53,7 +53,9 @@ class DetectedMods extends _$DetectedMods {
 
   /// Update the hidden status of a mod locally without rescanning
   void updateModHidden(String workshopId, bool isHidden) {
+    print('=== updateModHidden called: workshopId=$workshopId, isHidden=$isHidden ===');
     final currentState = state;
+    print('=== currentState type: ${currentState.runtimeType} ===');
     if (currentState is AsyncData<List<DetectedMod>>) {
       final updatedMods = currentState.value.map((mod) {
         if (mod.workshopId == workshopId) {
@@ -62,6 +64,7 @@ class DetectedMods extends _$DetectedMods {
         return mod;
       }).toList();
       state = AsyncData(updatedMods);
+      print('=== state updated with ${updatedMods.length} mods ===');
     }
   }
 }

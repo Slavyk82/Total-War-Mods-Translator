@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
+import 'general/backup_section.dart';
 import 'general/language_preferences_section.dart';
 import 'general/maintenance_section.dart';
 import 'ignored_source_texts_section.dart';
@@ -31,6 +32,8 @@ class GeneralSettingsTab extends ConsumerWidget {
             const IgnoredSourceTextsSection(),
             const SizedBox(height: 32),
             const MaintenanceSection(),
+            const SizedBox(height: 32),
+            const BackupSection(),
           ],
         );
       },
