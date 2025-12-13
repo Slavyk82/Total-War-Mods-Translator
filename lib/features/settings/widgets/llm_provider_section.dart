@@ -188,6 +188,7 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
   }) {
     return Tooltip(
       message: tooltip,
+      waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
         cursor: isLoading ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(

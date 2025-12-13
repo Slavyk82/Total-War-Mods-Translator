@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 
 /// Toolbar for mods screen with search, filters, and actions
@@ -104,7 +105,7 @@ class _ModsToolbarState extends State<ModsToolbar> {
           // Refresh button
           _ToolbarButton(
             icon: FluentIcons.arrow_sync_24_regular,
-            tooltip: 'Refresh mod list',
+            tooltip: TooltipStrings.modsRefresh,
             onTap: widget.onRefresh,
             isLoading: widget.isRefreshing,
           ),
@@ -165,12 +166,14 @@ class _ModsToolbarState extends State<ModsToolbar> {
       children: [
         _FilterChip(
           label: 'All',
+          tooltip: TooltipStrings.modsFilterAll,
           isSelected: widget.currentFilter == ModsFilter.all,
           onTap: () => widget.onFilterChanged(ModsFilter.all),
         ),
         const SizedBox(width: 8),
         _FilterChip(
           label: 'Not imported',
+          tooltip: TooltipStrings.modsFilterNotImported,
           count: widget.notImportedCount,
           isSelected: widget.currentFilter == ModsFilter.notImported,
           onTap: () => widget.onFilterChanged(ModsFilter.notImported),
@@ -178,6 +181,7 @@ class _ModsToolbarState extends State<ModsToolbar> {
         const SizedBox(width: 8),
         _FilterChip(
           label: 'Needs update',
+          tooltip: TooltipStrings.modsFilterNeedsUpdate,
           count: widget.needsUpdateCount,
           isSelected: widget.currentFilter == ModsFilter.needsUpdate,
           onTap: () => widget.onFilterChanged(ModsFilter.needsUpdate),
@@ -219,16 +223,20 @@ class _ModsToolbarState extends State<ModsToolbar> {
                   : theme.textTheme.bodySmall?.color,
             ),
             suffixIcon: widget.searchQuery.isNotEmpty
-                ? MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        widget.onSearchChanged('');
-                      },
-                      child: Icon(
-                        FluentIcons.dismiss_circle_24_filled,
-                        color: theme.textTheme.bodySmall?.color,
+                ? Tooltip(
+                    message: TooltipStrings.clearSearch,
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          widget.onSearchChanged('');
+                        },
+                        child: Icon(
+                          FluentIcons.dismiss_circle_24_filled,
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
                       ),
                     ),
                   )
@@ -246,11 +254,14 @@ class _ModsToolbarState extends State<ModsToolbar> {
   }
 
   Widget _buildHiddenCheckbox(ThemeData theme) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => widget.onShowHiddenChanged(!widget.showHidden),
-        child: Container(
+    return Tooltip(
+      message: TooltipStrings.modsHiddenToggle,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => widget.onShowHiddenChanged(!widget.showHidden),
+          child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: widget.showHidden
@@ -309,6 +320,7 @@ class _ModsToolbarState extends State<ModsToolbar> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -433,6 +445,7 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
 /// Filter chip with Fluent Design interactions
 class _FilterChip extends StatefulWidget {
   final String label;
+  final String? tooltip;
   final int? count;
   final bool isSelected;
   final VoidCallback onTap;
@@ -440,6 +453,7 @@ class _FilterChip extends StatefulWidget {
 
   const _FilterChip({
     required this.label,
+    this.tooltip,
     this.count,
     required this.isSelected,
     required this.onTap,
@@ -457,7 +471,7 @@ class _FilterChipState extends State<_FilterChip> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
+    Widget chip = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -521,5 +535,15 @@ class _FilterChipState extends State<_FilterChip> {
         ),
       ),
     );
+
+    if (widget.tooltip != null) {
+      return Tooltip(
+        message: widget.tooltip!,
+        waitDuration: const Duration(milliseconds: 500),
+        child: chip,
+      );
+    }
+
+    return chip;
   }
 }

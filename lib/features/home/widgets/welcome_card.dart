@@ -31,7 +31,7 @@ class WelcomeCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Your AI-powered translation assistant for Total War game mods',
+                    'AI-powered translation assistant for Total War games mods',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../../../widgets/fluent/fluent_widgets.dart';
 import '../../providers/language_settings_providers.dart';
 import '../add_custom_language_dialog.dart';
@@ -84,7 +85,8 @@ class _AddLanguageButtonState extends State<_AddLanguageButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Add custom language',
+      message: TooltipStrings.settingsAddLanguage,
+      waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),

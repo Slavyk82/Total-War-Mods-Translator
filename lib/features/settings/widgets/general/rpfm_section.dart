@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import '../../providers/settings_providers.dart';
@@ -64,9 +65,15 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         const SizedBox(height: 8),
         Row(
           children: [
-            SettingsActionButton.test(onPressed: _testRpfmPath),
+            SettingsActionButton.test(
+              onPressed: _testRpfmPath,
+              tooltip: TooltipStrings.settingsTestRpfm,
+            ),
             const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectRpfmPath),
+            SettingsActionButton.browse(
+              onPressed: _selectRpfmPath,
+              tooltip: TooltipStrings.settingsBrowsePath,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: TextFormField(
@@ -118,9 +125,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         Row(
           children: [
             SettingsActionButton.defaultPath(
-                onPressed: _useDefaultRpfmSchemaPath),
+              onPressed: _useDefaultRpfmSchemaPath,
+              tooltip: TooltipStrings.settingsDefaultPath,
+            ),
             const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectRpfmSchemaPath),
+            SettingsActionButton.browse(
+              onPressed: _selectRpfmSchemaPath,
+              tooltip: TooltipStrings.settingsBrowsePath,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: TextFormField(

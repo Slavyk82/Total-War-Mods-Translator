@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../providers/tm_providers.dart';
 import '../widgets/tm_browser_datagrid.dart';
@@ -95,6 +96,7 @@ class _TranslationMemoryScreenState
             context,
             icon: FluentIcons.arrow_import_24_regular,
             label: 'Import',
+            tooltip: TooltipStrings.tmImport,
             onPressed: () => _showImportDialog(),
           ),
           const SizedBox(width: 8),
@@ -102,6 +104,7 @@ class _TranslationMemoryScreenState
             context,
             icon: FluentIcons.arrow_export_24_regular,
             label: 'Export',
+            tooltip: TooltipStrings.tmExport,
             onPressed: () => _showExportDialog(),
           ),
           const SizedBox(width: 8),
@@ -109,6 +112,7 @@ class _TranslationMemoryScreenState
             context,
             icon: FluentIcons.broom_24_regular,
             label: 'Cleanup',
+            tooltip: TooltipStrings.tmCleanup,
             onPressed: () => _showCleanupDialog(),
           ),
         ],
@@ -134,6 +138,7 @@ class _TranslationMemoryScreenState
             context,
             icon: FluentIcons.arrow_clockwise_24_regular,
             label: 'Refresh',
+            tooltip: TooltipStrings.refresh,
             onPressed: () {
               ref.invalidate(tmEntriesProvider);
               ref.invalidate(tmStatisticsProvider);
@@ -149,12 +154,23 @@ class _TranslationMemoryScreenState
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
+    String? tooltip,
   }) {
-    return FluentButton(
+    Widget button = FluentButton(
       onPressed: onPressed,
       icon: Icon(icon),
       child: Text(label),
     );
+
+    if (tooltip != null) {
+      return Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 500),
+        child: button,
+      );
+    }
+
+    return button;
   }
 
   Widget _buildToolbarButton(
@@ -162,12 +178,23 @@ class _TranslationMemoryScreenState
     required IconData icon,
     required String label,
     required VoidCallback onPressed,
+    String? tooltip,
   }) {
-    return FluentTextButton(
+    Widget button = FluentTextButton(
       onPressed: onPressed,
       icon: Icon(icon, size: 18),
       child: Text(label),
     );
+
+    if (tooltip != null) {
+      return Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 500),
+        child: button,
+      );
+    }
+
+    return button;
   }
 
   void _showImportDialog() {

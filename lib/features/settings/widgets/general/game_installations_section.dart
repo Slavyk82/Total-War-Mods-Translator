@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../models/game_display_info.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/fluent/fluent_expander.dart';
@@ -67,17 +68,21 @@ class _GameInstallationsSectionState
   Widget _buildAutoDetectAllButton() {
     return Row(
       children: [
-        FluentButton(
-          onPressed: _isDetecting ? null : _autoDetectAllGames,
-          icon: _isDetecting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(FluentIcons.search_24_regular),
-          child:
-              Text(_isDetecting ? 'Detecting...' : 'Auto-Detect All Games'),
+        Tooltip(
+          message: TooltipStrings.settingsDetectAllGames,
+          waitDuration: const Duration(milliseconds: 500),
+          child: FluentButton(
+            onPressed: _isDetecting ? null : _autoDetectAllGames,
+            icon: _isDetecting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(FluentIcons.search_24_regular),
+            child:
+                Text(_isDetecting ? 'Detecting...' : 'Auto-Detect All Games'),
+          ),
         ),
         const SizedBox(width: 8),
         Text(
@@ -94,10 +99,13 @@ class _GameInstallationsSectionState
         SettingsActionButton.detect(
           onPressed: () => _autoDetectGame(game.code),
           isDetecting: _isDetecting,
+          tooltip: TooltipStrings.settingsDetectGame,
         ),
         const SizedBox(width: 4),
         SettingsActionButton.browse(
-            onPressed: () => _selectGamePath(game.code)),
+          onPressed: () => _selectGamePath(game.code),
+          tooltip: TooltipStrings.settingsBrowsePath,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: TextFormField(

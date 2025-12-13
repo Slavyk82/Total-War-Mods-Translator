@@ -114,6 +114,7 @@ class _SettingsActionButtonState extends State<SettingsActionButton> {
     if (widget.tooltip != null) {
       return Tooltip(
         message: widget.tooltip!,
+        waitDuration: const Duration(milliseconds: 500),
         child: button,
       );
     }

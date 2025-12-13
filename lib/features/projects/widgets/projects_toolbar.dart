@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../providers/projects_screen_providers.dart';
 
 /// Toolbar for Projects screen with search, filter, sort, and view mode controls.
@@ -58,17 +59,21 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
           color: theme.colorScheme.onSurfaceVariant,
         ),
         suffixIcon: _searchController.text.isNotEmpty
-            ? MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {
-                    _searchController.clear();
-                    _updateSearch('');
-                  },
-                  child: Icon(
-                    FluentIcons.dismiss_circle_24_regular,
-                    size: 20,
-                    color: theme.colorScheme.onSurfaceVariant,
+            ? Tooltip(
+                message: TooltipStrings.clearSearch,
+                waitDuration: const Duration(milliseconds: 500),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      _updateSearch('');
+                    },
+                    child: Icon(
+                      FluentIcons.dismiss_circle_24_regular,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               )
@@ -110,7 +115,7 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
         _QuickFilterButton(
           icon: FluentIcons.arrow_sync_24_regular,
           label: 'Needs Update',
-          tooltip: 'Projects requiring translation update from mod source',
+          tooltip: TooltipStrings.projectsFilterNeedsUpdate,
           isSelected: currentFilter == ProjectQuickFilter.needsUpdate,
           onTap: () => _setQuickFilter(
             currentFilter == ProjectQuickFilter.needsUpdate
@@ -122,7 +127,7 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
         _QuickFilterButton(
           icon: FluentIcons.document_error_24_regular,
           label: 'Incomplete',
-          tooltip: 'Projects not yet 100% translated in all configured languages',
+          tooltip: TooltipStrings.projectsFilterIncomplete,
           isSelected: currentFilter == ProjectQuickFilter.incomplete,
           onTap: () => _setQuickFilter(
             currentFilter == ProjectQuickFilter.incomplete
@@ -134,7 +139,7 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
         _QuickFilterButton(
           icon: FluentIcons.checkmark_circle_24_regular,
           label: 'Has Complete',
-          tooltip: 'Projects with at least one 100% translated language',
+          tooltip: TooltipStrings.projectsFilterHasComplete,
           isSelected: currentFilter == ProjectQuickFilter.hasCompleteLanguage,
           onTap: () => _setQuickFilter(
             currentFilter == ProjectQuickFilter.hasCompleteLanguage
@@ -151,35 +156,39 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
   }
 
   Widget _buildClearFilterButton(ThemeData theme) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: () => _setQuickFilter(ProjectQuickFilter.none),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
+    return Tooltip(
+      message: TooltipStrings.editorClearFilters,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => _setQuickFilter(ProjectQuickFilter.none),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
+              borderRadius: BorderRadius.circular(16),
             ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.dismiss_24_regular,
-                size: 14,
-                color: theme.colorScheme.onSurface,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Clear',
-                style: theme.textTheme.bodySmall?.copyWith(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.dismiss_24_regular,
+                  size: 14,
                   color: theme.colorScheme.onSurface,
-                  fontSize: 11,
                 ),
-              ),
-            ],
+                const SizedBox(width: 4),
+                Text(
+                  'Clear',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

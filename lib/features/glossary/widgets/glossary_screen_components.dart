@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import '../providers/glossary_providers.dart';
@@ -34,6 +35,7 @@ class GlossaryListHeader extends StatelessWidget {
           GlossaryActionButton(
             icon: FluentIcons.add_24_regular,
             label: 'New Glossary',
+            tooltip: TooltipStrings.glossaryNew,
             onPressed: onNewGlossary,
           ),
         ],
@@ -128,18 +130,21 @@ class GlossaryEditorHeader extends ConsumerWidget {
           GlossaryActionButton(
             icon: FluentIcons.arrow_import_24_regular,
             label: 'Import',
+            tooltip: TooltipStrings.glossaryImport,
             onPressed: onImport,
           ),
           const SizedBox(width: 8),
           GlossaryActionButton(
             icon: FluentIcons.arrow_export_24_regular,
             label: 'Export',
+            tooltip: TooltipStrings.glossaryExport,
             onPressed: onExport,
           ),
           const SizedBox(width: 8),
           GlossaryActionButton(
             icon: FluentIcons.delete_24_regular,
             label: 'Delete',
+            tooltip: TooltipStrings.glossaryDelete,
             onPressed: onDelete,
             isDestructive: true,
           ),
@@ -209,16 +214,20 @@ class GlossaryEditorToolbar extends ConsumerWidget {
                 hintText: 'Search entries...',
                 prefixIcon: const Icon(FluentIcons.search_24_regular),
                 suffixIcon: searchController.text.isNotEmpty
-                    ? MouseRegion(
-                        cursor: SystemMouseCursors.click,
-                        child: GestureDetector(
-                          onTap: () {
-                            searchController.clear();
-                            ref
-                                .read(glossaryFilterStateProvider.notifier)
-                                .setSearchText('');
-                          },
-                          child: const Icon(FluentIcons.dismiss_24_regular),
+                    ? Tooltip(
+                        message: TooltipStrings.clearSearch,
+                        waitDuration: const Duration(milliseconds: 500),
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              searchController.clear();
+                              ref
+                                  .read(glossaryFilterStateProvider.notifier)
+                                  .setSearchText('');
+                            },
+                            child: const Icon(FluentIcons.dismiss_24_regular),
+                          ),
                         ),
                       )
                     : null,
@@ -241,6 +250,7 @@ class GlossaryEditorToolbar extends ConsumerWidget {
           GlossaryActionButton(
             icon: FluentIcons.add_24_regular,
             label: 'Add Entry',
+            tooltip: TooltipStrings.glossaryAddEntry,
             onPressed: onAddEntry,
           ),
         ],
@@ -354,12 +364,14 @@ class GlossaryActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.tooltip,
     this.isDestructive = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
+  final String? tooltip;
   final bool isDestructive;
 
   @override
@@ -372,7 +384,7 @@ class GlossaryActionButton extends StatelessWidget {
         ? Theme.of(context).colorScheme.onError
         : Theme.of(context).colorScheme.onPrimary;
 
-    return MouseRegion(
+    Widget button = MouseRegion(
       cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: AnimatedOpacity(
         opacity: isEnabled ? 1.0 : 0.5,
@@ -404,5 +416,15 @@ class GlossaryActionButton extends StatelessWidget {
         ),
       ),
     );
+
+    if (tooltip != null) {
+      return Tooltip(
+        message: tooltip!,
+        waitDuration: const Duration(milliseconds: 500),
+        child: button,
+      );
+    }
+
+    return button;
   }
 }

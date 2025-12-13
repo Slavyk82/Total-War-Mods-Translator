@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/ignored_source_texts_providers.dart';
 import 'ignored_source_texts_datagrid.dart';
@@ -187,16 +188,24 @@ class _IgnoredSourceTextsSectionState
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              OutlinedButton.icon(
-                onPressed: _resetToDefaults,
-                icon: const Icon(FluentIcons.arrow_reset_24_regular, size: 18),
-                label: const Text('Reset to Defaults'),
+              Tooltip(
+                message: TooltipStrings.settingsResetIgnoredDefaults,
+                waitDuration: const Duration(milliseconds: 500),
+                child: OutlinedButton.icon(
+                  onPressed: _resetToDefaults,
+                  icon: const Icon(FluentIcons.arrow_reset_24_regular, size: 18),
+                  label: const Text('Reset to Defaults'),
+                ),
               ),
               const SizedBox(width: 8),
-              FilledButton.icon(
-                onPressed: _addText,
-                icon: const Icon(FluentIcons.add_24_regular, size: 18),
-                label: const Text('Add Text'),
+              Tooltip(
+                message: TooltipStrings.settingsAddIgnoredText,
+                waitDuration: const Duration(milliseconds: 500),
+                child: FilledButton.icon(
+                  onPressed: _addText,
+                  icon: const Icon(FluentIcons.add_24_regular, size: 18),
+                  label: const Text('Add Text'),
+                ),
               ),
             ],
           ),

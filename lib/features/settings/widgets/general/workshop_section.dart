@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/steam/steam_detection_service.dart';
@@ -66,9 +67,13 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
             SettingsActionButton.detect(
               onPressed: _autoDetectWorkshop,
               isDetecting: _isDetecting,
+              tooltip: TooltipStrings.settingsDetectWorkshop,
             ),
             const SizedBox(width: 4),
-            SettingsActionButton.browse(onPressed: _selectWorkshopPath),
+            SettingsActionButton.browse(
+              onPressed: _selectWorkshopPath,
+              tooltip: TooltipStrings.settingsBrowsePath,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: TextFormField(

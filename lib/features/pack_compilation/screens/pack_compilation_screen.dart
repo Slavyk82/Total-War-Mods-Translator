@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../providers/pack_compilation_providers.dart';
@@ -138,38 +139,42 @@ class _CreateButtonState extends State<_CreateButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.add_24_regular,
-                size: 20,
-                color: theme.colorScheme.onPrimary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'New Compilation',
-                style: theme.textTheme.bodyMedium?.copyWith(
+    return Tooltip(
+      message: TooltipStrings.compilationNew,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? theme.colorScheme.primary.withValues(alpha: 0.9)
+                  : theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.add_24_regular,
+                  size: 20,
                   color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  'New Compilation',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

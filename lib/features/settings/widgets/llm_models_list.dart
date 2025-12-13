@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../../models/domain/llm_provider_model.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
@@ -343,37 +344,41 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
 
                   // Default star button
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: _isProcessing || widget.model.isDefault
-                        ? null
-                        : _setAsDefault,
-                    child: MouseRegion(
-                      cursor: _isProcessing || widget.model.isDefault
-                          ? SystemMouseCursors.basic
-                          : SystemMouseCursors.click,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: widget.model.isDefault
-                              ? Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withOpacity(0.1)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Icon(
-                          widget.model.isDefault
-                              ? FluentIcons.star_24_filled
-                              : FluentIcons.star_24_regular,
-                          size: 20,
-                          color: widget.model.isDefault
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.5),
+                  Tooltip(
+                    message: TooltipStrings.settingsSetDefaultModel,
+                    waitDuration: const Duration(milliseconds: 500),
+                    child: GestureDetector(
+                      onTap: _isProcessing || widget.model.isDefault
+                          ? null
+                          : _setAsDefault,
+                      child: MouseRegion(
+                        cursor: _isProcessing || widget.model.isDefault
+                            ? SystemMouseCursors.basic
+                            : SystemMouseCursors.click,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: widget.model.isDefault
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.1)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Icon(
+                            widget.model.isDefault
+                                ? FluentIcons.star_24_filled
+                                : FluentIcons.star_24_regular,
+                            size: 20,
+                            color: widget.model.isDefault
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.5),
+                          ),
                         ),
                       ),
                     ),

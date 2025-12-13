@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/llm_custom_rules_providers.dart';
 import 'llm_custom_rules_datagrid.dart';
@@ -186,10 +187,14 @@ class _LlmCustomRulesSectionState extends ConsumerState<LlmCustomRulesSection> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              FilledButton.icon(
-                onPressed: _addRule,
-                icon: const Icon(FluentIcons.add_24_regular, size: 18),
-                label: const Text('Add Rule'),
+              Tooltip(
+                message: TooltipStrings.settingsAddRule,
+                waitDuration: const Duration(milliseconds: 500),
+                child: FilledButton.icon(
+                  onPressed: _addRule,
+                  icon: const Icon(FluentIcons.add_24_regular, size: 18),
+                  label: const Text('Add Rule'),
+                ),
               ),
             ],
           ),

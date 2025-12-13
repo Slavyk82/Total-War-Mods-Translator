@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/config/tooltip_strings.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/pack_compilation_providers.dart';
 
@@ -326,20 +327,20 @@ class _CompilationCardState extends State<_CompilationCard> {
             if (_isHovered) ...[
               _ActionButton(
                 icon: FluentIcons.arrow_sync_24_regular,
-                tooltip: 'Generate Pack',
+                tooltip: TooltipStrings.compilationGenerate,
                 onTap: widget.onGenerate,
                 isPrimary: true,
               ),
               const SizedBox(width: 8),
               _ActionButton(
                 icon: FluentIcons.edit_24_regular,
-                tooltip: 'Edit',
+                tooltip: TooltipStrings.compilationEdit,
                 onTap: widget.onEdit,
               ),
               const SizedBox(width: 8),
               _ActionButton(
                 icon: FluentIcons.delete_24_regular,
-                tooltip: 'Delete',
+                tooltip: TooltipStrings.compilationDelete,
                 onTap: widget.onDelete,
                 isDestructive: true,
               ),
@@ -438,38 +439,42 @@ class _CreateFirstButtonState extends State<_CreateFirstButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.add_24_regular,
-                size: 20,
-                color: theme.colorScheme.onPrimary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Create First Compilation',
-                style: theme.textTheme.bodyMedium?.copyWith(
+    return Tooltip(
+      message: TooltipStrings.compilationNew,
+      waitDuration: const Duration(milliseconds: 500),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? theme.colorScheme.primary.withValues(alpha: 0.9)
+                  : theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.add_24_regular,
+                  size: 20,
                   color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  'Create First Compilation',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
