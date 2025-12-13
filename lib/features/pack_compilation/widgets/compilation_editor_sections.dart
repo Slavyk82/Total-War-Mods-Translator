@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../models/domain/game_installation.dart';
+import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
+import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../providers/pack_compilation_providers.dart';
 import 'compilation_editor_form_widgets.dart';
 
@@ -73,10 +75,11 @@ class CompilationConfigSection extends StatelessWidget {
               languages: languages,
               selectedId: state.selectedLanguageId,
               onChanged: onLanguageChanged,
+              isDisabled: state.isEditing,
             ),
             loading: () => const SizedBox(
               height: 40,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              child: Center(child: FluentSpinner(size: 20, strokeWidth: 2)),
             ),
             error: (error, stack) => Text(
               'Failed to load languages',
@@ -174,13 +177,10 @@ class CompilationProgressSection extends StatelessWidget {
           // Header
           Row(
             children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: theme.colorScheme.primary,
-                ),
+              FluentSpinner(
+                size: 24,
+                strokeWidth: 2.5,
+                color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -196,14 +196,11 @@ class CompilationProgressSection extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: state.progress,
-              minHeight: 8,
-              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-            ),
+          FluentProgressBar(
+            value: state.progress,
+            height: 8,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            color: theme.colorScheme.primary,
           ),
           const SizedBox(height: 12),
 
@@ -330,7 +327,7 @@ class CompilationActionSection extends StatelessWidget {
                 child: CompilationActionButton(
                   label: 'Save',
                   icon: FluentIcons.save_24_regular,
-                  onTap: canSave ? () => onSave(gameInstallation!.id) : null,
+                  onTap: canSave ? () => onSave(gameInstallation.id) : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -339,7 +336,7 @@ class CompilationActionSection extends StatelessWidget {
                   label: state.isCompiling ? 'Generating...' : 'Generate Pack',
                   icon: FluentIcons.box_multiple_24_regular,
                   onTap:
-                      canCompile ? () => onGenerate(gameInstallation!.id) : null,
+                      canCompile ? () => onGenerate(gameInstallation.id) : null,
                   isPrimary: true,
                   isLoading: state.isCompiling,
                 ),

@@ -22,6 +22,7 @@ import 'package:twmt/repositories/llm_provider_model_repository.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
+import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
 
 part 'editor_providers.g.dart';
 
@@ -370,14 +371,24 @@ Future<List<TranslationRow>> translationRows(
 
   // Convert joined maps to TranslationRow objects
   // Data is already sorted by key ASC from the SQL query
+  // Filter out placeholder/skip units that should not be displayed in the editor
   final rows = <TranslationRow>[];
   for (final map in joinedMaps) {
+    final sourceText = map['source_text'] as String;
+
+    // Skip placeholder units (e.g., "[placeholder]", "[unseen]", "[do not localise]")
+    // These are filtered out entirely from the editor display
+    // If the source_text changes during a mod update, the unit will reappear
+    if (TranslationSkipFilter.shouldSkip(sourceText)) {
+      continue;
+    }
+
     // Build TranslationUnit from the joined data
     final unit = TranslationUnit(
       id: map['id'] as String,
       projectId: map['project_id'] as String,
       key: map['key'] as String,
-      sourceText: map['source_text'] as String,
+      sourceText: sourceText,
       context: map['context'] as String?,
       notes: map['notes'] as String?,
       sourceLocFile: map['source_loc_file'] as String?,

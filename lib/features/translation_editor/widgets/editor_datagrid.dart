@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -209,20 +208,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
         return MouseRegion(
           cursor: SystemMouseCursors.basic,
-          child: CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.escape):
-                _handleEscape,
-              const SingleActivator(LogicalKeyboardKey.delete):
-                _handleDelete,
-              const SingleActivator(LogicalKeyboardKey.keyC, control: true):
-                _handleCopy,
-              const SingleActivator(LogicalKeyboardKey.keyV, control: true):
-                _handlePaste,
-            },
-            child: Focus(
-              autofocus: true,
-              child: SfDataGrid(
+          child: SfDataGrid(
                 source: _dataSource,
                 controller: _controller,
                 allowEditing: true,
@@ -297,8 +283,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     label: _buildColumnHeader('TM Source'),
                   ),
                 ],
-              ),
-            ),
           ),
         );
       },
@@ -319,20 +303,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       if (rowIndex >= 0 && rowIndex < _dataSource.translationRows.length) {
         widget.onRowSelected!(_dataSource.translationRows[rowIndex]);
       }
-    }
-  }
-
-  void _handleCellDoubleTap(DataGridCellDoubleTapDetails details) {
-    if (details.rowColumnIndex.rowIndex == 0) return; // Header row
-
-    final rowIndex = details.rowColumnIndex.rowIndex - 1;
-    if (rowIndex < 0) return;
-
-    // Let Syncfusion's native double-tap editing handle the cell edit
-    // Only trigger the optional row double-tap callback for additional actions
-    if (widget.onRowDoubleTap != null && rowIndex < _dataSource.translationRows.length) {
-      final unitId = _dataSource.translationRows[rowIndex].id;
-      widget.onRowDoubleTap!(unitId);
     }
   }
 
@@ -372,26 +342,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   void _handleSelectAll() {
     _selectionHandler.selectAll();
-  }
-
-  void _handleEscape() {
-    _selectionHandler.clearSelection();
-  }
-
-  void _handleDelete() {
-    _handleDeleteConfirmation();
-  }
-
-  /// Copy selected rows to clipboard in TSV format
-  Future<void> _handleCopy() async {
-    final handler = _createActionsHandler();
-    await handler.handleCopy(_controller.selectedRows);
-  }
-
-  /// Paste from clipboard and update translations
-  Future<void> _handlePaste() async {
-    final handler = _createActionsHandler();
-    await handler.handlePaste();
   }
 
   /// Edit the selected row inline using the grid's visual row index

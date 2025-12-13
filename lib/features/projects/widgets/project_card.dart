@@ -101,8 +101,9 @@ class _ProjectCardState extends State<ProjectCard> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        // Changes badge (same as Mods screen)
-        if (widget.projectWithDetails.updateAnalysis != null) ...[
+        // Changes badge (same as Mods screen) or mod update impact indicator
+        if (widget.projectWithDetails.updateAnalysis != null ||
+            widget.projectWithDetails.project.hasModUpdateImpact) ...[
           _buildChangesBadge(context),
           const SizedBox(width: 8),
         ],
@@ -138,14 +139,10 @@ class _ProjectCardState extends State<ProjectCard> {
       );
     }
 
-    // Show max 3 languages, rest indicated by count
-    final displayLanguages = languages.take(3).toList();
-    final remainingCount = languages.length - displayLanguages.length;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...displayLanguages.map((langInfo) => Padding(
+        ...languages.map((langInfo) => Padding(
               padding: const EdgeInsets.only(bottom: 6.0),
               child: _buildProgressBar(
                 context,
@@ -153,13 +150,6 @@ class _ProjectCardState extends State<ProjectCard> {
                 langInfo.progressPercent,
               ),
             )),
-        if (remainingCount > 0)
-          Text(
-            '+$remainingCount more language${remainingCount > 1 ? 's' : ''}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
-            ),
-          ),
       ],
     );
   }
@@ -216,6 +206,40 @@ class _ProjectCardState extends State<ProjectCard> {
   Widget _buildChangesBadge(BuildContext context) {
     final theme = Theme.of(context);
     final analysis = widget.projectWithDetails.updateAnalysis;
+    final hasModUpdateImpact = widget.projectWithDetails.project.hasModUpdateImpact;
+
+    // Show mod update impact badge if flag is set (even without pending analysis)
+    if (hasModUpdateImpact) {
+      return Tooltip(
+        message: 'This project was modified by a mod update.\nSome translations may need review.',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.arrow_sync_24_regular,
+                size: 12,
+                color: Colors.orange.shade700,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Mod updated',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.orange.shade700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     // No analysis available
     if (analysis == null) {

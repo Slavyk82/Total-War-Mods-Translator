@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/glossary_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Dialog for importing glossary from file
 class GlossaryImportDialog extends ConsumerStatefulWidget {
@@ -133,7 +134,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
                 },
                 loading: () => Column(
                   children: [
-                    const LinearProgressIndicator(),
+                    const FluentProgressBar(),
                     const SizedBox(height: 16),
                     Text(
                       'Importing...',

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import '../providers/glossary_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/common/fluent_spinner.dart';
 
 /// Dialog for adding or editing a glossary entry
 class GlossaryEntryEditorDialog extends ConsumerStatefulWidget {
@@ -147,11 +148,7 @@ class _GlossaryEntryEditorDialogState
         FluentTextButton(
           onPressed: _isSaving ? null : _saveEntry,
           child: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const FluentSpinner(size: 16, strokeWidth: 2)
               : const Text('Save'),
         ),
       ],

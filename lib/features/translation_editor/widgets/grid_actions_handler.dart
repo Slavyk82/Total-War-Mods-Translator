@@ -7,6 +7,7 @@ import '../providers/editor_providers.dart';
 import '../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import 'editor_data_source.dart';
+import 'clear_progress_dialog.dart';
 
 /// Handler for grid actions (copy, paste, validate, clear, delete)
 ///
@@ -184,12 +185,62 @@ class GridActionsHandler {
 
     if (selectedRows.isEmpty) return;
 
+    final versionIds = selectedRows.map((row) => row.version.id).toList();
+    final showProgress = versionIds.length > 100;
+
+    // State for progress dialog
+    int currentProcessed = 0;
+    int currentTotal = versionIds.length;
+    String currentPhase = 'Preparing...';
+
+    // Show progress dialog for large operations
+    if (showProgress && context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              // Store the setState function for updates
+              _clearProgressSetState = (processed, total, phase) {
+                if (context.mounted) {
+                  setDialogState(() {
+                    currentProcessed = processed;
+                    currentTotal = total;
+                    currentPhase = phase;
+                  });
+                }
+              };
+
+              return ClearProgressDialog(
+                processed: currentProcessed,
+                total: currentTotal,
+                phase: currentPhase,
+              );
+            },
+          );
+        },
+      );
+    }
+
     try {
       final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final versionIds = selectedRows.map((row) => row.version.id).toList();
 
-      // Single batch SQL update instead of N individual updates
-      final result = await versionRepo.clearBatch(versionIds);
+      // Callback for progress updates
+      void onProgress(int processed, int total, String phase) {
+        _clearProgressSetState?.call(processed, total, phase);
+      }
+
+      final result = await versionRepo.clearBatch(
+        versionIds,
+        onProgress: showProgress ? onProgress : null,
+      );
+
+      // Close progress dialog
+      if (showProgress && context.mounted) {
+        Navigator.of(context).pop();
+      }
+      _clearProgressSetState = null;
 
       if (context.mounted) {
         result.when(
@@ -203,11 +254,20 @@ class GridActionsHandler {
         );
       }
     } catch (e) {
+      // Close progress dialog on error
+      if (showProgress && context.mounted) {
+        Navigator.of(context).pop();
+      }
+      _clearProgressSetState = null;
+
       if (context.mounted) {
         FluentToast.error(context, 'Error: $e');
       }
     }
   }
+
+  // Callback to update progress dialog state
+  void Function(int, int, String)? _clearProgressSetState;
 
   /// Perform the actual deletion
   Future<void> performDelete(VoidCallback onDeleteComplete) async {

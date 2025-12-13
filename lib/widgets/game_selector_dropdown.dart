@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import '../widgets/common/fluent_spinner.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 
@@ -57,13 +58,10 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
         ),
         child: Row(
           children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.primary,
-              ),
+            FluentSpinner(
+              size: 16,
+              strokeWidth: 2,
+              color: theme.colorScheme.primary,
             ),
             const SizedBox(width: 12),
             Text(

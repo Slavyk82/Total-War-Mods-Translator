@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
+import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Label for form fields in compilation editor.
 class CompilationFieldLabel extends StatelessWidget {
@@ -104,11 +106,13 @@ class CompilationLanguageDropdown extends StatelessWidget {
     required this.languages,
     required this.selectedId,
     required this.onChanged,
+    this.isDisabled = false,
   });
 
   final List languages;
   final String? selectedId;
   final void Function(String?) onChanged;
+  final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +125,9 @@ class CompilationLanguageDropdown extends StatelessWidget {
         border: Border.all(
           color: theme.colorScheme.outline.withValues(alpha: 0.5),
         ),
+        color: isDisabled
+            ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+            : null,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -135,10 +142,18 @@ class CompilationLanguageDropdown extends StatelessWidget {
           items: languages.map<DropdownMenuItem<String>>((lang) {
             return DropdownMenuItem(
               value: lang.id,
-              child: Text(lang.displayName),
+              child: Text(
+                lang.displayName,
+                style: isDisabled
+                    ? theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color
+                            ?.withValues(alpha: 0.7),
+                      )
+                    : null,
+              ),
             );
           }).toList(),
-          onChanged: onChanged,
+          onChanged: isDisabled ? null : onChanged,
         ),
       ),
     );
@@ -211,15 +226,11 @@ class CompilationProgressIndicator extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 6,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  valueColor:
-                      AlwaysStoppedAnimation(theme.colorScheme.primary),
-                ),
+              child: FluentProgressBar(
+                value: progress,
+                height: 6,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                color: theme.colorScheme.primary,
               ),
             ),
             const SizedBox(width: 12),
@@ -357,13 +368,10 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.isLoading) ...[
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: contentColor,
-                  ),
+                FluentSpinner(
+                  size: 18,
+                  strokeWidth: 2,
+                  color: contentColor,
                 ),
               ] else ...[
                 Icon(widget.icon, size: 18, color: contentColor),
@@ -428,13 +436,10 @@ class _CompilationStopButtonState extends State<CompilationStopButton> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (widget.isCancelling) ...[
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.colorScheme.onError,
-                  ),
+                FluentSpinner(
+                  size: 18,
+                  strokeWidth: 2,
+                  color: theme.colorScheme.onError,
                 ),
               ] else ...[
                 Icon(

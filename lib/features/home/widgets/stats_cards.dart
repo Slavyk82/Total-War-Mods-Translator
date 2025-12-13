@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/home_providers.dart';
 
 /// Format large numbers with K/M suffixes
@@ -65,7 +66,7 @@ class StatsCards extends ConsumerWidget {
           ),
         ],
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Text('Error loading stats: $error'),
       ),

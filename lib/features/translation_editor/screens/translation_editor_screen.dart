@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/repositories/project_repository.dart';
+import 'package:twmt/services/service_locator.dart';
 import '../providers/editor_providers.dart';
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_toolbar.dart';
@@ -42,7 +44,16 @@ class _TranslationEditorScreenState
     // Reset skipTranslationMemory to false when entering the editor
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(translationSettingsProvider.notifier).setSkipTranslationMemory(false);
+      // Clear mod update impact flag - user has reviewed the project
+      _clearModUpdateImpact();
     });
+  }
+
+  /// Clear the mod update impact flag when user opens the editor.
+  /// This indicates the user has acknowledged the mod update.
+  Future<void> _clearModUpdateImpact() async {
+    final projectRepo = ServiceLocator.get<ProjectRepository>();
+    await projectRepo.clearModUpdateImpact(widget.projectId);
   }
 
   TranslationEditorActions _getActions() {

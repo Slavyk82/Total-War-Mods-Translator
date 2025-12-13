@@ -71,6 +71,16 @@ class Project {
   /// Additional metadata stored as JSON string
   final String? metadata;
 
+  /// Flag indicating the project was impacted by a mod update.
+  /// Set to true when mod update changes are applied (new units, modified texts, etc.)
+  /// Users can clear this flag after reviewing the project.
+  @JsonKey(
+    name: 'has_mod_update_impact',
+    fromJson: _boolFromInt,
+    toJson: _boolToInt,
+  )
+  final bool hasModUpdateImpact;
+
   const Project({
     required this.id,
     required this.name,
@@ -88,6 +98,7 @@ class Project {
     required this.updatedAt,
     this.completedAt,
     this.metadata,
+    this.hasModUpdateImpact = false,
   });
 
   /// Returns true if the project has a source file configured
@@ -138,6 +149,7 @@ class Project {
     int? updatedAt,
     int? completedAt,
     String? metadata,
+    bool? hasModUpdateImpact,
   }) {
     return Project(
       id: id ?? this.id,
@@ -156,6 +168,7 @@ class Project {
       updatedAt: updatedAt ?? this.updatedAt,
       completedAt: completedAt ?? this.completedAt,
       metadata: metadata ?? this.metadata,
+      hasModUpdateImpact: hasModUpdateImpact ?? this.hasModUpdateImpact,
     );
   }
 
@@ -183,7 +196,8 @@ class Project {
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
         other.completedAt == completedAt &&
-        other.metadata == metadata;
+        other.metadata == metadata &&
+        other.hasModUpdateImpact == hasModUpdateImpact;
   }
 
   @override
@@ -203,8 +217,20 @@ class Project {
       createdAt.hashCode ^
       updatedAt.hashCode ^
       completedAt.hashCode ^
-      metadata.hashCode;
+      metadata.hashCode ^
+      hasModUpdateImpact.hashCode;
 
   @override
   String toString() => 'Project(id: $id, name: $name, gameInstallationId: $gameInstallationId)';
 }
+
+/// Convert SQLite integer (0/1) to bool for hasModUpdateImpact field
+bool _boolFromInt(dynamic value) {
+  if (value == null) return false;
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  return false;
+}
+
+/// Convert bool to SQLite integer (0/1) for hasModUpdateImpact field
+int _boolToInt(bool value) => value ? 1 : 0;

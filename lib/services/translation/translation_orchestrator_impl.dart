@@ -6,7 +6,6 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/repositories/translation_batch_unit_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/services/concurrency/batch_isolation_manager.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
@@ -28,6 +27,7 @@ import 'package:twmt/services/translation/handlers/validation_persistence_handle
 import 'package:twmt/services/translation/handlers/batch_progress_manager.dart';
 import 'package:twmt/services/translation/handlers/parallel_batch_handler.dart';
 import 'package:twmt/services/translation/handlers/batch_estimation_handler.dart';
+import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
 import 'package:twmt/services/history/i_history_service.dart';
 
 /// Implementation of translation orchestration service
@@ -42,8 +42,6 @@ import 'package:twmt/services/history/i_history_service.dart';
 /// 7. Emit domain events for progress tracking
 class TranslationOrchestratorImpl implements ITranslationOrchestrator {
   final TranslationBatchRepository _batchRepository;
-  // ignore: unused_field
-  final BatchIsolationManager _isolationManager;
   final EventBus _eventBus;
   final LoggingService _logger;
 
@@ -65,12 +63,10 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     required TranslationUnitRepository unitRepository,
     required TranslationBatchRepository batchRepository,
     required TranslationBatchUnitRepository batchUnitRepository,
-    required BatchIsolationManager isolationManager,
     required TransactionManager transactionManager,
     required EventBus eventBus,
     required LoggingService logger,
   })  : _batchRepository = batchRepository,
-        _isolationManager = isolationManager,
         _eventBus = eventBus,
         _logger = logger,
         _tmLookupHandler = TmLookupHandler(
@@ -181,10 +177,38 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         return;
       }
 
-      final units = unitsResult.unwrap();
-      if (units.isEmpty) {
+      final allUnits = unitsResult.unwrap();
+      if (allUnits.isEmpty) {
         _batchProgressManager.getOrCreateController(batchId).add(
           Err(EmptyBatchException('Batch has no units', batchId: batchId)),
+        );
+        await _cleanupBatch(batchId);
+        return;
+      }
+
+      // Filter out units that should be skipped (placeholders, markers, etc.)
+      // This happens BEFORE TM lookup to avoid polluting TM with placeholder matches
+      final skippedUnits = <String>[];
+      final units = allUnits.where((unit) {
+        if (TranslationSkipFilter.shouldSkip(unit.sourceText)) {
+          skippedUnits.add(unit.key);
+          return false;
+        }
+        return true;
+      }).toList();
+
+      if (skippedUnits.isNotEmpty) {
+        _logger.info(
+          'Skipping ${skippedUnits.length} units (placeholders/markers): '
+          '${skippedUnits.take(5).join(", ")}${skippedUnits.length > 5 ? "..." : ""}',
+          {'batchId': batchId},
+        );
+      }
+
+      if (units.isEmpty) {
+        _logger.info('All units were filtered out (skipped)', {'batchId': batchId});
+        _batchProgressManager.getOrCreateController(batchId).add(
+          Err(EmptyBatchException('All units were filtered out (placeholders/markers)', batchId: batchId)),
         );
         await _cleanupBatch(batchId);
         return;

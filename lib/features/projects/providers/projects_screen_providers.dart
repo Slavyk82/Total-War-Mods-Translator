@@ -129,7 +129,11 @@ class ProjectWithDetails {
   }
 
   /// Check if there are pending changes to apply (excludes auto-applied changes)
+  /// OR if the project was impacted by a mod update (flag set during scan)
   bool get hasUpdates {
+    // Check the persistent flag first (set when mod update is applied)
+    if (project.hasModUpdateImpact) return true;
+    // Also check for pending analysis changes (for backwards compatibility)
     return updateAnalysis?.hasPendingChanges ?? false;
   }
 
@@ -152,14 +156,14 @@ class ProjectLanguageWithInfo {
   final Language? language;
   final int totalUnits;
   final int translatedUnits;
-  final int validatedUnits;
+  final int needsReviewUnits;
 
   const ProjectLanguageWithInfo({
     required this.projectLanguage,
     this.language,
     this.totalUnits = 0,
     this.translatedUnits = 0,
-    this.validatedUnits = 0,
+    this.needsReviewUnits = 0,
   });
 
   /// Calculate progress percentage based on actual translation counts
@@ -359,7 +363,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
           language: language,
           totalUnits: stats.totalCount,
           translatedUnits: stats.translatedCount,
-          validatedUnits: stats.validatedCount,
+          needsReviewUnits: stats.errorCount,
         ));
       }
     }

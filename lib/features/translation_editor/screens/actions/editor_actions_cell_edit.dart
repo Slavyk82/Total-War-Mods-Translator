@@ -1,4 +1,5 @@
 import '../../../../models/domain/translation_version.dart';
+import '../../../../providers/history/history_providers.dart' show historyServiceProvider;
 import '../../../../services/history/undo_redo_manager.dart';
 import '../../../../services/translation/utils/translation_text_utils.dart';
 import '../../providers/editor_providers.dart';
@@ -54,6 +55,16 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       if (updateResult.isErr) {
         throw Exception('Failed to update translation version');
       }
+
+      // Record persistent history entry
+      final historyService = ref.read(historyServiceProvider);
+      await historyService.recordChange(
+        versionId: currentVersion.id,
+        translatedText: normalizedText,
+        status: updatedVersion.status.name,
+        changedBy: 'user',
+        changeReason: 'Manual edit',
+      );
 
       // Record undo action
       final historyAction = TranslationEditAction(
@@ -132,6 +143,17 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       if (updateResult.isErr) {
         throw Exception('Failed to update translation version');
       }
+
+      // Record persistent history entry
+      final historyService = ref.read(historyServiceProvider);
+      final matchType = isExactMatch ? 'exact' : 'fuzzy';
+      await historyService.recordChange(
+        versionId: currentVersion.id,
+        translatedText: normalizedText,
+        status: updatedVersion.status.name,
+        changedBy: 'tm_$matchType',
+        changeReason: 'Applied TM $matchType match suggestion',
+      );
 
       // Record undo action
       final historyAction = TranslationEditAction(

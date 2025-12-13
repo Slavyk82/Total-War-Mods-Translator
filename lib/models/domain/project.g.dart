@@ -23,6 +23,9 @@ Project _$ProjectFromJson(Map<String, dynamic> json) => Project(
   updatedAt: (json['updated_at'] as num).toInt(),
   completedAt: (json['completed_at'] as num?)?.toInt(),
   metadata: json['metadata'] as String?,
+  hasModUpdateImpact: json['has_mod_update_impact'] == null
+      ? false
+      : _boolFromInt(json['has_mod_update_impact']),
 );
 
 Map<String, dynamic> _$ProjectToJson(Project instance) => <String, dynamic>{
@@ -42,4 +45,5 @@ Map<String, dynamic> _$ProjectToJson(Project instance) => <String, dynamic>{
   'updated_at': instance.updatedAt,
   'completed_at': instance.completedAt,
   'metadata': instance.metadata,
+  'has_mod_update_impact': _boolToInt(instance.hasModUpdateImpact),
 };

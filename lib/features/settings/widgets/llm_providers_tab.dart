@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
 import 'llm_provider_section.dart';
 import 'llm_custom_rules_section.dart';
@@ -73,7 +74,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
 
     return settingsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Text('Error loading settings: $error'),
       ),

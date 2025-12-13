@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import '../providers/tm_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/common/fluent_spinner.dart';
 
 /// DataGrid for browsing and managing TM entries
 class TmBrowserDataGrid extends ConsumerStatefulWidget {
@@ -65,7 +66,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         return _buildDataGrid(context, entries);
       },
       loading: () => const Center(
-        child: CircularProgressIndicator(),
+        child: FluentSpinner(),
       ),
       error: (error, stack) => Center(
         child: Column(

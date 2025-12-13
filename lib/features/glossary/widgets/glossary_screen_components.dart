@@ -268,9 +268,7 @@ class GlossaryEditorFooter extends StatelessWidget {
         : null;
     final typeLabel = isUniversal
         ? 'Universal Glossary'
-        : gameName != null
-            ? gameName
-            : 'Game-specific';
+        : gameName ?? 'Game-specific';
 
     return Container(
       padding: const EdgeInsets.all(16.0),

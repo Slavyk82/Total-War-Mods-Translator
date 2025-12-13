@@ -12,8 +12,6 @@ import 'models/concurrency_exceptions.dart';
 /// When a batch starts processing entries, it "checks them out" (reserves them).
 /// Other batches skip reserved entries until they are released or timeout expires.
 class BatchIsolationManager {
-  // ignore: unused_field
-  final DatabaseService _databaseService;
   final Uuid _uuid;
 
   /// Default reservation timeout (30 minutes)
@@ -23,10 +21,8 @@ class BatchIsolationManager {
   static const Duration maxTimeout = Duration(hours: 2);
 
   BatchIsolationManager({
-    DatabaseService? databaseService,
     Uuid? uuid,
-  })  : _databaseService = databaseService ?? DatabaseService.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   Database get _db => DatabaseService.database;
 

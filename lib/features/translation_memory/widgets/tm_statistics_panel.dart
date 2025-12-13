@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/widgets/common/fluent_spinner.dart';
 import '../providers/tm_providers.dart';
 
 /// Statistics panel showing TM metrics and insights
@@ -71,7 +72,7 @@ class TmStatisticsPanel extends ConsumerWidget {
             child: statsAsync.when(
               data: (stats) => _buildStatsContent(context, stats),
               loading: () => const Center(
-                child: CircularProgressIndicator(),
+                child: FluentSpinner(),
               ),
               error: (error, stack) => Center(
                 child: Padding(

@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../models/domain/llm_provider_model.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 
 /// Dialog for managing LLM models for a specific provider.
 ///
@@ -158,7 +159,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
             Expanded(
               child: modelsAsync.when(
                 loading: () => const Center(
-                  child: CircularProgressIndicator(),
+                  child: FluentSpinner(),
                 ),
                 error: (error, stack) => Center(
                   child: Column(
@@ -333,11 +334,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                 color: Theme.of(context).disabledColor,
               )
             else if (isProcessingThis)
-              const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+              const FluentSpinner(size: 20, strokeWidth: 2)
             else
               GestureDetector(
                 onTap: canInteract ? () => _toggleModelEnabled(model) : null,

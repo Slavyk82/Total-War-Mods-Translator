@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import 'llm_models_list.dart';
 
 /// Accordion section for a single LLM provider.
@@ -203,11 +204,7 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
               borderRadius: BorderRadius.circular(4),
             ),
             child: isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const FluentSpinner(size: 16, strokeWidth: 2)
                 : Icon(
                     icon,
                     size: 16,

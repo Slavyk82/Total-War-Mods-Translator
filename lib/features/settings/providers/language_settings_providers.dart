@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/domain/language.dart';
+import '../../../providers/shared/repository_providers.dart';
 import '../../../repositories/language_repository.dart';
 import '../../../repositories/translation_memory_repository.dart';
 import '../../../services/service_locator.dart';
@@ -135,6 +136,9 @@ class LanguageSettings extends _$LanguageSettings {
     return insertResult.when(
       ok: (_) {
         ref.invalidateSelf();
+        // Invalidate shared language providers so new language appears everywhere
+        ref.invalidate(allLanguagesProvider);
+        ref.invalidate(activeLanguagesProvider);
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -179,6 +183,9 @@ class LanguageSettings extends _$LanguageSettings {
     return deleteResult.when(
       ok: (_) {
         ref.invalidateSelf();
+        // Invalidate shared language providers so language is removed everywhere
+        ref.invalidate(allLanguagesProvider);
+        ref.invalidate(activeLanguagesProvider);
         return (true, null);
       },
       err: (error) {

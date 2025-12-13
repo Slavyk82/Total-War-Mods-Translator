@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/project_statistics.dart';
+import '../../services/translation/utils/translation_skip_filter.dart';
 
 export '../../models/domain/project_statistics.dart' show GlobalStatistics;
 
@@ -10,14 +11,37 @@ export '../../models/domain/project_statistics.dart' show GlobalStatistics;
 /// Extracts complex aggregation queries from the main repository to maintain
 /// single responsibility and keep file sizes manageable.
 ///
-/// Note: Statistics exclude "bracket-only" units where source_text is entirely
-/// wrapped in square brackets (e.g., "[hidden]", "[PLACEHOLDER]"). These are
-/// non-translatable markers that should not count toward translation progress.
+/// Note: Statistics exclude placeholder/skip units that should not count toward
+/// translation progress. This includes:
+/// - Bracket-only texts like "[hidden]", "[PLACEHOLDER]"
+/// - User-configurable skip texts from the database
+/// This logic mirrors TranslationSkipFilter.shouldSkip() for consistency.
 mixin TranslationVersionStatisticsMixin {
-  /// SQL condition to exclude bracket-only source texts from statistics.
-  /// Matches texts like "[hidden]", "[PLACEHOLDER]" but not "Hello [world]".
-  static const String _excludeBracketOnlyCondition =
-      "NOT (TRIM(tu.source_text) LIKE '[%]' AND LENGTH(TRIM(tu.source_text)) > 2)";
+  /// Get SQL condition to exclude placeholder/skip source texts from statistics.
+  ///
+  /// Uses TranslationSkipFilter to get the current list of skip texts from
+  /// the database (or defaults if not initialized).
+  ///
+  /// Matches the logic in TranslationSkipFilter.shouldSkip():
+  /// 1. Fully bracketed texts like "[hidden]", "[PLACEHOLDER]" (single brackets only)
+  /// 2. User-configurable skip texts from the database
+  ///
+  /// Note: Does NOT exclude BBCode double-bracket tags like "[[col:yellow]]"
+  String get _excludeSkipUnitsCondition {
+    final skipTextsCondition = TranslationSkipFilter.getSqlCondition();
+    return '''
+    NOT (
+      -- Fully bracketed single-bracket texts (not BBCode double brackets)
+      (TRIM(tu.source_text) LIKE '[%]'
+       AND TRIM(tu.source_text) NOT LIKE '[[%'
+       AND LENGTH(TRIM(tu.source_text)) > 2
+       AND INSTR(SUBSTR(TRIM(tu.source_text), 2, LENGTH(TRIM(tu.source_text)) - 2), '[') = 0
+       AND INSTR(SUBSTR(TRIM(tu.source_text), 2, LENGTH(TRIM(tu.source_text)) - 2), ']') = 0)
+      -- User-configurable skip texts (case-insensitive)
+      ${skipTextsCondition.isNotEmpty ? 'OR $skipTextsCondition' : ''}
+    )
+  ''';
+  }
 
   /// Database instance - must be provided by implementing class
   Database get database;
@@ -87,6 +111,7 @@ mixin TranslationVersionStatisticsMixin {
   }
 
   /// Count translated versions for a project (across all languages).
+  /// Excludes placeholder/skip units.
   Future<Result<int, TWMTDatabaseException>> countTranslatedByProject(
       String projectId) async {
     return executeQuery(() async {
@@ -98,6 +123,7 @@ mixin TranslationVersionStatisticsMixin {
         WHERE tu.project_id = ?
           AND tv.translated_text IS NOT NULL
           AND tv.translated_text != ''
+          AND $_excludeSkipUnitsCondition
         ''',
         [projectId],
       );
@@ -108,6 +134,7 @@ mixin TranslationVersionStatisticsMixin {
   }
 
   /// Count pending versions for a project (across all languages).
+  /// Excludes placeholder/skip units.
   Future<Result<int, TWMTDatabaseException>> countPendingByProject(
       String projectId) async {
     return executeQuery(() async {
@@ -118,6 +145,7 @@ mixin TranslationVersionStatisticsMixin {
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
           AND tv.status = 'pending'
+          AND $_excludeSkipUnitsCondition
         ''',
         [projectId],
       );
@@ -128,6 +156,7 @@ mixin TranslationVersionStatisticsMixin {
   }
 
   /// Count validated versions for a project (across all languages).
+  /// Excludes placeholder/skip units.
   Future<Result<int, TWMTDatabaseException>> countValidatedByProject(
       String projectId) async {
     return executeQuery(() async {
@@ -138,6 +167,7 @@ mixin TranslationVersionStatisticsMixin {
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
           AND (tv.status = 'approved' OR tv.status = 'reviewed')
+          AND $_excludeSkipUnitsCondition
         ''',
         [projectId],
       );
@@ -148,6 +178,7 @@ mixin TranslationVersionStatisticsMixin {
   }
 
   /// Count error versions for a project (across all languages).
+  /// Excludes placeholder/skip units.
   Future<Result<int, TWMTDatabaseException>> countErrorByProject(
       String projectId) async {
     return executeQuery(() async {
@@ -158,6 +189,31 @@ mixin TranslationVersionStatisticsMixin {
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
           AND tv.status = 'error'
+          AND $_excludeSkipUnitsCondition
+        ''',
+        [projectId],
+      );
+
+      final count = result.first['count'] as int?;
+      return count ?? 0;
+    });
+  }
+
+  /// Count translations that came from Translation Memory (exact or fuzzy match).
+  /// Excludes placeholder/skip units.
+  Future<Result<int, TWMTDatabaseException>> countTmSourcedByProject(
+      String projectId) async {
+    return executeQuery(() async {
+      final result = await database.rawQuery(
+        '''
+        SELECT COUNT(DISTINCT tv.unit_id) as count
+        FROM $tableName tv
+        INNER JOIN translation_units tu ON tv.unit_id = tu.id
+        WHERE tu.project_id = ?
+          AND tv.translation_source IN ('tm_exact', 'tm_fuzzy')
+          AND tv.translated_text IS NOT NULL
+          AND tv.translated_text != ''
+          AND $_excludeSkipUnitsCondition
         ''',
         [projectId],
       );
@@ -196,7 +252,7 @@ mixin TranslationVersionStatisticsMixin {
           FROM translation_units tu
           INNER JOIN $tableName tv ON tv.unit_id = tu.id
           WHERE tu.project_id = ?
-            AND $_excludeBracketOnlyCondition
+            AND $_excludeSkipUnitsCondition
           GROUP BY tu.id
         )
         SELECT
@@ -240,7 +296,7 @@ mixin TranslationVersionStatisticsMixin {
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tv.project_language_id = ?
           AND tu.is_obsolete = 0
-          AND $_excludeBracketOnlyCondition
+          AND $_excludeSkipUnitsCondition
         ''',
         [projectLanguageId],
       );
@@ -265,9 +321,22 @@ mixin TranslationVersionStatisticsMixin {
   /// Counts unique translation units and their translation status.
   /// Word count is approximated by counting spaces + 1 in translated texts.
   /// Excludes bracket-only units (e.g., "[hidden]") from statistics.
+  ///
+  /// If [gameCode] is provided, only includes projects for that game.
   Future<Result<GlobalStatistics, TWMTDatabaseException>>
-      getGlobalStatistics() async {
+      getGlobalStatistics({String? gameCode}) async {
     return executeQuery(() async {
+      final gameFilter = gameCode != null
+          ? '''
+            AND tu.project_id IN (
+              SELECT p.id FROM projects p
+              INNER JOIN game_installations gi ON p.game_installation_id = gi.id
+              WHERE gi.game_code = ?
+            )
+          '''
+          : '';
+      final params = gameCode != null ? [gameCode] : <Object>[];
+
       final result = await database.rawQuery(
         '''
         SELECT
@@ -286,8 +355,10 @@ mixin TranslationVersionStatisticsMixin {
         FROM translation_units tu
         LEFT JOIN $tableName tv ON tv.unit_id = tu.id
         WHERE tu.is_obsolete = 0
-          AND $_excludeBracketOnlyCondition
+          AND $_excludeSkipUnitsCondition
+          $gameFilter
         ''',
+        params,
       );
 
       if (result.isEmpty) {

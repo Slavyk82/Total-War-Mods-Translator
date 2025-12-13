@@ -157,7 +157,6 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
           language: langDetails.language,
           totalUnits: langDetails.totalUnits,
           translatedUnits: langDetails.translatedUnits,
-          validatedUnits: langDetails.validatedUnits,
           onOpenEditor: () => _handleOpenEditor(
             context,
             details.project.id,

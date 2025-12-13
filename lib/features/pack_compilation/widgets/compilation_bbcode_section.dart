@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Section displaying BBCode links for Steam Workshop publication.
@@ -132,11 +133,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
                 border: Border.all(color: theme.dividerColor),
               ),
               child: const Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
+                child: FluentSpinner(size: 20, strokeWidth: 2),
               ),
             ),
             error: (error, _) => Container(

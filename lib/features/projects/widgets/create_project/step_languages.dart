@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../../widgets/fluent/fluent_widgets.dart';
+import '../../../../widgets/common/fluent_spinner.dart';
 import '../../../../models/domain/language.dart';
 import '../../providers/projects_screen_providers.dart';
 import 'project_creation_state.dart';
@@ -24,7 +25,7 @@ class StepLanguages extends ConsumerWidget {
 
     return languagesAsync.when(
       data: (languages) => _buildLanguagesList(languages, theme),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: FluentSpinner()),
       error: (err, stack) => _buildErrorState(err, theme, ref),
     );
   }

@@ -385,24 +385,27 @@ final class NeedsUpdateModsCountProvider
 String _$needsUpdateModsCountHash() =>
     r'4eca06098ef9f967460938bf7d069267c679558a';
 
-/// Provider for count of projects with pending changes.
-/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
-/// and checks if the cache has changes. This ensures consistency between screens.
+/// Provider for count of projects with pending changes OR mod update impact.
+/// Counts projects that either:
+/// 1. Have the hasModUpdateImpact flag set (mod update was applied)
+/// 2. Have pending analysis changes (for backwards compatibility)
 
 @ProviderFor(projectsWithPendingChangesCount)
 const projectsWithPendingChangesCountProvider =
     ProjectsWithPendingChangesCountProvider._();
 
-/// Provider for count of projects with pending changes.
-/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
-/// and checks if the cache has changes. This ensures consistency between screens.
+/// Provider for count of projects with pending changes OR mod update impact.
+/// Counts projects that either:
+/// 1. Have the hasModUpdateImpact flag set (mod update was applied)
+/// 2. Have pending analysis changes (for backwards compatibility)
 
 final class ProjectsWithPendingChangesCountProvider
     extends $FunctionalProvider<AsyncValue<int>, int, FutureOr<int>>
     with $FutureModifier<int>, $FutureProvider<int> {
-  /// Provider for count of projects with pending changes.
-  /// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
-  /// and checks if the cache has changes. This ensures consistency between screens.
+  /// Provider for count of projects with pending changes OR mod update impact.
+  /// Counts projects that either:
+  /// 1. Have the hasModUpdateImpact flag set (mod update was applied)
+  /// 2. Have pending analysis changes (for backwards compatibility)
   const ProjectsWithPendingChangesCountProvider._()
     : super(
         from: null,
@@ -429,7 +432,7 @@ final class ProjectsWithPendingChangesCountProvider
 }
 
 String _$projectsWithPendingChangesCountHash() =>
-    r'1fd9664b50be5b5750bad64eb42f55b4c96a7c03';
+    r'e40cecf8dc071888b65a0786f187fb67ed05bf0d';
 
 /// Refresh trigger for mods list
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../common/fluent_spinner.dart';
 
 /// Fluent Design dialog button with hover states and loading support.
 ///
@@ -80,15 +81,12 @@ class _FluentDialogButtonState extends State<FluentDialogButton> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.isLoading)
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: widget.isPrimary
-                        ? theme.colorScheme.onPrimary
-                        : theme.colorScheme.primary,
-                  ),
+                FluentSpinner(
+                  size: 16,
+                  strokeWidth: 2,
+                  color: widget.isPrimary
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.primary,
                 )
               else
                 Icon(

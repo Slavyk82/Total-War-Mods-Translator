@@ -33,7 +33,6 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
   bool _isLoading = true;
   String? _error;
   late TabController _tabController;
-  int _selectedProviderIndex = 0;
 
   @override
   void initState() {
@@ -66,13 +65,8 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
       result.when(
         ok: (preview) {
           if (mounted) {
-            // Find index of current provider to select it by default
-            final currentProviderIndex = preview.providerPayloads.indexWhere(
-              (p) => p.providerCode == preview.providerCode,
-            );
             setState(() {
               _preview = preview;
-              _selectedProviderIndex = currentProviderIndex >= 0 ? currentProviderIndex : 0;
               _isLoading = false;
             });
           }
@@ -155,7 +149,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
           _buildMetadataBadge(
             icon: FluentIcons.server_24_regular,
             label: _preview!.providerPayloads.isNotEmpty
-                ? _preview!.providerPayloads[_selectedProviderIndex].providerName
+                ? _preview!.providerPayloads.first.providerName
                 : _preview!.providerCode,
           ),
           const SizedBox(width: 8),
@@ -343,7 +337,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
       );
     }
 
-    final selectedPayload = payloads[_selectedProviderIndex];
+    final currentPayload = payloads.first;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -359,12 +353,10 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
               ),
             ),
             const SizedBox(width: 12),
-            _buildProviderSelector(payloads),
-            const SizedBox(width: 12),
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
-                onTap: () => _copyToClipboard(selectedPayload.payload, 'API Payload'),
+                onTap: () => _copyToClipboard(currentPayload.payload, 'API Payload'),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding:
@@ -401,7 +393,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
             ),
             child: SingleChildScrollView(
               child: SelectableText(
-                selectedPayload.payload,
+                currentPayload.payload,
                 style: TextStyle(
                   fontSize: 12,
                   fontFamily: 'Consolas',
@@ -413,46 +405,6 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildProviderSelector(List<ProviderPayload> payloads) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: DropdownButton<int>(
-        value: _selectedProviderIndex,
-        underline: const SizedBox.shrink(),
-        isDense: true,
-        icon: const Icon(FluentIcons.chevron_down_16_regular, size: 14),
-        style: const TextStyle(fontSize: 12),
-        items: payloads.asMap().entries.map((entry) {
-          return DropdownMenuItem<int>(
-            value: entry.key,
-            child: Text(
-              entry.value.providerName,
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).textTheme.bodyMedium?.color,
-              ),
-            ),
-          );
-        }).toList(),
-        onChanged: (index) {
-          if (index != null) {
-            setState(() {
-              _selectedProviderIndex = index;
-            });
-          }
-        },
-      ),
     );
   }
 

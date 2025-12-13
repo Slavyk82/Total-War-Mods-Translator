@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../models/domain/game_installation.dart';
+import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
+import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../providers/pack_compilation_providers.dart';
 import 'compilation_editor_form_widgets.dart';
 
@@ -127,7 +129,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                         );
                       },
                         loading: () => const Center(
-                          child: CircularProgressIndicator(),
+                          child: FluentSpinner(),
                         ),
                         error: (error, _) => Center(
                           child: Text(
@@ -323,20 +325,13 @@ class _CompilationProjectItemState extends State<CompilationProjectItem> {
                     Row(
                       children: [
                         Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: SizedBox(
-                              height: 4,
-                              child: LinearProgressIndicator(
-                                value: progressPercent / 100,
-                                backgroundColor: theme
-                                    .colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  _getProgressColor(theme, progressPercent),
-                                ),
-                              ),
-                            ),
+                          child: FluentProgressBar(
+                            value: progressPercent / 100,
+                            height: 4,
+                            backgroundColor: theme
+                                .colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.3),
+                            color: _getProgressColor(theme, progressPercent),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -425,11 +420,7 @@ class CompilationModImage extends StatelessWidget {
           height: 75,
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           child: const Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            child: FluentSpinner(size: 20, strokeWidth: 2),
           ),
         ),
         errorWidget: (context, url, error) => Container(

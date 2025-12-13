@@ -7,6 +7,7 @@ import '../models/import_export_settings.dart' as export_models;
 import '../models/export_result.dart';
 import '../../../providers/import_export/export_provider.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Dialog for exporting translations to file
 class ExportTranslationsDialog extends ConsumerStatefulWidget {
@@ -528,7 +529,7 @@ class _ExportTranslationsDialogState
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
-        LinearProgressIndicator(value: progress.progress),
+        FluentProgressBar(value: progress.progress),
         const SizedBox(height: 4),
         Text('${progress.percentage}% - ${progress.current} of ${progress.total}'),
       ],

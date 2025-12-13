@@ -155,9 +155,10 @@ Future<int> needsUpdateModsCount(Ref ref) async {
   ).length;
 }
 
-/// Provider for count of projects with pending changes.
-/// Uses the same logic as the Projects screen: compares Steam timestamp vs local file timestamp
-/// and checks if the cache has changes. This ensures consistency between screens.
+/// Provider for count of projects with pending changes OR mod update impact.
+/// Counts projects that either:
+/// 1. Have the hasModUpdateImpact flag set (mod update was applied)
+/// 2. Have pending analysis changes (for backwards compatibility)
 @riverpod
 Future<int> projectsWithPendingChangesCount(Ref ref) async {
   // Watch the detected mods to refresh when mods are scanned
@@ -174,6 +175,13 @@ Future<int> projectsWithPendingChangesCount(Ref ref) async {
   int pendingCount = 0;
 
   for (final project in projects) {
+    // Count projects with mod update impact flag first
+    if (project.hasModUpdateImpact) {
+      pendingCount++;
+      continue;  // Don't double-count
+    }
+
+    // Also check for pending analysis changes (backwards compatibility)
     if (project.sourceFilePath == null || project.modSteamId == null) continue;
 
     // Get Steam Workshop timestamp from cache

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -186,58 +185,3 @@ class UndoRedoToolbar extends ConsumerWidget {
   }
 }
 
-/// Mixin for screens that want keyboard shortcut support for undo/redo
-///
-/// Usage:
-/// ```dart
-/// class MyScreen extends ConsumerStatefulWidget with UndoRedoKeyboardShortcuts {
-///   // ... implementation
-/// }
-/// ```
-mixin UndoRedoKeyboardShortcuts {
-  /// Build shortcuts widget wrapping the content
-  ///
-  /// Call this in your build method to wrap your content with keyboard shortcuts.
-  Widget buildWithShortcuts(
-    BuildContext context,
-    WidgetRef ref,
-    Widget child,
-  ) {
-    return CallbackShortcuts(
-      bindings: {
-        // Ctrl+Z: Undo
-        const SingleActivator(
-          LogicalKeyboardKey.keyZ,
-          control: true,
-        ): () => _handleUndoShortcut(ref),
-
-        // Ctrl+Y: Redo
-        const SingleActivator(
-          LogicalKeyboardKey.keyY,
-          control: true,
-        ): () => _handleRedoShortcut(ref),
-
-        // Ctrl+Shift+Z: Redo (alternative)
-        const SingleActivator(
-          LogicalKeyboardKey.keyZ,
-          control: true,
-          shift: true,
-        ): () => _handleRedoShortcut(ref),
-      },
-      child: Focus(
-        autofocus: true,
-        child: child,
-      ),
-    );
-  }
-
-  Future<void> _handleUndoShortcut(WidgetRef ref) async {
-    final notifier = ref.read(undoRedoManagerProvider.notifier);
-    await notifier.undo();
-  }
-
-  Future<void> _handleRedoShortcut(WidgetRef ref) async {
-    final notifier = ref.read(undoRedoManagerProvider.notifier);
-    await notifier.redo();
-  }
-}

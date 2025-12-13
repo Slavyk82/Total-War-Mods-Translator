@@ -51,7 +51,7 @@ These shortcuts are provided by the Syncfusion DataGrid component:
 | `Shift+Tab` | Previous Cell | Move to previous editable cell |
 | `Enter` | Edit Cell | Start editing selected cell |
 | `F2` | Edit Cell | Start editing selected cell (alternative) |
-| `Esc` | Cancel Edit | Cancel current edit and revert changes |
+| `Escape` | Cancel Edit | Cancel current edit and revert changes |
 | `Page Up/Down` | Scroll | Scroll one page up or down |
 | `Click` | Select Row | Select single row |
 | `Ctrl+Click` | Toggle Selection | Add/remove row from selection |
@@ -100,7 +100,7 @@ These shortcuts work in the Mods browser screen.
 - Use `Tab` to move between controls
 - Use `Arrow Keys` to navigate lists and grids
 - Use `Enter` or `Space` to activate buttons
-- Use `Esc` to cancel actions
+- Use `Escape` to cancel actions
 
 ### Screen Reader Support
 

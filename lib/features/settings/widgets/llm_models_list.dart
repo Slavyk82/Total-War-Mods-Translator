@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../models/domain/llm_provider_model.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 
 /// Widget displaying a list of LLM models for a provider.
 ///
@@ -33,11 +34,7 @@ class LlmModelsList extends ConsumerWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Center(
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          child: FluentSpinner(size: 16, strokeWidth: 2),
         ),
       ),
       error: (error, stack) => Container(
@@ -257,11 +254,7 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                 children: [
                   // Checkbox
                   if (_isProcessing)
-                    const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                    const FluentSpinner(size: 20, strokeWidth: 2)
                   else
                     Container(
                       width: 20,

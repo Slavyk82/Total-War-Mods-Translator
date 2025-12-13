@@ -243,7 +243,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
                 }
 
                 return DropdownButtonFormField<String>(
-                  value: _selectedLanguageId,
+                  initialValue: _selectedLanguageId,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     hintText: 'Select target language',
@@ -287,7 +287,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
         }
 
         return DropdownButtonFormField<String>(
-          value: _selectedGameCode,
+          initialValue: _selectedGameCode,
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
             hintText: 'Select game',

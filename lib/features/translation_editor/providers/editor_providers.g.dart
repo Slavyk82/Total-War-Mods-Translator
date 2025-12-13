@@ -776,7 +776,7 @@ final class TranslationRowsProvider
   }
 }
 
-String _$translationRowsHash() => r'e7a7e4a9f705538e4ce187ef432b1142e08f7d31';
+String _$translationRowsHash() => r'8f6a7bfab48709d68c2a3c4680ed892253bc228a';
 
 /// Provider for translation rows (units + versions)
 ///

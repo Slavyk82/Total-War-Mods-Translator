@@ -128,4 +128,45 @@ class ProjectRepository extends BaseRepository<Project> {
       return maps.map((map) => fromMap(map)).toList();
     });
   }
+
+  /// Set the mod update impact flag for a project.
+  ///
+  /// This flag indicates the project was impacted by a mod update,
+  /// helping users identify projects that need review.
+  Future<Result<void, TWMTDatabaseException>> setModUpdateImpact(
+      String projectId, bool hasImpact) async {
+    return executeQuery(() async {
+      final rowsAffected = await database.update(
+        tableName,
+        {'has_mod_update_impact': hasImpact ? 1 : 0},
+        where: 'id = ?',
+        whereArgs: [projectId],
+      );
+
+      if (rowsAffected == 0) {
+        throw TWMTDatabaseException(
+            'Project not found for update: $projectId');
+      }
+    });
+  }
+
+  /// Clear the mod update impact flag for a project.
+  ///
+  /// Convenience method to reset the flag after user acknowledges/reviews the changes.
+  Future<Result<void, TWMTDatabaseException>> clearModUpdateImpact(
+      String projectId) async {
+    return setModUpdateImpact(projectId, false);
+  }
+
+  /// Count projects with mod update impact flag set for a game installation.
+  Future<Result<int, TWMTDatabaseException>> countWithModUpdateImpact(
+      String gameInstallationId) async {
+    return executeQuery(() async {
+      final result = await database.rawQuery('''
+        SELECT COUNT(*) as cnt FROM $tableName
+        WHERE game_installation_id = ? AND has_mod_update_impact = 1
+      ''', [gameInstallationId]);
+      return result.first['cnt'] as int;
+    });
+  }
 }

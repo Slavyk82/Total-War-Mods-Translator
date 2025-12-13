@@ -88,6 +88,8 @@ dependencies:
   crypto: ^3.0.6
   file_picker: ^8.1.6
   watcher: ^1.1.0
+  flutter_markdown: ^0.7.7+1
+  markdown: ^7.3.0
 
 dev_dependencies:
   flutter_test:
@@ -129,6 +131,8 @@ flutter:
     - lib/database/schema.sql
     - assets/data/
     - assets/twmt_icon.png
+    - assets/screenshots/
+    - docs/user_guide.md
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

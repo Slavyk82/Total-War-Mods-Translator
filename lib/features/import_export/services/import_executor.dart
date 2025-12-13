@@ -5,6 +5,7 @@ import '../../../models/domain/translation_unit.dart';
 import '../../../models/domain/translation_version.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
+import '../../../services/history/i_history_service.dart';
 import '../../../services/translation/utils/translation_text_utils.dart';
 import '../models/import_conflict.dart';
 import '../models/import_export_settings.dart';
@@ -19,12 +20,14 @@ class ImportExecutor {
   final ImportFileReader _fileReader;
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
+  final IHistoryService _historyService;
   final Uuid _uuid = const Uuid();
 
   const ImportExecutor(
     this._fileReader,
     this._unitRepository,
     this._versionRepository,
+    this._historyService,
   );
 
   /// Execute import with conflict resolution
@@ -261,6 +264,14 @@ class ImportExecutor {
 
       final updateResult = await _versionRepository.update(updated);
       if (updateResult.isOk) {
+        // Record history entry for import update
+        await _historyService.recordChange(
+          versionId: updated.id,
+          translatedText: translatedText ?? '',
+          status: updated.status.name,
+          changedBy: 'import',
+          changeReason: 'Import replaced existing translation',
+        );
         return _RowProcessResult.success(updated.id);
       } else {
         return _RowProcessResult.error('Failed to update version');
@@ -274,6 +285,14 @@ class ImportExecutor {
 
       final updateResult = await _versionRepository.update(updated);
       if (updateResult.isOk) {
+        // Record history entry for import merge
+        await _historyService.recordChange(
+          versionId: updated.id,
+          translatedText: mergedText ?? '',
+          status: updated.status.name,
+          changedBy: 'import',
+          changeReason: 'Import merged with existing translation',
+        );
         return _RowProcessResult.success(updated.id);
       } else {
         return _RowProcessResult.error('Failed to merge version');
@@ -311,6 +330,14 @@ class ImportExecutor {
 
     final insertResult = await _versionRepository.insert(newVersion);
     if (insertResult.isOk) {
+      // Record initial history entry
+      await _historyService.recordChange(
+        versionId: newVersion.id,
+        translatedText: translatedText ?? '',
+        status: newVersion.status.name,
+        changedBy: 'import',
+        changeReason: 'Initial import',
+      );
       return _RowProcessResult.success(newVersion.id);
     } else {
       return _RowProcessResult.error('Failed to create version');

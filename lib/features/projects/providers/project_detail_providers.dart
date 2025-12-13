@@ -33,7 +33,7 @@ class ProjectLanguageDetails {
   final int totalUnits;
   final int translatedUnits;
   final int pendingUnits;
-  final int validatedUnits;
+  final int needsReviewUnits;
 
   const ProjectLanguageDetails({
     required this.projectLanguage,
@@ -41,7 +41,7 @@ class ProjectLanguageDetails {
     this.totalUnits = 0,
     this.translatedUnits = 0,
     this.pendingUnits = 0,
-    this.validatedUnits = 0,
+    this.needsReviewUnits = 0,
   });
 
   /// Calculate progress percentage based on actual translation counts
@@ -57,8 +57,7 @@ class TranslationStats {
   final int totalUnits;
   final int translatedUnits;
   final int pendingUnits;
-  final int errorUnits;
-  final int validatedUnits;
+  final int needsReviewUnits;
   final double tmReuseRate;
   final int tokensUsed;
 
@@ -66,8 +65,7 @@ class TranslationStats {
     required this.totalUnits,
     this.translatedUnits = 0,
     this.pendingUnits = 0,
-    this.errorUnits = 0,
-    this.validatedUnits = 0,
+    this.needsReviewUnits = 0,
     this.tmReuseRate = 0.0,
     this.tokensUsed = 0,
   });
@@ -138,7 +136,7 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
             totalUnits: langStats.totalCount,
             translatedUnits: langStats.translatedCount,
             pendingUnits: langStats.pendingCount,
-            validatedUnits: langStats.validatedCount,
+            needsReviewUnits: langStats.errorCount,
           ));
         }
       }
@@ -156,20 +154,21 @@ final projectDetailsProvider = FutureProvider.family<ProjectDetails, String>((re
 
   final translatedUnits = projectStats.translatedCount;
   final pendingUnits = projectStats.pendingCount;
-  final validatedUnits = projectStats.validatedCount;
-  final errorUnits = projectStats.errorCount;
+  final needsReviewUnits = projectStats.errorCount; // errorCount = needs_review status
 
-  // Calculate TM reuse rate if there are translations
-  final tmReuseRate = totalUnits > 0 && translatedUnits > 0
-      ? validatedUnits / translatedUnits
+  // Calculate TM reuse rate based on translation_source field
+  // Counts translations from TM (exact + fuzzy) vs total translated units
+  final tmSourcedResult = await translationVersionRepo.countTmSourcedByProject(projectId);
+  final tmSourcedUnits = tmSourcedResult.isOk ? tmSourcedResult.unwrap() : 0;
+  final tmReuseRate = translatedUnits > 0
+      ? tmSourcedUnits / translatedUnits
       : 0.0;
 
   final stats = TranslationStats(
     totalUnits: totalUnits,
     translatedUnits: translatedUnits,
     pendingUnits: pendingUnits,
-    validatedUnits: validatedUnits,
-    errorUnits: errorUnits,
+    needsReviewUnits: needsReviewUnits,
     tmReuseRate: tmReuseRate,
     tokensUsed: translatedUnits * 150, // Estimate 150 tokens per translation
   );
@@ -233,28 +232,29 @@ final translationStatsProvider = FutureProvider.family<TranslationStats, String>
   final unitsResult = await translationUnitRepo.getByProject(projectId);
   final totalUnits = unitsResult.isOk ? unitsResult.unwrap().length : 0;
 
-  // Calculate stats using actual database counts
-  final translatedResult = await translationVersionRepo.countTranslatedByProject(projectId);
-  final pendingResult = await translationVersionRepo.countPendingByProject(projectId);
-  final validatedResult = await translationVersionRepo.countValidatedByProject(projectId);
-  final errorResult = await translationVersionRepo.countErrorByProject(projectId);
+  // Get all stats in one optimized query
+  final statsResult = await translationVersionRepo.getProjectStatistics(projectId);
+  final projectStats = statsResult.isOk
+      ? statsResult.unwrap()
+      : ProjectStatistics.empty();
 
-  final translatedUnits = translatedResult.isOk ? translatedResult.unwrap() : 0;
-  final pendingUnits = pendingResult.isOk ? pendingResult.unwrap() : 0;
-  final validatedUnits = validatedResult.isOk ? validatedResult.unwrap() : 0;
-  final errorUnits = errorResult.isOk ? errorResult.unwrap() : 0;
+  final translatedUnits = projectStats.translatedCount;
+  final pendingUnits = projectStats.pendingCount;
+  final needsReviewUnits = projectStats.errorCount; // errorCount = needs_review status
 
-  // Calculate TM reuse rate if there are translations
-  final tmReuseRate = totalUnits > 0 && translatedUnits > 0
-      ? validatedUnits / translatedUnits
+  // Calculate TM reuse rate based on translation_source field
+  // Counts translations from TM (exact + fuzzy) vs total translated units
+  final tmSourcedResult = await translationVersionRepo.countTmSourcedByProject(projectId);
+  final tmSourcedUnits = tmSourcedResult.isOk ? tmSourcedResult.unwrap() : 0;
+  final tmReuseRate = translatedUnits > 0
+      ? tmSourcedUnits / translatedUnits
       : 0.0;
 
   return TranslationStats(
     totalUnits: totalUnits,
     translatedUnits: translatedUnits,
     pendingUnits: pendingUnits,
-    validatedUnits: validatedUnits,
-    errorUnits: errorUnits,
+    needsReviewUnits: needsReviewUnits,
     tmReuseRate: tmReuseRate,
     tokensUsed: translatedUnits * 150, // Estimate 150 tokens per translation
   );

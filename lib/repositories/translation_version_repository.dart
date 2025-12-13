@@ -267,7 +267,8 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
 
   /// Get IDs of units that are already translated.
   ///
-  /// Performance optimization: Single batch query instead of N individual queries.
+  /// Performance optimization: Batched queries to avoid N individual queries
+  /// while staying within SQLite's parameter limit (999 max).
   /// Returns only unit IDs that have non-empty translated_text.
   Future<Result<Set<String>, TWMTDatabaseException>> getTranslatedUnitIds({
     required List<String> unitIds,
@@ -278,19 +279,30 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     }
 
     return executeQuery(() async {
-      final placeholders = List.filled(unitIds.length, '?').join(',');
-      final maps = await database.rawQuery(
-        '''
-        SELECT unit_id FROM $tableName
-        WHERE unit_id IN ($placeholders)
-          AND project_language_id = ?
-          AND translated_text IS NOT NULL
-          AND translated_text != ''
-        ''',
-        [...unitIds, projectLanguageId],
-      );
+      // SQLite has a limit on number of parameters (default 999)
+      // We use 1 param for projectLanguageId, so batch unitIds at 500
+      const batchSize = 500;
+      final results = <String>{};
 
-      return maps.map((m) => m['unit_id'] as String).toSet();
+      for (var i = 0; i < unitIds.length; i += batchSize) {
+        final batch = unitIds.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(',');
+
+        final maps = await database.rawQuery(
+          '''
+          SELECT unit_id FROM $tableName
+          WHERE unit_id IN ($placeholders)
+            AND project_language_id = ?
+            AND translated_text IS NOT NULL
+            AND translated_text != ''
+          ''',
+          [...batch, projectLanguageId],
+        );
+
+        results.addAll(maps.map((m) => m['unit_id'] as String));
+      }
+
+      return results;
     });
   }
 
@@ -318,32 +330,103 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
-  /// Clear translations for multiple versions in a single SQL query.
+  /// Clear translations for multiple versions.
   ///
   /// Sets translated_text to empty, status to pending, and updates timestamp.
+  /// Batches queries to stay within SQLite's parameter limit (999 max).
+  ///
+  /// [versionIds] - List of version IDs to clear
+  /// [onProgress] - Optional callback for progress reporting
+  ///
   /// Returns the count of affected rows.
   Future<Result<int, TWMTDatabaseException>> clearBatch(
-      List<String> versionIds) async {
+    List<String> versionIds, {
+    void Function(int processed, int total, String phase)? onProgress,
+  }) async {
     if (versionIds.isEmpty) {
       return Ok(0);
     }
 
-    return executeQuery(() async {
-      final placeholders = List.filled(versionIds.length, '?').join(',');
+    return executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+      final total = versionIds.length;
 
-      final rowsAffected = await database.rawUpdate(
-        '''
-        UPDATE $tableName
-        SET translated_text = '',
-            status = 'pending',
+      // For batches > 50, temporarily disable the progress trigger
+      // This trigger recalculates stats with COUNT on every single UPDATE, which is very slow
+      final disableProgressTrigger = versionIds.length > 50;
+
+      if (disableProgressTrigger) {
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+      }
+
+      try {
+        // Process in batches to stay within SQLite parameter limits
+        const batchSize = 500;
+
+        for (var i = 0; i < versionIds.length; i += batchSize) {
+          final batch = versionIds.skip(i).take(batchSize).toList();
+          final placeholders = List.filled(batch.length, '?').join(',');
+
+          final rowsAffected = await txn.rawUpdate(
+            '''
+            UPDATE $tableName
+            SET translated_text = '',
+                status = 'pending',
+                updated_at = ?
+            WHERE id IN ($placeholders)
+            ''',
+            [now, ...batch],
+          );
+          totalAffected += rowsAffected;
+
+          final processed = (i + batch.length).clamp(0, total);
+          onProgress?.call(processed, total, 'Clearing translations...');
+        }
+
+        if (disableProgressTrigger) {
+          // Manually update project language progress once at the end
+          onProgress?.call(total, total, 'Updating statistics...');
+          await txn.rawUpdate('''
+            UPDATE project_languages
+            SET progress_percent = (
+              SELECT
+                CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                NULLIF(COUNT(*), 0)
+              FROM translation_versions tv
+              INNER JOIN translation_units tu ON tv.unit_id = tu.id
+              WHERE tv.project_language_id = project_languages.id
+                AND tu.is_obsolete = 0
+            ),
             updated_at = ?
-        WHERE id IN ($placeholders)
-        ''',
-        [now, ...versionIds],
-      );
+          ''', [now]);
+        }
+      } finally {
+        if (disableProgressTrigger) {
+          // Recreate the progress trigger
+          await txn.execute('''
+            CREATE TRIGGER trg_update_project_language_progress
+            AFTER UPDATE ON translation_versions
+            WHEN NEW.status != OLD.status
+            BEGIN
+              UPDATE project_languages
+              SET progress_percent = (
+                SELECT
+                  CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                  NULLIF(COUNT(*), 0)
+                FROM translation_versions tv
+                INNER JOIN translation_units tu ON tv.unit_id = tu.id
+                WHERE tv.project_language_id = NEW.project_language_id
+                  AND tu.is_obsolete = 0
+              ),
+              updated_at = strftime('%s', 'now')
+              WHERE id = NEW.project_language_id;
+            END
+          ''');
+        }
+      }
 
-      return rowsAffected;
+      return totalAffected;
     });
   }
 
@@ -351,6 +434,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   ///
   /// Used when source text has changed and translations need to be reviewed.
   /// Does NOT clear the translated_text - only changes status to pending.
+  /// Batches queries to stay within SQLite's parameter limit (999 max).
   /// Returns the count of affected rows.
   Future<Result<int, TWMTDatabaseException>> resetStatusForUnitKeys({
     required String projectId,
@@ -361,23 +445,32 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     }
 
     return executeQuery(() async {
-      final placeholders = List.filled(unitKeys.length, '?').join(',');
+      // SQLite has a limit on number of parameters (default 999)
+      // We use 2 params for timestamp and projectId, so batch unitKeys at 500
+      const batchSize = 500;
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
 
-      final rowsAffected = await database.rawUpdate(
-        '''
-        UPDATE $tableName
-        SET status = 'pending',
-            updated_at = ?
-        WHERE unit_id IN (
-          SELECT id FROM translation_units
-          WHERE project_id = ? AND key IN ($placeholders)
-        )
-        ''',
-        [now, projectId, ...unitKeys],
-      );
+      for (var i = 0; i < unitKeys.length; i += batchSize) {
+        final batch = unitKeys.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(',');
 
-      return rowsAffected;
+        final rowsAffected = await database.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET status = 'pending',
+              updated_at = ?
+          WHERE unit_id IN (
+            SELECT id FROM translation_units
+            WHERE project_id = ? AND key IN ($placeholders)
+          )
+          ''',
+          [now, projectId, ...batch],
+        );
+        totalAffected += rowsAffected;
+      }
+
+      return totalAffected;
     });
   }
 
@@ -385,6 +478,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   ///
   /// Used when obsolete units are reactivated and need review.
   /// Does NOT clear the translated_text - only changes status to needsReview.
+  /// Batches queries to stay within SQLite's parameter limit (999 max).
   /// Returns the count of affected rows.
   Future<Result<int, TWMTDatabaseException>> setNeedsReviewForUnitKeys({
     required String projectId,
@@ -395,23 +489,32 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     }
 
     return executeQuery(() async {
-      final placeholders = List.filled(unitKeys.length, '?').join(',');
+      // SQLite has a limit on number of parameters (default 999)
+      // We use 2 params for timestamp and projectId, so batch unitKeys at 500
+      const batchSize = 500;
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
 
-      final rowsAffected = await database.rawUpdate(
-        '''
-        UPDATE $tableName
-        SET status = 'needsReview',
-            updated_at = ?
-        WHERE unit_id IN (
-          SELECT id FROM translation_units
-          WHERE project_id = ? AND key IN ($placeholders)
-        )
-        ''',
-        [now, projectId, ...unitKeys],
-      );
+      for (var i = 0; i < unitKeys.length; i += batchSize) {
+        final batch = unitKeys.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(',');
 
-      return rowsAffected;
+        final rowsAffected = await database.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET status = 'needsReview',
+              updated_at = ?
+          WHERE unit_id IN (
+            SELECT id FROM translation_units
+            WHERE project_id = ? AND key IN ($placeholders)
+          )
+          ''',
+          [now, projectId, ...batch],
+        );
+        totalAffected += rowsAffected;
+      }
+
+      return totalAffected;
     });
   }
 

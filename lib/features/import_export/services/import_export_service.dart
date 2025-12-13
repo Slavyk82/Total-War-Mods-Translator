@@ -6,6 +6,7 @@ import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/file/i_file_service.dart';
 import '../../../services/file/models/file_exceptions.dart';
+import '../../../services/history/i_history_service.dart';
 import '../models/import_conflict.dart';
 import '../models/import_export_settings.dart';
 import '../models/import_preview.dart';
@@ -24,6 +25,7 @@ class ImportExportService {
   final IFileService _fileService;
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
+  final IHistoryService _historyService;
 
   late final ImportFileReader _fileReader;
   late final ImportPreviewService _previewService;
@@ -34,6 +36,7 @@ class ImportExportService {
     this._fileService,
     this._unitRepository,
     this._versionRepository,
+    this._historyService,
   ) {
     _fileReader = ImportFileReader(_fileService);
     _previewService = ImportPreviewService(_fileReader);
@@ -46,6 +49,7 @@ class ImportExportService {
       _fileReader,
       _unitRepository,
       _versionRepository,
+      _historyService,
     );
   }
 

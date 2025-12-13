@@ -6,6 +6,7 @@ import 'package:twmt/features/import_export/services/import_export_service.dart'
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/file/i_file_service.dart';
+import 'package:twmt/services/history/i_history_service.dart';
 import 'package:twmt/services/service_locator.dart';
 
 part 'export_provider.g.dart';
@@ -80,6 +81,7 @@ class ExportPreviewData extends _$ExportPreviewData {
       ServiceLocator.get<IFileService>(),
       ServiceLocator.get<TranslationUnitRepository>(),
       ServiceLocator.get<TranslationVersionRepository>(),
+      ServiceLocator.get<IHistoryService>(),
     );
 
     final result = await service.previewExport(settings);
@@ -141,6 +143,7 @@ class ExportResultData extends _$ExportResultData {
       ServiceLocator.get<IFileService>(),
       ServiceLocator.get<TranslationUnitRepository>(),
       ServiceLocator.get<TranslationVersionRepository>(),
+      ServiceLocator.get<IHistoryService>(),
     );
 
     final result = await service.executeExport(

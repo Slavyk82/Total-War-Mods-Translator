@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Widget displaying the list of existing compilations.
@@ -68,13 +69,10 @@ class CompilationList extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: theme.colorScheme.primary,
-            ),
+          FluentSpinner(
+            size: 40,
+            strokeWidth: 3,
+            color: theme.colorScheme.primary,
           ),
           const SizedBox(height: 16),
           Text(

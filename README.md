@@ -1,91 +1,114 @@
 # TWMT - Total War Mods Translator
 
-A professional-grade Windows desktop application for translating Total War Workshop mods using AI-powered translation, Translation Memory, and glossary management.
+**Last Updated**: December 2025
 
-## Features
-
-### AI-Powered Translation
-- **Multiple LLM Providers**: Anthropic Claude, OpenAI GPT, DeepL
-- **Batch Processing**: Translate up to 1000 entries per batch
-- **Parallel Processing**: Run multiple batches concurrently
-
-### Translation Memory (TM)
-- **Exact Matching**: Hash-based O(1) lookup for identical phrases
-- **Fuzzy Matching**: 3-algorithm hybrid (Levenshtein, Jaro-Winkler, Token-based)
-- **Auto-Accept**: Automatically apply matches with >95% similarity
-- **TMX Support**: Import/Export industry-standard format
-
-### Glossary Management
-- **Global & Game-Specific**: Scope terminology appropriately
-- **Variants Support**: Multiple translations per term with notes
-
-### Quality Validation
-- Empty translation detection
-- Length mismatch warnings
-- Special character preservation
-- Number consistency checks
-
-### Steam Workshop Integration
-- Auto-detect installed mods
-- Track mod updates
-- Extract files automatically
-
-## Supported Games
-
-| Game | Status |
-|------|--------|
-| Total War: Warhammer III | Supported |
-| Total War: Warhammer II | Supported |
-| Total War: Warhammer | Supported |
-| Total War: Rome II | Supported |
-| Total War: Attila | Supported |
-| Total War: Three Kingdoms | Supported |
-| Total War Saga: Troy | Supported |
-| Total War: Pharaoh | Supported |
-
-## Requirements
-
-- Windows 10 or Windows 11
-- 8 GB RAM minimum (16 GB recommended)
-- 500 MB free disk space
-- Internet connection for LLM providers
-- API key from at least one LLM provider
-
-## Installation
-
-1. Download the latest beta version from [TWMT](https://github.com/Slavyk82/Total-War-Mods-Translator/releases/tag/beta)
-2. Launch TWMT
-3. Configure all paths in Settings
-4. Select your default language for new projects
-5. Add your LLM provider API key
-
-## Quick Start
-
-1. **Game**: Select a game in the sidebar
-2. **Scan Mods**: Navigate to Mods
-3. **Create Project**: Select a mod and it will create a project
-4. **Translate**: Open the Translation Editor and click Translate All
-5. **Generate**: Generate a .pack file in the "data" game folder
-
-## Data Location
-
-```
-%APPDATA%\com.github.slavyk82\twmt
-├── twmt.db          # Database
-├── config\          # Configuration
-├── logs\            # Logs
-└── cache\           # Cache
-```
-
-## License
-
-MIT
-
-## Acknowledgments
-
-- [RPFM](https://github.com/Frodo45127/rpfm) - For pack file operations
-- Total War modding community
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/Slavyk82/Total-War-Mods-Translator)
+[![Releases](https://img.shields.io/badge/Download-Latest%20Release-green)](https://github.com/Slavyk82/Total-War-Mods-Translator/releases)
 
 ---
 
-*TWMT - Making Total War mod translation efficient and consistent.*
+## About
+
+TWMT (Total War Mods Translator) is a Windows application designed to translate Total War mods from Steam Workshop. It combines AI translation with workflow tools to ease creation and maintenance of translations efficiently.
+
+### Key Features
+
+- **AI Translation** - Translate thousands of entries using Claude, GPT, or DeepL
+- **Glossaries** - Maintain consistent terminology across all translations
+- **Translation Memory** - Reuse previous translations to save time and costs
+- **Fast Search & Filtering** - Quickly find and edit translations
+- **Progress Tracking** - Monitor translation completion per project and language
+- **Direct Pack Export** - Generate game-ready .pack files
+- **Multi-Project Management** - Handle multiple translation projects simultaneously
+
+### Supported Games
+
+| Game | Code |
+|------|------|
+| Total War: Warhammer III | wh3 |
+| Total War: Warhammer II | wh2 |
+| Total War: Warhammer | wh |
+| Total War: Rome II | rome2 |
+| Total War: Attila | attila |
+| Total War: Troy | troy |
+| Total War: Three Kingdoms | 3k |
+| Total War: Pharaoh | pharaoh |
+
+---
+
+## Requirements
+
+- **Windows 10/11**
+- **RPFM CLI** - [Download from GitHub](https://github.com/Frodo45127/rpfm) (required for pack file operations)
+- **API Key** - From one of the supported providers:
+  - [Anthropic (Claude)](https://console.anthropic.com)
+  - [OpenAI](https://platform.openai.com)
+  - [DeepL](https://www.deepl.com/pro-api)
+
+---
+
+## Quick Start
+
+1. **Download** the latest release from [GitHub Releases](https://github.com/Slavyk82/Total-War-Mods-Translator/releases)
+2. **Install** RPFM CLI and configure its path in Settings > Folders
+3. **Configure** your API key in Settings > LLM Providers
+4. **Detect** your game installations in Settings > Folders > Auto-Detect
+5. **Start** translating from the Mods screen
+
+---
+
+## Documentation
+
+For complete documentation, see the **[User Guide](docs/user_guide.md)** which covers:
+
+- [Getting Started](docs/user_guide.md#getting-started)
+- [Mods Screen](docs/user_guide.md#mods-screen)
+- [Projects Screen](docs/user_guide.md#projects-screen)
+- [Translation Editor](docs/user_guide.md#translation-editor)
+- [Pack Compilation](docs/user_guide.md#pack-compilation)
+- [Glossary](docs/user_guide.md#glossary)
+- [Translation Memory](docs/user_guide.md#translation-memory)
+- [Settings](docs/user_guide.md#settings)
+
+---
+
+## Screenshots
+
+<details>
+<summary>Click to view screenshots</summary>
+
+### Mods Screen
+![Mods](assets/screenshots/screen_mods.png)
+
+### Projects Screen
+![Projects](assets/screenshots/screen_projects.png)
+
+### Project Overview
+![Project overview](assets/screenshots/screen_project_overview.png)
+
+### Translation Editor
+![Translation editor](assets/screenshots/screen_editor.png)
+
+### Pack Compilation
+![Compilation](assets/screenshots/screen_compilation.png)
+
+### Glossary
+![Glossary](assets/screenshots/screen_glossary.png)
+
+### Translation Memory
+![Translation Memory](assets/screenshots/screen_tm.png)
+
+</details>
+
+---
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/Slavyk82/Total-War-Mods-Translator/issues)
+- **Releases**: [GitHub Releases](https://github.com/Slavyk82/Total-War-Mods-Translator/releases)
+
+---
+
+## License
+
+This project is open source. See the LICENSE file for details.

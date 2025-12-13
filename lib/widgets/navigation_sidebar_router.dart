@@ -123,6 +123,15 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   label: 'Settings',
                   onTap: () => _navigate(context, AppRoutes.settings),
                 ),
+                _buildNavigationItem(
+                  context: context,
+                  index: 7,
+                  selectedIndex: selectedIndex,
+                  icon: FluentIcons.question_circle_24_regular,
+                  selectedIcon: FluentIcons.question_circle_24_filled,
+                  label: 'Help',
+                  onTap: () => _navigate(context, AppRoutes.help),
+                ),
               ],
             ),
           ),
@@ -197,6 +206,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
     if (path.startsWith(AppRoutes.glossary)) return 4;
     if (path.startsWith(AppRoutes.translationMemory)) return 5;
     if (path.startsWith(AppRoutes.settings)) return 6;
+    if (path.startsWith(AppRoutes.help)) return 7;
     return 0; // Default to home
   }
 }

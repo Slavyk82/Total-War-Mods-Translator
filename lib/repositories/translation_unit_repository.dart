@@ -221,12 +221,13 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
     });
   }
 
-  /// Get multiple translation units by their IDs in a single query.
+  /// Get multiple translation units by their IDs.
   ///
   /// This method uses SQL IN clause for batch fetching, avoiding N+1 query problems.
-  /// Instead of making N queries for N units, this makes 1 query.
+  /// Instead of making N queries for N units, this batches queries to stay within
+  /// SQLite's parameter limit (999 max).
   ///
-  /// Performance: O(1) database query vs O(N) with individual getById calls.
+  /// Performance: O(ceil(N/500)) database queries vs O(N) with individual getById calls.
   ///
   /// [ids] - List of translation unit IDs to fetch
   ///
@@ -239,17 +240,25 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
         return <TranslationUnit>[];
       }
 
-      // Build parameterized query with IN clause
-      // Example: WHERE id IN (?, ?, ?)
-      final placeholders = List.filled(ids.length, '?').join(', ');
+      // SQLite has a limit on number of parameters (default 999)
+      // Process in batches of 500 to stay well under the limit
+      const batchSize = 500;
+      final results = <TranslationUnit>[];
 
-      final maps = await database.query(
-        tableName,
-        where: 'id IN ($placeholders)',
-        whereArgs: ids,
-      );
+      for (var i = 0; i < ids.length; i += batchSize) {
+        final batch = ids.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(', ');
 
-      return maps.map((map) => fromMap(map)).toList();
+        final maps = await database.query(
+          tableName,
+          where: 'id IN ($placeholders)',
+          whereArgs: batch,
+        );
+
+        results.addAll(maps.map((map) => fromMap(map)));
+      }
+
+      return results;
     });
   }
 

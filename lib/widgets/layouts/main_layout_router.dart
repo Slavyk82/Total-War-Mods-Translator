@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -10,12 +9,11 @@ import '../../config/router/app_router.dart';
 import '../../features/translation_editor/providers/editor_providers.dart';
 import '../../features/pack_compilation/providers/pack_compilation_providers.dart';
 
-/// Router-aware main layout with breadcrumbs and keyboard shortcuts
+/// Router-aware main layout with breadcrumbs
 ///
 /// This layout wraps all main screens via ShellRoute and provides:
 /// - Navigation sidebar with route-aware selection
 /// - Breadcrumb navigation for nested routes
-/// - Keyboard shortcuts (Ctrl+1-7 for main screens)
 /// - Fluent Design styling
 /// - Navigation blocking during active translations
 class MainLayoutRouter extends ConsumerWidget {
@@ -51,56 +49,28 @@ class MainLayoutRouter extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () {
-          if (_canNavigate(context, ref)) context.goHome();
-        },
-        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () {
-          if (_canNavigate(context, ref)) context.goMods();
-        },
-        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () {
-          if (_canNavigate(context, ref)) context.goProjects();
-        },
-        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () {
-          if (_canNavigate(context, ref)) context.goGlossary();
-        },
-        const SingleActivator(LogicalKeyboardKey.digit5, control: true): () {
-          if (_canNavigate(context, ref)) context.goTranslationMemory();
-        },
-        const SingleActivator(LogicalKeyboardKey.digit6, control: true): () {
-          if (_canNavigate(context, ref)) context.goSettings();
-        },
-        const SingleActivator(LogicalKeyboardKey.home, control: true): () {
-          if (_canNavigate(context, ref)) context.goHome();
-        },
-      },
-      child: Focus(
-        autofocus: true,
-        child: FluentScaffold(
-          body: Column(
-            children: [
-              // Breadcrumbs
-              _buildBreadcrumbs(context, ref),
+    return FluentScaffold(
+      body: Column(
+        children: [
+          // Breadcrumbs
+          _buildBreadcrumbs(context, ref),
 
-              // Main content with sidebar
-              Expanded(
-                child: Row(
-                  children: [
-                    NavigationSidebarRouter(
-                      onNavigate: (path) {
-                        if (_canNavigate(context, ref)) {
-                          context.go(path);
-                        }
-                      },
-                    ),
-                    Expanded(child: child),
-                  ],
+          // Main content with sidebar
+          Expanded(
+            child: Row(
+              children: [
+                NavigationSidebarRouter(
+                  onNavigate: (path) {
+                    if (_canNavigate(context, ref)) {
+                      context.go(path);
+                    }
+                  },
                 ),
-              ),
-            ],
+                Expanded(child: child),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

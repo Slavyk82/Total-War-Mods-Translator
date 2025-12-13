@@ -4,7 +4,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../../../models/domain/project.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/game_installation.dart';

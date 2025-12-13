@@ -8,6 +8,7 @@ import 'package:twmt/features/import_export/services/import_export_service.dart'
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/file/i_file_service.dart';
+import 'package:twmt/services/history/i_history_service.dart';
 import 'package:twmt/services/service_locator.dart';
 
 part 'import_provider.g.dart';
@@ -76,6 +77,7 @@ class ImportPreviewData extends _$ImportPreviewData {
       ServiceLocator.get<IFileService>(),
       ServiceLocator.get<TranslationUnitRepository>(),
       ServiceLocator.get<TranslationVersionRepository>(),
+      ServiceLocator.get<IHistoryService>(),
     );
 
     final result = await service.previewImport(filePath, settings);
@@ -107,6 +109,7 @@ class ImportConflictsData extends _$ImportConflictsData {
       ServiceLocator.get<IFileService>(),
       ServiceLocator.get<TranslationUnitRepository>(),
       ServiceLocator.get<TranslationVersionRepository>(),
+      ServiceLocator.get<IHistoryService>(),
     );
 
     final result = await service.detectConflicts(preview, settings);
@@ -188,6 +191,7 @@ class ImportResultData extends _$ImportResultData {
       ServiceLocator.get<IFileService>(),
       ServiceLocator.get<TranslationUnitRepository>(),
       ServiceLocator.get<TranslationVersionRepository>(),
+      ServiceLocator.get<IHistoryService>(),
     );
 
     final result = await service.executeImport(
@@ -227,6 +231,7 @@ Future<ImportValidationResult> importValidation(
     ServiceLocator.get<IFileService>(),
     ServiceLocator.get<TranslationUnitRepository>(),
     ServiceLocator.get<TranslationVersionRepository>(),
+    ServiceLocator.get<IHistoryService>(),
   );
 
   final result = await service.validateImport(preview, settings);

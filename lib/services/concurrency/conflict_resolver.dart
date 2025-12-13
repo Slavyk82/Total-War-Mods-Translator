@@ -17,8 +17,6 @@ import 'utils/levenshtein.dart';
 ///
 /// Uses similarity analysis to determine if conflicts can be auto-resolved.
 class ConflictResolver {
-  // ignore: unused_field
-  final DatabaseService _databaseService;
   final Uuid _uuid;
 
   /// Default similarity threshold for auto-merge (95%)
@@ -28,10 +26,8 @@ class ConflictResolver {
   static const double defaultManualReviewThreshold = 0.80;
 
   ConflictResolver({
-    DatabaseService? databaseService,
     Uuid? uuid,
-  })  : _databaseService = databaseService ?? DatabaseService.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _uuid = uuid ?? const Uuid();
 
   Database get _db => DatabaseService.database;
 

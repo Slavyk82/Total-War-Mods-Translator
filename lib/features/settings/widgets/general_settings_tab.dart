@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
 import 'general/language_preferences_section.dart';
 import 'general/maintenance_section.dart';
+import 'ignored_source_texts_section.dart';
 
 /// General settings tab for configuring languages and maintenance.
 ///
@@ -16,7 +18,7 @@ class GeneralSettingsTab extends ConsumerWidget {
     final settingsAsync = ref.watch(generalSettingsProvider);
 
     return settingsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Text('Error loading settings: $error'),
       ),
@@ -25,6 +27,8 @@ class GeneralSettingsTab extends ConsumerWidget {
           padding: const EdgeInsets.all(24),
           children: [
             const LanguagePreferencesSection(),
+            const SizedBox(height: 32),
+            const IgnoredSourceTextsSection(),
             const SizedBox(height: 32),
             const MaintenanceSection(),
           ],

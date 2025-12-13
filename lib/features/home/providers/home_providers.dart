@@ -1,8 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/repositories/game_installation_repository.dart';
 
 part 'home_providers.g.dart';
 
@@ -28,22 +30,42 @@ class DashboardStats {
   }
 }
 
-/// Provider for dashboard statistics
+/// Provider for dashboard statistics filtered by selected game
 @riverpod
 Future<DashboardStats> dashboardStats(Ref ref) async {
   final projectRepo = ServiceLocator.get<ProjectRepository>();
   final translationVersionRepo =
       ServiceLocator.get<TranslationVersionRepository>();
+  final gameInstallationRepo =
+      ServiceLocator.get<GameInstallationRepository>();
 
-  // Get all projects
-  final projectsResult = await projectRepo.getAll();
-  final projects = projectsResult.isOk ? projectsResult.value : <Project>[];
+  // Get selected game
+  final selectedGame = await ref.watch(selectedGameProvider.future);
+  final gameCode = selectedGame?.code;
+
+  // Get projects filtered by game
+  List<Project> projects = [];
+  if (gameCode != null) {
+    // Find game installation for the selected game code
+    final gameInstallationResult =
+        await gameInstallationRepo.getByGameCode(gameCode);
+    if (gameInstallationResult.isOk) {
+      final gameInstallation = gameInstallationResult.value;
+      final projectsResult =
+          await projectRepo.getByGameInstallation(gameInstallation.id);
+      projects = projectsResult.isOk ? projectsResult.value : [];
+    }
+  } else {
+    // No game selected, get all projects
+    final projectsResult = await projectRepo.getAll();
+    projects = projectsResult.isOk ? projectsResult.value : [];
+  }
 
   final totalProjects = projects.length;
 
-  // Get global statistics from translation_versions table
+  // Get global statistics filtered by game code
   final statsResult =
-      await translationVersionRepo.getGlobalStatistics();
+      await translationVersionRepo.getGlobalStatistics(gameCode: gameCode);
 
   if (statsResult.isOk) {
     final stats = statsResult.value;
@@ -66,17 +88,34 @@ Future<DashboardStats> dashboardStats(Ref ref) async {
   );
 }
 
-/// Provider for recent projects (last 5)
+/// Provider for recent projects (last 5) filtered by selected game
 @riverpod
 Future<List<Project>> recentProjects(Ref ref) async {
   final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final result = await projectRepo.getAll();
+  final gameInstallationRepo =
+      ServiceLocator.get<GameInstallationRepository>();
 
-  if (result.isErr) {
-    return [];
+  // Get selected game
+  final selectedGame = await ref.watch(selectedGameProvider.future);
+  final gameCode = selectedGame?.code;
+
+  List<Project> projects = [];
+  if (gameCode != null) {
+    // Find game installation for the selected game code
+    final gameInstallationResult =
+        await gameInstallationRepo.getByGameCode(gameCode);
+    if (gameInstallationResult.isOk) {
+      final gameInstallation = gameInstallationResult.value;
+      final projectsResult =
+          await projectRepo.getByGameInstallation(gameInstallation.id);
+      projects = projectsResult.isOk ? projectsResult.value : [];
+    }
+  } else {
+    // No game selected, get all projects
+    final result = await projectRepo.getAll();
+    projects = result.isOk ? result.value : [];
   }
 
-  final projects = result.value;
   // Sort by updated_at descending and take first 5
   projects.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   return projects.take(5).toList();

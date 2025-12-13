@@ -12,7 +12,6 @@ class LanguageCard extends StatefulWidget {
   final Language language;
   final int totalUnits;
   final int translatedUnits;
-  final int validatedUnits;
   final VoidCallback? onOpenEditor;
   final VoidCallback? onDelete;
 
@@ -22,7 +21,6 @@ class LanguageCard extends StatefulWidget {
     required this.language,
     required this.totalUnits,
     required this.translatedUnits,
-    this.validatedUnits = 0,
     this.onOpenEditor,
     this.onDelete,
   });

@@ -10,6 +10,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
+import 'package:twmt/widgets/common/fluent_spinner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,7 +73,7 @@ class MyApp extends ConsumerWidget {
       loading: () => MaterialApp(
         home: Scaffold(
           body: Center(
-            child: CircularProgressIndicator(),
+            child: FluentSpinner(),
           ),
         ),
       ),

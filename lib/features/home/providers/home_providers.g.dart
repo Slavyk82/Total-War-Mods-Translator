@@ -8,12 +8,12 @@ part of 'home_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Provider for dashboard statistics
+/// Provider for dashboard statistics filtered by selected game
 
 @ProviderFor(dashboardStats)
 const dashboardStatsProvider = DashboardStatsProvider._();
 
-/// Provider for dashboard statistics
+/// Provider for dashboard statistics filtered by selected game
 
 final class DashboardStatsProvider
     extends
@@ -23,7 +23,7 @@ final class DashboardStatsProvider
           FutureOr<DashboardStats>
         >
     with $FutureModifier<DashboardStats>, $FutureProvider<DashboardStats> {
-  /// Provider for dashboard statistics
+  /// Provider for dashboard statistics filtered by selected game
   const DashboardStatsProvider._()
     : super(
         from: null,
@@ -50,14 +50,14 @@ final class DashboardStatsProvider
   }
 }
 
-String _$dashboardStatsHash() => r'5a210bf95bfd59bf0e79e07cadfad5f9e86cf2bb';
+String _$dashboardStatsHash() => r'90e793aac24194a57a5c1f84cf06ae15413554b4';
 
-/// Provider for recent projects (last 5)
+/// Provider for recent projects (last 5) filtered by selected game
 
 @ProviderFor(recentProjects)
 const recentProjectsProvider = RecentProjectsProvider._();
 
-/// Provider for recent projects (last 5)
+/// Provider for recent projects (last 5) filtered by selected game
 
 final class RecentProjectsProvider
     extends
@@ -67,7 +67,7 @@ final class RecentProjectsProvider
           FutureOr<List<Project>>
         >
     with $FutureModifier<List<Project>>, $FutureProvider<List<Project>> {
-  /// Provider for recent projects (last 5)
+  /// Provider for recent projects (last 5) filtered by selected game
   const RecentProjectsProvider._()
     : super(
         from: null,
@@ -94,4 +94,4 @@ final class RecentProjectsProvider
   }
 }
 
-String _$recentProjectsHash() => r'826f0d463d458290404df6973a547b42226ddf6e';
+String _$recentProjectsHash() => r'a89b4aef613965badc774a710f5e2fd307b44dbc';

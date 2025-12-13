@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +12,6 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/detected_mods_datagrid.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
-import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
@@ -50,127 +47,112 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     final hiddenCountAsync = ref.watch(hiddenModsCountProvider);
     final pendingProjectsCountAsync = ref.watch(projectsWithPendingChangesCountProvider);
 
-    return CallbackShortcuts(
-      bindings: {
-        // Ctrl+F to focus search
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-          // Focus will be handled by the toolbar
-        },
-        // Ctrl+R to refresh
-        const SingleActivator(LogicalKeyboardKey.keyR, control: true): () {
-          _handleRefresh();
-        },
-      },
-      child: Focus(
-        autofocus: true,
-        child: FluentScaffold(
-          body: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Header
-                _buildHeader(theme),
-                const SizedBox(height: 24),
+    return FluentScaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            _buildHeader(theme),
+            const SizedBox(height: 24),
 
-                // Toolbar
-                filteredModsAsync.when(
-                  data: (filteredMods) => ModsToolbar(
-                    searchQuery: searchQuery,
-                    onSearchChanged: (query) {
-                      ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                    },
-                    onRefresh: () => _handleRefresh(),
-                    isRefreshing: isRefreshing,
-                    totalMods: totalModsAsync.value ?? 0,
-                    filteredMods: filteredMods.length,
-                    currentFilter: currentFilter,
-                    onFilterChanged: (filter) {
-                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                    },
-                    notImportedCount: notImportedCountAsync.value ?? 0,
-                    needsUpdateCount: needsUpdateCountAsync.value ?? 0,
-                    showHidden: showHidden,
-                    onShowHiddenChanged: (value) {
-                      ref.read(showHiddenModsProvider.notifier).set(value);
-                    },
-                    hiddenCount: hiddenCountAsync.value ?? 0,
-                    projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
-                    onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
-                  ),
-                  loading: () => ModsToolbar(
-                    searchQuery: searchQuery,
-                    onSearchChanged: (query) {
-                      ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                    },
-                    onRefresh: () => _handleRefresh(),
-                    isRefreshing: true,
-                    totalMods: 0,
-                    filteredMods: 0,
-                    currentFilter: currentFilter,
-                    onFilterChanged: (filter) {
-                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                    },
-                    notImportedCount: 0,
-                    needsUpdateCount: 0,
-                    showHidden: showHidden,
-                    onShowHiddenChanged: (value) {
-                      ref.read(showHiddenModsProvider.notifier).set(value);
-                    },
-                    hiddenCount: 0,
-                    projectsWithPendingChanges: 0,
-                  ),
-                  error: (error, stack) => ModsToolbar(
-                    searchQuery: searchQuery,
-                    onSearchChanged: (query) {
-                      ref.read(modsSearchQueryProvider.notifier).setQuery(query);
-                    },
-                    onRefresh: () => _handleRefresh(),
-                    isRefreshing: false,
-                    totalMods: 0,
-                    filteredMods: 0,
-                    currentFilter: currentFilter,
-                    onFilterChanged: (filter) {
-                      ref.read(modsFilterStateProvider.notifier).setFilter(filter);
-                    },
-                    notImportedCount: 0,
-                    needsUpdateCount: 0,
-                    showHidden: showHidden,
-                    onShowHiddenChanged: (value) {
-                      ref.read(showHiddenModsProvider.notifier).set(value);
-                    },
-                    hiddenCount: 0,
-                    projectsWithPendingChanges: 0,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // DataGrid
-                Expanded(
-                  child: filteredModsAsync.when(
-                    data: (mods) => DetectedModsDataGrid(
-                      mods: mods,
-                      onRowTap: (workshopId) => _openCreateProjectDialog(context, mods, workshopId),
-                      onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
-                      onForceRedownload: (packFilePath) => _handleForceRedownload(context, packFilePath),
-                      isLoading: false,
-                      isScanning: isRefreshing,
-                      showingHidden: showHidden,
-                      scanLogStream: isRefreshing ? ref.watch(scanLogStreamProvider) : null,
-                    ),
-                    loading: () => DetectedModsDataGrid(
-                      mods: const [],
-                      onRowTap: _dummyCallback,
-                      isLoading: true,
-                      showingHidden: showHidden,
-                      scanLogStream: ref.watch(scanLogStreamProvider),
-                    ),
-                    error: (error, stack) => _buildErrorState(theme, error),
-                  ),
-                ),
-              ],
+            // Toolbar
+            filteredModsAsync.when(
+              data: (filteredMods) => ModsToolbar(
+                searchQuery: searchQuery,
+                onSearchChanged: (query) {
+                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
+                },
+                onRefresh: () => _handleRefresh(),
+                isRefreshing: isRefreshing,
+                totalMods: totalModsAsync.value ?? 0,
+                filteredMods: filteredMods.length,
+                currentFilter: currentFilter,
+                onFilterChanged: (filter) {
+                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                },
+                notImportedCount: notImportedCountAsync.value ?? 0,
+                needsUpdateCount: needsUpdateCountAsync.value ?? 0,
+                showHidden: showHidden,
+                onShowHiddenChanged: (value) {
+                  ref.read(showHiddenModsProvider.notifier).set(value);
+                },
+                hiddenCount: hiddenCountAsync.value ?? 0,
+                projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
+                onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
+              ),
+              loading: () => ModsToolbar(
+                searchQuery: searchQuery,
+                onSearchChanged: (query) {
+                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
+                },
+                onRefresh: () => _handleRefresh(),
+                isRefreshing: true,
+                totalMods: 0,
+                filteredMods: 0,
+                currentFilter: currentFilter,
+                onFilterChanged: (filter) {
+                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                },
+                notImportedCount: 0,
+                needsUpdateCount: 0,
+                showHidden: showHidden,
+                onShowHiddenChanged: (value) {
+                  ref.read(showHiddenModsProvider.notifier).set(value);
+                },
+                hiddenCount: 0,
+                projectsWithPendingChanges: 0,
+              ),
+              error: (error, stack) => ModsToolbar(
+                searchQuery: searchQuery,
+                onSearchChanged: (query) {
+                  ref.read(modsSearchQueryProvider.notifier).setQuery(query);
+                },
+                onRefresh: () => _handleRefresh(),
+                isRefreshing: false,
+                totalMods: 0,
+                filteredMods: 0,
+                currentFilter: currentFilter,
+                onFilterChanged: (filter) {
+                  ref.read(modsFilterStateProvider.notifier).setFilter(filter);
+                },
+                notImportedCount: 0,
+                needsUpdateCount: 0,
+                showHidden: showHidden,
+                onShowHiddenChanged: (value) {
+                  ref.read(showHiddenModsProvider.notifier).set(value);
+                },
+                hiddenCount: 0,
+                projectsWithPendingChanges: 0,
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+
+            // DataGrid
+            Expanded(
+              child: filteredModsAsync.when(
+                data: (mods) => DetectedModsDataGrid(
+                  mods: mods,
+                  onRowTap: (workshopId) => _openCreateProjectDialog(context, mods, workshopId),
+                  onToggleHidden: (workshopId, hide) => _handleToggleHidden(workshopId, hide),
+                  onForceRedownload: (packFilePath) => _handleForceRedownload(context, packFilePath),
+                  isLoading: false,
+                  isScanning: isRefreshing,
+                  showingHidden: showHidden,
+                  scanLogStream: isRefreshing ? ref.watch(scanLogStreamProvider) : null,
+                ),
+                loading: () => DetectedModsDataGrid(
+                  mods: const [],
+                  onRowTap: _dummyCallback,
+                  isLoading: true,
+                  showingHidden: showHidden,
+                  scanLogStream: ref.watch(scanLogStreamProvider),
+                ),
+                error: (error, stack) => _buildErrorState(theme, error),
+              ),
+            ),
+          ],
         ),
       ),
     );

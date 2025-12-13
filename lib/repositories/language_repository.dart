@@ -136,9 +136,10 @@ class LanguageRepository extends BaseRepository<Language> {
     });
   }
 
-  /// Get multiple languages by their IDs in a single query.
+  /// Get multiple languages by their IDs.
   ///
   /// Optimized batch retrieval to avoid N+1 query problems.
+  /// Batches queries to stay within SQLite's parameter limit (999 max).
   /// Returns [Ok] with list of found languages (may be less than requested if some IDs don't exist).
   Future<Result<List<Language>, TWMTDatabaseException>> getByIds(
     List<String> ids,
@@ -148,16 +149,26 @@ class LanguageRepository extends BaseRepository<Language> {
         return <Language>[];
       }
 
-      // Build parameterized IN clause
-      final placeholders = List.filled(ids.length, '?').join(', ');
-      final maps = await database.query(
-        tableName,
-        where: 'id IN ($placeholders)',
-        whereArgs: ids,
-        orderBy: 'name ASC',
-      );
+      // SQLite has a limit on number of parameters (default 999)
+      // Process in batches of 500 to stay well under the limit
+      const batchSize = 500;
+      final results = <Language>[];
 
-      return maps.map((map) => fromMap(map)).toList();
+      for (var i = 0; i < ids.length; i += batchSize) {
+        final batch = ids.skip(i).take(batchSize).toList();
+        final placeholders = List.filled(batch.length, '?').join(', ');
+
+        final maps = await database.query(
+          tableName,
+          where: 'id IN ($placeholders)',
+          whereArgs: batch,
+          orderBy: 'name ASC',
+        );
+
+        results.addAll(maps.map((map) => fromMap(map)));
+      }
+
+      return results;
     });
   }
 

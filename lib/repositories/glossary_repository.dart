@@ -419,11 +419,13 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     if (entryIds.isEmpty) return;
 
     final placeholders = entryIds.map((_) => '?').join(',');
+    final now = DateTime.now().millisecondsSinceEpoch;
     await database.rawUpdate('''
       UPDATE $tableName
-      SET usage_count = usage_count + 1
+      SET usage_count = usage_count + 1,
+          updated_at = ?
       WHERE id IN ($placeholders)
-    ''', entryIds);
+    ''', [now, ...entryIds]);
   }
 
   /// Get usage statistics for a glossary

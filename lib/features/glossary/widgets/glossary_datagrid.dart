@@ -7,6 +7,7 @@ import '../providers/glossary_providers.dart';
 import 'glossary_entry_editor.dart';
 import 'glossary_datagrid_cells.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/common/fluent_spinner.dart';
 
 /// DataGrid for displaying and managing glossary entries
 class GlossaryDataGrid extends ConsumerStatefulWidget {
@@ -67,7 +68,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
         );
         return _buildDataGrid(entries);
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

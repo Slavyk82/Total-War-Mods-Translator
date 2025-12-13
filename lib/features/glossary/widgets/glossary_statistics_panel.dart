@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/glossary_providers.dart';
 
 /// Panel displaying glossary statistics
@@ -234,7 +235,7 @@ class GlossaryStatisticsPanel extends ConsumerWidget {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(24.0),
-        child: CircularProgressIndicator(),
+        child: FluentSpinner(),
       ),
     );
   }

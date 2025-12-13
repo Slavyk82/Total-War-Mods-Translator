@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +15,8 @@ import 'package:twmt/services/translation_memory/tm_cache.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
 import 'package:twmt/services/translation_memory/tm_matching_service.dart';
 import 'package:twmt/services/translation_memory/tm_import_export_service.dart';
+import 'package:twmt/services/translation_memory/tm_statistics_service.dart';
+import 'package:twmt/services/translation_memory/tm_search_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of Translation Memory Service
@@ -24,27 +25,28 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Adding translations with deduplication
 /// - Exact and fuzzy match lookup (delegated to TmMatchingService)
 /// - TMX import/export (delegated to TmImportExportService)
+/// - Statistics and maintenance (delegated to TmStatisticsService)
+/// - Search and retrieval (delegated to TmSearchService)
 /// - Usage tracking
-/// - Cache management
 ///
 /// Service responsibilities:
-/// - Coordinate between repository, matching, and import/export services
+/// - Coordinate between repository and delegated services
 /// - Handle CRUD operations for TM entries
 /// - Manage entry validation
-/// - Provide statistics and maintenance operations
 class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   final TranslationMemoryRepository _repository;
   final LanguageRepository _languageRepository;
   final TextNormalizer _normalizer;
-  final TmCache _cache;
   final LoggingService _logger;
 
-  // Cache for language code → ID mapping
+  // Cache for language code -> ID mapping
   final Map<String, String> _languageCodeToId = {};
 
   // Delegated services
   final TmMatchingService _matchingService;
   final TmImportExportService _importExportService;
+  final TmStatisticsService _statisticsService;
+  final TmSearchService _searchService;
 
   TranslationMemoryServiceImpl({
     required TranslationMemoryRepository repository,
@@ -57,7 +59,6 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   })  : _repository = repository,
         _languageRepository = languageRepository,
         _normalizer = normalizer,
-        _cache = cache,
         _logger = logger ?? LoggingService.instance,
         _matchingService = TmMatchingService(
           repository: repository,
@@ -74,6 +75,16 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
                 normalizer: normalizer,
                 logger: logger,
               ),
+          logger: logger ?? LoggingService.instance,
+        ),
+        _statisticsService = TmStatisticsService(
+          repository: repository,
+          languageRepository: languageRepository,
+          cache: cache,
+          logger: logger ?? LoggingService.instance,
+        ),
+        _searchService = TmSearchService(
+          repository: repository,
           logger: logger ?? LoggingService.instance,
         );
 
@@ -111,19 +122,13 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       // Validate input
       if (sourceText.trim().isEmpty) {
         return Err(
-          TmAddException(
-            'Source text cannot be empty',
-            sourceText: sourceText,
-          ),
+          TmAddException('Source text cannot be empty', sourceText: sourceText),
         );
       }
 
       if (targetText.trim().isEmpty) {
         return Err(
-          TmAddException(
-            'Target text cannot be empty',
-            sourceText: sourceText,
-          ),
+          TmAddException('Target text cannot be empty', sourceText: sourceText),
         );
       }
 
@@ -151,69 +156,23 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       );
 
       if (existingResult.isOk) {
-        // Entry exists, update usage count
-        final existing = existingResult.value;
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-        final updatedEntry = TranslationMemoryEntry(
-          id: existing.id,
-          sourceText: sourceText,
-          translatedText: targetText,
-          sourceLanguageId: existing.sourceLanguageId,
-          targetLanguageId: targetLanguageId,
-          sourceHash: sourceHash,
-          usageCount: existing.usageCount + 1,
-          createdAt: existing.createdAt,
-          lastUsedAt: now,
-          updatedAt: now,
+        return _updateExistingEntry(
+          existingResult.value,
+          sourceText,
+          targetText,
+          targetLanguageId,
+          sourceHash,
         );
-
-        final updateResult = await _repository.update(updatedEntry);
-
-        if (updateResult.isErr) {
-          return Err(
-            TmAddException(
-              'Failed to update existing entry: ${updateResult.error}',
-              sourceText: sourceText,
-            ),
-          );
-        }
-
-        _logger.debug(
-          'Updated existing TM entry',
-          {'entryId': existing.id},
-        );
-
-        return Ok(updateResult.value);
       }
 
-      // Create new entry with UUID for unique identification
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final entry = TranslationMemoryEntry(
-        id: const Uuid().v4(),
-        sourceText: sourceText,
-        translatedText: targetText,
-        sourceLanguageId: sourceLanguageId,
-        targetLanguageId: targetLanguageId,
-        sourceHash: sourceHash,
-        usageCount: 0,
-        createdAt: now,
-        lastUsedAt: now,
-        updatedAt: now,
+      // Create new entry
+      return _createNewEntry(
+        sourceText,
+        targetText,
+        sourceLanguageId,
+        targetLanguageId,
+        sourceHash,
       );
-
-      final result = await _repository.insert(entry);
-
-      if (result.isErr) {
-        return Err(
-          TmAddException(
-            'Failed to create entry: ${result.error}',
-            sourceText: sourceText,
-          ),
-        );
-      }
-
-      return Ok(result.value);
     } catch (e, stackTrace) {
       return Err(
         TmAddException(
@@ -224,6 +183,78 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         ),
       );
     }
+  }
+
+  Future<Result<TranslationMemoryEntry, TmAddException>> _updateExistingEntry(
+    TranslationMemoryEntry existing,
+    String sourceText,
+    String targetText,
+    String targetLanguageId,
+    String sourceHash,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    final updatedEntry = TranslationMemoryEntry(
+      id: existing.id,
+      sourceText: sourceText,
+      translatedText: targetText,
+      sourceLanguageId: existing.sourceLanguageId,
+      targetLanguageId: targetLanguageId,
+      sourceHash: sourceHash,
+      usageCount: existing.usageCount + 1,
+      createdAt: existing.createdAt,
+      lastUsedAt: now,
+      updatedAt: now,
+    );
+
+    final updateResult = await _repository.update(updatedEntry);
+
+    if (updateResult.isErr) {
+      return Err(
+        TmAddException(
+          'Failed to update existing entry: ${updateResult.error}',
+          sourceText: sourceText,
+        ),
+      );
+    }
+
+    _logger.debug('Updated existing TM entry', {'entryId': existing.id});
+    return Ok(updateResult.value);
+  }
+
+  Future<Result<TranslationMemoryEntry, TmAddException>> _createNewEntry(
+    String sourceText,
+    String targetText,
+    String sourceLanguageId,
+    String targetLanguageId,
+    String sourceHash,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final entry = TranslationMemoryEntry(
+      id: const Uuid().v4(),
+      sourceText: sourceText,
+      translatedText: targetText,
+      sourceLanguageId: sourceLanguageId,
+      targetLanguageId: targetLanguageId,
+      sourceHash: sourceHash,
+      usageCount: 0,
+      createdAt: now,
+      lastUsedAt: now,
+      updatedAt: now,
+    );
+
+    final result = await _repository.insert(entry);
+
+    if (result.isErr) {
+      return Err(
+        TmAddException(
+          'Failed to create entry: ${result.error}',
+          sourceText: sourceText,
+        ),
+      );
+    }
+
+    return Ok(result.value);
   }
 
   @override
@@ -251,32 +282,11 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       }
 
       // Build list of TM entries
-      final entries = <TranslationMemoryEntry>[];
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-      for (final t in translations) {
-        // Skip empty translations
-        if (t.sourceText.trim().isEmpty || t.targetText.trim().isEmpty) {
-          continue;
-        }
-
-        // Calculate source hash using SHA256 for collision resistance
-        final normalized = _normalizer.normalize(t.sourceText);
-        final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
-
-        entries.add(TranslationMemoryEntry(
-          id: const Uuid().v4(), // Unique UUID for each entry
-          sourceText: t.sourceText,
-          translatedText: t.targetText,
-          sourceLanguageId: sourceLanguageId,
-          targetLanguageId: targetLanguageId,
-          sourceHash: sourceHash,
-          usageCount: 0,
-          createdAt: now,
-          lastUsedAt: now,
-          updatedAt: now,
-        ));
-      }
+      final entries = _buildBatchEntries(
+        translations,
+        sourceLanguageId,
+        targetLanguageId,
+      );
 
       if (entries.isEmpty) {
         return const Ok(0);
@@ -312,11 +322,44 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     }
   }
 
+  List<TranslationMemoryEntry> _buildBatchEntries(
+    List<({String sourceText, String targetText})> translations,
+    String sourceLanguageId,
+    String targetLanguageId,
+  ) {
+    final entries = <TranslationMemoryEntry>[];
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    for (final t in translations) {
+      // Skip empty translations
+      if (t.sourceText.trim().isEmpty || t.targetText.trim().isEmpty) {
+        continue;
+      }
+
+      // Calculate source hash using SHA256 for collision resistance
+      final normalized = _normalizer.normalize(t.sourceText);
+      final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
+
+      entries.add(TranslationMemoryEntry(
+        id: const Uuid().v4(),
+        sourceText: t.sourceText,
+        translatedText: t.targetText,
+        sourceLanguageId: sourceLanguageId,
+        targetLanguageId: targetLanguageId,
+        sourceHash: sourceHash,
+        usageCount: 0,
+        createdAt: now,
+        lastUsedAt: now,
+        updatedAt: now,
+      ));
+    }
+
+    return entries;
+  }
+
   @override
   Future<Result<TranslationMemoryEntry, TmServiceException>>
-      incrementUsageCount({
-    required String entryId,
-  }) async {
+      incrementUsageCount({required String entryId}) async {
     try {
       _logger.debug('incrementUsageCount called', {'entryId': entryId});
 
@@ -352,7 +395,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       final updateResult = await _repository.update(updatedEntry);
 
       if (updateResult.isErr) {
-        _logger.error('incrementUsageCount failed', {'entryId': entryId, 'error': updateResult.error});
+        _logger.error('incrementUsageCount failed', {
+          'entryId': entryId,
+          'error': updateResult.error,
+        });
         return Err(
           TmServiceException(
             'Failed to update usage count: ${updateResult.error}',
@@ -406,170 +452,27 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     }
   }
 
+  // ========== SEARCH OPERATIONS (Delegated) ==========
+
   @override
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>> getEntries({
     String? targetLanguageCode,
     int limit = AppConstants.defaultTmPageSize,
     int offset = 0,
     String orderBy = 'usage_count DESC',
-  }) async {
-    try {
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = targetLanguageCode != null
-          ? 'lang_$targetLanguageCode'
-          : null;
-
-      final result = await _repository.getWithFilters(
-        targetLanguageId: targetLanguageId,
-        limit: limit,
-        offset: offset,
-        orderBy: orderBy,
-      );
-
-      if (result.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to get entries: ${result.error}',
-            error: result.error,
-          ),
-        );
-      }
-
-      return Ok(result.value);
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error getting entries: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
+  }) => _searchService.getEntries(
+        targetLanguageCode: targetLanguageCode, limit: limit,
+        offset: offset, orderBy: orderBy);
 
   @override
-  Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
-      searchEntries({
+  Future<Result<List<TranslationMemoryEntry>, TmServiceException>> searchEntries({
     required String searchText,
     TmSearchScope searchIn = TmSearchScope.both,
     String? targetLanguageCode,
     int limit = AppConstants.defaultTmPageSize,
-  }) async {
-    try {
-      // Validate input
-      if (searchText.trim().isEmpty) {
-        return const Ok([]);
-      }
-
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = targetLanguageCode != null
-          ? 'lang_$targetLanguageCode'
-          : null;
-
-      // Convert TmSearchScope enum to string for repository
-      final searchScope = switch (searchIn) {
-        TmSearchScope.source => 'source',
-        TmSearchScope.target => 'target',
-        TmSearchScope.both => 'both',
-      };
-
-      // Try FTS5 search first (O(log n) performance)
-      final ftsResult = await _repository.searchFts5(
-        searchText: searchText,
-        searchScope: searchScope,
-        targetLanguageId: targetLanguageId,
-        limit: limit,
-      );
-
-      if (ftsResult.isOk) {
-        _logger.debug(
-          'FTS5 search completed',
-          {
-            'query': searchText,
-            'scope': searchScope,
-            'resultsCount': ftsResult.value.length,
-          },
-        );
-        return Ok(ftsResult.value);
-      }
-
-      // FTS5 failed, fall back to in-memory search
-      _logger.warning(
-        'FTS5 search failed, falling back to in-memory search',
-        {'error': ftsResult.error.toString()},
-      );
-
-      return _searchEntriesInMemory(
-        searchText: searchText,
-        searchIn: searchIn,
-        targetLanguageId: targetLanguageId,
-        limit: limit,
-      );
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error searching entries: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
-
-  /// Fallback in-memory search when FTS5 is unavailable or fails.
-  ///
-  /// This method loads all entries and filters in-memory.
-  /// Performance: O(n) where n = total TM entries.
-  /// Use only as fallback when FTS5 search fails.
-  Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
-      _searchEntriesInMemory({
-    required String searchText,
-    required TmSearchScope searchIn,
-    String? targetLanguageId,
-    required int limit,
-  }) async {
-    try {
-      final allResult = await _repository.getAll();
-
-      if (allResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to search entries: ${allResult.error}',
-            error: allResult.error,
-          ),
-        );
-      }
-
-      final searchLower = searchText.toLowerCase();
-      final filtered = allResult.value.where((entry) {
-        // Apply language filter if specified
-        if (targetLanguageId != null &&
-            entry.targetLanguageId != targetLanguageId) {
-          return false;
-        }
-
-        final matchSource = searchIn == TmSearchScope.source ||
-            searchIn == TmSearchScope.both;
-        final matchTarget = searchIn == TmSearchScope.target ||
-            searchIn == TmSearchScope.both;
-
-        return (matchSource &&
-                entry.sourceText.toLowerCase().contains(searchLower)) ||
-            (matchTarget &&
-                entry.translatedText.toLowerCase().contains(searchLower));
-      }).take(limit).toList();
-
-      return Ok(filtered);
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error in fallback search: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
+  }) => _searchService.searchEntries(
+        searchText: searchText, searchIn: searchIn,
+        targetLanguageCode: targetLanguageCode, limit: limit);
 
   // ========== MATCHING OPERATIONS (Delegated) ==========
 
@@ -663,191 +566,28 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         targetLanguageCode: targetLanguageCode,
       );
 
-  // ========== STATISTICS AND MAINTENANCE ==========
+  // ========== STATISTICS AND MAINTENANCE (Delegated) ==========
 
   @override
   Future<Result<int, TmServiceException>> cleanupUnusedEntries({
     int unusedDays = AppConstants.unusedTmCleanupDays,
-  }) async {
-    try {
-      if (unusedDays < 0) {
-        return Err(
-          TmServiceException(
-            'unusedDays must be non-negative',
-          ),
-        );
-      }
-
-      // Calculate cutoff for debugging
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
-      final cutoffDate = DateTime.fromMillisecondsSinceEpoch(cutoffTimestamp * 1000);
-
-      _logger.info(
-        'Starting TM cleanup',
-        {
-          'unusedDays': unusedDays,
-          'cutoffDate': cutoffDate.toIso8601String(),
-          'cutoffTimestamp': cutoffTimestamp,
-        },
-      );
-
-      // First, count candidates for diagnostic purposes
-      final countResult = await _repository.countCleanupCandidates(
-        unusedDays: unusedDays,
-      );
-
-      if (countResult.isOk) {
-        final counts = countResult.value;
-        _logger.info(
-          'TM cleanup candidates analysis',
-          {
-            'willBeDeleted': counts['willBeDeleted'],
-            'unusedOnly': counts['unusedOnly'],
-          },
-        );
-      }
-
-      // Delete unused entries
-      final deleteResult = await _repository.deleteByAge(
-        unusedDays: unusedDays,
-      );
-
-      if (deleteResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to delete entries: ${deleteResult.error}',
-            error: deleteResult.error,
-          ),
-        );
-      }
-
-      final deletedCount = deleteResult.value;
-
-      _logger.info(
-        'TM cleanup completed',
-        {'deletedEntries': deletedCount},
-      );
-
-      // Clear cache after cleanup to ensure fresh data
-      if (deletedCount > 0) {
-        await clearCache();
-      }
-
-      return Ok(deletedCount);
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error during cleanup: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
+  }) =>
+      _statisticsService.cleanupUnusedEntries(unusedDays: unusedDays);
 
   @override
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
     String? targetLanguageCode,
-  }) async {
-    try {
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = targetLanguageCode != null
-          ? 'lang_$targetLanguageCode'
-          : null;
-
-      // Get basic statistics
-      final statsResult = await _repository.getStatistics(
-        targetLanguageId: targetLanguageId,
-      );
-
-      if (statsResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to get statistics: ${statsResult.error}',
-            error: statsResult.error,
-          ),
-        );
-      }
-
-      final statsData = statsResult.value;
-      final totalEntries = statsData['total_entries'] as int;
-      final totalUsage = statsData['total_usage'] as int;
-
-      // Get entries by language
-      final languagePairResult = await _repository.getEntriesByLanguage();
-
-      if (languagePairResult.isErr) {
-        return Err(
-          TmServiceException(
-            'Failed to get language pair statistics: ${languagePairResult.error}',
-            error: languagePairResult.error,
-          ),
-        );
-      }
-
-      // Resolve language IDs to display names
-      final languageIds = languagePairResult.value.keys.toList();
-      final languagesResult = await _languageRepository.getByIds(languageIds);
-
-      // Build a map of ID -> display name
-      final idToDisplayName = <String, String>{};
-      if (languagesResult.isOk) {
-        for (final lang in languagesResult.value) {
-          idToDisplayName[lang.id] = lang.name;
-        }
-      }
-
-      // Convert UUIDs to display names in the result
-      final entriesByLanguagePair = <String, int>{};
-      for (final entry in languagePairResult.value.entries) {
-        final displayName = idToDisplayName[entry.key] ?? entry.key;
-        entriesByLanguagePair[displayName] = entry.value;
-      }
-
-      // Calculate estimated token reuse
-      // Assumption: Average entry saves ~50 tokens per reuse
-      const avgTokensPerEntry = 50;
-      final tokensSaved = totalUsage * avgTokensPerEntry;
-
-      // Calculate reuse rate
-      // Note: This is a simplified calculation
-      // In production, you'd compare TM hits vs total translation requests
-      final reuseRate = totalEntries > 0 ? totalUsage / totalEntries : 0.0;
-
-      final stats = TmStatistics(
-        totalEntries: totalEntries,
-        entriesByLanguagePair: entriesByLanguagePair,
-        totalReuseCount: totalUsage,
-        tokensSaved: tokensSaved,
-        averageFuzzyScore: 0.0, // Would require separate tracking
-        reuseRate: reuseRate.clamp(0.0, 1.0),
-      );
-
-      return Ok(stats);
-    } catch (e, stackTrace) {
-      return Err(
-        TmServiceException(
-          'Unexpected error getting statistics: ${e.toString()}',
-          error: e,
-          stackTrace: stackTrace,
-        ),
-      );
-    }
-  }
+  }) =>
+      _statisticsService.getStatistics(targetLanguageCode: targetLanguageCode);
 
   @override
   Future<void> clearCache() async {
-    _cache.clear();
+    _statisticsService.clearCache();
   }
 
   @override
   Future<Result<void, TmServiceException>> rebuildCache({
     int maxEntries = AppConstants.maxTmCacheEntries,
-  }) async {
-    // TODO: Implement when repository supports getMostUsedEntries query
-    // For now, just clear the cache
-    _cache.clear();
-    return Ok(null);
-  }
+  }) =>
+      _statisticsService.rebuildCache(maxEntries: maxEntries);
 }

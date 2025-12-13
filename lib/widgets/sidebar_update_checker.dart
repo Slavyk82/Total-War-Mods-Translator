@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../features/settings/providers/update_providers.dart';
 import '../providers/app_version_provider.dart';
+import '../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
+import '../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Update checker widget for the navigation sidebar footer.
 ///
@@ -99,13 +101,10 @@ class _CheckUpdateButton extends ConsumerWidget {
     String label;
 
     if (updateState.isChecking) {
-      icon = SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: theme.colorScheme.onPrimary,
-        ),
+      icon = FluentSpinner(
+        size: 14,
+        strokeWidth: 2,
+        color: theme.colorScheme.onPrimary,
       );
       label = 'Checking...';
     } else if (isUpToDate) {
@@ -234,13 +233,10 @@ class _DownloadProgress extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: downloadState.progress,
-                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                  minHeight: 4,
-                ),
+              child: FluentProgressBar(
+                value: downloadState.progress,
+                height: 4,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               ),
             ),
             const SizedBox(width: 8),

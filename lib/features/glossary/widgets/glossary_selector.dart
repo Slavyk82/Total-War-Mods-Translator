@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import '../providers/glossary_providers.dart';
+import '../../../widgets/common/fluent_spinner.dart';
 
 /// Dropdown widget for selecting a glossary
 class GlossarySelector extends ConsumerWidget {
@@ -256,11 +257,7 @@ class GlossarySelector extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          const FluentSpinner(size: 20, strokeWidth: 2),
           const SizedBox(width: 12),
           Text(
             'Loading glossaries...',

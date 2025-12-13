@@ -181,8 +181,10 @@ class TmImportExportService {
     // Note: sourceLanguageCode filter is no longer applicable as source language is not stored
 
     if (targetLanguageCode != null) {
+      // Convert language code to ID format (e.g., 'FR' -> 'lang_fr')
+      final targetLanguageId = 'lang_${targetLanguageCode.toLowerCase()}';
       filtered = filtered
-          .where((e) => e.targetLanguageId == targetLanguageCode)
+          .where((e) => e.targetLanguageId == targetLanguageId)
           .toList();
     }
 

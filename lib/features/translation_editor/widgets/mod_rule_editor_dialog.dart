@@ -105,7 +105,6 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
-        const Spacer(),
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
