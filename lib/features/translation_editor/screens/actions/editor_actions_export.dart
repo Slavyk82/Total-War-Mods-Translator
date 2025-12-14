@@ -27,7 +27,7 @@ mixin EditorActionsExport on EditorActionsBase {
       final language = langResult.unwrap();
       final languageCodes = [language.code];
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Navigate to export progress screen
       Navigator.of(context).push(
@@ -53,9 +53,8 @@ mixin EditorActionsExport on EditorActionsBase {
         e,
         stackTrace,
       );
-      if (mounted) {
-        EditorDialogs.showErrorDialog(context, 'Pack generation failed', e.toString());
-      }
+      if (!context.mounted) return;
+      EditorDialogs.showErrorDialog(context, 'Pack generation failed', e.toString());
     }
   }
 }

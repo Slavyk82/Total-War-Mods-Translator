@@ -90,15 +90,11 @@ class IgnoredSourceTextService {
   ///
   /// Returns empty string if no texts are configured.
   String getSqlCondition() {
-    if (_cachedSqlCondition == null) {
-      // Build from defaults if cache not loaded
-      _cachedSqlCondition = _buildSqlCondition(
-        IgnoredSourceTextRepository.defaultTexts
-            .map((t) => t.toLowerCase())
-            .toSet(),
-      );
-    }
-    return _cachedSqlCondition!;
+    return _cachedSqlCondition ??= _buildSqlCondition(
+      IgnoredSourceTextRepository.defaultTexts
+          .map((t) => t.toLowerCase())
+          .toSet(),
+    );
   }
 
   /// Build SQL IN clause for the given texts.

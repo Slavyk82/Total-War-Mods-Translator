@@ -236,7 +236,7 @@ final class GlossaryEntriesProvider
   }
 }
 
-String _$glossaryEntriesHash() => r'3c7ef77ff87bccfd5451b23edc12be9031f88201';
+String _$glossaryEntriesHash() => r'b866686079edb6ae5f13339b8b0aeb0432373495';
 
 /// Glossary entries with filtering and pagination
 
@@ -514,7 +514,7 @@ final class GlossaryEntryEditorProvider
 }
 
 String _$glossaryEntryEditorHash() =>
-    r'8a8c76b74c9856d133304be47583e1199d603ae7';
+    r'ba5adab925ed76c9d912d0955367eabd9d19ba5e';
 
 /// Entry editor state (for add/edit)
 

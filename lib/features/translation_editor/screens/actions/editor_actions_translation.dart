@@ -22,14 +22,14 @@ mixin EditorActionsTranslation on EditorActionsBase {
       );
 
       if (unitIds.isEmpty) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         EditorDialogs.showNoUntranslatedDialog(context);
         return;
       }
 
       if (!await _checkProviderConfigured()) return;
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
         title: 'Translate All',
@@ -39,7 +39,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
       if (!confirmed) return;
       await createAndStartBatch(unitIds);
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       EditorDialogs.showErrorDialog(
         context,
         'Failed to start translation',
@@ -66,14 +66,14 @@ mixin EditorActionsTranslation on EditorActionsBase {
       );
 
       if (untranslatedIds.isEmpty) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         EditorDialogs.showAllTranslatedDialog(context);
         return;
       }
 
       if (!await _checkProviderConfigured()) return;
 
-      if (!mounted) return;
+      if (!context.mounted) return;
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
         title: 'Translate Selected',
@@ -84,7 +84,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
       if (!confirmed) return;
       await createAndStartBatch(untranslatedIds);
     } catch (e) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       EditorDialogs.showErrorDialog(
         context,
         'Failed to start translation',
@@ -94,55 +94,61 @@ mixin EditorActionsTranslation on EditorActionsBase {
   }
 
   Future<void> handleForceRetranslateSelected() async {
-    print('[DEBUG] handleForceRetranslateSelected called');
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('handleForceRetranslateSelected called');
     final selectionState = ref.read(editorSelectionProvider);
-    print('[DEBUG] selectionState.hasSelection: ${selectionState.hasSelection}');
-    print('[DEBUG] selectionState.selectedUnitIds.length: ${selectionState.selectedUnitIds.length}');
+    logging.debug('Force retranslate selection state', {
+      'hasSelection': selectionState.hasSelection,
+      'selectedCount': selectionState.selectedUnitIds.length,
+    });
 
     if (!selectionState.hasSelection) {
-      print('[DEBUG] No selection - showing dialog');
+      logging.debug('No selection - showing dialog');
       EditorDialogs.showNoSelectionDialog(context);
       return;
     }
 
     try {
       final selectedIds = selectionState.selectedUnitIds.toList();
-      print('[DEBUG] selectedIds count: ${selectedIds.length}');
+      logging.debug('Force retranslate selected IDs', {
+        'count': selectedIds.length,
+      });
       if (selectedIds.isEmpty) {
-        print('[DEBUG] selectedIds is empty - returning');
+        logging.debug('selectedIds is empty - returning');
         return;
       }
 
-      print('[DEBUG] Checking provider configured...');
+      logging.debug('Checking provider configured...');
       if (!await _checkProviderConfigured()) {
-        print('[DEBUG] Provider not configured - returning');
+        logging.debug('Provider not configured - returning');
         return;
       }
 
-      if (!mounted) {
-        print('[DEBUG] Not mounted - returning');
+      if (!context.mounted) {
+        logging.debug('Not mounted - returning');
         return;
       }
-      print('[DEBUG] Showing confirmation dialog...');
+      logging.debug('Showing confirmation dialog...');
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
         title: 'Force Retranslate',
         message: 'Retranslate ${selectedIds.length} unit(s)?\n\n'
             'Warning: This will overwrite existing translations.',
       );
-      print('[DEBUG] Confirmation result: $confirmed');
+      logging.debug('Confirmation result', {'confirmed': confirmed});
 
       if (!confirmed) {
-        print('[DEBUG] Not confirmed - returning');
+        logging.debug('Not confirmed - returning');
         return;
       }
-      print('[DEBUG] Creating and starting batch with ${selectedIds.length} units');
+      logging.debug('Creating and starting batch', {
+        'unitCount': selectedIds.length,
+      });
       await createAndStartBatch(selectedIds);
-      print('[DEBUG] createAndStartBatch completed');
+      logging.debug('createAndStartBatch completed');
     } catch (e, stackTrace) {
-      print('[DEBUG] Error in handleForceRetranslateSelected: $e');
-      print('[DEBUG] Stack trace: $stackTrace');
-      if (!mounted) return;
+      logging.error('Error in handleForceRetranslateSelected', e, stackTrace);
+      if (!context.mounted) return;
       EditorDialogs.showErrorDialog(
         context,
         'Failed to start translation',
@@ -158,7 +164,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
     );
 
     if (!hasProvider) {
-      if (!mounted) return false;
+      if (!context.mounted) return false;
       showProviderSetupDialog();
       return false;
     }
@@ -183,7 +189,7 @@ mixin EditorActionsBatch on EditorActionsBase {
   }
 
   Future<void> createAndStartBatchImpl(List<String> unitIds) async {
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     try {
       final orchestrator = ref.read(translationOrchestratorProvider);
@@ -191,6 +197,8 @@ mixin EditorActionsBatch on EditorActionsBase {
       // Get project name for display
       final projectDetails = await ref.read(projectDetailsProvider(projectId).future);
       final projectName = projectDetails.project.name;
+
+      if (!context.mounted) return;
 
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -208,13 +216,12 @@ mixin EditorActionsBatch on EditorActionsBase {
         e,
         stackTrace,
       );
-      if (mounted) {
-        EditorDialogs.showErrorDialog(
-          context,
-          'Failed to start translation',
-          e.toString(),
-        );
-      }
+      if (!context.mounted) return;
+      EditorDialogs.showErrorDialog(
+        context,
+        'Failed to start translation',
+        e.toString(),
+      );
     }
   }
 

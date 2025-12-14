@@ -3,6 +3,7 @@ import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/glossary_entry.dart';
 import '../services/glossary/models/glossary.dart';
+import '../services/shared/logging_service.dart';
 import 'base_repository.dart';
 
 /// Repository for managing Glossary and GlossaryEntry entities.
@@ -283,10 +284,11 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     required String glossaryId,
     String? targetLanguageCode,
   }) async {
-    print('[GlossaryRepository.getEntriesByGlossary] Fetching entries:');
-    print('  glossaryId: $glossaryId');
-    print('  targetLanguageCode: $targetLanguageCode');
-    
+    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Fetching entries:', {
+      'glossaryId': glossaryId,
+      'targetLanguageCode': targetLanguageCode,
+    });
+
     final conditions = ['glossary_id = ?'];
     final args = <dynamic>[glossaryId];
 
@@ -295,8 +297,10 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       args.add(targetLanguageCode);
     }
 
-    print('[GlossaryRepository.getEntriesByGlossary] Query: WHERE ${conditions.join(' AND ')}');
-    print('[GlossaryRepository.getEntriesByGlossary] Args: $args');
+    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Query details', {
+      'where': conditions.join(' AND '),
+      'args': args,
+    });
 
     final maps = await database.query(
       tableName,
@@ -304,33 +308,34 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       whereArgs: args,
       orderBy: 'source_term ASC',
     );
-    
-    print('[GlossaryRepository.getEntriesByGlossary] Found ${maps.length} entries');
+
+    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Found ${maps.length} entries');
     if (maps.isNotEmpty) {
-      print('[GlossaryRepository.getEntriesByGlossary] First entry: ${maps.first}');
+      LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] First entry', maps.first);
     }
-    
+
     return maps.map((map) => fromMap(map)).toList();
   }
 
   /// Insert entry
   Future<void> insertEntry(GlossaryEntry entry) async {
-    print('[GlossaryRepository.insertEntry] Inserting entry: ${entry.id}');
-    print('  glossaryId: ${entry.glossaryId}');
-    print('  sourceTerm: "${entry.sourceTerm}"');
-    print('  targetTerm: "${entry.targetTerm}"');
-    print('  Entry map: ${toMap(entry)}');
-    
+    LoggingService.instance.debug('[GlossaryRepository.insertEntry] Inserting entry', {
+      'id': entry.id,
+      'glossaryId': entry.glossaryId,
+      'sourceTerm': entry.sourceTerm,
+      'targetTerm': entry.targetTerm,
+      'entryMap': toMap(entry),
+    });
+
     try {
       final result = await database.insert(
         tableName,
         toMap(entry),
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
-      print('[GlossaryRepository.insertEntry] Insert successful, rowId: $result');
+      LoggingService.instance.debug('[GlossaryRepository.insertEntry] Insert successful', {'rowId': result});
     } catch (e, stackTrace) {
-      print('[GlossaryRepository.insertEntry] ERROR inserting entry: $e');
-      print('[GlossaryRepository.insertEntry] Stack trace: $stackTrace');
+      LoggingService.instance.error('[GlossaryRepository.insertEntry] ERROR inserting entry', e, stackTrace);
       rethrow;
     }
   }

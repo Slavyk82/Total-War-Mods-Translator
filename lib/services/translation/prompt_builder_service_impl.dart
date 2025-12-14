@@ -327,7 +327,7 @@ QUALITY EXPECTATIONS:
       }
       if (matchedEntryIds.isNotEmpty) {
         try {
-          await _glossaryRepository!.incrementUsageCount(matchedEntryIds);
+          await _glossaryRepository.incrementUsageCount(matchedEntryIds);
         } catch (e) {
           // Non-critical: stats update failure shouldn't block translation
         }

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/tm_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Dialog for cleaning up low-quality TM entries
 class TmCleanupDialog extends ConsumerStatefulWidget {

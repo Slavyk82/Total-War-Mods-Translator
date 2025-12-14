@@ -52,7 +52,7 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.7),
+                          .withValues(alpha: 0.7),
                     ),
               ),
               const SizedBox(height: 20),
@@ -134,10 +134,10 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -154,7 +154,7 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
               'Custom languages can be deleted later. System languages (English, French, etc.) cannot be modified.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                   ),
             ),
           ),

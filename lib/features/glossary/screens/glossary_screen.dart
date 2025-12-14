@@ -230,22 +230,20 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         final service = ServiceLocator.get<IGlossaryService>();
         await service.deleteGlossary(glossary.id);
 
-        if (mounted) {
-          final selected = ref.read(selectedGlossaryProvider);
-          if (selected?.id == glossary.id) {
-            ref.read(selectedGlossaryProvider.notifier).clear();
-          }
-          ref.invalidate(glossariesProvider);
+        if (!mounted) return;
+        final selected = ref.read(selectedGlossaryProvider);
+        if (selected?.id == glossary.id) {
+          ref.read(selectedGlossaryProvider.notifier).clear();
+        }
+        ref.invalidate(glossariesProvider);
 
-          FluentToast.success(
-            context,
-            'Glossary "${glossary.name}" deleted successfully',
-          );
-        }
+        FluentToast.success(
+          context,
+          'Glossary "${glossary.name}" deleted successfully',
+        );
       } catch (e) {
-        if (mounted) {
-          FluentToast.error(context, 'Error deleting glossary: $e');
-        }
+        if (!mounted) return;
+        FluentToast.error(context, 'Error deleting glossary: $e');
       }
     }
   }

@@ -255,8 +255,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
 
   void _handleCellEditError(Object e, StackTrace stackTrace, String title) {
     ref.read(loggingServiceProvider).error(title, e, stackTrace);
-    if (mounted) {
-      EditorDialogs.showErrorDialog(context, title, e.toString());
-    }
+    if (!context.mounted) return;
+    EditorDialogs.showErrorDialog(context, title, e.toString());
   }
 }

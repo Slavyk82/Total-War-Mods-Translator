@@ -324,7 +324,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
         height: 20,
         child: LinearProgressIndicator(),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -487,7 +487,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 

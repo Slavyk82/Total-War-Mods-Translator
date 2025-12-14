@@ -4,6 +4,8 @@ import 'package:twmt/models/domain/glossary_entry.dart';
 import '../providers/glossary_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
 
 /// Dialog for adding or editing a glossary entry
 class GlossaryEntryEditorDialog extends ConsumerStatefulWidget {
@@ -156,15 +158,16 @@ class _GlossaryEntryEditorDialogState
   }
 
   Future<void> _saveEntry() async {
-    print('[GlossaryEntryEditor._saveEntry] Starting save operation');
-    
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('[GlossaryEntryEditor._saveEntry] Starting save operation');
+
     if (!_formKey.currentState!.validate()) {
-      print('[GlossaryEntryEditor._saveEntry] Form validation failed');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Form validation failed');
       return;
     }
 
     if (!mounted) {
-      print('[GlossaryEntryEditor._saveEntry] Widget not mounted, aborting');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Widget not mounted, aborting');
       return;
     }
 
@@ -174,22 +177,23 @@ class _GlossaryEntryEditorDialogState
 
     try {
       // Get target language code from entry, widget prop, or default
-      final targetLanguageCode = widget.entry?.targetLanguageCode 
-          ?? widget.targetLanguageCode 
+      final targetLanguageCode = widget.entry?.targetLanguageCode
+          ?? widget.targetLanguageCode
           ?? 'fr';
 
-      final notes = _notesController.text.trim().isNotEmpty 
-          ? _notesController.text.trim() 
+      final notes = _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
           : null;
 
-      print('[GlossaryEntryEditor._saveEntry] Calling provider.save with:');
-      print('  glossaryId: ${widget.glossaryId}');
-      print('  targetLanguageCode: $targetLanguageCode');
-      print('  sourceTerm: "${_sourceTermController.text.trim()}"');
-      print('  targetTerm: "${_targetTermController.text.trim()}"');
-      print('  caseSensitive: $_caseSensitive');
-      print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
-      
+      logging.debug('[GlossaryEntryEditor._saveEntry] Calling provider.save', {
+        'glossaryId': widget.glossaryId,
+        'targetLanguageCode': targetLanguageCode,
+        'sourceTerm': _sourceTermController.text.trim(),
+        'targetTerm': _targetTermController.text.trim(),
+        'caseSensitive': _caseSensitive,
+        'notes': notes,
+      });
+
       await ref.read(glossaryEntryEditorProvider.notifier).save(
             glossaryId: widget.glossaryId,
             targetLanguageCode: targetLanguageCode,
@@ -199,20 +203,19 @@ class _GlossaryEntryEditorDialogState
             notes: notes,
           );
 
-      print('[GlossaryEntryEditor._saveEntry] Provider.save completed successfully');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Provider.save completed successfully');
 
       if (!mounted) {
-        print('[GlossaryEntryEditor._saveEntry] Widget not mounted after save, returning');
+        logging.debug('[GlossaryEntryEditor._saveEntry] Widget not mounted after save, returning');
         return;
       }
 
       // Refresh entries and statistics
-      print('[GlossaryEntryEditor._saveEntry] Invalidating providers...');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Invalidating providers...');
       ref.invalidate(glossaryEntriesProvider);
       ref.invalidate(glossaryStatisticsProvider);
-      print('[GlossaryEntryEditor._saveEntry] Providers invalidated');
 
-      print('[GlossaryEntryEditor._saveEntry] Closing dialog and showing success toast');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Closing dialog and showing success toast');
       Navigator.of(context).pop();
       FluentToast.success(
         context,
@@ -220,10 +223,9 @@ class _GlossaryEntryEditorDialogState
             ? 'Entry updated successfully'
             : 'Entry added successfully',
       );
-      print('[GlossaryEntryEditor._saveEntry] Save operation completed successfully');
+      logging.debug('[GlossaryEntryEditor._saveEntry] Save operation completed successfully');
     } catch (e, stackTrace) {
-      print('[GlossaryEntryEditor._saveEntry] ERROR: Exception caught: $e');
-      print('[GlossaryEntryEditor._saveEntry] Stack trace: $stackTrace');
+      logging.error('[GlossaryEntryEditor._saveEntry] Exception caught', e, stackTrace);
       if (!mounted) return;
       FluentToast.error(context, 'Error saving entry: $e');
     } finally {

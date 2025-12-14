@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/translation_batch.dart';
+import '../services/shared/logging_service.dart';
 import 'base_repository.dart';
 
 /// Repository for managing TranslationBatch entities.
@@ -190,25 +191,31 @@ class TranslationBatchRepository extends BaseRepository<TranslationBatch> {
       final unitCount = await database.rawQuery(
         'SELECT COUNT(*) as count FROM translation_batch_units',
       );
-      
+
       final totalBatches = batchCount.first['count'] as int;
       final totalUnits = unitCount.first['count'] as int;
-      
-      print('[DEBUG] Found $totalBatches batches and $totalUnits units to clean up');
+
+      LoggingService.instance.debug('Found batches and units to clean up', {
+        'totalBatches': totalBatches,
+        'totalUnits': totalUnits,
+      });
 
       if (totalBatches == 0 && totalUnits == 0) {
-        print('[DEBUG] No batches to clean up');
+        LoggingService.instance.debug('No batches to clean up');
         return (deleted: 0);
       }
 
       // Delete all batch units first (due to foreign key constraint)
       final deletedUnits = await database.delete('translation_batch_units');
-      print('[DEBUG] Deleted $deletedUnits batch units');
+      LoggingService.instance.debug('Deleted batch units', {'count': deletedUnits});
 
       // Delete all batches
       final deletedBatches = await database.delete(tableName);
-      print('[DEBUG] Deleted $deletedBatches batches');
-      print('[INFO] Cleaned up all translation batches: $deletedBatches batches, $deletedUnits units');
+      LoggingService.instance.debug('Deleted batches', {'count': deletedBatches});
+      LoggingService.instance.info('Cleaned up all translation batches', {
+        'batches': deletedBatches,
+        'units': deletedUnits,
+      });
 
       return (deleted: deletedBatches);
     });

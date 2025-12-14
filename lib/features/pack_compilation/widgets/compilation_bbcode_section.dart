@@ -69,7 +69,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
                   );
                 },
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
             ],
           ),

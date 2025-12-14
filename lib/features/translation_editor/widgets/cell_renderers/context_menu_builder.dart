@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../providers/editor_providers.dart';
+import '../../../../services/shared/logging_service.dart';
+import '../../../../services/service_locator.dart';
 
 /// Context menu builder for DataGrid rows
 ///
@@ -163,6 +165,8 @@ class ContextMenuBuilder {
     ).then((value) async {
       if (value == null) return;
 
+      final logging = ServiceLocator.get<LoggingService>();
+
       switch (value) {
         case 'edit':
           onEdit();
@@ -171,14 +175,15 @@ class ContextMenuBuilder {
           onSelectAll();
           break;
         case 'force_retranslate':
-          print('[DEBUG] Context menu: force_retranslate clicked');
-          print('[DEBUG] Context menu: selectionCount = $selectionCount');
+          logging.debug('Context menu: force_retranslate clicked', {
+            'selectionCount': selectionCount,
+          });
           if (onForceRetranslate != null) {
-            print('[DEBUG] Context menu: calling onForceRetranslate');
+            logging.debug('Context menu: calling onForceRetranslate');
             await onForceRetranslate();
-            print('[DEBUG] Context menu: onForceRetranslate completed');
+            logging.debug('Context menu: onForceRetranslate completed');
           } else {
-            print('[DEBUG] Context menu: onForceRetranslate is null!');
+            logging.warning('Context menu: onForceRetranslate is null!');
           }
           break;
         case 'mark_as_translated':

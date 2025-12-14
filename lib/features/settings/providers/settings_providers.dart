@@ -4,6 +4,7 @@ import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/llm/llm_provider_factory.dart';
 import '../../../services/llm/llm_model_management_service.dart';
+import '../../../services/shared/logging_service.dart';
 import '../../../models/domain/llm_provider_model.dart';
 
 part 'settings_providers.g.dart';
@@ -239,7 +240,8 @@ class LlmProviderSettings extends _$LlmProviderSettings {
   }
 
   Future<(bool, String?)> testConnection(String providerCode) async {
-    print('[LlmProviderSettings] testConnection called for: $providerCode');
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('testConnection called', {'providerCode': providerCode});
 
     try {
       // Get API key for the provider
@@ -247,24 +249,24 @@ class LlmProviderSettings extends _$LlmProviderSettings {
       switch (providerCode) {
         case 'anthropic':
           apiKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey);
-          print('[LlmProviderSettings] Anthropic API key loaded: ${apiKey != null ? "Yes (${apiKey.length} chars)" : "No"}');
+          logging.debug('Anthropic API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
           break;
         case 'openai':
           apiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey);
-          print('[LlmProviderSettings] OpenAI API key loaded: ${apiKey != null ? "Yes (${apiKey.length} chars)" : "No"}');
+          logging.debug('OpenAI API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
           break;
         case 'deepl':
           apiKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey);
-          print('[LlmProviderSettings] DeepL API key loaded: ${apiKey != null ? "Yes (${apiKey.length} chars)" : "No"}');
+          logging.debug('DeepL API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
           break;
         default:
-          print('[LlmProviderSettings] Unknown provider: $providerCode');
+          logging.warning('Unknown provider', {'providerCode': providerCode});
           return (false, 'Unknown provider');
       }
 
       // Check if API key exists
       if (apiKey == null || apiKey.isEmpty) {
-        print('[LlmProviderSettings] No API key configured for $providerCode');
+        logging.debug('No API key configured', {'providerCode': providerCode});
         return (false, 'No API key configured');
       }
 
@@ -277,38 +279,37 @@ class LlmProviderSettings extends _$LlmProviderSettings {
           final models = modelsResult.unwrap();
           if (models.isNotEmpty) {
             effectiveModel = models.first.modelId;
-            print('[LlmProviderSettings] Using first enabled model for validation: $effectiveModel');
+            logging.debug('Using first enabled model for validation', {'model': effectiveModel});
           }
         }
-        
+
         if (effectiveModel == null) {
-          print('[LlmProviderSettings] No enabled model found for $providerCode');
+          logging.debug('No enabled model found', {'providerCode': providerCode});
           return (false, 'No model enabled. Enable at least one model to test the connection.');
         }
       }
 
-      print('[LlmProviderSettings] Getting provider factory...');
+      logging.debug('Getting provider factory');
       // Get provider instance and test connection
       final providerFactory = ServiceLocator.get<LlmProviderFactory>();
-      print('[LlmProviderSettings] Getting provider instance for $providerCode...');
+      logging.debug('Getting provider instance', {'providerCode': providerCode});
       final provider = providerFactory.getProvider(providerCode);
-      print('[LlmProviderSettings] Provider instance obtained: ${provider.providerName}');
+      logging.debug('Provider instance obtained', {'providerName': provider.providerName});
 
-      print('[LlmProviderSettings] Calling validateApiKey with model: $effectiveModel...');
+      logging.debug('Calling validateApiKey', {'model': effectiveModel});
       final result = await provider.validateApiKey(apiKey, model: effectiveModel);
-      print('[LlmProviderSettings] validateApiKey returned: ${result.isOk ? "OK" : "ERROR"}');
+      logging.debug('validateApiKey returned', {'isOk': result.isOk});
 
       if (result.isOk) {
-        print('[LlmProviderSettings] Connection test SUCCESS for $providerCode');
+        logging.info('Connection test SUCCESS', {'providerCode': providerCode});
         return (true, null);
       } else {
         final error = result.unwrapErr();
-        print('[LlmProviderSettings] Connection test FAILED for $providerCode: ${error.message}');
+        logging.warning('Connection test FAILED', {'providerCode': providerCode, 'error': error.message});
         return (false, error.message);
       }
     } catch (e, stackTrace) {
-      print('[LlmProviderSettings] Exception in testConnection: $e');
-      print('[LlmProviderSettings] Stack trace: $stackTrace');
+      logging.error('Exception in testConnection', e, stackTrace);
       return (false, 'Error: $e');
     }
   }
@@ -330,36 +331,38 @@ class LlmModels extends _$LlmModels {
 
   /// Enable a model
   Future<(bool, String?)> enableModel(String modelId) async {
-    print('[LlmModels] Enabling model: $modelId');
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('Enabling model', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
     final result = await service.enableModel(modelId);
 
     if (result.isOk) {
-      print('[LlmModels] Successfully enabled model');
+      logging.info('Successfully enabled model', {'modelId': modelId});
       ref.invalidateSelf();
       return (true, null);
     } else {
       final error = result.unwrapErr();
-      print('[LlmModels] Failed to enable model: ${error.message}');
+      logging.warning('Failed to enable model', {'modelId': modelId, 'error': error.message});
       return (false, error.message);
     }
   }
 
   /// Disable a model
   Future<(bool, String?)> disableModel(String modelId) async {
-    print('[LlmModels] Disabling model: $modelId');
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('Disabling model', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
     final result = await service.disableModel(modelId);
 
     if (result.isOk) {
-      print('[LlmModels] Successfully disabled model');
+      logging.info('Successfully disabled model', {'modelId': modelId});
       ref.invalidateSelf();
       return (true, null);
     } else {
       final error = result.unwrapErr();
-      print('[LlmModels] Failed to disable model: ${error.message}');
+      logging.warning('Failed to disable model', {'modelId': modelId, 'error': error.message});
       return (false, error.message);
     }
   }
@@ -372,22 +375,23 @@ class LlmModels extends _$LlmModels {
   /// Note: DeepL is not set as the active LLM provider since it's a
   /// translation API, not an LLM for batch translation.
   Future<(bool, String?)> setAsDefault(String modelId) async {
-    print('[LlmModels] Setting model as global default: $modelId');
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('Setting model as global default', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
     final result = await service.setDefaultModel(modelId);
 
     if (result.isOk) {
-      print('[LlmModels] Successfully set model as global default');
+      logging.info('Successfully set model as global default', {'modelId': modelId});
 
       // Also set this provider as the global active provider
       // This makes clicking the star set both the default model AND the favorite provider
       // Skip DeepL - it's a translation API, not an LLM for batch translation
       if (providerCode != 'deepl') {
-        print('[LlmModels] Setting $providerCode as active global provider');
+        logging.debug('Setting provider as active global provider', {'providerCode': providerCode});
         await ref.read(llmProviderSettingsProvider.notifier).updateActiveProvider(providerCode);
       } else {
-        print('[LlmModels] Skipping DeepL as active global provider (not an LLM)');
+        logging.debug('Skipping DeepL as active global provider (not an LLM)');
       }
 
       // Invalidate all provider model lists since default is now global
@@ -397,7 +401,7 @@ class LlmModels extends _$LlmModels {
       return (true, null);
     } else {
       final error = result.unwrapErr();
-      print('[LlmModels] Failed to set global default model: ${error.message}');
+      logging.warning('Failed to set global default model', {'modelId': modelId, 'error': error.message});
       return (false, error.message);
     }
   }
@@ -417,18 +421,19 @@ class LlmModels extends _$LlmModels {
 
   /// Toggle model enabled status
   Future<(bool, String?)> toggleEnabled(String modelId) async {
-    print('[LlmModels] Toggling model enabled status: $modelId');
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('Toggling model enabled status', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
     final result = await service.toggleModelEnabled(modelId);
 
     if (result.isOk) {
-      print('[LlmModels] Successfully toggled model');
+      logging.info('Successfully toggled model', {'modelId': modelId});
       ref.invalidateSelf();
       return (true, null);
     } else {
       final error = result.unwrapErr();
-      print('[LlmModels] Failed to toggle model: ${error.message}');
+      logging.warning('Failed to toggle model', {'modelId': modelId, 'error': error.message});
       return (false, error.message);
     }
   }

@@ -121,6 +121,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM $tableName tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
+          AND tu.is_obsolete = 0
           AND tv.translated_text IS NOT NULL
           AND tv.translated_text != ''
           AND $_excludeSkipUnitsCondition
@@ -144,6 +145,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM $tableName tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
+          AND tu.is_obsolete = 0
           AND tv.status = 'pending'
           AND $_excludeSkipUnitsCondition
         ''',
@@ -166,6 +168,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM $tableName tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
+          AND tu.is_obsolete = 0
           AND (tv.status = 'approved' OR tv.status = 'reviewed')
           AND $_excludeSkipUnitsCondition
         ''',
@@ -188,6 +191,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM $tableName tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
+          AND tu.is_obsolete = 0
           AND tv.status = 'error'
           AND $_excludeSkipUnitsCondition
         ''',
@@ -210,6 +214,7 @@ mixin TranslationVersionStatisticsMixin {
         FROM $tableName tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tu.project_id = ?
+          AND tu.is_obsolete = 0
           AND tv.translation_source IN ('tm_exact', 'tm_fuzzy')
           AND tv.translated_text IS NOT NULL
           AND tv.translated_text != ''
@@ -252,6 +257,7 @@ mixin TranslationVersionStatisticsMixin {
           FROM translation_units tu
           INNER JOIN $tableName tv ON tv.unit_id = tu.id
           WHERE tu.project_id = ?
+            AND tu.is_obsolete = 0
             AND $_excludeSkipUnitsCondition
           GROUP BY tu.id
         )

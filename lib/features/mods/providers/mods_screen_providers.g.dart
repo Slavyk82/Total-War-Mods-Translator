@@ -238,7 +238,7 @@ final class FilteredModsProvider
   }
 }
 
-String _$filteredModsHash() => r'80122645ef3ac8e845c58f1515f8e5f5639612e0';
+String _$filteredModsHash() => r'45ecb1ccfcbf8e56f44275540cf768aef77c81da';
 
 /// Provider to check if mods are still loading (for UI feedback)
 
@@ -681,7 +681,7 @@ final class ModHiddenToggleProvider
   ModHiddenToggle create() => ModHiddenToggle();
 }
 
-String _$modHiddenToggleHash() => r'c18643053140f51220dc61b911ef0aad14762301';
+String _$modHiddenToggleHash() => r'd8ef04add0fd377e42801ffe4630b0c50da0e21b';
 
 /// Toggle mod hidden status
 

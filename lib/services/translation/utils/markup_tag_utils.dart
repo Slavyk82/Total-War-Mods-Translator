@@ -42,17 +42,18 @@ class MarkupTagUtils {
     return stack.isEmpty;
   }
 
+
   /// Extract tag name from a markup tag
   ///
   /// Examples:
-  /// - <b> -> b
-  /// - </b> -> b
-  /// - <div class="foo"> -> div
-  /// - <color=#FF0000> -> color
-  /// - [color=red] -> color
-  /// - [/color] -> color
-  /// - [[col:red]] -> col
-  /// - [[/col]] -> col
+  /// - `<b>` -> `b`
+  /// - `</b>` -> `b`
+  /// - `<div class="foo">` -> `div`
+  /// - `<color=#FF0000>` -> `color`
+  /// - `[color=red]` -> `color`
+  /// - `[/color]` -> `color`
+  /// - `[[col:red]]` -> `col`
+  /// - `[[/col]]` -> `col`
   static String extractTagName(String tag) {
     // XML/HTML tags
     if (tag.startsWith('<')) {

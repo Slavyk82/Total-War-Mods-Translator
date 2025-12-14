@@ -254,18 +254,13 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
 class _FluentButton extends StatefulWidget {
   final IconData icon;
   final String label;
-  final bool isPrimary;
   final bool showDropdownIcon;
-  final int? badge;
   final VoidCallback? onTap;
 
   const _FluentButton({
     required this.icon,
     required this.label,
-    // ignore: unused_element_parameter
-    this.isPrimary = false,
     this.showDropdownIcon = false,
-    this.badge,
     this.onTap,
   });
 
@@ -290,19 +285,13 @@ class _FluentButtonState extends State<_FluentButton> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: widget.isPrimary
-                ? (_isHovered
-                    ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                    : theme.colorScheme.primary)
-                : (_isHovered
-                    ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
-                    : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+            color: _isHovered
+                ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.7)
+                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(6),
-            border: widget.isPrimary
-                ? null
-                : Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  ),
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.2),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -310,46 +299,22 @@ class _FluentButtonState extends State<_FluentButton> {
               Icon(
                 widget.icon,
                 size: 18,
-                color: widget.isPrimary
-                    ? theme.colorScheme.onPrimary
-                    : theme.colorScheme.onSurface,
+                color: theme.colorScheme.onSurface,
               ),
               const SizedBox(width: 8),
               Text(
                 widget.label,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.isPrimary
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              if (widget.badge != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${widget.badge}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
               if (widget.showDropdownIcon) ...[
                 const SizedBox(width: 4),
                 Icon(
                   FluentIcons.chevron_down_24_regular,
                   size: 16,
-                  color: widget.isPrimary
-                      ? theme.colorScheme.onPrimary
-                      : theme.colorScheme.onSurface,
+                  color: theme.colorScheme.onSurface,
                 ),
               ],
             ],

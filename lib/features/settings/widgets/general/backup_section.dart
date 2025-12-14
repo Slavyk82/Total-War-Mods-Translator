@@ -278,6 +278,8 @@ class BackupSection extends ConsumerWidget {
 
       final fileName = path.basename(filePath);
 
+      if (!context.mounted) return;
+
       // Show confirmation dialog
       final confirmed = await showDialog<bool>(
         context: context,
@@ -300,6 +302,8 @@ class BackupSection extends ConsumerWidget {
   }
 
   Future<void> _showRestartDialog(BuildContext context) async {
+    if (!context.mounted) return;
+
     final theme = Theme.of(context);
 
     await showDialog<void>(

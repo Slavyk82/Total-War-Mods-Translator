@@ -312,8 +312,6 @@ class ExportOrchestratorService {
         ));
       }
 
-      final project = projectResult.unwrap();
-
       if (languageCodes.isEmpty) {
         return Err(FileServiceException(
           'TMX export requires at least one target language',

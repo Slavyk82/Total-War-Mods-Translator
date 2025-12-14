@@ -130,7 +130,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
       height: 120,
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
         ),
         borderRadius: BorderRadius.circular(4),
       ),
@@ -141,14 +141,14 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             Icon(
               FluentIcons.document_text_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 8),
             Text(
               'No custom rules defined',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
             ),
             const SizedBox(height: 4),
@@ -156,7 +156,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
               'Add global rules to customize all translation prompts',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
             ),
           ],

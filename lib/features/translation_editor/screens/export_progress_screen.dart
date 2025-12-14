@@ -480,9 +480,9 @@ class _ExportControlButtonState extends State<_ExportControlButton> {
   @override
   Widget build(BuildContext context) {
     final backgroundColor = _isPressed
-        ? widget.color.withOpacity(0.9)
+        ? widget.color.withValues(alpha: 0.9)
         : _isHovered
-            ? widget.color.withOpacity(0.85)
+            ? widget.color.withValues(alpha: 0.85)
             : widget.color;
 
     return MouseRegion(
@@ -505,7 +505,7 @@ class _ExportControlButtonState extends State<_ExportControlButton> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: widget.color.withOpacity(0.3),
+                color: widget.color.withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

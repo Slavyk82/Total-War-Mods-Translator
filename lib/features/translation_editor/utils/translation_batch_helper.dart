@@ -253,12 +253,13 @@ class TranslationBatchHelper {
       }
 
       // DEBUG: Log TranslationContext creation
-      print('[DEBUG] buildTranslationContext:');
-      print('[DEBUG]   - providerId: $providerId');
-      print('[DEBUG]   - modelId: $modelId');
-      print('[DEBUG]   - targetLanguage: $targetLanguage');
-      print('[DEBUG]   - glossaryEntries: ${glossaryEntries.length} terms');
-      print('[DEBUG]   - total variants: ${glossaryEntries.fold<int>(0, (sum, e) => sum + e.variants.length)}');
+      logging.debug('buildTranslationContext', {
+        'providerId': providerId,
+        'modelId': modelId,
+        'targetLanguage': targetLanguage,
+        'glossaryEntries': '${glossaryEntries.length} terms',
+        'totalVariants': glossaryEntries.fold<int>(0, (sum, e) => sum + e.variants.length),
+      });
 
       return TranslationContext(
         id: const Uuid().v4(),

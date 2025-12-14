@@ -36,7 +36,7 @@ final class DetectedModsProvider
   DetectedMods create() => DetectedMods();
 }
 
-String _$detectedModsHash() => r'09e06823e06843cbb3b0cbb304e44343c8f7ad6a';
+String _$detectedModsHash() => r'6c5e1b42079eb789cb85f30948686955451bb253';
 
 /// Provides list of detected mods after scanning Workshop folder (without creating projects)
 

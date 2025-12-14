@@ -27,7 +27,7 @@ class _IgnoredSourceTextsSectionState
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -89,7 +89,7 @@ class _IgnoredSourceTextsSectionState
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                           ),
                     ),
                   ],
@@ -107,7 +107,7 @@ class _IgnoredSourceTextsSectionState
                           color: Theme.of(context)
                               .colorScheme
                               .primary
-                              .withOpacity(0.1),
+                              .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -121,7 +121,7 @@ class _IgnoredSourceTextsSectionState
                       )
                     : const SizedBox.shrink(),
                 loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
               ),
               const SizedBox(width: 12),
               AnimatedRotation(
@@ -130,7 +130,7 @@ class _IgnoredSourceTextsSectionState
                 child: Icon(
                   FluentIcons.chevron_down_24_regular,
                   size: 20,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],
@@ -153,7 +153,7 @@ class _IgnoredSourceTextsSectionState
               color: Theme.of(context)
                   .colorScheme
                   .surfaceContainerHighest
-                  .withOpacity(0.5),
+                  .withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(
@@ -163,7 +163,7 @@ class _IgnoredSourceTextsSectionState
                   FluentIcons.info_24_regular,
                   size: 18,
                   color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -175,7 +175,7 @@ class _IgnoredSourceTextsSectionState
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.8),
+                              .withValues(alpha: 0.8),
                         ),
                   ),
                 ),
@@ -224,17 +224,17 @@ class _IgnoredSourceTextsSectionState
       builder: (context) => const IgnoredSourceTextEditorDialog(),
     );
 
-    if (result != null && result.isNotEmpty && mounted) {
-      final (success, error) =
-          await ref.read(ignoredSourceTextsProvider.notifier).addText(result);
+    if (result == null || result.isEmpty) return;
+    if (!mounted) return;
 
-      if (mounted) {
-        if (success) {
-          FluentToast.success(context, 'Text added successfully');
-        } else {
-          FluentToast.error(context, error ?? 'Failed to add text');
-        }
-      }
+    final (success, error) =
+        await ref.read(ignoredSourceTextsProvider.notifier).addText(result);
+
+    if (!mounted) return;
+    if (success) {
+      FluentToast.success(context, 'Text added successfully');
+    } else {
+      FluentToast.error(context, error ?? 'Failed to add text');
     }
   }
 
@@ -263,17 +263,17 @@ class _IgnoredSourceTextsSectionState
       ),
     );
 
-    if (confirmed == true && mounted) {
-      final (success, error) =
-          await ref.read(ignoredSourceTextsProvider.notifier).resetToDefaults();
+    if (confirmed != true) return;
+    if (!mounted) return;
 
-      if (mounted) {
-        if (success) {
-          FluentToast.success(context, 'Reset to defaults successfully');
-        } else {
-          FluentToast.error(context, error ?? 'Failed to reset to defaults');
-        }
-      }
+    final (success, error) =
+        await ref.read(ignoredSourceTextsProvider.notifier).resetToDefaults();
+
+    if (!mounted) return;
+    if (success) {
+      FluentToast.success(context, 'Reset to defaults successfully');
+    } else {
+      FluentToast.error(context, error ?? 'Failed to reset to defaults');
     }
   }
 }

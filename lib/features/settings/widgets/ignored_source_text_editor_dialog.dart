@@ -69,7 +69,7 @@ class _IgnoredSourceTextEditorDialogState
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.7),
+                          .withValues(alpha: 0.7),
                     ),
               ),
               const SizedBox(height: 16),
@@ -82,7 +82,7 @@ class _IgnoredSourceTextEditorDialogState
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.4),
+                        .withValues(alpha: 0.4),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
@@ -128,10 +128,10 @@ class _IgnoredSourceTextEditorDialogState
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -162,7 +162,7 @@ class _IgnoredSourceTextEditorDialogState
             '• Changes take effect immediately for new translations',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
           ),
         ],

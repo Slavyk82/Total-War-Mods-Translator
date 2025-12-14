@@ -76,7 +76,7 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
               size: 20,
               color: text.isEnabled
                   ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ),
@@ -181,14 +181,14 @@ class _ActionButtonState extends State<_ActionButton> {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: _isHovered
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
               widget.icon,
               size: 18,
-              color: _isHovered ? color : color.withOpacity(0.7),
+              color: _isHovered ? color : color.withValues(alpha: 0.7),
             ),
           ),
         ),

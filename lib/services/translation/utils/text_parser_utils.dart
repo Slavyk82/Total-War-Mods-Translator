@@ -66,14 +66,15 @@ class TextParserUtils {
     return variables;
   }
 
+
   /// Extract markup tags from text
   ///
   /// Supports:
-  /// - XML: <tag>, </tag>
-  /// - BBCode: [tag], [/tag]
-  /// - Double-bracket: [[tag]], [[/tag]]
+  /// - XML: `<tag>`, `</tag>`
+  /// - BBCode: `[tag]`, `[/tag]`
+  /// - Double-bracket: `[[tag]]`, `[[/tag]]`
   ///
-  /// Excludes printf-style placeholders like [%s] which are variables, not tags
+  /// Excludes printf-style placeholders like `[%s]` which are variables, not tags
   static List<String> extractMarkupTags(String text) {
     final tags = <String>[];
 

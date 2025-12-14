@@ -10,6 +10,7 @@ import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
 import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of glossary service
 ///
@@ -57,18 +58,23 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String targetLanguageId,
   }) async {
     try {
-      print('[GlossaryService] Creating glossary: name=$name, isGlobal=$isGlobal, gameInstallationId=$gameInstallationId, targetLanguageId=$targetLanguageId');
-      
+      LoggingService.instance.debug('Creating glossary', {
+        'name': name,
+        'isGlobal': isGlobal,
+        'gameInstallationId': gameInstallationId,
+        'targetLanguageId': targetLanguageId,
+      });
+
       // Validate input
       if (name.trim().isEmpty) {
-        print('[GlossaryService] Validation failed: name is empty');
+        LoggingService.instance.debug('Validation failed: name is empty');
         return Err(
           InvalidGlossaryDataException(['Name cannot be empty']),
         );
       }
 
       if (!isGlobal && gameInstallationId == null) {
-        print('[GlossaryService] Validation failed: game-specific requires gameInstallationId');
+        LoggingService.instance.debug('Validation failed: game-specific requires gameInstallationId');
         return Err(
           InvalidGlossaryDataException(
             ['Game-specific glossary requires gameInstallationId'],
@@ -77,10 +83,10 @@ class GlossaryServiceImpl implements IGlossaryService {
       }
 
       // Check for duplicate name
-      print('[GlossaryService] Checking for duplicate name: $name');
+      LoggingService.instance.debug('Checking for duplicate name', {'name': name});
       final existing = await _repository.getByName(name);
       if (existing != null) {
-        print('[GlossaryService] Duplicate name found: ${existing.id}');
+        LoggingService.instance.debug('Duplicate name found', {'id': existing.id});
         return Err(GlossaryAlreadyExistsException(name));
       }
 
@@ -97,14 +103,13 @@ class GlossaryServiceImpl implements IGlossaryService {
         updatedAt: now,
       );
 
-      print('[GlossaryService] Inserting glossary: ${glossary.toJson()}');
+      LoggingService.instance.debug('Inserting glossary', {'glossary': glossary.toJson()});
       await _repository.insertGlossary(glossary);
-      print('[GlossaryService] Glossary created successfully: ${glossary.id}');
+      LoggingService.instance.info('Glossary created successfully', {'id': glossary.id});
 
       return Ok(glossary);
     } catch (e, stackTrace) {
-      print('[GlossaryService] ERROR creating glossary: $e');
-      print('[GlossaryService] Stack trace: $stackTrace');
+      LoggingService.instance.error('Error creating glossary', e, stackTrace);
       return Err(
         GlossaryDatabaseException('Failed to create glossary', e),
       );
@@ -213,33 +218,34 @@ class GlossaryServiceImpl implements IGlossaryService {
     String? notes,
   }) async {
     try {
-      print('[GlossaryService.addEntry] Starting with params:');
-      print('  glossaryId: $glossaryId');
-      print('  targetLanguageCode: $targetLanguageCode');
-      print('  sourceTerm: "$sourceTerm"');
-      print('  targetTerm: "$targetTerm"');
-      print('  caseSensitive: $caseSensitive');
-      print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
+      LoggingService.instance.debug('Adding glossary entry', {
+        'glossaryId': glossaryId,
+        'targetLanguageCode': targetLanguageCode,
+        'sourceTerm': sourceTerm,
+        'targetTerm': targetTerm,
+        'caseSensitive': caseSensitive,
+        'notes': notes,
+      });
 
       // Validate glossary exists
-      print('[GlossaryService.addEntry] Checking if glossary exists...');
+      LoggingService.instance.debug('Checking if glossary exists', {'glossaryId': glossaryId});
       final glossary = await _repository.getGlossaryById(glossaryId);
       if (glossary == null) {
-        print('[GlossaryService.addEntry] ERROR: Glossary not found: $glossaryId');
+        LoggingService.instance.warning('Glossary not found', {'glossaryId': glossaryId});
         return Err(GlossaryNotFoundException(glossaryId));
       }
-      print('[GlossaryService.addEntry] Glossary found: ${glossary.name}');
+      LoggingService.instance.debug('Glossary found', {'name': glossary.name});
 
       // Validate input
       if (sourceTerm.trim().isEmpty || targetTerm.trim().isEmpty) {
-        print('[GlossaryService.addEntry] ERROR: Empty terms detected');
+        LoggingService.instance.debug('Empty terms detected');
         return Err(
           InvalidGlossaryDataException(['Terms cannot be empty']),
         );
       }
 
       // Check for duplicate term
-      print('[GlossaryService.addEntry] Checking for duplicate entry...');
+      LoggingService.instance.debug('Checking for duplicate entry');
       final duplicate = await _repository.findDuplicateEntry(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
@@ -247,12 +253,12 @@ class GlossaryServiceImpl implements IGlossaryService {
       );
 
       if (duplicate != null) {
-        print('[GlossaryService.addEntry] ERROR: Duplicate entry found: ${duplicate.id}');
+        LoggingService.instance.debug('Duplicate entry found', {'id': duplicate.id});
         return Err(
           DuplicateGlossaryEntryException(sourceTerm.trim(), glossaryId),
         );
       }
-      print('[GlossaryService.addEntry] No duplicate found, proceeding...');
+      LoggingService.instance.debug('No duplicate found, proceeding');
 
       final now = DateTime.now().millisecondsSinceEpoch;
       final trimmedNotes = notes?.trim();
@@ -268,21 +274,20 @@ class GlossaryServiceImpl implements IGlossaryService {
         updatedAt: now,
       );
 
-      print('[GlossaryService.addEntry] Created entry object: ${entry.toJson()}');
-      print('[GlossaryService.addEntry] Calling repository.insertEntry...');
+      LoggingService.instance.debug('Created entry object', {'entry': entry.toJson()});
+      LoggingService.instance.debug('Calling repository.insertEntry');
       await _repository.insertEntry(entry);
-      print('[GlossaryService.addEntry] Entry inserted successfully');
+      LoggingService.instance.debug('Entry inserted successfully');
 
       // Update glossary entry count
-      print('[GlossaryService.addEntry] Updating glossary entry count...');
+      LoggingService.instance.debug('Updating glossary entry count');
       await _updateGlossaryEntryCount(glossaryId);
-      print('[GlossaryService.addEntry] Entry count updated');
+      LoggingService.instance.debug('Entry count updated');
 
-      print('[GlossaryService.addEntry] SUCCESS: Entry added with ID: ${entry.id}');
+      LoggingService.instance.info('Entry added successfully', {'id': entry.id});
       return Ok(entry);
     } catch (e, stackTrace) {
-      print('[GlossaryService.addEntry] ERROR: Exception caught: $e');
-      print('[GlossaryService.addEntry] Stack trace: $stackTrace');
+      LoggingService.instance.error('Error adding entry', e, stackTrace);
       return Err(
         GlossaryDatabaseException('Failed to add entry', e),
       );

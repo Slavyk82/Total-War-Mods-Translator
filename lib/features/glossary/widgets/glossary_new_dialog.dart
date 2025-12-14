@@ -196,34 +196,49 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
   }
 
   Widget _buildScopeRadioButtons() {
-    return Column(
-      children: [
-        RadioListTile<bool>(
-          value: true,
-          groupValue: _isUniversal,
-          onChanged: (value) {
-            setState(() {
-              _isUniversal = value ?? true;
-              if (_isUniversal) {
+    return RadioGroup<bool>(
+      groupValue: _isUniversal,
+      onChanged: (value) {
+        if (value != null) {
+          setState(() {
+            _isUniversal = value;
+            if (_isUniversal) {
+              _selectedGameCode = null;
+            }
+          });
+        }
+      },
+      child: Column(
+        children: [
+          ListTile(
+            leading: Radio<bool>(
+              value: true,
+              toggleable: false,
+            ),
+            title: const Text('Universal (all games)'),
+            subtitle: const Text('Shared across all projects of all games'),
+            onTap: () {
+              setState(() {
+                _isUniversal = true;
                 _selectedGameCode = null;
-              }
-            });
-          },
-          title: const Text('Universal (all games)'),
-          subtitle: const Text('Shared across all projects of all games'),
-        ),
-        RadioListTile<bool>(
-          value: false,
-          groupValue: _isUniversal,
-          onChanged: (value) {
-            setState(() {
-              _isUniversal = value ?? false;
-            });
-          },
-          title: const Text('Game-specific'),
-          subtitle: const Text('Shared across all projects of one game'),
-        ),
-      ],
+              });
+            },
+          ),
+          ListTile(
+            leading: Radio<bool>(
+              value: false,
+              toggleable: false,
+            ),
+            title: const Text('Game-specific'),
+            subtitle: const Text('Shared across all projects of one game'),
+            onTap: () {
+              setState(() {
+                _isUniversal = false;
+              });
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -279,7 +294,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
 
     return configuredGamesAsync.when(
       loading: () => const FluentInlineSpinner(),
-      error: (_, __) => const Text('Error loading games'),
+      error: (_, _) => const Text('Error loading games'),
       data: (games) {
         if (games.isEmpty) {
           return const Text(

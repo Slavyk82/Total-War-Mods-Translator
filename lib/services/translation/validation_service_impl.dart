@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
+import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/utils/markup_tag_utils.dart';
@@ -270,10 +271,10 @@ class ValidationServiceImpl implements IValidationService {
 
     // Debug logging for variable extraction
     if (sourceVars.any((v) => v.startsWith('{{'))) {
-      print('[DEBUG] Variable extraction for key: $key');
-      print('[DEBUG] Source double-brace vars: '
+      LoggingService.instance.debug('Variable extraction for key: $key');
+      LoggingService.instance.debug('Source double-brace vars: '
           '${sourceVars.where((v) => v.startsWith('{{')).toList()}');
-      print('[DEBUG] Translated double-brace vars: '
+      LoggingService.instance.debug('Translated double-brace vars: '
           '${translatedVars.where((v) => v.startsWith('{{')).toList()}');
     }
 

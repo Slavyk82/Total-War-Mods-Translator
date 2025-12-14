@@ -107,7 +107,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                     color: Theme.of(context)
                         .colorScheme
                         .onSurface
-                        .withOpacity(0.7),
+                        .withValues(alpha: 0.7),
                   ),
             ),
             const SizedBox(height: 24),

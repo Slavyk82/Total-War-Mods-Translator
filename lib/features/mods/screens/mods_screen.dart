@@ -24,6 +24,7 @@ import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 
 /// Complete mods screen with Syncfusion DataGrid
 class ModsScreen extends ConsumerStatefulWidget {
@@ -36,11 +37,11 @@ class ModsScreen extends ConsumerStatefulWidget {
 class _ModsScreenState extends ConsumerState<ModsScreen> {
   @override
   Widget build(BuildContext context) {
-    print('=== ModsScreen build() called ===');
+    LoggingService.instance.debug('ModsScreen build() called');
     final theme = Theme.of(context);
     // Synchronous filtered mods - instant filtering
     final filteredMods = ref.watch(filteredModsProvider);
-    print('=== filteredMods count: ${filteredMods.length} ===');
+    LoggingService.instance.debug('filteredMods count: ${filteredMods.length}');
     // Loading/error state from source provider
     final isInitialLoading = ref.watch(modsIsLoadingProvider);
     final modsError = ref.watch(modsErrorProvider);
@@ -82,9 +83,9 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
               needsUpdateCount: needsUpdateCountAsync.value ?? 0,
               showHidden: showHidden,
               onShowHiddenChanged: (value) {
-                print('=== onShowHiddenChanged called with: $value ===');
+                LoggingService.instance.debug('onShowHiddenChanged called with: $value');
                 ref.read(showHiddenModsProvider.notifier).set(value);
-                print('=== showHiddenModsProvider.set() done ===');
+                LoggingService.instance.debug('showHiddenModsProvider.set() done');
               },
               hiddenCount: hiddenCountAsync.value ?? 0,
               projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
@@ -224,9 +225,9 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
   }
 
   Future<void> _handleToggleHidden(String workshopId, bool hide) async {
-    print('=== _handleToggleHidden called: workshopId=$workshopId, hide=$hide ===');
+    LoggingService.instance.debug('_handleToggleHidden called: workshopId=$workshopId, hide=$hide');
     await ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
-    print('=== _handleToggleHidden done ===');
+    LoggingService.instance.debug('_handleToggleHidden done');
     // No need to invalidate - the mod list is updated locally by the provider
   }
 
@@ -235,22 +236,19 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
       final file = File(packFilePath);
       if (await file.exists()) {
         await file.delete();
-        if (mounted) {
-          FluentToast.success(
-            context,
-            'Pack file deleted. Launch the game to redownload.',
-          );
-          _handleRefresh();
-        }
+        if (!context.mounted) return;
+        FluentToast.success(
+          context,
+          'Pack file deleted. Launch the game to redownload.',
+        );
+        _handleRefresh();
       } else {
-        if (mounted) {
-          FluentToast.warning(context, 'File not found: $packFilePath');
-        }
+        if (!context.mounted) return;
+        FluentToast.warning(context, 'File not found: $packFilePath');
       }
     } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Failed to delete file: $e');
-      }
+      if (!context.mounted) return;
+      FluentToast.error(context, 'Failed to delete file: $e');
     }
   }
 

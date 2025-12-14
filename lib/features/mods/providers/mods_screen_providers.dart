@@ -10,6 +10,7 @@ import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/mods/workshop_scanner_service.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 
 part 'mods_screen_providers.g.dart';
 
@@ -71,17 +72,17 @@ class ShowHiddenMods extends _$ShowHiddenMods {
 /// Uses cached data for instant filtering without waiting for async resolution
 @riverpod
 List<DetectedMod> filteredMods(Ref ref) {
-  print('=== filteredMods provider computing ===');
+  LoggingService.instance.debug('filteredMods provider computing');
   // Watch the async state - use cached value for instant filtering
   final detectedModsAsync = ref.watch(detectedModsProvider);
   final searchQuery = ref.watch(modsSearchQueryProvider).toLowerCase();
   final filter = ref.watch(modsFilterStateProvider);
   final showHidden = ref.watch(showHiddenModsProvider);
-  print('=== showHidden value: $showHidden ===');
+  LoggingService.instance.debug('showHidden value: $showHidden');
 
   // Use cached data or empty list if not yet loaded
   final detectedModsList = detectedModsAsync.value ?? <DetectedMod>[];
-  print('=== detectedModsList count: ${detectedModsList.length}, hasValue: ${detectedModsAsync.hasValue} ===');
+  LoggingService.instance.debug('detectedModsList count: ${detectedModsList.length}, hasValue: ${detectedModsAsync.hasValue}');
   var result = detectedModsList;
 
   // Apply hidden filter first
@@ -270,19 +271,19 @@ class ModHiddenToggle extends _$ModHiddenToggle {
 
   /// Toggle the hidden status of a mod
   Future<void> toggleHidden(String workshopId, bool isHidden) async {
-    print('=== toggleHidden called: workshopId=$workshopId, isHidden=$isHidden ===');
+    LoggingService.instance.debug('toggleHidden called: workshopId=$workshopId, isHidden=$isHidden');
     final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
     await workshopModRepo.setHidden(workshopId, isHidden);
-    print('=== DB updated ===');
+    LoggingService.instance.debug('DB updated');
 
     // Update the mod list locally without rescanning
     // Use try-catch to handle potential provider disposal during async operation
     try {
-      print('=== Calling updateModHidden ===');
+      LoggingService.instance.debug('Calling updateModHidden');
       ref.read(detectedModsProvider.notifier).updateModHidden(workshopId, isHidden);
-      print('=== updateModHidden completed ===');
+      LoggingService.instance.debug('updateModHidden completed');
     } catch (e) {
-      print('=== ERROR in updateModHidden: $e ===');
+      LoggingService.instance.error('ERROR in updateModHidden', e);
       // Provider was disposed during async operation - state will refresh on next access
     }
   }

@@ -12,13 +12,13 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
 
     try {
       final success = await undoRedoManager.undo();
-      if (success && mounted) {
+      if (!context.mounted) return;
+      if (success) {
         ToastNotificationService.showSuccess(context, 'Undo successful');
       }
     } catch (e) {
-      if (mounted) {
-        ToastNotificationService.showError(context, 'Undo failed: $e');
-      }
+      if (!context.mounted) return;
+      ToastNotificationService.showError(context, 'Undo failed: $e');
     }
   }
 
@@ -27,23 +27,23 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
 
     try {
       final success = await undoRedoManager.redo();
-      if (success && mounted) {
+      if (!context.mounted) return;
+      if (success) {
         ToastNotificationService.showSuccess(context, 'Redo successful');
       }
     } catch (e) {
-      if (mounted) {
-        ToastNotificationService.showError(context, 'Redo failed: $e');
-      }
+      if (!context.mounted) return;
+      ToastNotificationService.showError(context, 'Redo failed: $e');
     }
   }
 
   Future<void> handleTranslationSettings() async {
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     final currentSettings =
         await ref.read(translationSettingsProvider.notifier).ensureLoaded();
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     final result = await showTranslationSettingsDialog(
       context,
@@ -54,18 +54,21 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
     debugPrint(
         '[TranslationSettings] Dialog result: $result');
 
-    if (result != null && mounted) {
-      debugPrint(
-          '[TranslationSettings] Calling updateSettings with units=${result['unitsPerBatch']}, parallel=${result['parallelBatches']}');
-      await ref.read(translationSettingsProvider.notifier).updateSettings(
-        unitsPerBatch: result['unitsPerBatch']!,
-        parallelBatches: result['parallelBatches']!,
-      );
+    if (result == null) return;
+    if (!context.mounted) return;
 
-      ToastNotificationService.showSuccess(
-        context,
-        'Translation settings updated',
-      );
-    }
+    debugPrint(
+        '[TranslationSettings] Calling updateSettings with units=${result['unitsPerBatch']}, parallel=${result['parallelBatches']}');
+    await ref.read(translationSettingsProvider.notifier).updateSettings(
+      unitsPerBatch: result['unitsPerBatch']!,
+      parallelBatches: result['parallelBatches']!,
+    );
+
+    if (!context.mounted) return;
+
+    ToastNotificationService.showSuccess(
+      context,
+      'Translation settings updated',
+    );
   }
 }

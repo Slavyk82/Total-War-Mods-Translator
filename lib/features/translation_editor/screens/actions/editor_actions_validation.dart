@@ -45,17 +45,16 @@ mixin EditorActionsValidation on EditorActionsBase {
       );
 
       if (needsReviewVersions.isEmpty) {
-        if (mounted) {
-          EditorDialogs.showInfoDialog(
-            context,
-            'No issues to review',
-            'All translations have passed validation.',
-          );
-        }
+        if (!context.mounted) return;
+        EditorDialogs.showInfoDialog(
+          context,
+          'No issues to review',
+          'All translations have passed validation.',
+        );
         return;
       }
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Build validation issues from needsReview versions
       final allIssues = <batch.ValidationIssue>[];
@@ -93,7 +92,7 @@ mixin EditorActionsValidation on EditorActionsBase {
         passedCount: passedCount,
       );
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Navigate to full-screen validation review
       await Navigator.of(context).push(
@@ -123,10 +122,9 @@ mixin EditorActionsValidation on EditorActionsBase {
         e,
         stackTrace,
       );
-      if (mounted) {
-        EditorDialogs.showErrorDialog(
-            context, 'Failed to load validation issues', e.toString());
-      }
+      if (!context.mounted) return;
+      EditorDialogs.showErrorDialog(
+          context, 'Failed to load validation issues', e.toString());
     }
   }
 
@@ -315,13 +313,12 @@ mixin EditorActionsValidation on EditorActionsBase {
         e,
         stackTrace,
       );
-      if (mounted) {
-        EditorDialogs.showErrorDialog(
-          context,
-          'Export Failed',
-          'Failed to export validation report: ${e.toString()}',
-        );
-      }
+      if (!context.mounted) return;
+      EditorDialogs.showErrorDialog(
+        context,
+        'Export Failed',
+        'Failed to export validation report: ${e.toString()}',
+      );
     }
   }
 

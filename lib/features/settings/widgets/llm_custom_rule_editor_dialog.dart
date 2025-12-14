@@ -68,7 +68,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.7),
+                          .withValues(alpha: 0.7),
                     ),
               ),
               const SizedBox(height: 16),
@@ -81,7 +81,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                       'e.g., Always use formal language and avoid contractions...',
                   hintStyle: TextStyle(
                     color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(4),
@@ -125,10 +125,10 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -158,7 +158,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
             '• Rules are appended in order to the translation prompt\n'
             '• You can disable rules temporarily without deleting them',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                 ),
           ),
         ],

@@ -5,7 +5,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import '../providers/tm_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 /// Dialog for importing TMX files
 class TmxImportDialog extends ConsumerStatefulWidget {

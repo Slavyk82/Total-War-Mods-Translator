@@ -67,10 +67,12 @@ Future<List<GlossaryEntry>> glossaryEntries(
   required String glossaryId,
   String? targetLanguageCode,
 }) async {
-  print('[glossaryEntriesProvider] Fetching entries for:');
-  print('  glossaryId: $glossaryId');
-  print('  targetLanguageCode: $targetLanguageCode');
-  
+  final logging = ServiceLocator.get<LoggingService>();
+  logging.debug('[glossaryEntriesProvider] Fetching entries', {
+    'glossaryId': glossaryId,
+    'targetLanguageCode': targetLanguageCode,
+  });
+
   final service = ServiceLocator.get<IGlossaryService>();
   final result = await service.getEntriesByGlossary(
     glossaryId: glossaryId,
@@ -79,11 +81,13 @@ Future<List<GlossaryEntry>> glossaryEntries(
 
   return result.when(
     ok: (entries) {
-      print('[glossaryEntriesProvider] Fetched ${entries.length} entries');
+      logging.debug('[glossaryEntriesProvider] Fetched entries', {
+        'count': entries.length,
+      });
       return entries;
     },
     err: (error) {
-      print('[glossaryEntriesProvider] ERROR: $error');
+      logging.error('[glossaryEntriesProvider] ERROR', error);
       throw error;
     },
   );
@@ -151,19 +155,23 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
     bool caseSensitive = false,
     String? notes,
   }) async {
-    print('[GlossaryEntryEditor.save] Starting save operation');
-    print('  state: ${state != null ? "UPDATE" : "ADD NEW"}');
-    print('  glossaryId: $glossaryId');
-    print('  targetLanguageCode: $targetLanguageCode');
-    print('  sourceTerm: "$sourceTerm"');
-    print('  targetTerm: "$targetTerm"');
-    print('  notes: ${notes != null ? "\"$notes\"" : "null"}');
-    
+    final logging = ServiceLocator.get<LoggingService>();
+    logging.debug('[GlossaryEntryEditor.save] Starting save operation', {
+      'mode': state != null ? 'UPDATE' : 'ADD NEW',
+      'glossaryId': glossaryId,
+      'targetLanguageCode': targetLanguageCode,
+      'sourceTerm': sourceTerm,
+      'targetTerm': targetTerm,
+      'notes': notes,
+    });
+
     final service = ServiceLocator.get<IGlossaryService>();
 
     if (state != null) {
       // Update existing entry
-      print('[GlossaryEntryEditor.save] Updating existing entry: ${state!.id}');
+      logging.debug('[GlossaryEntryEditor.save] Updating existing entry', {
+        'entryId': state!.id,
+      });
       final updated = state!.copyWith(
         sourceTerm: sourceTerm,
         targetTerm: targetTerm,
@@ -171,19 +179,19 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
         notes: notes,
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );
-      
+
       final result = await service.updateEntry(updated);
       result.when(
-        ok: (entry) => print('[GlossaryEntryEditor.save] Entry updated successfully: ${entry.id}'),
-        err: (error) => print('[GlossaryEntryEditor.save] ERROR updating entry: $error'),
+        ok: (entry) => logging.debug('[GlossaryEntryEditor.save] Entry updated successfully', {'entryId': entry.id}),
+        err: (error) => logging.error('[GlossaryEntryEditor.save] ERROR updating entry', error),
       );
-      
+
       if (result.isErr) {
         throw Exception('Failed to update entry: ${result.error}');
       }
     } else {
       // Add new entry
-      print('[GlossaryEntryEditor.save] Adding new entry...');
+      logging.debug('[GlossaryEntryEditor.save] Adding new entry...');
       final result = await service.addEntry(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
@@ -192,12 +200,12 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
         caseSensitive: caseSensitive,
         notes: notes,
       );
-      
+
       result.when(
-        ok: (entry) => print('[GlossaryEntryEditor.save] Entry added successfully: ${entry.id}'),
-        err: (error) => print('[GlossaryEntryEditor.save] ERROR adding entry: $error'),
+        ok: (entry) => logging.debug('[GlossaryEntryEditor.save] Entry added successfully', {'entryId': entry.id}),
+        err: (error) => logging.error('[GlossaryEntryEditor.save] ERROR adding entry', error),
       );
-      
+
       if (result.isErr) {
         throw Exception('Failed to add entry: ${result.error}');
       }
@@ -205,13 +213,13 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
 
     // Clear editor state only if still mounted
     if (ref.mounted) {
-      print('[GlossaryEntryEditor.save] Clearing editor state');
+      logging.debug('[GlossaryEntryEditor.save] Clearing editor state');
       state = null;
     } else {
-      print('[GlossaryEntryEditor.save] WARNING: Provider not mounted, skipping state clear');
+      logging.warning('[GlossaryEntryEditor.save] Provider not mounted, skipping state clear');
     }
-    
-    print('[GlossaryEntryEditor.save] Save operation completed');
+
+    logging.debug('[GlossaryEntryEditor.save] Save operation completed');
   }
 
   Future<void> delete(String entryId) async {

@@ -135,7 +135,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                               color: Theme.of(context)
                                   .colorScheme
                                   .onSurface
-                                  .withOpacity(0.7),
+                                  .withValues(alpha: 0.7),
                             ),
                       ),
                     ],
@@ -196,7 +196,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -315,12 +315,12 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: model.isEnabled && !model.isArchived
-              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
               : Theme.of(context).colorScheme.surface,
           border: Border.all(
             color: model.isEnabled && !model.isArchived
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
-                : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.5)
+                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
           ),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -388,7 +388,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .onSurface
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                           ),
                     ),
                   ],
@@ -415,7 +415,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                           ? Theme.of(context)
                               .colorScheme
                               .primary
-                              .withOpacity(0.1)
+                              .withValues(alpha: 0.1)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(4),
                     ),
@@ -429,7 +429,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                           : Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                     ),
                   ),
                 ),
@@ -446,8 +446,8 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                 ),
                 decoration: BoxDecoration(
                   color: model.isDefault
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                      : Theme.of(context).disabledColor.withOpacity(0.1),
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      : Theme.of(context).disabledColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(

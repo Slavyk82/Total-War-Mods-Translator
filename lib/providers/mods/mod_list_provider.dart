@@ -7,6 +7,7 @@ import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/mods/workshop_scanner_service.dart';
 import 'package:twmt/services/mods/game_installation_sync_service.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
@@ -53,9 +54,9 @@ class DetectedMods extends _$DetectedMods {
 
   /// Update the hidden status of a mod locally without rescanning
   void updateModHidden(String workshopId, bool isHidden) {
-    print('=== updateModHidden called: workshopId=$workshopId, isHidden=$isHidden ===');
+    LoggingService.instance.debug('updateModHidden called: workshopId=$workshopId, isHidden=$isHidden');
     final currentState = state;
-    print('=== currentState type: ${currentState.runtimeType} ===');
+    LoggingService.instance.debug('currentState type: ${currentState.runtimeType}');
     if (currentState is AsyncData<List<DetectedMod>>) {
       final updatedMods = currentState.value.map((mod) {
         if (mod.workshopId == workshopId) {
@@ -64,7 +65,7 @@ class DetectedMods extends _$DetectedMods {
         return mod;
       }).toList();
       state = AsyncData(updatedMods);
-      print('=== state updated with ${updatedMods.length} mods ===');
+      LoggingService.instance.debug('state updated with ${updatedMods.length} mods');
     }
   }
 }
