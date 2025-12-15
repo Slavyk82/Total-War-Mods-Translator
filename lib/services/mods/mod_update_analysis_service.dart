@@ -282,11 +282,13 @@ class ModUpdateAnalysisService {
   ///
   /// [projectId] - The project to update
   /// [analysis] - The analysis result containing modified keys and new source texts
+  /// [onProgress] - Optional callback for progress reporting (processed, total, phase)
   ///
   /// Returns [ModUpdateApplyResult] with counts of affected records.
   Future<Result<ModUpdateApplyResult, ServiceException>> applyModifiedSourceTexts({
     required String projectId,
     required ModUpdateAnalysis analysis,
+    void Function(int processed, int total, String phase)? onProgress,
   }) async {
     try {
       if (!analysis.hasModifiedUnits) {
@@ -300,10 +302,16 @@ class ModUpdateAnalysisService {
         'Applying ${analysis.modifiedUnitsCount} source text changes for project $projectId',
       );
 
+      final total = analysis.modifiedUnitsCount;
+
       // Step 1: Update source texts in translation_units
       final updateResult = await _unitRepository.updateSourceTexts(
         projectId: projectId,
         sourceTextUpdates: analysis.modifiedSourceTexts,
+        onProgress: onProgress != null
+            ? (processed, batchTotal) =>
+                onProgress(processed, total, 'Updating source texts')
+            : null,
       );
 
       if (updateResult.isErr) {
@@ -318,6 +326,10 @@ class ModUpdateAnalysisService {
       final resetResult = await _versionRepository.resetStatusForUnitKeys(
         projectId: projectId,
         unitKeys: analysis.modifiedUnitKeys,
+        onProgress: onProgress != null
+            ? (processed, batchTotal) =>
+                onProgress(processed, total, 'Resetting translations')
+            : null,
       );
 
       if (resetResult.isErr) {
@@ -355,11 +367,13 @@ class ModUpdateAnalysisService {
   ///
   /// [projectId] - The project to add units to
   /// [analysis] - The analysis result containing new unit data
+  /// [onProgress] - Optional callback for progress reporting (processed, total)
   ///
   /// Returns the count of new units added.
   Future<Result<int, ServiceException>> addNewUnits({
     required String projectId,
     required ModUpdateAnalysis analysis,
+    void Function(int processed, int total)? onProgress,
   }) async {
     try {
       if (!analysis.hasNewUnits || analysis.newUnitsData.isEmpty) {
@@ -380,13 +394,20 @@ class ModUpdateAnalysisService {
 
       final languages = languagesResult.value;
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final total = analysis.newUnitsData.length;
       int unitsAdded = 0;
+      int processed = 0;
+      int lastReportedProgress = 0;
+
+      // Report progress every ~100 units to avoid spamming the log
+      const progressReportInterval = 100;
 
       for (final newUnit in analysis.newUnitsData) {
         // Check if unit already exists (shouldn't happen but safety check)
         final existingResult = await _unitRepository.getByKey(projectId, newUnit.key);
         if (existingResult.isOk) {
           _logger.debug('Unit already exists, skipping: ${newUnit.key}');
+          processed++;
           continue;
         }
 
@@ -407,6 +428,7 @@ class ModUpdateAnalysisService {
         final insertResult = await _unitRepository.insert(unit);
         if (insertResult.isErr) {
           _logger.warning('Failed to insert new unit: ${newUnit.key}');
+          processed++;
           continue;
         }
 
@@ -433,6 +455,15 @@ class ModUpdateAnalysisService {
         }
 
         unitsAdded++;
+        processed++;
+
+        // Report progress at intervals to avoid spamming the log
+        if (onProgress != null &&
+            (processed - lastReportedProgress >= progressReportInterval ||
+                processed == total)) {
+          onProgress(processed, total);
+          lastReportedProgress = processed;
+        }
       }
 
       _logger.info('Added $unitsAdded new units for project $projectId');

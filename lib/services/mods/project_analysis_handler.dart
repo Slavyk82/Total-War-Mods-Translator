@@ -103,6 +103,9 @@ class ProjectAnalysisHandler {
           final addResult = await _modUpdateAnalysisService.addNewUnits(
             projectId: projectId,
             analysis: analysis,
+            onProgress: (processed, total) {
+              emitLog?.call('  Adding new units: $processed/$total');
+            },
           );
           if (addResult.isOk && addResult.value > 0) {
             emitLog?.call('  [OK] Added ${addResult.value} new units');
@@ -127,6 +130,9 @@ class ProjectAnalysisHandler {
               await _modUpdateAnalysisService.applyModifiedSourceTexts(
             projectId: projectId,
             analysis: analysis,
+            onProgress: (processed, total, phase) {
+              emitLog?.call('  $phase: $processed/$total');
+            },
           );
           if (applyResult.isOk) {
             final result = applyResult.value;

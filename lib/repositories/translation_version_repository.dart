@@ -435,10 +435,16 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   /// Used when source text has changed and translations need to be reviewed.
   /// Does NOT clear the translated_text - only changes status to pending.
   /// Batches queries to stay within SQLite's parameter limit (999 max).
+  ///
+  /// [projectId] - The project containing the units
+  /// [unitKeys] - List of unit keys to reset
+  /// [onProgress] - Optional callback for progress reporting
+  ///
   /// Returns the count of affected rows.
   Future<Result<int, TWMTDatabaseException>> resetStatusForUnitKeys({
     required String projectId,
     required List<String> unitKeys,
+    void Function(int processed, int total)? onProgress,
   }) async {
     if (unitKeys.isEmpty) {
       return Ok(0);
@@ -449,6 +455,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       // We use 2 params for timestamp and projectId, so batch unitKeys at 500
       const batchSize = 500;
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final total = unitKeys.length;
       int totalAffected = 0;
 
       for (var i = 0; i < unitKeys.length; i += batchSize) {
@@ -468,6 +475,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
           [now, projectId, ...batch],
         );
         totalAffected += rowsAffected;
+
+        // Report progress after each batch
+        if (onProgress != null) {
+          final processed = (i + batch.length).clamp(0, total);
+          onProgress(processed, total);
+        }
       }
 
       return totalAffected;
