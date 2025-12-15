@@ -487,7 +487,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         // Generate TSV files for the selected language only
         final result = await locFileService.generateLocFilesGroupedBySource(
           projectId: projectId,
-          languageCode: state.selectedLanguageId!,
+          languageCode: language.code,
           validatedOnly: false,
         );
 

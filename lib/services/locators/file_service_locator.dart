@@ -2,6 +2,7 @@ import 'package:get_it/get_it.dart';
 
 import '../../repositories/export_history_repository.dart';
 import '../../repositories/game_installation_repository.dart';
+import '../../repositories/language_repository.dart';
 import '../../repositories/mod_scan_cache_repository.dart';
 import '../../repositories/mod_update_analysis_cache_repository.dart';
 import '../../repositories/project_language_repository.dart';
@@ -59,6 +60,7 @@ class FileServiceLocator {
         unitRepository: locator<TranslationUnitRepository>(),
         versionRepository: locator<TranslationVersionRepository>(),
         projectLanguageRepository: locator<ProjectLanguageRepository>(),
+        languageRepository: locator<LanguageRepository>(),
       ),
     );
 

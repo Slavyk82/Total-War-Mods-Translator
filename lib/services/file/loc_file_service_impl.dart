@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
@@ -18,17 +20,55 @@ class LocFileServiceImpl implements ILocFileService {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _projectLanguageRepository;
+  final LanguageRepository _languageRepository;
   final LoggingService _logger;
 
   LocFileServiceImpl({
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository projectLanguageRepository,
+    required LanguageRepository languageRepository,
     LoggingService? logger,
   })  : _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _projectLanguageRepository = projectLanguageRepository,
+        _languageRepository = languageRepository,
         _logger = logger ?? LoggingService.instance;
+
+  /// Find project language by language code
+  ///
+  /// Looks up the language by code to get its ID, then finds the matching
+  /// project language. This supports both system languages (with IDs like 'lang_en')
+  /// and custom languages (with UUID IDs).
+  Future<Result<ProjectLanguage, FileServiceException>> _findProjectLanguage({
+    required String projectId,
+    required String languageCode,
+    required List<ProjectLanguage> projectLanguages,
+  }) async {
+    // First, get the language ID from the language code
+    final languageResult = await _languageRepository.getByCode(languageCode);
+
+    if (languageResult.isErr) {
+      return Err(FileServiceException(
+        'Language code "$languageCode" not found in system',
+      ));
+    }
+
+    final language = languageResult.unwrap();
+
+    // Now find the project language that matches this language ID
+    final projectLanguage = projectLanguages.where(
+      (pl) => pl.languageId == language.id,
+    ).firstOrNull;
+
+    if (projectLanguage == null) {
+      return Err(FileServiceException(
+        'Language "$languageCode" not found in project $projectId',
+      ));
+    }
+
+    return Ok(projectLanguage);
+  }
 
   @override
   Future<Result<String, FileServiceException>> generateLocFile({
@@ -56,12 +96,17 @@ class LocFileServiceImpl implements ILocFileService {
 
       final projectLanguages = projectLanguagesResult.unwrap();
 
-      final projectLanguage = projectLanguages.firstWhere(
-        (pl) => pl.languageId.contains(languageCode),
-        orElse: () => throw FileServiceException(
-          'Language $languageCode not found in project $projectId',
-        ),
+      final projectLanguageResult = await _findProjectLanguage(
+        projectId: projectId,
+        languageCode: languageCode,
+        projectLanguages: projectLanguages,
       );
+
+      if (projectLanguageResult.isErr) {
+        return Err(projectLanguageResult.unwrapErr());
+      }
+
+      final projectLanguage = projectLanguageResult.unwrap();
 
       // Get all active (non-obsolete) translation units for the project
       final unitsResult = await _unitRepository.getActive(projectId);
@@ -227,12 +272,17 @@ class LocFileServiceImpl implements ILocFileService {
 
       final projectLanguages = projectLanguagesResult.unwrap();
 
-      final projectLanguage = projectLanguages.firstWhere(
-        (pl) => pl.languageId.contains(languageCode),
-        orElse: () => throw FileServiceException(
-          'Language $languageCode not found in project',
-        ),
+      final projectLanguageResult = await _findProjectLanguage(
+        projectId: projectId,
+        languageCode: languageCode,
+        projectLanguages: projectLanguages,
       );
+
+      if (projectLanguageResult.isErr) {
+        return Err(projectLanguageResult.unwrapErr());
+      }
+
+      final projectLanguage = projectLanguageResult.unwrap();
 
       // Get all active (non-obsolete) translation units for the project
       final unitsResult = await _unitRepository.getActive(projectId);
@@ -316,12 +366,17 @@ class LocFileServiceImpl implements ILocFileService {
 
       final projectLanguages = projectLanguagesResult.unwrap();
 
-      final projectLanguage = projectLanguages.firstWhere(
-        (pl) => pl.languageId.contains(languageCode),
-        orElse: () => throw FileServiceException(
-          'Language $languageCode not found in project $projectId',
-        ),
+      final projectLanguageResult = await _findProjectLanguage(
+        projectId: projectId,
+        languageCode: languageCode,
+        projectLanguages: projectLanguages,
       );
+
+      if (projectLanguageResult.isErr) {
+        return Err(projectLanguageResult.unwrapErr());
+      }
+
+      final projectLanguage = projectLanguageResult.unwrap();
 
       // Get all active (non-obsolete) translation units for the project
       final unitsResult = await _unitRepository.getActive(projectId);
