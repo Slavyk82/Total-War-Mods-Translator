@@ -11,6 +11,7 @@ import 'migration_llm_custom_rules.dart';
 import 'migration_languages_custom.dart';
 import 'migration_mod_update_impact.dart';
 import 'migration_ignored_source_texts.dart';
+import 'migration_fix_cache_triggers.dart';
 
 /// Registry of all database migrations.
 ///
@@ -34,6 +35,7 @@ class MigrationRegistry {
       LanguagesCustomMigration(),
       ModUpdateImpactMigration(),
       IgnoredSourceTextsMigration(),
+      FixCacheTriggersMigration(),
     ];
 
     // Sort by priority (lower numbers first)

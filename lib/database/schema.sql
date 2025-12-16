@@ -796,7 +796,7 @@ BEGIN
     UPDATE translation_view_cache
     SET translated_text = new.translated_text,
         status = new.status,
-        confidence_score = new.confidence_score,
+        confidence_score = NULL,
         is_manually_edited = new.is_manually_edited,
         version_id = new.id,
         version_updated_at = new.updated_at
@@ -823,7 +823,7 @@ BEGIN
         tu.source_text,
         new.translated_text,
         new.status,
-        new.confidence_score,
+        NULL,
         new.is_manually_edited,
         tu.is_obsolete,
         tu.created_at,
