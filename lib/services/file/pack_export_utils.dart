@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
 import 'package:twmt/services/shared/logging_service.dart';
 
@@ -70,12 +71,28 @@ class PackExportUtils {
 
   /// Build pack file name with prefix for load order priority
   ///
-  /// Format: !!!!!!!!!!_{lang}_twmt_{original_pack_name}.pack (all lowercase)
+  /// Format for mod translations: !!!!!!!!!!_{lang}_twmt_{original_pack_name}.pack (all lowercase)
+  /// Format for game translations: !!!!!!!!!!_{lang}_twmt_game_translation.pack (all lowercase)
   /// The exclamation marks ensure the mod loads with high priority.
   String buildPackFileName(String languageCode, String? sourceFilePath) {
     final langCode = languageCode.toLowerCase();
+
+    // Check if this is a game localization pack (local_*.pack)
+    if (isGameLocalizationPack(sourceFilePath)) {
+      return '!!!!!!!!!!_${langCode}_twmt_game_translation.pack';
+    }
+
     final originalPackName = extractOriginalPackName(sourceFilePath);
     return '!!!!!!!!!!_${langCode}_twmt_$originalPackName.pack';
+  }
+
+  /// Check if the source file path is a game localization pack (local_*.pack)
+  bool isGameLocalizationPack(String? sourceFilePath) {
+    if (sourceFilePath == null || sourceFilePath.isEmpty) {
+      return false;
+    }
+    final fileName = path.basename(sourceFilePath).toLowerCase();
+    return fileName.startsWith('local_') && fileName.endsWith('.pack');
   }
 
   /// Extract original pack filename from source file path
@@ -95,4 +112,48 @@ class PackExportUtils {
 
     return fileName.toLowerCase();
   }
+
+  /// Build the image file name for Steam Workshop
+  ///
+  /// Returns the same name as the pack file but with .png extension.
+  /// Example: "!!!!!!!!!!_fr_twmt_game_translation.pack" -> "!!!!!!!!!!_fr_twmt_game_translation.png"
+  String buildPackImageFileName(String packFileName) {
+    if (packFileName.toLowerCase().endsWith('.pack')) {
+      return '${packFileName.substring(0, packFileName.length - 5)}.png';
+    }
+    return '$packFileName.png';
+  }
+
+  /// Copy TWMT icon to the game's data folder for Steam Workshop
+  ///
+  /// This copies the bundled twmt_icon.png asset to the destination folder
+  /// with the appropriate name matching the pack file.
+  Future<void> copyTwmtIconToDataFolder({
+    required String packFileName,
+    required String destinationFolder,
+  }) async {
+    try {
+      final imageFileName = buildPackImageFileName(packFileName);
+      final destinationPath = path.join(destinationFolder, imageFileName);
+
+      // Load the icon from bundled assets
+      final byteData = await rootBundle.load('assets/twmt_icon.png');
+      final bytes = byteData.buffer.asUint8List();
+
+      // Write to destination
+      await File(destinationPath).writeAsBytes(bytes);
+
+      _logger.info('TWMT icon copied for Steam Workshop', {
+        'destination': destinationPath,
+      });
+    } catch (e) {
+      _logger.warning('Failed to copy TWMT icon', {
+        'error': e.toString(),
+      });
+      // Don't throw - this is not critical for the export
+    }
+  }
+
+  /// Get the path to the TWMT icon asset
+  static const String twmtIconAssetPath = 'assets/twmt_icon.png';
 }

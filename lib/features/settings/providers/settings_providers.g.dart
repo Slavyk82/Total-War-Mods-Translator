@@ -136,7 +136,7 @@ final class GeneralSettingsProvider
   GeneralSettings create() => GeneralSettings();
 }
 
-String _$generalSettingsHash() => r'f030e1d95f3b3134479225ccdaf235b5375521e4';
+String _$generalSettingsHash() => r'e1f416203c5a7cc7add55794e82c37e553733a8d';
 
 /// General settings notifier
 

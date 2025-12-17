@@ -94,11 +94,17 @@ class _FluentTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return TabBar(
       isScrollable: true,
       labelPadding: EdgeInsets.zero,
       indicator: const BoxDecoration(),
       dividerColor: Colors.transparent,
+      labelColor: isDark ? const Color(0xFFE1E1E1) : const Color(0xFF323130),
+      unselectedLabelColor:
+          isDark ? const Color(0xFFA19F9D) : const Color(0xFF605E5C),
       tabs: tabs,
     );
   }

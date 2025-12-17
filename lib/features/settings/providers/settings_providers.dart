@@ -35,6 +35,7 @@ class SettingsKeys {
   static const String gamePathTroy = 'game_path_troy';
   static const String gamePath3k = 'game_path_3k';
   static const String gamePathPharaoh = 'game_path_pharaoh';
+  static const String gamePathPharaohDynasties = 'game_path_pharaoh_dynasties';
 
   // LLM Providers
   static const String activeProvider = 'active_llm_provider';
@@ -76,6 +77,7 @@ class GeneralSettings extends _$GeneralSettings {
       SettingsKeys.gamePathTroy: await service.getString(SettingsKeys.gamePathTroy),
       SettingsKeys.gamePath3k: await service.getString(SettingsKeys.gamePath3k),
       SettingsKeys.gamePathPharaoh: await service.getString(SettingsKeys.gamePathPharaoh),
+      SettingsKeys.gamePathPharaohDynasties: await service.getString(SettingsKeys.gamePathPharaohDynasties),
       SettingsKeys.workshopPath: await service.getString(SettingsKeys.workshopPath),
       SettingsKeys.rpfmPath: await service.getString(SettingsKeys.rpfmPath),
       SettingsKeys.rpfmSchemaPath: await service.getString(SettingsKeys.rpfmSchemaPath),
@@ -129,6 +131,8 @@ class GeneralSettings extends _$GeneralSettings {
         return SettingsKeys.gamePath3k;
       case 'pharaoh':
         return SettingsKeys.gamePathPharaoh;
+      case 'pharaoh_dynasties':
+        return SettingsKeys.gamePathPharaohDynasties;
       default:
         throw ArgumentError('Unknown game code: $gameCode');
     }

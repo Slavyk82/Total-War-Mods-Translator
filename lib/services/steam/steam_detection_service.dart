@@ -58,6 +58,12 @@ class SteamDetectionService {
       steamAppId: '1937780',
       folderName: 'Total War PHARAOH',
     ),
+    'pharaoh_dynasties': GameInfo(
+      code: 'pharaoh_dynasties',
+      name: 'Total War: Pharaoh Dynasties',
+      steamAppId: '2951630',
+      folderName: 'Total War PHARAOH DYNASTIES',
+    ),
   };
 
   /// Detect all installed Total War games

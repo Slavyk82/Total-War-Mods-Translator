@@ -3,11 +3,15 @@ import 'package:twmt/models/domain/project_metadata.dart';
 
 part 'project.g.dart';
 
-/// Represents a mod translation project in TWMT.
+/// Represents a translation project in TWMT.
 ///
-/// A project contains all information about translating a specific Total War mod,
-/// including the source mod details, target languages, translation settings,
-/// and current progress.
+/// A project contains all information about translating a specific Total War mod
+/// or the base game itself. It includes the source details, target languages,
+/// translation settings, and current progress.
+///
+/// Projects have two types:
+/// - 'mod': For translating Steam Workshop mods (default)
+/// - 'game': For translating the base game using local_xx.pack files
 @JsonSerializable()
 class Project {
   /// Unique identifier (UUID)
@@ -81,6 +85,16 @@ class Project {
   )
   final bool hasModUpdateImpact;
 
+  /// Type of project: 'mod' for mod translations, 'game' for base game translations.
+  /// Defaults to 'mod' for backward compatibility.
+  @JsonKey(name: 'project_type')
+  final String projectType;
+
+  /// Source language code for game translations (e.g., 'en', 'fr').
+  /// Only used when projectType == 'game'.
+  @JsonKey(name: 'source_language_code')
+  final String? sourceLanguageCode;
+
   const Project({
     required this.id,
     required this.name,
@@ -99,6 +113,8 @@ class Project {
     this.completedAt,
     this.metadata,
     this.hasModUpdateImpact = false,
+    this.projectType = 'mod',
+    this.sourceLanguageCode,
   });
 
   /// Returns true if the project has a source file configured
@@ -112,6 +128,12 @@ class Project {
   /// Returns true if the project is from Steam Workshop
   bool get isFromSteamWorkshop =>
       modSteamId != null && modSteamId!.isNotEmpty;
+
+  /// Returns true if this is a game translation project
+  bool get isGameTranslation => projectType == 'game';
+
+  /// Returns true if this is a mod translation project
+  bool get isModTranslation => projectType == 'mod';
 
   /// Returns true if the project needs an update check
   bool get needsUpdateCheck {
@@ -150,6 +172,8 @@ class Project {
     int? completedAt,
     String? metadata,
     bool? hasModUpdateImpact,
+    String? projectType,
+    String? sourceLanguageCode,
   }) {
     return Project(
       id: id ?? this.id,
@@ -169,6 +193,8 @@ class Project {
       completedAt: completedAt ?? this.completedAt,
       metadata: metadata ?? this.metadata,
       hasModUpdateImpact: hasModUpdateImpact ?? this.hasModUpdateImpact,
+      projectType: projectType ?? this.projectType,
+      sourceLanguageCode: sourceLanguageCode ?? this.sourceLanguageCode,
     );
   }
 
@@ -197,7 +223,9 @@ class Project {
         other.updatedAt == updatedAt &&
         other.completedAt == completedAt &&
         other.metadata == metadata &&
-        other.hasModUpdateImpact == hasModUpdateImpact;
+        other.hasModUpdateImpact == hasModUpdateImpact &&
+        other.projectType == projectType &&
+        other.sourceLanguageCode == sourceLanguageCode;
   }
 
   @override
@@ -218,10 +246,12 @@ class Project {
       updatedAt.hashCode ^
       completedAt.hashCode ^
       metadata.hashCode ^
-      hasModUpdateImpact.hashCode;
+      hasModUpdateImpact.hashCode ^
+      projectType.hashCode ^
+      sourceLanguageCode.hashCode;
 
   @override
-  String toString() => 'Project(id: $id, name: $name, gameInstallationId: $gameInstallationId)';
+  String toString() => 'Project(id: $id, name: $name, type: $projectType, gameInstallationId: $gameInstallationId)';
 }
 
 /// Convert SQLite integer (0/1) to bool for hasModUpdateImpact field

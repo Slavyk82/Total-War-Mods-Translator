@@ -284,8 +284,8 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   }
   final gameInstallation = gameInstallationResult.unwrap();
 
-  // Fetch projects for the selected game only
-  final projectsResult = await projectRepo.getByGameInstallation(gameInstallation.id);
+  // Fetch mod translation projects for the selected game only (exclude game translations)
+  final projectsResult = await projectRepo.getModTranslationsByInstallation(gameInstallation.id);
   if (projectsResult.isErr) {
     final error = projectsResult.unwrapErr();
     logging.error('Failed to fetch projects', error);
@@ -321,7 +321,8 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
     final gameInstallation = gamesMap[project.gameInstallationId];
 
     // Auto-fill missing image URL from workshop folder if available
-    if (project.imageUrl == null && project.sourceFilePath != null) {
+    // Skip for game translation projects (they use the game icon instead)
+    if (project.imageUrl == null && project.sourceFilePath != null && project.isModTranslation) {
       final imagePath = await _findModImage(project.sourceFilePath!);
       if (imagePath != null) {
         final currentMetadata = project.parsedMetadata;

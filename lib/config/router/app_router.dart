@@ -16,6 +16,7 @@ import '../../features/translation_memory/screens/translation_memory_screen.dart
 import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
+import '../../features/game_translation/screens/game_translation_screen.dart';
 
 // Layout
 import '../../widgets/layouts/main_layout_router.dart';
@@ -29,6 +30,7 @@ class AppRoutes {
   static const String home = '/';
   static const String mods = '/mods';
   static const String projects = '/projects';
+  static const String gameTranslation = '/game-translation';
   static const String glossary = '/glossary';
   static const String translationMemory = '/translation-memory';
   static const String packCompilation = '/pack-compilation';
@@ -131,6 +133,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
+          // Game Translation
+          GoRoute(
+            path: AppRoutes.gameTranslation,
+            name: 'gameTranslation',
+            pageBuilder: (context, state) {
+              return FluentPageTransitions.fadeTransition(
+                child: const GameTranslationScreen(),
+                state: state,
+              );
+            },
+          ),
+
           // Glossary
           GoRoute(
             path: AppRoutes.glossary,
@@ -226,6 +240,7 @@ extension GoRouterExtensions on BuildContext {
   void goHome() => go(AppRoutes.home);
   void goMods() => go(AppRoutes.mods);
   void goProjects() => go(AppRoutes.projects);
+  void goGameTranslation() => go(AppRoutes.gameTranslation);
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);

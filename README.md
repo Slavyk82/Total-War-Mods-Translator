@@ -62,6 +62,7 @@ TWMT (Total War Mods Translator) is a Windows application designed to translate 
 For complete documentation, see the **[User Guide](docs/user_guide.md)** which covers:
 
 - [Getting Started](docs/user_guide.md#getting-started)
+- [Game Translation](docs/user_guide.md#game-translation)
 - [Mods Screen](docs/user_guide.md#mods-screen)
 - [Projects Screen](docs/user_guide.md#projects-screen)
 - [Translation Editor](docs/user_guide.md#translation-editor)

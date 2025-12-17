@@ -60,14 +60,254 @@ On first launch, you need to configure:
 
 ## Global Workflow
 
-The typical workflow for translating a mod with TWMT:
+TWMT supports two translation workflows depending on whether you are translating mods or the base game.
+
+### Mod Translation Workflow
+
+The typical workflow for translating Steam Workshop mods:
 
 ```
-1. Mods Screen      →  Scan and discover mods from Steam Workshop
-2. Project Creation →  Create a translation project from a detected mod
+1. Mods Screen        →  Scan and discover mods from Steam Workshop
+2. Project Creation   →  Create a translation project from a detected mod
 3. Translation Editor →  Translate entries manually or with AI assistance
-4. Export           →  Generate a translation pack file for use in-game
+4. Export             →  Generate a translation pack file for use in-game
 ```
+
+### Game Translation Workflow
+
+The workflow for translating the base game's localization:
+
+```
+1. Game Translation   →  Access via sidebar under your selected game
+2. Create Project     →  Select source pack and target languages
+3. Translation Editor →  Translate entries manually or with AI assistance
+4. Export             →  Generate a translation pack to the game's data folder
+```
+
+> **Choosing Between Workflows:**
+> - Use **Mod Translation** when translating content from Steam Workshop mods
+> - Use **Game Translation** when translating the base game itself (fan translations, missing languages)
+
+## Game Translation
+
+The Game Translation feature allows you to translate the base game's localization files rather than individual mods. This is useful for creating complete language support for Total War games that may not have official translations in your language.
+
+![](assets/screenshots/screen_game_translation.png)
+
+### Purpose and Overview
+
+#### What is Game Translation?
+
+Game Translation creates translation projects from the game's core localization files (`local_*.pack`) found in the game's `data` folder. Unlike mod translation which works with Steam Workshop content, Game Translation targets the base game text.
+
+| Concept | Description |
+|---------|-------------|
+| Source Pack | The game's localization file to translate from (e.g., `local_en.pack`) |
+| Target Languages | The languages you want to translate the game into |
+| Output Location | Generated packs are saved to the game's `data` folder for immediate use |
+
+#### Why Use Game Translation?
+
+| Benefit | Description |
+|---------|-------------|
+| **Complete Localization** | Translate the entire game, not just mods |
+| **Missing Languages** | Add support for languages without official translations |
+| **Custom Terminology** | Use your preferred translations for game terms |
+| **Community Projects** | Collaborate on fan translations for the community |
+
+---
+
+### Game Translation Screen
+
+Access the Game Translation screen from the sidebar by clicking "Game Translation" under your selected game.
+
+Each game translation project displays:
+
+| Element | Description |
+|---------|-------------|
+| Project Name | Auto-generated from game name and target languages |
+| Language Progress | Progress bars for each target language |
+| Status Badge | Translation completion status |
+
+---
+
+### Creating a Game Translation Project
+
+Creating a game translation project is a two-step wizard process.
+
+#### Prerequisites
+
+Before creating a game translation project:
+
+1. **Game Installation** — The game must be installed and detected in Settings > Folders
+2. **Localization Packs** — The game's `data` folder must contain `local_*.pack` files
+3. **RPFM Configuration** — RPFM CLI and schema paths must be configured
+4. **Target Languages** — At least one target language must be configured in Settings
+
+#### Starting the Wizard
+
+1. Navigate to **Game Translation** in the sidebar
+2. If no projects exist, click **Create Game Translation**
+3. The creation wizard dialog opens
+
+---
+
+### Step 1: Select Source Pack
+
+The first step is selecting which language pack to use as the translation source.
+
+#### Available Localization Packs
+
+TWMT scans the game's `data` folder for files matching the `local_*.pack` pattern. For each detected pack, the following information is displayed:
+
+| Element | Description |
+|---------|-------------|
+| Language Name | Full name of the language (e.g., "English", "French") |
+| Pack Filename | The filename (e.g., `local_en.pack`) |
+| File Size | Size of the pack file |
+| Last Modified | Date and time of last modification |
+
+#### Selecting a Source
+
+1. Click on the desired source pack to select it
+2. A radio indicator shows the current selection
+3. Selected packs are highlighted with a primary color border
+
+> **Recommendation:** Use English (`local_en.pack`) as the source for the most complete text coverage, as it is typically the primary development language.
+
+---
+
+### Step 2: Select Target Languages
+
+The second step is choosing which languages to translate into.
+
+![](assets/screenshots/screen_game_translation_step2.png)
+
+#### Source Language Display
+
+The selected source language is displayed at the top:
+- Shows "Translating from: [Language Name]"
+- The source language is automatically excluded from target options
+
+#### Language Selection
+
+Available target languages are displayed as selectable chips:
+
+| Control | Description |
+|---------|-------------|
+| Language Chips | Click to toggle selection |
+| Select All | Select all available languages |
+| Clear | Deselect all languages |
+| Add Language | Open dialog to add a custom language |
+
+#### Adding Custom Languages
+
+If your target language is not in the default list:
+
+1. Click **Add Language**
+2. Enter the language code (ISO 639-1)
+3. Enter the display name
+4. Optionally set as default for future projects
+5. Click **Add**
+
+---
+
+### Project Creation Process
+
+After completing both steps, click **Create** to start the project creation.
+
+#### Creation Steps
+
+1. **Project Creation** — Database entry created with project metadata
+2. **Language Configuration** — Target languages registered for the project
+3. **File Extraction** — RPFM extracts localization files from the source pack
+4. **Unit Import** — Translation units imported into the database
+
+#### Automatic Naming
+
+Project names are automatically generated using the pattern:
+```
+{Game Name} - Game Translation ({Target Languages})
+```
+
+Example: `Total War: WARHAMMER III - Game Translation (French, German, Spanish)`
+
+---
+
+### Working with Game Translation Projects
+
+Once created, game translation projects function identically to mod translation projects.
+
+#### Project Detail Screen
+
+Navigate to a game translation project to see:
+
+- **Overview Section** — Project metadata and delete option
+- **Target Languages Section** — Progress for each language with editor access
+- **Translation Statistics** — Aggregate statistics across all languages
+
+#### Translation Editor
+
+Open the Translation Editor for any target language to:
+
+- View and edit translations
+- Run AI-assisted batch translation
+- Validate translations
+- Generate output packs
+
+> **Note:** Game translation projects typically contain hundreds of thousands of entries. Use filters and search to navigate efficiently.
+
+---
+
+### Output and Export
+
+#### Generate Pack
+
+When you generate a pack from a game translation project:
+
+1. Click **Generate pack** in the Translation Editor
+2. TWMT creates a localization pack with your translations
+3. The pack is saved to the game's `data` folder
+
+#### Output Naming
+
+Generated packs follow the pattern:
+```
+!!!!!!!!!!_{language_code}_translation_twmt.pack
+```
+
+The leading exclamation marks ensure the translation pack loads after the base game files, allowing your translations to override the defaults.
+
+#### Pack Priority
+
+| Pack Type | Load Order | Override Behavior |
+|-----------|------------|-------------------|
+| Base game (`local_*.pack`) | Early | Original text |
+| Translation pack (`!!!!...*.pack`) | Late | Overrides base text |
+
+---
+
+### Tips and Best Practices
+
+> 1. **Start with English Source** — English packs typically have the most complete text coverage
+>
+> 2. **Plan for Scale** — Game translation projects can have 200,000+ entries; budget time accordingly
+>
+> 3. **Use Translation Memory** — TM is especially valuable for game translation due to repeated phrases
+>
+> 4. **Build Glossaries First** — Create comprehensive glossaries before starting to ensure consistent terminology
+>
+> 5. **Translate in Phases** — Focus on high-visibility text first (UI, menus, common dialogs)
+>
+> 6. **Test In-Game Regularly** — Generate packs periodically and test in-game to catch issues early
+>
+> 7. **Use Filters** — The data grid filters help navigate large translation sets efficiently
+>
+> 8. **Leverage AI Batch Translation** — AI translation is especially efficient for the repetitive patterns in game text
+>
+> 9. **Validate Before Release** — Run validation to catch tag mismatches and formatting issues
+
+---
 
 ## Mods Screen
 

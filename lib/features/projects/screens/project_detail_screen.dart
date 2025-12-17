@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
 import 'package:twmt/config/router/app_router.dart';
+import '../../game_translation/providers/game_translation_providers.dart';
 import '../providers/project_detail_providers.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/project_overview_section.dart';
@@ -405,14 +406,19 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
               if (!context.mounted) return;
 
               if (result.isOk) {
-                // Refresh projects list
+                // Refresh projects list (both mod and game translation providers)
                 ref.invalidate(projectsWithDetailsProvider);
-                
-                // Navigate to projects list
+                ref.invalidate(gameTranslationProjectsProvider);
+
+                // Navigate to appropriate screen based on project type
                 if (context.mounted) {
-                  context.go(AppRoutes.projects);
+                  if (details.project.isGameTranslation) {
+                    context.go(AppRoutes.gameTranslation);
+                  } else {
+                    context.go(AppRoutes.projects);
+                  }
                 }
-                
+
                 // Show success toast after navigation
                 if (context.mounted) {
                   FluentToast.success(

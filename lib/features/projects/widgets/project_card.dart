@@ -332,6 +332,28 @@ class _ProjectCardState extends State<ProjectCard> {
       color: theme.colorScheme.onPrimaryContainer,
     );
 
+    // Use TWMT icon for game translation projects
+    Widget imageWidget;
+    if (project.isGameTranslation) {
+      imageWidget = Image.asset(
+        'assets/twmt_icon.png',
+        fit: BoxFit.cover,
+        width: 75,
+        height: 75,
+        errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+      );
+    } else if (imagePath != null && imagePath.isNotEmpty) {
+      imageWidget = Image.file(
+        File(imagePath),
+        fit: BoxFit.cover,
+        width: 75,
+        height: 75,
+        errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+      );
+    } else {
+      imageWidget = fallbackIcon();
+    }
+
     return Container(
       width: 75,
       height: 75,
@@ -340,15 +362,7 @@ class _ProjectCardState extends State<ProjectCard> {
         borderRadius: BorderRadius.circular(8),
       ),
       clipBehavior: Clip.antiAlias,
-      child: imagePath != null && imagePath.isNotEmpty
-          ? Image.file(
-              File(imagePath),
-              fit: BoxFit.cover,
-              width: 75,
-              height: 75,
-              errorBuilder: (context, error, stackTrace) => fallbackIcon(),
-            )
-          : fallbackIcon(),
+      child: imageWidget,
     );
   }
 

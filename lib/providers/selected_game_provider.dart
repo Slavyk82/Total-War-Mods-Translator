@@ -36,6 +36,7 @@ const Map<String, String> _availableGames = {
   'troy': 'Total War: Troy',
   '3k': 'Total War: Three Kingdoms',
   'pharaoh': 'Total War: Pharaoh',
+  'pharaoh_dynasties': 'Total War: Pharaoh Dynasties',
 };
 
 /// Provider for the list of configured games (games with a path set in settings)
@@ -129,6 +130,8 @@ String _getGamePathKey(String gameCode) {
       return SettingsKeys.gamePath3k;
     case 'pharaoh':
       return SettingsKeys.gamePathPharaoh;
+    case 'pharaoh_dynasties':
+      return SettingsKeys.gamePathPharaohDynasties;
     default:
       throw ArgumentError('Unknown game code: $gameCode');
   }

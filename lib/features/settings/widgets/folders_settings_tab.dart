@@ -69,6 +69,11 @@ class _FoldersSettingsTabState extends ConsumerState<FoldersSettingsTab> {
       name: 'Total War: Pharaoh',
       settingsKey: SettingsKeys.gamePathPharaoh,
     ),
+    GameDisplayInfo(
+      code: 'pharaoh_dynasties',
+      name: 'Total War: Pharaoh Dynasties',
+      settingsKey: SettingsKeys.gamePathPharaohDynasties,
+    ),
   ];
 
   @override

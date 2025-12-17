@@ -169,4 +169,57 @@ class ProjectRepository extends BaseRepository<Project> {
       return result.first['cnt'] as int;
     });
   }
+
+  /// Get all projects by type ('mod' or 'game').
+  ///
+  /// Returns [Ok] with list of projects of the specified type, ordered by updated date.
+  Future<Result<List<Project>, TWMTDatabaseException>> getByType(
+      String projectType) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'project_type = ?',
+        whereArgs: [projectType],
+        orderBy: 'updated_at DESC',
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
+
+  /// Get game translation projects for a specific game installation.
+  ///
+  /// Returns [Ok] with list of game translation projects for the installation,
+  /// ordered by updated date.
+  Future<Result<List<Project>, TWMTDatabaseException>>
+      getGameTranslationsByInstallation(String gameInstallationId) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'game_installation_id = ? AND project_type = ?',
+        whereArgs: [gameInstallationId, 'game'],
+        orderBy: 'updated_at DESC',
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
+
+  /// Get mod translation projects for a specific game installation.
+  ///
+  /// Returns [Ok] with list of mod translation projects for the installation,
+  /// ordered by updated date.
+  Future<Result<List<Project>, TWMTDatabaseException>>
+      getModTranslationsByInstallation(String gameInstallationId) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'game_installation_id = ? AND project_type = ?',
+        whereArgs: [gameInstallationId, 'mod'],
+        orderBy: 'updated_at DESC',
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
 }

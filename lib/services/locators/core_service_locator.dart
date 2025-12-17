@@ -27,6 +27,7 @@ import '../steam/workshop_api_service_impl.dart';
 import '../steam/workshop_metadata_service.dart';
 import '../../repositories/workshop_mod_repository.dart';
 import '../updates/app_update_service.dart';
+import '../game/game_localization_service.dart';
 
 /// Registers core infrastructure and miscellaneous services.
 ///
@@ -150,6 +151,11 @@ class CoreServiceLocator {
     // Update Services
     locator.registerLazySingleton<AppUpdateService>(
       () => AppUpdateService(),
+    );
+
+    // Game Services
+    locator.registerLazySingleton<GameLocalizationService>(
+      () => GameLocalizationService(),
     );
 
     logging.info('Core services registered successfully');

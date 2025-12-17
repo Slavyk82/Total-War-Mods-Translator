@@ -89,6 +89,15 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   context: context,
                   index: 3,
                   selectedIndex: selectedIndex,
+                  icon: FluentIcons.globe_24_regular,
+                  selectedIcon: FluentIcons.globe_24_filled,
+                  label: 'Game Translation',
+                  onTap: () => _navigate(context, AppRoutes.gameTranslation),
+                ),
+                _buildNavigationItem(
+                  context: context,
+                  index: 4,
+                  selectedIndex: selectedIndex,
                   icon: FluentIcons.box_multiple_24_regular,
                   selectedIcon: FluentIcons.box_multiple_24_filled,
                   label: 'Pack Compilation',
@@ -97,7 +106,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 const Divider(height: 24),
                 _buildNavigationItem(
                   context: context,
-                  index: 4,
+                  index: 5,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.book_24_regular,
                   selectedIcon: FluentIcons.book_24_filled,
@@ -106,7 +115,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 ),
                 _buildNavigationItem(
                   context: context,
-                  index: 5,
+                  index: 6,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.database_24_regular,
                   selectedIcon: FluentIcons.database_24_filled,
@@ -116,7 +125,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 const Divider(height: 24),
                 _buildNavigationItem(
                   context: context,
-                  index: 6,
+                  index: 7,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.settings_24_regular,
                   selectedIcon: FluentIcons.settings_24_filled,
@@ -125,7 +134,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                 ),
                 _buildNavigationItem(
                   context: context,
-                  index: 7,
+                  index: 8,
                   selectedIndex: selectedIndex,
                   icon: FluentIcons.question_circle_24_regular,
                   selectedIcon: FluentIcons.question_circle_24_filled,
@@ -202,11 +211,12 @@ class NavigationSidebarRouter extends ConsumerWidget {
     if (path == AppRoutes.home) return 0;
     if (path.startsWith(AppRoutes.mods)) return 1;
     if (path.startsWith(AppRoutes.projects)) return 2;
-    if (path.startsWith(AppRoutes.packCompilation)) return 3;
-    if (path.startsWith(AppRoutes.glossary)) return 4;
-    if (path.startsWith(AppRoutes.translationMemory)) return 5;
-    if (path.startsWith(AppRoutes.settings)) return 6;
-    if (path.startsWith(AppRoutes.help)) return 7;
+    if (path.startsWith(AppRoutes.gameTranslation)) return 3;
+    if (path.startsWith(AppRoutes.packCompilation)) return 4;
+    if (path.startsWith(AppRoutes.glossary)) return 5;
+    if (path.startsWith(AppRoutes.translationMemory)) return 6;
+    if (path.startsWith(AppRoutes.settings)) return 7;
+    if (path.startsWith(AppRoutes.help)) return 8;
     return 0; // Default to home
   }
 }

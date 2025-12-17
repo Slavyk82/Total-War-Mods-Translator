@@ -212,6 +212,14 @@ class ExportOrchestratorService {
 
       final fileSize = await File(packPath).length();
 
+      // Copy TWMT icon to data folder for game translation projects (for Steam Workshop)
+      if (_packUtils.isGameLocalizationPack(project.sourceFilePath)) {
+        await _packUtils.copyTwmtIconToDataFolder(
+          packFileName: packFileName,
+          destinationFolder: gameDataPath,
+        );
+      }
+
       onProgress?.call('finalizing', 0.9);
 
       await _historyRecorder.recordExport(

@@ -58,6 +58,11 @@ class GameInstallationSyncService {
       name: 'Total War: Pharaoh',
       steamAppId: '1937780',
     ),
+    'pharaoh_dynasties': _GameInfo(
+      code: 'pharaoh_dynasties',
+      name: 'Total War: Pharaoh Dynasties',
+      steamAppId: '2951630',
+    ),
   };
 
   GameInstallationSyncService({
@@ -276,6 +281,8 @@ class GameInstallationSyncService {
         return SettingsKeys.gamePath3k;
       case 'pharaoh':
         return SettingsKeys.gamePathPharaoh;
+      case 'pharaoh_dynasties':
+        return SettingsKeys.gamePathPharaohDynasties;
       default:
         throw ArgumentError('Unknown game code: $gameCode');
     }

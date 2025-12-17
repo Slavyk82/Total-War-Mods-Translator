@@ -81,16 +81,19 @@ class LanguageSettings extends _$LanguageSettings {
         languageCode,
       );
 
-      // Update state
-      final currentState = state.value;
-      if (currentState != null) {
-        state = AsyncValue.data(
-          currentState.copyWith(defaultLanguageCode: languageCode),
-        );
-      }
+      // Only update state if ref is still mounted
+      if (ref.mounted) {
+        // Update state
+        final currentState = state.value;
+        if (currentState != null) {
+          state = AsyncValue.data(
+            currentState.copyWith(defaultLanguageCode: languageCode),
+          );
+        }
 
-      // Also invalidate the general settings provider
-      ref.invalidate(generalSettingsProvider);
+        // Also invalidate the general settings provider
+        ref.invalidate(generalSettingsProvider);
+      }
 
       return (true, null);
     } catch (e) {
@@ -135,10 +138,13 @@ class LanguageSettings extends _$LanguageSettings {
 
     return insertResult.when(
       ok: (_) {
-        ref.invalidateSelf();
-        // Invalidate shared language providers so new language appears everywhere
-        ref.invalidate(allLanguagesProvider);
-        ref.invalidate(activeLanguagesProvider);
+        // Only invalidate if ref is still mounted
+        if (ref.mounted) {
+          ref.invalidateSelf();
+          // Invalidate shared language providers so new language appears everywhere
+          ref.invalidate(allLanguagesProvider);
+          ref.invalidate(activeLanguagesProvider);
+        }
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -182,10 +188,13 @@ class LanguageSettings extends _$LanguageSettings {
 
     return deleteResult.when(
       ok: (_) {
-        ref.invalidateSelf();
-        // Invalidate shared language providers so language is removed everywhere
-        ref.invalidate(allLanguagesProvider);
-        ref.invalidate(activeLanguagesProvider);
+        // Only invalidate if ref is still mounted
+        if (ref.mounted) {
+          ref.invalidateSelf();
+          // Invalidate shared language providers so language is removed everywhere
+          ref.invalidate(allLanguagesProvider);
+          ref.invalidate(activeLanguagesProvider);
+        }
         return (true, null);
       },
       err: (error) {
