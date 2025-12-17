@@ -92,8 +92,6 @@ The workflow for translating the base game's localization:
 
 The Game Translation feature allows you to translate the base game's localization files rather than individual mods. This is useful for creating complete language support for Total War games that may not have official translations in your language.
 
-![](assets/screenshots/screen_game_translation.png)
-
 ### Purpose and Overview
 
 #### What is Game Translation?
@@ -180,8 +178,6 @@ TWMT scans the game's `data` folder for files matching the `local_*.pack` patter
 ### Step 2: Select Target Languages
 
 The second step is choosing which languages to translate into.
-
-![](assets/screenshots/screen_game_translation_step2.png)
 
 #### Source Language Display
 
