@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
@@ -16,22 +17,25 @@ const _helpCacheFileName = 'help_sections_cache.json';
 
 /// Provider that loads and parses the user guide into sections.
 ///
-/// Uses a persistent cache that is valid until the app version changes.
+/// Uses a persistent cache that is valid until the app version or content changes.
 /// This dramatically improves Help screen load times on subsequent opens.
 @riverpod
 Future<List<HelpSection>> helpSections(Ref ref) async {
+  // Load the raw content first (needed for hash comparison)
+  final content = await rootBundle.loadString('docs/user_guide.md');
+  final contentHash = md5.convert(utf8.encode(content)).toString();
+
   // Try to load from cache first
-  final cachedSections = await _loadFromCache();
+  final cachedSections = await _loadFromCache(contentHash);
   if (cachedSections != null) {
     return cachedSections;
   }
 
   // Cache miss or invalid - parse from source
-  final content = await rootBundle.loadString('docs/user_guide.md');
   final sections = _parseUserGuideIntoSections(content);
 
   // Save to cache for next time (fire and forget)
-  _saveToCache(sections);
+  _saveToCache(sections, contentHash);
 
   return sections;
 }
@@ -46,8 +50,8 @@ Future<File> _getCacheFile() async {
   return File(path.join(cacheDir.path, _helpCacheFileName));
 }
 
-/// Load sections from cache if valid (same app version).
-Future<List<HelpSection>?> _loadFromCache() async {
+/// Load sections from cache if valid (same content hash).
+Future<List<HelpSection>?> _loadFromCache(String currentContentHash) async {
   try {
     final cacheFile = await _getCacheFile();
     if (!await cacheFile.exists()) {
@@ -57,11 +61,10 @@ Future<List<HelpSection>?> _loadFromCache() async {
     final jsonString = await cacheFile.readAsString();
     final json = jsonDecode(jsonString) as Map<String, dynamic>;
 
-    // Check version match
-    final cachedVersion = json['version'] as String?;
-    final packageInfo = await PackageInfo.fromPlatform();
-    if (cachedVersion != packageInfo.version) {
-      // Version mismatch - invalidate cache
+    // Check content hash match (invalidates cache when doc content changes)
+    final cachedHash = json['contentHash'] as String?;
+    if (cachedHash != currentContentHash) {
+      // Content changed - invalidate cache
       await cacheFile.delete();
       return null;
     }
@@ -77,14 +80,15 @@ Future<List<HelpSection>?> _loadFromCache() async {
   }
 }
 
-/// Save sections to cache with current app version.
-Future<void> _saveToCache(List<HelpSection> sections) async {
+/// Save sections to cache with content hash.
+Future<void> _saveToCache(List<HelpSection> sections, String contentHash) async {
   try {
     final packageInfo = await PackageInfo.fromPlatform();
     final cacheFile = await _getCacheFile();
 
     final json = {
       'version': packageInfo.version,
+      'contentHash': contentHash,
       'sections': sections.map((s) => s.toJson()).toList(),
     };
 

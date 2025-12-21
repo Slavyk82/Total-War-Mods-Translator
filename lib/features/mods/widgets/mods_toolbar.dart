@@ -20,6 +20,7 @@ class ModsToolbar extends StatefulWidget {
   final int hiddenCount;
   final int projectsWithPendingChanges;
   final VoidCallback? onNavigateToProjects;
+  final VoidCallback? onImportLocalPack;
 
   const ModsToolbar({
     super.key,
@@ -38,6 +39,7 @@ class ModsToolbar extends StatefulWidget {
     required this.hiddenCount,
     this.projectsWithPendingChanges = 0,
     this.onNavigateToProjects,
+    this.onImportLocalPack,
   });
 
   @override
@@ -101,6 +103,16 @@ class _ModsToolbarState extends State<ModsToolbar> {
           // Mod count
           _buildModCount(theme),
           const SizedBox(width: 16),
+
+          // Import local pack button
+          if (widget.onImportLocalPack != null) ...[
+            _ToolbarButton(
+              icon: FluentIcons.folder_add_24_regular,
+              tooltip: TooltipStrings.modsImportLocalPack,
+              onTap: widget.onImportLocalPack!,
+            ),
+            const SizedBox(width: 8),
+          ],
 
           // Refresh button
           _ToolbarButton(

@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
+import 'package:file_picker/file_picker.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/project.dart';
@@ -25,6 +26,7 @@ import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 
 /// Complete mods screen with Syncfusion DataGrid
 class ModsScreen extends ConsumerStatefulWidget {
@@ -90,6 +92,7 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
               hiddenCount: hiddenCountAsync.value ?? 0,
               projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
               onNavigateToProjects: () => _navigateToProjectsWithFilter(context),
+              onImportLocalPack: () => _handleImportLocalPack(context),
             ),
             const SizedBox(height: 16),
 
@@ -449,6 +452,282 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
           FluentToast.warning(
             context,
             'Project not created: no localization files found in the mod.',
+          );
+        }
+      }
+    } catch (e) {
+      // Delete the project on error if it was created
+      if (projectId != null) {
+        await projectRepo.delete(projectId);
+      }
+      if (context.mounted) {
+        FluentToast.error(
+          context,
+          'Failed to create project: $e',
+        );
+      }
+    }
+  }
+
+  Future<void> _handleImportLocalPack(BuildContext context) async {
+    // 1. Get selected game for default path
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (selectedGame == null) {
+      if (context.mounted) {
+        FluentToast.warning(context, 'No game selected. Please select a game first.');
+      }
+      return;
+    }
+
+    // 2. Default folder = game's data folder
+    final defaultPath = path.join(selectedGame.path, 'data');
+
+    // 3. Open file picker
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pack'],
+      initialDirectory: defaultPath,
+      dialogTitle: 'Select a .pack file',
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final packPath = result.files.single.path;
+    if (packPath == null) return;
+
+    // 4. Show warning about non-Workshop pack
+    if (!context.mounted) return;
+    final confirmed = await _showLocalPackWarning(context);
+    if (!confirmed) return;
+
+    // 5. Get project name from user
+    final packFileName = path.basenameWithoutExtension(packPath);
+    if (!context.mounted) return;
+    final projectName = await _showLocalPackNameDialog(context, packFileName);
+    if (projectName == null || projectName.trim().isEmpty) return;
+
+    // 6. Create the project
+    if (!context.mounted) return;
+    await _createLocalPackProject(context, packPath, projectName.trim(), selectedGame);
+  }
+
+  Future<bool> _showLocalPackWarning(BuildContext context) async {
+    final theme = Theme.of(context);
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              FluentIcons.warning_24_regular,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(width: 12),
+            const Text('Local Pack File'),
+          ],
+        ),
+        content: const SizedBox(
+          width: 450,
+          child: Text(
+            'This pack file is not linked to the Steam Workshop.\n\n'
+            'The mod will not be automatically updated when the author releases a new version. '
+            'You will need to manually reimport the pack file to get updates.',
+          ),
+        ),
+        actions: [
+          FluentTextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FluentButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Import Anyway'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
+  Future<String?> _showLocalPackNameDialog(BuildContext context, String defaultName) async {
+    final controller = TextEditingController(text: defaultName);
+    final theme = Theme.of(context);
+
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              FluentIcons.edit_24_regular,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            const Text('Project Name'),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'Enter project name',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+          ),
+        ),
+        actions: [
+          FluentTextButton(
+            onPressed: () => Navigator.of(context).pop(null),
+            child: const Text('Cancel'),
+          ),
+          FluentButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Create Project'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createLocalPackProject(
+    BuildContext context,
+    String packFilePath,
+    String projectName,
+    ConfiguredGame selectedGame,
+  ) async {
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final router = GoRouter.of(context);
+    String? projectId;
+
+    try {
+      // Validate RPFM schema path is configured
+      final settingsService = ServiceLocator.get<SettingsService>();
+      final schemaPath = await settingsService.getString('rpfm_schema_path');
+
+      if (schemaPath.isEmpty) {
+        if (!context.mounted) return;
+        FluentToast.error(
+          context,
+          'RPFM schema path is not configured. Please configure it in Settings > RPFM Tool.',
+        );
+        return;
+      }
+
+      // Find game installation matching the selected game
+      final games = await ref.read(allGameInstallationsProvider.future);
+      final matchingGame = games.firstWhere(
+        (game) => game.gameCode == selectedGame.code,
+        orElse: () => games.isNotEmpty ? games.first : throw StateError('No games found'),
+      );
+
+      final outputFolder = matchingGame.installationPath != null
+          ? path.join(matchingGame.installationPath!, 'data')
+          : null;
+
+      if (outputFolder == null) {
+        if (!context.mounted) return;
+        FluentToast.error(context, 'Game installation path is not configured');
+        return;
+      }
+
+      // Create project
+      const uuid = Uuid();
+      projectId = uuid.v4();
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      final metadata = ProjectMetadata(
+        modTitle: projectName,
+        modImageUrl: null,
+      );
+
+      final project = Project(
+        id: projectId,
+        name: projectName,
+        modSteamId: null, // Not linked to Steam Workshop
+        gameInstallationId: matchingGame.id,
+        sourceFilePath: packFilePath,
+        outputFilePath: outputFolder,
+        batchSize: 25,
+        parallelBatches: 3,
+        createdAt: now,
+        updatedAt: now,
+        metadata: metadata.toJsonString(),
+      );
+
+      final createResult = await projectRepo.insert(project);
+
+      if (createResult.isErr) {
+        if (!context.mounted) return;
+        FluentToast.error(
+          context,
+          'Failed to create project: ${createResult.error}',
+        );
+        return;
+      }
+
+      // Add favorite language to the project
+      final languageRepo = ServiceLocator.get<LanguageRepository>();
+      final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
+
+      final favoriteLanguageCode = await settingsService.getString(
+        SettingsKeys.defaultTargetLanguage,
+        defaultValue: SettingsKeys.defaultTargetLanguageValue,
+      );
+
+      final languageResult = await languageRepo.getByCode(favoriteLanguageCode);
+      if (languageResult.isOk) {
+        final language = languageResult.unwrap();
+        final projectLanguage = ProjectLanguage(
+          id: uuid.v4(),
+          projectId: projectId,
+          languageId: language.id,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await projectLanguageRepo.insert(projectLanguage);
+      }
+
+      // Show initialization dialog
+      if (!context.mounted) return;
+
+      final initService = ServiceLocator.get<IProjectInitializationService>();
+
+      final success = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => ProjectInitializationDialog(
+          projectName: projectName,
+          logStream: initService.logStream,
+          onInitialize: () => initService.initializeProject(
+            projectId: projectId!,
+            packFilePath: packFilePath,
+          ).then((result) {
+            if (result.isErr) {
+              throw Exception(result.error);
+            }
+            return result.value;
+          }),
+        ),
+      );
+
+      if (success == true) {
+        // Refresh projects list
+        ref.invalidate(projectsWithDetailsProvider);
+
+        // Navigate to project detail screen
+        if (context.mounted) {
+          router.go('/projects/$projectId');
+        }
+      } else {
+        // Delete the project if initialization failed (no loc files or error)
+        await projectRepo.delete(projectId);
+        if (context.mounted) {
+          FluentToast.warning(
+            context,
+            'Project not created: no localization files found in the pack.',
           );
         }
       }

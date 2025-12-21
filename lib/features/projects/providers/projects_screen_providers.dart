@@ -546,3 +546,141 @@ Future<String?> _findModImage(String packFilePath) async {
   
   return null;
 }
+
+/// State for tracking resyncing projects
+class ResyncingProjectsState {
+  final Set<String> resyncingProjects;
+
+  const ResyncingProjectsState({this.resyncingProjects = const {}});
+
+  ResyncingProjectsState copyWith({Set<String>? resyncingProjects}) {
+    return ResyncingProjectsState(
+      resyncingProjects: resyncingProjects ?? this.resyncingProjects,
+    );
+  }
+}
+
+/// Notifier for managing project resync state and operations
+class ProjectResyncNotifier extends Notifier<ResyncingProjectsState> {
+  @override
+  ResyncingProjectsState build() => const ResyncingProjectsState();
+
+  /// Check if a project is currently being resynced
+  bool isResyncing(String projectId) => state.resyncingProjects.contains(projectId);
+
+  /// Resync a local pack project with its source file
+  Future<void> resync(String projectId) async {
+    final logging = LoggingService.instance;
+    logging.info('Starting resync for project: $projectId');
+
+    // Add to resyncing set
+    state = state.copyWith(
+      resyncingProjects: {...state.resyncingProjects, projectId},
+    );
+
+    try {
+      // Get project details
+      final projectRepo = ref.read(projectRepositoryProvider);
+      final projectResult = await projectRepo.getById(projectId);
+
+      if (projectResult.isErr) {
+        throw Exception('Project not found: ${projectResult.error}');
+      }
+
+      final project = projectResult.unwrap();
+
+      if (project.sourceFilePath == null) {
+        throw Exception('Project has no source file path');
+      }
+
+      // Check if source file exists
+      final sourceFile = File(project.sourceFilePath!);
+      if (!await sourceFile.exists()) {
+        throw Exception('Source file not found: ${project.sourceFilePath}');
+      }
+
+      // Use ModUpdateAnalysisService to analyze and apply changes
+      final analysisService = ServiceLocator.get<ModUpdateAnalysisService>();
+
+      // Analyze changes
+      logging.info('Analyzing changes for project: $projectId');
+      final analysisResult = await analysisService.analyzeChanges(
+        projectId: projectId,
+        packFilePath: project.sourceFilePath!,
+      );
+
+      if (analysisResult.isErr) {
+        throw Exception('Failed to analyze changes: ${analysisResult.error}');
+      }
+
+      final analysis = analysisResult.unwrap();
+      logging.info('Analysis complete: ${analysis.summary}');
+
+      // Apply changes if any
+      if (analysis.hasPendingChanges) {
+        logging.info('Applying changes...');
+
+        // Apply modified source texts
+        if (analysis.hasModifiedUnits) {
+          await analysisService.applyModifiedSourceTexts(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          logging.info('Applied ${analysis.modifiedUnitsCount} modified source texts');
+        }
+
+        // Add new units
+        if (analysis.hasNewUnits) {
+          await analysisService.addNewUnits(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          logging.info('Added ${analysis.newUnitsCount} new units');
+        }
+
+        // Mark removed units as obsolete
+        if (analysis.hasRemovedUnits) {
+          await analysisService.markRemovedUnitsObsolete(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          logging.info('Marked ${analysis.removedUnitsCount} units as obsolete');
+        }
+
+        // Reactivate previously obsolete units that are back
+        if (analysis.hasReactivatedUnits) {
+          await analysisService.reactivateObsoleteUnits(
+            projectId: projectId,
+            analysis: analysis,
+          );
+          logging.info('Reactivated ${analysis.reactivatedUnitsCount} units');
+        }
+
+        // Update project timestamp
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await projectRepo.update(project.copyWith(updatedAt: now));
+
+        logging.info('Resync complete for project: $projectId');
+      } else {
+        logging.info('No changes detected for project: $projectId');
+      }
+
+      // Invalidate projects provider to refresh the list
+      ref.invalidate(projectsWithDetailsProvider);
+
+    } catch (e, stack) {
+      logging.error('Resync failed for project: $projectId', e, stack);
+      rethrow;
+    } finally {
+      // Remove from resyncing set
+      final newSet = Set<String>.from(state.resyncingProjects);
+      newSet.remove(projectId);
+      state = state.copyWith(resyncingProjects: newSet);
+    }
+  }
+}
+
+/// Provider for managing project resync state
+final projectResyncProvider = NotifierProvider<ProjectResyncNotifier, ResyncingProjectsState>(
+  ProjectResyncNotifier.new,
+);

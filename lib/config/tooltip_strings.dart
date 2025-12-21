@@ -38,6 +38,8 @@ class TooltipStrings {
       'Show only mods without translation projects';
   static const String modsFilterNeedsUpdate =
       'Show only mods with pending updates or changes';
+  static const String modsImportLocalPack =
+      'Import a local .pack file that is not from Steam Workshop';
 
   // ========== PROJECTS SCREEN ==========
 

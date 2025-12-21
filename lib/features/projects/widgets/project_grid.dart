@@ -8,11 +8,15 @@ import 'project_card.dart';
 class ProjectGrid extends StatelessWidget {
   final List<ProjectWithDetails> projects;
   final Function(String projectId)? onProjectTap;
+  final Function(String projectId)? onResync;
+  final Set<String> resyncingProjects;
 
   const ProjectGrid({
     super.key,
     required this.projects,
     this.onProjectTap,
+    this.onResync,
+    this.resyncingProjects = const {},
   });
 
   @override
@@ -22,12 +26,14 @@ class ProjectGrid extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final projectWithDetails = projects[index];
+        final projectId = projectWithDetails.project.id;
         return ProjectCard(
           projectWithDetails: projectWithDetails,
-          onTap: () => onProjectTap?.call(projectWithDetails.project.id),
+          onTap: () => onProjectTap?.call(projectId),
+          onResync: () => onResync?.call(projectId),
+          isResyncing: resyncingProjects.contains(projectId),
         );
       },
     );
   }
-
 }

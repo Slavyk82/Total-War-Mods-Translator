@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/project_grid.dart';
 import '../widgets/projects_toolbar.dart';
@@ -86,6 +87,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     List<ProjectWithDetails> projects,
   ) {
     final theme = Theme.of(context);
+    final resyncState = ref.watch(projectResyncProvider);
 
     if (projects.isEmpty) {
       return _buildEmptyState(context, theme);
@@ -94,6 +96,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     return ProjectGrid(
       projects: projects,
       onProjectTap: (projectId) => _navigateToProject(context, projectId),
+      onResync: (projectId) => _handleResync(context, projectId),
+      resyncingProjects: resyncState.resyncingProjects,
     );
   }
 
@@ -194,5 +198,20 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   void _navigateToProject(BuildContext context, String projectId) {
     context.go('/projects/$projectId');
+  }
+
+  Future<void> _handleResync(BuildContext context, String projectId) async {
+    try {
+      await ref.read(projectResyncProvider.notifier).resync(projectId);
+      if (context.mounted) {
+        FluentToast.success(context, 'Project resynced successfully');
+        // Refresh the projects list
+        ref.invalidate(paginatedProjectsProvider);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        FluentToast.error(context, 'Resync failed: $e');
+      }
+    }
   }
 }

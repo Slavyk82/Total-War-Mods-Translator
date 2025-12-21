@@ -320,6 +320,7 @@ The Mods screen allows you to:
 - Track which mods have already been imported as translation projects
 - Monitor update status and detect when mod authors publish new versions
 - Create translation projects directly from detected mods
+- Import local `.pack` files that are not from Steam Workshop
 
 ### Scanning for Mods
 
@@ -405,6 +406,54 @@ To create a translation project from a detected mod:
 - RPFM schema path must be configured in Settings
 - The mod must contain at least one `.loc` file with translatable content
 
+### Importing a Local Pack File
+
+In addition to Steam Workshop mods, you can import `.pack` files from any location on your computer. This is useful for:
+
+- Mods downloaded directly from mod authors
+- Custom mods not published on Steam Workshop
+- Pack files from other sources
+
+#### How to Import a Local Pack
+
+1. Click the **Import Local Pack** button (folder icon) in the toolbar
+2. A file picker opens, defaulting to the selected game's `data` folder
+3. Select a `.pack` file
+4. A warning dialog appears explaining that the pack is not linked to Steam Workshop
+5. Click **Import Anyway** to continue
+6. Enter a name for the project (pre-filled with the pack filename)
+7. Click **Create Project** to initialize the project
+
+#### Important Considerations
+
+> **Note:** Local pack files are not linked to Steam Workshop.
+>
+> - **No automatic updates**: The mod will not be automatically updated when the author releases a new version
+> - **Manual resync available**: Use the **Resync** button in the Projects screen to update your project when a new pack version is available (see below)
+> - **No Steam metadata**: The project will not have Steam Workshop information (subscribers, last updated, etc.)
+
+#### Requirements
+
+- A game must be selected in the sidebar
+- RPFM CLI and schema paths must be configured in Settings
+- The pack file must contain at least one `.loc` file with translatable content
+
+#### Updating a Local Pack Project (Resync)
+
+When the mod author releases an updated version of the pack file, you can resync your project to incorporate the changes without losing your existing translations:
+
+1. Replace the pack file at its original location with the new version
+2. Go to the **Projects** screen
+3. Find your local pack project (indicated by the sync icon)
+4. Click the **Resync** button (sync icon) on the project card
+5. TWMT analyzes the changes and updates your project:
+   - **New entries**: Added to the project with "pending" status
+   - **Removed entries**: Marked as obsolete (translations preserved for history)
+   - **Modified source texts**: Updated, translations set to "needs review"
+   - **Reappearing entries**: Reactivated if previously marked obsolete
+
+> **Note:** The Resync button only appears for local pack projects. Steam Workshop projects are updated automatically when you scan for mod updates.
+
 ### Hiding Mods
 
 To keep your mod list organized, you can hide mods you do not want to translate:
@@ -438,6 +487,8 @@ When imported projects have pending mod updates that affect translations, a warn
 > 5. **Use filters** — The "Needs update" filter quickly shows which mods require attention
 >
 > 6. **Workshop metadata** — Subscriber count helps prioritize popular mods for translation
+>
+> 7. **Local packs for testing** — Use "Import Local Pack" to translate mods before they are published to Steam Workshop
 
 ## Projects Screen
 
@@ -465,7 +516,8 @@ Each project is displayed as a card containing:
 |---------|-------------|
 | Mod Image | Preview thumbnail from the mod directory or a game-specific fallback icon |
 | Project Name | Name of the translation project |
-| Steam Workshop ID | Cloud icon with the mod's Steam Workshop numeric ID |
+| Steam Workshop ID | Cloud icon with the mod's Steam Workshop numeric ID (Workshop mods only) |
+| Resync Button | Sync icon to manually update from source pack file (local pack projects only) |
 | Status Badge | Update status indicator |
 | Language Progress | Progress bars showing translation completion percentage for each target language |
 
@@ -512,6 +564,26 @@ Each project is displayed as a card containing:
 
 - **Click a project card** — Navigate to the Project Detail screen
 - **Empty state** — If no projects exist or match filters, a message suggests going to the Mods screen to create projects
+
+#### Resync Local Pack Projects
+
+For projects created from local pack files (not Steam Workshop), a **Resync** button appears on the project card. This allows you to update your project when the mod author releases a new version of the pack file.
+
+**How to Resync:**
+
+1. Replace the pack file at its original location with the updated version
+2. Click the **Resync** button (sync icon) on the project card
+3. TWMT analyzes changes between your project and the updated pack file
+4. Changes are applied automatically:
+
+| Change Type | Action |
+|-------------|--------|
+| New entries | Added to project with "pending" status |
+| Removed entries | Marked as obsolete (translations preserved) |
+| Modified source texts | Updated, translations set to "needs review" |
+| Reappearing entries | Reactivated if previously obsolete |
+
+> **Note:** Steam Workshop projects do not show the Resync button. They are updated automatically when you scan for mod updates in the Mods screen.
 
 ---
 
@@ -2186,6 +2258,8 @@ The LLM Providers tab configures AI translation services.
 |----------|------|----------|
 | Anthropic (Claude) | LLM | High-quality translations with nuanced context understanding |
 | OpenAI | LLM | Balance of quality and cost; wide model selection |
+| DeepSeek | LLM | Cost-effective translations with strong multilingual capabilities |
+| Gemini (Google) | LLM | Fast translations with good contextual understanding |
 | DeepL | Translation API | Fast, cost-effective translations for simpler content |
 
 ---
@@ -2229,6 +2303,56 @@ The LLM Providers tab configures AI translation services.
 - Create an account at https://platform.openai.com
 - Navigate to API Keys
 - Generate a new key
+
+---
+
+#### DeepSeek
+
+##### API Key
+
+1. Expand the "DeepSeek" section
+2. Enter your DeepSeek API key
+3. Click the connection test button to verify
+
+**Getting an API Key:**
+- Create an account at https://platform.deepseek.com
+- Navigate to API Keys
+- Generate a new key
+
+##### Models
+
+| Element | Description |
+|---------|-------------|
+| Checkbox | Enable/disable the model for use |
+| Model Name | Friendly display name |
+| Model ID | API identifier |
+| Default badge | Indicates the current default model |
+| Star icon | Click to set as global default |
+
+---
+
+#### Gemini (Google)
+
+##### API Key
+
+1. Expand the "Gemini (Google)" section
+2. Enter your Gemini API key
+3. Click the connection test button to verify
+
+**Getting an API Key:**
+- Create an account at https://ai.google.dev
+- Navigate to API Keys in Google AI Studio
+- Generate a new key
+
+##### Models
+
+| Element | Description |
+|---------|-------------|
+| Checkbox | Enable/disable the model for use |
+| Model Name | Friendly display name |
+| Model ID | API identifier |
+| Default badge | Indicates the current default model |
+| Star icon | Click to set as global default |
 
 ---
 

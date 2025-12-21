@@ -12,11 +12,15 @@ import '../../../models/domain/game_installation.dart';
 class ProjectCard extends StatefulWidget {
   final ProjectWithDetails projectWithDetails;
   final VoidCallback? onTap;
+  final VoidCallback? onResync;
+  final bool isResyncing;
 
   const ProjectCard({
     super.key,
     required this.projectWithDetails,
     this.onTap,
+    this.onResync,
+    this.isResyncing = false,
   });
 
   @override
@@ -107,7 +111,7 @@ class _ProjectCardState extends State<ProjectCard> {
           _buildChangesBadge(context),
           const SizedBox(width: 8),
         ],
-        // Steam ID
+        // Steam ID for Workshop mods
         if (project.modSteamId != null) ...[
           const SizedBox(width: 8),
           Icon(
@@ -121,7 +125,59 @@ class _ProjectCardState extends State<ProjectCard> {
             style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
           ),
         ],
+        // Resync button for local pack projects (no Steam ID, not game translation)
+        if (project.modSteamId == null && !project.isGameTranslation) ...[
+          const SizedBox(width: 8),
+          _buildResyncButton(context),
+        ],
       ],
+    );
+  }
+
+  Widget _buildResyncButton(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (widget.isResyncing) {
+      return Container(
+        padding: const EdgeInsets.all(6),
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+      );
+    }
+
+    return Tooltip(
+      message: 'Resync with source pack file',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            // Stop event propagation to prevent card tap
+            widget.onResync?.call();
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Icon(
+              FluentIcons.arrow_sync_24_regular,
+              size: 14,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
