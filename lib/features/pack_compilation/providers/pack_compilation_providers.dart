@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 import '../../../models/domain/compilation.dart';
@@ -32,6 +33,8 @@ export '../../../providers/shared/repository_providers.dart'
         activeLanguagesProvider,
         allLanguagesProvider,
         allGameInstallationsProvider;
+
+part 'pack_compilation_providers.g.dart';
 
 /// Project with translation statistics for a specific language
 class ProjectWithTranslationInfo {
@@ -82,6 +85,21 @@ class CompilationWithDetails {
     required this.projects,
     required this.projectCount,
   });
+}
+
+/// Provider for filtering projects by name in the compilation editor
+@riverpod
+class ProjectFilter extends _$ProjectFilter {
+  @override
+  String build() => '';
+
+  void setFilter(String value) {
+    state = value;
+  }
+
+  void clear() {
+    state = '';
+  }
 }
 
 /// Provider for all compilations with details (filtered by selected game)
@@ -140,6 +158,25 @@ final compilationsWithDetailsProvider =
 
   return results;
 });
+
+/// Provider for filtered projects based on search text in compilation editor
+@riverpod
+AsyncValue<List<ProjectWithTranslationInfo>> filteredProjects(
+  Ref ref,
+  ProjectFilterParams params,
+) {
+  final projectsAsync = ref.watch(projectsWithTranslationProvider(params));
+  final filter = ref.watch(projectFilterProvider).toLowerCase().trim();
+
+  return projectsAsync.whenData((projects) {
+    if (filter.isEmpty) return projects;
+
+    return projects.where((p) {
+      final name = p.displayName.toLowerCase();
+      return name.contains(filter);
+    }).toList();
+  });
+}
 
 /// State for editing/creating a compilation
 class CompilationEditorState {

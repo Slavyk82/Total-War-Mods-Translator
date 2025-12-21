@@ -30,13 +30,13 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final gameInstallation = currentGameAsync.asData?.value;
-
-    final projectsAsync = ref.watch(
-      projectsWithTranslationProvider(ProjectFilterParams(
-        gameInstallationId: gameInstallation?.id,
-        languageId: state.selectedLanguageId,
-      )),
+    final filterParams = ProjectFilterParams(
+      gameInstallationId: gameInstallation?.id,
+      languageId: state.selectedLanguageId,
     );
+
+    final projectsAsync = ref.watch(filteredProjectsProvider(filterParams));
+    final filter = ref.watch(projectFilterProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -80,6 +80,12 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                   ),
                 ),
                 const Spacer(),
+                // Filter field
+                SizedBox(
+                  width: 200,
+                  child: _ProjectFilterField(filter: filter),
+                ),
+                const SizedBox(width: 12),
                 projectsAsync.whenData((projects) {
                   return Row(
                     children: [
@@ -109,6 +115,9 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                     : projectsAsync.when(
                         data: (projects) {
                         if (projects.isEmpty) {
+                          if (filter.isNotEmpty) {
+                            return _buildNoFilterResults(theme);
+                          }
                           return _buildNoProjectsMessage(theme);
                         }
                         return ListView.builder(
@@ -138,6 +147,35 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                           ),
                         ),
                       ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoFilterResults(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            FluentIcons.search_24_regular,
+            size: 48,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No projects found',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.textTheme.bodyMedium?.color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Try a different search term',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
@@ -437,6 +475,101 @@ class CompilationModImage extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Filter field for searching projects by name.
+class _ProjectFilterField extends ConsumerStatefulWidget {
+  const _ProjectFilterField({required this.filter});
+
+  final String filter;
+
+  @override
+  ConsumerState<_ProjectFilterField> createState() => _ProjectFilterFieldState();
+}
+
+class _ProjectFilterFieldState extends ConsumerState<_ProjectFilterField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.filter);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProjectFilterField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.filter != _controller.text) {
+      _controller.text = widget.filter;
+      _controller.selection = TextSelection.collapsed(offset: widget.filter.length);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return TextField(
+      controller: _controller,
+      decoration: InputDecoration(
+        hintText: 'Filter projects...',
+        isDense: true,
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: 8, right: 4),
+          child: Icon(
+            FluentIcons.search_20_regular,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        suffixIcon: widget.filter.isNotEmpty
+            ? MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () {
+                    ref.read(projectFilterProvider.notifier).clear();
+                    _controller.clear();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Icon(
+                      FluentIcons.dismiss_16_regular,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              )
+            : null,
+        suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: theme.dividerColor),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: theme.colorScheme.primary),
+        ),
+        filled: true,
+        fillColor: theme.colorScheme.surfaceContainerLow,
+      ),
+      style: theme.textTheme.bodySmall,
+      onChanged: (value) =>
+          ref.read(projectFilterProvider.notifier).setFilter(value),
     );
   }
 }

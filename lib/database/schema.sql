@@ -956,7 +956,9 @@ INSERT OR IGNORE INTO languages (id, code, name, native_name, is_active) VALUES
 INSERT OR IGNORE INTO translation_providers (id, code, name, api_endpoint, default_model, max_context_tokens, max_batch_size, rate_limit_rpm, rate_limit_tpm, is_active, created_at) VALUES
 ('provider_anthropic', 'anthropic', 'Anthropic Claude', 'https://api.anthropic.com/v1', 'claude-sonnet-4-5-20250929', 200000, 25, 50, 40000, 1, strftime('%s', 'now')),
 ('provider_deepl', 'deepl', 'DeepL', 'https://api-free.deepl.com/v2', 'deepl-free', NULL, 50, 100, NULL, 1, strftime('%s', 'now')),
-('provider_openai', 'openai', 'OpenAI GPT', 'https://api.openai.com/v1', 'gpt-5.1-2025-11-13', 128000, 40, 60, 90000, 1, strftime('%s', 'now'));
+('provider_openai', 'openai', 'OpenAI GPT', 'https://api.openai.com/v1', 'gpt-5.1-2025-11-13', 128000, 40, 60, 90000, 1, strftime('%s', 'now')),
+('provider_deepseek', 'deepseek', 'DeepSeek', 'https://api.deepseek.com', 'deepseek-chat', 64000, 30, 60, 100000, 1, strftime('%s', 'now')),
+('provider_gemini', 'gemini', 'Google Gemini', 'https://generativelanguage.googleapis.com/v1beta', 'gemini-3-flash-preview', 1048576, 30, 60, 250000, 1, strftime('%s', 'now'));
 
 -- Default settings
 INSERT OR IGNORE INTO settings (id, key, value, value_type, updated_at) VALUES
@@ -986,3 +988,14 @@ INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_
 VALUES
 ('model_deepl_free', 'deepl', 'deepl-free', 'DeepL Free', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
 ('model_deepl_pro', 'deepl', 'deepl-pro', 'DeepL Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+
+-- DeepSeek models
+INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
+VALUES
+('model_deepseek_chat', 'deepseek', 'deepseek-chat', 'DeepSeek V3.2', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+
+-- Google Gemini models
+INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
+VALUES
+('model_gemini_3_pro', 'gemini', 'gemini-3-pro-preview', 'Gemini 3 Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_gemini_3_flash', 'gemini', 'gemini-3-flash-preview', 'Gemini 3 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));

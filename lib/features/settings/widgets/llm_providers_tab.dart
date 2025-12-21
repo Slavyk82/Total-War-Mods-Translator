@@ -19,6 +19,8 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
   late TextEditingController _anthropicKeyController;
   late TextEditingController _openaiKeyController;
   late TextEditingController _deeplKeyController;
+  late TextEditingController _deepseekKeyController;
+  late TextEditingController _geminiKeyController;
 
   @override
   void initState() {
@@ -26,6 +28,8 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     _anthropicKeyController = TextEditingController();
     _openaiKeyController = TextEditingController();
     _deeplKeyController = TextEditingController();
+    _deepseekKeyController = TextEditingController();
+    _geminiKeyController = TextEditingController();
   }
 
   @override
@@ -33,6 +37,8 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     _anthropicKeyController.dispose();
     _openaiKeyController.dispose();
     _deeplKeyController.dispose();
+    _deepseekKeyController.dispose();
+    _geminiKeyController.dispose();
     super.dispose();
   }
 
@@ -69,6 +75,28 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     }
   }
 
+  Future<void> _saveDeepseekApiKey() async {
+    try {
+      final notifier = ref.read(llmProviderSettingsProvider.notifier);
+      await notifier.updateDeepseekApiKey(_deepseekKeyController.text);
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Error saving DeepSeek API key: $e');
+      }
+    }
+  }
+
+  Future<void> _saveGeminiApiKey() async {
+    try {
+      final notifier = ref.read(llmProviderSettingsProvider.notifier);
+      await notifier.updateGeminiApiKey(_geminiKeyController.text);
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Error saving Gemini API key: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
@@ -88,6 +116,12 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
         }
         if (_deeplKeyController.text.isEmpty) {
           _deeplKeyController.text = settings[SettingsKeys.deeplApiKey] ?? '';
+        }
+        if (_deepseekKeyController.text.isEmpty) {
+          _deepseekKeyController.text = settings[SettingsKeys.deepseekApiKey] ?? '';
+        }
+        if (_geminiKeyController.text.isEmpty) {
+          _geminiKeyController.text = settings[SettingsKeys.geminiApiKey] ?? '';
         }
 
         return ListView(
@@ -136,6 +170,24 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerName: 'DeepL',
               apiKeyController: _deeplKeyController,
               onSaveApiKey: _saveDeeplApiKey,
+            ),
+            const SizedBox(height: 16),
+
+            // DeepSeek Section
+            LlmProviderSection(
+              providerCode: 'deepseek',
+              providerName: 'DeepSeek',
+              apiKeyController: _deepseekKeyController,
+              onSaveApiKey: _saveDeepseekApiKey,
+            ),
+            const SizedBox(height: 16),
+
+            // Gemini Section
+            LlmProviderSection(
+              providerCode: 'gemini',
+              providerName: 'Google Gemini',
+              apiKeyController: _geminiKeyController,
+              onSaveApiKey: _saveGeminiApiKey,
             ),
             const SizedBox(height: 24),
 

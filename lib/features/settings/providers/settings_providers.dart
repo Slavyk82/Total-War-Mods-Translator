@@ -45,6 +45,10 @@ class SettingsKeys {
   static const String openaiModel = 'openai_model';
   static const String deeplApiKey = 'deepl_api_key';
   static const String deeplPlan = 'deepl_plan';
+  static const String deepseekApiKey = 'deepseek_api_key';
+  static const String deepseekModel = 'deepseek_model';
+  static const String geminiApiKey = 'gemini_api_key';
+  static const String geminiModel = 'gemini_model';
   static const String rateLimit = 'rate_limit';
 
 }
@@ -185,6 +189,8 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     final anthropicKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey) ?? '';
     final openaiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey) ?? '';
     final deeplKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey) ?? '';
+    final deepseekKey = await _secureStorage.read(key: SettingsKeys.deepseekApiKey) ?? '';
+    final geminiKey = await _secureStorage.read(key: SettingsKeys.geminiApiKey) ?? '';
 
     return {
       SettingsKeys.activeProvider: provider,
@@ -194,6 +200,8 @@ class LlmProviderSettings extends _$LlmProviderSettings {
       SettingsKeys.openaiApiKey: openaiKey,
       SettingsKeys.deeplPlan: deeplPlan,
       SettingsKeys.deeplApiKey: deeplKey,
+      SettingsKeys.deepseekApiKey: deepseekKey,
+      SettingsKeys.geminiApiKey: geminiKey,
       SettingsKeys.rateLimit: rateLimit.toString(),
     };
   }
@@ -237,6 +245,16 @@ class LlmProviderSettings extends _$LlmProviderSettings {
     ref.invalidateSelf();
   }
 
+  Future<void> updateDeepseekApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.deepseekApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateGeminiApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.geminiApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
   Future<void> updateRateLimit(int limit) async {
     final service = ref.read(settingsServiceProvider);
     await service.setInt(SettingsKeys.rateLimit, limit);
@@ -262,6 +280,14 @@ class LlmProviderSettings extends _$LlmProviderSettings {
         case 'deepl':
           apiKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey);
           logging.debug('DeepL API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'deepseek':
+          apiKey = await _secureStorage.read(key: SettingsKeys.deepseekApiKey);
+          logging.debug('DeepSeek API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'gemini':
+          apiKey = await _secureStorage.read(key: SettingsKeys.geminiApiKey);
+          logging.debug('Gemini API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
           break;
         default:
           logging.warning('Unknown provider', {'providerCode': providerCode});
@@ -414,7 +440,7 @@ class LlmModels extends _$LlmModels {
   ///
   /// Excludes the current provider to avoid self-invalidation error.
   void _invalidateAllProviderModels() {
-    const providers = ['anthropic', 'openai', 'deepl'];
+    const providers = ['anthropic', 'openai', 'deepl', 'deepseek', 'gemini'];
     for (final provider in providers) {
       // Skip current provider to avoid self-invalidation error
       if (provider != providerCode) {

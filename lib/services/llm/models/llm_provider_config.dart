@@ -85,6 +85,34 @@ class LlmProviderConfig {
         retryConfig: RetryConfig.defaultConfig,
       );
 
+  /// DeepSeek configuration
+  /// API Documentation: https://api-docs.deepseek.com/
+  /// Uses OpenAI-compatible API format
+  static LlmProviderConfig get deepseek => LlmProviderConfig(
+        providerCode: 'deepseek',
+        providerName: 'DeepSeek',
+        apiBaseUrl: 'https://api.deepseek.com',
+        supportsStreaming: true,
+        maxTokensPerRequest: 64000, // Context window for deepseek-chat
+        defaultRateLimitRpm: 60,
+        defaultRateLimitTpm: 100000,
+        retryConfig: RetryConfig.defaultConfig,
+      );
+
+  /// Google Gemini configuration
+  /// API Documentation: https://ai.google.dev/gemini-api/docs
+  /// Models: gemini-3-pro-preview, gemini-3-flash-preview
+  static LlmProviderConfig get gemini => LlmProviderConfig(
+        providerCode: 'gemini',
+        providerName: 'Google Gemini',
+        apiBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+        supportsStreaming: true,
+        maxTokensPerRequest: 1048576, // 1M context window
+        defaultRateLimitRpm: 60,
+        defaultRateLimitTpm: 250000,
+        retryConfig: RetryConfig.defaultConfig,
+      );
+
   LlmProviderConfig copyWith({
     String? providerCode,
     String? providerName,
