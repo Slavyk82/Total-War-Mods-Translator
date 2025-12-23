@@ -14,7 +14,9 @@ import '../file/export_orchestrator_service.dart';
 import '../file/file_import_export_service.dart';
 import '../file/i_loc_file_service.dart';
 import '../file/i_localization_parser.dart';
+import '../file/i_pack_image_generator_service.dart';
 import '../file/loc_file_service_impl.dart';
+import '../file/pack_image_generator_service.dart';
 import '../file/tsv_localization_parser.dart';
 import '../file/utils/file_validator.dart';
 import '../mods/game_installation_sync_service.dart';
@@ -69,6 +71,11 @@ class FileServiceLocator {
       () => FileImportExportService(),
     );
 
+    // Pack Image Generator
+    locator.registerLazySingleton<IPackImageGeneratorService>(
+      () => PackImageGeneratorService(),
+    );
+
     // Export Orchestrator
     locator.registerLazySingleton<ExportOrchestratorService>(
       () => ExportOrchestratorService(
@@ -76,6 +83,7 @@ class FileServiceLocator {
         rpfmService: locator<IRpfmService>(),
         fileImportExportService: locator<FileImportExportService>(),
         tmxService: locator<TmxService>(),
+        packImageGenerator: locator<IPackImageGeneratorService>(),
         exportHistoryRepository: locator<ExportHistoryRepository>(),
         gameInstallationRepository: locator<GameInstallationRepository>(),
         projectRepository: locator<ProjectRepository>(),

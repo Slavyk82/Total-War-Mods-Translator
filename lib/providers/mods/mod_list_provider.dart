@@ -11,6 +11,8 @@ import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
+import 'package:twmt/features/mods/providers/mods_screen_providers.dart'
+    show modsSessionCacheProvider;
 
 part 'mod_list_provider.g.dart';
 
@@ -21,12 +23,22 @@ class DetectedMods extends _$DetectedMods {
   Future<List<DetectedMod>> build() async {
     final gameInstallationSyncService = ServiceLocator.get<GameInstallationSyncService>();
     final workshopScanner = ServiceLocator.get<WorkshopScannerService>();
+    final sessionCache = ref.read(modsSessionCacheProvider.notifier);
 
     // Watch the selected game to trigger rescan when it changes
     final selectedGame = await ref.watch(selectedGameProvider.future);
 
     // If a game is selected, sync it to database and scan its Workshop folder
     if (selectedGame != null) {
+      final gameCode = selectedGame.code;
+
+      // Check session cache first - skip scan if already scanned this session
+      final cachedMods = sessionCache.getCachedMods(gameCode);
+      if (cachedMods != null) {
+        LoggingService.instance.debug('Using cached mods for game: $gameCode (${cachedMods.length} mods)');
+        return cachedMods;
+      }
+
       // First, sync the game from settings to database
       final syncResult = await gameInstallationSyncService.syncGame(selectedGame.code);
 
@@ -41,6 +53,9 @@ class DetectedMods extends _$DetectedMods {
               ref.invalidate(projectsWithDetailsProvider);
               ref.read(translationStatsVersionProvider.notifier).increment();
             }
+            // Cache the results for this session
+            sessionCache.cacheMods(gameCode, result.mods);
+            LoggingService.instance.debug('Cached mods for game: $gameCode (${result.mods.length} mods)');
             return result.mods;
           },
           err: (_) => <DetectedMod>[],
@@ -66,6 +81,9 @@ class DetectedMods extends _$DetectedMods {
       }).toList();
       state = AsyncData(updatedMods);
       LoggingService.instance.debug('state updated with ${updatedMods.length} mods');
+
+      // Also update the session cache to keep it in sync
+      ref.read(modsSessionCacheProvider.notifier).updateModInCache(workshopId, isHidden);
     }
   }
 }

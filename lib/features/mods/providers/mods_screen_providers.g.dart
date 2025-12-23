@@ -8,6 +8,85 @@ part of 'mods_screen_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Session-level cache for scanned mods per game.
+/// This cache persists for the lifetime of the app session,
+/// preventing automatic rescans when returning to the Mods screen.
+
+@ProviderFor(ModsSessionCache)
+const modsSessionCacheProvider = ModsSessionCacheProvider._();
+
+/// Session-level cache for scanned mods per game.
+/// This cache persists for the lifetime of the app session,
+/// preventing automatic rescans when returning to the Mods screen.
+final class ModsSessionCacheProvider
+    extends
+        $NotifierProvider<ModsSessionCache, Map<String, List<DetectedMod>>> {
+  /// Session-level cache for scanned mods per game.
+  /// This cache persists for the lifetime of the app session,
+  /// preventing automatic rescans when returning to the Mods screen.
+  const ModsSessionCacheProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'modsSessionCacheProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$modsSessionCacheHash();
+
+  @$internal
+  @override
+  ModsSessionCache create() => ModsSessionCache();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<String, List<DetectedMod>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<String, List<DetectedMod>>>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$modsSessionCacheHash() => r'4f982e88e55ed8de06310e592b08c7d8900d3cd9';
+
+/// Session-level cache for scanned mods per game.
+/// This cache persists for the lifetime of the app session,
+/// preventing automatic rescans when returning to the Mods screen.
+
+abstract class _$ModsSessionCache
+    extends $Notifier<Map<String, List<DetectedMod>>> {
+  Map<String, List<DetectedMod>> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref =
+        this.ref
+            as $Ref<
+              Map<String, List<DetectedMod>>,
+              Map<String, List<DetectedMod>>
+            >;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<
+                Map<String, List<DetectedMod>>,
+                Map<String, List<DetectedMod>>
+              >,
+              Map<String, List<DetectedMod>>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}
+
 /// Filter state for mods screen
 
 @ProviderFor(ModsFilterState)
@@ -571,7 +650,7 @@ final class ModsRefreshTriggerProvider
 }
 
 String _$modsRefreshTriggerHash() =>
-    r'bbe7a9dff95a64e12d2eb2c3c34ee68c7e0479a2';
+    r'6d6a6c0ea296493883ae9f95b1f9886510a716da';
 
 /// Refresh trigger for mods list
 

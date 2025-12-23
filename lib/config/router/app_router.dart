@@ -24,6 +24,9 @@ import '../../widgets/layouts/main_layout_router.dart';
 // Router utilities
 import 'route_transitions.dart';
 
+/// Global navigator key for showing dialogs from anywhere
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Route path constants
 class AppRoutes {
   // Main routes
@@ -54,6 +57,7 @@ class AppRoutes {
 /// GoRouter configuration provider
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.home,
     debugLogDiagnostics: true,
     routes: [

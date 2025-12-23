@@ -54,7 +54,13 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   late GridSelectionHandler _selectionHandler;
   Set<String> _selectedRowIds = {};
   String? _currentProjectLanguageId;
-  
+
+  // Scroll controller to preserve scroll position on data refresh
+  final ScrollController _verticalScrollController = ScrollController();
+
+  // Cache previous rows to maintain display during refresh
+  List<TranslationRow>? _cachedRows;
+
   // Event subscriptions for auto-refresh
   StreamSubscription<BatchCompletedEvent>? _batchCompletedSubscription;
   StreamSubscription<BatchProgressEvent>? _batchProgressSubscription;
@@ -153,6 +159,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   void dispose() {
     _batchCompletedSubscription?.cancel();
     _batchProgressSubscription?.cancel();
+    _verticalScrollController.dispose();
     _dataSource.dispose();
     _controller.dispose();
     super.dispose();
@@ -177,11 +184,25 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       filteredTranslationRowsProvider(widget.projectId, widget.languageId),
     );
 
-    return rowsAsync.when(
-      loading: () => const Center(
+    // Cache new data when available, keep using cached data during refresh
+    final newRows = rowsAsync.asData?.value;
+    if (newRows != null) {
+      _cachedRows = newRows;
+    }
+    final rows = _cachedRows;
+    final isLoading = rowsAsync.isLoading;
+    final hasError = rowsAsync.hasError;
+
+    // Show loading only on initial load (no cached data)
+    if (rows == null && isLoading) {
+      return const Center(
         child: CircularProgressIndicator(),
-      ),
-      error: (error, stack) => Center(
+      );
+    }
+
+    // Show error only if no cached data available
+    if (rows == null && hasError) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -197,20 +218,25 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
             ),
             const SizedBox(height: 8),
             Text(
-              error.toString(),
+              rowsAsync.error.toString(),
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
-      ),
-      data: (rows) {
-        _dataSource.updateDataSource(rows);
+      );
+    }
 
-        return MouseRegion(
+    // Update data source with cached data
+    if (rows != null) {
+      _dataSource.updateDataSource(rows);
+    }
+
+    return MouseRegion(
           cursor: SystemMouseCursors.basic,
           child: SfDataGrid(
                 source: _dataSource,
                 controller: _controller,
+                verticalScrollController: _verticalScrollController,
                 allowEditing: true,
                 allowSorting: true,
                 allowMultiColumnSorting: false,
@@ -285,8 +311,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 ],
           ),
         );
-      },
-    );
   }
 
   // Performance: Build column header as const-friendly widget
@@ -329,7 +353,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       position: position,
       row: row,
       selectionCount: _selectedRowIds.length,
-      onEdit: () => _handleEdit(gridRowIndex),
       onSelectAll: _handleSelectAll,
       onClear: _handleClear,
       onViewHistory: () => _handleViewHistory(row),
@@ -342,13 +365,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   void _handleSelectAll() {
     _selectionHandler.selectAll();
-  }
-
-  /// Edit the selected row inline using the grid's visual row index
-  void _handleEdit(int gridRowIndex) {
-    // Column 5 is translatedText (0:checkbox, 1:status, 2:locFile, 3:key, 4:sourceText, 5:translatedText)
-    final rowColumnIndex = RowColumnIndex(gridRowIndex, 5);
-    _controller.beginEdit(rowColumnIndex);
   }
 
   /// Mark selected translations as reviewed

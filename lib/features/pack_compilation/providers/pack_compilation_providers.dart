@@ -15,6 +15,7 @@ import '../../../repositories/language_repository.dart';
 import '../../../repositories/project_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/file/i_loc_file_service.dart';
+import '../../../services/file/i_pack_image_generator_service.dart';
 import '../../../services/file/pack_export_utils.dart';
 import '../../../services/rpfm/i_rpfm_service.dart';
 import '../../../services/shared/logging_service.dart';
@@ -192,6 +193,7 @@ class CompilationEditorState {
   final String? currentStep;
   final String? errorMessage;
   final String? successMessage;
+  final bool generatePackImage;
 
   const CompilationEditorState({
     this.compilationId,
@@ -206,6 +208,7 @@ class CompilationEditorState {
     this.currentStep,
     this.errorMessage,
     this.successMessage,
+    this.generatePackImage = true,
   });
 
   /// Generate default prefix based on language code
@@ -226,6 +229,7 @@ class CompilationEditorState {
     String? currentStep,
     String? errorMessage,
     String? successMessage,
+    bool? generatePackImage,
   }) {
     return CompilationEditorState(
       compilationId: compilationId ?? this.compilationId,
@@ -240,6 +244,7 @@ class CompilationEditorState {
       currentStep: currentStep ?? this.currentStep,
       errorMessage: errorMessage,
       successMessage: successMessage,
+      generatePackImage: generatePackImage ?? this.generatePackImage,
     );
   }
 
@@ -338,6 +343,10 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
   void clearMessages() {
     state = state.copyWith(errorMessage: null, successMessage: null);
+  }
+
+  void toggleGeneratePackImage() {
+    state = state.copyWith(generatePackImage: !state.generatePackImage);
   }
 
   /// Request cancellation of the current compilation
@@ -595,6 +604,23 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
       }
 
       logger.info('Pack file created successfully');
+
+      // Generate pack image with language flag if enabled
+      if (state.generatePackImage) {
+        state = state.copyWith(
+          currentStep: 'Generating pack image...',
+          progress: 0.96,
+        );
+
+        final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
+        await imageGenerator.ensurePackImage(
+          packFileName: state.fullPackName,
+          gameDataPath: gameDataPath,
+          languageCode: language.code,
+          generateImage: true,
+          useAppIcon: true, // Use TWMT icon for compilations
+        );
+      }
 
       // Update compilation with output path
       await compilationRepo.updateAfterGeneration(

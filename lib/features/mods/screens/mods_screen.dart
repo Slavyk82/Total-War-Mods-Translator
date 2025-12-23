@@ -201,22 +201,25 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     );
   }
 
-  void _handleRefresh() {
+  Future<void> _handleRefresh() async {
     ref.read(modsLoadingStateProvider.notifier).setLoading(true);
-    ref.read(modsRefreshTriggerProvider.notifier).refresh();
 
-    // Listen for completion and reset loading state
+    // Clear cache and invalidate provider to force a rescan
+    await ref.read(modsRefreshTriggerProvider.notifier).refresh();
+
+    // Set up subscription after triggering refresh to wait for completion
     late final ProviderSubscription<AsyncValue<List<DetectedMod>>> subscription;
     subscription = ref.listenManual(
       detectedModsProvider,
       (previous, next) {
-        // When data arrives, reset loading state and close subscription
-        if (next.hasValue && mounted) {
+        // When data arrives AND loading is complete, reset loading state
+        // Check !next.isLoading because Riverpod keeps previous value during reload
+        if (next.hasValue && !next.isLoading && mounted) {
           ref.read(modsLoadingStateProvider.notifier).setLoading(false);
           subscription.close();
         }
       },
-      fireImmediately: false,
+      fireImmediately: true,
     );
   }
 

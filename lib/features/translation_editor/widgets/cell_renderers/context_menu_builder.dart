@@ -14,7 +14,6 @@ class ContextMenuBuilder {
     required Offset position,
     required TranslationRow row,
     required int selectionCount,
-    required VoidCallback onEdit,
     required VoidCallback onSelectAll,
     required Future<void> Function() onClear,
     required Future<void> Function() onViewHistory,
@@ -35,18 +34,6 @@ class ContextMenuBuilder {
         position.dy + 1,
       ),
       items: <PopupMenuEntry<String>>[
-        if (isSingleSelection)
-          const PopupMenuItem(
-            value: 'edit',
-            child: Row(
-              children: [
-                Icon(FluentIcons.edit_24_regular, size: 16),
-                SizedBox(width: 8),
-                Text('Edit'),
-              ],
-            ),
-          ),
-        if (isSingleSelection) const PopupMenuDivider(),
         const PopupMenuItem(
           value: 'select_all',
           child: Row(
@@ -168,9 +155,6 @@ class ContextMenuBuilder {
       final logging = ServiceLocator.get<LoggingService>();
 
       switch (value) {
-        case 'edit':
-          onEdit();
-          break;
         case 'select_all':
           onSelectAll();
           break;

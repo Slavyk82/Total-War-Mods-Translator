@@ -11,6 +11,7 @@ const _exportStepLabels = <String, String>{
   'preparingData': 'Preparing data...',
   'generatingLocFiles': 'Generating .loc files...',
   'creatingPack': 'Creating .pack file...',
+  'generatingImage': 'Generating pack image...',
   'finalizing': 'Finalizing...',
   'completed': 'Pack generated!',
   'collectingData': 'Collecting translation data...',
@@ -28,12 +29,14 @@ class ExportProgressScreen extends ConsumerStatefulWidget {
     required this.projectId,
     required this.languageCodes,
     required this.onComplete,
+    this.generatePackImage = true,
   });
 
   final ExportOrchestratorService exportService;
   final String projectId;
   final List<String> languageCodes;
   final void Function(ExportResult? result) onComplete;
+  final bool generatePackImage;
 
   @override
   ConsumerState<ExportProgressScreen> createState() =>
@@ -64,6 +67,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
         languageCodes: widget.languageCodes,
         outputPath: 'exports',
         validatedOnly: false,
+        generatePackImage: widget.generatePackImage,
         onProgress: _handleProgress,
       );
 

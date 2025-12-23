@@ -7,11 +7,15 @@ import 'package:flutter/material.dart';
 class TextCellRenderer extends StatelessWidget {
   final String? text;
   final bool isKey;
+  /// When true, uses regular Text widget to allow DataGrid double-click editing
+  /// When false (default), uses SelectableText for copy support
+  final bool isEditable;
 
   const TextCellRenderer({
     super.key,
     required this.text,
     this.isKey = false,
+    this.isEditable = false,
   });
 
   /// Escape special characters to display them literally
@@ -29,17 +33,19 @@ class TextCellRenderer extends StatelessWidget {
     final rawText = text ?? '';
     final displayText = _escapeForDisplay(rawText);
 
-    // No GestureDetector - let DataGrid handle double-tap for editing
+    final textStyle = TextStyle(
+      fontSize: 13,
+      fontWeight: isKey ? FontWeight.w500 : FontWeight.normal,
+      color: rawText.isEmpty ? Colors.grey : null,
+    );
+
+    // Use regular Text for editable cells to allow DataGrid double-click editing
+    // Use SelectableText for read-only cells to allow copy
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: Text(
-        displayText,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: isKey ? FontWeight.w500 : FontWeight.normal,
-          color: rawText.isEmpty ? Colors.grey : null,
-        ),
-      ),
+      child: isEditable
+          ? Text(displayText, style: textStyle)
+          : SelectableText(displayText, style: textStyle),
     );
   }
 }

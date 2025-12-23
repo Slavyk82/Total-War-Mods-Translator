@@ -99,6 +99,7 @@ class _ExportTranslationsDialogState
   ValidationFilter _validationFilter = ValidationFilter.validatedOnly;
   String _outputPath = '';
   late List<LanguageSelection> _languages;
+  bool _generatePackImage = true;
 
   @override
   void initState() {
@@ -195,6 +196,14 @@ class _ExportTranslationsDialogState
                     const SizedBox(height: 12),
                     _buildValidationFilter(),
                     const SizedBox(height: 24),
+
+                    // Pack image option (only for .pack format)
+                    if (_selectedFormat == ExportFormat.pack) ...[
+                      _buildSectionHeader('Pack Image'),
+                      const SizedBox(height: 12),
+                      _buildPackImageOption(),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Output location
                     _buildSectionHeader('Output Location'),
@@ -373,6 +382,33 @@ class _ExportTranslationsDialogState
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildPackImageOption() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: CheckboxListTile(
+        value: _generatePackImage,
+        onChanged: (value) {
+          setState(() {
+            _generatePackImage = value ?? true;
+          });
+        },
+        title: const Row(
+          children: [
+            Icon(FluentIcons.image_24_regular, size: 18),
+            SizedBox(width: 8),
+            Text('Generate pack image with language flag'),
+          ],
+        ),
+        subtitle: const Text(
+          'Creates a preview image for Steam Workshop with the target language flag',
+        ),
+      ),
     );
   }
 
@@ -576,6 +612,7 @@ class _ExportTranslationsDialogState
       'format': _selectedFormat,
       'validatedOnly': _validationFilter == ValidationFilter.validatedOnly,
       'outputPath': _outputPath,
+      'generatePackImage': _generatePackImage,
     });
   }
 }

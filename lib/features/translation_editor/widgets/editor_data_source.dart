@@ -151,7 +151,7 @@ class EditorDataSource extends DataGridSource {
         RepaintBoundary(child: TextCellRenderer(text: keyCell.value, isKey: true)),
         // Don't wrap multiline text cells in RepaintBoundary to allow proper height expansion
         TextCellRenderer(text: sourceTextCell.value),
-        TextCellRenderer(text: translatedTextCell.value),
+        TextCellRenderer(text: translatedTextCell.value, isEditable: true),
         RepaintBoundary(child: TextCellRenderer(text: tmSourceCell.value)),
       ],
     );

@@ -254,6 +254,7 @@ class CompilationActionSection extends StatelessWidget {
     required this.currentGameAsync,
     required this.onSave,
     required this.onGenerate,
+    required this.onTogglePackImage,
     this.onCancel,
   });
 
@@ -261,6 +262,7 @@ class CompilationActionSection extends StatelessWidget {
   final AsyncValue<GameInstallation?> currentGameAsync;
   final void Function(String gameInstallationId) onSave;
   final void Function(String gameInstallationId) onGenerate;
+  final VoidCallback onTogglePackImage;
   final VoidCallback? onCancel;
 
   @override
@@ -320,6 +322,13 @@ class CompilationActionSection extends StatelessWidget {
           CompilationSelectionSummary(count: state.selectedProjectIds.length),
           const SizedBox(height: 16),
 
+          // Pack image generation option
+          _PackImageCheckbox(
+            value: state.generatePackImage,
+            onChanged: state.isCompiling ? null : onTogglePackImage,
+          ),
+          const SizedBox(height: 16),
+
           // Buttons
           Row(
             children: [
@@ -344,6 +353,84 @@ class CompilationActionSection extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Checkbox for pack image generation option
+class _PackImageCheckbox extends StatelessWidget {
+  const _PackImageCheckbox({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final bool value;
+  final VoidCallback? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isEnabled = onChanged != null;
+
+    return MouseRegion(
+      cursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: onChanged,
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: value
+                    ? (isEnabled
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.primary.withValues(alpha: 0.5))
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(
+                  color: value
+                      ? (isEnabled
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.primary.withValues(alpha: 0.5))
+                      : (isEnabled
+                          ? theme.colorScheme.onSurface.withValues(alpha: 0.4)
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.2)),
+                  width: 1.5,
+                ),
+              ),
+              child: value
+                  ? Icon(
+                      FluentIcons.checkmark_12_filled,
+                      size: 14,
+                      color: isEnabled
+                          ? theme.colorScheme.onPrimary
+                          : theme.colorScheme.onPrimary.withValues(alpha: 0.7),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Generate pack image with language flag',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: isEnabled
+                      ? theme.textTheme.bodyMedium?.color
+                      : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            Icon(
+              FluentIcons.image_24_regular,
+              size: 18,
+              color: isEnabled
+                  ? theme.colorScheme.primary.withValues(alpha: 0.7)
+                  : theme.colorScheme.primary.withValues(alpha: 0.3),
+            ),
+          ],
+        ),
       ),
     );
   }

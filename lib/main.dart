@@ -5,11 +5,13 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:twmt/providers/theme_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
-import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/config/router/app_router.dart' show goRouterProvider, rootNavigatorKey;
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
+import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
+import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 
 void main() async {
@@ -121,8 +123,41 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
       }
     });
 
+    // Check for release notes after update check
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        _checkReleaseNotes();
+      }
+    });
+
     // Trigger cleanup of old installer files
     ref.read(cleanupOldInstallersProvider);
+  }
+
+  Future<void> _checkReleaseNotes() async {
+    debugPrint('[ReleaseNotes] Starting check...');
+    await ref.read(releaseNotesCheckerProvider.notifier).checkReleaseNotes();
+
+    final state = ref.read(releaseNotesCheckerProvider);
+    debugPrint('[ReleaseNotes] State: isChecking=${state.isChecking}, releaseToShow=${state.releaseToShow?.version}, hasBeenDismissed=${state.hasBeenDismissed}, shouldShowDialog=${state.shouldShowDialog}');
+
+    if (state.shouldShowDialog && mounted) {
+      final navigatorContext = rootNavigatorKey.currentContext;
+      if (navigatorContext != null) {
+        debugPrint('[ReleaseNotes] Showing dialog!');
+        showDialog(
+          context: navigatorContext,
+          barrierDismissible: true,
+          builder: (context) => ReleaseNotesDialog(
+            release: state.releaseToShow!,
+          ),
+        );
+      } else {
+        debugPrint('[ReleaseNotes] Navigator context not available');
+      }
+    } else {
+      debugPrint('[ReleaseNotes] Not showing dialog - shouldShowDialog=${state.shouldShowDialog}, mounted=$mounted');
+    }
   }
 
   @override

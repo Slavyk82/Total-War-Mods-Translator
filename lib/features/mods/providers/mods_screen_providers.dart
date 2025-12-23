@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
@@ -19,6 +20,53 @@ final scanLogStreamProvider = Provider<Stream<ScanLogMessage>>((ref) {
   final scannerService = ServiceLocator.get<WorkshopScannerService>();
   return scannerService.scanLogStream;
 });
+
+/// Session-level cache for scanned mods per game.
+/// This cache persists for the lifetime of the app session,
+/// preventing automatic rescans when returning to the Mods screen.
+@Riverpod(keepAlive: true)
+class ModsSessionCache extends _$ModsSessionCache {
+  @override
+  Map<String, List<DetectedMod>> build() => {};
+
+  /// Check if mods are cached for a specific game
+  bool hasCachedMods(String gameCode) => state.containsKey(gameCode);
+
+  /// Get cached mods for a specific game
+  List<DetectedMod>? getCachedMods(String gameCode) => state[gameCode];
+
+  /// Cache mods for a specific game
+  void cacheMods(String gameCode, List<DetectedMod> mods) {
+    state = {...state, gameCode: mods};
+  }
+
+  /// Clear cache for a specific game (used when manual refresh is triggered)
+  void clearCache(String gameCode) {
+    final newState = Map<String, List<DetectedMod>>.from(state);
+    newState.remove(gameCode);
+    state = newState;
+  }
+
+  /// Clear all cache
+  void clearAllCache() {
+    state = {};
+  }
+
+  /// Update a single mod in the cache (used for hide/unhide operations)
+  void updateModInCache(String workshopId, bool isHidden) {
+    final newState = <String, List<DetectedMod>>{};
+    for (final entry in state.entries) {
+      final updatedMods = entry.value.map((mod) {
+        if (mod.workshopId == workshopId) {
+          return mod.copyWith(isHidden: isHidden);
+        }
+        return mod;
+      }).toList();
+      newState[entry.key] = updatedMods;
+    }
+    state = newState;
+  }
+}
 
 /// Filter options for mods list
 enum ModsFilter {
@@ -245,8 +293,13 @@ class ModsRefreshTrigger extends _$ModsRefreshTrigger {
   @override
   int build() => 0;
 
-  void refresh() {
+  Future<void> refresh() async {
     state++;
+    // Clear the session cache for the current game to force a rescan
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (selectedGame != null) {
+      ref.read(modsSessionCacheProvider.notifier).clearCache(selectedGame.code);
+    }
     // Invalidate the detected mods provider to force a refresh
     ref.invalidate(detectedModsProvider);
   }

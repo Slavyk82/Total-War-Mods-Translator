@@ -110,6 +110,9 @@ class CompilationEditor extends ConsumerWidget {
                       ref.invalidate(compilationsWithDetailsProvider);
                     }
                   },
+                  onTogglePackImage: () => ref
+                      .read(compilationEditorProvider.notifier)
+                      .toggleGeneratePackImage(),
                   onCancel: onCancel,
                 ),
                 const SizedBox(height: 24),

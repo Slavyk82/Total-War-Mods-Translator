@@ -11,6 +11,7 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/file/export_data_collector.dart';
 import 'package:twmt/services/file/export_history_recorder.dart';
 import 'package:twmt/services/file/i_loc_file_service.dart';
+import 'package:twmt/services/file/i_pack_image_generator_service.dart';
 import 'package:twmt/services/file/file_import_export_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
 import 'package:twmt/services/file/pack_export_utils.dart';
@@ -54,6 +55,7 @@ class ExportOrchestratorService {
   final IRpfmService _rpfmService;
   final FileImportExportService _fileImportExportService;
   final TmxService _tmxService;
+  final IPackImageGeneratorService _packImageGenerator;
   final ProjectRepository _projectRepository;
   final GameInstallationRepository _gameInstallationRepository;
   final ExportDataCollector _dataCollector;
@@ -66,6 +68,7 @@ class ExportOrchestratorService {
     required IRpfmService rpfmService,
     required FileImportExportService fileImportExportService,
     required TmxService tmxService,
+    required IPackImageGeneratorService packImageGenerator,
     required ExportHistoryRepository exportHistoryRepository,
     required GameInstallationRepository gameInstallationRepository,
     required ProjectRepository projectRepository,
@@ -77,6 +80,7 @@ class ExportOrchestratorService {
         _rpfmService = rpfmService,
         _fileImportExportService = fileImportExportService,
         _tmxService = tmxService,
+        _packImageGenerator = packImageGenerator,
         _projectRepository = projectRepository,
         _gameInstallationRepository = gameInstallationRepository,
         _dataCollector = ExportDataCollector(
@@ -101,6 +105,7 @@ class ExportOrchestratorService {
     required List<String> languageCodes,
     required String outputPath,
     required bool validatedOnly,
+    bool generatePackImage = true,
     ExportProgressCallback? onProgress,
   }) async {
     Directory? tempDir;
@@ -212,11 +217,35 @@ class ExportOrchestratorService {
 
       final fileSize = await File(packPath).length();
 
+      // Determine if this is a game translation project
+      final isGameTranslation = _packUtils.isGameLocalizationPack(project.sourceFilePath);
+
       // Copy TWMT icon to data folder for game translation projects (for Steam Workshop)
-      if (_packUtils.isGameLocalizationPack(project.sourceFilePath)) {
+      if (isGameTranslation) {
         await _packUtils.copyTwmtIconToDataFolder(
           packFileName: packFileName,
           destinationFolder: gameDataPath,
+        );
+      }
+
+      // Generate pack image with language flag if enabled
+      if (generatePackImage) {
+        onProgress?.call('generatingImage', 0.87);
+        _logger.info('Generating pack image', {
+          'packFileName': packFileName,
+          'languageCode': languageCodes.first,
+          'isGameTranslation': isGameTranslation,
+          'projectImageUrl': project.imageUrl,
+          'projectMetadata': project.metadata,
+        });
+        await _packImageGenerator.ensurePackImage(
+          packFileName: packFileName,
+          gameDataPath: gameDataPath,
+          languageCode: languageCodes.first,
+          modImageUrl: isGameTranslation ? null : project.imageUrl,
+          localModImagePath: null,
+          generateImage: true,
+          useAppIcon: isGameTranslation, // Use TWMT icon for game translations
         );
       }
 
