@@ -203,9 +203,14 @@ class TranslationBatchHelper {
         gameInstallationId = projectResult.unwrap().gameInstallationId;
       }
 
+      // Source language is always English for this application
+      // DeepL API requires uppercase language codes
+      const sourceLanguageCode = 'EN';
+
       // Get project language to determine target language
+      // DeepL API requires uppercase language codes
       final projectLanguageResult = await projectLanguageRepo.getById(projectLanguageId);
-      String targetLanguage = 'en'; // Default fallback
+      String targetLanguage = 'EN'; // Default fallback
       String? languageId;
 
       if (projectLanguageResult.isOk) {
@@ -217,7 +222,7 @@ class TranslationBatchHelper {
 
         if (languageResult.isOk) {
           final language = languageResult.unwrap();
-          targetLanguage = language.code;
+          targetLanguage = language.code.toUpperCase();
         } else {
           logging.warning(
             'Failed to get language for translation context: ${languageResult.unwrapErr()}',
@@ -240,6 +245,20 @@ class TranslationBatchHelper {
             )
           : <GlossaryTermWithVariants>[];
 
+      // Get primary glossary ID for DeepL sync
+      // DeepL only supports one glossary per request, so we use the first game-specific glossary
+      String? glossaryId;
+      if (gameInstallationId != null) {
+        final glossaries = await glossaryRepo.getAllGlossaries(
+          gameInstallationId: gameInstallationId,
+          includeUniversal: true,
+        );
+        // Prefer game-specific glossary over universal
+        final gameSpecificGlossary = glossaries.where((g) => !g.isGlobal).firstOrNull;
+        final universalGlossary = glossaries.where((g) => g.isGlobal).firstOrNull;
+        glossaryId = gameSpecificGlossary?.id ?? universalGlossary?.id;
+      }
+
       if (glossaryEntries.isNotEmpty) {
         logging.info('Loaded glossary entries with variants', {
           'projectId': projectId,
@@ -249,6 +268,7 @@ class TranslationBatchHelper {
             0,
             (sum, e) => sum + e.variants.length,
           ),
+          'glossaryId': glossaryId,
         });
       }
 
@@ -257,8 +277,10 @@ class TranslationBatchHelper {
         'providerId': providerId,
         'modelId': modelId,
         'targetLanguage': targetLanguage,
+        'sourceLanguage': sourceLanguageCode,
         'glossaryEntries': '${glossaryEntries.length} terms',
         'totalVariants': glossaryEntries.fold<int>(0, (sum, e) => sum + e.variants.length),
+        'glossaryId': glossaryId,
       });
 
       return TranslationContext(
@@ -268,7 +290,9 @@ class TranslationBatchHelper {
         providerId: providerId,
         modelId: modelId,
         targetLanguage: targetLanguage,
+        sourceLanguage: sourceLanguageCode,
         glossaryEntries: glossaryEntries.isEmpty ? null : glossaryEntries,
+        glossaryId: glossaryId,
         unitsPerBatch: unitsPerBatch ?? 0, // 0 = auto mode
         parallelBatches: parallelBatches ?? 1,
         skipTranslationMemory: skipTranslationMemory ?? false,

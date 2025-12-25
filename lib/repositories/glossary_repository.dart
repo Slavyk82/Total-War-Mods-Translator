@@ -3,6 +3,7 @@ import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/glossary_entry.dart';
 import '../services/glossary/models/glossary.dart';
+import '../services/glossary/models/deepl_glossary_mapping.dart';
 import '../services/shared/logging_service.dart';
 import 'base_repository.dart';
 
@@ -293,7 +294,8 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     final args = <dynamic>[glossaryId];
 
     if (targetLanguageCode != null) {
-      conditions.add('target_language_code = ?');
+      // Case-insensitive comparison for language codes
+      conditions.add('LOWER(target_language_code) = LOWER(?)');
       args.add(targetLanguageCode);
     }
 
@@ -459,5 +461,145 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       'unusedCount': (row['unused_count'] as int?) ?? 0,
       'totalUsage': (row['total_usage'] as int?) ?? 0,
     };
+  }
+
+  // ============================================================================
+  // DeepL Glossary Mapping Methods
+  // ============================================================================
+
+  /// Table name for DeepL glossary mappings
+  static const String _deeplMappingTable = 'deepl_glossary_mappings';
+
+  /// Get DeepL glossary mapping for a specific glossary and language pair.
+  ///
+  /// Returns null if no mapping exists.
+  Future<DeepLGlossaryMapping?> getDeepLMapping({
+    required String twmtGlossaryId,
+    required String sourceLanguageCode,
+    required String targetLanguageCode,
+  }) async {
+    final maps = await database.query(
+      _deeplMappingTable,
+      where: 'twmt_glossary_id = ? AND source_language_code = ? AND target_language_code = ?',
+      whereArgs: [twmtGlossaryId, sourceLanguageCode, targetLanguageCode],
+      limit: 1,
+    );
+    return maps.isEmpty ? null : DeepLGlossaryMapping.fromJson(maps.first);
+  }
+
+  /// Get all DeepL mappings for a glossary.
+  Future<List<DeepLGlossaryMapping>> getDeepLMappingsForGlossary(
+    String twmtGlossaryId,
+  ) async {
+    final maps = await database.query(
+      _deeplMappingTable,
+      where: 'twmt_glossary_id = ?',
+      whereArgs: [twmtGlossaryId],
+      orderBy: 'target_language_code ASC',
+    );
+    return maps.map((map) => DeepLGlossaryMapping.fromJson(map)).toList();
+  }
+
+  /// Get all DeepL mappings.
+  Future<List<DeepLGlossaryMapping>> getAllDeepLMappings() async {
+    final maps = await database.query(
+      _deeplMappingTable,
+      orderBy: 'synced_at DESC',
+    );
+    return maps.map((map) => DeepLGlossaryMapping.fromJson(map)).toList();
+  }
+
+  /// Insert a new DeepL glossary mapping.
+  Future<void> insertDeepLMapping(DeepLGlossaryMapping mapping) async {
+    await database.insert(
+      _deeplMappingTable,
+      mapping.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Update an existing DeepL glossary mapping.
+  Future<void> updateDeepLMapping(DeepLGlossaryMapping mapping) async {
+    await database.update(
+      _deeplMappingTable,
+      mapping.toJson(),
+      where: 'id = ?',
+      whereArgs: [mapping.id],
+    );
+  }
+
+  /// Delete a DeepL glossary mapping by ID.
+  Future<void> deleteDeepLMapping(String id) async {
+    await database.delete(
+      _deeplMappingTable,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Delete all DeepL mappings for a glossary.
+  Future<void> deleteDeepLMappingsForGlossary(String twmtGlossaryId) async {
+    await database.delete(
+      _deeplMappingTable,
+      where: 'twmt_glossary_id = ?',
+      whereArgs: [twmtGlossaryId],
+    );
+  }
+
+  /// Delete a DeepL mapping by DeepL glossary ID.
+  Future<void> deleteDeepLMappingByDeepLId(String deeplGlossaryId) async {
+    await database.delete(
+      _deeplMappingTable,
+      where: 'deepl_glossary_id = ?',
+      whereArgs: [deeplGlossaryId],
+    );
+  }
+
+  /// Check if a mapping needs resync.
+  ///
+  /// Returns true if the glossary entries were updated after the last sync.
+  Future<bool> doesMappingNeedResync({
+    required String twmtGlossaryId,
+    required String sourceLanguageCode,
+    required String targetLanguageCode,
+  }) async {
+    final mapping = await getDeepLMapping(
+      twmtGlossaryId: twmtGlossaryId,
+      sourceLanguageCode: sourceLanguageCode,
+      targetLanguageCode: targetLanguageCode,
+    );
+
+    if (mapping == null) return true;
+
+    // Check if any entries were updated after the last sync
+    // Case-insensitive comparison for language codes
+    final result = await database.rawQuery('''
+      SELECT MAX(updated_at) as last_updated
+      FROM $tableName
+      WHERE glossary_id = ? AND LOWER(target_language_code) = LOWER(?)
+    ''', [twmtGlossaryId, targetLanguageCode]);
+
+    if (result.isEmpty || result.first['last_updated'] == null) {
+      return false; // No entries exist
+    }
+
+    final lastUpdated = result.first['last_updated'] as int;
+    return lastUpdated > mapping.syncedAt;
+  }
+
+  /// Get the count of entries for a specific language pair.
+  /// Case-insensitive comparison for language codes.
+  Future<int> getEntryCountForLanguage({
+    required String glossaryId,
+    required String targetLanguageCode,
+  }) async {
+    final result = await database.rawQuery('''
+      SELECT COUNT(*) as count
+      FROM $tableName
+      WHERE glossary_id = ? AND LOWER(target_language_code) = LOWER(?)
+    ''', [glossaryId, targetLanguageCode]);
+
+    final count = result.firstOrNull?['count'];
+    return count is int ? count : 0;
   }
 }

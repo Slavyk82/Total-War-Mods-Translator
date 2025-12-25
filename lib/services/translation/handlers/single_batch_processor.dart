@@ -66,6 +66,8 @@ class SingleBatchProcessor {
       providerCode: context.providerCode,
       gameContext: context.gameContext,
       glossaryTerms: context.glossaryTerms,
+      glossaryId: context.glossaryId,
+      sourceLanguage: context.sourceLanguage,
       maxTokens: maxTokens,
       timestamp: DateTime.now(),
     );

@@ -120,3 +120,11 @@ class UnsupportedLanguagePairException extends GlossaryException {
   String toString() =>
       'UnsupportedLanguagePairException: $sourceLanguage -> $targetLanguage';
 }
+
+/// Glossary sync with DeepL failed
+class GlossarySyncException extends GlossaryException {
+  const GlossarySyncException(super.message, [super.cause]);
+
+  @override
+  String toString() => 'GlossarySyncException: $message';
+}

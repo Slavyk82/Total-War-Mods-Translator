@@ -2,6 +2,8 @@ import 'package:get_it/get_it.dart';
 
 import '../../repositories/glossary_repository.dart';
 import '../glossary/glossary_service_impl.dart';
+import '../glossary/glossary_deepl_service.dart';
+import '../glossary/deepl_glossary_sync_service.dart';
 import '../glossary/i_glossary_service.dart';
 import '../settings/settings_service.dart';
 import '../shared/logging_service.dart';
@@ -10,6 +12,8 @@ import '../shared/logging_service.dart';
 ///
 /// This includes:
 /// - Glossary service for managing translation glossaries
+/// - DeepL glossary service for DeepL API integration
+/// - DeepL sync service for automatic glossary synchronization
 class GlossaryServiceLocator {
   GlossaryServiceLocator._();
 
@@ -18,10 +22,28 @@ class GlossaryServiceLocator {
     final logging = locator<LoggingService>();
     logging.info('Registering glossary services');
 
+    // Main glossary service
     locator.registerLazySingleton<IGlossaryService>(
       () => GlossaryServiceImpl(
         repository: locator<GlossaryRepository>(),
         settingsService: locator<SettingsService>(),
+      ),
+    );
+
+    // DeepL API service
+    locator.registerLazySingleton<GlossaryDeepLService>(
+      () => GlossaryDeepLService(
+        glossaryRepository: locator<GlossaryRepository>(),
+        settingsService: locator<SettingsService>(),
+      ),
+    );
+
+    // DeepL sync service
+    locator.registerLazySingleton<DeepLGlossarySyncService>(
+      () => DeepLGlossarySyncService(
+        glossaryRepository: locator<GlossaryRepository>(),
+        deeplService: locator<GlossaryDeepLService>(),
+        logging: locator<LoggingService>(),
       ),
     );
 

@@ -19,6 +19,8 @@ LlmRequest _$LlmRequestFromJson(Map<String, dynamic> json) => LlmRequest(
   glossaryTerms: (json['glossaryTerms'] as Map<String, dynamic>?)?.map(
     (k, e) => MapEntry(k, e as String),
   ),
+  glossaryId: json['glossaryId'] as String?,
+  sourceLanguage: json['sourceLanguage'] as String?,
   modelName: json['modelName'] as String?,
   providerCode: json['providerCode'] as String?,
   temperature: (json['temperature'] as num?)?.toDouble() ?? 0.3,
@@ -36,6 +38,8 @@ Map<String, dynamic> _$LlmRequestToJson(LlmRequest instance) =>
       'projectContext': instance.projectContext,
       'fewShotExamples': instance.fewShotExamples,
       'glossaryTerms': instance.glossaryTerms,
+      'glossaryId': instance.glossaryId,
+      'sourceLanguage': instance.sourceLanguage,
       'modelName': instance.modelName,
       'providerCode': instance.providerCode,
       'temperature': instance.temperature,

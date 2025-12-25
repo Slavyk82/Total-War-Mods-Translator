@@ -1,21 +1,25 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 /// Text cell widget for DataGrid
 ///
 /// Displays text content with optional styling for key columns
 /// Shows raw text with escape sequences visible (e.g., \n displayed literally)
+/// Supports text selection (copy via Ctrl+C) while allowing DataGrid context menu
 class TextCellRenderer extends StatelessWidget {
   final String? text;
   final bool isKey;
-  /// When true, uses regular Text widget to allow DataGrid double-click editing
-  /// When false (default), uses SelectableText for copy support
+  /// When true, indicates this is an editable cell (for styling purposes)
   final bool isEditable;
+  /// Callback for secondary tap (right-click) to show context menu
+  final void Function(Offset globalPosition)? onSecondaryTap;
 
   const TextCellRenderer({
     super.key,
     required this.text,
     this.isKey = false,
     this.isEditable = false,
+    this.onSecondaryTap,
   });
 
   /// Escape special characters to display them literally
@@ -39,13 +43,28 @@ class TextCellRenderer extends StatelessWidget {
       color: rawText.isEmpty ? Colors.grey : null,
     );
 
-    // Use regular Text for editable cells to allow DataGrid double-click editing
-    // Use SelectableText for read-only cells to allow copy
+    // Use Listener to intercept right-click and show context menu immediately
+    // SelectableText still handles left-click for text selection
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: isEditable
-          ? Text(displayText, style: textStyle)
-          : SelectableText(displayText, style: textStyle),
+      child: Listener(
+        onPointerDown: (event) {
+          if (event.buttons == kSecondaryMouseButton) {
+            // Immediately show context menu on right-click
+            onSecondaryTap?.call(event.position);
+          }
+        },
+        // translucent allows events to pass through to SelectableText for selection
+        behavior: HitTestBehavior.translucent,
+        child: SelectableText(
+          displayText,
+          style: textStyle,
+          // Disable SelectableText context menu - we handle it via Listener
+          contextMenuBuilder: (context, editableTextState) {
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
     );
   }
 }

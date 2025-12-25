@@ -629,6 +629,10 @@ class DeepLProvider implements ILlmProvider {
   /// Translate with a specific glossary
   ///
   /// The glossary must be created beforehand using [createGlossary].
+  ///
+  /// **Important**: DeepL requires both `source_lang` and `target_lang` to be
+  /// explicitly specified when using a glossary. The language pair must match
+  /// the glossary's language pair.
   Future<Result<LlmResponse, LlmProviderException>> translateWithGlossary({
     required LlmRequest request,
     required String apiKey,
@@ -637,11 +641,21 @@ class DeepLProvider implements ILlmProvider {
     final startTime = DateTime.now();
 
     try {
+      // Validate source language is provided (required for glossary)
+      if (request.sourceLanguage == null || request.sourceLanguage!.isEmpty) {
+        return Err(LlmInvalidRequestException(
+          'source_lang is required when using a DeepL glossary',
+          providerCode: providerCode,
+        ));
+      }
+
       // Preprocess texts to convert \n to XML placeholders
       final texts = request.texts.values.map(_preprocessText).toList();
 
+      // DeepL requires both source_lang and target_lang when using glossary
       final payload = {
         'text': texts,
+        'source_lang': _mapLanguageCode(request.sourceLanguage!),
         'target_lang': _mapLanguageCode(request.targetLanguage),
         'glossary_id': glossaryId,
         'formality': 'default',

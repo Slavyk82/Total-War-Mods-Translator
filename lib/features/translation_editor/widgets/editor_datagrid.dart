@@ -68,15 +68,16 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   @override
   void initState() {
     super.initState();
-    
+
     // Create data source first (will be updated with selection handler reference)
     _dataSource = EditorDataSource(
       onCellEdit: widget.onCellEdit,
       onCellTap: (unitId) {},
       onCheckboxTap: (unitId) {}, // Placeholder, will be replaced
       isRowSelected: (unitId) => _selectedRowIds.contains(unitId),
+      onCellSecondaryTap: _handleCellSecondaryTapFromRenderer,
     );
-    
+
     // Create selection handler with the data source
     _selectionHandler = GridSelectionHandler(
       dataSource: _dataSource,
@@ -88,7 +89,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
         });
       },
     );
-    
+
     // Now update the data source callbacks to use the selection handler
     _dataSource.onCheckboxTap = _selectionHandler.handleCheckboxTap;
     _dataSource.isRowSelected = _selectionHandler.isRowSelected;
@@ -98,6 +99,21 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
     // Listen to batch events and refresh data when translations are completed
     _setupBatchEventListeners();
+  }
+
+  /// Handle secondary tap from TextCellRenderer (right-click on text)
+  void _handleCellSecondaryTapFromRenderer(TranslationRow row, Offset globalPosition) {
+    // Find the row index
+    final rowIndex = _dataSource.translationRows.indexWhere((r) => r.id == row.id);
+    if (rowIndex < 0) return;
+
+    // If the right-clicked row is not in the current selection, select only it
+    if (!_selectedRowIds.contains(row.id)) {
+      _selectionHandler.selectSingleRow(row.id, rowIndex);
+    }
+
+    // Show context menu (gridRowIndex = rowIndex + 1 because of header)
+    _showContextMenu(context, globalPosition, row, rowIndex + 1);
   }
 
   /// Load the project language ID for filtering events

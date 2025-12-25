@@ -9,9 +9,12 @@ import 'package:twmt/services/llm/llm_batch_adjuster.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
+import 'package:twmt/services/llm/providers/deepl_provider.dart';
 import 'package:twmt/services/llm/utils/concurrency_semaphore.dart';
+import 'package:twmt/services/glossary/deepl_glossary_sync_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of high-level LLM service
 ///
@@ -28,6 +31,11 @@ class LlmServiceImpl implements ILlmService {
   final LlmBatchAdjuster _batchAdjuster;
   final SettingsService _settingsService;
   final FlutterSecureStorage _secureStorage;
+  final LoggingService _logging;
+
+  /// Lazy getter for DeepL glossary sync service.
+  /// Uses a factory function to defer resolution until the service is registered.
+  final DeepLGlossarySyncService? Function()? _deeplGlossarySyncServiceFactory;
 
   /// API key setting key pattern: "{providerCode}_api_key"
   static const String _apiKeySuffix = '_api_key';
@@ -40,10 +48,18 @@ class LlmServiceImpl implements ILlmService {
     required LlmBatchAdjuster batchAdjuster,
     required SettingsService settingsService,
     required FlutterSecureStorage secureStorage,
+    DeepLGlossarySyncService? Function()? deeplGlossarySyncServiceFactory,
+    LoggingService? logging,
   })  : _providerFactory = providerFactory,
         _batchAdjuster = batchAdjuster,
         _settingsService = settingsService,
-        _secureStorage = secureStorage;
+        _secureStorage = secureStorage,
+        _deeplGlossarySyncServiceFactory = deeplGlossarySyncServiceFactory,
+        _logging = logging ?? LoggingService.instance;
+
+  /// Get the DeepL glossary sync service (lazy resolution).
+  DeepLGlossarySyncService? get _deeplGlossarySyncService =>
+      _deeplGlossarySyncServiceFactory?.call();
 
   @override
   Future<Result<LlmResponse, LlmServiceException>> translateBatch(
@@ -69,8 +85,24 @@ class LlmServiceImpl implements ILlmService {
         );
       }
 
-      // Get provider instance and translate directly
+      // Get provider instance
       final provider = _providerFactory.getProvider(providerCode);
+
+      // Special handling for DeepL with glossary
+      if (providerCode == 'deepl' &&
+          provider is DeepLProvider &&
+          request.glossaryId != null &&
+          request.sourceLanguage != null &&
+          _deeplGlossarySyncService != null) {
+        return _translateWithDeepLGlossary(
+          request: request,
+          provider: provider,
+          apiKey: apiKey,
+          cancelToken: cancelToken,
+        );
+      }
+
+      // Standard translation
       final result = await provider.translate(request, apiKey, cancelToken: cancelToken);
 
       return result.when(
@@ -85,6 +117,80 @@ class LlmServiceImpl implements ILlmService {
       return Err(
         LlmServiceException(
           'Failed to translate batch: ${e.toString()}',
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
+  /// Translate using DeepL with glossary sync.
+  ///
+  /// Syncs the glossary to DeepL servers if needed, then uses
+  /// the DeepL glossary ID for translation.
+  Future<Result<LlmResponse, LlmServiceException>> _translateWithDeepLGlossary({
+    required LlmRequest request,
+    required DeepLProvider provider,
+    required String apiKey,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      _logging.debug('[LlmServiceImpl] Syncing glossary for DeepL translation', {
+        'glossaryId': request.glossaryId,
+        'sourceLanguage': request.sourceLanguage,
+        'targetLanguage': request.targetLanguage,
+      });
+
+      // Sync glossary to DeepL
+      final syncResult = await _deeplGlossarySyncService!.ensureGlossarySynced(
+        glossaryId: request.glossaryId!,
+        sourceLanguageCode: request.sourceLanguage!,
+        targetLanguageCode: request.targetLanguage,
+      );
+
+      if (syncResult.isErr) {
+        _logging.warning('[LlmServiceImpl] Glossary sync failed, using standard translation', {
+          'error': syncResult.error.message,
+        });
+        // Fall back to standard translation without glossary
+        final result = await provider.translate(request, apiKey, cancelToken: cancelToken);
+        return result.when(
+          ok: (response) => Ok(response),
+          err: (error) => Err(error),
+        );
+      }
+
+      final deeplGlossaryId = syncResult.value;
+
+      if (deeplGlossaryId == null) {
+        _logging.debug('[LlmServiceImpl] No glossary entries for language pair, using standard translation');
+        // No glossary entries for this language pair, use standard translation
+        final result = await provider.translate(request, apiKey, cancelToken: cancelToken);
+        return result.when(
+          ok: (response) => Ok(response),
+          err: (error) => Err(error),
+        );
+      }
+
+      _logging.info('[LlmServiceImpl] Using DeepL glossary for translation', {
+        'deeplGlossaryId': deeplGlossaryId,
+      });
+
+      // Translate with glossary
+      final result = await provider.translateWithGlossary(
+        request: request,
+        apiKey: apiKey,
+        glossaryId: deeplGlossaryId,
+      );
+
+      return result.when(
+        ok: (response) => Ok(response),
+        err: (error) => Err(error),
+      );
+    } catch (e, stackTrace) {
+      _logging.error('[LlmServiceImpl] Error during DeepL glossary translation', e, stackTrace);
+      return Err(
+        LlmServiceException(
+          'Failed to translate with DeepL glossary: ${e.toString()}',
           stackTrace: stackTrace,
         ),
       );

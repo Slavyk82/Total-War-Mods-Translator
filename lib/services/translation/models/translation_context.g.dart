@@ -18,6 +18,8 @@ TranslationContext _$TranslationContextFromJson(Map<String, dynamic> json) =>
       glossaryTerms: (json['glossaryTerms'] as Map<String, dynamic>?)?.map(
         (k, e) => MapEntry(k, e as String),
       ),
+      glossaryId: json['glossaryId'] as String?,
+      sourceLanguage: json['sourceLanguage'] as String?,
       fewShotExamples: (json['fewShotExamples'] as List<dynamic>?)
           ?.map((e) => Map<String, String>.from(e as Map))
           .toList(),
@@ -43,6 +45,8 @@ Map<String, dynamic> _$TranslationContextToJson(TranslationContext instance) =>
       'gameContext': instance.gameContext,
       'projectContext': instance.projectContext,
       'glossaryTerms': instance.glossaryTerms,
+      'glossaryId': instance.glossaryId,
+      'sourceLanguage': instance.sourceLanguage,
       'fewShotExamples': instance.fewShotExamples,
       'customInstructions': instance.customInstructions,
       'targetLanguage': instance.targetLanguage,

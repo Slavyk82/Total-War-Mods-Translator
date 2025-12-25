@@ -29,6 +29,13 @@ class LlmRequest {
   /// Glossary terms to preserve (optional)
   final Map<String, String>? glossaryTerms;
 
+  /// Glossary ID for DeepL sync (optional)
+  /// When using DeepL, this ID is used to sync the glossary to DeepL servers
+  final String? glossaryId;
+
+  /// Source language code (ISO 639-1) for DeepL glossary sync
+  final String? sourceLanguage;
+
   /// Model name to use (e.g., "claude-3-5-sonnet-20241022")
   final String? modelName;
 
@@ -54,6 +61,8 @@ class LlmRequest {
     this.projectContext,
     this.fewShotExamples,
     this.glossaryTerms,
+    this.glossaryId,
+    this.sourceLanguage,
     this.modelName,
     this.providerCode,
     this.temperature = 0.3,
@@ -75,6 +84,8 @@ class LlmRequest {
     String? projectContext,
     List<TranslationExample>? fewShotExamples,
     Map<String, String>? glossaryTerms,
+    String? glossaryId,
+    String? sourceLanguage,
     String? modelName,
     String? providerCode,
     double? temperature,
@@ -90,6 +101,8 @@ class LlmRequest {
       projectContext: projectContext ?? this.projectContext,
       fewShotExamples: fewShotExamples ?? this.fewShotExamples,
       glossaryTerms: glossaryTerms ?? this.glossaryTerms,
+      glossaryId: glossaryId ?? this.glossaryId,
+      sourceLanguage: sourceLanguage ?? this.sourceLanguage,
       modelName: modelName ?? this.modelName,
       providerCode: providerCode ?? this.providerCode,
       temperature: temperature ?? this.temperature,
@@ -111,6 +124,8 @@ class LlmRequest {
           projectContext == other.projectContext &&
           fewShotExamples == other.fewShotExamples &&
           glossaryTerms == other.glossaryTerms &&
+          glossaryId == other.glossaryId &&
+          sourceLanguage == other.sourceLanguage &&
           modelName == other.modelName &&
           providerCode == other.providerCode &&
           temperature == other.temperature &&
@@ -127,6 +142,8 @@ class LlmRequest {
       (projectContext?.hashCode ?? 0) ^
       (fewShotExamples?.hashCode ?? 0) ^
       (glossaryTerms?.hashCode ?? 0) ^
+      (glossaryId?.hashCode ?? 0) ^
+      (sourceLanguage?.hashCode ?? 0) ^
       (modelName?.hashCode ?? 0) ^
       (providerCode?.hashCode ?? 0) ^
       temperature.hashCode ^

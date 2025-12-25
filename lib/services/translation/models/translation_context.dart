@@ -37,6 +37,14 @@ class TranslationContext {
   @JsonKey(includeFromJson: false, includeToJson: false)
   final List<GlossaryTermWithVariants>? glossaryEntries;
 
+  /// Glossary ID for DeepL sync
+  /// Used to sync glossary to DeepL servers before translation
+  final String? glossaryId;
+
+  /// Source language code (ISO 639-1)
+  /// Required for DeepL glossary sync
+  final String? sourceLanguage;
+
   /// Few-shot examples from Translation Memory
   /// Format: [{"source": "...", "target": "..."}]
   final List<Map<String, String>>? fewShotExamples;
@@ -84,6 +92,8 @@ class TranslationContext {
     this.projectContext,
     this.glossaryTerms,
     this.glossaryEntries,
+    this.glossaryId,
+    this.sourceLanguage,
     this.fewShotExamples,
     this.customInstructions,
     required this.targetLanguage,
@@ -127,6 +137,8 @@ class TranslationContext {
     String? projectContext,
     Map<String, String>? glossaryTerms,
     List<GlossaryTermWithVariants>? glossaryEntries,
+    String? glossaryId,
+    String? sourceLanguage,
     List<Map<String, String>>? fewShotExamples,
     String? customInstructions,
     String? targetLanguage,
@@ -147,6 +159,8 @@ class TranslationContext {
       projectContext: projectContext ?? this.projectContext,
       glossaryTerms: glossaryTerms ?? this.glossaryTerms,
       glossaryEntries: glossaryEntries ?? this.glossaryEntries,
+      glossaryId: glossaryId ?? this.glossaryId,
+      sourceLanguage: sourceLanguage ?? this.sourceLanguage,
       fewShotExamples: fewShotExamples ?? this.fewShotExamples,
       customInstructions: customInstructions ?? this.customInstructions,
       targetLanguage: targetLanguage ?? this.targetLanguage,

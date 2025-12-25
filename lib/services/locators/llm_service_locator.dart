@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import '../../repositories/ignored_source_text_repository.dart';
 import '../../repositories/llm_custom_rule_repository.dart';
 import '../../repositories/llm_provider_model_repository.dart';
+import '../glossary/deepl_glossary_sync_service.dart';
 import '../llm/i_llm_service.dart';
 import '../llm/llm_batch_adjuster.dart';
 import '../llm/llm_custom_rules_service.dart';
@@ -51,12 +52,20 @@ class LlmServiceLocator {
     );
 
     // LLM Service
+    // Note: DeepLGlossarySyncService is registered later in GlossaryServiceLocator,
+    // so we use a factory function for lazy resolution
     locator.registerLazySingleton<ILlmService>(
       () => LlmServiceImpl(
         providerFactory: locator<LlmProviderFactory>(),
         batchAdjuster: locator<LlmBatchAdjuster>(),
         settingsService: locator<SettingsService>(),
         secureStorage: const FlutterSecureStorage(),
+        deeplGlossarySyncServiceFactory: () {
+          if (locator.isRegistered<DeepLGlossarySyncService>()) {
+            return locator<DeepLGlossarySyncService>();
+          }
+          return null;
+        },
       ),
     );
 

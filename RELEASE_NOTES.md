@@ -1,13 +1,8 @@
 ## What's New
 
 ### New Features
--
-
-### Improvements
--
+- Added glossary support for DeepL Pro translations (glossaries are automatically synced to DeepL servers)
 
 ### Bug Fixes
--
+- Fixed context menu in translation editor not appearing on right-click while still allowing text selection
 
----
-*Delete sections that don't apply. This file will be used for the next GitHub release.*

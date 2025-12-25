@@ -14,11 +14,14 @@ class GlossaryDeepLService {
   final SettingsService _settingsService;
   final Dio _dio;
 
-  /// DeepL API base URL (v2)
-  static const String _apiBaseUrl = 'https://api-free.deepl.com/v2';
+  /// DeepL API base URL for PRO accounts
+  static const String _apiBaseUrlPro = 'https://api.deepl.com/v2';
+
+  /// DeepL API base URL for FREE accounts
+  static const String _apiBaseUrlFree = 'https://api-free.deepl.com/v2';
 
   /// API key setting key for DeepL
-  static const String _apiKeySettingKey = 'api_key_deepl';
+  static const String _apiKeySettingKey = 'deepl_api_key';
 
   GlossaryDeepLService({
     required GlossaryRepository glossaryRepository,
@@ -28,13 +31,28 @@ class GlossaryDeepLService {
         _settingsService = settingsService,
         _dio = dio ??
             Dio(BaseOptions(
-              baseUrl: _apiBaseUrl,
+              // Default to FREE, will be updated dynamically based on API key
+              baseUrl: _apiBaseUrlFree,
               connectTimeout: const Duration(seconds: 30),
               receiveTimeout: const Duration(seconds: 120),
               headers: {
                 'Content-Type': 'application/json',
               },
             ));
+
+  /// Determine the correct API base URL based on the API key type.
+  /// FREE API keys end with ':fx'
+  static String _getBaseUrl(String apiKey) {
+    if (apiKey.endsWith(':fx')) {
+      return _apiBaseUrlFree;
+    }
+    return _apiBaseUrlPro;
+  }
+
+  /// Update the base URL dynamically based on API key
+  void _updateBaseUrl(String apiKey) {
+    _dio.options.baseUrl = _getBaseUrl(apiKey);
+  }
 
   // ============================================================================
   // DeepL API Integration
@@ -78,7 +96,7 @@ class GlossaryDeepLService {
       // 3. Convert entries to DeepL TSV format
       final tsvContent = _convertToDeepLFormat(entries);
 
-      // 4. Get API key
+      // 4. Get API key and configure endpoint (FREE vs PRO)
       final apiKey = await _getApiKey();
       if (apiKey.isEmpty) {
         return Err(
@@ -87,6 +105,7 @@ class GlossaryDeepLService {
           ),
         );
       }
+      _updateBaseUrl(apiKey);
 
       // 5. Create glossary name (unique per language pair)
       final glossaryName =
@@ -142,7 +161,7 @@ class GlossaryDeepLService {
     String deeplGlossaryId,
   ) async {
     try {
-      // 1. Get API key
+      // 1. Get API key and configure endpoint (FREE vs PRO)
       final apiKey = await _getApiKey();
       if (apiKey.isEmpty) {
         return Err(
@@ -151,6 +170,7 @@ class GlossaryDeepLService {
           ),
         );
       }
+      _updateBaseUrl(apiKey);
 
       // 2. Call DeepL API to delete glossary
       await _dio.delete(
@@ -184,7 +204,7 @@ class GlossaryDeepLService {
   Future<Result<List<Map<String, dynamic>>, GlossaryException>>
       listDeepLGlossaries() async {
     try {
-      // 1. Get API key
+      // 1. Get API key and configure endpoint (FREE vs PRO)
       final apiKey = await _getApiKey();
       if (apiKey.isEmpty) {
         return Err(
@@ -193,6 +213,7 @@ class GlossaryDeepLService {
           ),
         );
       }
+      _updateBaseUrl(apiKey);
 
       // 2. Call DeepL API to list glossaries
       final response = await _dio.get(

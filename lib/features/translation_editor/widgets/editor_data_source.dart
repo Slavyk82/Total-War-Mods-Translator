@@ -15,6 +15,8 @@ class EditorDataSource extends DataGridSource {
   final Function(String unitId) onCellTap;
   Function(String unitId) onCheckboxTap;
   bool Function(String unitId) isRowSelected;
+  /// Callback for secondary tap (right-click) on a cell to show context menu
+  Function(TranslationRow row, Offset globalPosition)? onCellSecondaryTap;
 
   // Performance: Cache for DataGridRow objects to avoid rebuilding unchanged rows
   final Map<int, DataGridRow> _rowCache = {};
@@ -27,6 +29,7 @@ class EditorDataSource extends DataGridSource {
     required this.onCellTap,
     required this.onCheckboxTap,
     required this.isRowSelected,
+    this.onCellSecondaryTap,
   });
 
   /// Dispose resources to prevent memory leaks
@@ -136,6 +139,17 @@ class EditorDataSource extends DataGridSource {
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
 
+    // Find the full TranslationRow for context menu callback
+    final translationRow = _rows.firstWhere(
+      (r) => r.id == unitId,
+      orElse: () => _rows.first, // Fallback, should not happen
+    );
+
+    // Secondary tap callback for context menu
+    void handleSecondaryTap(Offset position) {
+      onCellSecondaryTap?.call(translationRow, position);
+    }
+
     // Performance: Wrap cells in RepaintBoundary except multiline text cells
     // which need to expand freely
     return DataGridRowAdapter(
@@ -147,12 +161,30 @@ class EditorDataSource extends DataGridSource {
           ),
         ),
         RepaintBoundary(child: StatusCellRenderer(status: statusCell.value)),
-        RepaintBoundary(child: TextCellRenderer(text: _extractLocFileName(locFileCell.value), isKey: true)),
-        RepaintBoundary(child: TextCellRenderer(text: keyCell.value, isKey: true)),
+        RepaintBoundary(child: TextCellRenderer(
+          text: _extractLocFileName(locFileCell.value),
+          isKey: true,
+          onSecondaryTap: handleSecondaryTap,
+        )),
+        RepaintBoundary(child: TextCellRenderer(
+          text: keyCell.value,
+          isKey: true,
+          onSecondaryTap: handleSecondaryTap,
+        )),
         // Don't wrap multiline text cells in RepaintBoundary to allow proper height expansion
-        TextCellRenderer(text: sourceTextCell.value),
-        TextCellRenderer(text: translatedTextCell.value, isEditable: true),
-        RepaintBoundary(child: TextCellRenderer(text: tmSourceCell.value)),
+        TextCellRenderer(
+          text: sourceTextCell.value,
+          onSecondaryTap: handleSecondaryTap,
+        ),
+        TextCellRenderer(
+          text: translatedTextCell.value,
+          isEditable: true,
+          onSecondaryTap: handleSecondaryTap,
+        ),
+        RepaintBoundary(child: TextCellRenderer(
+          text: tmSourceCell.value,
+          onSecondaryTap: handleSecondaryTap,
+        )),
       ],
     );
   }
