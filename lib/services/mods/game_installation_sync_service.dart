@@ -7,6 +7,7 @@ import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/steam/models/game_definitions.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 
 /// Service to sync game settings with game_installations table
@@ -15,55 +16,6 @@ class GameInstallationSyncService {
   final SettingsService _settingsService;
   final LoggingService _logger = LoggingService.instance;
   final Uuid _uuid = const Uuid();
-
-  /// Available games with their display names and Steam App IDs
-  static const Map<String, _GameInfo> _availableGames = {
-    'wh3': _GameInfo(
-      code: 'wh3',
-      name: 'Total War: WARHAMMER III',
-      steamAppId: '1142710',
-    ),
-    'wh2': _GameInfo(
-      code: 'wh2',
-      name: 'Total War: WARHAMMER II',
-      steamAppId: '594570',
-    ),
-    'wh': _GameInfo(
-      code: 'wh',
-      name: 'Total War: WARHAMMER',
-      steamAppId: '364360',
-    ),
-    'rome2': _GameInfo(
-      code: 'rome2',
-      name: 'Total War: Rome II',
-      steamAppId: '214950',
-    ),
-    'attila': _GameInfo(
-      code: 'attila',
-      name: 'Total War: Attila',
-      steamAppId: '325610',
-    ),
-    'troy': _GameInfo(
-      code: 'troy',
-      name: 'Total War: Troy',
-      steamAppId: '1099410',
-    ),
-    '3k': _GameInfo(
-      code: '3k',
-      name: 'Total War: Three Kingdoms',
-      steamAppId: '779340',
-    ),
-    'pharaoh': _GameInfo(
-      code: 'pharaoh',
-      name: 'Total War: Pharaoh',
-      steamAppId: '1937780',
-    ),
-    'pharaoh_dynasties': _GameInfo(
-      code: 'pharaoh_dynasties',
-      name: 'Total War: Pharaoh Dynasties',
-      steamAppId: '2951630',
-    ),
-  };
 
   GameInstallationSyncService({
     required GameInstallationRepository gameInstallationRepository,
@@ -74,7 +26,7 @@ class GameInstallationSyncService {
   /// Sync all configured games from settings to database
   Future<Result<void, ServiceException>> syncAllGames() async {
     try {
-      for (final entry in _availableGames.entries) {
+      for (final entry in supportedGames.entries) {
         final gameCode = entry.key;
         final gameInfo = entry.value;
 
@@ -94,7 +46,7 @@ class GameInstallationSyncService {
 
   /// Sync a specific game from settings to database
   Future<Result<void, ServiceException>> syncGame(String gameCode) async {
-    final gameInfo = _availableGames[gameCode];
+    final gameInfo = supportedGames[gameCode];
     if (gameInfo == null) {
       return Err(ServiceException('Unknown game code: $gameCode'));
     }
@@ -104,7 +56,7 @@ class GameInstallationSyncService {
 
   Future<Result<void, ServiceException>> _syncGame(
     String gameCode,
-    _GameInfo gameInfo,
+    GameInfo gameInfo,
   ) async {
     try {
       // Get game path from settings
@@ -287,17 +239,5 @@ class GameInstallationSyncService {
         throw ArgumentError('Unknown game code: $gameCode');
     }
   }
-}
-
-class _GameInfo {
-  final String code;
-  final String name;
-  final String steamAppId;
-
-  const _GameInfo({
-    required this.code,
-    required this.name,
-    required this.steamAppId,
-  });
 }
 

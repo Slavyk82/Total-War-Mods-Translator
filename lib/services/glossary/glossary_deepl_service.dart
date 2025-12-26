@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
-import 'package:twmt/services/settings/settings_service.dart';
 
 /// Service responsible for DeepL integration
 ///
@@ -11,7 +11,7 @@ import 'package:twmt/services/settings/settings_service.dart';
 /// and listing of glossaries on DeepL's platform.
 class GlossaryDeepLService {
   final GlossaryRepository _glossaryRepository;
-  final SettingsService _settingsService;
+  final FlutterSecureStorage _secureStorage;
   final Dio _dio;
 
   /// DeepL API base URL for PRO accounts
@@ -25,10 +25,10 @@ class GlossaryDeepLService {
 
   GlossaryDeepLService({
     required GlossaryRepository glossaryRepository,
-    required SettingsService settingsService,
+    required FlutterSecureStorage secureStorage,
     Dio? dio,
   })  : _glossaryRepository = glossaryRepository,
-        _settingsService = settingsService,
+        _secureStorage = secureStorage,
         _dio = dio ??
             Dio(BaseOptions(
               // Default to FREE, will be updated dynamically based on API key
@@ -274,9 +274,9 @@ class GlossaryDeepLService {
     return buffer.toString();
   }
 
-  /// Get DeepL API key from settings
+  /// Get DeepL API key from secure storage
   Future<String> _getApiKey() async {
-    return await _settingsService.getString(_apiKeySettingKey);
+    return await _secureStorage.read(key: _apiKeySettingKey) ?? '';
   }
 
   /// Map language codes to DeepL format

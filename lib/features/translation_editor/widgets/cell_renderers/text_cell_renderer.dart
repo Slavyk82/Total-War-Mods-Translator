@@ -44,7 +44,6 @@ class TextCellRenderer extends StatelessWidget {
     );
 
     // Use Listener to intercept right-click and show context menu immediately
-    // SelectableText still handles left-click for text selection
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Listener(
@@ -54,16 +53,24 @@ class TextCellRenderer extends StatelessWidget {
             onSecondaryTap?.call(event.position);
           }
         },
-        // translucent allows events to pass through to SelectableText for selection
+        // translucent allows events to pass through for DataGrid interactions
         behavior: HitTestBehavior.translucent,
-        child: SelectableText(
-          displayText,
-          style: textStyle,
-          // Disable SelectableText context menu - we handle it via Listener
-          contextMenuBuilder: (context, editableTextState) {
-            return const SizedBox.shrink();
-          },
-        ),
+        // For editable cells, use regular Text to allow double-click to pass
+        // through to DataGrid for edit mode. For non-editable cells, use
+        // SelectableText for copy functionality.
+        child: isEditable
+            ? Text(
+                displayText,
+                style: textStyle,
+              )
+            : SelectableText(
+                displayText,
+                style: textStyle,
+                // Disable SelectableText context menu - we handle it via Listener
+                contextMenuBuilder: (context, editableTextState) {
+                  return const SizedBox.shrink();
+                },
+              ),
       ),
     );
   }

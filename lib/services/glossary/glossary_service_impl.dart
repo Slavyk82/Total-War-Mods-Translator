@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
@@ -9,7 +10,6 @@ import 'package:twmt/services/glossary/glossary_statistics_service.dart';
 import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
-import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of glossary service
@@ -22,7 +22,6 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - GlossaryStatisticsService: Statistics calculations
 class GlossaryServiceImpl implements IGlossaryService {
   final GlossaryRepository _repository;
-  final SettingsService _settingsService;
   final Uuid _uuid = const Uuid();
 
   // Delegate services
@@ -33,13 +32,11 @@ class GlossaryServiceImpl implements IGlossaryService {
 
   GlossaryServiceImpl({
     required GlossaryRepository repository,
-    required SettingsService settingsService,
-  })  : _repository = repository,
-        _settingsService = settingsService {
+  }) : _repository = repository {
     _importExportService = GlossaryImportExportService(_repository, this);
     _deeplService = GlossaryDeepLService(
       glossaryRepository: _repository,
-      settingsService: _settingsService,
+      secureStorage: const FlutterSecureStorage(),
     );
     _matchingService = GlossaryMatchingService(_repository);
     _statisticsService = GlossaryStatisticsService(_repository);
