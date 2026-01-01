@@ -73,51 +73,62 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           _buildSkipTmCheckbox(),
           const SizedBox(width: 16),
 
-          // Translation Settings button
-          _buildActionButton(
-            icon: FluentIcons.settings_24_regular,
-            label: 'Settings',
-            tooltip: TooltipStrings.editorSettings,
-            onPressed: widget.onTranslationSettings,
-          ),
-          const SizedBox(width: 8),
+          // Action buttons wrapped in Flexible to prevent overflow
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Translation Settings button
+                  _buildActionButton(
+                    icon: FluentIcons.settings_24_regular,
+                    label: 'Settings',
+                    tooltip: TooltipStrings.editorSettings,
+                    onPressed: widget.onTranslationSettings,
+                  ),
+                  const SizedBox(width: 8),
 
-          // Mod Rule button
-          _buildModRuleButton(),
+                  // Mod Rule button
+                  _buildModRuleButton(),
+                  const SizedBox(width: 16),
+
+                  // Action buttons
+                  _buildActionButton(
+                    icon: FluentIcons.translate_24_regular,
+                    label: 'Translate All',
+                    tooltip: TooltipStrings.editorTranslateAll,
+                    onPressed: widget.onTranslateAll,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildActionButton(
+                    icon: FluentIcons.translate_24_filled,
+                    label: 'Translate Selected',
+                    tooltip: TooltipStrings.editorTranslateSelected,
+                    onPressed: selectionState.hasSelection
+                      ? widget.onTranslateSelected
+                      : null,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildActionButton(
+                    icon: FluentIcons.checkmark_circle_24_regular,
+                    label: 'Validate',
+                    tooltip: TooltipStrings.editorValidate,
+                    onPressed: widget.onValidate,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildActionButton(
+                    icon: FluentIcons.arrow_export_24_regular,
+                    label: 'Generate pack',
+                    tooltip: TooltipStrings.editorExport,
+                    onPressed: widget.onExport,
+                    color: Colors.green.shade700,
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(width: 16),
-
-          // Action buttons
-          _buildActionButton(
-            icon: FluentIcons.translate_24_regular,
-            label: 'Translate All',
-            tooltip: TooltipStrings.editorTranslateAll,
-            onPressed: widget.onTranslateAll,
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            icon: FluentIcons.translate_24_filled,
-            label: 'Translate Selected',
-            tooltip: TooltipStrings.editorTranslateSelected,
-            onPressed: selectionState.hasSelection
-              ? widget.onTranslateSelected
-              : null,
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            icon: FluentIcons.checkmark_circle_24_regular,
-            label: 'Validate',
-            tooltip: TooltipStrings.editorValidate,
-            onPressed: widget.onValidate,
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            icon: FluentIcons.arrow_export_24_regular,
-            label: 'Generate pack',
-            tooltip: TooltipStrings.editorExport,
-            onPressed: widget.onExport,
-            color: Colors.green.shade700,
-          ),
-          const Spacer(),
 
           // Search field - flexible with constraints
           Flexible(
@@ -129,44 +140,44 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search translations...',
-                  prefixIcon: const Icon(
-                    FluentIcons.search_24_regular,
-                    size: 18,
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search translations...',
+                    prefixIcon: const Icon(
+                      FluentIcons.search_24_regular,
+                      size: 18,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                      ? FluentIconButton(
+                          icon: const Icon(FluentIcons.dismiss_24_regular, size: 16),
+                          onPressed: () {
+                            _searchController.clear();
+                            ref.read(editorFilterProvider.notifier)
+                              .setSearchQuery('');
+                          },
+                          tooltip: 'Clear search',
+                          size: 28,
+                          iconSize: 16,
+                        )
+                      : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    isDense: true,
                   ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                    ? FluentIconButton(
-                        icon: const Icon(FluentIcons.dismiss_24_regular, size: 16),
-                        onPressed: () {
-                          _searchController.clear();
-                          ref.read(editorFilterProvider.notifier)
-                            .setSearchQuery('');
-                        },
-                        tooltip: 'Clear search',
-                        size: 28,
-                        iconSize: 16,
-                      )
-                    : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  isDense: true,
+                  style: const TextStyle(fontSize: 13),
+                  onChanged: (value) {
+                    ref.read(editorFilterProvider.notifier)
+                      .setSearchQuery(value);
+                  },
                 ),
-                style: const TextStyle(fontSize: 13),
-                onChanged: (value) {
-                  ref.read(editorFilterProvider.notifier)
-                    .setSearchQuery(value);
-                },
               ),
             ),
           ),
-        ),
           const SizedBox(width: 16),
         ],
       ),

@@ -156,9 +156,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   /// Get glossary by name
   Future<Glossary?> getByName(String name) async {
     final maps = await database.rawQuery('''
-      SELECT 
+      SELECT
         g.*,
-        COALESCE(COUNT(ge.id), 0) as entry_count
+        COALESCE(COUNT(ge.id), 0) as entryCount
       FROM $glossaryTableName g
       LEFT JOIN $tableName ge ON g.id = ge.glossary_id
       WHERE g.name = ?
@@ -171,9 +171,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   /// Get glossary by ID (returns Glossary, not GlossaryEntry)
   Future<Glossary?> getGlossaryById(String id) async {
     final maps = await database.rawQuery('''
-      SELECT 
+      SELECT
         g.*,
-        COALESCE(COUNT(ge.id), 0) as entry_count
+        COALESCE(COUNT(ge.id), 0) as entryCount
       FROM $glossaryTableName g
       LEFT JOIN $tableName ge ON g.id = ge.glossary_id
       WHERE g.id = ?
@@ -208,9 +208,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
     // Query with LEFT JOIN to count entries
     final maps = await database.rawQuery('''
-      SELECT 
+      SELECT
         g.*,
-        COALESCE(COUNT(ge.id), 0) as entry_count
+        COALESCE(COUNT(ge.id), 0) as entryCount
       FROM $glossaryTableName g
       LEFT JOIN $tableName ge ON g.id = ge.glossary_id
       $whereClause
@@ -226,9 +226,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     if (ids.isEmpty) return [];
     final placeholders = ids.map((_) => '?').join(',');
     final maps = await database.rawQuery('''
-      SELECT 
+      SELECT
         g.*,
-        COALESCE(COUNT(ge.id), 0) as entry_count
+        COALESCE(COUNT(ge.id), 0) as entryCount
       FROM $glossaryTableName g
       LEFT JOIN $tableName ge ON g.id = ge.glossary_id
       WHERE g.id IN ($placeholders)

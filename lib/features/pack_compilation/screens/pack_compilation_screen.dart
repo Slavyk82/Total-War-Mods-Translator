@@ -92,11 +92,14 @@ class _PackCompilationScreenState extends ConsumerState<PackCompilationScreen> {
           color: theme.colorScheme.primary,
         ),
         const SizedBox(width: 12),
-        Text(
-          'Pack Compilations',
-          style: theme.textTheme.headlineLarge,
+        Expanded(
+          child: Text(
+            'Pack Compilations',
+            style: theme.textTheme.headlineLarge,
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 16),
         _CreateButton(onTap: () => _showCreateNew()),
       ],
     );

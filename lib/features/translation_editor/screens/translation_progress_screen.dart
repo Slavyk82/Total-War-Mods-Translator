@@ -91,7 +91,7 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
     // Use captured notifier reference (safe to use after unmount)
     final notifier = _translationNotifier;
     if (notifier != null) {
-      Future.microtask(() => notifier.setInProgress(false));
+      Future.microtask(() { try { notifier.setInProgress(false); } catch (_) {} });
     }
     super.dispose();
   }

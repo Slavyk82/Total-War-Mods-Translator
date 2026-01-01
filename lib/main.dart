@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:twmt/providers/theme_provider.dart';
+import 'package:twmt/providers/data_migration_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/config/router/app_router.dart' show goRouterProvider, rootNavigatorKey;
 import 'package:twmt/services/service_locator.dart';
@@ -13,6 +14,7 @@ import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
 import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -116,15 +118,47 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   }
 
   void _triggerStartupTasks() {
+    // First: Check and run data migrations (with modal)
+    _runDataMigrations();
+  }
+
+  Future<void> _runDataMigrations() async {
+    // Wait a moment for UI to be ready
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    // Check if migrations are needed
+    final needsMigration =
+        await ref.read(dataMigrationProvider.notifier).needsMigration();
+
+    if (needsMigration) {
+      final navigatorContext = rootNavigatorKey.currentContext;
+      if (navigatorContext != null && navigatorContext.mounted) {
+        // Show migration dialog and wait for it to complete
+        await showDialog<void>(
+          context: navigatorContext,
+          barrierDismissible: false,
+          barrierColor: Colors.black87,
+          builder: (context) => const DataMigrationDialog(),
+        );
+      }
+    }
+
+    // After migrations, continue with other startup tasks
+    if (!mounted) return;
+    _continueStartupTasks();
+  }
+
+  void _continueStartupTasks() {
     // Trigger auto-update check directly
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         ref.read(updateCheckerProvider.notifier).checkForUpdates();
       }
     });
 
     // Check for release notes after update check
-    Future.delayed(const Duration(milliseconds: 2500), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _checkReleaseNotes();
       }

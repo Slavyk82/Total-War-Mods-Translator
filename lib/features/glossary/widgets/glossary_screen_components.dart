@@ -27,11 +27,14 @@ class GlossaryListHeader extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
           ),
           const SizedBox(width: 12),
-          Text(
-            'Glossary Management',
-            style: Theme.of(context).textTheme.headlineLarge,
+          Expanded(
+            child: Text(
+              'Glossary Management',
+              style: Theme.of(context).textTheme.headlineLarge,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           GlossaryActionButton(
             icon: FluentIcons.add_24_regular,
             label: 'New Glossary',

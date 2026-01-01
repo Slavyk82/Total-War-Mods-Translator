@@ -47,47 +47,54 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header - uses Wrap for responsive layout
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(
-                  FluentIcons.folder_24_regular,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Select Projects',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${state.selectedProjectIds.length} selected',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.folder_24_regular,
                       color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Select Projects',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${state.selectedProjectIds.length} selected',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const Spacer(),
                 // Filter field
                 SizedBox(
                   width: 200,
                   child: _ProjectFilterField(filter: filter),
                 ),
-                const SizedBox(width: 12),
                 projectsAsync.whenData((projects) {
                   return Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       CompilationSmallButton(
                         label: 'Select All',

@@ -147,13 +147,6 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
         ),
         if (_preview != null) ...[
           _buildMetadataBadge(
-            icon: FluentIcons.server_24_regular,
-            label: _preview!.providerPayloads.isNotEmpty
-                ? _preview!.providerPayloads.first.providerName
-                : _preview!.providerCode,
-          ),
-          const SizedBox(width: 8),
-          _buildMetadataBadge(
             icon: FluentIcons.document_24_regular,
             label: '~${_preview!.estimatedTokens} tokens',
           ),

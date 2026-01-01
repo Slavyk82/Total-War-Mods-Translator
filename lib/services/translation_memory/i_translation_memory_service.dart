@@ -246,6 +246,34 @@ abstract class ITranslationMemoryService {
   Future<Result<void, TmServiceException>> rebuildCache({
     int maxEntries = 10000,
   });
+
+  /// Rebuild Translation Memory from existing translations
+  ///
+  /// Scans all LLM translations in the database and adds any missing
+  /// entries to the Translation Memory. Useful for recovering TM entries
+  /// that were not properly saved during translation.
+  ///
+  /// [projectId]: Optional project ID to limit rebuild scope
+  /// [onProgress]: Optional progress callback (processed, total, added)
+  ///
+  /// Returns tuple of (entries added, entries already existing)
+  Future<Result<({int added, int existing}), TmServiceException>>
+      rebuildFromTranslations({
+    String? projectId,
+    void Function(int processed, int total, int added)? onProgress,
+  });
+
+  /// Migrate legacy hashes to SHA256 format
+  ///
+  /// Older TM entries used integer hashes. This method converts them
+  /// to SHA256 hashes for consistency with the current implementation.
+  ///
+  /// [onProgress]: Optional progress callback (processed, total, migrated)
+  ///
+  /// Returns number of entries migrated
+  Future<Result<int, TmServiceException>> migrateLegacyHashes({
+    void Function(int processed, int total)? onProgress,
+  });
 }
 
 /// Translation Memory statistics

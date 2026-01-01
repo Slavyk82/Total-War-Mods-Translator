@@ -141,20 +141,9 @@ class ValidationReviewDataSource extends DataGridSource {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         alignment: Alignment.centerLeft,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+        child: Tooltip(
+          message: label,
+          child: Icon(icon, size: 16, color: color),
         ),
       );
     });

@@ -40,41 +40,47 @@ class ValidationReviewToolbar extends StatelessWidget {
           bottom: BorderSide(color: theme.dividerColor),
         ),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           // Filter chips
-          _FilterChip(
-            label: 'All',
-            icon: null,
-            isActive: severityFilter == ValidationSeverityFilter.all,
-            onTap: () => onFilterChanged(ValidationSeverityFilter.all),
-            color: theme.colorScheme.primary,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FilterChip(
+                label: 'All',
+                icon: null,
+                isActive: severityFilter == ValidationSeverityFilter.all,
+                onTap: () => onFilterChanged(ValidationSeverityFilter.all),
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Errors',
+                icon: FluentIcons.error_circle_24_regular,
+                isActive: severityFilter == ValidationSeverityFilter.errorsOnly,
+                onTap: () => onFilterChanged(ValidationSeverityFilter.errorsOnly),
+                color: Colors.red[700]!,
+              ),
+              const SizedBox(width: 8),
+              _FilterChip(
+                label: 'Warnings',
+                icon: FluentIcons.warning_24_regular,
+                isActive: severityFilter == ValidationSeverityFilter.warningsOnly,
+                onTap: () => onFilterChanged(ValidationSeverityFilter.warningsOnly),
+                color: Colors.orange[700]!,
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: 'Errors',
-            icon: FluentIcons.error_circle_24_regular,
-            isActive: severityFilter == ValidationSeverityFilter.errorsOnly,
-            onTap: () => onFilterChanged(ValidationSeverityFilter.errorsOnly),
-            color: Colors.red[700]!,
-          ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: 'Warnings',
-            icon: FluentIcons.warning_24_regular,
-            isActive: severityFilter == ValidationSeverityFilter.warningsOnly,
-            onTap: () => onFilterChanged(ValidationSeverityFilter.warningsOnly),
-            color: Colors.orange[700]!,
-          ),
-
-          const SizedBox(width: 24),
 
           // Search
           SizedBox(
-            width: 300,
+            width: 250,
             child: TextField(
               decoration: InputDecoration(
-                hintText: 'Search by key, text, or description...',
+                hintText: 'Search...',
                 prefixIcon: const Icon(FluentIcons.search_24_regular, size: 18),
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(
@@ -94,34 +100,37 @@ class ValidationReviewToolbar extends StatelessWidget {
             ),
           ),
 
-          const Spacer(),
-
           // Selection info and bulk actions
           if (hasSelection) ...[
-            Text(
-              '$selectedCount selected',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 16),
-            _ActionButton(
-              label: 'Accept All',
-              icon: FluentIcons.checkmark_24_regular,
-              color: Colors.green[700]!,
-              onPressed: onBulkAccept,
-            ),
-            const SizedBox(width: 8),
-            _ActionButton(
-              label: 'Reject All',
-              icon: FluentIcons.dismiss_24_regular,
-              color: Colors.red[700]!,
-              onPressed: onBulkReject,
-            ),
-            const SizedBox(width: 8),
-            _TextButton(
-              label: 'Deselect',
-              onTap: onDeselectAll,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$selectedCount selected',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                _ActionButton(
+                  label: 'Accept All',
+                  icon: FluentIcons.checkmark_24_regular,
+                  color: Colors.green[700]!,
+                  onPressed: onBulkAccept,
+                ),
+                const SizedBox(width: 8),
+                _ActionButton(
+                  label: 'Reject All',
+                  icon: FluentIcons.dismiss_24_regular,
+                  color: Colors.red[700]!,
+                  onPressed: onBulkReject,
+                ),
+                const SizedBox(width: 8),
+                _TextButton(
+                  label: 'Deselect',
+                  onTap: onDeselectAll,
+                ),
+              ],
             ),
           ] else ...[
             _SelectAllButton(onTap: onSelectAll),

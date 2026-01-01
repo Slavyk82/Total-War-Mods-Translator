@@ -111,6 +111,28 @@ class MaintenanceSection extends ConsumerWidget {
               onTap: () => _clearCache(ref),
               isPrimary: false,
             ),
+            const SizedBox(height: 12),
+            _buildActionRow(
+              context,
+              ref,
+              theme,
+              icon: FluentIcons.database_24_regular,
+              title: 'Rebuild Translation Memory',
+              description: 'Recover missing TM entries from existing translations',
+              onTap: () => _rebuildTranslationMemory(ref),
+              isPrimary: false,
+            ),
+            const SizedBox(height: 12),
+            _buildActionRow(
+              context,
+              ref,
+              theme,
+              icon: FluentIcons.arrow_sync_24_regular,
+              title: 'Migrate Legacy TM Hashes',
+              description: 'Convert old integer hashes to SHA256 for TM lookup',
+              onTap: () => _migrateLegacyHashes(ref),
+              isPrimary: true,
+            ),
           ],
         ],
       ),
@@ -224,5 +246,13 @@ class MaintenanceSection extends ConsumerWidget {
 
   void _clearCache(WidgetRef ref) {
     ref.read(maintenanceStateProvider.notifier).clearStaleAnalysisCache();
+  }
+
+  void _rebuildTranslationMemory(WidgetRef ref) {
+    ref.read(maintenanceStateProvider.notifier).rebuildTranslationMemory();
+  }
+
+  void _migrateLegacyHashes(WidgetRef ref) {
+    ref.read(maintenanceStateProvider.notifier).migrateLegacyHashes();
   }
 }

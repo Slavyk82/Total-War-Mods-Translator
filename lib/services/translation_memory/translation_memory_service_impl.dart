@@ -90,21 +90,26 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
   /// Resolve language code to database ID
   /// Caches results for performance
+  /// Note: Language codes are normalized to lowercase for consistent lookup
   Future<String?> _resolveLanguageId(String languageCode) async {
+    // Normalize to lowercase for consistent lookup
+    // (TranslationContext uses uppercase for DeepL API, but DB stores lowercase)
+    final normalizedCode = languageCode.toLowerCase();
+
     // Check cache first
-    if (_languageCodeToId.containsKey(languageCode)) {
-      return _languageCodeToId[languageCode];
+    if (_languageCodeToId.containsKey(normalizedCode)) {
+      return _languageCodeToId[normalizedCode];
     }
 
     // Look up from database
-    final result = await _languageRepository.getByCode(languageCode);
+    final result = await _languageRepository.getByCode(normalizedCode);
     if (result.isOk) {
       final languageId = result.unwrap().id;
-      _languageCodeToId[languageCode] = languageId;
+      _languageCodeToId[normalizedCode] = languageId;
       return languageId;
     }
 
-    _logger.warning('Language not found for code', {'code': languageCode});
+    _logger.warning('Language not found for code', {'code': normalizedCode});
     return null;
   }
 
@@ -155,24 +160,32 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         targetLanguageId,
       );
 
+      Result<TranslationMemoryEntry, TmAddException> result;
       if (existingResult.isOk) {
-        return _updateExistingEntry(
+        result = await _updateExistingEntry(
           existingResult.value,
           sourceText,
           targetText,
           targetLanguageId,
           sourceHash,
         );
+      } else {
+        // Create new entry
+        result = await _createNewEntry(
+          sourceText,
+          targetText,
+          sourceLanguageId,
+          targetLanguageId,
+          sourceHash,
+        );
       }
 
-      // Create new entry
-      return _createNewEntry(
-        sourceText,
-        targetText,
-        sourceLanguageId,
-        targetLanguageId,
-        sourceHash,
-      );
+      // Clear cache after add to ensure new/updated entry is discoverable
+      if (result.isOk) {
+        await clearCache();
+      }
+
+      return result;
     } catch (e, stackTrace) {
       return Err(
         TmAddException(
@@ -308,6 +321,9 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
         'Batch added TM entries',
         {'count': result.value, 'targetLanguage': targetLanguageCode},
       );
+
+      // Clear cache after batch add to ensure new entries are discoverable
+      await clearCache();
 
       return Ok(result.value);
     } catch (e, stackTrace) {
@@ -590,4 +606,245 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     int maxEntries = AppConstants.maxTmCacheEntries,
   }) =>
       _statisticsService.rebuildCache(maxEntries: maxEntries);
+
+  @override
+  Future<Result<({int added, int existing}), TmServiceException>>
+      rebuildFromTranslations({
+    String? projectId,
+    void Function(int processed, int total, int added)? onProgress,
+  }) async {
+    try {
+      _logger.info('Starting TM rebuild from translations', {
+        'projectId': projectId ?? 'all',
+      });
+
+      // Count total translations
+      final countResult = await _repository.countLlmTranslations(
+        projectId: projectId,
+      );
+
+      if (countResult.isErr) {
+        return Err(TmServiceException(
+          'Failed to count translations: ${countResult.error}',
+          error: countResult.error,
+        ));
+      }
+
+      final total = countResult.value;
+      if (total == 0) {
+        _logger.info('No LLM translations found to process');
+        return const Ok((added: 0, existing: 0));
+      }
+
+      _logger.info('Found $total unique LLM translations to check');
+
+      var addedCount = 0;
+      var existingCount = 0;
+      var processedCount = 0;
+      const batchSize = 500;
+
+      // Process in batches
+      for (var offset = 0; offset < total; offset += batchSize) {
+        final batchResult = await _repository.getMissingTmTranslations(
+          projectId: projectId,
+          limit: batchSize,
+          offset: offset,
+        );
+
+        if (batchResult.isErr) {
+          _logger.warning('Failed to get batch at offset $offset', {
+            'error': batchResult.error,
+          });
+          continue;
+        }
+
+        final rows = batchResult.value;
+
+        // Build entries for this batch
+        final entriesToAdd = <({String sourceText, String targetText})>[];
+        final targetLanguageMap = <String, String>{};
+
+        for (final row in rows) {
+          final sourceText = row['source_text'] as String;
+          final targetText = row['translated_text'] as String;
+          final targetLanguageId = row['target_language_id'] as String;
+
+          // Skip empty
+          if (sourceText.trim().isEmpty || targetText.trim().isEmpty) {
+            continue;
+          }
+
+          // Calculate hash
+          final normalized = _normalizer.normalize(sourceText);
+          final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
+
+          // Check if already exists
+          final existingResult = await _repository.findByHash(
+            sourceHash,
+            targetLanguageId,
+          );
+
+          if (existingResult.isOk) {
+            existingCount++;
+          } else {
+            entriesToAdd.add((sourceText: sourceText, targetText: targetText));
+            targetLanguageMap[sourceText] = targetLanguageId;
+          }
+
+          processedCount++;
+        }
+
+        // Add entries that don't exist
+        if (entriesToAdd.isNotEmpty) {
+          // Group by target language for batch insert
+          final byLanguage = <String, List<({String sourceText, String targetText})>>{};
+          for (final entry in entriesToAdd) {
+            final langId = targetLanguageMap[entry.sourceText]!;
+            // Convert language ID to code (lang_fr -> fr)
+            final langCode = langId.startsWith('lang_')
+                ? langId.substring(5)
+                : langId;
+            byLanguage.putIfAbsent(langCode, () => []).add(entry);
+          }
+
+          for (final entry in byLanguage.entries) {
+            final result = await addTranslationsBatch(
+              translations: entry.value,
+              targetLanguageCode: entry.key,
+            );
+
+            if (result.isOk) {
+              addedCount += entry.value.length;
+            } else {
+              _logger.warning('Failed to add batch for ${entry.key}', {
+                'error': result.error,
+                'count': entry.value.length,
+              });
+            }
+          }
+        }
+
+        // Report progress
+        onProgress?.call(processedCount, total, addedCount);
+
+        // Yield to UI
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      _logger.info('TM rebuild completed', {
+        'added': addedCount,
+        'existing': existingCount,
+        'total': processedCount,
+      });
+
+      // Clear cache after rebuild
+      await clearCache();
+
+      return Ok((added: addedCount, existing: existingCount));
+    } catch (e, stackTrace) {
+      return Err(TmServiceException(
+        'Failed to rebuild TM: ${e.toString()}',
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    }
+  }
+
+  @override
+  Future<Result<int, TmServiceException>> migrateLegacyHashes({
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    try {
+      _logger.info('Starting legacy hash migration');
+
+      // Count total entries to migrate
+      final countResult = await _repository.countLegacyHashes();
+      if (countResult.isErr) {
+        return Err(TmServiceException(
+          'Failed to count legacy hashes: ${countResult.error}',
+          error: countResult.error,
+        ));
+      }
+
+      final total = countResult.value;
+      if (total == 0) {
+        _logger.info('No legacy hashes to migrate');
+        return const Ok(0);
+      }
+
+      _logger.info('Found $total entries with legacy hashes to migrate');
+
+      var migratedCount = 0;
+      var deletedDuplicates = 0;
+      var processedCount = 0;
+      const batchSize = 500;
+
+      // Process in batches - use offset 0 always since we're modifying/deleting entries
+      while (true) {
+        final batchResult = await _repository.getEntriesWithLegacyHashes(
+          limit: batchSize,
+          offset: 0, // Always 0 since entries are being modified/deleted
+        );
+
+        if (batchResult.isErr) {
+          _logger.warning('Failed to get batch', {
+            'error': batchResult.error,
+          });
+          break;
+        }
+
+        final entries = batchResult.value;
+        if (entries.isEmpty) break; // No more legacy entries
+
+        for (final entry in entries) {
+          // Calculate new SHA256 hash
+          final normalized = _normalizer.normalize(entry.sourceText);
+          final newHash = sha256.convert(utf8.encode(normalized)).toString();
+
+          // Check if an entry with this hash already exists (from rebuild)
+          final existingResult = await _repository.findBySourceHash(
+            newHash,
+            entry.targetLanguageId,
+          );
+
+          if (existingResult.isOk) {
+            // Duplicate exists - delete the legacy entry
+            await _repository.delete(entry.id);
+            deletedDuplicates++;
+          } else {
+            // No duplicate - update the hash
+            final updateResult = await _repository.updateHash(entry.id, newHash);
+            if (updateResult.isOk) {
+              migratedCount++;
+            }
+          }
+
+          processedCount++;
+        }
+
+        // Report progress
+        onProgress?.call(processedCount, total);
+
+        // Yield to UI
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      _logger.info('Legacy hash migration completed', {
+        'migrated': migratedCount,
+        'deletedDuplicates': deletedDuplicates,
+        'total': processedCount,
+      });
+
+      // Clear cache after migration
+      await clearCache();
+
+      return Ok(migratedCount + deletedDuplicates);
+    } catch (e, stackTrace) {
+      return Err(TmServiceException(
+        'Failed to migrate legacy hashes: ${e.toString()}',
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    }
+  }
 }

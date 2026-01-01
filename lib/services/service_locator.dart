@@ -94,6 +94,9 @@ class ServiceLocator {
       // 9. Initialize TranslationSkipFilter with service
       await _initializeTranslationSkipFilter();
 
+      // Note: Data migrations (TM hash, TM rebuild) are handled by
+      // DataMigrationProvider in the UI layer with progress dialog
+
       // Mark as complete
       _initCompleter!.complete();
     } catch (e) {

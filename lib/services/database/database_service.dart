@@ -508,4 +508,19 @@ class DatabaseService {
     _database = db;
     _initialized = true;
   }
+
+  /// Set the database instance for testing (alias for setDatabase)
+  ///
+  /// WARNING: This should only be used in tests to inject a test database.
+  static void setTestDatabase(Database db) {
+    setDatabase(db);
+  }
+
+  /// Reset the test database state
+  ///
+  /// WARNING: This should only be used in tests to clean up after tests.
+  static void resetTestDatabase() {
+    _database = null;
+    _initialized = false;
+  }
 }

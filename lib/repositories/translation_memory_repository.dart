@@ -672,4 +672,137 @@ class TranslationMemoryRepository
       return processedCount;
     });
   }
+
+  /// Get LLM translations that are missing from TM
+  ///
+  /// Returns translations that were done by LLM but not stored in TM.
+  /// Used for rebuilding TM from existing translations.
+  ///
+  /// [projectId]: Optional project ID to limit scope
+  /// [limit]: Batch size for processing
+  /// [offset]: Pagination offset
+  Future<Result<List<Map<String, dynamic>>, TWMTDatabaseException>>
+      getMissingTmTranslations({
+    String? projectId,
+    int limit = 1000,
+    int offset = 0,
+  }) async {
+    return executeQuery(() async {
+      final projectFilter = projectId != null
+          ? "AND tu.project_id = '$projectId'"
+          : '';
+
+      final query = '''
+        SELECT DISTINCT
+          tu.source_text,
+          tv.translated_text,
+          pl.language_id as target_language_id
+        FROM translation_units tu
+        INNER JOIN translation_versions tv ON tv.unit_id = tu.id
+        INNER JOIN project_languages pl ON pl.id = tv.project_language_id
+        WHERE tv.translation_source = 'llm'
+          AND tv.translated_text IS NOT NULL
+          AND tv.translated_text != ''
+          $projectFilter
+        ORDER BY tu.source_text
+        LIMIT $limit OFFSET $offset
+      ''';
+
+      final rows = await database.rawQuery(query);
+      return rows;
+    });
+  }
+
+  /// Count total LLM translations (for progress tracking)
+  Future<Result<int, TWMTDatabaseException>> countLlmTranslations({
+    String? projectId,
+  }) async {
+    return executeQuery(() async {
+      final projectFilter = projectId != null
+          ? "AND tu.project_id = '$projectId'"
+          : '';
+
+      final query = '''
+        SELECT COUNT(DISTINCT tu.source_text || '|' || pl.language_id) as count
+        FROM translation_units tu
+        INNER JOIN translation_versions tv ON tv.unit_id = tu.id
+        INNER JOIN project_languages pl ON pl.id = tv.project_language_id
+        WHERE tv.translation_source = 'llm'
+          AND tv.translated_text IS NOT NULL
+          AND tv.translated_text != ''
+          $projectFilter
+      ''';
+
+      final result = await database.rawQuery(query);
+      return (result.first['count'] as int?) ?? 0;
+    });
+  }
+
+  /// Get all TM entries with legacy (non-SHA256) hashes
+  ///
+  /// Legacy hashes are shorter than 64 characters (SHA256 produces 64 hex chars).
+  /// Used for migrating old entries to the new SHA256 hash format.
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>>
+      getEntriesWithLegacyHashes({
+    int limit = 1000,
+    int offset = 0,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'length(source_hash) < 64',
+        orderBy: 'id',
+        limit: limit,
+        offset: offset,
+      );
+
+      return maps.map((map) => fromMap(map)).toList();
+    });
+  }
+
+  /// Count TM entries with legacy hashes
+  Future<Result<int, TWMTDatabaseException>> countLegacyHashes() async {
+    return executeQuery(() async {
+      final result = await database.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableName WHERE length(source_hash) < 64',
+      );
+      return (result.first['count'] as int?) ?? 0;
+    });
+  }
+
+  /// Update the source_hash for an entry
+  Future<Result<void, TWMTDatabaseException>> updateHash(
+    String id,
+    String newHash,
+  ) async {
+    return executeQuery(() async {
+      await database.update(
+        tableName,
+        {'source_hash': newHash},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
+  }
+
+  /// Batch update hashes for multiple entries
+  Future<Result<int, TWMTDatabaseException>> updateHashesBatch(
+    List<({String id, String newHash})> updates,
+  ) async {
+    if (updates.isEmpty) return const Ok(0);
+
+    return executeTransaction((txn) async {
+      var updatedCount = 0;
+      for (final update in updates) {
+        await txn.update(
+          tableName,
+          {'source_hash': update.newHash},
+          where: 'id = ?',
+          whereArgs: [update.id],
+        );
+        updatedCount++;
+      }
+      return updatedCount;
+    });
+  }
 }

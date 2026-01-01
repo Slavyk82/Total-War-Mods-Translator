@@ -283,12 +283,15 @@ class CompilationSelectionSummary extends StatelessWidget {
               : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
         ),
         const SizedBox(width: 8),
-        Text(
-          text,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: count > 0
-                ? theme.textTheme.bodyMedium?.color
-                : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+        Flexible(
+          child: Text(
+            text,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: count > 0
+                  ? theme.textTheme.bodyMedium?.color
+                  : theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.5),
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -366,6 +369,7 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               if (widget.isLoading) ...[
                 FluentSpinner(
@@ -377,11 +381,14 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
                 Icon(widget.icon, size: 18, color: contentColor),
               ],
               const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: contentColor,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  widget.label,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: contentColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

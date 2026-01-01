@@ -78,42 +78,54 @@ class _TranslationMemoryScreenState
   Widget _buildHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24.0),
-      child: Row(
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Icon(
-            FluentIcons.database_24_regular,
-            size: 32,
-            color: Theme.of(context).colorScheme.primary,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                FluentIcons.database_24_regular,
+                size: 32,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Translation Memory',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text(
-            'Translation Memory',
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-          const Spacer(),
           // Action buttons
-          _buildActionButton(
-            context,
-            icon: FluentIcons.arrow_import_24_regular,
-            label: 'Import',
-            tooltip: TooltipStrings.tmImport,
-            onPressed: () => _showImportDialog(),
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            context,
-            icon: FluentIcons.arrow_export_24_regular,
-            label: 'Export',
-            tooltip: TooltipStrings.tmExport,
-            onPressed: () => _showExportDialog(),
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            context,
-            icon: FluentIcons.broom_24_regular,
-            label: 'Cleanup',
-            tooltip: TooltipStrings.tmCleanup,
-            onPressed: () => _showCleanupDialog(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildActionButton(
+                context,
+                icon: FluentIcons.arrow_import_24_regular,
+                label: 'Import',
+                tooltip: TooltipStrings.tmImport,
+                onPressed: () => _showImportDialog(),
+              ),
+              const SizedBox(width: 8),
+              _buildActionButton(
+                context,
+                icon: FluentIcons.arrow_export_24_regular,
+                label: 'Export',
+                tooltip: TooltipStrings.tmExport,
+                onPressed: () => _showExportDialog(),
+              ),
+              const SizedBox(width: 8),
+              _buildActionButton(
+                context,
+                icon: FluentIcons.broom_24_regular,
+                label: 'Cleanup',
+                tooltip: TooltipStrings.tmCleanup,
+                onPressed: () => _showCleanupDialog(),
+              ),
+            ],
           ),
         ],
       ),

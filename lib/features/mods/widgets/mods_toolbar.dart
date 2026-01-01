@@ -86,23 +86,33 @@ class _ModsToolbarState extends State<ModsToolbar> {
           ),
           const SizedBox(width: 16),
 
-          // Filter chips
-          _buildFilterChips(theme),
-          const SizedBox(width: 16),
+          // Filter chips - wrapped in Flexible to prevent overflow
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildFilterChips(theme),
+                  const SizedBox(width: 16),
 
-          // Hidden mods checkbox
-          _buildHiddenCheckbox(theme),
-          const SizedBox(width: 16),
+                  // Hidden mods checkbox
+                  _buildHiddenCheckbox(theme),
+                  const SizedBox(width: 16),
 
-          // Projects with pending changes badge
-          if (widget.projectsWithPendingChanges > 0)
-            _buildPendingProjectsBadge(theme),
-          if (widget.projectsWithPendingChanges > 0)
-            const SizedBox(width: 16),
+                  // Projects with pending changes badge
+                  if (widget.projectsWithPendingChanges > 0) ...[
+                    _buildPendingProjectsBadge(theme),
+                    const SizedBox(width: 16),
+                  ],
 
-          // Mod count
-          _buildModCount(theme),
-          const SizedBox(width: 16),
+                  // Mod count
+                  _buildModCount(theme),
+                  const SizedBox(width: 16),
+                ],
+              ),
+            ),
+          ),
 
           // Import local pack button
           if (widget.onImportLocalPack != null) ...[

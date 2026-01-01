@@ -81,13 +81,19 @@ class TextNormalizer {
     );
 
     // Remove Markdown bold/italic: **text**, __text__, *text*, _text_
-    result = result.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1');
-    result = result.replaceAll(RegExp(r'__([^_]+)__'), r'$1');
-    result = result.replaceAll(RegExp(r'\*([^*]+)\*'), r'$1');
-    result = result.replaceAll(RegExp(r'_([^_]+)_'), r'$1');
+    // Note: Use replaceAllMapped to properly handle captured groups in Dart
+    result = result.replaceAllMapped(
+        RegExp(r'\*\*([^*]+)\*\*'), (m) => m.group(1) ?? '');
+    result = result.replaceAllMapped(
+        RegExp(r'__([^_]+)__'), (m) => m.group(1) ?? '');
+    result = result.replaceAllMapped(
+        RegExp(r'\*([^*]+)\*'), (m) => m.group(1) ?? '');
+    result = result.replaceAllMapped(
+        RegExp(r'_([^_]+)_'), (m) => m.group(1) ?? '');
 
     // Remove Markdown code: `code`
-    result = result.replaceAll(RegExp(r'`([^`]+)`'), r'$1');
+    result = result.replaceAllMapped(
+        RegExp(r'`([^`]+)`'), (m) => m.group(1) ?? '');
 
     return result;
   }
@@ -112,24 +118,33 @@ class TextNormalizer {
     String result = text;
 
     // Convert curly quotes to straight quotes
-    result = result.replaceAll(''', "'");
-    result = result.replaceAll(''', "'");
-    result = result.replaceAll('"', '"');
-    result = result.replaceAll('"', '"');
+    // Unicode: U+2018 (left single), U+2019 (right single), U+201C (left double), U+201D (right double)
+    result = result.replaceAll('\u2018', "'");
+    result = result.replaceAll('\u2019', "'");
+    result = result.replaceAll('\u201c', '"');
+    result = result.replaceAll('\u201d', '"');
 
     // Normalize dashes (em dash, en dash → hyphen)
-    result = result.replaceAll('—', '-');
-    result = result.replaceAll('–', '-');
-
-    // Normalize ellipsis
-    result = result.replaceAll('…', '...');
+    // Unicode: U+2014 (em dash), U+2013 (en dash)
+    result = result.replaceAll('\u2014', '-');
+    result = result.replaceAll('\u2013', '-');
 
     // Remove duplicate punctuation (e.g., "!!" → "!", "??" → "?")
-    result = result.replaceAll(RegExp(r'([!?.])\1+'), r'$1');
+    // Note: This is done BEFORE ellipsis normalization to preserve "..."
+    result = result.replaceAllMapped(
+        RegExp(r'([!?])\1+'), (m) => m.group(1) ?? '');
+    // Handle dots separately - reduce 4+ dots to 3 (ellipsis), keep 2 or 3
+    result = result.replaceAll(RegExp(r'\.{4,}'), '...');
+
+    // Normalize ellipsis character to three dots
+    // Unicode: U+2026 (horizontal ellipsis)
+    result = result.replaceAll('\u2026', '...');
 
     // Normalize spaces around punctuation
-    result = result.replaceAll(RegExp(r'\s+([.,!?;:])'), r'$1');
-    result = result.replaceAll(RegExp(r'([.,!?;:])\s+'), r'$1 ');
+    result = result.replaceAllMapped(
+        RegExp(r'\s+([.,!?;:])'), (m) => m.group(1) ?? '');
+    result = result.replaceAllMapped(
+        RegExp(r'([.,!?;:])\s+'), (m) => '${m.group(1)} ');
 
     return result;
   }

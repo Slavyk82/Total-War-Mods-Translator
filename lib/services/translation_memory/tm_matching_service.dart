@@ -41,15 +41,20 @@ class TmMatchingService {
         _cache = cache;
 
   /// Resolve language code to database ID (with caching)
+  /// Note: Language codes are normalized to lowercase for consistent lookup
   Future<String?> _resolveLanguageId(String languageCode) async {
-    if (_languageCodeToId.containsKey(languageCode)) {
-      return _languageCodeToId[languageCode];
+    // Normalize to lowercase for consistent lookup
+    // (TranslationContext uses uppercase for DeepL API, but DB stores lowercase)
+    final normalizedCode = languageCode.toLowerCase();
+
+    if (_languageCodeToId.containsKey(normalizedCode)) {
+      return _languageCodeToId[normalizedCode];
     }
 
-    final result = await _languageRepository.getByCode(languageCode);
+    final result = await _languageRepository.getByCode(normalizedCode);
     if (result.isOk) {
       final languageId = result.unwrap().id;
-      _languageCodeToId[languageCode] = languageId;
+      _languageCodeToId[normalizedCode] = languageId;
       return languageId;
     }
     return null;
@@ -71,8 +76,9 @@ class TmMatchingService {
         return Ok(null);
       }
 
-      // Build cache key
-      final cacheKey = '$sourceHash:$targetLanguageCode';
+      // Build cache key using normalized language code for consistency
+      final normalizedLangCode = targetLanguageCode.toLowerCase();
+      final cacheKey = '$sourceHash:$normalizedLangCode';
 
       // Check cache first
       final cached = _cache.getExactMatch(cacheKey);

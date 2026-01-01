@@ -89,30 +89,38 @@ class CompilationList extends ConsumerWidget {
 
   Widget _buildError(ThemeData theme, Object error) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            FluentIcons.error_circle_24_regular,
-            size: 64,
-            color: theme.colorScheme.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Failed to load compilations',
-            style: theme.textTheme.headlineMedium?.copyWith(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.error_circle_24_regular,
+              size: 64,
               color: theme.colorScheme.error,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error.toString(),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load compilations',
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: theme.colorScheme.error,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                error.toString(),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 10,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
