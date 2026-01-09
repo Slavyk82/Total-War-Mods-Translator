@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/glossary/screens/glossary_screen.dart';
 import 'package:twmt/features/glossary/providers/glossary_providers.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';

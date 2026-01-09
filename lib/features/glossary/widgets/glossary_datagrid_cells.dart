@@ -37,11 +37,11 @@ class CaseSensitiveCell extends StatelessWidget {
       child: Icon(
         isCaseSensitive
             ? FluentIcons.checkmark_24_regular
-            : FluentIcons.subtract_24_regular,
+            : FluentIcons.dismiss_24_regular,
         size: 16,
         color: isCaseSensitive
             ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
       ),
     );
   }

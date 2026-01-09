@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../features/release_notes/widgets/all_release_notes_dialog.dart';
 import '../features/settings/providers/update_providers.dart';
 import '../providers/app_version_provider.dart';
 import '../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
@@ -57,6 +58,15 @@ class SidebarUpdateChecker extends ConsumerWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                '·',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _WhatsNewLink(ref: ref),
             ],
           ),
           const SizedBox(height: 12),
@@ -358,6 +368,116 @@ class _ErrorMessage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Clickable "What's new?" link that opens the release notes dialog.
+class _WhatsNewLink extends StatefulWidget {
+  const _WhatsNewLink({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  State<_WhatsNewLink> createState() => _WhatsNewLinkState();
+}
+
+class _WhatsNewLinkState extends State<_WhatsNewLink> {
+  bool _isHovered = false;
+  bool _isLoading = false;
+
+  /// Minimum version to display in release history.
+  static const _minVersion = '1.2.2';
+
+  /// Compare two semantic versions. Returns true if [version] >= [minVersion].
+  bool _isVersionAtLeast(String version, String minVersion) {
+    try {
+      final vParts = version.split('+').first.split('.');
+      final minParts = minVersion.split('+').first.split('.');
+
+      for (var i = 0; i < 3; i++) {
+        final vPart = i < vParts.length ? int.tryParse(vParts[i]) ?? 0 : 0;
+        final minPart = i < minParts.length ? int.tryParse(minParts[i]) ?? 0 : 0;
+
+        if (vPart > minPart) return true;
+        if (vPart < minPart) return false;
+      }
+      return true; // Equal versions
+    } catch (_) {
+      return true; // On error, include the release
+    }
+  }
+
+  Future<void> _showReleaseNotes() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final service = widget.ref.read(appUpdateServiceProvider);
+      final result = await service.getAllReleases();
+
+      if (!mounted) return;
+
+      result.when(
+        ok: (releases) {
+          // Filter releases to only show v1.2.2 and newer
+          final filteredReleases = releases
+              .where((r) => _isVersionAtLeast(r.version, _minVersion))
+              .toList();
+
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) => AllReleaseNotesDialog(releases: filteredReleases),
+          );
+        },
+        err: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load release notes: ${error.message}'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: 'View release notes',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: _showReleaseNotes,
+          child: _isLoading
+              ? SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              : Text(
+                  "What's new?",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    decoration: _isHovered ? TextDecoration.underline : null,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

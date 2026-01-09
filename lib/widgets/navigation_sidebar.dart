@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/features/release_notes/widgets/all_release_notes_dialog.dart';
+import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/providers/app_version_provider.dart';
 import 'package:twmt/providers/theme_provider.dart';
 
@@ -66,15 +68,23 @@ class NavigationSidebar extends ConsumerWidget {
             child: Consumer(
               builder: (context, ref, child) {
                 final versionAsync = ref.watch(appVersionProvider);
-                return Text(
-                  versionAsync.when(
-                    data: (version) => 'v$version',
-                    loading: () => '',
-                    error: (error, stack) => '',
-                  ),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+                return Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      versionAsync.when(
+                        data: (version) => 'v$version',
+                        loading: () => '',
+                        error: (error, stack) => '',
+                      ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    _WhatsNewLink(ref: ref),
+                  ],
                 );
               },
             ),
@@ -292,6 +302,99 @@ class _ThemeModeButtonState extends State<_ThemeModeButton> {
               size: 20,
               color: theme.colorScheme.primary,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Clickable "What's new?" link that opens the release notes dialog.
+class _WhatsNewLink extends StatefulWidget {
+  const _WhatsNewLink({required this.ref});
+
+  final WidgetRef ref;
+
+  @override
+  State<_WhatsNewLink> createState() => _WhatsNewLinkState();
+}
+
+class _WhatsNewLinkState extends State<_WhatsNewLink> {
+  bool _isHovered = false;
+  bool _isLoading = false;
+
+  Future<void> _showReleaseNotes() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final service = widget.ref.read(appUpdateServiceProvider);
+      final result = await service.getAllReleases();
+
+      if (!mounted) return;
+
+      result.when(
+        ok: (releases) {
+          showDialog(
+            context: context,
+            barrierDismissible: true,
+            builder: (context) => AllReleaseNotesDialog(releases: releases),
+          );
+        },
+        err: (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load release notes: ${error.message}'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: 'View release notes',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: GestureDetector(
+          onTap: _showReleaseNotes,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: _isHovered
+                  ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: _isLoading
+                ? SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: theme.colorScheme.primary,
+                    ),
+                  )
+                : Text(
+                    "What's new?",
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      decoration: _isHovered ? TextDecoration.underline : null,
+                    ),
+                  ),
           ),
         ),
       ),

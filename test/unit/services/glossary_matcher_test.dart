@@ -773,7 +773,7 @@ void main() {
         final entries = [
           createTestEntry(sourceTerm: 'cavalry', targetTerm: 'cavalerie'),
         ];
-        final text = 'text ' * 1000 + 'cavalry' + ' text' * 1000;
+        final text = '${'text ' * 1000}cavalry${' text' * 1000}';
 
         // Act
         final result = GlossaryMatcher.findMatches(

@@ -214,6 +214,10 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   }
 
   /// Get all untranslated unit IDs for a specific project language.
+  ///
+  /// Excludes units that should be skipped from translation:
+  /// - Obsolete units
+  /// - Units with [HIDDEN] prefix
   Future<Result<List<String>, TWMTDatabaseException>> getUntranslatedIds({
     required String projectLanguageId,
   }) async {
@@ -226,6 +230,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         WHERE tv.project_language_id = ?
           AND (tv.translated_text IS NULL OR tv.translated_text = '')
           AND tu.is_obsolete = 0
+          AND UPPER(TRIM(tu.source_text)) NOT LIKE '[HIDDEN]%'
         ORDER BY tu.key
         ''',
         [projectLanguageId],

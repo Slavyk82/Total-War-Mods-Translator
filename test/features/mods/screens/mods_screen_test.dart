@@ -6,7 +6,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/mods/screens/mods_screen.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
-import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../../../helpers/test_helpers.dart';

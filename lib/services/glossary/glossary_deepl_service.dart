@@ -4,6 +4,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
+import 'package:twmt/services/llm/utils/deepl_language_mapper.dart';
 
 /// Service responsible for DeepL integration
 ///
@@ -13,6 +14,7 @@ class GlossaryDeepLService {
   final GlossaryRepository _glossaryRepository;
   final FlutterSecureStorage _secureStorage;
   final Dio _dio;
+  final DeepLLanguageMapper _languageMapper;
 
   /// DeepL API base URL for PRO accounts
   static const String _apiBaseUrlPro = 'https://api.deepl.com/v2';
@@ -27,8 +29,10 @@ class GlossaryDeepLService {
     required GlossaryRepository glossaryRepository,
     required FlutterSecureStorage secureStorage,
     Dio? dio,
+    DeepLLanguageMapper? languageMapper,
   })  : _glossaryRepository = glossaryRepository,
         _secureStorage = secureStorage,
+        _languageMapper = languageMapper ?? const DeepLLanguageMapper(),
         _dio = dio ??
             Dio(BaseOptions(
               // Default to FREE, will be updated dynamically based on API key
@@ -112,8 +116,8 @@ class GlossaryDeepLService {
           '${glossary.name}_${sourceLanguageCode}_$targetLanguageCode';
 
       // 6. Map language codes to DeepL format
-      final sourceLang = _mapLanguageCode(sourceLanguageCode);
-      final targetLang = _mapLanguageCode(targetLanguageCode);
+      final sourceLang = _languageMapper.mapLanguageCode(sourceLanguageCode);
+      final targetLang = _languageMapper.mapLanguageCode(targetLanguageCode);
 
       // 7. Call DeepL API to create glossary
       final payload = {
@@ -277,65 +281,6 @@ class GlossaryDeepLService {
   /// Get DeepL API key from secure storage
   Future<String> _getApiKey() async {
     return await _secureStorage.read(key: _apiKeySettingKey) ?? '';
-  }
-
-  /// Map language codes to DeepL format
-  ///
-  /// DeepL uses specific language codes (e.g., "EN", "DE", "FR")
-  /// Some languages have variants (e.g., "EN-US", "EN-GB", "PT-BR", "PT-PT")
-  String _mapLanguageCode(String isoCode) {
-    // Map common ISO 639-1 codes to DeepL codes
-    final mapping = {
-      // European languages
-      'en': 'EN', // English (will use EN-US by default)
-      'en-us': 'EN-US', // American English
-      'en-gb': 'EN-GB', // British English
-      'de': 'DE', // German
-      'fr': 'FR', // French
-      'es': 'ES', // Spanish
-      'it': 'IT', // Italian
-      'nl': 'NL', // Dutch
-      'pl': 'PL', // Polish
-      'pt': 'PT-BR', // Portuguese (Brazilian by default)
-      'pt-br': 'PT-BR', // Brazilian Portuguese
-      'pt-pt': 'PT-PT', // European Portuguese
-      'ru': 'RU', // Russian
-
-      // Nordic languages
-      'da': 'DA', // Danish
-      'fi': 'FI', // Finnish
-      'sv': 'SV', // Swedish
-      'nb': 'NB', // Norwegian (Bokmål)
-
-      // Eastern European languages
-      'bg': 'BG', // Bulgarian
-      'cs': 'CS', // Czech
-      'et': 'ET', // Estonian
-      'hu': 'HU', // Hungarian
-      'lv': 'LV', // Latvian
-      'lt': 'LT', // Lithuanian
-      'ro': 'RO', // Romanian
-      'sk': 'SK', // Slovak
-      'sl': 'SL', // Slovenian
-
-      // Other European languages
-      'el': 'EL', // Greek
-      'uk': 'UK', // Ukrainian
-      'tr': 'TR', // Turkish
-
-      // Asian languages
-      'ja': 'JA', // Japanese
-      'zh': 'ZH', // Chinese (Simplified)
-      'zh-hans': 'ZH', // Chinese (Simplified)
-      'ko': 'KO', // Korean
-      'id': 'ID', // Indonesian
-
-      // Arabic
-      'ar': 'AR', // Arabic
-    };
-
-    final lowerCode = isoCode.toLowerCase();
-    return mapping[lowerCode] ?? isoCode.toUpperCase();
   }
 
   /// Handle Dio exceptions and convert to GlossaryException

@@ -51,6 +51,18 @@ class TranslationSkipFilter {
     return 'LOWER(TRIM(tu.source_text)) IN ($escaped)';
   }
 
+  /// Checks if the source text starts with "[HIDDEN]" prefix.
+  ///
+  /// Units with this prefix should be completely ignored:
+  /// - Not counted in statistics
+  /// - Not displayed in the editor
+  /// - Not sent for translation
+  ///
+  /// Note: This is structural detection and is NOT configurable by users.
+  static bool startsWithHidden(String text) {
+    return text.trim().toUpperCase().startsWith('[HIDDEN]');
+  }
+
   /// Checks if the source text is entirely a simple bracketed placeholder.
   ///
   /// These texts are typically placeholders or non-translatable markers
@@ -92,11 +104,17 @@ class TranslationSkipFilter {
   /// Checks if the source text should be skipped from translation.
   ///
   /// Returns true if the text matches any of the skip patterns:
+  /// - Text starting with [HIDDEN] prefix (structural, not configurable)
   /// - Fully bracketed text like [PLACEHOLDER] (structural, not configurable)
   /// - User-configurable skip texts from the database
   /// - Default skip texts as fallback
   static bool shouldSkip(String text) {
     final trimmed = text.trim();
+
+    // Check for [HIDDEN] prefix (structural rule, not configurable)
+    if (startsWithHidden(trimmed)) {
+      return true;
+    }
 
     // Check for fully bracketed text (structural rule, not configurable)
     if (isFullyBracketedText(trimmed)) {

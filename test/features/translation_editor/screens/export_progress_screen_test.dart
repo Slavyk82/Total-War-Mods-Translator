@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/features/translation_editor/screens/export_progress_screen.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
@@ -284,6 +283,7 @@ void main() {
       });
 
       testWidgets('should call onComplete callback when closing', (tester) async {
+        // ignore: unused_local_variable
         ExportResult? receivedResult;
         await tester.pumpWidget(
           createTestableWidget(

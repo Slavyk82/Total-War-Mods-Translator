@@ -48,7 +48,6 @@ class ModsToolbar extends StatefulWidget {
 
 class _ModsToolbarState extends State<ModsToolbar> {
   late TextEditingController _searchController;
-  bool _searchFocused = false;
 
   @override
   void initState() {
@@ -79,9 +78,9 @@ class _ModsToolbarState extends State<ModsToolbar> {
       ),
       child: Row(
         children: [
-          // Search box
-          Expanded(
-            flex: 2,
+          // Search box - constrained width to ensure buttons fit at minimum window size
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 340),
             child: _buildSearchField(theme),
           ),
           const SizedBox(width: 16),
@@ -214,63 +213,58 @@ class _ModsToolbarState extends State<ModsToolbar> {
   }
 
   Widget _buildSearchField(ThemeData theme) {
-    return Focus(
-      onFocusChange: (focused) {
-        setState(() => _searchFocused = focused);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: _searchFocused
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant,
-            width: _searchFocused ? 2 : 1,
-          ),
+    return TextField(
+      controller: _searchController,
+      onChanged: widget.onSearchChanged,
+      decoration: InputDecoration(
+        hintText: 'Search mods by name, ID, or author...',
+        prefixIcon: Icon(
+          FluentIcons.search_24_regular,
+          size: 20,
+          color: theme.colorScheme.onSurfaceVariant,
         ),
-        child: TextField(
-          controller: _searchController,
-          onChanged: widget.onSearchChanged,
-          decoration: InputDecoration(
-            hintText: 'Search mods by name, ID, or author...',
-            hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
-            ),
-            prefixIcon: Icon(
-              FluentIcons.search_24_regular,
-              color: _searchFocused
-                  ? theme.colorScheme.primary
-                  : theme.textTheme.bodySmall?.color,
-            ),
-            suffixIcon: widget.searchQuery.isNotEmpty
-                ? Tooltip(
-                    message: TooltipStrings.clearSearch,
-                    waitDuration: const Duration(milliseconds: 500),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          widget.onSearchChanged('');
-                        },
-                        child: Icon(
-                          FluentIcons.dismiss_circle_24_filled,
-                          color: theme.textTheme.bodySmall?.color,
-                        ),
-                      ),
+        suffixIcon: widget.searchQuery.isNotEmpty
+            ? Tooltip(
+                message: TooltipStrings.clearSearch,
+                waitDuration: const Duration(milliseconds: 500),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      widget.onSearchChanged('');
+                    },
+                    child: Icon(
+                      FluentIcons.dismiss_circle_24_regular,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  )
-                : null,
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+                  ),
+                ),
+              )
+            : null,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
           ),
-          style: theme.textTheme.bodyMedium,
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(
+            color: theme.colorScheme.primary,
+            width: 2,
+          ),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        filled: true,
+        fillColor: theme.colorScheme.surface,
       ),
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/screens/validation_review_screen.dart';
 import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import '../../../helpers/test_helpers.dart';
@@ -235,6 +234,7 @@ void main() {
 
     group('Accept/Reject Actions', () {
       testWidgets('should call onAcceptTranslation callback', (tester) async {
+        // ignore: unused_local_variable
         var acceptCalled = false;
         await tester.pumpWidget(
           createTestableWidget(
@@ -256,6 +256,7 @@ void main() {
       });
 
       testWidgets('should call onRejectTranslation callback', (tester) async {
+        // ignore: unused_local_variable
         var rejectCalled = false;
         await tester.pumpWidget(
           createTestableWidget(

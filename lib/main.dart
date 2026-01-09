@@ -180,6 +180,7 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
       if (navigatorContext != null) {
         debugPrint('[ReleaseNotes] Showing dialog!');
         showDialog(
+          // ignore: use_build_context_synchronously
           context: navigatorContext,
           barrierDismissible: true,
           builder: (context) => ReleaseNotesDialog(

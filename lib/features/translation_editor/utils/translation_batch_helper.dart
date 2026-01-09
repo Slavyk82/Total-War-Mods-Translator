@@ -77,25 +77,19 @@ class TranslationBatchHelper {
     required WidgetRef ref,
     required Future<Map<String, dynamic>> Function() getSettings,
   }) async {
-    // Check if an LLM provider is configured
+    // Check if at least one translation provider is configured with an API key
+    // This includes both LLM providers (Anthropic, OpenAI, DeepSeek, Gemini)
+    // and specialized translation services (DeepL)
     final llmSettings = await getSettings();
 
-    final activeProvider = llmSettings['active_llm_provider'] ?? '';
-    if (activeProvider.isEmpty) {
-      return false;
-    }
+    // Check all possible providers - any one with an API key is sufficient
+    final hasAnthropic = llmSettings['anthropic_api_key']?.isNotEmpty ?? false;
+    final hasOpenai = llmSettings['openai_api_key']?.isNotEmpty ?? false;
+    final hasDeepl = llmSettings['deepl_api_key']?.isNotEmpty ?? false;
+    final hasDeepseek = llmSettings['deepseek_api_key']?.isNotEmpty ?? false;
+    final hasGemini = llmSettings['gemini_api_key']?.isNotEmpty ?? false;
 
-    // Check if the active provider has an API key
-    switch (activeProvider) {
-      case 'anthropic':
-        return llmSettings['anthropic_api_key']?.isNotEmpty ?? false;
-      case 'openai':
-        return llmSettings['openai_api_key']?.isNotEmpty ?? false;
-      case 'deepl':
-        return llmSettings['deepl_api_key']?.isNotEmpty ?? false;
-      default:
-        return false;
-    }
+    return hasAnthropic || hasOpenai || hasDeepl || hasDeepseek || hasGemini;
   }
 
   static Future<String?> createAndPrepareBatch({

@@ -6,34 +6,26 @@ import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
+import 'package:twmt/services/llm/utils/deepl_api_client.dart';
+import 'package:twmt/services/llm/utils/deepl_language_mapper.dart';
+import 'package:twmt/services/llm/utils/deepl_text_processor.dart';
 
-/// DeepL provider implementation
+/// DeepL provider implementation for the ILlmProvider interface.
 ///
 /// API Documentation: https://developers.deepl.com/docs/api-reference
-/// No model selection - single translation engine
-/// Character-based pricing (not token-based)
-/// Rate Limits: 100 requests/min default
+/// - No model selection - single translation engine
+/// - Character-based pricing (not token-based)
+/// - Rate Limits: 100 requests/min default
+///
+/// This provider delegates to:
+/// - [DeepLApiClient] for HTTP operations and error handling
+/// - [DeepLLanguageMapper] for language code conversion
+/// - [DeepLTextProcessor] for text preprocessing/postprocessing
 class DeepLProvider implements ILlmProvider {
-  final Dio _dio;
-  final TokenCalculator _tokenCalculator = TokenCalculator();
-
-  // XML placeholder for literal \n sequences (DeepL preserves XML tags)
-  static const _newlinePlaceholder = '<x id="nl"/>';
-  static final _newlinePlaceholderPattern = RegExp(r'<x\s+id="nl"\s*/?>');
-
-  /// Preprocess text before sending to DeepL
-  /// Converts literal \n sequences to XML placeholders
-  String _preprocessText(String text) {
-    // Replace literal \n (backslash + n) with XML placeholder
-    return text.replaceAll(r'\n', _newlinePlaceholder);
-  }
-
-  /// Postprocess text after receiving from DeepL
-  /// Restores literal \n sequences from XML placeholders
-  String _postprocessText(String text) {
-    // Restore literal \n from XML placeholder
-    return text.replaceAll(_newlinePlaceholderPattern, r'\n');
-  }
+  final DeepLApiClient _apiClient;
+  final DeepLLanguageMapper _languageMapper;
+  final DeepLTextProcessor _textProcessor;
+  final TokenCalculator _tokenCalculator;
 
   @override
   final String providerCode = 'deepl';
@@ -44,30 +36,17 @@ class DeepLProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.deepl;
 
-  DeepLProvider({Dio? dio, String? apiKey})
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: _getBaseUrl(apiKey),
-              connectTimeout: const Duration(seconds: 30),
-              receiveTimeout: const Duration(seconds: 120),
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            ));
-
-  /// Determine the correct API base URL based on the API key type
-  /// FREE API keys end with ':fx'
-  static String _getBaseUrl(String? apiKey) {
-    if (apiKey != null && apiKey.endsWith(':fx')) {
-      return 'https://api-free.deepl.com/v2';
-    }
-    return LlmProviderConfig.deepl.apiBaseUrl; // Default to PRO endpoint
-  }
-
-  /// Update the base URL dynamically based on API key
-  void _updateBaseUrl(String apiKey) {
-    _dio.options.baseUrl = _getBaseUrl(apiKey);
-  }
+  DeepLProvider({
+    Dio? dio,
+    String? apiKey,
+    DeepLApiClient? apiClient,
+    DeepLLanguageMapper? languageMapper,
+    DeepLTextProcessor? textProcessor,
+    TokenCalculator? tokenCalculator,
+  })  : _apiClient = apiClient ?? DeepLApiClient(dio: dio),
+        _languageMapper = languageMapper ?? const DeepLLanguageMapper(),
+        _textProcessor = textProcessor ?? const DeepLTextProcessor(),
+        _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
@@ -77,62 +56,21 @@ class DeepLProvider implements ILlmProvider {
   }) async {
     final startTime = DateTime.now();
 
-    try {
-      // Update base URL based on API key type (FREE vs PRO)
-      _updateBaseUrl(apiKey);
-
-      // DeepL API supports batch translation - send all texts at once
+    return _apiClient.wrapRequest(() async {
       // Preprocess texts to convert \n to XML placeholders
-      final texts = request.texts.values.map(_preprocessText).toList();
-
-      // Build request payload
-      // tag_handling: 'xml' preserves XML-like tags in translation
-      // split_sentences: 'nonewlines' prevents sentence splitting at newlines
-      final payload = {
-        'text': texts,
-        'target_lang': _mapLanguageCode(request.targetLanguage),
-        'formality': 'default',
-        'preserve_formatting': true,
-        'tag_handling': 'xml',
-        'split_sentences': 'nonewlines',
-      };
-
-      // Add glossary if available (would need to be created beforehand)
-      // For now, glossary support is handled separately
+      final texts = _textProcessor.preprocessBatch(request.texts.values);
 
       // Make API request
-      final response = await _dio.post(
-        '/translate',
-        data: payload,
+      final response = await _apiClient.translate(
+        texts: texts,
+        targetLang: _languageMapper.mapLanguageCode(request.targetLanguage),
+        apiKey: apiKey,
         cancelToken: cancelToken,
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
       );
 
-      // Parse response
-      final llmResponse = _parseResponse(
-        response.data,
-        request,
-        startTime,
-      );
-
-      return Ok(llmResponse);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } on LlmProviderException catch (e) {
-      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
-      return Err(e);
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Unexpected error: $e',
-        providerCode: providerCode,
-        code: 'UNEXPECTED_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
+      // Parse and return response
+      return _parseResponse(response.data, request, startTime);
+    });
   }
 
   @override
@@ -153,36 +91,10 @@ class DeepLProvider implements ILlmProvider {
     String? model,
   }) async {
     // DeepL doesn't use models, so ignore the model parameter
-    try {
-      // Update base URL based on API key type (FREE vs PRO)
-      _updateBaseUrl(apiKey);
-
-      // DeepL has a usage endpoint for checking API key and quota
-      final response = await _dio.get(
-        '/usage',
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
-      );
-
-      return Ok(response.statusCode == 200);
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 403) {
-        return Err(LlmAuthenticationException(
-          'Invalid API key',
-          providerCode: providerCode,
-        ));
-      }
-      return Err(_handleDioException(e));
-    } catch (e) {
-      return Err(LlmProviderException(
-        'Failed to validate API key: $e',
-        providerCode: providerCode,
-        code: 'VALIDATION_ERROR',
-      ));
-    }
+    return _apiClient.wrapRequest(() async {
+      final response = await _apiClient.getUsage(apiKey);
+      return response.statusCode == 200;
+    });
   }
 
   @override
@@ -206,7 +118,6 @@ class DeepLProvider implements ILlmProvider {
     if (exception.retryAfterSeconds != null) {
       return Duration(seconds: exception.retryAfterSeconds!);
     }
-
     // Default exponential backoff
     return const Duration(seconds: 60);
   }
@@ -214,13 +125,7 @@ class DeepLProvider implements ILlmProvider {
   @override
   Future<Result<bool, LlmProviderException>> isAvailable() async {
     try {
-      // Check if service is reachable
-      final response = await _dio.get(
-        '/usage',
-        options: Options(
-          validateStatus: (status) => status != null,
-        ),
-      );
+      final response = await _apiClient.checkAvailability();
       // Any response (even 403 for missing auth) means service is available
       return Ok(response.statusCode! < 500);
     } catch (e) {
@@ -235,53 +140,39 @@ class DeepLProvider implements ILlmProvider {
   Future<Result<RateLimitStatus?, LlmProviderException>> getRateLimitStatus(
     String apiKey,
   ) async {
-    // DeepL doesn't expose rate limit info in headers
-    // But we can get usage information
-    try {
-      // Update base URL based on API key type (FREE vs PRO)
-      _updateBaseUrl(apiKey);
-
-      final response = await _dio.get(
-        '/usage',
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
-      );
-
+    return _apiClient.wrapRequest(() async {
+      final response = await _apiClient.getUsage(apiKey);
       final data = response.data as Map<String, dynamic>?;
+
       if (data != null) {
-        // DeepL returns character count and limit
         final characterCount = data['character_count'] as int?;
         final characterLimit = data['character_limit'] as int?;
 
         if (characterCount != null && characterLimit != null) {
-          return Ok(RateLimitStatus(
+          return RateLimitStatus(
             remainingTokens: characterLimit - characterCount,
             totalTokens: characterLimit,
-          ));
+          );
         }
       }
-
-      return const Ok(null);
-    } catch (e) {
-      return const Ok(null);
-    }
+      return null;
+    });
   }
 
-  /// Parse API response
+  // ===========================================================================
+  // Response Parsing
+  // ===========================================================================
+
+  /// Parse API response into [LlmResponse].
   LlmResponse _parseResponse(
     Map<String, dynamic> data,
     LlmRequest request,
     DateTime startTime,
   ) {
     try {
-      // Extract translations array
       final translationsList = data['translations'] as List;
 
       if (translationsList.isEmpty && request.texts.isNotEmpty) {
-        // DeepL returned no translations - might be content filtered
         final sourceTexts = request.texts.values.toList();
         throw LlmContentFilteredException(
           'DeepL returned no translations. The content may have been filtered '
@@ -308,7 +199,7 @@ class DeepLProvider implements ILlmProvider {
         final translation = translationsList[i] as Map<String, dynamic>;
         final translatedText = translation['text'] as String;
         // Postprocess to restore \n from XML placeholders
-        translations[keys[i]] = _postprocessText(translatedText);
+        translations[keys[i]] = _textProcessor.postprocessText(translatedText);
         if (translatedText.trim().isEmpty) {
           emptyCount++;
         }
@@ -332,14 +223,13 @@ class DeepLProvider implements ILlmProvider {
         totalCharacters += text.length;
       }
 
-      // Calculate processing time
       final processingTime = DateTime.now().difference(startTime).inMilliseconds;
 
       return LlmResponse(
         requestId: request.requestId,
         translations: translations,
         providerCode: providerCode,
-        modelName: request.modelName ?? 'deepl', // Use request model or default
+        modelName: request.modelName ?? 'deepl',
         inputTokens: totalCharacters, // Characters, not tokens
         outputTokens: 0, // DeepL doesn't charge for output separately
         totalTokens: totalCharacters,
@@ -348,7 +238,6 @@ class DeepLProvider implements ILlmProvider {
         finishReason: 'completed',
       );
     } on LlmContentFilteredException {
-      // Re-throw content filter exceptions as-is
       rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(
@@ -360,168 +249,13 @@ class DeepLProvider implements ILlmProvider {
     }
   }
 
-  /// Map language codes to DeepL format
-  ///
-  /// DeepL uses specific language codes (e.g., "EN", "DE", "FR")
-  /// Some languages have variants (e.g., "EN-US", "EN-GB", "PT-BR", "PT-PT")
-  String _mapLanguageCode(String isoCode) {
-    // Map common ISO 639-1 codes to DeepL codes
-    final mapping = {
-      // European languages
-      'en': 'EN', // English (will use EN-US by default)
-      'en-us': 'EN-US', // American English
-      'en-gb': 'EN-GB', // British English
-      'de': 'DE', // German
-      'fr': 'FR', // French
-      'es': 'ES', // Spanish
-      'it': 'IT', // Italian
-      'nl': 'NL', // Dutch
-      'pl': 'PL', // Polish
-      'pt': 'PT-BR', // Portuguese (Brazilian by default)
-      'pt-br': 'PT-BR', // Brazilian Portuguese
-      'pt-pt': 'PT-PT', // European Portuguese
-      'ru': 'RU', // Russian
+  // ===========================================================================
+  // Glossary Operations
+  // ===========================================================================
 
-      // Nordic languages
-      'da': 'DA', // Danish
-      'fi': 'FI', // Finnish
-      'sv': 'SV', // Swedish
-      'nb': 'NB', // Norwegian (Bokmål)
-
-      // Eastern European languages
-      'bg': 'BG', // Bulgarian
-      'cs': 'CS', // Czech
-      'et': 'ET', // Estonian
-      'hu': 'HU', // Hungarian
-      'lv': 'LV', // Latvian
-      'lt': 'LT', // Lithuanian
-      'ro': 'RO', // Romanian
-      'sk': 'SK', // Slovak
-      'sl': 'SL', // Slovenian
-
-      // Other European languages
-      'el': 'EL', // Greek
-      'uk': 'UK', // Ukrainian
-      'tr': 'TR', // Turkish
-
-      // Asian languages
-      'ja': 'JA', // Japanese
-      'zh': 'ZH', // Chinese (Simplified)
-      'zh-hans': 'ZH', // Chinese (Simplified)
-      'ko': 'KO', // Korean
-      'id': 'ID', // Indonesian
-
-      // Arabic
-      'ar': 'AR', // Arabic
-    };
-
-    final lowerCode = isoCode.toLowerCase();
-    return mapping[lowerCode] ?? isoCode.toUpperCase();
-  }
-
-  /// Handle Dio exceptions
-  LlmProviderException _handleDioException(DioException e) {
-    final statusCode = e.response?.statusCode;
-    final responseData = e.response?.data;
-
-    // Extract error message from DeepL response
-    String errorMessage = 'Unknown error';
-
-    if (responseData is Map<String, dynamic>) {
-      errorMessage = responseData['message'] as String? ?? errorMessage;
-    } else if (responseData is String) {
-      errorMessage = responseData;
-    }
-
-    // Handle authentication errors
-    if (statusCode == 403) {
-      return LlmAuthenticationException(
-        'Invalid API key or insufficient quota: $errorMessage',
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle quota exceeded (DeepL-specific status code)
-    if (statusCode == 456) {
-      return LlmQuotaException(
-        'Quota exceeded: $errorMessage',
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle rate limit errors
-    if (statusCode == 429) {
-      final retryAfter = e.response?.headers.value('retry-after');
-      return LlmRateLimitException(
-        'Too many requests: $errorMessage',
-        providerCode: providerCode,
-        retryAfterSeconds: retryAfter != null ? int.tryParse(retryAfter) : null,
-      );
-    }
-
-    // Handle invalid request errors
-    if (statusCode == 400) {
-      return LlmInvalidRequestException(
-        'Invalid request: $errorMessage',
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle unsupported language errors
-    if (statusCode == 404) {
-      return LlmInvalidRequestException(
-        'Unsupported language pair: $errorMessage',
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle other 4xx errors
-    if (statusCode != null && statusCode >= 400 && statusCode < 500) {
-      return LlmInvalidRequestException(
-        errorMessage,
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle server errors
-    if (statusCode != null && statusCode >= 500) {
-      return LlmServerException(
-        'Server error: $errorMessage',
-        providerCode: providerCode,
-        statusCode: statusCode,
-      );
-    }
-
-    // Handle timeout errors
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout) {
-      return LlmNetworkException(
-        'Request timeout: ${e.message}',
-        providerCode: providerCode,
-      );
-    }
-
-    // Handle connection errors
-    if (e.type == DioExceptionType.connectionError) {
-      return LlmNetworkException(
-        'Connection failed: ${e.message}',
-        providerCode: providerCode,
-      );
-    }
-
-    // Default network error
-    return LlmNetworkException(
-      'Network error: ${e.message ?? errorMessage}',
-      providerCode: providerCode,
-    );
-  }
-
-  /// Create glossary for DeepL
+  /// Create glossary for DeepL.
   ///
   /// DeepL supports custom glossaries for consistent terminology.
-  /// Glossaries are created once and can be reused across translations.
-  ///
   /// Returns the glossary ID which can be used in translate requests.
   Future<Result<String, LlmProviderException>> createGlossary({
     required String apiKey,
@@ -529,110 +263,55 @@ class DeepLProvider implements ILlmProvider {
     required String targetLang,
     required Map<String, String> entries,
   }) async {
-    try {
+    return _apiClient.wrapRequest(() async {
       // Format glossary entries as TSV (tab-separated values)
       final entriesString = entries.entries
           .map((e) => '${e.key}\t${e.value}')
           .join('\n');
 
-      final payload = {
-        'name': name,
-        'target_lang': _mapLanguageCode(targetLang),
-        'entries': entriesString,
-        'entries_format': 'tsv',
-      };
-
-      final response = await _dio.post(
-        '/glossaries',
-        data: payload,
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
+      final response = await _apiClient.createGlossary(
+        name: name,
+        targetLang: _languageMapper.mapLanguageCode(targetLang),
+        entries: entriesString,
+        apiKey: apiKey,
       );
 
       final data = response.data as Map<String, dynamic>;
-      final glossaryId = data['glossary_id'] as String;
-
-      return Ok(glossaryId);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to create glossary: $e',
-        providerCode: providerCode,
-        code: 'GLOSSARY_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
+      return data['glossary_id'] as String;
+    });
   }
 
-  /// List all glossaries for the API key
+  /// List all glossaries for the API key.
   Future<Result<List<Map<String, dynamic>>, LlmProviderException>> listGlossaries({
     required String apiKey,
   }) async {
-    try {
-      final response = await _dio.get(
-        '/glossaries',
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
-      );
-
+    return _apiClient.wrapRequest(() async {
+      final response = await _apiClient.listGlossaries(apiKey);
       final data = response.data as Map<String, dynamic>;
       final glossaries = data['glossaries'] as List;
-
-      return Ok(glossaries.cast<Map<String, dynamic>>());
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to list glossaries: $e',
-        providerCode: providerCode,
-        code: 'GLOSSARY_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
+      return glossaries.cast<Map<String, dynamic>>();
+    });
   }
 
-  /// Delete a glossary
+  /// Delete a glossary.
   Future<Result<void, LlmProviderException>> deleteGlossary({
     required String apiKey,
     required String glossaryId,
   }) async {
-    try {
-      await _dio.delete(
-        '/glossaries/$glossaryId',
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
+    return _apiClient.wrapRequest(() async {
+      await _apiClient.deleteGlossary(
+        glossaryId: glossaryId,
+        apiKey: apiKey,
       );
-
-      return const Ok(null);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to delete glossary: $e',
-        providerCode: providerCode,
-        code: 'GLOSSARY_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
+    });
   }
 
-  /// Translate with a specific glossary
+  /// Translate with a specific glossary.
   ///
   /// The glossary must be created beforehand using [createGlossary].
   ///
   /// **Important**: DeepL requires both `source_lang` and `target_lang` to be
-  /// explicitly specified when using a glossary. The language pair must match
-  /// the glossary's language pair.
+  /// explicitly specified when using a glossary.
   Future<Result<LlmResponse, LlmProviderException>> translateWithGlossary({
     required LlmRequest request,
     required String apiKey,
@@ -640,92 +319,46 @@ class DeepLProvider implements ILlmProvider {
   }) async {
     final startTime = DateTime.now();
 
-    try {
-      // Validate source language is provided (required for glossary)
-      if (request.sourceLanguage == null || request.sourceLanguage!.isEmpty) {
-        return Err(LlmInvalidRequestException(
-          'source_lang is required when using a DeepL glossary',
-          providerCode: providerCode,
-        ));
-      }
-
-      // Preprocess texts to convert \n to XML placeholders
-      final texts = request.texts.values.map(_preprocessText).toList();
-
-      // DeepL requires both source_lang and target_lang when using glossary
-      final payload = {
-        'text': texts,
-        'source_lang': _mapLanguageCode(request.sourceLanguage!),
-        'target_lang': _mapLanguageCode(request.targetLanguage),
-        'glossary_id': glossaryId,
-        'formality': 'default',
-        'preserve_formatting': true,
-        'tag_handling': 'xml',
-        'split_sentences': 'nonewlines',
-      };
-
-      final response = await _dio.post(
-        '/translate',
-        data: payload,
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
-      );
-
-      final llmResponse = _parseResponse(
-        response.data,
-        request,
-        startTime,
-      );
-
-      return Ok(llmResponse);
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } on LlmProviderException catch (e) {
-      // Re-return already formatted LLM exceptions (content filter, parse errors, etc.)
-      return Err(e);
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Unexpected error: $e',
+    // Validate source language is provided (required for glossary)
+    if (request.sourceLanguage == null || request.sourceLanguage!.isEmpty) {
+      return Err(LlmInvalidRequestException(
+        'source_lang is required when using a DeepL glossary',
         providerCode: providerCode,
-        code: 'UNEXPECTED_ERROR',
-        stackTrace: stackTrace,
       ));
     }
+
+    return _apiClient.wrapRequest(() async {
+      final texts = _textProcessor.preprocessBatch(request.texts.values);
+
+      final response = await _apiClient.translate(
+        texts: texts,
+        sourceLang: _languageMapper.mapLanguageCode(request.sourceLanguage!),
+        targetLang: _languageMapper.mapLanguageCode(request.targetLanguage),
+        glossaryId: glossaryId,
+        apiKey: apiKey,
+      );
+
+      return _parseResponse(response.data, request, startTime);
+    });
   }
 
-  /// Get supported languages
+  /// Get supported languages from DeepL API.
   ///
-  /// Returns list of languages supported by DeepL for source and target.
+  /// Returns map with 'source' and 'target' keys containing language codes.
   Future<Result<Map<String, List<String>>, LlmProviderException>> getSupportedLanguages({
     required String apiKey,
   }) async {
-    try {
-      // Update base URL based on API key type (FREE vs PRO)
-      _updateBaseUrl(apiKey);
-
+    return _apiClient.wrapRequest(() async {
       // Get source languages
-      final sourceResponse = await _dio.get(
-        '/languages',
-        queryParameters: {'type': 'source'},
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
+      final sourceResponse = await _apiClient.getLanguages(
+        apiKey: apiKey,
+        type: 'source',
       );
 
       // Get target languages
-      final targetResponse = await _dio.get(
-        '/languages',
-        queryParameters: {'type': 'target'},
-        options: Options(
-          headers: {
-            'Authorization': 'DeepL-Auth-Key $apiKey',
-          },
-        ),
+      final targetResponse = await _apiClient.getLanguages(
+        apiKey: apiKey,
+        type: 'target',
       );
 
       final sourceLanguages = (sourceResponse.data as List)
@@ -736,19 +369,10 @@ class DeepLProvider implements ILlmProvider {
           .map((lang) => (lang as Map<String, dynamic>)['language'] as String)
           .toList();
 
-      return Ok({
+      return {
         'source': sourceLanguages,
         'target': targetLanguages,
-      });
-    } on DioException catch (e) {
-      return Err(_handleDioException(e));
-    } catch (e, stackTrace) {
-      return Err(LlmProviderException(
-        'Failed to get supported languages: $e',
-        providerCode: providerCode,
-        code: 'API_ERROR',
-        stackTrace: stackTrace,
-      ));
-    }
+      };
+    });
   }
 }

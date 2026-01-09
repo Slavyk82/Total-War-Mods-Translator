@@ -1,5 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
@@ -23,7 +21,7 @@ Project createMockProject({
   int? createdAt,
   int? updatedAt,
   String? metadata,
-  bool? isGameTranslation,
+  String? projectType,
 }) {
   return Project(
     id: id ?? 'test-project-id',
@@ -37,7 +35,7 @@ Project createMockProject({
     createdAt: createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
     updatedAt: updatedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
     metadata: metadata,
-    isGameTranslation: isGameTranslation ?? false,
+    projectType: projectType ?? 'mod',
   );
 }
 
@@ -46,15 +44,15 @@ Language createMockLanguage({
   String? id,
   String? name,
   String? code,
-  String? displayName,
-  bool? isDefault,
+  String? nativeName,
+  bool? isActive,
 }) {
   return Language(
     id: id ?? 'lang-id',
     name: name ?? 'French',
     code: code ?? 'fr',
-    displayName: displayName ?? 'French (Français)',
-    isDefault: isDefault ?? false,
+    nativeName: nativeName ?? 'Français',
+    isActive: isActive ?? true,
   );
 }
 
@@ -64,18 +62,18 @@ DetectedMod createMockDetectedMod({
   String? name,
   String? imageUrl,
   String? packFilePath,
-  bool? hasProject,
+  bool? isAlreadyImported,
   bool? isHidden,
-  int? lastUpdated,
+  int? timeUpdated,
 }) {
   return DetectedMod(
     workshopId: workshopId ?? 'workshop-123',
     name: name ?? 'Test Mod',
     imageUrl: imageUrl,
     packFilePath: packFilePath ?? 'C:/path/to/mod.pack',
-    hasProject: hasProject ?? false,
+    isAlreadyImported: isAlreadyImported ?? false,
     isHidden: isHidden ?? false,
-    lastUpdated: lastUpdated ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+    timeUpdated: timeUpdated ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
   );
 }
 
@@ -83,18 +81,18 @@ DetectedMod createMockDetectedMod({
 GameInstallation createMockGameInstallation({
   String? id,
   String? gameCode,
+  String? gameName,
   String? installationPath,
   String? steamAppId,
-  String? displayName,
   int? createdAt,
   int? updatedAt,
 }) {
   return GameInstallation(
     id: id ?? 'game-id',
     gameCode: gameCode ?? 'wh3',
+    gameName: gameName ?? 'Total War: WARHAMMER III',
     installationPath: installationPath ?? 'C:/Games/TotalWar',
     steamAppId: steamAppId ?? '1142710',
-    displayName: displayName ?? 'Total War: WARHAMMER III',
     createdAt: createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
     updatedAt: updatedAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
   );
@@ -105,8 +103,8 @@ Glossary createMockGlossary({
   String? id,
   String? name,
   String? description,
+  bool? isGlobal,
   String? gameInstallationId,
-  String? sourceLanguageId,
   String? targetLanguageId,
   int? entryCount,
   int? createdAt,
@@ -116,8 +114,8 @@ Glossary createMockGlossary({
     id: id ?? 'glossary-id',
     name: name ?? 'Test Glossary',
     description: description ?? 'Test glossary description',
+    isGlobal: isGlobal ?? true,
     gameInstallationId: gameInstallationId,
-    sourceLanguageId: sourceLanguageId ?? 'en',
     targetLanguageId: targetLanguageId ?? 'fr',
     entryCount: entryCount ?? 100,
     createdAt: createdAt ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -158,7 +156,7 @@ List<DetectedMod> createMockDetectedModList({int count = 5}) {
     (index) => createMockDetectedMod(
       workshopId: 'workshop-${1000 + index}',
       name: 'Test Mod $index',
-      hasProject: index % 2 == 0,
+      isAlreadyImported: index % 2 == 0,
     ),
   );
 }
