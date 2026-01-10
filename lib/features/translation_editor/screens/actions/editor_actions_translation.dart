@@ -141,10 +141,11 @@ mixin EditorActionsTranslation on EditorActionsBase {
         logging.debug('Not confirmed - returning');
         return;
       }
-      logging.debug('Creating and starting batch', {
+      logging.debug('Creating and starting batch with TM skip', {
         'unitCount': selectedIds.length,
+        'forceSkipTM': true,
       });
-      await createAndStartBatch(selectedIds);
+      await createAndStartBatch(selectedIds, forceSkipTM: true);
       logging.debug('createAndStartBatch completed');
     } catch (e, stackTrace) {
       logging.error('Error in handleForceRetranslateSelected', e, stackTrace);
@@ -172,7 +173,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
   }
 
   void showProviderSetupDialog();
-  Future<void> createAndStartBatch(List<String> unitIds);
+  Future<void> createAndStartBatch(List<String> unitIds, {bool forceSkipTM = false});
 }
 
 /// Mixin handling batch creation and translation orchestration
@@ -188,7 +189,7 @@ mixin EditorActionsBatch on EditorActionsBase {
     );
   }
 
-  Future<void> createAndStartBatchImpl(List<String> unitIds) async {
+  Future<void> createAndStartBatchImpl(List<String> unitIds, {bool forceSkipTM = false}) async {
     if (!context.mounted) return;
 
     try {
@@ -205,7 +206,7 @@ mixin EditorActionsBatch on EditorActionsBase {
           builder: (context) => TranslationProgressScreen(
             orchestrator: orchestrator,
             onComplete: () => refreshProviders(),
-            preparationCallback: () => _prepareBatch(unitIds),
+            preparationCallback: () => _prepareBatch(unitIds, forceSkipTM: forceSkipTM),
             projectName: projectName,
           ),
         ),
@@ -226,7 +227,7 @@ mixin EditorActionsBatch on EditorActionsBase {
   }
 
   Future<({String batchId, TranslationContext context})> _prepareBatch(
-      List<String> unitIds) async {
+      List<String> unitIds, {bool forceSkipTM = false}) async {
     final projectLanguageId = await getProjectLanguageId();
     final selectedModelId = ref.read(selectedLlmModelProvider);
     final modelRepo = ref.read(llmProviderModelRepositoryProvider);
@@ -269,6 +270,9 @@ mixin EditorActionsBatch on EditorActionsBase {
 
     final settings = ref.read(translationSettingsProvider);
 
+    // For force retranslate, always skip TM; otherwise use settings
+    final shouldSkipTM = forceSkipTM || settings.skipTranslationMemory;
+
     final translationContext = await TranslationBatchHelper.buildTranslationContext(
       ref: ref,
       projectId: projectId,
@@ -277,7 +281,7 @@ mixin EditorActionsBatch on EditorActionsBase {
       modelId: modelId,
       unitsPerBatch: settings.unitsPerBatch,
       parallelBatches: settings.parallelBatches,
-      skipTranslationMemory: settings.skipTranslationMemory,
+      skipTranslationMemory: shouldSkipTM,
     );
 
     return (batchId: batchId, context: translationContext);

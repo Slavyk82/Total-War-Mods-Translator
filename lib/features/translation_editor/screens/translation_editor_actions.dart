@@ -58,7 +58,7 @@ class TranslationEditorActions
   }
 
   @override
-  Future<void> createAndStartBatch(List<String> unitIds) async {
-    await createAndStartBatchImpl(unitIds);
+  Future<void> createAndStartBatch(List<String> unitIds, {bool forceSkipTM = false}) async {
+    await createAndStartBatchImpl(unitIds, forceSkipTM: forceSkipTM);
   }
 }

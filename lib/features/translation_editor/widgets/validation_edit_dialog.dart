@@ -147,6 +147,8 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
   }
 
   Widget _buildSourceTextSection(ThemeData theme) {
+    final scrollController = ScrollController();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -160,15 +162,23 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          constraints: const BoxConstraints(maxHeight: 150),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: theme.dividerColor),
           ),
-          child: SelectableText(
-            widget.issue.sourceText,
-            style: theme.textTheme.bodyMedium,
+          child: Scrollbar(
+            controller: scrollController,
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(12),
+              child: SelectableText(
+                widget.issue.sourceText,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
           ),
         ),
       ],

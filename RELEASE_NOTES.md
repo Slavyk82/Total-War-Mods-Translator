@@ -1,13 +1,4 @@
 ## What's New
 
-### New Features
--
-
 ### Improvements
--
-
-### Bug Fixes
--
-
----
-*Delete sections that don't apply. This file will be used for the next GitHub release.*
+- Added vertical scrollbars in the Validation Review edit dialog for handling long source texts and translations
