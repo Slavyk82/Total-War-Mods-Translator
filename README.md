@@ -1,7 +1,5 @@
 # TWMT - Total War Mods Translator
 
-**Last Updated**: December 2025
-
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue)](https://github.com/Slavyk82/Total-War-Mods-Translator)
 [![Releases](https://img.shields.io/badge/Download-Latest%20Release-green)](https://github.com/Slavyk82/Total-War-Mods-Translator/releases)
 
