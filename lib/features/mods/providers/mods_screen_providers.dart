@@ -66,6 +66,24 @@ class ModsSessionCache extends _$ModsSessionCache {
     }
     state = newState;
   }
+
+  /// Mark a mod as imported in the cache (used after project creation)
+  void updateModImportedInCache(String workshopId, String projectId) {
+    final newState = <String, List<DetectedMod>>{};
+    for (final entry in state.entries) {
+      final updatedMods = entry.value.map((mod) {
+        if (mod.workshopId == workshopId) {
+          return mod.copyWith(
+            isAlreadyImported: true,
+            existingProjectId: projectId,
+          );
+        }
+        return mod;
+      }).toList();
+      newState[entry.key] = updatedMods;
+    }
+    state = newState;
+  }
 }
 
 /// Filter options for mods list

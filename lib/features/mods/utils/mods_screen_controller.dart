@@ -196,7 +196,8 @@ class ModsScreenController {
 
       if (success == true) {
         _ref.invalidate(projectsWithDetailsProvider);
-        handleRefresh();
+        // Update the mod's imported status locally without triggering a full rescan
+        _ref.read(detectedModsProvider.notifier).updateModImported(mod.workshopId, projectId);
         if (context.mounted) {
           router.go('/projects/$projectId');
         }

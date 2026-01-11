@@ -1,13 +1,5 @@
 ## What's New
 
-### New Features
--
-
 ### Improvements
--
-
-### Bug Fixes
--
-
----
-*Delete sections that don't apply. This file will be used for the next GitHub release.*
+- Translation editor screen is now more responsive, preventing button overlap on smaller windows
+- Mods list screen no longer triggers unnecessary analysis when returning after creating a new project

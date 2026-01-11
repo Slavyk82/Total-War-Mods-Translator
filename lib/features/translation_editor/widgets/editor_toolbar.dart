@@ -61,125 +61,138 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           ),
         ),
       ),
-      child: Row(
-        children: [
-          const SizedBox(width: 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Responsive breakpoints - adjusted for minimum window size of 800px
+          final isCompact = constraints.maxWidth < 1200;
+          final isVeryCompact = constraints.maxWidth < 1000;
+          final searchMinWidth = 125.0;
+          final searchMaxWidth = 172.0;
 
-          // LLM Model selector
-          _buildModelSelector(),
-          const SizedBox(width: 16),
+          return Row(
+            children: [
+              const SizedBox(width: 16),
 
-          // Skip TM checkbox
-          _buildSkipTmCheckbox(),
-          const SizedBox(width: 16),
+              // LLM Model selector - hide label in very compact mode
+              _buildModelSelector(compact: isVeryCompact),
+              SizedBox(width: isCompact ? 8 : 16),
 
-          // Action buttons wrapped in Flexible to prevent overflow
-          Flexible(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Translation Settings button
-                  _buildActionButton(
-                    icon: FluentIcons.settings_24_regular,
-                    label: 'Settings',
-                    tooltip: TooltipStrings.editorSettings,
-                    onPressed: widget.onTranslationSettings,
-                  ),
-                  const SizedBox(width: 8),
+              // Skip TM checkbox - icon only in compact mode
+              _buildSkipTmCheckbox(compact: isCompact),
+              SizedBox(width: isCompact ? 8 : 16),
 
-                  // Mod Rule button
-                  _buildModRuleButton(),
-                  const SizedBox(width: 16),
+              // Action buttons - use Expanded to fill available space
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Translation Settings button
+                      _buildActionButton(
+                        icon: FluentIcons.settings_24_regular,
+                        label: 'Settings',
+                        tooltip: TooltipStrings.editorSettings,
+                        onPressed: widget.onTranslationSettings,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
 
-                  // Action buttons
-                  _buildActionButton(
-                    icon: FluentIcons.translate_24_regular,
-                    label: 'Translate All',
-                    tooltip: TooltipStrings.editorTranslateAll,
-                    onPressed: widget.onTranslateAll,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(
-                    icon: FluentIcons.translate_24_filled,
-                    label: 'Translate Selected',
-                    tooltip: TooltipStrings.editorTranslateSelected,
-                    onPressed: selectionState.hasSelection
-                      ? widget.onTranslateSelected
-                      : null,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(
-                    icon: FluentIcons.checkmark_circle_24_regular,
-                    label: 'Validate',
-                    tooltip: TooltipStrings.editorValidate,
-                    onPressed: widget.onValidate,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildActionButton(
-                    icon: FluentIcons.arrow_export_24_regular,
-                    label: 'Generate pack',
-                    tooltip: TooltipStrings.editorExport,
-                    onPressed: widget.onExport,
-                    color: Colors.green.shade700,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
+                      // Mod Rule button
+                      _buildModRuleButton(compact: isCompact),
+                      SizedBox(width: isCompact ? 8 : 16),
 
-          // Search field - flexible with constraints
-          Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minWidth: 200,
-                maxWidth: 300,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search translations...',
-                    prefixIcon: const Icon(
-                      FluentIcons.search_24_regular,
-                      size: 18,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                      ? FluentIconButton(
-                          icon: const Icon(FluentIcons.dismiss_24_regular, size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            ref.read(editorFilterProvider.notifier)
-                              .setSearchQuery('');
-                          },
-                          tooltip: 'Clear search',
-                          size: 28,
-                          iconSize: 16,
-                        )
-                      : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    isDense: true,
+                      // Action buttons
+                      _buildActionButton(
+                        icon: FluentIcons.translate_24_regular,
+                        label: 'Translate All',
+                        tooltip: TooltipStrings.editorTranslateAll,
+                        onPressed: widget.onTranslateAll,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
+                      _buildActionButton(
+                        icon: FluentIcons.translate_24_filled,
+                        label: 'Translate Selected',
+                        tooltip: TooltipStrings.editorTranslateSelected,
+                        onPressed: selectionState.hasSelection
+                          ? widget.onTranslateSelected
+                          : null,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
+                      _buildActionButton(
+                        icon: FluentIcons.checkmark_circle_24_regular,
+                        label: 'Validate',
+                        tooltip: TooltipStrings.editorValidate,
+                        onPressed: widget.onValidate,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
+                      _buildActionButton(
+                        icon: FluentIcons.arrow_export_24_regular,
+                        label: 'Generate pack',
+                        tooltip: TooltipStrings.editorExport,
+                        onPressed: widget.onExport,
+                        color: Colors.green.shade700,
+                        compact: isCompact,
+                      ),
+                    ],
                   ),
-                  style: const TextStyle(fontSize: 13),
-                  onChanged: (value) {
-                    ref.read(editorFilterProvider.notifier)
-                      .setSearchQuery(value);
-                  },
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: 16),
-        ],
+              SizedBox(width: isCompact ? 8 : 16),
+
+              // Search field - responsive with smaller constraints
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: searchMinWidth,
+                  maxWidth: searchMaxWidth,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: isVeryCompact ? 'Search...' : 'Search translations...',
+                      prefixIcon: const Icon(
+                        FluentIcons.search_24_regular,
+                        size: 18,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                        ? FluentIconButton(
+                            icon: const Icon(FluentIcons.dismiss_24_regular, size: 16),
+                            onPressed: () {
+                              _searchController.clear();
+                              ref.read(editorFilterProvider.notifier)
+                                .setSearchQuery('');
+                            },
+                            tooltip: 'Clear search',
+                            size: 28,
+                            iconSize: 16,
+                          )
+                        : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      isDense: true,
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                    onChanged: (value) {
+                      ref.read(editorFilterProvider.notifier)
+                        .setSearchQuery(value);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+          );
+        },
       ),
     );
   }
@@ -190,6 +203,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
     required VoidCallback? onPressed,
     String? tooltip,
     Color? color,
+    bool compact = false,
   }) {
     final isEnabled = onPressed != null;
     final buttonColor = color ?? Theme.of(context).colorScheme.primary;
@@ -200,7 +214,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
         onTap: onPressed,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 8 : 12,
+            vertical: 6,
+          ),
           decoration: BoxDecoration(
             color: isEnabled
               ? buttonColor.withValues(alpha: 0.1)
@@ -222,26 +239,30 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                   ? buttonColor
                   : Colors.grey,
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: isEnabled
-                    ? buttonColor
-                    : Colors.grey,
+              if (!compact) ...[
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isEnabled
+                      ? buttonColor
+                      : Colors.grey,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
       ),
     );
 
-    if (tooltip != null) {
+    // In compact mode, always show tooltip since label is hidden
+    final effectiveTooltip = compact ? (tooltip ?? label) : tooltip;
+    if (effectiveTooltip != null) {
       return Tooltip(
-        message: tooltip,
+        message: effectiveTooltip,
         waitDuration: const Duration(milliseconds: 500),
         child: button,
       );
@@ -250,7 +271,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
     return button;
   }
 
-  Widget _buildModelSelector() {
+  Widget _buildModelSelector({bool compact = false}) {
     final modelsAsync = ref.watch(availableLlmModelsProvider);
     final selectedModelId = ref.watch(selectedLlmModelProvider);
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
@@ -291,7 +312,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           message: TooltipStrings.editorModelSelector,
           waitDuration: const Duration(milliseconds: 500),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 4 : 8,
+              vertical: 4,
+            ),
             decoration: BoxDecoration(
               border: Border.all(
                 color: Theme.of(context).dividerColor,
@@ -311,10 +335,14 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                   underline: const SizedBox.shrink(),
                   isDense: true,
                   items: models.map((model) {
+                    // In compact mode, show only model name without provider prefix
+                    final displayText = compact
+                      ? model.friendlyName
+                      : '${model.providerCode}: ${model.friendlyName}';
                     return DropdownMenuItem<String>(
                       value: model.id,
                       child: Text(
-                        '${model.providerCode}: ${model.friendlyName}',
+                        displayText,
                         style: const TextStyle(fontSize: 13),
                       ),
                     );
@@ -330,16 +358,16 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           ),
         );
       },
-      loading: () => const SizedBox(
-        width: 150,
+      loading: () => SizedBox(
+        width: compact ? 80 : 150,
         height: 20,
-        child: LinearProgressIndicator(),
+        child: const LinearProgressIndicator(),
       ),
       error: (_, _) => const SizedBox.shrink(),
     );
   }
 
-  Widget _buildSkipTmCheckbox() {
+  Widget _buildSkipTmCheckbox({bool compact = false}) {
     final settings = ref.watch(translationSettingsProvider);
 
     return Tooltip(
@@ -354,7 +382,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 6 : 8,
+              vertical: 4,
+            ),
             decoration: BoxDecoration(
               color: settings.skipTranslationMemory
                   ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
@@ -378,17 +409,19 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                       ? Theme.of(context).colorScheme.error
                       : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Skip TM',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: settings.skipTranslationMemory
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                if (!compact) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    'Skip TM',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: settings.skipTranslationMemory
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -436,7 +469,7 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
     return models.first;
   }
 
-  Widget _buildModRuleButton() {
+  Widget _buildModRuleButton({bool compact = false}) {
     final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
     final hasRuleAsync = ref.watch(hasProjectRuleProvider(widget.projectId));
 
@@ -455,7 +488,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
               onTap: () => _showModRuleDialog(project.name),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 6 : 8,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: hasRule
                       ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
@@ -479,17 +515,19 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Mod Rule',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: hasRule
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    if (!compact) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        'Mod Rule',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: hasRule
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

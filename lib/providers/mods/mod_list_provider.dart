@@ -86,6 +86,28 @@ class DetectedMods extends _$DetectedMods {
       ref.read(modsSessionCacheProvider.notifier).updateModInCache(workshopId, isHidden);
     }
   }
+
+  /// Mark a mod as imported locally without rescanning
+  void updateModImported(String workshopId, String projectId) {
+    LoggingService.instance.debug('updateModImported called: workshopId=$workshopId, projectId=$projectId');
+    final currentState = state;
+    if (currentState is AsyncData<List<DetectedMod>>) {
+      final updatedMods = currentState.value.map((mod) {
+        if (mod.workshopId == workshopId) {
+          return mod.copyWith(
+            isAlreadyImported: true,
+            existingProjectId: projectId,
+          );
+        }
+        return mod;
+      }).toList();
+      state = AsyncData(updatedMods);
+      LoggingService.instance.debug('state updated - mod marked as imported');
+
+      // Also update the session cache to keep it in sync
+      ref.read(modsSessionCacheProvider.notifier).updateModImportedInCache(workshopId, projectId);
+    }
+  }
 }
 
 /// Provides list of all projects from database
