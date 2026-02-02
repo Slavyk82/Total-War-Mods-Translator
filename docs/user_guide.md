@@ -1255,10 +1255,11 @@ Click "New Compilation" in the header to open the compilation editor.
 
 ### Compilation Editor
 
-The compilation editor is divided into two main panels:
+The compilation editor is divided into two or three panels:
 
 - **Left Panel** — Configuration settings, action buttons, and BBCode section
-- **Right Panel** — Project selection list
+- **Center Panel** — Project selection list
+- **Right Panel** — Conflicting projects (appears when 2+ projects are selected)
 
 #### Configuration Section
 
@@ -1341,6 +1342,103 @@ Each project item displays:
 | Blue | 50-99% |
 | Orange | 1-49% |
 | Gray | 0% |
+
+---
+
+### Conflict Detection
+
+When you select two or more projects, TWMT automatically analyzes potential conflicts between them. A conflict occurs when the same translation key exists in multiple mods with **different source texts**.
+
+#### What is a Conflict?
+
+A conflict happens when:
+- Two or more projects contain the same translation key (e.g., `building_culture_variants_name_example_key`)
+- The source text for that key is **different** between the projects
+
+> **Note:** If two projects have the same key with **identical** source text, this is NOT considered a conflict. The system will simply use one of them during compilation.
+
+#### Conflicting Projects Panel
+
+When conflicts are detected, a third panel appears on the right side of the editor:
+
+| Element | Description |
+|---------|-------------|
+| Header | Shows "Conflicting Projects" with a count badge |
+| Info Banner | Explains how to use the panel |
+| Project List | Lists all projects involved in conflicts |
+
+Each project in the conflict list displays:
+
+| Element | Description |
+|---------|-------------|
+| Checkbox | Checked by default; uncheck to exclude the project from compilation |
+| Project Name | Click to view conflict details |
+| Conflict Count | Number of conflicts involving this project; click to view details |
+
+#### Excluding Conflicting Projects
+
+To resolve conflicts, you can exclude projects from the compilation:
+
+1. Identify projects in the Conflicting Projects panel
+2. **Uncheck** the checkbox next to a project to exclude it
+3. The project will also be deselected in the main project list
+4. The conflict analysis automatically re-runs after changes
+
+> **Tip:** Exclude the project whose translations you do NOT want to include in the final pack.
+
+#### Viewing Conflict Details
+
+Click on a project name or the conflict count badge to open the **Conflict Details Dialog**:
+
+| Column | Description |
+|--------|-------------|
+| Conflicting Key | The translation key that exists in multiple projects |
+| Source Text (This Project) | The source text from the selected project |
+| Source Text (Conflicting) | The source text from the conflicting project |
+
+This helps you understand exactly which texts are in conflict and make an informed decision about which project to exclude.
+
+#### Automatic Conflict Analysis
+
+Conflict analysis runs automatically when:
+
+- You select a project (bringing the total to 2+)
+- You click "Select All"
+- You click "Generate Pack"
+- You exclude a project from the Conflicting Projects panel
+
+#### Analyze Conflicts Button
+
+You can manually trigger conflict analysis by clicking the **Analyze Conflicts** button in the Action Section. This is useful to refresh the analysis after making changes.
+
+#### Generating with Conflicts
+
+If you click **Generate Pack** while conflicts exist:
+
+1. The conflict analysis runs first
+2. If conflicts are detected, the generation is **blocked**
+3. The Conflicting Projects panel updates to show the conflicts
+4. You must resolve conflicts before generating
+
+**Force Generation:**
+
+If you need to generate a pack despite conflicts:
+
+1. Click **Generate Pack**
+2. A warning dialog appears explaining the risks
+3. Click **Generate Anyway** to force the compilation
+4. The pack will be generated, but conflicting keys may cause unexpected behavior in-game
+
+> **Warning:** Forcing generation with conflicts may result in unpredictable text appearing in-game, as one project's text will arbitrarily override another's.
+
+#### Excluded Keys
+
+The following placeholder keys are automatically excluded from conflict analysis:
+- `PLACEHOLDER`
+- `PLACEHOLDER1`
+- `HIDDEN`
+
+These keys are commonly used as placeholders and do not represent real translation content.
 
 ---
 
@@ -1507,6 +1605,10 @@ Regenerate a compilation pack without entering the editor:
 > 9. **Check Project Completion** — The progress bars help identify projects that may need more translation work
 >
 > 10. **Backup Generated Packs** — Keep copies of generated packs before regenerating
+>
+> 11. **Resolve Conflicts Before Generating** — Always review the Conflicting Projects panel and exclude projects with incompatible translations
+>
+> 12. **Review Conflict Details** — Click on conflicting projects to understand what texts are in conflict before deciding which to exclude
 
 ## Glossary
 
