@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:watcher/watcher.dart';
+import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/i_file_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
@@ -335,9 +336,9 @@ class FileWatchService {
   /// Get application data directory
   ///
   /// Returns path to AppData\Roaming\TWMT on Windows
+  /// In debug mode: AppData\Roaming\com.github.slavyk82\twmt
   Future<String> getAppDataDirectory() async {
-    final dir = await getApplicationSupportDirectory();
-    return dir.path;
+    return await DatabaseConfig.getAppSupportDirectory();
   }
 
   /// Get application config directory

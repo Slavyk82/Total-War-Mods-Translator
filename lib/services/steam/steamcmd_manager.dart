@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive.dart';
+import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/shared/logging_service.dart';
@@ -67,9 +67,9 @@ class SteamCmdManager {
       }
 
       // 2. Check AppData location
-      final appDataDir = await getApplicationSupportDirectory();
+      final appDataDir = await DatabaseConfig.getAppSupportDirectory();
       final appDataPath =
-          path.join(appDataDir.path, 'tools', 'steamcmd', exeName);
+          path.join(appDataDir, 'tools', 'steamcmd', exeName);
       searchPaths.add(appDataPath);
 
       if (await File(appDataPath).exists()) {
@@ -131,8 +131,8 @@ class SteamCmdManager {
       );
 
       // Extract to AppData
-      final appDataDir = await getApplicationSupportDirectory();
-      final installDir = path.join(appDataDir.path, 'tools', 'steamcmd');
+      final appDataDir = await DatabaseConfig.getAppSupportDirectory();
+      final installDir = path.join(appDataDir, 'tools', 'steamcmd');
       await Directory(installDir).create(recursive: true);
 
       _logger.info('Extracting to: $installDir');
@@ -270,8 +270,8 @@ class SteamCmdManager {
   ///
   /// Returns the directory where SteamCMD downloads Workshop content
   Future<String> getWorkshopCacheDir(int appId) async {
-    final appDataDir = await getApplicationSupportDirectory();
-    final steamCmdDir = path.join(appDataDir.path, 'tools', 'steamcmd');
+    final appDataDir = await DatabaseConfig.getAppSupportDirectory();
+    final steamCmdDir = path.join(appDataDir, 'tools', 'steamcmd');
 
     // SteamCMD downloads to: steamcmd/steamapps/workshop/content/{appId}
     return path.join(steamCmdDir, 'steamapps', 'workshop', 'content',

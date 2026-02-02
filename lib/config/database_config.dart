@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -18,30 +19,56 @@ class DatabaseConfig {
   /// Application directory name in AppData
   static const String appDirectoryName = 'TWMT';
 
+  /// Application directory name for the installed version (used in debug mode)
+  /// This allows development to use the same data as the installed app
+  static const String _installedAppDirectoryName = 'com.github.slavyk82\\twmt';
+
+  /// Get the application data directory path
+  ///
+  /// In debug mode, uses the installed app's directory to share data.
+  /// In release mode, uses the standard path_provider directory.
+  static Future<String> _getAppDataDirectory() async {
+    if (kDebugMode && Platform.isWindows) {
+      // In debug mode on Windows, use the installed app's directory
+      final appData = Platform.environment['APPDATA'];
+      if (appData != null) {
+        final devPath = path.join(appData, _installedAppDirectoryName);
+        if (await Directory(devPath).exists()) {
+          return devPath;
+        }
+      }
+    }
+    // Default: use path_provider
+    final directory = await getApplicationSupportDirectory();
+    return directory.path;
+  }
+
   /// Get the full path to the database file in AppData\Roaming\TWMT\
   ///
   /// On Windows, this resolves to: %APPDATA%\TWMT\twmt.db
+  /// In debug mode: %APPDATA%\com.github.slavyk82\twmt\twmt.db
   ///
   /// Example: C:\Users\Username\AppData\Roaming\TWMT\twmt.db
   static Future<String> getDatabasePath() async {
-    final directory = await getApplicationSupportDirectory();
-    return path.join(directory.path, databaseName);
+    final directory = await _getAppDataDirectory();
+    return path.join(directory, databaseName);
   }
 
   /// Get the application support directory path
   ///
   /// On Windows: %APPDATA%\TWMT
+  /// In debug mode: %APPDATA%\com.github.slavyk82\twmt
   static Future<String> getAppSupportDirectory() async {
-    final directory = await getApplicationSupportDirectory();
-    return directory.path;
+    return await _getAppDataDirectory();
   }
 
   /// Get the config directory path
   ///
   /// On Windows: %APPDATA%\TWMT\config
+  /// In debug mode: %APPDATA%\com.github.slavyk82\twmt\config
   static Future<String> getConfigDirectory() async {
-    final directory = await getApplicationSupportDirectory();
-    final configDir = path.join(directory.path, 'config');
+    final directory = await _getAppDataDirectory();
+    final configDir = path.join(directory, 'config');
     await Directory(configDir).create(recursive: true);
     return configDir;
   }
@@ -84,8 +111,8 @@ class DatabaseConfig {
 
   /// Ensure all application directories exist
   static Future<void> ensureDirectoriesExist() async {
-    final appSupportDir = await getApplicationSupportDirectory();
-    await Directory(appSupportDir.path).create(recursive: true);
+    final appSupportDir = await _getAppDataDirectory();
+    await Directory(appSupportDir).create(recursive: true);
     await getConfigDirectory();
     await getLogsDirectory();
     await getCacheDirectory();

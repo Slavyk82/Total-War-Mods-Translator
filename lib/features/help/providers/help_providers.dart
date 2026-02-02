@@ -5,9 +5,9 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:twmt/config/database_config.dart';
 import '../models/help_section.dart';
 
 part 'help_providers.g.dart';
@@ -42,8 +42,8 @@ Future<List<HelpSection>> helpSections(Ref ref) async {
 
 /// Get the cache file path in AppData/Local/TWMT/cache.
 Future<File> _getCacheFile() async {
-  final appDir = await getApplicationSupportDirectory();
-  final cacheDir = Directory(path.join(appDir.path, 'cache'));
+  final appDir = await DatabaseConfig.getAppSupportDirectory();
+  final cacheDir = Directory(path.join(appDir, 'cache'));
   if (!await cacheDir.exists()) {
     await cacheDir.create(recursive: true);
   }

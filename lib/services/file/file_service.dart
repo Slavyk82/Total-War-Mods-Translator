@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:twmt/config/database_config.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 
@@ -17,10 +18,11 @@ class FileService {
   /// Get the database path.
   ///
   /// Returns: AppData\Roaming\TWMT\twmt.db
+  /// In debug mode: AppData\Roaming\com.github.slavyk82\twmt\twmt.db
   Future<Result<String, FileSystemException>> getDatabasePath() async {
     try {
-      final dir = await getApplicationSupportDirectory();
-      return Ok(path.join(dir.path, 'twmt.db'));
+      final dbPath = await DatabaseConfig.getDatabasePath();
+      return Ok(dbPath);
     } catch (e, stackTrace) {
       return Err(
         FileSystemException(
@@ -35,17 +37,12 @@ class FileService {
   /// Get the configuration directory.
   ///
   /// Returns: AppData\Roaming\TWMT\config
+  /// In debug mode: AppData\Roaming\com.github.slavyk82\twmt\config
   /// Creates the directory if it doesn't exist.
   Future<Result<String, FileSystemException>> getConfigDirectory() async {
     try {
-      final dir = await getApplicationSupportDirectory();
-      final configDir = Directory(path.join(dir.path, 'config'));
-
-      if (!await configDir.exists()) {
-        await configDir.create(recursive: true);
-      }
-
-      return Ok(configDir.path);
+      final configPath = await DatabaseConfig.getConfigDirectory();
+      return Ok(configPath);
     } catch (e, stackTrace) {
       return Err(
         FileSystemException(
@@ -113,10 +110,11 @@ class FileService {
   /// Get the application data directory root.
   ///
   /// Returns: AppData\Roaming\TWMT
+  /// In debug mode: AppData\Roaming\com.github.slavyk82\twmt
   Future<Result<String, FileSystemException>> getAppDataDirectory() async {
     try {
-      final dir = await getApplicationSupportDirectory();
-      return Ok(dir.path);
+      final appDir = await DatabaseConfig.getAppSupportDirectory();
+      return Ok(appDir);
     } catch (e, stackTrace) {
       return Err(
         FileSystemException(
@@ -302,8 +300,8 @@ class FileService {
   Future<bool> _isPathSafe(String targetPath) async {
     try {
       // Get application directory
-      final appDir = await getApplicationSupportDirectory();
-      final canonicalAppDir = Directory(appDir.path).absolute.path;
+      final appDirPath = await DatabaseConfig.getAppSupportDirectory();
+      final canonicalAppDir = Directory(appDirPath).absolute.path;
 
       // Resolve target path (follows symlinks)
       final absoluteTarget = path.isAbsolute(targetPath)

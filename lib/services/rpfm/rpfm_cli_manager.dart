@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive.dart';
+import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/shared/logging_service.dart';
@@ -127,9 +127,9 @@ class RpfmCliManager {
       }
 
       // 2. Check AppData location
-      final appDataDir = await getApplicationSupportDirectory();
+      final appDataDir = await DatabaseConfig.getAppSupportDirectory();
       final appDataPath =
-          path.join(appDataDir.path, 'tools', 'rpfm-cli', exeName);
+          path.join(appDataDir, 'tools', 'rpfm-cli', exeName);
       searchPaths.add(appDataPath);
 
       if (await File(appDataPath).exists()) {
@@ -287,8 +287,8 @@ class RpfmCliManager {
       );
 
       // Extract to AppData
-      final appDataDir = await getApplicationSupportDirectory();
-      final installDir = path.join(appDataDir.path, 'tools', 'rpfm-cli');
+      final appDataDir = await DatabaseConfig.getAppSupportDirectory();
+      final installDir = path.join(appDataDir, 'tools', 'rpfm-cli');
       await Directory(installDir).create(recursive: true);
 
       _logger.info('Extracting to: $installDir');
