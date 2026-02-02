@@ -156,4 +156,61 @@ class PackExportUtils {
 
   /// Get the path to the TWMT icon asset
   static const String twmtIconAssetPath = 'assets/twmt_icon.png';
+
+  /// Wait for a file to be fully released by the system
+  ///
+  /// On Windows, files may remain locked briefly after a process exits.
+  /// This method waits until the file is fully accessible for reading.
+  ///
+  /// [filePath] - Path to the file to check
+  /// [maxRetries] - Maximum number of retry attempts (default: 10)
+  /// [initialDelayMs] - Initial delay between retries in milliseconds (default: 100)
+  ///
+  /// Returns true if file is accessible, false if timeout reached.
+  Future<bool> waitForFileRelease(
+    String filePath, {
+    int maxRetries = 10,
+    int initialDelayMs = 100,
+  }) async {
+    final file = File(filePath);
+
+    for (var attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Try to open the file for reading with exclusive access
+        // This will fail if the file is still locked by another process
+        final randomAccessFile = await file.open(mode: FileMode.read);
+
+        // Successfully opened - file is released
+        await randomAccessFile.close();
+
+        if (attempt > 0) {
+          _logger.info('File released after ${attempt + 1} attempts', {
+            'filePath': filePath,
+          });
+        }
+
+        return true;
+      } on FileSystemException catch (e) {
+        // File is still locked, wait and retry
+        final delayMs = initialDelayMs * (attempt + 1); // Increasing delay
+
+        _logger.debug('File still locked, retrying in ${delayMs}ms', {
+          'filePath': filePath,
+          'attempt': attempt + 1,
+          'maxRetries': maxRetries,
+          'error': e.message,
+        });
+
+        await Future.delayed(Duration(milliseconds: delayMs));
+      }
+    }
+
+    // Timeout reached
+    _logger.warning('File release timeout reached', {
+      'filePath': filePath,
+      'maxRetries': maxRetries,
+    });
+
+    return false;
+  }
 }

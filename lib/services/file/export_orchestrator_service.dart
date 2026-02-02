@@ -215,6 +215,15 @@ class ExportOrchestratorService {
         ));
       }
 
+      // Wait for file to be fully released by RPFM and Windows
+      // This prevents "corrupted mod data" errors in the game launcher
+      final fileReleased = await _packUtils.waitForFileRelease(packPath);
+      if (!fileReleased) {
+        _logger.warning('Pack file may still be locked by the system', {
+          'packPath': packPath,
+        });
+      }
+
       final fileSize = await File(packPath).length();
 
       // Determine if this is a game translation project
