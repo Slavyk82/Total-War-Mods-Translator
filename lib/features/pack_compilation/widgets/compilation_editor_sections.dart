@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
+import '../providers/compilation_conflict_providers.dart';
 import '../providers/pack_compilation_providers.dart';
 import 'compilation_editor_form_widgets.dart';
 
@@ -250,13 +251,14 @@ class CompilationProgressSection extends StatelessWidget {
 }
 
 /// Action section with save and generate buttons.
-class CompilationActionSection extends StatelessWidget {
+class CompilationActionSection extends ConsumerWidget {
   const CompilationActionSection({
     super.key,
     required this.state,
     required this.currentGameAsync,
     required this.onSave,
     required this.onGenerate,
+    required this.onAnalyze,
     required this.onTogglePackImage,
     this.onCancel,
   });
@@ -264,18 +266,30 @@ class CompilationActionSection extends StatelessWidget {
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
   final void Function(String gameInstallationId) onSave;
-  final void Function(String gameInstallationId) onGenerate;
+  final void Function(String gameInstallationId, {bool forceWithConflicts}) onGenerate;
+  final VoidCallback onAnalyze;
   final VoidCallback onTogglePackImage;
   final VoidCallback? onCancel;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
     final gameInstallation = currentGameAsync.asData?.value;
     final hasGame = gameInstallation != null;
-    final canSave = state.canSave && hasGame;
-    final canCompile = state.canCompile && hasGame;
+
+    // Require at least 2 projects for all actions
+    final hasEnoughProjects = state.selectedProjectIds.length >= 2;
+    final hasLanguage = state.selectedLanguageId != null;
+
+    final canSave = state.canSave && hasGame && hasEnoughProjects;
+    final canAnalyze = hasEnoughProjects && hasLanguage && !state.isCompiling;
+
+    // Check if there are real conflicts
+    final hasRealConflicts = ref.watch(hasRealConflictsProvider);
+    final isAnalyzing = ref.watch(isAnalyzingConflictsProvider);
+    // Allow compilation even with conflicts (user can force)
+    final canCompile = state.canCompile && hasGame && hasEnoughProjects && !isAnalyzing;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -292,6 +306,25 @@ class CompilationActionSection extends StatelessWidget {
             const CompilationMessageBox(
               message: 'Select a game in the sidebar to continue',
               isError: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Not enough projects warning
+          if (!hasEnoughProjects) ...[
+            const CompilationMessageBox(
+              message: 'Select at least 2 projects to create a compilation',
+              isError: true,
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Conflict warning (informative, not blocking)
+          if (hasRealConflicts && !state.isCompiling) ...[
+            const CompilationMessageBox(
+              message: 'Conflicts detected. You can uncheck conflicting projects or force generation.',
+              isError: false,
+              isWarning: true,
             ),
             const SizedBox(height: 12),
           ],
@@ -332,7 +365,19 @@ class CompilationActionSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Buttons
+          // Analyze button (full width)
+          SizedBox(
+            width: double.infinity,
+            child: CompilationActionButton(
+              label: isAnalyzing ? 'Analyzing...' : 'Analyze Conflicts',
+              icon: FluentIcons.scan_24_regular,
+              onTap: canAnalyze && !isAnalyzing ? onAnalyze : null,
+              isLoading: isAnalyzing,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Save and Generate buttons
           Row(
             children: [
               Expanded(
@@ -347,16 +392,116 @@ class CompilationActionSection extends StatelessWidget {
                 child: CompilationActionButton(
                   label: state.isCompiling ? 'Generating...' : 'Generate Pack',
                   icon: FluentIcons.box_multiple_24_regular,
-                  onTap:
-                      canCompile ? () => onGenerate(gameInstallation.id) : null,
+                  onTap: canCompile
+                      ? () => _handleGenerate(context, gameInstallation.id, hasRealConflicts)
+                      : null,
                   isPrimary: true,
                   isLoading: state.isCompiling,
+                  hasWarning: hasRealConflicts,
                 ),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _handleGenerate(
+    BuildContext context,
+    String gameInstallationId,
+    bool hasConflicts,
+  ) async {
+    if (hasConflicts) {
+      // Show confirmation dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => _ConflictWarningDialog(),
+      );
+
+      if (confirmed == true) {
+        onGenerate(gameInstallationId, forceWithConflicts: true);
+      }
+    } else {
+      onGenerate(gameInstallationId, forceWithConflicts: false);
+    }
+  }
+}
+
+/// Dialog warning about generating with conflicts.
+class _ConflictWarningDialog extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      icon: Icon(
+        FluentIcons.warning_24_filled,
+        color: Colors.orange,
+        size: 48,
+      ),
+      title: const Text('Generate with Conflicts?'),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Conflicts have been detected between your selected projects.',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    FluentIcons.info_24_regular,
+                    color: Colors.orange.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This may cause unexpected behavior in-game, such as missing or incorrect translations.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Do you want to continue anyway?',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.orange,
+          ),
+          child: const Text('Generate Anyway'),
+        ),
+      ],
     );
   }
 }

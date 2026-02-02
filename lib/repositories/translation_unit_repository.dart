@@ -510,4 +510,180 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
       return maps;
     });
   }
+
+  // ============================================================================
+  // CROSS-PROJECT CONFLICT DETECTION METHODS
+  // ============================================================================
+
+  /// Find keys that appear in multiple projects within a set of project IDs.
+  ///
+  /// This method identifies translation keys that exist in more than one project,
+  /// which is essential for detecting potential conflicts during compilation.
+  ///
+  /// Performance: Uses SQL GROUP BY with HAVING for efficient duplicate detection
+  /// in a single database query.
+  ///
+  /// [projectIds] - List of project IDs to check for duplicate keys
+  ///
+  /// Returns list of keys that appear in multiple projects.
+  /// Keys to exclude from conflict analysis (case-insensitive)
+  static const _excludedConflictKeys = ['PLACEHOLDER', 'PLACEHOLDER1', 'HIDDEN'];
+
+  Future<Result<List<String>, TWMTDatabaseException>>
+      findDuplicateKeysAcrossProjects({
+    required List<String> projectIds,
+  }) async {
+    if (projectIds.length < 2) {
+      return Ok(<String>[]);
+    }
+
+    return executeQuery(() async {
+      // SQLite has a limit on number of parameters (default 999)
+      // For typical compilations (< 100 projects), this is fine
+      final placeholders = List.filled(projectIds.length, '?').join(',');
+
+      // Build exclusion clause for placeholder keys (case-insensitive)
+      final excludedPlaceholders =
+          List.filled(_excludedConflictKeys.length, 'UPPER(key) != ?').join(' AND ');
+
+      final maps = await database.rawQuery(
+        '''
+        SELECT key
+        FROM $tableName
+        WHERE project_id IN ($placeholders)
+          AND is_obsolete = 0
+          AND $excludedPlaceholders
+        GROUP BY key
+        HAVING COUNT(DISTINCT project_id) > 1
+        ORDER BY key ASC
+        ''',
+        [...projectIds, ..._excludedConflictKeys],
+      );
+
+      return maps.map((m) => m['key'] as String).toList();
+    });
+  }
+
+  /// Get translation units with their translations for multiple projects.
+  ///
+  /// This method fetches all active translation units along with their
+  /// translation versions for a specific language across multiple projects.
+  /// Essential for conflict detection during compilation.
+  ///
+  /// Performance: Uses SQL JOIN to fetch all data in a single database query.
+  /// Units are ordered by key then project name for consistent conflict pairing.
+  ///
+  /// [projectIds] - List of project IDs to fetch units from
+  /// [languageId] - Target language ID for translation comparison
+  ///
+  /// Returns list of maps containing unit and version data with project info.
+  Future<Result<List<Map<String, dynamic>>, TWMTDatabaseException>>
+      getUnitsWithTranslationsForProjects({
+    required List<String> projectIds,
+    required String languageId,
+  }) async {
+    if (projectIds.isEmpty) {
+      return Ok(<Map<String, dynamic>>[]);
+    }
+
+    return executeQuery(() async {
+      final placeholders = List.filled(projectIds.length, '?').join(',');
+
+      final maps = await database.rawQuery(
+        '''
+        SELECT
+          tu.id AS unit_id,
+          tu.project_id,
+          tu.key,
+          tu.source_text,
+          tu.source_loc_file,
+          tu.is_obsolete,
+          tu.updated_at AS unit_updated_at,
+          p.name AS project_name,
+          p.metadata AS project_metadata,
+          tv.id AS version_id,
+          tv.translated_text,
+          tv.status,
+          tv.is_manually_edited,
+          tv.updated_at AS version_updated_at
+        FROM $tableName tu
+        INNER JOIN projects p ON tu.project_id = p.id
+        INNER JOIN project_languages pl ON pl.project_id = tu.project_id AND pl.language_id = ?
+        LEFT JOIN translation_versions tv ON tv.unit_id = tu.id AND tv.project_language_id = pl.id
+        WHERE tu.project_id IN ($placeholders)
+          AND tu.is_obsolete = 0
+        ORDER BY tu.key ASC, p.name ASC
+        ''',
+        [languageId, ...projectIds],
+      );
+
+      return maps;
+    });
+  }
+
+  /// Get units for specific keys across multiple projects with translations.
+  ///
+  /// Optimized version that only fetches units for keys known to be duplicates.
+  /// Use this after [findDuplicateKeysAcrossProjects] for efficient conflict analysis.
+  ///
+  /// [projectIds] - List of project IDs to fetch from
+  /// [keys] - List of specific keys to fetch
+  /// [languageId] - Target language ID for translation comparison
+  ///
+  /// Returns list of maps containing unit and version data.
+  Future<Result<List<Map<String, dynamic>>, TWMTDatabaseException>>
+      getUnitsForKeysAcrossProjects({
+    required List<String> projectIds,
+    required List<String> keys,
+    required String languageId,
+  }) async {
+    if (projectIds.isEmpty || keys.isEmpty) {
+      return Ok(<Map<String, dynamic>>[]);
+    }
+
+    return executeQuery(() async {
+      // Process keys in batches to avoid SQL parameter limits
+      const batchSize = 400; // Leave room for projectIds params
+      final results = <Map<String, dynamic>>[];
+      final projectPlaceholders = List.filled(projectIds.length, '?').join(',');
+
+      for (var i = 0; i < keys.length; i += batchSize) {
+        final batchKeys = keys.skip(i).take(batchSize).toList();
+        final keyPlaceholders = List.filled(batchKeys.length, '?').join(',');
+
+        final maps = await database.rawQuery(
+          '''
+          SELECT
+            tu.id AS unit_id,
+            tu.project_id,
+            tu.key,
+            tu.source_text,
+            tu.source_loc_file,
+            tu.is_obsolete,
+            tu.updated_at AS unit_updated_at,
+            p.name AS project_name,
+            p.metadata AS project_metadata,
+            tv.id AS version_id,
+            tv.translated_text,
+            tv.status,
+            tv.is_manually_edited,
+            tv.updated_at AS version_updated_at
+          FROM $tableName tu
+          INNER JOIN projects p ON tu.project_id = p.id
+          INNER JOIN project_languages pl ON pl.project_id = tu.project_id AND pl.language_id = ?
+          LEFT JOIN translation_versions tv ON tv.unit_id = tu.id AND tv.project_language_id = pl.id
+          WHERE tu.project_id IN ($projectPlaceholders)
+            AND tu.key IN ($keyPlaceholders)
+            AND tu.is_obsolete = 0
+          ORDER BY tu.key ASC, p.name ASC
+          ''',
+          [languageId, ...projectIds, ...batchKeys],
+        );
+
+        results.addAll(maps);
+      }
+
+      return results;
+    });
+  }
 }

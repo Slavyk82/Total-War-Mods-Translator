@@ -160,21 +160,36 @@ class CompilationLanguageDropdown extends StatelessWidget {
   }
 }
 
-/// Message box for displaying errors or success messages.
+/// Message box for displaying errors, warnings or success messages.
 class CompilationMessageBox extends StatelessWidget {
   const CompilationMessageBox({
     super.key,
     required this.message,
     required this.isError,
+    this.isWarning = false,
   });
 
   final String message;
   final bool isError;
+  final bool isWarning;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = isError ? theme.colorScheme.error : Colors.green;
+
+    Color color;
+    IconData icon;
+
+    if (isError) {
+      color = theme.colorScheme.error;
+      icon = FluentIcons.error_circle_24_regular;
+    } else if (isWarning) {
+      color = Colors.orange;
+      icon = FluentIcons.warning_24_regular;
+    } else {
+      color = Colors.green;
+      icon = FluentIcons.checkmark_circle_24_regular;
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -185,13 +200,7 @@ class CompilationMessageBox extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            isError
-                ? FluentIcons.error_circle_24_regular
-                : FluentIcons.checkmark_circle_24_regular,
-            size: 20,
-            color: color,
-          ),
+          Icon(icon, size: 20, color: color),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -308,6 +317,7 @@ class CompilationActionButton extends StatefulWidget {
     this.onTap,
     this.isPrimary = false,
     this.isLoading = false,
+    this.hasWarning = false,
   });
 
   final String label;
@@ -315,6 +325,7 @@ class CompilationActionButton extends StatefulWidget {
   final VoidCallback? onTap;
   final bool isPrimary;
   final bool isLoading;
+  final bool hasWarning;
 
   @override
   State<CompilationActionButton> createState() => _CompilationActionButtonState();
@@ -330,16 +341,25 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
 
     Color backgroundColor;
     Color contentColor;
+    Color? borderColor;
 
     if (widget.isPrimary) {
-      backgroundColor = isEnabled
-          ? (_isHovered
-              ? theme.colorScheme.primary.withValues(alpha: 0.9)
-              : theme.colorScheme.primary)
-          : theme.colorScheme.surfaceContainerHighest;
-      contentColor = isEnabled
-          ? theme.colorScheme.onPrimary
-          : theme.textTheme.bodyMedium!.color!.withValues(alpha: 0.5);
+      if (widget.hasWarning && isEnabled) {
+        // Warning state for primary button
+        backgroundColor = _isHovered
+            ? Colors.orange.withValues(alpha: 0.9)
+            : Colors.orange;
+        contentColor = Colors.white;
+      } else {
+        backgroundColor = isEnabled
+            ? (_isHovered
+                ? theme.colorScheme.primary.withValues(alpha: 0.9)
+                : theme.colorScheme.primary)
+            : theme.colorScheme.surfaceContainerHighest;
+        contentColor = isEnabled
+            ? theme.colorScheme.onPrimary
+            : theme.textTheme.bodyMedium!.color!.withValues(alpha: 0.5);
+      }
     } else {
       backgroundColor = _isHovered
           ? theme.colorScheme.surfaceContainerHighest
@@ -347,6 +367,10 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
       contentColor = isEnabled
           ? theme.colorScheme.onSurface
           : theme.textTheme.bodyMedium!.color!.withValues(alpha: 0.5);
+
+      if (widget.hasWarning && isEnabled) {
+        borderColor = Colors.orange;
+      }
     }
 
     return MouseRegion(
@@ -364,7 +388,8 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
             border: widget.isPrimary
                 ? null
                 : Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                    color: borderColor ??
+                        theme.colorScheme.outline.withValues(alpha: 0.5),
                   ),
           ),
           child: Row(
@@ -391,6 +416,15 @@ class _CompilationActionButtonState extends State<CompilationActionButton> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              // Warning indicator
+              if (widget.hasWarning && isEnabled && !widget.isLoading) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  FluentIcons.warning_16_filled,
+                  size: 16,
+                  color: widget.isPrimary ? Colors.white : Colors.orange,
+                ),
+              ],
             ],
           ),
         ),
