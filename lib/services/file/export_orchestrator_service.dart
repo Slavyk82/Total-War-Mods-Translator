@@ -229,14 +229,6 @@ class ExportOrchestratorService {
       // Determine if this is a game translation project
       final isGameTranslation = _packUtils.isGameLocalizationPack(project.sourceFilePath);
 
-      // Copy TWMT icon to data folder for game translation projects (for Steam Workshop)
-      if (isGameTranslation) {
-        await _packUtils.copyTwmtIconToDataFolder(
-          packFileName: packFileName,
-          destinationFolder: gameDataPath,
-        );
-      }
-
       // Generate pack image with language flag if enabled
       if (generatePackImage) {
         onProgress?.call('generatingImage', 0.87);
@@ -255,6 +247,12 @@ class ExportOrchestratorService {
           localModImagePath: null,
           generateImage: true,
           useAppIcon: isGameTranslation, // Use TWMT icon for game translations
+        );
+      } else if (isGameTranslation) {
+        // Fallback: Copy TWMT icon without flag only if image generation is disabled
+        await _packUtils.copyTwmtIconToDataFolder(
+          packFileName: packFileName,
+          destinationFolder: gameDataPath,
         );
       }
 

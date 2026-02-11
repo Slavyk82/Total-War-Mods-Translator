@@ -37,7 +37,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   }) async {
     // Skip if generation is disabled
     if (!generateImage) {
-      _logger.info('Pack image generation disabled, skipping');
       return const Ok(null);
     }
 
@@ -116,11 +115,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
     String? modImageUrl,
     String? localModImagePath,
   }) async {
-    _logger.info('Loading source image', {
-      'modImageUrl': modImageUrl,
-      'localModImagePath': localModImagePath,
-    });
-
     // Try modImageUrl (could be HTTP URL or local path)
     if (modImageUrl != null && modImageUrl.isNotEmpty) {
       // Check if it's a local file path (Windows drive letter or UNC path)
@@ -130,7 +124,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
       } else {
         // It's an HTTP/HTTPS URL
         try {
-          _logger.info('Downloading mod image from URL', {'url': modImageUrl});
           final response = await http.get(Uri.parse(modImageUrl));
           if (response.statusCode == 200) {
             final image = img.decodeImage(response.bodyBytes);
@@ -170,7 +163,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   /// Load image from local file
   Future<img.Image?> _loadImageFromFile(String filePath) async {
     try {
-      _logger.info('Loading mod image from local path', {'path': filePath});
       final file = File(filePath);
       if (await file.exists()) {
         final bytes = await file.readAsBytes();
@@ -194,8 +186,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   Future<img.Image?> _loadAppIcon() async {
     try {
       const assetPath = 'assets/twmt_icon.png';
-      _logger.info('Loading app icon from assets', {'path': assetPath});
-
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
       return img.decodePng(bytes);
@@ -211,8 +201,6 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   Future<img.Image?> _loadFlag(String languageCode) async {
     try {
       final assetPath = 'assets/flags/${languageCode.toLowerCase()}.png';
-      _logger.info('Loading flag from assets', {'path': assetPath});
-
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
       return img.decodePng(bytes);
@@ -228,9 +216,10 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   /// Overlay flag on source image
   ///
   /// Places the flag in the top-right corner with specified margin.
-  /// Flag is resized to 20% of the source image width.
+  /// Flag is resized to 30% of the source image width.
+  /// Creates a new RGBA image to ensure color support regardless of source format.
   img.Image _overlayFlag(img.Image source, img.Image flag) {
-    // Calculate flag size (20% of source width)
+    // Calculate flag size (30% of source width)
     final targetFlagWidth = (source.width * _flagSizeRatio).round();
     final aspectRatio = flag.height / flag.width;
     final targetFlagHeight = (targetFlagWidth * aspectRatio).round();
@@ -247,16 +236,69 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
     final x = source.width - resizedFlag.width - _flagMargin;
     final y = _flagMargin;
 
-    // Create copy of source to modify
-    final result = img.Image.from(source);
-
-    // Composite flag onto result
-    img.compositeImage(
-      result,
-      resizedFlag,
-      dstX: x,
-      dstY: y,
+    // Create new RGBA image to ensure full color support
+    // (some source images may have limited color formats like indexed palette)
+    final result = img.Image(
+      width: source.width,
+      height: source.height,
+      numChannels: 4,
     );
+
+    // Copy source pixels to result
+    for (var sy = 0; sy < source.height; sy++) {
+      for (var sx = 0; sx < source.width; sx++) {
+        final pixel = source.getPixel(sx, sy);
+        result.setPixelRgba(
+          sx,
+          sy,
+          pixel.r.toInt(),
+          pixel.g.toInt(),
+          pixel.b.toInt(),
+          pixel.a.toInt(),
+        );
+      }
+    }
+
+    // Draw flag onto result with alpha blending
+    for (var fy = 0; fy < resizedFlag.height; fy++) {
+      for (var fx = 0; fx < resizedFlag.width; fx++) {
+        final destX = x + fx;
+        final destY = y + fy;
+
+        // Skip if outside bounds
+        if (destX < 0 ||
+            destX >= result.width ||
+            destY < 0 ||
+            destY >= result.height) {
+          continue;
+        }
+
+        final flagPixel = resizedFlag.getPixel(fx, fy);
+        final flagAlpha = flagPixel.a.toDouble() / 255.0;
+
+        // Skip fully transparent pixels
+        if (flagAlpha == 0) continue;
+
+        final flagR = flagPixel.r.toInt();
+        final flagG = flagPixel.g.toInt();
+        final flagB = flagPixel.b.toInt();
+
+        if (flagAlpha >= 1.0) {
+          // Fully opaque - copy the pixel directly
+          result.setPixelRgba(destX, destY, flagR, flagG, flagB, 255);
+        } else {
+          // Alpha blend with existing pixel
+          final srcPixel = result.getPixel(destX, destY);
+          final srcR = srcPixel.r.toInt();
+          final srcG = srcPixel.g.toInt();
+          final srcB = srcPixel.b.toInt();
+          final r = (flagR * flagAlpha + srcR * (1 - flagAlpha)).round();
+          final g = (flagG * flagAlpha + srcG * (1 - flagAlpha)).round();
+          final b = (flagB * flagAlpha + srcB * (1 - flagAlpha)).round();
+          result.setPixelRgba(destX, destY, r, g, b, 255);
+        }
+      }
+    }
 
     return result;
   }
