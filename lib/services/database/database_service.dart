@@ -119,6 +119,85 @@ class DatabaseService {
     for (final pragma in pragmas) {
       await db.execute(pragma);
     }
+
+    // Ensure critical triggers exist (may be missing if app was killed during batch operation)
+    await _ensureCriticalTriggersExist(db);
+  }
+
+  /// Ensure critical triggers exist in the database.
+  ///
+  /// Some batch operations temporarily drop triggers for performance.
+  /// If the app is killed during such operations, triggers may be missing.
+  /// This method checks and recreates them if necessary.
+  static Future<void> _ensureCriticalTriggersExist(Database db) async {
+    final logging = LoggingService.instance;
+
+    // List of critical triggers that may be dropped during batch operations
+    final criticalTriggers = <String, String>{
+      'trg_update_project_language_progress': '''
+        CREATE TRIGGER trg_update_project_language_progress
+        AFTER UPDATE ON translation_versions
+        WHEN NEW.status != OLD.status
+        BEGIN
+          UPDATE project_languages
+          SET progress_percent = (
+            SELECT
+              CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+              NULLIF(COUNT(*), 0)
+            FROM translation_versions tv
+            INNER JOIN translation_units tu ON tv.unit_id = tu.id
+            WHERE tv.project_language_id = NEW.project_language_id
+              AND tu.is_obsolete = 0
+          ),
+          updated_at = strftime('%s', 'now')
+          WHERE id = NEW.project_language_id;
+        END
+      ''',
+      'trg_translation_versions_fts_update': '''
+        CREATE TRIGGER trg_translation_versions_fts_update
+        AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+        BEGIN
+          DELETE FROM translation_versions_fts WHERE version_id = old.id;
+          INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+          SELECT new.translated_text, new.validation_issues, new.id
+          WHERE new.translated_text IS NOT NULL;
+        END
+      ''',
+      'trg_update_cache_on_version_change': '''
+        CREATE TRIGGER trg_update_cache_on_version_change
+        AFTER UPDATE ON translation_versions
+        BEGIN
+          UPDATE translation_view_cache
+          SET translated_text = new.translated_text,
+              status = new.status,
+              confidence_score = NULL,
+              is_manually_edited = new.is_manually_edited,
+              version_id = new.id,
+              version_updated_at = new.updated_at
+          WHERE unit_id = new.unit_id
+            AND project_language_id = new.project_language_id;
+        END
+      ''',
+    };
+
+    // Check which triggers exist
+    final existingTriggers = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'trigger'",
+    );
+    final existingNames = existingTriggers.map((r) => r['name'] as String).toSet();
+
+    // Recreate missing triggers
+    for (final entry in criticalTriggers.entries) {
+      if (!existingNames.contains(entry.key)) {
+        logging.warning('Missing trigger detected, recreating: ${entry.key}');
+        try {
+          await db.execute(entry.value);
+          logging.info('Trigger recreated successfully: ${entry.key}');
+        } catch (e) {
+          logging.error('Failed to recreate trigger: ${entry.key}', e);
+        }
+      }
+    }
   }
 
   /// Execute a raw SQL query

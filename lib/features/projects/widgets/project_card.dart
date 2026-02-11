@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:intl/intl.dart';
 import '../providers/projects_screen_providers.dart';
 import '../../../models/domain/project.dart';
 import '../../../models/domain/game_installation.dart';
@@ -71,7 +72,9 @@ class _ProjectCardState extends State<ProjectCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context, project, gameInstallation),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                _buildDates(context, project),
+                const SizedBox(height: 8),
                 _buildLanguageProgress(context),
               ],
             ),
@@ -129,6 +132,58 @@ class _ProjectCardState extends State<ProjectCard> {
         if (project.modSteamId == null && !project.isGameTranslation) ...[
           const SizedBox(width: 8),
           _buildResyncButton(context),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDates(BuildContext context, Project project) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
+    final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
+
+    // Convert Unix timestamp to DateTime for last modified
+    final lastModified = DateTime.fromMillisecondsSinceEpoch(project.updatedAt * 1000);
+    final lastModifiedStr = dateFormat.format(lastModified);
+
+    // Get last pack export date if available
+    final lastPackExport = widget.projectWithDetails.lastPackExport;
+    String? lastExportStr;
+    if (lastPackExport != null) {
+      final lastExportDate = DateTime.fromMillisecondsSinceEpoch(lastPackExport.exportedAt * 1000);
+      lastExportStr = dateFormat.format(lastExportDate);
+    }
+
+    return Row(
+      children: [
+        Icon(
+          FluentIcons.clock_24_regular,
+          size: 12,
+          color: mutedColor,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Last modified: $lastModifiedStr',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: mutedColor,
+            fontSize: 11,
+          ),
+        ),
+        if (lastExportStr != null) ...[
+          const SizedBox(width: 12),
+          Icon(
+            FluentIcons.arrow_export_24_regular,
+            size: 12,
+            color: mutedColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Last export: $lastExportStr',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: mutedColor,
+              fontSize: 11,
+            ),
+          ),
         ],
       ],
     );

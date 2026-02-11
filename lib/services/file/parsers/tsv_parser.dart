@@ -52,7 +52,7 @@ class TsvParser {
           continue;
         }
 
-        // Parse TSV line (Key\tValue)
+        // Parse TSV line (Key\tValue\tBoolean)
         final parts = trimmed.split('\t');
 
         if (parts.length < 2) {
@@ -61,7 +61,15 @@ class TsvParser {
         }
 
         final key = parts[0].trim();
-        final value = parts.sublist(1).join('\t').trim();
+        // Total War TSV format: key\tvalue\ttrue/false
+        // If 3+ columns and last is boolean flag, take only column 1
+        String value;
+        if (parts.length >= 3 && (parts.last.trim() == 'true' || parts.last.trim() == 'false')) {
+          // Take only the value column, excluding the boolean flag
+          value = parts.sublist(1, parts.length - 1).join('\t').trim();
+        } else {
+          value = parts.sublist(1).join('\t').trim();
+        }
 
         // Unescape special characters
         final unescapedValue = _unescapeValue(value);
@@ -122,7 +130,7 @@ class TsvParser {
           continue;
         }
 
-        // Parse TSV line (Key\tValue)
+        // Parse TSV line (Key\tValue\tBoolean)
         final parts = trimmed.split('\t');
 
         if (parts.length < 2) {
@@ -139,7 +147,15 @@ class TsvParser {
         }
 
         final key = parts[0].trim();
-        final value = parts.sublist(1).join('\t').trim();
+        // Total War TSV format: key\tvalue\ttrue/false
+        // If 3+ columns and last is boolean flag, take only column 1
+        String value;
+        if (parts.length >= 3 && (parts.last.trim() == 'true' || parts.last.trim() == 'false')) {
+          // Take only the value column, excluding the boolean flag
+          value = parts.sublist(1, parts.length - 1).join('\t').trim();
+        } else {
+          value = parts.sublist(1).join('\t').trim();
+        }
 
         // Unescape special characters
         final unescapedValue = _unescapeValue(value);
@@ -261,7 +277,14 @@ class TsvParser {
         }
 
         final key = parts[0].trim();
-        final value = parts.sublist(1).join('\t').trim();
+        // Total War TSV format: key\tvalue\ttrue/false
+        // If 3+ columns and last is boolean flag, take only column 1
+        String value;
+        if (parts.length >= 3 && (parts.last.trim() == 'true' || parts.last.trim() == 'false')) {
+          value = parts.sublist(1, parts.length - 1).join('\t').trim();
+        } else {
+          value = parts.sublist(1).join('\t').trim();
+        }
 
         // Check for empty keys
         if (key.isEmpty) {

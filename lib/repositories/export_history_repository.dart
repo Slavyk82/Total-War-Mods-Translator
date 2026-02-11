@@ -132,6 +132,27 @@ class ExportHistoryRepository extends BaseRepository<ExportHistory> {
     return maps.map((map) => fromMap(map)).toList();
   }
 
+  /// Get the most recent pack export for a project
+  ///
+  /// Returns the most recent pack export for the given project, or null if none exists
+  Future<ExportHistory?> getLastPackExportByProject(String projectId) async {
+    final db = database;
+
+    final maps = await db.query(
+      tableName,
+      where: 'project_id = ? AND format = ?',
+      whereArgs: [projectId, 'pack'],
+      orderBy: 'exported_at DESC',
+      limit: 1,
+    );
+
+    if (maps.isEmpty) {
+      return null;
+    }
+
+    return fromMap(maps.first);
+  }
+
   /// Delete old export history records
   ///
   /// Removes export history records older than the specified number of days

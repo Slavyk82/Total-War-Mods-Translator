@@ -27,8 +27,8 @@ void main() async {
     // Initialize window manager
     await windowManager.ensureInitialized();
     const windowOptions = WindowOptions(
-      size: Size(1600, 850),
-      minimumSize: Size(1600, 850),
+      size: Size(1725, 975),
+      minimumSize: Size(1725, 975),
       center: true,
       title: 'TWMT - Total War Mods Translator',
       titleBarStyle: TitleBarStyle.normal,

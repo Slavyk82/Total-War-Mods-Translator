@@ -193,17 +193,23 @@ class GridActionsHandler {
     int currentTotal = versionIds.length;
     String currentPhase = 'Preparing...';
 
-    // Show progress dialog for large operations
+    // Store root navigator to close dialog even if user navigates away
+    NavigatorState? rootNavigator;
+
+    // Show progress dialog for large operations using root navigator
+    // This ensures the dialog can be closed even if the editor screen is disposed
     if (showProgress && context.mounted) {
+      rootNavigator = Navigator.of(context, rootNavigator: true);
       showDialog(
         context: context,
         barrierDismissible: false,
+        useRootNavigator: true,
         builder: (dialogContext) {
           return StatefulBuilder(
-            builder: (context, setDialogState) {
+            builder: (statefulContext, setDialogState) {
               // Store the setState function for updates
               _clearProgressSetState = (processed, total, phase) {
-                if (context.mounted) {
+                if (statefulContext.mounted) {
                   setDialogState(() {
                     currentProcessed = processed;
                     currentTotal = total;
@@ -223,6 +229,15 @@ class GridActionsHandler {
       );
     }
 
+    // Helper to close dialog safely using root navigator
+    void closeDialog() {
+      if (showProgress && rootNavigator != null && rootNavigator!.mounted) {
+        rootNavigator!.pop();
+      }
+      rootNavigator = null;
+      _clearProgressSetState = null;
+    }
+
     try {
       final versionRepo = ref.read(translationVersionRepositoryProvider);
 
@@ -237,10 +252,7 @@ class GridActionsHandler {
       );
 
       // Close progress dialog
-      if (showProgress && context.mounted) {
-        Navigator.of(context).pop();
-      }
-      _clearProgressSetState = null;
+      closeDialog();
 
       if (context.mounted) {
         result.when(
@@ -255,10 +267,7 @@ class GridActionsHandler {
       }
     } catch (e) {
       // Close progress dialog on error
-      if (showProgress && context.mounted) {
-        Navigator.of(context).pop();
-      }
-      _clearProgressSetState = null;
+      closeDialog();
 
       if (context.mounted) {
         FluentToast.error(context, 'Error: $e');

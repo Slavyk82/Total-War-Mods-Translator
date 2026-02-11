@@ -21,6 +21,7 @@ class EditorToolbar extends ConsumerStatefulWidget {
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
   final VoidCallback onExport;
+  final VoidCallback onImportPack;
 
   const EditorToolbar({
     super.key,
@@ -31,6 +32,7 @@ class EditorToolbar extends ConsumerStatefulWidget {
     required this.onTranslateSelected,
     required this.onValidate,
     required this.onExport,
+    required this.onImportPack,
   });
 
   @override
@@ -126,6 +128,15 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                         label: 'Validate',
                         tooltip: TooltipStrings.editorValidate,
                         onPressed: widget.onValidate,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
+                      _buildActionButton(
+                        icon: FluentIcons.arrow_import_24_regular,
+                        label: 'Import pack',
+                        tooltip: TooltipStrings.editorImportPack,
+                        onPressed: widget.onImportPack,
+                        color: Colors.blue.shade700,
                         compact: isCompact,
                       ),
                       SizedBox(width: isCompact ? 4 : 8),

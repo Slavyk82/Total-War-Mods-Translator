@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/i_localization_parser.dart';
@@ -73,8 +74,8 @@ class LocalizationParserImpl implements ILocalizationParser {
 
         entries = parseResult.value;
       } else {
-        // Use TSV parser
-        final content = String.fromCharCodes(bytes);
+        // Use TSV parser - decode as UTF-8 for proper Unicode support
+        final content = utf8.decode(bytes, allowMalformed: true);
         final parseResult = _tsvParser.parseString(
           content: content,
           fileName: fileName,

@@ -147,6 +147,30 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
                 : ProjectQuickFilter.hasCompleteLanguage,
           ),
         ),
+        const SizedBox(width: 8),
+        _QuickFilterButton(
+          icon: FluentIcons.arrow_export_24_regular,
+          label: 'Exported',
+          tooltip: 'Show only projects that have been exported',
+          isSelected: currentFilter == ProjectQuickFilter.exported,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.exported
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.exported,
+          ),
+        ),
+        const SizedBox(width: 8),
+        _QuickFilterButton(
+          icon: FluentIcons.arrow_export_ltr_24_regular,
+          label: 'Not Exported',
+          tooltip: 'Show only projects that have never been exported',
+          isSelected: currentFilter == ProjectQuickFilter.notExported,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.notExported
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.notExported,
+          ),
+        ),
         if (currentFilter != ProjectQuickFilter.none) ...[
           const SizedBox(width: 12),
           _buildClearFilterButton(theme),
@@ -244,6 +268,8 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
         return FluentIcons.text_sort_ascending_24_regular;
       case ProjectSortOption.dateModified:
         return FluentIcons.calendar_24_regular;
+      case ProjectSortOption.dateExported:
+        return FluentIcons.arrow_export_24_regular;
       case ProjectSortOption.progress:
         return FluentIcons.chart_multiple_24_regular;
     }

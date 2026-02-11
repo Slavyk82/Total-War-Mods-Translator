@@ -8,9 +8,11 @@ import '../../../models/domain/language.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../models/domain/mod_update_analysis.dart';
+import '../../../models/domain/export_history.dart';
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/selected_game_provider.dart';
 import '../../../repositories/translation_version_repository.dart';
+import '../../../repositories/export_history_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
 import '../../../services/mods/mod_update_analysis_service.dart';
@@ -33,6 +35,7 @@ enum ProjectViewMode { grid, list }
 enum ProjectSortOption {
   name,
   dateModified,
+  dateExported,
   progress;
 
   String get displayName {
@@ -41,6 +44,8 @@ enum ProjectSortOption {
         return 'Name';
       case ProjectSortOption.dateModified:
         return 'Date Modified';
+      case ProjectSortOption.dateExported:
+        return 'Date Exported';
       case ProjectSortOption.progress:
         return 'Progress';
     }
@@ -57,6 +62,10 @@ enum ProjectQuickFilter {
   incomplete,
   /// Projects 100% translated in at least one language
   hasCompleteLanguage,
+  /// Projects that have been exported at least once
+  exported,
+  /// Projects that have never been exported
+  notExported,
 }
 
 /// Filter state for projects screen
@@ -110,12 +119,14 @@ class ProjectWithDetails {
   final GameInstallation? gameInstallation;
   final List<ProjectLanguageWithInfo> languages;
   final ModUpdateAnalysis? updateAnalysis;
+  final ExportHistory? lastPackExport;
 
   const ProjectWithDetails({
     required this.project,
     this.gameInstallation,
     required this.languages,
     this.updateAnalysis,
+    this.lastPackExport,
   });
 
   /// Calculate overall progress across all languages
@@ -148,6 +159,9 @@ class ProjectWithDetails {
     if (languages.isEmpty) return false;
     return languages.any((lang) => lang.isComplete);
   }
+
+  /// Check if the project has been exported at least once
+  bool get hasBeenExported => lastPackExport != null;
 }
 
 /// Project language with language info and translation stats
@@ -268,6 +282,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   final workshopModRepo = ref.watch(workshopModRepositoryProvider);
   final versionRepo = ServiceLocator.get<TranslationVersionRepository>();
   final updateAnalysisService = ServiceLocator.get<ModUpdateAnalysisService>();
+  final exportHistoryRepo = ServiceLocator.get<ExportHistoryRepository>();
 
   // Watch the selected game to filter projects
   final selectedGame = await ref.watch(selectedGameProvider.future);
@@ -369,6 +384,9 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
       }
     }
 
+    // Get last pack export for this project
+    final lastPackExport = await exportHistoryRepo.getLastPackExportByProject(project.id);
+
     // Check for updates by comparing Steam timestamp vs local file timestamp
     // Same logic as DetectedMod.needsUpdate in the Mods screen
     ModUpdateAnalysis? updateAnalysis;
@@ -418,6 +436,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
       gameInstallation: gameInstallation,
       languages: languagesWithInfo,
       updateAnalysis: updateAnalysis,
+      lastPackExport: lastPackExport,
     ));
   }
 
@@ -473,6 +492,12 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
       case ProjectQuickFilter.hasCompleteLanguage:
         // Show projects with at least one 100% translated language
         if (!projectWithDetails.hasAtLeastOneCompleteLanguage) return false;
+      case ProjectQuickFilter.exported:
+        // Show only projects that have been exported
+        if (!projectWithDetails.hasBeenExported) return false;
+      case ProjectQuickFilter.notExported:
+        // Show only projects that have never been exported
+        if (projectWithDetails.hasBeenExported) return false;
     }
 
     return true;
@@ -484,6 +509,12 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
       ProjectSortOption.name => a.project.name.compareTo(b.project.name),
       ProjectSortOption.dateModified =>
         a.project.updatedAt.compareTo(b.project.updatedAt),
+      ProjectSortOption.dateExported => () {
+        // Projects without export go to the end
+        final aExport = a.lastPackExport?.exportedAt ?? 0;
+        final bExport = b.lastPackExport?.exportedAt ?? 0;
+        return aExport.compareTo(bExport);
+      }(),
       ProjectSortOption.progress =>
         a.overallProgress.compareTo(b.overallProgress),
     };

@@ -6,6 +6,7 @@ import '../widgets/provider_setup_dialog.dart';
 import 'actions/editor_actions_base.dart';
 import 'actions/editor_actions_cell_edit.dart';
 import 'actions/editor_actions_export.dart';
+import 'actions/editor_actions_import.dart';
 import 'actions/editor_actions_translation.dart';
 import 'actions/editor_actions_undo_redo.dart';
 import 'actions/editor_actions_validation.dart';
@@ -17,6 +18,7 @@ import 'actions/editor_actions_validation.dart';
 /// - Translation workflow (translate all/selected)
 /// - Validation orchestration
 /// - Export operations
+/// - Import operations
 /// - Undo/redo management
 /// - Batch creation and orchestration
 class TranslationEditorActions
@@ -27,6 +29,7 @@ class TranslationEditorActions
         EditorActionsBatch,
         EditorActionsValidation,
         EditorActionsExport,
+        EditorActionsImport,
         EditorActionsUndoRedo {
   TranslationEditorActions({
     required this.ref,
