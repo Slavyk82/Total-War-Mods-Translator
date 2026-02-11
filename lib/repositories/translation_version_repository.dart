@@ -357,12 +357,18 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       int totalAffected = 0;
       final total = versionIds.length;
 
-      // For batches > 50, temporarily disable the progress trigger
-      // This trigger recalculates stats with COUNT on every single UPDATE, which is very slow
-      final disableProgressTrigger = versionIds.length > 50;
+      // For batches > 50, temporarily disable expensive triggers
+      // These triggers fire for EACH row and cause severe performance issues:
+      // - trg_update_project_language_progress: COUNT query per row
+      // - trg_translation_versions_fts_update: FTS DELETE+INSERT per row
+      // - trg_update_cache_on_version_change: cache UPDATE per row
+      final disableTriggers = versionIds.length > 50;
 
-      if (disableProgressTrigger) {
+      if (disableTriggers) {
+        onProgress?.call(0, total, 'Preparing batch operation...');
         await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
       }
 
       try {
@@ -389,7 +395,35 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
           onProgress?.call(processed, total, 'Clearing translations...');
         }
 
-        if (disableProgressTrigger) {
+        if (disableTriggers) {
+          // Manually update FTS index in batches (stay within SQLite parameter limits)
+          onProgress?.call(total, total, 'Updating search index...');
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawDelete(
+              'DELETE FROM translation_versions_fts WHERE version_id IN ($placeholders)',
+              batch,
+            );
+          }
+
+          // Manually update cache in batches
+          onProgress?.call(total, total, 'Updating cache...');
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawUpdate(
+              '''
+              UPDATE translation_view_cache
+              SET translated_text = '',
+                  status = 'pending',
+                  version_updated_at = ?
+              WHERE version_id IN ($placeholders)
+              ''',
+              [now, ...batch],
+            );
+          }
+
           // Manually update project language progress once at the end
           onProgress?.call(total, total, 'Updating statistics...');
           await txn.rawUpdate('''
@@ -407,8 +441,8 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
           ''', [now]);
         }
       } finally {
-        if (disableProgressTrigger) {
-          // Recreate the progress trigger
+        if (disableTriggers) {
+          // Recreate all triggers
           await txn.execute('''
             CREATE TRIGGER trg_update_project_language_progress
             AFTER UPDATE ON translation_versions
@@ -426,6 +460,33 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
               ),
               updated_at = strftime('%s', 'now')
               WHERE id = NEW.project_language_id;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_translation_versions_fts_update
+            AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+            BEGIN
+              DELETE FROM translation_versions_fts WHERE version_id = old.id;
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              SELECT new.translated_text, new.validation_issues, new.id
+              WHERE new.translated_text IS NOT NULL;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_update_cache_on_version_change
+            AFTER UPDATE ON translation_versions
+            BEGIN
+              UPDATE translation_view_cache
+              SET translated_text = new.translated_text,
+                  status = new.status,
+                  confidence_score = NULL,
+                  is_manually_edited = new.is_manually_edited,
+                  version_id = new.id,
+                  version_updated_at = new.updated_at
+              WHERE unit_id = new.unit_id
+                AND project_language_id = new.project_language_id;
             END
           ''');
         }
@@ -627,5 +688,24 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         nonPendingWithoutText: nonPendingWithoutText,
       );
     });
+  }
+
+  /// Import multiple translation versions with optimized batch operations.
+  ///
+  /// See [TranslationVersionBatchMixin.importBatch] for details.
+  /// This is a convenience wrapper that exposes the mixin method publicly.
+  Future<Result<({int inserted, int updated, int skipped}), TWMTDatabaseException>>
+      importTranslations({
+    required List<TranslationVersion> entities,
+    required Map<String, String> existingVersionIds,
+    void Function(int current, int total, String message)? onProgress,
+    bool Function()? isCancelled,
+  }) {
+    return importBatch(
+      entities: entities,
+      existingVersionIds: existingVersionIds,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
   }
 }
