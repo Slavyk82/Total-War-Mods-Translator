@@ -51,6 +51,13 @@ class SettingsKeys {
   static const String geminiModel = 'gemini_model';
   static const String rateLimit = 'rate_limit';
 
+  // Steam credentials
+  static const String steamUsername = 'steam_username';
+  static const String steamPassword = 'steam_password';
+
+  // Workshop publish templates
+  static const String workshopTitleTemplate = 'workshop_title_template';
+  static const String workshopDescriptionTemplate = 'workshop_description_template';
 }
 
 /// Provider for settings service
