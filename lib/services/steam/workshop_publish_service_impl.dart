@@ -107,8 +107,10 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       String? detectedWorkshopId;
       bool wasUpdate = !params.isNewItem;
       bool steamGuardRequired = false;
+      var lastRealOutputTime = DateTime.now();
 
       _currentProcess!.stdout.listen((data) {
+        lastRealOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         stdout.write(output);
 
@@ -145,6 +147,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       });
 
       _currentProcess!.stderr.listen((data) {
+        lastRealOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         stdout.write(output);
         for (final line in output.split('\n')) {
@@ -152,6 +155,21 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
           if (trimmed.isNotEmpty) {
             _outputController.add('[stderr] $trimmed');
           }
+        }
+      });
+
+      // Heartbeat timer: emit periodic status when stdout is silent
+      // (steamcmd on Windows buffers stdout when piped)
+      final heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+        final silenceDuration = DateTime.now().difference(lastRealOutputTime);
+        if (silenceDuration.inSeconds >= 5 && _currentProcess != null) {
+          final elapsed = DateTime.now().difference(startTime);
+          final minutes = elapsed.inMinutes;
+          final seconds = elapsed.inSeconds % 60;
+          final timeStr = minutes > 0
+              ? '${minutes}m ${seconds.toString().padLeft(2, '0')}s'
+              : '${seconds}s';
+          _outputController.add('[$timeStr] steamcmd running...');
         }
       });
 
@@ -163,6 +181,8 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
           return -1;
         },
       );
+
+      heartbeatTimer.cancel();
 
       // Clean up VDF file
       try {

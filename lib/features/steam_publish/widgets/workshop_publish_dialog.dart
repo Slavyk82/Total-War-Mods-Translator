@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -52,6 +53,8 @@ class _WorkshopPublishDialogState
   late TextEditingController _changeNoteController;
   WorkshopVisibility _visibility = WorkshopVisibility.public_;
   final ScrollController _outputScrollController = ScrollController();
+  DateTime? _uploadStartTime;
+  Timer? _elapsedTimer;
 
   bool get _isUpdate =>
       widget.recentExport.publishedSteamId != null &&
@@ -109,6 +112,7 @@ class _WorkshopPublishDialogState
 
   @override
   void dispose() {
+    _elapsedTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     _changeNoteController.dispose();
@@ -169,6 +173,18 @@ class _WorkshopPublishDialogState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(workshopPublishProvider);
+
+    // Start/stop elapsed timer based on phase
+    if (state.isActive && _uploadStartTime == null) {
+      _uploadStartTime = DateTime.now();
+      _elapsedTimer?.cancel();
+      _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!state.isActive && _elapsedTimer != null) {
+      _elapsedTimer?.cancel();
+      _elapsedTimer = null;
+    }
 
     // Auto-scroll output terminal
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -445,11 +461,20 @@ class _WorkshopPublishDialogState
     );
   }
 
+  String? _formatElapsed() {
+    if (_uploadStartTime == null) return null;
+    final elapsed = DateTime.now().difference(_uploadStartTime!);
+    final m = elapsed.inMinutes;
+    final s = elapsed.inSeconds % 60;
+    return m > 0 ? '${m}m ${s.toString().padLeft(2, '0')}s' : '${s}s';
+  }
+
   Widget _buildProgress(ThemeData theme, WorkshopPublishState state) {
     final progressPercent = (state.progress * 100).toStringAsFixed(1);
     final isComplete = state.phase == PublishPhase.completed;
     final isError = state.phase == PublishPhase.error;
     final isCancelled = state.phase == PublishPhase.cancelled;
+    final elapsedStr = _formatElapsed();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,17 +496,31 @@ class _WorkshopPublishDialogState
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isComplete
-                        ? 'Upload Complete'
-                        : isError
-                            ? 'Upload Failed'
-                            : isCancelled
-                                ? 'Cancelled'
-                                : 'Uploading...',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        isComplete
+                            ? 'Upload Complete'
+                            : isError
+                                ? 'Upload Failed'
+                                : isCancelled
+                                    ? 'Cancelled'
+                                    : 'Uploading...',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (elapsedStr != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          elapsedStr,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   Text(
                     '$progressPercent%',
