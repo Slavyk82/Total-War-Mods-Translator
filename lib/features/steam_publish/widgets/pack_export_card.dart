@@ -11,8 +11,15 @@ import 'workshop_publish_dialog.dart';
 /// Card displaying a recent pack export with project info and actions.
 class PackExportCard extends ConsumerStatefulWidget {
   final RecentPackExport recentExport;
+  final bool isSelected;
+  final ValueChanged<bool>? onSelectionChanged;
 
-  const PackExportCard({super.key, required this.recentExport});
+  const PackExportCard({
+    super.key,
+    required this.recentExport,
+    this.isSelected = false,
+    this.onSelectionChanged,
+  });
 
   @override
   ConsumerState<PackExportCard> createState() => _PackExportCardState();
@@ -101,6 +108,20 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Selection checkbox
+              if (widget.onSelectionChanged != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8, top: 2),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: widget.isSelected,
+                      onChanged: (value) =>
+                          widget.onSelectionChanged!(value ?? false),
+                    ),
+                  ),
+                ),
               // Project image
               _buildImage(context),
               const SizedBox(width: 12),
