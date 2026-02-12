@@ -58,6 +58,7 @@ class SettingsKeys {
   // Workshop publish templates
   static const String workshopTitleTemplate = 'workshop_title_template';
   static const String workshopDescriptionTemplate = 'workshop_description_template';
+  static const String workshopDefaultVisibility = 'workshop_default_visibility';
 }
 
 /// Provider for settings service

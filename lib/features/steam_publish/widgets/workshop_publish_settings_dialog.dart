@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../features/settings/providers/settings_providers.dart';
 import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
+import '../../../services/steam/models/workshop_publish_params.dart';
 
 /// Dialog to configure default templates for Workshop title and description.
 ///
@@ -30,6 +31,7 @@ class _WorkshopPublishSettingsDialogState
     extends State<WorkshopPublishSettingsDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  WorkshopVisibility? _defaultVisibility;
   bool _loading = true;
 
   @override
@@ -43,9 +45,14 @@ class _WorkshopPublishSettingsDialogState
     final title = await service.getString(SettingsKeys.workshopTitleTemplate);
     final description =
         await service.getString(SettingsKeys.workshopDescriptionTemplate);
+    final visibilityName =
+        await service.getString(SettingsKeys.workshopDefaultVisibility);
     if (!mounted) return;
     _titleController.text = title;
     _descriptionController.text = description;
+    _defaultVisibility = WorkshopVisibility.values
+        .where((v) => v.name == visibilityName)
+        .firstOrNull;
     setState(() => _loading = false);
   }
 
@@ -58,6 +65,10 @@ class _WorkshopPublishSettingsDialogState
     await service.setString(
       SettingsKeys.workshopDescriptionTemplate,
       _descriptionController.text,
+    );
+    await service.setString(
+      SettingsKeys.workshopDefaultVisibility,
+      _defaultVisibility?.name ?? '',
     );
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -118,6 +129,29 @@ class _WorkshopPublishSettingsDialogState
                       hintText: 'French translation for \$modName',
                     ),
                     maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<WorkshopVisibility?>(
+                    initialValue: _defaultVisibility,
+                    decoration: const InputDecoration(
+                      labelText: 'Default visibility',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<WorkshopVisibility?>(
+                        value: null,
+                        child: Text('No default'),
+                      ),
+                      ...WorkshopVisibility.values.map((v) {
+                        return DropdownMenuItem<WorkshopVisibility?>(
+                          value: v,
+                          child: Text(v.label),
+                        );
+                      }),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _defaultVisibility = value);
+                    },
                   ),
                 ],
               ),

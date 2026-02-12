@@ -89,6 +89,8 @@ class _WorkshopPublishDialogState
         await service.getString(SettingsKeys.workshopTitleTemplate);
     final descTemplate =
         await service.getString(SettingsKeys.workshopDescriptionTemplate);
+    final visibilityName =
+        await service.getString(SettingsKeys.workshopDefaultVisibility);
     if (!mounted) return;
     final modName = widget.recentExport.projectDisplayName;
     if (titleTemplate.isNotEmpty) {
@@ -96,6 +98,12 @@ class _WorkshopPublishDialogState
     }
     if (descTemplate.isNotEmpty) {
       _descriptionController.text = _applyTemplate(descTemplate, modName);
+    }
+    final match = WorkshopVisibility.values
+        .where((v) => v.name == visibilityName)
+        .firstOrNull;
+    if (match != null) {
+      setState(() => _visibility = match);
     }
   }
 
