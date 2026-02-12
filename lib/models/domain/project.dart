@@ -95,6 +95,11 @@ class Project {
   @JsonKey(name: 'source_language_code')
   final String? sourceLanguageCode;
 
+  /// Steam Workshop ID of the published translation pack.
+  /// Distinct from modSteamId (the source mod being translated).
+  @JsonKey(name: 'published_steam_id')
+  final String? publishedSteamId;
+
   const Project({
     required this.id,
     required this.name,
@@ -115,6 +120,7 @@ class Project {
     this.hasModUpdateImpact = false,
     this.projectType = 'mod',
     this.sourceLanguageCode,
+    this.publishedSteamId,
   });
 
   /// Returns true if the project has a source file configured
@@ -174,6 +180,7 @@ class Project {
     bool? hasModUpdateImpact,
     String? projectType,
     String? sourceLanguageCode,
+    String? publishedSteamId,
   }) {
     return Project(
       id: id ?? this.id,
@@ -195,6 +202,7 @@ class Project {
       hasModUpdateImpact: hasModUpdateImpact ?? this.hasModUpdateImpact,
       projectType: projectType ?? this.projectType,
       sourceLanguageCode: sourceLanguageCode ?? this.sourceLanguageCode,
+      publishedSteamId: publishedSteamId ?? this.publishedSteamId,
     );
   }
 
@@ -225,7 +233,8 @@ class Project {
         other.metadata == metadata &&
         other.hasModUpdateImpact == hasModUpdateImpact &&
         other.projectType == projectType &&
-        other.sourceLanguageCode == sourceLanguageCode;
+        other.sourceLanguageCode == sourceLanguageCode &&
+        other.publishedSteamId == publishedSteamId;
   }
 
   @override
@@ -248,7 +257,8 @@ class Project {
       metadata.hashCode ^
       hasModUpdateImpact.hashCode ^
       projectType.hashCode ^
-      sourceLanguageCode.hashCode;
+      sourceLanguageCode.hashCode ^
+      publishedSteamId.hashCode;
 
   @override
   String toString() => 'Project(id: $id, name: $name, type: $projectType, gameInstallationId: $gameInstallationId)';

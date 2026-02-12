@@ -16,6 +16,9 @@ import 'package:twmt/services/shared/logging_service.dart';
 class PackImageGeneratorService implements IPackImageGeneratorService {
   final LoggingService _logger;
 
+  /// Output image dimensions (Steam Workshop preview size)
+  static const int _outputSize = 512;
+
   /// Flag size as percentage of image width (30% = 0.3)
   static const double _flagSizeRatio = 0.30;
 
@@ -81,8 +84,16 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
         return const Ok(null);
       }
 
+      // Resize source image to target dimensions
+      final resizedSource = img.copyResize(
+        sourceImageResult,
+        width: _outputSize,
+        height: _outputSize,
+        interpolation: img.Interpolation.linear,
+      );
+
       // Generate composite image
-      final compositeImage = _overlayFlag(sourceImageResult, flagResult);
+      final compositeImage = _overlayFlag(resizedSource, flagResult);
 
       // Save the result
       await _saveImage(compositeImage, imagePath);

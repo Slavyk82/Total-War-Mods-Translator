@@ -16,6 +16,7 @@ import 'migration_project_type.dart';
 import 'migration_deepseek_provider.dart';
 import 'migration_gemini_provider.dart';
 import 'migration_deepl_glossary_sync.dart';
+import 'migration_published_steam_id.dart';
 
 /// Registry of all database migrations.
 ///
@@ -44,6 +45,7 @@ class MigrationRegistry {
       DeepSeekProviderMigration(),
       GeminiProviderMigration(),
       DeepLGlossarySyncMigration(),
+      PublishedSteamIdMigration(),
     ];
 
     // Sort by priority (lower numbers first)

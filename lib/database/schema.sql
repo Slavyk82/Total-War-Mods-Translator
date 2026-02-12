@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at INTEGER NOT NULL,
     completed_at INTEGER,
     metadata TEXT,
+    published_steam_id TEXT,
     FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE RESTRICT,
     CHECK (batch_size > 0 AND batch_size <= 100),
     CHECK (parallel_batches > 0 AND parallel_batches <= 20),

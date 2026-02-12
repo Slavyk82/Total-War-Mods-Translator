@@ -28,6 +28,10 @@ export '../../../providers/shared/repository_providers.dart'
         allLanguagesProvider,
         allGameInstallationsProvider;
 
+// Export batch selection and export providers
+export 'batch_project_selection_provider.dart';
+export 'batch_pack_export_notifier.dart';
+
 /// View modes for displaying projects
 enum ProjectViewMode { grid, list }
 

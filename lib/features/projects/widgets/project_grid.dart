@@ -10,6 +10,9 @@ class ProjectGrid extends StatelessWidget {
   final Function(String projectId)? onProjectTap;
   final Function(String projectId)? onResync;
   final Set<String> resyncingProjects;
+  final bool isSelectionMode;
+  final Set<String> selectedProjectIds;
+  final Function(String projectId)? onSelectionToggle;
 
   const ProjectGrid({
     super.key,
@@ -17,6 +20,9 @@ class ProjectGrid extends StatelessWidget {
     this.onProjectTap,
     this.onResync,
     this.resyncingProjects = const {},
+    this.isSelectionMode = false,
+    this.selectedProjectIds = const {},
+    this.onSelectionToggle,
   });
 
   @override
@@ -32,6 +38,9 @@ class ProjectGrid extends StatelessWidget {
           onTap: () => onProjectTap?.call(projectId),
           onResync: () => onResync?.call(projectId),
           isResyncing: resyncingProjects.contains(projectId),
+          isSelectionMode: isSelectionMode,
+          isSelected: selectedProjectIds.contains(projectId),
+          onSelectionToggle: () => onSelectionToggle?.call(projectId),
         );
       },
     );

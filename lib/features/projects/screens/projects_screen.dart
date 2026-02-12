@@ -7,6 +7,7 @@ import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/project_grid.dart';
 import '../widgets/projects_toolbar.dart';
+import '../widgets/batch_pack_export_dialog.dart';
 
 /// Projects screen displaying all translation projects.
 ///
@@ -17,6 +18,7 @@ import '../widgets/projects_toolbar.dart';
 /// - Create new project wizard
 /// - Navigate to project details
 /// - Export and delete actions
+/// - Batch selection and export
 class ProjectsScreen extends ConsumerStatefulWidget {
   const ProjectsScreen({super.key});
 
@@ -31,6 +33,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     // Reset filters when navigating to this screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(projectsFilterProvider.notifier).resetAll();
+      // Also reset selection mode when entering the screen
+      ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
     });
   }
 
@@ -38,6 +42,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final projectsAsync = ref.watch(paginatedProjectsProvider);
+    final languagesAsync = ref.watch(allLanguagesProvider);
+    final selectionState = ref.watch(batchProjectSelectionProvider);
 
     return FluentScaffold(
       body: Padding(
@@ -49,12 +55,25 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             _buildHeader(theme),
             const SizedBox(height: 24),
             // Toolbar with search, filter, sort controls
-            const ProjectsToolbar(),
+            projectsAsync.when(
+              data: (projects) => ProjectsToolbar(
+                languages: languagesAsync.asData?.value ?? [],
+                allProjectIds: projects.map((p) => p.project.id).toList(),
+                onExportSelected: () => _startBatchExport(
+                  context,
+                  projects,
+                  selectionState,
+                  languagesAsync.asData?.value ?? [],
+                ),
+              ),
+              loading: () => const ProjectsToolbar(),
+              error: (_, _) => const ProjectsToolbar(),
+            ),
             const SizedBox(height: 24),
             // Projects grid/list
             Expanded(
               child: projectsAsync.when(
-                data: (projects) => _buildContent(context, projects),
+                data: (projects) => _buildContent(context, projects, selectionState),
                 loading: () => _buildLoading(theme),
                 error: (error, stack) => _buildError(theme, error),
               ),
@@ -85,6 +104,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   Widget _buildContent(
     BuildContext context,
     List<ProjectWithDetails> projects,
+    BatchProjectSelectionState selectionState,
   ) {
     final theme = Theme.of(context);
     final resyncState = ref.watch(projectResyncProvider);
@@ -98,6 +118,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       onProjectTap: (projectId) => _navigateToProject(context, projectId),
       onResync: (projectId) => _handleResync(context, projectId),
       resyncingProjects: resyncState.resyncingProjects,
+      isSelectionMode: selectionState.isSelectionMode,
+      selectedProjectIds: selectionState.selectedProjectIds,
+      onSelectionToggle: (projectId) {
+        ref.read(batchProjectSelectionProvider.notifier).toggleProject(projectId);
+      },
     );
   }
 
@@ -213,5 +238,48 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         FluentToast.error(context, 'Resync failed: $e');
       }
     }
+  }
+
+  void _startBatchExport(
+    BuildContext context,
+    List<ProjectWithDetails> allProjects,
+    BatchProjectSelectionState selectionState,
+    List<dynamic> languages,
+  ) {
+    if (!selectionState.canExport) return;
+
+    // Find the selected language
+    final selectedLanguage = languages.cast<dynamic>().firstWhere(
+      (l) => l.id == selectionState.selectedLanguageId,
+      orElse: () => null,
+    );
+
+    if (selectedLanguage == null) return;
+
+    // Build project info list
+    final projectsToExport = allProjects
+        .where((p) => selectionState.selectedProjectIds.contains(p.project.id))
+        .map((p) => ProjectExportInfo(
+              id: p.project.id,
+              name: p.project.name,
+            ))
+        .toList();
+
+    if (projectsToExport.isEmpty) return;
+
+    // Show export dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => BatchPackExportDialog(
+        projects: projectsToExport,
+        languageCode: selectedLanguage.code,
+        languageName: selectedLanguage.name,
+      ),
+    ).then((_) {
+      // Exit selection mode and refresh after dialog closes
+      ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
+      ref.invalidate(paginatedProjectsProvider);
+    });
   }
 }

@@ -17,6 +17,7 @@ import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
 import '../../features/game_translation/screens/game_translation_screen.dart';
+import '../../features/steam_publish/screens/steam_publish_screen.dart';
 
 // Layout
 import '../../widgets/layouts/main_layout_router.dart';
@@ -37,6 +38,7 @@ class AppRoutes {
   static const String glossary = '/glossary';
   static const String translationMemory = '/translation-memory';
   static const String packCompilation = '/pack-compilation';
+  static const String steamPublish = '/steam-publish';
   static const String settings = '/settings';
   static const String help = '/help';
 
@@ -185,6 +187,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
 
+          // Steam Publish
+          GoRoute(
+            path: AppRoutes.steamPublish,
+            name: 'steamPublish',
+            pageBuilder: (context, state) {
+              return FluentPageTransitions.fadeTransition(
+                child: const SteamPublishScreen(),
+                state: state,
+              );
+            },
+          ),
+
           // Settings
           GoRoute(
             path: AppRoutes.settings,
@@ -248,6 +262,7 @@ extension GoRouterExtensions on BuildContext {
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
+  void goSteamPublish() => go(AppRoutes.steamPublish);
   void goSettings() => go(AppRoutes.settings);
   void goHelp() => go(AppRoutes.help);
 

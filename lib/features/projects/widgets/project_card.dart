@@ -15,6 +15,9 @@ class ProjectCard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onResync;
   final bool isResyncing;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onSelectionToggle;
 
   const ProjectCard({
     super.key,
@@ -22,6 +25,9 @@ class ProjectCard extends StatefulWidget {
     this.onTap,
     this.onResync,
     this.isResyncing = false,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onSelectionToggle,
   });
 
   @override
@@ -37,24 +43,36 @@ class _ProjectCardState extends State<ProjectCard> {
     final project = widget.projectWithDetails.project;
     final gameInstallation = widget.projectWithDetails.gameInstallation;
 
+    // Determine background color based on selection state
+    Color backgroundColor;
+    Color borderColor;
+    if (widget.isSelectionMode && widget.isSelected) {
+      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.1);
+      borderColor = theme.colorScheme.primary.withValues(alpha: 0.5);
+    } else if (_isHovered) {
+      backgroundColor = theme.colorScheme.surface.withValues(alpha: 0.8);
+      borderColor = theme.colorScheme.primary.withValues(alpha: 0.3);
+    } else {
+      backgroundColor = theme.colorScheme.surface;
+      borderColor = theme.colorScheme.outline.withValues(alpha: 0.2);
+    }
+
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: widget.isSelectionMode
+            ? widget.onSelectionToggle
+            : widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.surface.withValues(alpha: 0.8)
-                : theme.colorScheme.surface,
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: _isHovered
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
+              color: borderColor,
+              width: widget.isSelectionMode && widget.isSelected ? 2 : 1,
             ),
             boxShadow: _isHovered
                 ? [
@@ -68,18 +86,63 @@ class _ProjectCardState extends State<ProjectCard> {
           ),
           child: Padding(
             padding: const EdgeInsets.all(12.0),
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context, project, gameInstallation),
-                const SizedBox(height: 8),
-                _buildDates(context, project),
-                const SizedBox(height: 8),
-                _buildLanguageProgress(context),
+                // Selection checkbox (shown in selection mode)
+                if (widget.isSelectionMode) ...[
+                  _buildSelectionCheckbox(context),
+                  const SizedBox(width: 12),
+                ],
+                // Main content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(context, project, gameInstallation),
+                      const SizedBox(height: 8),
+                      _buildDates(context, project),
+                      const SizedBox(height: 8),
+                      _buildLanguageProgress(context),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionCheckbox(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: widget.isSelected
+              ? theme.colorScheme.primary
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: widget.isSelected
+                ? theme.colorScheme.primary
+                : theme.colorScheme.outline,
+            width: 2,
+          ),
+        ),
+        child: widget.isSelected
+            ? Icon(
+                FluentIcons.checkmark_16_regular,
+                size: 16,
+                color: theme.colorScheme.onPrimary,
+              )
+            : null,
       ),
     );
   }
