@@ -16,8 +16,9 @@ import '../widgets/batch_workshop_publish_dialog.dart';
 import '../widgets/pack_export_list.dart';
 import '../widgets/steam_login_dialog.dart';
 import '../widgets/steamcmd_install_dialog.dart';
+import '../widgets/workshop_publish_settings_dialog.dart';
 
-enum _SortMode { exportDate, name, published }
+enum _SortMode { exportDate, name, publishDate }
 
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
@@ -59,10 +60,18 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           cmp = a.projectDisplayName
               .toLowerCase()
               .compareTo(b.projectDisplayName.toLowerCase());
-        case _SortMode.published:
-          final aPub = a.publishedSteamId != null ? 0 : 1;
-          final bPub = b.publishedSteamId != null ? 0 : 1;
-          cmp = aPub.compareTo(bPub);
+        case _SortMode.publishDate:
+          final aPub = a.publishedAt;
+          final bPub = b.publishedAt;
+          if (aPub == null && bPub == null) {
+            cmp = 0;
+          } else if (aPub == null) {
+            cmp = 1;
+          } else if (bPub == null) {
+            cmp = -1;
+          } else {
+            cmp = aPub.compareTo(bPub);
+          }
           if (cmp == 0) {
             cmp = a.export.exportedAt.compareTo(b.export.exportedAt);
           }
@@ -255,17 +264,17 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               CheckedPopupMenuItem(
                 value: _SortMode.exportDate,
                 checked: _sortMode == _SortMode.exportDate,
-                child: const Text('Date'),
+                child: const Text('Export Date'),
+              ),
+              CheckedPopupMenuItem(
+                value: _SortMode.publishDate,
+                checked: _sortMode == _SortMode.publishDate,
+                child: const Text('Publish Date'),
               ),
               CheckedPopupMenuItem(
                 value: _SortMode.name,
                 checked: _sortMode == _SortMode.name,
                 child: const Text('Name'),
-              ),
-              CheckedPopupMenuItem(
-                value: _SortMode.published,
-                checked: _sortMode == _SortMode.published,
-                child: const Text('Published'),
               ),
             ],
           ),
@@ -289,6 +298,13 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               onPressed: () {
                 ref.invalidate(recentPackExportsProvider);
               },
+            ),
+          ),
+          Tooltip(
+            message: 'Publish settings',
+            child: IconButton(
+              icon: const Icon(FluentIcons.settings_24_regular, size: 20),
+              onPressed: () => WorkshopPublishSettingsDialog.show(context),
             ),
           ),
         ],

@@ -154,6 +154,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
             if (projectResult.isOk) {
               final updated = projectResult.value.copyWith(
                 publishedSteamId: publishResult.workshopId,
+                publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
               );
               await projectRepo.update(updated);
             }

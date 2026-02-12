@@ -100,6 +100,10 @@ class Project {
   @JsonKey(name: 'published_steam_id')
   final String? publishedSteamId;
 
+  /// Unix timestamp of when the pack was published to the Steam Workshop.
+  @JsonKey(name: 'published_at')
+  final int? publishedAt;
+
   const Project({
     required this.id,
     required this.name,
@@ -121,6 +125,7 @@ class Project {
     this.projectType = 'mod',
     this.sourceLanguageCode,
     this.publishedSteamId,
+    this.publishedAt,
   });
 
   /// Returns true if the project has a source file configured
@@ -181,6 +186,7 @@ class Project {
     String? projectType,
     String? sourceLanguageCode,
     String? publishedSteamId,
+    int? publishedAt,
   }) {
     return Project(
       id: id ?? this.id,
@@ -203,6 +209,7 @@ class Project {
       projectType: projectType ?? this.projectType,
       sourceLanguageCode: sourceLanguageCode ?? this.sourceLanguageCode,
       publishedSteamId: publishedSteamId ?? this.publishedSteamId,
+      publishedAt: publishedAt ?? this.publishedAt,
     );
   }
 
@@ -234,7 +241,8 @@ class Project {
         other.hasModUpdateImpact == hasModUpdateImpact &&
         other.projectType == projectType &&
         other.sourceLanguageCode == sourceLanguageCode &&
-        other.publishedSteamId == publishedSteamId;
+        other.publishedSteamId == publishedSteamId &&
+        other.publishedAt == publishedAt;
   }
 
   @override
@@ -258,7 +266,8 @@ class Project {
       hasModUpdateImpact.hashCode ^
       projectType.hashCode ^
       sourceLanguageCode.hashCode ^
-      publishedSteamId.hashCode;
+      publishedSteamId.hashCode ^
+      publishedAt.hashCode;
 
   @override
   String toString() => 'Project(id: $id, name: $name, type: $projectType, gameInstallationId: $gameInstallationId)';

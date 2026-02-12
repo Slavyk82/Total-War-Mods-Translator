@@ -24,6 +24,8 @@ class RecentPackExport {
 
   String? get publishedSteamId => project?.publishedSteamId;
 
+  int? get publishedAt => project?.publishedAt;
+
   bool get isFromSteamWorkshop => project?.isFromSteamWorkshop ?? false;
 }
 
