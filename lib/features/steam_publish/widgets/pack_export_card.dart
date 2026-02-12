@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../providers/steam_publish_providers.dart';
+import 'workshop_publish_dialog.dart';
 
 /// Card displaying a recent pack export with project info and actions.
 class PackExportCard extends ConsumerStatefulWidget {
@@ -125,7 +126,10 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                     const SizedBox(height: 4),
                     // Row 4: path + open folder button
                     _buildPathRow(context),
-                    // Row 5: Published Steam ID (only if project exists)
+                    // Row 5: Publish button
+                    const SizedBox(height: 4),
+                    _buildPublishButton(context),
+                    // Row 6: Published Steam ID (only if project exists)
                     if (widget.recentExport.project != null) ...[
                       const SizedBox(height: 4),
                       _buildPublishedIdRow(context),
@@ -270,6 +274,62 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
         const SizedBox(width: 8),
         _buildOpenFolderButton(context),
       ],
+    );
+  }
+
+  Widget _buildPublishButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasPublishedId = widget.recentExport.publishedSteamId != null &&
+        widget.recentExport.publishedSteamId!.isNotEmpty;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Tooltip(
+        message: hasPublishedId
+            ? 'Update existing Workshop item'
+            : 'Publish to Steam Workshop',
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: () {
+              WorkshopPublishDialog.show(
+                context,
+                recentExport: widget.recentExport,
+              );
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    FluentIcons.cloud_arrow_up_24_regular,
+                    size: 14,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    hasPublishedId ? 'Update' : 'Publish',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

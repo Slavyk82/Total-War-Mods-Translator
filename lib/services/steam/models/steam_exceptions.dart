@@ -140,3 +140,37 @@ class SteamAuthenticationException extends SteamServiceException {
     super.stackTrace,
   }) : super(code: 'STEAM_AUTH_FAILED');
 }
+
+/// Workshop publish/update failed
+class WorkshopPublishException extends SteamServiceException {
+  final String? workshopId;
+
+  const WorkshopPublishException(
+    super.message, {
+    this.workshopId,
+    super.stackTrace,
+  }) : super(code: 'WORKSHOP_PUBLISH_FAILED');
+
+  @override
+  String toString() {
+    if (workshopId != null) {
+      return 'WorkshopPublishException(ID: $workshopId): $message';
+    }
+    return 'WorkshopPublishException: $message';
+  }
+}
+
+/// Steam Guard code required for authentication
+class SteamGuardRequiredException extends SteamServiceException {
+  const SteamGuardRequiredException(
+    super.message,
+  ) : super(code: 'STEAM_GUARD_REQUIRED');
+}
+
+/// VDF file generation failed
+class VdfGenerationException extends SteamServiceException {
+  const VdfGenerationException(
+    super.message, {
+    super.stackTrace,
+  }) : super(code: 'VDF_GENERATION_FAILED');
+}

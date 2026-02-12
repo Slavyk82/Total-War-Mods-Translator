@@ -20,11 +20,13 @@ import '../shared/logging_service.dart';
 import '../shared/process_service.dart';
 import '../steam/i_steamcmd_service.dart';
 import '../steam/i_workshop_api_service.dart';
+import '../steam/i_workshop_publish_service.dart';
 import '../steam/steam_detection_service.dart';
 import '../steam/steamcmd_manager.dart';
 import '../steam/steamcmd_service_impl.dart';
 import '../steam/workshop_api_service_impl.dart';
 import '../steam/workshop_metadata_service.dart';
+import '../steam/workshop_publish_service_impl.dart';
 import '../../repositories/workshop_mod_repository.dart';
 import '../updates/app_update_service.dart';
 import '../game/game_localization_service.dart';
@@ -110,6 +112,10 @@ class CoreServiceLocator {
         apiService: locator<IWorkshopApiService>(),
         repository: locator<WorkshopModRepository>(),
       ),
+    );
+
+    locator.registerLazySingleton<IWorkshopPublishService>(
+      () => WorkshopPublishServiceImpl(),
     );
 
     // Concurrency Services

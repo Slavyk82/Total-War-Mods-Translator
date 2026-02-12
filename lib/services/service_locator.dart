@@ -14,6 +14,8 @@ import 'locators/translation_service_locator.dart';
 import 'rpfm/rpfm_service_impl.dart';
 import 'rpfm/i_rpfm_service.dart';
 import 'mods/workshop_scanner_service.dart';
+import 'steam/i_workshop_publish_service.dart';
+import 'steam/workshop_publish_service_impl.dart';
 import 'shared/event_bus.dart';
 import 'shared/logging_service.dart';
 import 'translation/ignored_source_text_service.dart';
@@ -231,6 +233,13 @@ class ServiceLocator {
 
     if (_locator.isRegistered<WorkshopScannerService>()) {
       _locator<WorkshopScannerService>().dispose();
+    }
+
+    if (_locator.isRegistered<IWorkshopPublishService>()) {
+      final publishService = _locator<IWorkshopPublishService>();
+      if (publishService is WorkshopPublishServiceImpl) {
+        publishService.dispose();
+      }
     }
 
     // Close event bus
