@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/steam_publish_providers.dart';
 import 'workshop_publish_dialog.dart';
 
@@ -342,11 +343,63 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             ),
           ),
         ),
+        if (hasPublishedId) ...[
+          const SizedBox(width: 8),
+          _buildOpenInSteamButton(context),
+        ],
         if (hasPublishedId && widget.item.publishedAt != null) ...[
           const SizedBox(width: 8),
           _buildPublishedAtLabel(context),
         ],
       ],
+    );
+  }
+
+  Widget _buildOpenInSteamButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final workshopId = widget.item.publishedSteamId!;
+    final url =
+        'https://steamcommunity.com/sharedfiles/filedetails/?id=$workshopId';
+
+    return Tooltip(
+      message: url,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => launchUrl(Uri.parse(url)),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.open_24_regular,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Open in Steam',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
