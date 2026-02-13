@@ -353,21 +353,8 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         return false;
       }
 
-      // Check for ssfn sentry files
-      final steamCmdDirEntries =
-          await Directory(steamCmdDir).list().toList();
-      final hasSsfn = steamCmdDirEntries.any(
-        (e) => e is File && path.basename(e.path).startsWith('ssfn'),
-      );
-
-      _logger.info('Cached credentials check', {
-        'hasConnectCache': true,
-        'hasSsfn': hasSsfn,
-        'username': username,
-      });
-
-      // Require both ConnectCache entry and ssfn sentry files
-      return hasSsfn;
+      _logger.info('Cached credentials found for $username');
+      return true;
     } catch (e) {
       _logger.warning('Cached credentials check failed: $e');
       return false;
