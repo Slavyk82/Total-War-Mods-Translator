@@ -148,13 +148,18 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
 
     Widget imageWidget;
     if (imagePath != null && imagePath.isNotEmpty) {
-      imageWidget = Image.file(
-        File(imagePath),
-        fit: BoxFit.cover,
-        width: 118,
-        height: 118,
-        errorBuilder: (context, error, stackTrace) => fallbackIcon(),
-      );
+      try {
+        final bytes = File(imagePath).readAsBytesSync();
+        imageWidget = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: 118,
+          height: 118,
+          errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+        );
+      } catch (_) {
+        imageWidget = fallbackIcon();
+      }
     } else {
       imageWidget = fallbackIcon();
     }
