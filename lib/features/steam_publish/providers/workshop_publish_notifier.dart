@@ -75,6 +75,7 @@ class WorkshopPublishState {
 class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
   StreamSubscription<double>? _progressSub;
   StreamSubscription<String>? _outputSub;
+  bool _silentlyCleaned = false;
 
   // Cached credentials for Steam Guard retry
   String? _cachedUsername;
@@ -97,6 +98,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
   }) async {
     final logging = ServiceLocator.get<LoggingService>();
     final service = ServiceLocator.get<IWorkshopPublishService>();
+    _silentlyCleaned = false;
 
     // Cache credentials for potential Steam Guard retry
     _cachedUsername = username;
@@ -113,17 +115,17 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       clearError: true,
     );
 
-    // Listen to progress (guard: skip if no longer uploading)
+    // Listen to progress (guard: skip if cleaned up or no longer uploading)
     _progressSub?.cancel();
     _progressSub = service.progressStream.listen((progress) {
-      if (state.phase != PublishPhase.uploading) return;
+      if (_silentlyCleaned || state.phase != PublishPhase.uploading) return;
       state = state.copyWith(progress: progress);
     });
 
-    // Listen to output (guard: skip if no longer uploading)
+    // Listen to output (guard: skip if cleaned up or no longer uploading)
     _outputSub?.cancel();
     _outputSub = service.outputStream.listen((line) {
-      if (state.phase != PublishPhase.uploading) return;
+      if (_silentlyCleaned || state.phase != PublishPhase.uploading) return;
       state = state.copyWith(
         steamcmdOutput: [...state.steamcmdOutput, line],
         statusMessage: line,
@@ -146,8 +148,9 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _progressSub?.cancel();
     _outputSub?.cancel();
 
-    // Guard: if state was reset while awaiting (dialog closed), skip updates
-    if (state.phase == PublishPhase.idle ||
+    // Guard: if cleaned up or state was reset while awaiting, skip updates
+    if (_silentlyCleaned ||
+        state.phase == PublishPhase.idle ||
         state.phase == PublishPhase.cancelled) {
       return;
     }
@@ -302,6 +305,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
   /// Reset to idle state (only call when the widget is still mounted)
   void reset() {
+    _silentlyCleaned = false;
     _progressSub?.cancel();
     _outputSub?.cancel();
     _clearCachedCredentials();
