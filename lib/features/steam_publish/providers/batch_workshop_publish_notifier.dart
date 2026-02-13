@@ -99,7 +99,8 @@ class BatchWorkshopPublishState {
 
   double get overallProgress {
     if (totalItems == 0) return 0.0;
-    return (completedItems + currentItemProgress) / totalItems;
+    final raw = (completedItems + currentItemProgress) / totalItems;
+    return raw.clamp(0.0, 1.0);
   }
 
   int get successCount => results.where((r) => r.success).length;
@@ -186,6 +187,16 @@ class BatchWorkshopPublishNotifier
           clearCurrentItem: true,
         );
         return;
+      }
+
+      // Delay between items to avoid Steam rate-limiting
+      // ("Timeout uploading manifest" error / exit code 9)
+      if (i > startFromIndex) {
+        state = state.copyWith(
+          currentItemName: 'Waiting before next upload...',
+        );
+        await Future<void>.delayed(const Duration(seconds: 15));
+        if (state.isCancelled) continue;
       }
 
       final item = items[i];
