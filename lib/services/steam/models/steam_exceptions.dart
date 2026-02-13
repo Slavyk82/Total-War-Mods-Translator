@@ -167,6 +167,20 @@ class SteamGuardRequiredException extends SteamServiceException {
   ) : super(code: 'STEAM_GUARD_REQUIRED');
 }
 
+/// Workshop item no longer exists on Steam (was deleted)
+class WorkshopItemNotFoundException extends SteamServiceException {
+  final String workshopId;
+
+  const WorkshopItemNotFoundException(
+    super.message, {
+    required this.workshopId,
+  }) : super(code: 'WORKSHOP_ITEM_NOT_FOUND');
+
+  @override
+  String toString() =>
+      'WorkshopItemNotFoundException(ID: $workshopId): $message';
+}
+
 /// VDF file generation failed
 class VdfGenerationException extends SteamServiceException {
   const VdfGenerationException(

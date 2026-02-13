@@ -154,93 +154,19 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       _outputController.add('Starting steamcmd...');
       _progressController.add(0.05);
 
-      _currentProcess = await Process.start(
-        steamCmdPath,
-        command,
-        runInShell: false,
+      var run = await _runSteamCmd(
+        steamCmdPath: steamCmdPath,
+        command: command,
+        startTime: startTime,
+        initialWasUpdate: !params.isNewItem,
       );
-
-      // Close stdin so steamcmd cannot hang waiting for interactive input
-      // (e.g. if the Steam Guard code is wrong/expired). It will fail and
-      // exit instead of blocking forever.
-      _currentProcess!.stdin.close();
-
-      final stdout = StringBuffer();
-      String? detectedWorkshopId;
-      bool wasUpdate = !params.isNewItem;
-      var lastRealOutputTime = DateTime.now();
-
-      _currentProcess!.stdout.listen((data) {
-        lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        stdout.write(output);
-
-        // Split on \n and \r to handle steamcmd's carriage-return progress
-        for (final line in output.split(RegExp(r'[\r\n]+'))) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add(trimmed);
-          }
-        }
-
-        _tryExtractProgress(output);
-
-        final publishIdMatch =
-            RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(output);
-        if (publishIdMatch != null) {
-          detectedWorkshopId = publishIdMatch.group(1);
-        }
-
-        if (output.contains('Item Updated')) {
-          wasUpdate = true;
-        }
-      });
-
-      _currentProcess!.stderr.listen((data) {
-        lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        stdout.write(output);
-        for (final line in output.split('\n')) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add('[stderr] $trimmed');
-          }
-        }
-      });
-
-      // Heartbeat timer (steamcmd on Windows buffers stdout when piped)
-      final heartbeatTimer =
-          Timer.periodic(const Duration(seconds: 5), (_) {
-        final silenceDuration =
-            DateTime.now().difference(lastRealOutputTime);
-        if (silenceDuration.inSeconds >= 5 && _currentProcess != null) {
-          final elapsed = DateTime.now().difference(startTime);
-          final minutes = elapsed.inMinutes;
-          final seconds = elapsed.inSeconds % 60;
-          final timeStr = minutes > 0
-              ? '${minutes}m ${seconds.toString().padLeft(2, '0')}s'
-              : '${seconds}s';
-          _outputController.add('[$timeStr] steamcmd running...');
-        }
-      });
-
-      // Wait for completion with 5 min timeout
-      final exitCode = await _currentProcess!.exitCode.timeout(
-        const Duration(minutes: 5),
-        onTimeout: () {
-          _currentProcess?.kill();
-          return -1;
-        },
-      );
-
-      heartbeatTimer.cancel();
 
       // Clean up VDF file
       try {
         await File(vdfPath).delete();
       } catch (_) {}
 
-      if (exitCode == -1) {
+      if (run.exitCode == -1) {
         return Err(const SteamCmdTimeoutException(
           'Publish operation timed out after 5 minutes',
           timeoutSeconds: 300,
@@ -255,26 +181,38 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
 
       // Check for authentication errors
-      final outputStr = stdout.toString();
-      if (outputStr.contains('Login Failure') ||
-          outputStr.contains('Invalid Password') ||
-          outputStr.contains('FAILED login')) {
+      if (run.output.contains('Login Failure') ||
+          run.output.contains('Invalid Password') ||
+          run.output.contains('FAILED login')) {
         return Err(const SteamAuthenticationException(
           'Steam login failed. Check your credentials.',
         ));
       }
 
+      // Check for Workshop item not found (item was deleted from Steam).
+      // Return a specific error so the UI can prompt the user to re-publish.
+      if (!params.isNewItem &&
+          run.output.contains('Failed to update workshop item')) {
+        _logger.info(
+          'Workshop item ${params.publishedFileId} not found on Steam',
+        );
+        return Err(WorkshopItemNotFoundException(
+          'Workshop item #${params.publishedFileId} no longer exists on Steam.',
+          workshopId: params.publishedFileId,
+        ));
+      }
+
       // Check for success
       // steamcmd can exit with 0, 6, or 7 and still be successful
-      if (exitCode != 0 && exitCode != 6 && exitCode != 7) {
+      if (run.exitCode != 0 && run.exitCode != 6 && run.exitCode != 7) {
         return Err(WorkshopPublishException(
-          'steamcmd exited with code $exitCode',
-          workshopId: detectedWorkshopId,
+          'steamcmd exited with code ${run.exitCode}',
+          workshopId: run.workshopId,
         ));
       }
 
       // Determine workshop ID
-      final workshopId = detectedWorkshopId ??
+      final workshopId = run.workshopId ??
           (params.isNewItem ? null : params.publishedFileId);
 
       if (workshopId == null || workshopId == '0') {
@@ -290,16 +228,16 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
 
       _logger.info('Workshop publish complete', {
         'workshopId': workshopId,
-        'wasUpdate': wasUpdate,
+        'wasUpdate': run.wasUpdate,
         'durationMs': duration,
       });
 
       return Ok(WorkshopPublishResult(
         workshopId: workshopId,
-        wasUpdate: wasUpdate,
+        wasUpdate: run.wasUpdate,
         durationMs: duration,
         timestamp: DateTime.now(),
-        rawOutput: stdout.toString(),
+        rawOutput: run.output,
       ));
     } catch (e, stackTrace) {
       return Err(WorkshopPublishException(
@@ -315,6 +253,98 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         } catch (_) {}
       }
     }
+  }
+
+  /// Run steamcmd with the given command and return structured output.
+  Future<({int exitCode, String output, String? workshopId, bool wasUpdate})>
+      _runSteamCmd({
+    required String steamCmdPath,
+    required List<String> command,
+    required DateTime startTime,
+    required bool initialWasUpdate,
+  }) async {
+    _currentProcess = await Process.start(
+      steamCmdPath,
+      command,
+      runInShell: false,
+    );
+
+    // Close stdin so steamcmd cannot hang waiting for interactive input
+    _currentProcess!.stdin.close();
+
+    final stdout = StringBuffer();
+    String? detectedWorkshopId;
+    bool wasUpdate = initialWasUpdate;
+    var lastRealOutputTime = DateTime.now();
+
+    _currentProcess!.stdout.listen((data) {
+      lastRealOutputTime = DateTime.now();
+      final output = String.fromCharCodes(data);
+      stdout.write(output);
+
+      for (final line in output.split(RegExp(r'[\r\n]+'))) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add(trimmed);
+        }
+      }
+
+      _tryExtractProgress(output);
+
+      final publishIdMatch =
+          RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(output);
+      if (publishIdMatch != null) {
+        detectedWorkshopId = publishIdMatch.group(1);
+      }
+
+      if (output.contains('Item Updated')) {
+        wasUpdate = true;
+      }
+    });
+
+    _currentProcess!.stderr.listen((data) {
+      lastRealOutputTime = DateTime.now();
+      final output = String.fromCharCodes(data);
+      stdout.write(output);
+      for (final line in output.split('\n')) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add('[stderr] $trimmed');
+        }
+      }
+    });
+
+    final heartbeatTimer =
+        Timer.periodic(const Duration(seconds: 5), (_) {
+      final silenceDuration =
+          DateTime.now().difference(lastRealOutputTime);
+      if (silenceDuration.inSeconds >= 5 && _currentProcess != null) {
+        final elapsed = DateTime.now().difference(startTime);
+        final minutes = elapsed.inMinutes;
+        final seconds = elapsed.inSeconds % 60;
+        final timeStr = minutes > 0
+            ? '${minutes}m ${seconds.toString().padLeft(2, '0')}s'
+            : '${seconds}s';
+        _outputController.add('[$timeStr] steamcmd running...');
+      }
+    });
+
+    final exitCode = await _currentProcess!.exitCode.timeout(
+      const Duration(minutes: 5),
+      onTimeout: () {
+        _currentProcess?.kill();
+        return -1;
+      },
+    );
+
+    heartbeatTimer.cancel();
+
+    return (
+      exitCode: exitCode,
+      output: stdout.toString(),
+      workshopId: detectedWorkshopId,
+      wasUpdate: wasUpdate,
+    );
   }
 
   /// Check whether steamcmd has cached credentials for [username].

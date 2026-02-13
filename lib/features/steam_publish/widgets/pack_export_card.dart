@@ -27,48 +27,6 @@ class PackExportCard extends ConsumerStatefulWidget {
 
 class _PackExportCardState extends ConsumerState<PackExportCard> {
   bool _isHovered = false;
-  bool _isPublishedIdUnlocked = false;
-  late TextEditingController _publishedIdController;
-
-  @override
-  void initState() {
-    super.initState();
-    _publishedIdController = TextEditingController(
-      text: widget.recentExport.publishedSteamId ?? '',
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant PackExportCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.recentExport.publishedSteamId !=
-        widget.recentExport.publishedSteamId) {
-      _publishedIdController.text =
-          widget.recentExport.publishedSteamId ?? '';
-    }
-  }
-
-  @override
-  void dispose() {
-    _publishedIdController.dispose();
-    super.dispose();
-  }
-
-  void _savePublishedId() {
-    final value = _publishedIdController.text.trim();
-    final project = widget.recentExport.project;
-    if (project == null) return;
-
-    updatePublishedSteamId(
-      ref,
-      projectId: project.id,
-      value: value.isEmpty ? null : value,
-    );
-
-    setState(() {
-      _isPublishedIdUnlocked = false;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,11 +108,6 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                     // Row 5: Publish button
                     const SizedBox(height: 4),
                     _buildPublishButton(context),
-                    // Row 6: Published Steam ID (only if project exists)
-                    if (widget.recentExport.project != null) ...[
-                      const SizedBox(height: 4),
-                      _buildPublishedIdRow(context),
-                    ],
                   ],
                 ),
               ),
@@ -210,7 +163,8 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final theme = Theme.of(context);
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
-    final steamId = widget.recentExport.steamWorkshopId;
+    final publishedId = widget.recentExport.publishedSteamId;
+    final hasPublished = publishedId != null && publishedId.isNotEmpty;
 
     return Row(
       children: [
@@ -224,15 +178,21 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             overflow: TextOverflow.ellipsis,
           ),
         ),
-        if (steamId != null) ...[
-          const SizedBox(width: 8),
-          Icon(FluentIcons.cloud_24_regular, size: 14, color: mutedColor),
-          const SizedBox(width: 4),
-          Text(
-            'Steam ID: $steamId',
-            style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
+        const SizedBox(width: 8),
+        Icon(
+          hasPublished
+              ? FluentIcons.cloud_checkmark_24_regular
+              : FluentIcons.cloud_dismiss_24_regular,
+          size: 14,
+          color: hasPublished ? Colors.green.shade600 : mutedColor,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          hasPublished ? 'Workshop #$publishedId' : 'Unpublished',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: hasPublished ? Colors.green.shade600 : mutedColor,
           ),
-        ],
+        ),
       ],
     );
   }
@@ -347,110 +307,6 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPublishedIdRow(BuildContext context) {
-    final theme = Theme.of(context);
-    final mutedColor =
-        theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(FluentIcons.cloud_arrow_up_24_regular, size: 12, color: mutedColor),
-        const SizedBox(width: 4),
-        Text(
-          'Published ID:',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: mutedColor,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 140,
-          height: 22,
-          child: TextField(
-            controller: _publishedIdController,
-            enabled: _isPublishedIdUnlocked,
-            style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
-            decoration: InputDecoration(
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 2,
-              ),
-              hintText: 'Steam Workshop ID',
-              hintStyle: theme.textTheme.bodySmall?.copyWith(
-                color: mutedColor,
-                fontSize: 11,
-              ),
-              filled: true,
-              fillColor: _isPublishedIdUnlocked
-                  ? theme.colorScheme.surface
-                  : theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.3),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.4),
-                ),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.15),
-                ),
-              ),
-            ),
-            onSubmitted: (_) => _savePublishedId(),
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildLockButton(context),
-      ],
-    );
-  }
-
-  Widget _buildLockButton(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Tooltip(
-      message: _isPublishedIdUnlocked ? 'Lock' : 'Unlock to edit',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            if (_isPublishedIdUnlocked) {
-              _savePublishedId();
-            } else {
-              setState(() {
-                _isPublishedIdUnlocked = true;
-              });
-            }
-          },
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.all(2.0),
-            child: Icon(
-              _isPublishedIdUnlocked
-                  ? FluentIcons.lock_open_24_regular
-                  : FluentIcons.lock_closed_24_regular,
-              size: 16,
-              color: _isPublishedIdUnlocked
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ),

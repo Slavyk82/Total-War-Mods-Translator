@@ -20,6 +20,7 @@ enum PublishPhase {
   completed,
   error,
   cancelled,
+  itemNotFound,
 }
 
 /// State for the workshop publish flow
@@ -196,6 +197,12 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
           phase: PublishPhase.awaitingSteamGuard,
           statusMessage: 'Steam Guard code required',
         );
+      } else if (error is WorkshopItemNotFoundException) {
+        state = state.copyWith(
+          phase: PublishPhase.itemNotFound,
+          statusMessage: 'Workshop item no longer exists on Steam',
+          errorMessage: error.message,
+        );
       } else {
         state = state.copyWith(
           phase: PublishPhase.error,
@@ -207,6 +214,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     }
 
     // Clear cached credentials on completion or non-retryable error
+    // (not for itemNotFound or awaitingSteamGuard — we need them for retry)
     if (state.phase == PublishPhase.completed ||
         state.phase == PublishPhase.error) {
       _clearCachedCredentials();
@@ -230,6 +238,26 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       username: _cachedUsername!,
       password: _cachedPassword!,
       steamGuardCode: code,
+      projectId: _cachedProjectId,
+    );
+  }
+
+  /// Retry publishing as a new Workshop item (when the old one was deleted)
+  Future<void> retryAsNewItem() async {
+    if (_cachedParams == null ||
+        _cachedUsername == null ||
+        _cachedPassword == null) {
+      state = state.copyWith(
+        phase: PublishPhase.error,
+        errorMessage: 'Session expired. Please try again.',
+      );
+      return;
+    }
+
+    await publish(
+      params: _cachedParams!.copyWith(publishedFileId: '0'),
+      username: _cachedUsername!,
+      password: _cachedPassword!,
       projectId: _cachedProjectId,
     );
   }

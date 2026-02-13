@@ -293,6 +293,83 @@ class BatchWorkshopPublishNotifier
         );
 
         if (shouldBreak) return;
+
+        // If item failed because it was deleted from Steam, retry as new
+        if (result.isErr && result.error is WorkshopItemNotFoundException) {
+          logging.info(
+            'Item ${item.name} not found on Steam — retrying as new item',
+          );
+
+          _progressSub?.cancel();
+          _progressSub = service.progressStream.listen((progress) {
+            state = state.copyWith(currentItemProgress: progress);
+          });
+          _outputSub?.cancel();
+          _outputSub = service.outputStream.listen((_) {});
+
+          // Remove the failed result we just added
+          results.removeLast();
+          updatedStatuses[item.name] = BatchPublishStatus.inProgress;
+          state = state.copyWith(
+            currentItemProgress: 0.0,
+            itemStatuses: updatedStatuses,
+          );
+
+          final retryResult = await service.publish(
+            params: item.params.copyWith(publishedFileId: '0'),
+            username: username,
+            password: password,
+          );
+
+          _progressSub?.cancel();
+          _outputSub?.cancel();
+
+          retryResult.when(
+            ok: (publishResult) async {
+              updatedStatuses[item.name] = BatchPublishStatus.success;
+              results.add(BatchPublishItemResult(
+                name: item.name,
+                success: true,
+                workshopId: publishResult.workshopId,
+              ));
+
+              if (item.projectId != null) {
+                try {
+                  final projectRepo =
+                      ServiceLocator.get<ProjectRepository>();
+                  final projectResult =
+                      await projectRepo.getById(item.projectId!);
+                  if (projectResult.isOk) {
+                    final updated = projectResult.value.copyWith(
+                      publishedSteamId: publishResult.workshopId,
+                      publishedAt:
+                          DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                    );
+                    await projectRepo.update(updated);
+                  }
+                } catch (e) {
+                  logging.warning(
+                      'Failed to save Workshop ID for ${item.name}: $e');
+                }
+              }
+
+              logging.info('Item re-published as new successfully', {
+                'name': item.name,
+                'workshopId': publishResult.workshopId,
+              });
+            },
+            err: (retryError) {
+              updatedStatuses[item.name] = BatchPublishStatus.failed;
+              results.add(BatchPublishItemResult(
+                name: item.name,
+                success: false,
+                errorMessage: retryError.message,
+              ));
+              logging.error(
+                  'Item retry as new failed: ${item.name} - ${retryError.message}');
+            },
+          );
+        }
       } catch (e, stack) {
         _progressSub?.cancel();
         _outputSub?.cancel();
