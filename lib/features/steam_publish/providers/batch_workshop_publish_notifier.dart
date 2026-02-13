@@ -118,6 +118,7 @@ class BatchWorkshopPublishNotifier
     extends Notifier<BatchWorkshopPublishState> {
   StreamSubscription<double>? _progressSub;
   StreamSubscription<String>? _outputSub;
+  bool _silentlyCleaned = false;
 
   // Cached for Steam Guard retry
   List<BatchPublishItemInfo>? _cachedItems;
@@ -137,6 +138,7 @@ class BatchWorkshopPublishNotifier
     int startFromIndex = 0,
   }) async {
     if (state.isPublishing) return;
+    _silentlyCleaned = false;
 
     final logging = ServiceLocator.get<LoggingService>();
     logging.info('Starting batch workshop publish', {
@@ -198,7 +200,7 @@ class BatchWorkshopPublishNotifier
         state = state.copyWith(
           currentItemName: 'Waiting before next upload...',
         );
-        await Future<void>.delayed(const Duration(seconds: 15));
+        await Future<void>.delayed(const Duration(seconds: 1));
         if (state.isCancelled) continue;
       }
 
@@ -218,6 +220,7 @@ class BatchWorkshopPublishNotifier
       // Listen to progress
       _progressSub?.cancel();
       _progressSub = service.progressStream.listen((progress) {
+        if (_silentlyCleaned) return;
         state = state.copyWith(currentItemProgress: progress);
       });
 
@@ -319,6 +322,7 @@ class BatchWorkshopPublishNotifier
 
           _progressSub?.cancel();
           _progressSub = service.progressStream.listen((progress) {
+            if (_silentlyCleaned) return;
             state = state.copyWith(currentItemProgress: progress);
           });
           _outputSub?.cancel();
@@ -422,7 +426,9 @@ class BatchWorkshopPublishNotifier
       );
     }
 
-    // Batch complete
+    // Batch complete — skip if widget was disposed during publish
+    if (_silentlyCleaned) return;
+
     state = state.copyWith(
       isPublishing: false,
       clearCurrentItem: true,
@@ -483,6 +489,7 @@ class BatchWorkshopPublishNotifier
 
   /// Clean up without setting state — safe to call from widget dispose()
   void silentCleanup() {
+    _silentlyCleaned = true;
     _progressSub?.cancel();
     _progressSub = null;
     _outputSub?.cancel();

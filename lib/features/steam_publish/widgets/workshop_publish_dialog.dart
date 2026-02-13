@@ -56,7 +56,6 @@ class _WorkshopPublishDialogState
   DateTime? _uploadStartTime;
   Timer? _elapsedTimer;
   bool _showingSteamGuardDialog = false;
-  bool _showingItemNotFoundDialog = false;
   late final WorkshopPublishNotifier _publishNotifier;
 
   bool get _isUpdate =>
@@ -229,50 +228,6 @@ class _WorkshopPublishDialogState
         _showingSteamGuardDialog = false;
         if (code != null && mounted) {
           ref.read(workshopPublishProvider.notifier).retryWithSteamGuard(code);
-        } else if (mounted) {
-          ref.read(workshopPublishProvider.notifier).cancel();
-        }
-      });
-    }
-
-    // Handle Workshop item not found (deleted from Steam)
-    if (state.phase == PublishPhase.itemNotFound &&
-        !_showingItemNotFoundDialog) {
-      _showingItemNotFoundDialog = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) {
-          _showingItemNotFoundDialog = false;
-          return;
-        }
-        final confirmed = await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            icon: Icon(
-              FluentIcons.warning_24_regular,
-              size: 32,
-              color: Colors.orange.shade700,
-            ),
-            title: const Text('Workshop Item Not Found'),
-            content: const Text(
-              'This item no longer exists on the Steam Workshop. '
-              'Would you like to publish it as a new item?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Publish as New'),
-              ),
-            ],
-          ),
-        );
-        _showingItemNotFoundDialog = false;
-        if (confirmed == true && mounted) {
-          ref.read(workshopPublishProvider.notifier).retryAsNewItem();
         } else if (mounted) {
           ref.read(workshopPublishProvider.notifier).cancel();
         }
@@ -792,8 +747,7 @@ class _WorkshopPublishDialogState
     final isActive = state.isActive;
     final isDone = state.phase == PublishPhase.completed ||
         state.phase == PublishPhase.error ||
-        state.phase == PublishPhase.cancelled ||
-        state.phase == PublishPhase.itemNotFound;
+        state.phase == PublishPhase.cancelled;
 
     return Container(
       padding: const EdgeInsets.all(16),

@@ -29,12 +29,14 @@ class _BatchWorkshopPublishDialogState
     extends ConsumerState<BatchWorkshopPublishDialog> {
   final DateTime _startTime = DateTime.now();
   bool _steamGuardDialogShown = false;
+  late final BatchWorkshopPublishNotifier _publishNotifier;
 
   @override
   void initState() {
     super.initState();
+    _publishNotifier = ref.read(batchWorkshopPublishProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(batchWorkshopPublishProvider.notifier).publishBatch(
+      _publishNotifier.publishBatch(
             items: widget.items,
             username: widget.username,
             password: widget.password,
@@ -45,7 +47,7 @@ class _BatchWorkshopPublishDialogState
 
   @override
   void dispose() {
-    ref.read(batchWorkshopPublishProvider.notifier).silentCleanup();
+    _publishNotifier.silentCleanup();
     super.dispose();
   }
 

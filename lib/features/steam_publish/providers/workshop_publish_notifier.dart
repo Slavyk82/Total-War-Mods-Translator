@@ -21,7 +21,6 @@ enum PublishPhase {
   completed,
   error,
   cancelled,
-  itemNotFound,
 }
 
 /// State for the workshop publish flow
@@ -214,11 +213,17 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
           statusMessage: 'Steam Guard code required',
         );
       } else if (error is WorkshopItemNotFoundException) {
+        // Automatically retry as a new item when the old one was deleted
+        logging.info('Workshop item not found — republishing as new item');
         state = state.copyWith(
-          phase: PublishPhase.itemNotFound,
-          statusMessage: 'Workshop item no longer exists on Steam',
-          errorMessage: error.message,
+          steamcmdOutput: [
+            ...state.steamcmdOutput,
+            'Workshop item not found — republishing as new item...',
+          ],
+          statusMessage: 'Republishing as new item...',
         );
+        retryAsNewItem();
+        return;
       } else {
         state = state.copyWith(
           phase: PublishPhase.error,
@@ -230,7 +235,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     }
 
     // Clear cached credentials on completion or non-retryable error
-    // (not for itemNotFound or awaitingSteamGuard — we need them for retry)
+    // (not for awaitingSteamGuard — we need them for retry)
     if (state.phase == PublishPhase.completed ||
         state.phase == PublishPhase.error) {
       _clearCachedCredentials();
