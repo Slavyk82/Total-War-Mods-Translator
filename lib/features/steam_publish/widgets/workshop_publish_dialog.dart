@@ -57,6 +57,7 @@ class _WorkshopPublishDialogState
   Timer? _elapsedTimer;
   bool _showingSteamGuardDialog = false;
   bool _showingItemNotFoundDialog = false;
+  late final WorkshopPublishNotifier _publishNotifier;
 
   bool get _isUpdate =>
       widget.item.publishedSteamId != null &&
@@ -75,10 +76,11 @@ class _WorkshopPublishDialogState
   @override
   void initState() {
     super.initState();
+    _publishNotifier = ref.read(workshopPublishProvider.notifier);
     // Reset any leftover state from a previous publish (deferred to avoid
     // modifying a provider during a widget lifecycle method).
     Future.microtask(() {
-      ref.read(workshopPublishProvider.notifier).reset();
+      _publishNotifier.reset();
     });
 
     _titleController = TextEditingController(
@@ -125,8 +127,7 @@ class _WorkshopPublishDialogState
     _descriptionController.dispose();
     _changeNoteController.dispose();
     _outputScrollController.dispose();
-    // Silent cleanup — don't set state, element is already defunct at this point
-    ref.read(workshopPublishProvider.notifier).silentCleanup();
+    _publishNotifier.silentCleanup();
     super.dispose();
   }
 

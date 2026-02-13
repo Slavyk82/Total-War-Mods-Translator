@@ -9,6 +9,7 @@ import '../../../services/shared/logging_service.dart';
 import '../../../services/steam/i_workshop_publish_service.dart';
 import '../../../services/steam/models/steam_exceptions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
+import '../../../services/steam/workshop_dependency_service.dart';
 import 'steam_publish_providers.dart';
 
 /// Info for a single item in the batch publish
@@ -285,6 +286,13 @@ class BatchWorkshopPublishNotifier
               'name': item.name,
               'workshopId': publishResult.workshopId,
             });
+
+            // Fire-and-forget: set Workshop dependencies
+            WorkshopDependencyService.setDependenciesForPublishedItem(
+              projectId: item.projectId,
+              compilationId: item.compilationId,
+              publishedWorkshopId: publishResult.workshopId,
+            );
           },
           err: (error) {
             if (error is SteamGuardRequiredException) {
@@ -386,6 +394,13 @@ class BatchWorkshopPublishNotifier
                 'name': item.name,
                 'workshopId': publishResult.workshopId,
               });
+
+              // Fire-and-forget: set Workshop dependencies
+              WorkshopDependencyService.setDependenciesForPublishedItem(
+                projectId: item.projectId,
+                compilationId: item.compilationId,
+                publishedWorkshopId: publishResult.workshopId,
+              );
             },
             err: (retryError) {
               updatedStatuses[item.name] = BatchPublishStatus.failed;
