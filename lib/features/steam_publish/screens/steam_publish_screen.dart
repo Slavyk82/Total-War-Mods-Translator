@@ -20,6 +20,8 @@ import '../widgets/workshop_publish_settings_dialog.dart';
 
 enum _SortMode { exportDate, name, publishDate }
 
+enum _SelectionAction { all, unpublished, outdated, none }
+
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
 
@@ -211,12 +213,65 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final asyncItems = ref.watch(publishableItemsProvider);
+    final allItems = asyncItems.asData?.value;
+    final filteredItems =
+        allItems != null ? _filterAndSort(allItems) : <PublishableItem>[];
 
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
       header: FluentHeader(
         title: 'Publish on Steam',
         actions: [
+          // Quick selection menu
+          PopupMenuButton<_SelectionAction>(
+            icon: const Icon(FluentIcons.checkbox_checked_24_regular, size: 20),
+            tooltip: 'Quick select',
+            enabled: filteredItems.isNotEmpty,
+            onSelected: (action) {
+              setState(() {
+                switch (action) {
+                  case _SelectionAction.all:
+                    _selectedPaths =
+                        filteredItems.map((e) => e.outputPath).toSet();
+                  case _SelectionAction.unpublished:
+                    _selectedPaths = filteredItems
+                        .where((e) =>
+                            e.publishedSteamId == null ||
+                            e.publishedSteamId!.isEmpty)
+                        .map((e) => e.outputPath)
+                        .toSet();
+                  case _SelectionAction.outdated:
+                    _selectedPaths = filteredItems
+                        .where((e) =>
+                            e.publishedAt != null &&
+                            e.exportedAt > e.publishedAt!)
+                        .map((e) => e.outputPath)
+                        .toSet();
+                  case _SelectionAction.none:
+                    _selectedPaths = {};
+                }
+              });
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: _SelectionAction.all,
+                child: Text('Select All'),
+              ),
+              const PopupMenuItem(
+                value: _SelectionAction.unpublished,
+                child: Text('Select Unpublished'),
+              ),
+              const PopupMenuItem(
+                value: _SelectionAction.outdated,
+                child: Text('Select Outdated'),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: _SelectionAction.none,
+                child: Text('Deselect All'),
+              ),
+            ],
+          ),
           // Publish Selection button
           FilledButton.icon(
             onPressed: _selectedPaths.isNotEmpty
@@ -387,7 +442,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           }
 
           return PackExportList(
-            items: _filterAndSort(items),
+            items: filteredItems,
             selectedPaths: _selectedPaths,
             onToggleSelection: (path) {
               setState(() {
