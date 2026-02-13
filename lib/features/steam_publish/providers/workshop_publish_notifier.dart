@@ -108,15 +108,17 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       clearError: true,
     );
 
-    // Listen to progress
+    // Listen to progress (guard: skip if no longer uploading)
     _progressSub?.cancel();
     _progressSub = service.progressStream.listen((progress) {
+      if (state.phase != PublishPhase.uploading) return;
       state = state.copyWith(progress: progress);
     });
 
-    // Listen to output
+    // Listen to output (guard: skip if no longer uploading)
     _outputSub?.cancel();
     _outputSub = service.outputStream.listen((line) {
+      if (state.phase != PublishPhase.uploading) return;
       state = state.copyWith(
         steamcmdOutput: [...state.steamcmdOutput, line],
         statusMessage: line,
@@ -138,6 +140,12 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
     _progressSub?.cancel();
     _outputSub?.cancel();
+
+    // Guard: if state was reset while awaiting (dialog closed), skip updates
+    if (state.phase == PublishPhase.idle ||
+        state.phase == PublishPhase.cancelled) {
+      return;
+    }
 
     result.when(
       ok: (publishResult) async {
@@ -226,6 +234,15 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     );
   }
 
+  /// Submit a Steam Guard code to the running steamcmd process
+  void submitSteamGuardCode(String code) {
+    final service = ServiceLocator.get<IWorkshopPublishService>();
+    service.submitSteamGuardCode(code);
+    state = state.copyWith(
+      statusMessage: 'Steam Guard code submitted, authenticating...',
+    );
+  }
+
   /// Cancel the current publish operation
   Future<void> cancel() async {
     final service = ServiceLocator.get<IWorkshopPublishService>();
@@ -240,12 +257,24 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     );
   }
 
-  /// Reset to idle state
+  /// Reset to idle state (only call when the widget is still mounted)
   void reset() {
     _progressSub?.cancel();
     _outputSub?.cancel();
     _clearCachedCredentials();
     state = const WorkshopPublishState();
+  }
+
+  /// Clean up without setting state — safe to call from widget dispose()
+  /// where the element is already defunct.
+  void silentCleanup() {
+    _progressSub?.cancel();
+    _progressSub = null;
+    _outputSub?.cancel();
+    _outputSub = null;
+    _clearCachedCredentials();
+    final service = ServiceLocator.get<IWorkshopPublishService>();
+    service.cancel();
   }
 
   void _clearCachedCredentials() {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -12,9 +13,9 @@ const _secureStorage = FlutterSecureStorage(
 class SteamLoginDialog extends StatefulWidget {
   const SteamLoginDialog({super.key});
 
-  /// Show the login dialog and return (username, password) or null if cancelled.
-  static Future<(String, String)?> show(BuildContext context) {
-    return showDialog<(String, String)>(
+  /// Show the login dialog and return (username, password, steamGuardCode?) or null if cancelled.
+  static Future<(String, String, String?)?> show(BuildContext context) {
+    return showDialog<(String, String, String?)>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const SteamLoginDialog(),
@@ -28,6 +29,7 @@ class SteamLoginDialog extends StatefulWidget {
 class _SteamLoginDialogState extends State<SteamLoginDialog> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _steamGuardController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _rememberCredentials = false;
@@ -76,15 +78,18 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _steamGuardController.dispose();
     super.dispose();
   }
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
       _saveOrClearCredentials();
+      final code = _steamGuardController.text.trim().toUpperCase();
       Navigator.of(context).pop((
         _usernameController.text.trim(),
         _passwordController.text,
+        code.length == 5 ? code : null,
       ));
     }
   }
@@ -167,6 +172,40 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                         }
                         return null;
                       },
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Steam Guard (optional)',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'If you have Steam Mobile Authenticator, open the Steam app '
+                      'on your phone → Steam Guard → enter the 5-character code.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _steamGuardController,
+                      decoration: const InputDecoration(
+                        labelText: 'Steam Guard Code',
+                        prefixIcon: Icon(FluentIcons.shield_keyhole_24_regular),
+                        border: OutlineInputBorder(),
+                        hintText: 'XXXXX',
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[a-zA-Z0-9]')),
+                        LengthLimitingTextInputFormatter(5),
+                      ],
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
                     ),
                     const SizedBox(height: 8),
                     CheckboxListTile(

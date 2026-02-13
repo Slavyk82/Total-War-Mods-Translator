@@ -54,12 +54,12 @@ class VdfGenerator {
     return buffer.toString();
   }
 
-  /// Escape special characters for VDF format
+  /// Escape special characters for VDF format.
+  /// Newlines are kept as-is — steamcmd passes them through to Steam.
   String _escapeVdf(String value) {
     return value
         .replaceAll('\\', '\\\\')
         .replaceAll('"', '\\"')
-        .replaceAll('\n', '\\n')
         .replaceAll('\r', '');
   }
 

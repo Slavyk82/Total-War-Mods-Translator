@@ -99,7 +99,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     // Show login dialog (once for the whole batch)
     final credentials = await SteamLoginDialog.show(context);
     if (credentials == null || !mounted) return;
-    final (username, password) = credentials;
+    final (username, password, steamGuardCode) = credentials;
 
     // Load templates
     final settingsService = ServiceLocator.get<SettingsService>();
@@ -188,6 +188,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         items: items,
         username: username,
         password: password,
+        steamGuardCode: steamGuardCode,
       ),
     );
 

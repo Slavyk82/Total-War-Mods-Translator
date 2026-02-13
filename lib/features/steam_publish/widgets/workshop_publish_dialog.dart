@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -51,10 +52,13 @@ class _WorkshopPublishDialogState
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
   late TextEditingController _changeNoteController;
+  final TextEditingController _steamGuardController = TextEditingController();
   WorkshopVisibility _visibility = WorkshopVisibility.public_;
   final ScrollController _outputScrollController = ScrollController();
   DateTime? _uploadStartTime;
   Timer? _elapsedTimer;
+  bool _steamGuardSubmitted = false;
+  bool _showingSteamGuardDialog = false;
 
   bool get _isUpdate =>
       widget.recentExport.publishedSteamId != null &&
@@ -116,9 +120,10 @@ class _WorkshopPublishDialogState
     _titleController.dispose();
     _descriptionController.dispose();
     _changeNoteController.dispose();
+    _steamGuardController.dispose();
     _outputScrollController.dispose();
-    // Reset notifier state when dialog closes
-    ref.read(workshopPublishProvider.notifier).reset();
+    // Silent cleanup — don't set state, element is already defunct at this point
+    ref.read(workshopPublishProvider.notifier).silentCleanup();
     super.dispose();
   }
 
@@ -135,7 +140,7 @@ class _WorkshopPublishDialogState
     final credentials = await SteamLoginDialog.show(context);
     if (credentials == null || !mounted) return;
 
-    final (username, password) = credentials;
+    final (username, password, steamGuardCode) = credentials;
 
     final previewPath = _previewImagePath;
     if (previewPath == null) {
@@ -161,10 +166,16 @@ class _WorkshopPublishDialogState
       visibility: _visibility,
     );
 
+    setState(() {
+      _steamGuardSubmitted = false;
+      _steamGuardController.clear();
+    });
+
     ref.read(workshopPublishProvider.notifier).publish(
       params: params,
       username: username,
       password: password,
+      steamGuardCode: steamGuardCode,
       projectId: widget.recentExport.project?.id,
     );
   }
@@ -196,10 +207,17 @@ class _WorkshopPublishDialogState
       }
     });
 
-    // Handle Steam Guard dialog
-    if (state.phase == PublishPhase.awaitingSteamGuard) {
+    // Handle Steam Guard dialog (guard against multiple openings)
+    if (state.phase == PublishPhase.awaitingSteamGuard &&
+        !_showingSteamGuardDialog) {
+      _showingSteamGuardDialog = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          _showingSteamGuardDialog = false;
+          return;
+        }
         final code = await SteamGuardDialog.show(context);
+        _showingSteamGuardDialog = false;
         if (code != null && mounted) {
           ref.read(workshopPublishProvider.notifier).retryWithSteamGuard(code);
         } else if (mounted) {
@@ -563,6 +581,10 @@ class _WorkshopPublishDialogState
         ),
         const SizedBox(height: 16),
 
+        // Steam Guard code input (shown while uploading and not yet submitted)
+        if (state.isActive && !_steamGuardSubmitted)
+          _buildSteamGuardInput(theme),
+
         // Success banner
         if (isComplete && state.publishedWorkshopId != null)
           _buildSuccessBanner(theme, state),
@@ -607,6 +629,92 @@ class _WorkshopPublishDialogState
           ),
         ),
       ],
+    );
+  }
+
+  void _submitSteamGuardCode() {
+    final code = _steamGuardController.text.trim().toUpperCase();
+    if (code.length == 5) {
+      ref.read(workshopPublishProvider.notifier).submitSteamGuardCode(code);
+      setState(() => _steamGuardSubmitted = true);
+    }
+  }
+
+  Widget _buildSteamGuardInput(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(FluentIcons.shield_keyhole_24_regular,
+                  size: 18, color: Colors.amber.shade700),
+              const SizedBox(width: 8),
+              Text(
+                'Steam Guard',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'If Steam Guard is enabled, enter the 5-character code from '
+            'your Steam Mobile app (Steam Guard section).',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              SizedBox(
+                width: 140,
+                height: 36,
+                child: TextField(
+                  controller: _steamGuardController,
+                  style: const TextStyle(
+                    fontFamily: 'Consolas',
+                    fontSize: 14,
+                    letterSpacing: 4,
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                    LengthLimitingTextInputFormatter(5),
+                  ],
+                  decoration: const InputDecoration(
+                    hintText: 'XXXXX',
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _submitSteamGuardCode(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 36,
+                child: FilledButton(
+                  onPressed: _submitSteamGuardCode,
+                  child: const Text('Submit'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

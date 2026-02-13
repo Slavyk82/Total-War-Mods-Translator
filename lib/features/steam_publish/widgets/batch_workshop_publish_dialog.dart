@@ -10,12 +10,14 @@ class BatchWorkshopPublishDialog extends ConsumerStatefulWidget {
   final List<BatchPublishItemInfo> items;
   final String username;
   final String password;
+  final String? steamGuardCode;
 
   const BatchWorkshopPublishDialog({
     super.key,
     required this.items,
     required this.username,
     required this.password,
+    this.steamGuardCode,
   });
 
   @override
@@ -36,13 +38,14 @@ class _BatchWorkshopPublishDialogState
             items: widget.items,
             username: widget.username,
             password: widget.password,
+            steamGuardCode: widget.steamGuardCode,
           );
     });
   }
 
   @override
   void dispose() {
-    ref.read(batchWorkshopPublishProvider.notifier).reset();
+    ref.read(batchWorkshopPublishProvider.notifier).silentCleanup();
     super.dispose();
   }
 

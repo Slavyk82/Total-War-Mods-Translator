@@ -351,7 +351,7 @@ class BatchWorkshopPublishNotifier
     _outputSub?.cancel();
   }
 
-  /// Reset state
+  /// Reset state (only call when the widget is still mounted)
   void reset() {
     _progressSub?.cancel();
     _outputSub?.cancel();
@@ -360,6 +360,20 @@ class BatchWorkshopPublishNotifier
     _cachedPassword = null;
     _currentItemIndex = 0;
     state = const BatchWorkshopPublishState();
+  }
+
+  /// Clean up without setting state — safe to call from widget dispose()
+  void silentCleanup() {
+    _progressSub?.cancel();
+    _progressSub = null;
+    _outputSub?.cancel();
+    _outputSub = null;
+    _cachedItems = null;
+    _cachedUsername = null;
+    _cachedPassword = null;
+    _currentItemIndex = 0;
+    final service = ServiceLocator.get<IWorkshopPublishService>();
+    service.cancel();
   }
 }
 

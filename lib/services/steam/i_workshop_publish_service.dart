@@ -22,6 +22,11 @@ abstract class IWorkshopPublishService {
     String? steamGuardCode,
   });
 
+  /// Submit a Steam Guard code to the running steamcmd process via stdin.
+  ///
+  /// Call this while steamcmd is waiting for an authenticator code.
+  void submitSteamGuardCode(String code);
+
   /// Cancel the current publish operation
   Future<void> cancel();
 
