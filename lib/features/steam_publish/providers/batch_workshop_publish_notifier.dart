@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../repositories/compilation_repository.dart';
 import '../../../repositories/project_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
@@ -15,11 +16,13 @@ class BatchPublishItemInfo {
   final String name;
   final WorkshopPublishParams params;
   final String? projectId;
+  final String? compilationId;
 
   const BatchPublishItemInfo({
     required this.name,
     required this.params,
     this.projectId,
+    this.compilationId,
   });
 }
 
@@ -246,7 +249,7 @@ class BatchWorkshopPublishNotifier
               workshopId: publishResult.workshopId,
             ));
 
-            // Save workshop ID to project
+            // Save workshop ID to project or compilation
             if (item.projectId != null) {
               try {
                 final projectRepo = ServiceLocator.get<ProjectRepository>();
@@ -262,6 +265,19 @@ class BatchWorkshopPublishNotifier
               } catch (e) {
                 logging.warning(
                     'Failed to save Workshop ID for ${item.name}: $e');
+              }
+            } else if (item.compilationId != null) {
+              try {
+                final compilationRepo =
+                    ServiceLocator.get<CompilationRepository>();
+                await compilationRepo.updateAfterPublish(
+                  item.compilationId!,
+                  publishResult.workshopId,
+                  DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                );
+              } catch (e) {
+                logging.warning(
+                    'Failed to save Workshop ID for compilation ${item.name}: $e');
               }
             }
 
@@ -351,6 +367,19 @@ class BatchWorkshopPublishNotifier
                   logging.warning(
                       'Failed to save Workshop ID for ${item.name}: $e');
                 }
+              } else if (item.compilationId != null) {
+                try {
+                  final compilationRepo =
+                      ServiceLocator.get<CompilationRepository>();
+                  await compilationRepo.updateAfterPublish(
+                    item.compilationId!,
+                    publishResult.workshopId,
+                    DateTime.now().millisecondsSinceEpoch ~/ 1000,
+                  );
+                } catch (e) {
+                  logging.warning(
+                      'Failed to save Workshop ID for compilation ${item.name}: $e');
+                }
               }
 
               logging.info('Item re-published as new successfully', {
@@ -398,7 +427,7 @@ class BatchWorkshopPublishNotifier
     );
 
     // Refresh exports list
-    ref.invalidate(recentPackExportsProvider);
+    ref.invalidate(publishableItemsProvider);
 
     logging.info('Batch publish complete', {
       'totalItems': items.length,

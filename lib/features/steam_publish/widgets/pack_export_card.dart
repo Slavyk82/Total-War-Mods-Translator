@@ -4,19 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
-
 import '../providers/steam_publish_providers.dart';
 import 'workshop_publish_dialog.dart';
 
-/// Card displaying a recent pack export with project info and actions.
+/// Card displaying a publishable item (project export or compilation).
 class PackExportCard extends ConsumerStatefulWidget {
-  final RecentPackExport recentExport;
+  final PublishableItem item;
   final bool isSelected;
   final ValueChanged<bool>? onSelectionChanged;
 
   const PackExportCard({
     super.key,
-    required this.recentExport,
+    required this.item,
     this.isSelected = false,
     this.onSelectionChanged,
   });
@@ -31,7 +30,6 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final export = widget.recentExport.export;
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
 
@@ -80,7 +78,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                     ),
                   ),
                 ),
-              // Project image
+              // Image
               _buildImage(context),
               const SizedBox(width: 12),
               // Content
@@ -88,22 +86,22 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Row 1: project name + steam ID
+                    // Row 1: name + steam ID
                     _buildTopRow(context),
                     const SizedBox(height: 4),
                     // Row 2: languages
                     Text(
-                      'Languages: ${export.languagesList.join(', ')}',
+                      _buildLanguagesText(),
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: mutedColor),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
-                    // Row 3: entries + size + time ago
+                    // Row 3: stats
                     _buildStatsRow(context),
                     const SizedBox(height: 4),
-                    // Row 4: path + open folder button
+                    // Row 4: path
                     _buildPathRow(context),
                     // Row 5: Publish button
                     const SizedBox(height: 4),
@@ -118,18 +116,32 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     );
   }
 
+  String _buildLanguagesText() {
+    final item = widget.item;
+    switch (item) {
+      case ProjectPublishItem():
+        return 'Languages: ${item.languagesList.join(', ')}';
+      case CompilationPublishItem():
+        if (item.languageCode != null) {
+          return 'Language: ${item.languageCode}';
+        }
+        return 'Language: —';
+    }
+  }
+
   Widget _buildImage(BuildContext context) {
     final theme = Theme.of(context);
-    // Look for a .png image next to the exported .pack file
-    final outputPath = widget.recentExport.export.outputPath;
+    final outputPath = widget.item.outputPath;
     final packImagePath =
         '${outputPath.substring(0, outputPath.lastIndexOf('.'))}.png';
     final packImageFile = File(packImagePath);
     final imagePath =
-        packImageFile.existsSync() ? packImagePath : widget.recentExport.projectImageUrl;
+        packImageFile.existsSync() ? packImagePath : widget.item.imageUrl;
 
     Widget fallbackIcon() => Icon(
-          FluentIcons.box_24_regular,
+          widget.item.isCompilation
+              ? FluentIcons.stack_24_regular
+              : FluentIcons.box_24_regular,
           size: 32,
           color: theme.colorScheme.onPrimaryContainer,
         );
@@ -163,14 +175,33 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final theme = Theme.of(context);
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
-    final publishedId = widget.recentExport.publishedSteamId;
+    final publishedId = widget.item.publishedSteamId;
     final hasPublished = publishedId != null && publishedId.isNotEmpty;
 
     return Row(
       children: [
+        // Compilation badge
+        if (widget.item.isCompilation) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.tertiaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'Compilation',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onTertiaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+        ],
         Expanded(
           child: Text(
-            widget.recentExport.projectDisplayName,
+            widget.item.displayName,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -199,69 +230,64 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
 
   Widget _buildStatsRow(BuildContext context) {
     final theme = Theme.of(context);
-    final export = widget.recentExport.export;
+    final item = widget.item;
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
 
-    final entryCountStr = _formatEntryCount(export.entryCount);
-    final timeAgoStr = timeago.format(export.exportDate);
+    final timeAgoStr = timeago.format(
+      DateTime.fromMillisecondsSinceEpoch(item.exportedAt * 1000),
+    );
+
+    final List<String> stats = [];
+    switch (item) {
+      case ProjectPublishItem():
+        stats.add('${_formatEntryCount(item.entryCount)} units');
+        stats.add(item.fileSizeFormatted);
+      case CompilationPublishItem():
+        stats.add('${item.projectCount} projects');
+        stats.add(item.fileSizeFormatted);
+    }
+    stats.add('Local file modified $timeAgoStr');
 
     return Row(
       children: [
-        Text(
-          '$entryCountStr units',
-          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          '·',
-          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          export.fileSizeFormatted,
-          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
-        ),
-        const Spacer(),
-        Icon(FluentIcons.clock_24_regular, size: 12, color: mutedColor),
-        const SizedBox(width: 4),
-        Text(
-          timeAgoStr,
-          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
-        ),
+        for (var i = 0; i < stats.length; i++) ...[
+          if (i > 0) ...[
+            const SizedBox(width: 8),
+            Text('·',
+                style:
+                    theme.textTheme.bodySmall?.copyWith(color: mutedColor)),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            stats[i],
+            style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildPathRow(BuildContext context) {
     final theme = Theme.of(context);
-    final export = widget.recentExport.export;
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
 
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            export.outputPath,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: mutedColor,
-              fontSize: 11,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _buildOpenFolderButton(context),
-      ],
+    return Text(
+      widget.item.outputPath,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: mutedColor,
+        fontSize: 11,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
   Widget _buildPublishButton(BuildContext context) {
     final theme = Theme.of(context);
-    final hasPublishedId = widget.recentExport.publishedSteamId != null &&
-        widget.recentExport.publishedSteamId!.isNotEmpty;
+    final hasPublishedId = widget.item.publishedSteamId != null &&
+        widget.item.publishedSteamId!.isNotEmpty;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -275,7 +301,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             onTap: () {
               WorkshopPublishDialog.show(
                 context,
-                recentExport: widget.recentExport,
+                item: widget.item,
               );
             },
             behavior: HitTestBehavior.opaque,
@@ -307,53 +333,6 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                   ),
                 ],
               ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOpenFolderButton(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Tooltip(
-      message: 'Open in Explorer',
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            final outputPath = widget.recentExport.export.outputPath;
-            Process.run('explorer.exe', ['/select,$outputPath']);
-          },
-          behavior: HitTestBehavior.opaque,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  FluentIcons.folder_open_24_regular,
-                  size: 14,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Open Folder',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
             ),
           ),
         ),

@@ -41,13 +41,13 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     super.dispose();
   }
 
-  List<RecentPackExport> _filterAndSort(List<RecentPackExport> exports) {
-    var result = exports.toList();
+  List<PublishableItem> _filterAndSort(List<PublishableItem> items) {
+    var result = items.toList();
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       result = result
-          .where((e) => e.projectDisplayName.toLowerCase().contains(query))
+          .where((e) => e.displayName.toLowerCase().contains(query))
           .toList();
     }
 
@@ -55,25 +55,23 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       int cmp;
       switch (_sortMode) {
         case _SortMode.exportDate:
-          cmp = a.export.exportedAt.compareTo(b.export.exportedAt);
+          cmp = a.exportedAt.compareTo(b.exportedAt);
         case _SortMode.name:
-          cmp = a.projectDisplayName
+          cmp = a.displayName
               .toLowerCase()
-              .compareTo(b.projectDisplayName.toLowerCase());
+              .compareTo(b.displayName.toLowerCase());
         case _SortMode.publishDate:
           final aPub = a.publishedAt;
           final bPub = b.publishedAt;
+          // Unpublished mods always sort to the end, regardless of direction
           if (aPub == null && bPub == null) {
-            cmp = 0;
-          } else if (aPub == null) {
-            cmp = 1;
-          } else if (bPub == null) {
-            cmp = -1;
-          } else {
-            cmp = aPub.compareTo(bPub);
+            return a.exportedAt.compareTo(b.exportedAt);
           }
+          if (aPub == null) return 1;
+          if (bPub == null) return -1;
+          cmp = aPub.compareTo(bPub);
           if (cmp == 0) {
-            cmp = a.export.exportedAt.compareTo(b.export.exportedAt);
+            cmp = a.exportedAt.compareTo(b.exportedAt);
           }
       }
       return _sortAscending ? cmp : -cmp;
@@ -87,7 +85,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     return template.replaceAll('\$modName', modName);
   }
 
-  Future<void> _startBatchPublish(List<RecentPackExport> allExports) async {
+  Future<void> _startBatchPublish(List<PublishableItem> allItems) async {
     // Check steamcmd availability
     final isAvailable = await SteamCmdManager().isAvailable();
     if (!mounted) return;
@@ -116,29 +114,29 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         WorkshopVisibility.public_;
 
     // Build items from selected exports
-    final selectedExports = allExports
-        .where((e) => _selectedPaths.contains(e.export.outputPath))
+    final selectedItems = allItems
+        .where((e) => _selectedPaths.contains(e.outputPath))
         .toList();
 
     final items = <BatchPublishItemInfo>[];
     final skippedNoPreview = <String>[];
 
-    for (final export in selectedExports) {
-      final packPath = export.export.outputPath;
+    for (final item in selectedItems) {
+      final packPath = item.outputPath;
       final previewPath =
           '${packPath.substring(0, packPath.lastIndexOf('.'))}.png';
 
       if (!File(previewPath).existsSync()) {
-        skippedNoPreview.add(export.projectDisplayName);
+        skippedNoPreview.add(item.displayName);
         continue;
       }
 
       final packDir = File(packPath).parent.path;
-      final modName = export.projectDisplayName;
+      final modName = item.displayName;
 
       final params = WorkshopPublishParams(
         appId: '1142710',
-        publishedFileId: export.publishedSteamId ?? '0',
+        publishedFileId: item.publishedSteamId ?? '0',
         contentFolder: packDir,
         previewFile: previewPath,
         title: titleTemplate.isNotEmpty
@@ -150,10 +148,20 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         visibility: visibility,
       );
 
+      // Determine project/compilation ID for saving after publish
+      String? projectId;
+      String? compilationId;
+      if (item is ProjectPublishItem) {
+        projectId = item.project.id;
+      } else if (item is CompilationPublishItem) {
+        compilationId = item.compilation.id;
+      }
+
       items.add(BatchPublishItemInfo(
         name: modName,
         params: params,
-        projectId: export.project?.id,
+        projectId: projectId,
+        compilationId: compilationId,
       ));
     }
 
@@ -195,14 +203,14 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     // Clear selection and refresh
     if (mounted) {
       setState(() => _selectedPaths = {});
-      ref.invalidate(recentPackExportsProvider);
+      ref.invalidate(publishableItemsProvider);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final asyncExports = ref.watch(recentPackExportsProvider);
+    final asyncItems = ref.watch(publishableItemsProvider);
 
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
@@ -213,8 +221,8 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           FilledButton.icon(
             onPressed: _selectedPaths.isNotEmpty
                 ? () {
-                    final exports = asyncExports.asData?.value;
-                    if (exports != null) _startBatchPublish(exports);
+                    final items = asyncItems.asData?.value;
+                    if (items != null) _startBatchPublish(items);
                   }
                 : null,
             icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
@@ -297,7 +305,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             child: IconButton(
               icon: const Icon(FluentIcons.arrow_sync_24_regular, size: 20),
               onPressed: () {
-                ref.invalidate(recentPackExportsProvider);
+                ref.invalidate(publishableItemsProvider);
               },
             ),
           ),
@@ -310,7 +318,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           ),
         ],
       ),
-      body: asyncExports.when(
+      body: asyncItems.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(
           child: Column(
@@ -323,7 +331,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Failed to load recent exports',
+                'Failed to load publishable items',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.error,
                 ),
@@ -338,7 +346,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () {
-                  ref.invalidate(recentPackExportsProvider);
+                  ref.invalidate(publishableItemsProvider);
                 },
                 icon: const Icon(FluentIcons.arrow_sync_24_regular, size: 16),
                 label: const Text('Retry'),
@@ -346,8 +354,8 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             ],
           ),
         ),
-        data: (exports) {
-          if (exports.isEmpty) {
+        data: (items) {
+          if (items.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -367,7 +375,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Export a project as .pack to see it here.',
+                    'Export a project as .pack or generate a compilation to see it here.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant
                           .withValues(alpha: 0.7),
@@ -379,7 +387,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           }
 
           return PackExportList(
-            exports: _filterAndSort(exports),
+            items: _filterAndSort(items),
             selectedPaths: _selectedPaths,
             onToggleSelection: (path) {
               setState(() {

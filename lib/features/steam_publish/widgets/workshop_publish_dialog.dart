@@ -26,19 +26,19 @@ import 'workshop_publish_settings_dialog.dart';
 /// - Form mode: configure title, description, visibility, etc.
 /// - Progress mode: shows upload progress and steamcmd output.
 class WorkshopPublishDialog extends ConsumerStatefulWidget {
-  final RecentPackExport recentExport;
+  final PublishableItem item;
 
-  const WorkshopPublishDialog({super.key, required this.recentExport});
+  const WorkshopPublishDialog({super.key, required this.item});
 
   /// Show the publish dialog.
   static Future<void> show(
     BuildContext context, {
-    required RecentPackExport recentExport,
+    required PublishableItem item,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => WorkshopPublishDialog(recentExport: recentExport),
+      builder: (_) => WorkshopPublishDialog(item: item),
     );
   }
 
@@ -62,10 +62,10 @@ class _WorkshopPublishDialogState
   bool _showingItemNotFoundDialog = false;
 
   bool get _isUpdate =>
-      widget.recentExport.publishedSteamId != null &&
-      widget.recentExport.publishedSteamId!.isNotEmpty;
+      widget.item.publishedSteamId != null &&
+      widget.item.publishedSteamId!.isNotEmpty;
 
-  String get _packFilePath => widget.recentExport.export.outputPath;
+  String get _packFilePath => widget.item.outputPath;
 
   String? get _previewImagePath {
     final packPath = _packFilePath;
@@ -79,7 +79,7 @@ class _WorkshopPublishDialogState
   void initState() {
     super.initState();
     _titleController = TextEditingController(
-      text: widget.recentExport.projectDisplayName,
+      text: widget.item.displayName,
     );
     _descriptionController = TextEditingController();
     _changeNoteController = TextEditingController();
@@ -100,7 +100,7 @@ class _WorkshopPublishDialogState
     final visibilityName =
         await service.getString(SettingsKeys.workshopDefaultVisibility);
     if (!mounted) return;
-    final modName = widget.recentExport.projectDisplayName;
+    final modName = widget.item.displayName;
     if (titleTemplate.isNotEmpty) {
       _titleController.text = _applyTemplate(titleTemplate, modName);
     }
@@ -158,7 +158,7 @@ class _WorkshopPublishDialogState
     final params = WorkshopPublishParams(
       appId: '1142710', // TW:WH3
       publishedFileId:
-          _isUpdate ? widget.recentExport.publishedSteamId! : '0',
+          _isUpdate ? widget.item.publishedSteamId! : '0',
       contentFolder: packDir,
       previewFile: previewPath,
       title: _titleController.text.trim(),
@@ -172,12 +172,22 @@ class _WorkshopPublishDialogState
       _steamGuardController.clear();
     });
 
+    // Determine project/compilation ID
+    String? projectId;
+    String? compilationId;
+    if (widget.item is ProjectPublishItem) {
+      projectId = (widget.item as ProjectPublishItem).project.id;
+    } else if (widget.item is CompilationPublishItem) {
+      compilationId = (widget.item as CompilationPublishItem).compilation.id;
+    }
+
     ref.read(workshopPublishProvider.notifier).publish(
       params: params,
       username: username,
       password: password,
       steamGuardCode: steamGuardCode,
-      projectId: widget.recentExport.project?.id,
+      projectId: projectId,
+      compilationId: compilationId,
     );
   }
 
@@ -322,7 +332,7 @@ class _WorkshopPublishDialogState
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  widget.recentExport.projectDisplayName,
+                  widget.item.displayName,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
@@ -356,7 +366,7 @@ class _WorkshopPublishDialogState
             ),
             child: Text(
               _isUpdate
-                  ? 'Update #${widget.recentExport.publishedSteamId}'
+                  ? 'Update #${widget.item.publishedSteamId}'
                   : 'New Item',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: _isUpdate ? Colors.blue.shade700 : Colors.green.shade700,
@@ -372,6 +382,18 @@ class _WorkshopPublishDialogState
   Widget _buildForm(ThemeData theme) {
     final mutedColor =
         theme.colorScheme.onSurface.withValues(alpha: 0.6);
+
+    // Build info section based on item type
+    final String fileSizeText;
+    final String entriesText;
+    switch (widget.item) {
+      case ProjectPublishItem item:
+        fileSizeText = item.fileSizeFormatted;
+        entriesText = '${item.entryCount} entries';
+      case CompilationPublishItem item:
+        fileSizeText = item.fileSizeFormatted;
+        entriesText = '${item.projectCount} projects';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -446,14 +468,14 @@ class _WorkshopPublishDialogState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.recentExport.export.fileSizeFormatted,
+                    fileSizeText,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: mutedColor,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${widget.recentExport.export.entryCount} entries',
+                    entriesText,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: mutedColor,
                     ),

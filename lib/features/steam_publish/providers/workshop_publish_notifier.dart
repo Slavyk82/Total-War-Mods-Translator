@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../repositories/compilation_repository.dart';
 import '../../../repositories/project_repository.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/logging_service.dart';
@@ -80,6 +81,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
   String? _cachedPassword;
   WorkshopPublishParams? _cachedParams;
   String? _cachedProjectId;
+  String? _cachedCompilationId;
 
   @override
   WorkshopPublishState build() => const WorkshopPublishState();
@@ -91,6 +93,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     required String password,
     String? steamGuardCode,
     String? projectId,
+    String? compilationId,
   }) async {
     final logging = ServiceLocator.get<LoggingService>();
     final service = ServiceLocator.get<IWorkshopPublishService>();
@@ -100,6 +103,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _cachedPassword = password;
     _cachedParams = params;
     _cachedProjectId = projectId;
+    _cachedCompilationId = compilationId;
 
     state = state.copyWith(
       phase: PublishPhase.uploading,
@@ -151,25 +155,34 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     if (result.isOk) {
       final publishResult = result.value;
 
-      // Save workshop ID to project if we have a project ID
-      if (projectId != null) {
+      // Save workshop ID to project or compilation
+      if (projectId != null || compilationId != null) {
         state = state.copyWith(
           phase: PublishPhase.savingWorkshopId,
           statusMessage: 'Saving Workshop ID...',
         );
 
         try {
-          final projectRepo = ServiceLocator.get<ProjectRepository>();
-          final projectResult = await projectRepo.getById(projectId);
-          if (projectResult.isOk) {
-            final updated = projectResult.value.copyWith(
-              publishedSteamId: publishResult.workshopId,
-              publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          if (projectId != null) {
+            final projectRepo = ServiceLocator.get<ProjectRepository>();
+            final projectResult = await projectRepo.getById(projectId);
+            if (projectResult.isOk) {
+              final updated = projectResult.value.copyWith(
+                publishedSteamId: publishResult.workshopId,
+                publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+              );
+              await projectRepo.update(updated);
+            }
+          } else if (compilationId != null) {
+            final compilationRepo = ServiceLocator.get<CompilationRepository>();
+            await compilationRepo.updateAfterPublish(
+              compilationId,
+              publishResult.workshopId,
+              DateTime.now().millisecondsSinceEpoch ~/ 1000,
             );
-            await projectRepo.update(updated);
           }
         } catch (e) {
-          logging.warning('Failed to save Workshop ID to project: $e');
+          logging.warning('Failed to save Workshop ID: $e');
         }
       }
 
@@ -184,7 +197,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       );
 
       // Invalidate the exports list to refresh Published ID
-      ref.invalidate(recentPackExportsProvider);
+      ref.invalidate(publishableItemsProvider);
 
       logging.info('Workshop publish completed', {
         'workshopId': publishResult.workshopId,
@@ -239,6 +252,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       password: _cachedPassword!,
       steamGuardCode: code,
       projectId: _cachedProjectId,
+      compilationId: _cachedCompilationId,
     );
   }
 
@@ -259,6 +273,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       username: _cachedUsername!,
       password: _cachedPassword!,
       projectId: _cachedProjectId,
+      compilationId: _cachedCompilationId,
     );
   }
 
@@ -310,6 +325,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _cachedPassword = null;
     _cachedParams = null;
     _cachedProjectId = null;
+    _cachedCompilationId = null;
   }
 }
 

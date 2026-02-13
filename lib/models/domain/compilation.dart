@@ -41,6 +41,14 @@ class Compilation {
   @JsonKey(name: 'created_at')
   final int createdAt;
 
+  /// Steam Workshop published file ID (after publishing)
+  @JsonKey(name: 'published_steam_id')
+  final String? publishedSteamId;
+
+  /// Unix timestamp when published to Steam Workshop
+  @JsonKey(name: 'published_at')
+  final int? publishedAt;
+
   /// Unix timestamp when the compilation was last updated
   @JsonKey(name: 'updated_at')
   final int updatedAt;
@@ -54,6 +62,8 @@ class Compilation {
     this.languageId,
     this.lastOutputPath,
     this.lastGeneratedAt,
+    this.publishedSteamId,
+    this.publishedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -73,6 +83,8 @@ class Compilation {
     String? languageId,
     String? lastOutputPath,
     int? lastGeneratedAt,
+    String? publishedSteamId,
+    int? publishedAt,
     int? createdAt,
     int? updatedAt,
   }) {
@@ -85,6 +97,8 @@ class Compilation {
       languageId: languageId ?? this.languageId,
       lastOutputPath: lastOutputPath ?? this.lastOutputPath,
       lastGeneratedAt: lastGeneratedAt ?? this.lastGeneratedAt,
+      publishedSteamId: publishedSteamId ?? this.publishedSteamId,
+      publishedAt: publishedAt ?? this.publishedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -107,6 +121,8 @@ class Compilation {
         other.languageId == languageId &&
         other.lastOutputPath == lastOutputPath &&
         other.lastGeneratedAt == lastGeneratedAt &&
+        other.publishedSteamId == publishedSteamId &&
+        other.publishedAt == publishedAt &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -121,6 +137,8 @@ class Compilation {
       languageId.hashCode ^
       lastOutputPath.hashCode ^
       lastGeneratedAt.hashCode ^
+      publishedSteamId.hashCode ^
+      publishedAt.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
 

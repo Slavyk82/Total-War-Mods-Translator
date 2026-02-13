@@ -275,6 +275,31 @@ class CompilationRepository extends BaseRepository<Compilation> {
     });
   }
 
+  /// Update compilation after publishing to Steam Workshop.
+  Future<Result<void, TWMTDatabaseException>> updateAfterPublish(
+    String compilationId,
+    String publishedSteamId,
+    int publishedAt,
+  ) async {
+    return executeQuery(() async {
+      final rowsAffected = await database.update(
+        tableName,
+        {
+          'published_steam_id': publishedSteamId,
+          'published_at': publishedAt,
+          'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        },
+        where: 'id = ?',
+        whereArgs: [compilationId],
+      );
+
+      if (rowsAffected == 0) {
+        throw TWMTDatabaseException(
+            'Compilation not found for publish update: $compilationId');
+      }
+    });
+  }
+
   /// Get compilation count for statistics.
   Future<Result<int, TWMTDatabaseException>> getCount() async {
     return executeQuery(() async {
