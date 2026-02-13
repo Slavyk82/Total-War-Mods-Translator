@@ -255,6 +255,419 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     }
   }
 
+  @override
+  Future<void> publishBatch({
+    required List<({String name, WorkshopPublishParams params})> items,
+    required String username,
+    required String password,
+    String? steamGuardCode,
+    void Function(int index, String name)? onItemStart,
+    void Function(int index, double progress)? onItemProgress,
+    void Function(
+            int index,
+            Result<WorkshopPublishResult, SteamServiceException> result)?
+        onItemComplete,
+  }) async {
+    _isCancelled = false;
+    final startTime = DateTime.now();
+
+    // Ensure steamcmd is available
+    final steamCmdPathResult = await _manager.getSteamCmdPath();
+    if (steamCmdPathResult.isErr) {
+      throw steamCmdPathResult.error;
+    }
+    final steamCmdPath = steamCmdPathResult.value;
+
+    // Check cached credentials
+    final cachedLoginOk =
+        await _hasCachedCredentials(steamCmdPath, username);
+
+    if (!cachedLoginOk && steamGuardCode == null) {
+      throw const SteamGuardRequiredException(
+        'Steam Guard code is required to authenticate',
+      );
+    }
+
+    // --- Prepare all items: temp dirs, pack copies, VDF generation ---
+    final prepared = <int, _BatchPreparedItem>{};
+    final tempDirs = <Directory>[];
+
+    try {
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
+        try {
+          final previewFile = File(item.params.previewFile);
+          final previewName = previewFile.uri.pathSegments.last;
+          final packName =
+              '${previewName.substring(0, previewName.lastIndexOf('.'))}.pack';
+          final packFile =
+              File(path.join(item.params.contentFolder, packName));
+
+          if (!await packFile.exists()) {
+            onItemComplete?.call(
+              i,
+              Err(WorkshopPublishException(
+                'Pack file not found: ${packFile.path}',
+              )),
+            );
+            continue;
+          }
+
+          final tempDir =
+              await Directory.systemTemp.createTemp('twmt_batch_${i}_');
+          tempDirs.add(tempDir);
+
+          await packFile.copy(path.join(tempDir.path, packName));
+          if (await previewFile.exists()) {
+            await previewFile
+                .copy(path.join(tempDir.path, previewName));
+          }
+
+          final publishParams = item.params.copyWith(
+            contentFolder: tempDir.path,
+          );
+
+          final vdfResult =
+              await _vdfGenerator.generateVdf(publishParams);
+          if (vdfResult.isErr) {
+            onItemComplete?.call(i, Err(vdfResult.error));
+            continue;
+          }
+
+          prepared[i] = _BatchPreparedItem(
+            vdfPath: vdfResult.value,
+            tempDir: tempDir,
+            params: item.params,
+          );
+        } catch (e, stackTrace) {
+          onItemComplete?.call(
+            i,
+            Err(WorkshopPublishException(
+              'Preparation failed for ${item.name}: $e',
+              stackTrace: stackTrace,
+            )),
+          );
+        }
+      }
+
+      if (prepared.isEmpty || _isCancelled) return;
+
+      // --- Build commands with chunking (Windows CreateProcess limit ~32767 chars) ---
+      final orderedIndices = prepared.keys.toList()..sort();
+      final chunks = <List<int>>[];
+      var currentChunk = <int>[];
+      var currentLength = 0;
+      // Reserve space for login args (~200 chars) and +quit (~10 chars)
+      const maxCmdLength = 32000;
+      const loginReserve = 300;
+
+      for (final idx in orderedIndices) {
+        final itemArg =
+            '+workshop_build_item ${prepared[idx]!.vdfPath}'.length + 1;
+        if (currentChunk.isNotEmpty &&
+            currentLength + itemArg > maxCmdLength - loginReserve) {
+          chunks.add(currentChunk);
+          currentChunk = <int>[];
+          currentLength = 0;
+        }
+        currentChunk.add(idx);
+        currentLength += itemArg;
+      }
+      if (currentChunk.isNotEmpty) chunks.add(currentChunk);
+
+      // --- Execute each chunk as a single steamcmd process ---
+      for (var chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
+        if (_isCancelled) break;
+
+        final chunk = chunks[chunkIdx];
+        final List<String> command;
+
+        // First chunk (or no cached creds): use provided auth
+        // Subsequent chunks: credentials are cached from first login
+        if (chunkIdx == 0 && !cachedLoginOk && steamGuardCode != null) {
+          command = [
+            '+login', username, password, steamGuardCode,
+            ...chunk.expand((idx) => [
+              '+workshop_build_item',
+              prepared[idx]!.vdfPath,
+            ]),
+            '+quit',
+          ];
+        } else {
+          command = [
+            '+login', username,
+            ...chunk.expand((idx) => [
+              '+workshop_build_item',
+              prepared[idx]!.vdfPath,
+            ]),
+            '+quit',
+          ];
+        }
+
+        _logger.info('Starting steamcmd batch chunk ${chunkIdx + 1}/${chunks.length}', {
+          'itemCount': chunk.length,
+          'commandLength': command.join(' ').length,
+        });
+
+        await _runBatchProcess(
+          steamCmdPath: steamCmdPath,
+          command: command,
+          chunk: chunk,
+          items: items,
+          prepared: prepared,
+          startTime: startTime,
+          onItemStart: onItemStart,
+          onItemProgress: onItemProgress,
+          onItemComplete: onItemComplete,
+        );
+      }
+    } finally {
+      // Cleanup all temp directories
+      for (final dir in tempDirs) {
+        try {
+          await dir.delete(recursive: true);
+        } catch (_) {}
+      }
+      // Cleanup VDF files that might be outside temp dirs
+      for (final item in prepared.values) {
+        try {
+          await File(item.vdfPath).delete();
+        } catch (_) {}
+      }
+      _currentProcess = null;
+    }
+  }
+
+  /// Run a single steamcmd process for a batch chunk and parse multi-item output.
+  Future<void> _runBatchProcess({
+    required String steamCmdPath,
+    required List<String> command,
+    required List<int> chunk,
+    required List<({String name, WorkshopPublishParams params})> items,
+    required Map<int, _BatchPreparedItem> prepared,
+    required DateTime startTime,
+    void Function(int index, String name)? onItemStart,
+    void Function(int index, double progress)? onItemProgress,
+    void Function(
+            int index,
+            Result<WorkshopPublishResult, SteamServiceException> result)?
+        onItemComplete,
+  }) async {
+    _currentProcess = await Process.start(
+      steamCmdPath,
+      command,
+      runInShell: false,
+    );
+    _currentProcess!.stdin.close();
+
+    var currentChunkPos = 0;
+    final completedInChunk = <int>{};
+    var lastOutputTime = DateTime.now();
+    final rawOutput = StringBuffer();
+    String? currentWorkshopId;
+    bool authFailed = false;
+
+    // Signal first item start
+    if (chunk.isNotEmpty) {
+      onItemStart?.call(chunk[0], items[chunk[0]].name);
+    }
+
+    final outputCompleter = Completer<void>();
+    var stdoutDone = false;
+    var stderrDone = false;
+    void checkDone() {
+      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
+        outputCompleter.complete();
+      }
+    }
+
+    _currentProcess!.stdout.listen(
+      (data) {
+        lastOutputTime = DateTime.now();
+        final output = String.fromCharCodes(data);
+        rawOutput.write(output);
+
+        for (final line in output.split(RegExp(r'[\r\n]+'))) {
+          final trimmed = line.trim();
+          if (trimmed.isEmpty) continue;
+
+          _outputController.add(trimmed);
+
+          // Check for auth failure (affects entire session)
+          if (trimmed.contains('Login Failure') ||
+              trimmed.contains('Invalid Password') ||
+              trimmed.contains('FAILED login')) {
+            authFailed = true;
+            continue;
+          }
+
+          if (currentChunkPos >= chunk.length) continue;
+          final currentIdx = chunk[currentChunkPos];
+
+          // Progress tracking
+          final progressMatch =
+              RegExp(r'(\d+)%').firstMatch(trimmed);
+          if (progressMatch != null) {
+            final pct = int.parse(progressMatch.group(1)!);
+            onItemProgress?.call(currentIdx, pct / 100.0);
+          }
+
+          // Workshop ID detection
+          final idMatch =
+              RegExp(r'PublishFileID\s*[:=]?\s*(\d+)')
+                  .firstMatch(trimmed);
+          if (idMatch != null) {
+            currentWorkshopId = idMatch.group(1);
+          }
+
+          // Success: item completed
+          if (trimmed.contains('Success.') ||
+              trimmed.contains('Item Updated') ||
+              (currentWorkshopId != null &&
+                  trimmed.contains('PublishFileID'))) {
+            // Determine final workshop ID
+            final workshopId = currentWorkshopId ??
+                (items[currentIdx].params.isNewItem
+                    ? null
+                    : items[currentIdx].params.publishedFileId);
+
+            if (workshopId != null && workshopId != '0') {
+              completedInChunk.add(currentIdx);
+              final duration =
+                  DateTime.now().difference(startTime).inMilliseconds;
+              onItemComplete?.call(
+                currentIdx,
+                Ok(WorkshopPublishResult(
+                  workshopId: workshopId,
+                  wasUpdate: !items[currentIdx].params.isNewItem,
+                  durationMs: duration,
+                  timestamp: DateTime.now(),
+                  rawOutput: rawOutput.toString(),
+                )),
+              );
+              currentWorkshopId = null;
+              currentChunkPos++;
+              if (currentChunkPos < chunk.length) {
+                onItemStart?.call(
+                  chunk[currentChunkPos],
+                  items[chunk[currentChunkPos]].name,
+                );
+              }
+            }
+          }
+
+          // Failure: item not found on Steam
+          if (trimmed.contains('Failed to update workshop item')) {
+            completedInChunk.add(currentIdx);
+            onItemComplete?.call(
+              currentIdx,
+              Err(WorkshopItemNotFoundException(
+                'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
+                workshopId: items[currentIdx].params.publishedFileId,
+              )),
+            );
+            currentWorkshopId = null;
+            currentChunkPos++;
+            if (currentChunkPos < chunk.length) {
+              onItemStart?.call(
+                chunk[currentChunkPos],
+                items[chunk[currentChunkPos]].name,
+              );
+            }
+          }
+
+          // Generic error for current item
+          if (trimmed.contains('ERROR!') &&
+              !trimmed.contains('Login') &&
+              !completedInChunk.contains(currentIdx)) {
+            completedInChunk.add(currentIdx);
+            onItemComplete?.call(
+              currentIdx,
+              Err(WorkshopPublishException(
+                'steamcmd error: $trimmed',
+              )),
+            );
+            currentWorkshopId = null;
+            currentChunkPos++;
+            if (currentChunkPos < chunk.length) {
+              onItemStart?.call(
+                chunk[currentChunkPos],
+                items[chunk[currentChunkPos]].name,
+              );
+            }
+          }
+        }
+      },
+      onDone: () {
+        stdoutDone = true;
+        checkDone();
+      },
+    );
+
+    _currentProcess!.stderr.listen(
+      (data) {
+        lastOutputTime = DateTime.now();
+        final output = String.fromCharCodes(data);
+        rawOutput.write(output);
+        for (final line in output.split('\n')) {
+          final trimmed = line.trim();
+          if (trimmed.isNotEmpty) {
+            _outputController.add('[stderr] $trimmed');
+          }
+        }
+      },
+      onDone: () {
+        stderrDone = true;
+        checkDone();
+      },
+    );
+
+    // Inactivity timeout: kill process if no output for 3 minutes
+    final inactivityTimer =
+        Timer.periodic(const Duration(seconds: 10), (_) {
+      final silence = DateTime.now().difference(lastOutputTime);
+      if (silence.inMinutes >= 3) {
+        _logger.warning('Batch steamcmd inactivity timeout (3 min)');
+        _currentProcess?.kill();
+      }
+    });
+
+    final exitCode = await _currentProcess!.exitCode;
+    inactivityTimer.cancel();
+    await outputCompleter.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {},
+    );
+
+    // Handle auth failure — all items in chunk fail
+    if (authFailed) {
+      for (final idx in chunk) {
+        if (!completedInChunk.contains(idx)) {
+          onItemComplete?.call(
+            idx,
+            Err(const SteamAuthenticationException(
+              'Steam login failed. Check your credentials.',
+            )),
+          );
+        }
+      }
+      return;
+    }
+
+    // Mark any uncompleted items as errors
+    for (final idx in chunk) {
+      if (!completedInChunk.contains(idx)) {
+        final reason = _isCancelled
+            ? 'Publish cancelled by user'
+            : 'steamcmd process terminated unexpectedly (exit code: $exitCode)';
+        onItemComplete?.call(
+          idx,
+          Err(WorkshopPublishException(reason)),
+        );
+      }
+    }
+  }
+
   /// Run steamcmd with the given command and return structured output.
   Future<({int exitCode, String output, String? workshopId, bool wasUpdate})>
       _runSteamCmd({
@@ -428,4 +841,17 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     _outputController.close();
     _currentProcess?.kill();
   }
+}
+
+/// Prepared item for batch publishing (internal to service)
+class _BatchPreparedItem {
+  final String vdfPath;
+  final Directory tempDir;
+  final WorkshopPublishParams params;
+
+  const _BatchPreparedItem({
+    required this.vdfPath,
+    required this.tempDir,
+    required this.params,
+  });
 }

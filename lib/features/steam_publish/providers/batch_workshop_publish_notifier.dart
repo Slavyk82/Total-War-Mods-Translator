@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../repositories/compilation_repository.dart';
@@ -116,26 +114,22 @@ class BatchWorkshopPublishState {
 /// Notifier for batch workshop publish
 class BatchWorkshopPublishNotifier
     extends Notifier<BatchWorkshopPublishState> {
-  StreamSubscription<double>? _progressSub;
-  StreamSubscription<String>? _outputSub;
   bool _silentlyCleaned = false;
 
   // Cached for Steam Guard retry
   List<BatchPublishItemInfo>? _cachedItems;
   String? _cachedUsername;
   String? _cachedPassword;
-  int _currentItemIndex = 0;
 
   @override
   BatchWorkshopPublishState build() => const BatchWorkshopPublishState();
 
-  /// Start batch publish
+  /// Start batch publish using a single steamcmd process
   Future<void> publishBatch({
     required List<BatchPublishItemInfo> items,
     required String username,
     required String password,
     String? steamGuardCode,
-    int startFromIndex = 0,
   }) async {
     if (state.isPublishing) return;
     _silentlyCleaned = false;
@@ -143,7 +137,6 @@ class BatchWorkshopPublishNotifier
     final logging = ServiceLocator.get<LoggingService>();
     logging.info('Starting batch workshop publish', {
       'itemCount': items.length,
-      'startFromIndex': startFromIndex,
     });
 
     // Cache for potential Steam Guard retry
@@ -151,10 +144,10 @@ class BatchWorkshopPublishNotifier
     _cachedUsername = username;
     _cachedPassword = password;
 
-    // Initialize statuses (keep existing for items already completed)
-    final statuses = Map<String, BatchPublishStatus>.from(state.itemStatuses);
-    for (var i = startFromIndex; i < items.length; i++) {
-      statuses[items[i].name] = BatchPublishStatus.pending;
+    // Initialize statuses
+    final statuses = <String, BatchPublishStatus>{};
+    for (final item in items) {
+      statuses[item.name] = BatchPublishStatus.pending;
     }
 
     state = state.copyWith(
@@ -162,272 +155,199 @@ class BatchWorkshopPublishNotifier
       isCancelled: false,
       needsSteamGuard: false,
       totalItems: items.length,
-      completedItems: startFromIndex,
+      completedItems: 0,
       itemStatuses: statuses,
-      results: startFromIndex > 0 ? state.results : const [],
+      results: const [],
     );
 
     final service = ServiceLocator.get<IWorkshopPublishService>();
-    final results = List<BatchPublishItemResult>.from(state.results);
+    final results = <BatchPublishItemResult>[];
+    final failedAsNotFound = <int>[];
 
-    for (var i = startFromIndex; i < items.length; i++) {
-      _currentItemIndex = i;
-
-      // Check for cancellation
-      if (state.isCancelled) {
-        logging.info('Batch publish cancelled', {
-          'completedItems': i,
-          'totalItems': items.length,
-        });
-
-        final updatedStatuses =
-            Map<String, BatchPublishStatus>.from(state.itemStatuses);
-        for (var j = i; j < items.length; j++) {
-          updatedStatuses[items[j].name] = BatchPublishStatus.cancelled;
-        }
-
-        state = state.copyWith(
-          isPublishing: false,
-          itemStatuses: updatedStatuses,
-          clearCurrentItem: true,
-        );
-        return;
-      }
-
-      // Delay between items to avoid Steam rate-limiting
-      // ("Timeout uploading manifest" error / exit code 9)
-      if (i > startFromIndex) {
-        state = state.copyWith(
-          currentItemName: 'Waiting before next upload...',
-        );
-        await Future<void>.delayed(const Duration(seconds: 1));
-        if (state.isCancelled) continue;
-      }
-
-      final item = items[i];
-
-      // Update state for current item
-      final updatedStatuses =
-          Map<String, BatchPublishStatus>.from(state.itemStatuses);
-      updatedStatuses[item.name] = BatchPublishStatus.inProgress;
-
-      state = state.copyWith(
-        currentItemName: item.name,
-        currentItemProgress: 0.0,
-        itemStatuses: updatedStatuses,
-      );
-
-      // Listen to progress
-      _progressSub?.cancel();
-      _progressSub = service.progressStream.listen((progress) {
-        if (_silentlyCleaned) return;
-        state = state.copyWith(currentItemProgress: progress);
-      });
-
-      // Listen to output (we don't show terminal output in batch mode)
-      _outputSub?.cancel();
-      _outputSub = service.outputStream.listen((_) {});
-
-      try {
-        final result = await service.publish(
-          params: item.params,
-          username: username,
-          password: password,
-          steamGuardCode: steamGuardCode,
-        );
-
-        _progressSub?.cancel();
-        _outputSub?.cancel();
-
-        // Only use steam guard code for the first item
-        steamGuardCode = null;
-
-        var shouldBreak = false;
-        result.when(
-          ok: (publishResult) async {
-            updatedStatuses[item.name] = BatchPublishStatus.success;
-            results.add(BatchPublishItemResult(
-              name: item.name,
-              success: true,
-              workshopId: publishResult.workshopId,
-            ));
-
-            // Save workshop ID to project or compilation
-            if (item.projectId != null) {
-              try {
-                final projectRepo = ServiceLocator.get<ProjectRepository>();
-                final projectResult =
-                    await projectRepo.getById(item.projectId!);
-                if (projectResult.isOk) {
-                  final updated = projectResult.value.copyWith(
-                    publishedSteamId: publishResult.workshopId,
-                    publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                  );
-                  await projectRepo.update(updated);
-                }
-              } catch (e) {
-                logging.warning(
-                    'Failed to save Workshop ID for ${item.name}: $e');
-              }
-            } else if (item.compilationId != null) {
-              try {
-                final compilationRepo =
-                    ServiceLocator.get<CompilationRepository>();
-                await compilationRepo.updateAfterPublish(
-                  item.compilationId!,
-                  publishResult.workshopId,
-                  DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                );
-              } catch (e) {
-                logging.warning(
-                    'Failed to save Workshop ID for compilation ${item.name}: $e');
-              }
-            }
-
-            logging.info('Item published successfully', {
-              'name': item.name,
-              'workshopId': publishResult.workshopId,
-            });
-
-          },
-          err: (error) {
-            if (error is SteamGuardRequiredException) {
-              // Signal that Steam Guard is needed, pause batch
-              state = state.copyWith(
-                isPublishing: false,
-                needsSteamGuard: true,
-                itemStatuses: updatedStatuses,
-              );
-              shouldBreak = true;
-              return;
-            }
-
-            updatedStatuses[item.name] = BatchPublishStatus.failed;
-            results.add(BatchPublishItemResult(
-              name: item.name,
-              success: false,
-              errorMessage: error.message,
-            ));
-            logging.error('Item publish failed: ${item.name} - ${error.message}');
-          },
-        );
-
-        if (shouldBreak) return;
-
-        // If item failed because it was deleted from Steam, retry as new
-        if (result.isErr && result.error is WorkshopItemNotFoundException) {
-          logging.info(
-            'Item ${item.name} not found on Steam — retrying as new item',
-          );
-
-          _progressSub?.cancel();
-          _progressSub = service.progressStream.listen((progress) {
-            if (_silentlyCleaned) return;
-            state = state.copyWith(currentItemProgress: progress);
-          });
-          _outputSub?.cancel();
-          _outputSub = service.outputStream.listen((_) {});
-
-          // Remove the failed result we just added
-          results.removeLast();
-          updatedStatuses[item.name] = BatchPublishStatus.inProgress;
+    try {
+      await service.publishBatch(
+        items: items
+            .map((item) => (name: item.name, params: item.params))
+            .toList(),
+        username: username,
+        password: password,
+        steamGuardCode: steamGuardCode,
+        onItemStart: (index, name) {
+          if (_silentlyCleaned) return;
+          final updatedStatuses =
+              Map<String, BatchPublishStatus>.from(state.itemStatuses);
+          updatedStatuses[name] = BatchPublishStatus.inProgress;
           state = state.copyWith(
+            currentItemName: name,
             currentItemProgress: 0.0,
             itemStatuses: updatedStatuses,
           );
+        },
+        onItemProgress: (index, progress) {
+          if (_silentlyCleaned) return;
+          state = state.copyWith(currentItemProgress: progress);
+        },
+        onItemComplete: (index, result) {
+          if (_silentlyCleaned) return;
+          final item = items[index];
+          final updatedStatuses =
+              Map<String, BatchPublishStatus>.from(state.itemStatuses);
 
-          final retryResult = await service.publish(
-            params: item.params.copyWith(publishedFileId: '0'),
-            username: username,
-            password: password,
-          );
-
-          _progressSub?.cancel();
-          _outputSub?.cancel();
-
-          retryResult.when(
-            ok: (publishResult) async {
+          result.when(
+            ok: (publishResult) {
               updatedStatuses[item.name] = BatchPublishStatus.success;
               results.add(BatchPublishItemResult(
                 name: item.name,
                 success: true,
                 workshopId: publishResult.workshopId,
               ));
-
-              if (item.projectId != null) {
-                try {
-                  final projectRepo =
-                      ServiceLocator.get<ProjectRepository>();
-                  final projectResult =
-                      await projectRepo.getById(item.projectId!);
-                  if (projectResult.isOk) {
-                    final updated = projectResult.value.copyWith(
-                      publishedSteamId: publishResult.workshopId,
-                      publishedAt:
-                          DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                    );
-                    await projectRepo.update(updated);
-                  }
-                } catch (e) {
-                  logging.warning(
-                      'Failed to save Workshop ID for ${item.name}: $e');
-                }
-              } else if (item.compilationId != null) {
-                try {
-                  final compilationRepo =
-                      ServiceLocator.get<CompilationRepository>();
-                  await compilationRepo.updateAfterPublish(
-                    item.compilationId!,
-                    publishResult.workshopId,
-                    DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                  );
-                } catch (e) {
-                  logging.warning(
-                      'Failed to save Workshop ID for compilation ${item.name}: $e');
-                }
-              }
-
-              logging.info('Item re-published as new successfully', {
+              _saveWorkshopId(item, publishResult.workshopId);
+              logging.info('Item published successfully', {
                 'name': item.name,
                 'workshopId': publishResult.workshopId,
               });
-
             },
-            err: (retryError) {
+            err: (error) {
+              if (error is WorkshopItemNotFoundException) {
+                failedAsNotFound.add(index);
+              }
               updatedStatuses[item.name] = BatchPublishStatus.failed;
               results.add(BatchPublishItemResult(
                 name: item.name,
                 success: false,
-                errorMessage: retryError.message,
+                errorMessage: error.message,
               ));
               logging.error(
-                  'Item retry as new failed: ${item.name} - ${retryError.message}');
+                  'Item publish failed: ${item.name} - ${error.message}');
             },
           );
-        }
-      } catch (e, stack) {
-        _progressSub?.cancel();
-        _outputSub?.cancel();
 
-        updatedStatuses[item.name] = BatchPublishStatus.failed;
-        results.add(BatchPublishItemResult(
-          name: item.name,
-          success: false,
-          errorMessage: e.toString(),
-        ));
-        logging.error('Item publish exception: ${item.name}', e, stack);
-      }
-
-      // Update completed count
+          state = state.copyWith(
+            completedItems: results.length,
+            itemStatuses: updatedStatuses,
+            results: List.from(results),
+          );
+        },
+      );
+    } on SteamGuardRequiredException {
       state = state.copyWith(
-        completedItems: i + 1,
-        itemStatuses: updatedStatuses,
+        isPublishing: false,
+        needsSteamGuard: true,
+      );
+      return;
+    } catch (e, stack) {
+      logging.error('Batch publish exception', e, stack);
+    }
+
+    // --- Retry items that failed because their workshop ID was deleted ---
+    if (failedAsNotFound.isNotEmpty && !_silentlyCleaned) {
+      logging.info('Retrying ${failedAsNotFound.length} items as new');
+
+      final retryItems = failedAsNotFound.map((idx) {
+        final item = items[idx];
+        return (
+          name: item.name,
+          params: item.params.copyWith(publishedFileId: '0'),
+        );
+      }).toList();
+
+      // Remove the failed results for these items so we can replace them
+      final retryNames = failedAsNotFound.map((i) => items[i].name).toSet();
+      results.removeWhere((r) => retryNames.contains(r.name));
+
+      // Reset statuses for retry items
+      final retryStatuses =
+          Map<String, BatchPublishStatus>.from(state.itemStatuses);
+      for (final name in retryNames) {
+        retryStatuses[name] = BatchPublishStatus.pending;
+      }
+      state = state.copyWith(
+        completedItems: results.length,
+        itemStatuses: retryStatuses,
         results: List.from(results),
       );
+
+      try {
+        await service.publishBatch(
+          items: retryItems,
+          username: username,
+          password: password,
+          // No steamGuardCode needed — credentials cached from first batch
+          onItemStart: (index, name) {
+            if (_silentlyCleaned) return;
+            final updatedStatuses =
+                Map<String, BatchPublishStatus>.from(state.itemStatuses);
+            updatedStatuses[name] = BatchPublishStatus.inProgress;
+            state = state.copyWith(
+              currentItemName: name,
+              currentItemProgress: 0.0,
+              itemStatuses: updatedStatuses,
+            );
+          },
+          onItemProgress: (index, progress) {
+            if (_silentlyCleaned) return;
+            state = state.copyWith(currentItemProgress: progress);
+          },
+          onItemComplete: (index, result) {
+            if (_silentlyCleaned) return;
+            final originalIdx = failedAsNotFound[index];
+            final item = items[originalIdx];
+            final updatedStatuses =
+                Map<String, BatchPublishStatus>.from(state.itemStatuses);
+
+            result.when(
+              ok: (publishResult) {
+                updatedStatuses[item.name] = BatchPublishStatus.success;
+                results.add(BatchPublishItemResult(
+                  name: item.name,
+                  success: true,
+                  workshopId: publishResult.workshopId,
+                ));
+                _saveWorkshopId(item, publishResult.workshopId);
+                logging.info('Item re-published as new successfully', {
+                  'name': item.name,
+                  'workshopId': publishResult.workshopId,
+                });
+              },
+              err: (error) {
+                updatedStatuses[item.name] = BatchPublishStatus.failed;
+                results.add(BatchPublishItemResult(
+                  name: item.name,
+                  success: false,
+                  errorMessage: error.message,
+                ));
+                logging.error(
+                    'Item retry as new failed: ${item.name} - ${error.message}');
+              },
+            );
+
+            state = state.copyWith(
+              completedItems: results.length,
+              itemStatuses: updatedStatuses,
+              results: List.from(results),
+            );
+          },
+        );
+      } catch (e, stack) {
+        logging.error('Batch retry exception', e, stack);
+      }
     }
 
     // Batch complete — skip if widget was disposed during publish
     if (_silentlyCleaned) return;
+
+    // Mark remaining uncompleted items as cancelled if batch was cancelled
+    if (state.isCancelled) {
+      final updatedStatuses =
+          Map<String, BatchPublishStatus>.from(state.itemStatuses);
+      for (final item in items) {
+        if (updatedStatuses[item.name] == BatchPublishStatus.pending ||
+            updatedStatuses[item.name] == BatchPublishStatus.inProgress) {
+          updatedStatuses[item.name] = BatchPublishStatus.cancelled;
+        }
+      }
+      state = state.copyWith(itemStatuses: updatedStatuses);
+    }
 
     state = state.copyWith(
       isPublishing: false,
@@ -444,7 +364,45 @@ class BatchWorkshopPublishNotifier
     });
   }
 
-  /// Retry batch from current item with Steam Guard code
+  /// Save workshop ID to project or compilation DB record
+  Future<void> _saveWorkshopId(
+    BatchPublishItemInfo item,
+    String workshopId,
+  ) async {
+    final logging = ServiceLocator.get<LoggingService>();
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    if (item.projectId != null) {
+      try {
+        final projectRepo = ServiceLocator.get<ProjectRepository>();
+        final projectResult = await projectRepo.getById(item.projectId!);
+        if (projectResult.isOk) {
+          final updated = projectResult.value.copyWith(
+            publishedSteamId: workshopId,
+            publishedAt: now,
+          );
+          await projectRepo.update(updated);
+        }
+      } catch (e) {
+        logging.warning('Failed to save Workshop ID for ${item.name}: $e');
+      }
+    } else if (item.compilationId != null) {
+      try {
+        final compilationRepo =
+            ServiceLocator.get<CompilationRepository>();
+        await compilationRepo.updateAfterPublish(
+          item.compilationId!,
+          workshopId,
+          now,
+        );
+      } catch (e) {
+        logging.warning(
+            'Failed to save Workshop ID for compilation ${item.name}: $e');
+      }
+    }
+  }
+
+  /// Retry batch with Steam Guard code
   Future<void> retryWithSteamGuard(String code) async {
     if (_cachedItems == null ||
         _cachedUsername == null ||
@@ -463,7 +421,6 @@ class BatchWorkshopPublishNotifier
       username: _cachedUsername!,
       password: _cachedPassword!,
       steamGuardCode: code,
-      startFromIndex: _currentItemIndex,
     );
   }
 
@@ -471,33 +428,25 @@ class BatchWorkshopPublishNotifier
   void cancel() {
     if (state.isPublishing && !state.isCancelled) {
       state = state.copyWith(isCancelled: true);
+      final service = ServiceLocator.get<IWorkshopPublishService>();
+      service.cancel();
     }
-    _progressSub?.cancel();
-    _outputSub?.cancel();
   }
 
   /// Reset state (only call when the widget is still mounted)
   void reset() {
-    _progressSub?.cancel();
-    _outputSub?.cancel();
     _cachedItems = null;
     _cachedUsername = null;
     _cachedPassword = null;
-    _currentItemIndex = 0;
     state = const BatchWorkshopPublishState();
   }
 
   /// Clean up without setting state — safe to call from widget dispose()
   void silentCleanup() {
     _silentlyCleaned = true;
-    _progressSub?.cancel();
-    _progressSub = null;
-    _outputSub?.cancel();
-    _outputSub = null;
     _cachedItems = null;
     _cachedUsername = null;
     _cachedPassword = null;
-    _currentItemIndex = 0;
     final service = ServiceLocator.get<IWorkshopPublishService>();
     service.cancel();
   }

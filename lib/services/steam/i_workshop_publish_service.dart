@@ -22,6 +22,25 @@ abstract class IWorkshopPublishService {
     String? steamGuardCode,
   });
 
+  /// Publish multiple Workshop items in a single steamcmd process.
+  ///
+  /// Uses `+workshop_build_item` for each item within one login session,
+  /// avoiding rate-limiting from multiple sequential logins.
+  ///
+  /// Throws [SteamGuardRequiredException] if Steam Guard code is needed.
+  Future<void> publishBatch({
+    required List<({String name, WorkshopPublishParams params})> items,
+    required String username,
+    required String password,
+    String? steamGuardCode,
+    void Function(int index, String name)? onItemStart,
+    void Function(int index, double progress)? onItemProgress,
+    void Function(
+            int index,
+            Result<WorkshopPublishResult, SteamServiceException> result)?
+        onItemComplete,
+  });
+
   /// Submit a Steam Guard code to the running steamcmd process via stdin.
   ///
   /// Call this while steamcmd is waiting for an authenticator code.
