@@ -294,53 +294,92 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final hasPublishedId = widget.item.publishedSteamId != null &&
         widget.item.publishedSteamId!.isNotEmpty;
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Tooltip(
-        message: hasPublishedId
-            ? 'Update existing Workshop item'
-            : 'Publish to Steam Workshop',
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () {
-              WorkshopPublishDialog.show(
-                context,
-                item: widget.item,
-              );
-            },
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.3),
+    return Row(
+      children: [
+        Tooltip(
+          message: hasPublishedId
+              ? 'Update existing Workshop item'
+              : 'Publish to Steam Workshop',
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () {
+                WorkshopPublishDialog.show(
+                  context,
+                  item: widget.item,
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  ),
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    FluentIcons.cloud_arrow_up_24_regular,
-                    size: 14,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    hasPublishedId ? 'Update' : 'Publish',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.cloud_arrow_up_24_regular,
+                      size: 14,
                       color: theme.colorScheme.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      hasPublishedId ? 'Update' : 'Publish',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
+        if (hasPublishedId && widget.item.publishedAt != null) ...[
+          const SizedBox(width: 8),
+          _buildPublishedAtLabel(context),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPublishedAtLabel(BuildContext context) {
+    final theme = Theme.of(context);
+    final publishedAt = widget.item.publishedAt!;
+    final exportedAt = widget.item.exportedAt;
+    final isUpToDate = publishedAt >= exportedAt;
+    final color = isUpToDate ? Colors.green.shade600 : Colors.red.shade600;
+    final publishedDate = DateTime.fromMillisecondsSinceEpoch(publishedAt * 1000);
+    final timeAgoStr = timeago.format(publishedDate);
+
+    return Tooltip(
+      message: 'Last published: ${publishedDate.toLocal().toString().substring(0, 16)}',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isUpToDate
+                ? FluentIcons.checkmark_circle_24_regular
+                : FluentIcons.warning_24_regular,
+            size: 12,
+            color: color,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Published $timeAgoStr',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: color,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }
