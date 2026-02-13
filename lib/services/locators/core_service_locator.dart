@@ -26,7 +26,6 @@ import '../steam/steamcmd_manager.dart';
 import '../steam/steamcmd_service_impl.dart';
 import '../steam/workshop_api_service_impl.dart';
 import '../steam/workshop_metadata_service.dart';
-import '../steam/workshop_dependency_service.dart';
 import '../steam/workshop_publish_service_impl.dart';
 import '../../repositories/workshop_mod_repository.dart';
 import '../updates/app_update_service.dart';
@@ -117,10 +116,6 @@ class CoreServiceLocator {
 
     locator.registerLazySingleton<IWorkshopPublishService>(
       () => WorkshopPublishServiceImpl(),
-    );
-
-    locator.registerLazySingleton<WorkshopDependencyService>(
-      () => WorkshopDependencyService(),
     );
 
     // Concurrency Services

@@ -9,7 +9,6 @@ import '../../../services/shared/logging_service.dart';
 import '../../../services/steam/i_workshop_publish_service.dart';
 import '../../../services/steam/models/steam_exceptions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
-import '../../../services/steam/workshop_dependency_service.dart';
 import 'steam_publish_providers.dart';
 
 /// Phase of the workshop publish operation
@@ -202,13 +201,6 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
       // Invalidate the exports list to refresh Published ID
       ref.invalidate(publishableItemsProvider);
-
-      // Fire-and-forget: set Workshop dependencies (required items)
-      WorkshopDependencyService.setDependenciesForPublishedItem(
-        projectId: projectId,
-        compilationId: compilationId,
-        publishedWorkshopId: publishResult.workshopId,
-      );
 
       logging.info('Workshop publish completed', {
         'workshopId': publishResult.workshopId,
