@@ -147,64 +147,64 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       return;
     }
 
-    result.when(
-      ok: (publishResult) async {
-        // Save workshop ID to project if we have a project ID
-        if (projectId != null) {
-          state = state.copyWith(
-            phase: PublishPhase.savingWorkshopId,
-            statusMessage: 'Saving Workshop ID...',
-          );
+    if (result.isOk) {
+      final publishResult = result.value;
 
-          try {
-            final projectRepo = ServiceLocator.get<ProjectRepository>();
-            final projectResult = await projectRepo.getById(projectId);
-            if (projectResult.isOk) {
-              final updated = projectResult.value.copyWith(
-                publishedSteamId: publishResult.workshopId,
-                publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-              );
-              await projectRepo.update(updated);
-            }
-          } catch (e) {
-            logging.warning('Failed to save Workshop ID to project: $e');
-          }
-        }
-
+      // Save workshop ID to project if we have a project ID
+      if (projectId != null) {
         state = state.copyWith(
-          phase: PublishPhase.completed,
-          progress: 1.0,
-          publishedWorkshopId: publishResult.workshopId,
-          wasUpdate: publishResult.wasUpdate,
-          statusMessage: publishResult.wasUpdate
-              ? 'Workshop item updated successfully!'
-              : 'Workshop item published successfully!',
+          phase: PublishPhase.savingWorkshopId,
+          statusMessage: 'Saving Workshop ID...',
         );
 
-        // Invalidate the exports list to refresh Published ID
-        ref.invalidate(recentPackExportsProvider);
-
-        logging.info('Workshop publish completed', {
-          'workshopId': publishResult.workshopId,
-          'wasUpdate': publishResult.wasUpdate,
-        });
-      },
-      err: (error) {
-        if (error is SteamGuardRequiredException) {
-          state = state.copyWith(
-            phase: PublishPhase.awaitingSteamGuard,
-            statusMessage: 'Steam Guard code required',
-          );
-        } else {
-          state = state.copyWith(
-            phase: PublishPhase.error,
-            errorMessage: error.message,
-            statusMessage: 'Publication failed',
-          );
-          logging.error('Workshop publish failed: ${error.message}');
+        try {
+          final projectRepo = ServiceLocator.get<ProjectRepository>();
+          final projectResult = await projectRepo.getById(projectId);
+          if (projectResult.isOk) {
+            final updated = projectResult.value.copyWith(
+              publishedSteamId: publishResult.workshopId,
+              publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            );
+            await projectRepo.update(updated);
+          }
+        } catch (e) {
+          logging.warning('Failed to save Workshop ID to project: $e');
         }
-      },
-    );
+      }
+
+      state = state.copyWith(
+        phase: PublishPhase.completed,
+        progress: 1.0,
+        publishedWorkshopId: publishResult.workshopId,
+        wasUpdate: publishResult.wasUpdate,
+        statusMessage: publishResult.wasUpdate
+            ? 'Workshop item updated successfully!'
+            : 'Workshop item published successfully!',
+      );
+
+      // Invalidate the exports list to refresh Published ID
+      ref.invalidate(recentPackExportsProvider);
+
+      logging.info('Workshop publish completed', {
+        'workshopId': publishResult.workshopId,
+        'wasUpdate': publishResult.wasUpdate,
+      });
+    } else {
+      final error = result.error;
+      if (error is SteamGuardRequiredException) {
+        state = state.copyWith(
+          phase: PublishPhase.awaitingSteamGuard,
+          statusMessage: 'Steam Guard code required',
+        );
+      } else {
+        state = state.copyWith(
+          phase: PublishPhase.error,
+          errorMessage: error.message,
+          statusMessage: 'Publication failed',
+        );
+        logging.error('Workshop publish failed: ${error.message}');
+      }
+    }
 
     // Clear cached credentials on completion or non-retryable error
     if (state.phase == PublishPhase.completed ||
