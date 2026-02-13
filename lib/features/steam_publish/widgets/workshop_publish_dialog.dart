@@ -75,8 +75,11 @@ class _WorkshopPublishDialogState
   @override
   void initState() {
     super.initState();
-    // Reset any leftover state from a previous publish
-    ref.read(workshopPublishProvider.notifier).reset();
+    // Reset any leftover state from a previous publish (deferred to avoid
+    // modifying a provider during a widget lifecycle method).
+    Future.microtask(() {
+      ref.read(workshopPublishProvider.notifier).reset();
+    });
 
     _titleController = TextEditingController(
       text: widget.item.displayName,
