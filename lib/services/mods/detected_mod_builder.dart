@@ -260,6 +260,7 @@ class DetectedModBuilder {
       final updatedProject = existingProject.copyWith(
         name: newTitle,
         metadata: updatedMetadata.toJsonString(),
+        updatedAt: existingProject.updatedAt,
       );
 
       await _projectRepository.update(updatedProject);

@@ -361,8 +361,9 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
         
         final updatedProject = project.copyWith(
           metadata: updatedMetadata.toJsonString(),
+          updatedAt: project.updatedAt,
         );
-        
+
         // Save the updated project
         await projectRepo.update(updatedProject);
         project = updatedProject;

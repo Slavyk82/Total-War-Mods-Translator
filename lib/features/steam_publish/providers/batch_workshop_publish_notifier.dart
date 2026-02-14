@@ -380,6 +380,7 @@ class BatchWorkshopPublishNotifier
           final updated = projectResult.value.copyWith(
             publishedSteamId: workshopId,
             publishedAt: now,
+            updatedAt: projectResult.value.updatedAt,
           );
           await projectRepo.update(updated);
         }
