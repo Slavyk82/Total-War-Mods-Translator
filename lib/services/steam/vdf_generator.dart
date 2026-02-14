@@ -50,6 +50,14 @@ class VdfGenerator {
     buffer.writeln('  "description"     "${_escapeVdf(params.description)}"');
     buffer.writeln('  "changenote"      "${_escapeVdf(params.changeNote)}"');
     buffer.writeln('  "visibility"      "${params.visibility.value}"');
+    if (params.tags.isNotEmpty) {
+      buffer.writeln('  "tags"');
+      buffer.writeln('  {');
+      for (var i = 0; i < params.tags.length; i++) {
+        buffer.writeln('    "$i"    "${_escapeVdf(params.tags[i])}"');
+      }
+      buffer.writeln('  }');
+    }
     buffer.writeln('}');
     return buffer.toString();
   }

@@ -42,6 +42,9 @@ class WorkshopPublishParams {
   /// Visibility setting
   final WorkshopVisibility visibility;
 
+  /// Steam Workshop tags (e.g., 'compilation' for TW:WH3 launcher visibility)
+  final List<String> tags;
+
   const WorkshopPublishParams({
     required this.appId,
     this.publishedFileId = '0',
@@ -51,6 +54,7 @@ class WorkshopPublishParams {
     required this.description,
     this.changeNote = '',
     this.visibility = WorkshopVisibility.public_,
+    this.tags = const ['compilation'],
   });
 
   /// Whether this is a new Workshop item (not an update)
@@ -65,6 +69,7 @@ class WorkshopPublishParams {
     String? description,
     String? changeNote,
     WorkshopVisibility? visibility,
+    List<String>? tags,
   }) {
     return WorkshopPublishParams(
       appId: appId ?? this.appId,
@@ -75,6 +80,7 @@ class WorkshopPublishParams {
       description: description ?? this.description,
       changeNote: changeNote ?? this.changeNote,
       visibility: visibility ?? this.visibility,
+      tags: tags ?? this.tags,
     );
   }
 }
