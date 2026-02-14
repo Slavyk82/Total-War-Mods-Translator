@@ -70,6 +70,8 @@ enum ProjectQuickFilter {
   exported,
   /// Projects that have never been exported
   notExported,
+  /// Projects modified since their last export
+  exportOutdated,
 }
 
 /// Filter state for projects screen
@@ -166,6 +168,12 @@ class ProjectWithDetails {
 
   /// Check if the project has been exported at least once
   bool get hasBeenExported => lastPackExport != null;
+
+  /// Check if the project was modified after the last export
+  bool get isModifiedSinceLastExport {
+    if (lastPackExport == null) return false;
+    return project.updatedAt > lastPackExport!.exportedAt;
+  }
 }
 
 /// Project language with language info and translation stats
@@ -502,6 +510,9 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
       case ProjectQuickFilter.notExported:
         // Show only projects that have never been exported
         if (projectWithDetails.hasBeenExported) return false;
+      case ProjectQuickFilter.exportOutdated:
+        // Show only projects modified since their last export
+        if (!projectWithDetails.isModifiedSinceLastExport) return false;
     }
 
     return true;

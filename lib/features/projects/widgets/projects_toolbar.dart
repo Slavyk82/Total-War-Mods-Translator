@@ -406,6 +406,18 @@ class _ProjectsToolbarState extends ConsumerState<ProjectsToolbar> {
                 : ProjectQuickFilter.notExported,
           ),
         ),
+        const SizedBox(width: 8),
+        _QuickFilterButton(
+          icon: FluentIcons.arrow_export_24_regular,
+          label: 'Export Outdated',
+          tooltip: TooltipStrings.projectsFilterExportOutdated,
+          isSelected: currentFilter == ProjectQuickFilter.exportOutdated,
+          onTap: () => _setQuickFilter(
+            currentFilter == ProjectQuickFilter.exportOutdated
+                ? ProjectQuickFilter.none
+                : ProjectQuickFilter.exportOutdated,
+          ),
+        ),
         if (currentFilter != ProjectQuickFilter.none) ...[
           const SizedBox(width: 12),
           _buildClearFilterButton(theme),

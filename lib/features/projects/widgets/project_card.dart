@@ -247,6 +247,38 @@ class _ProjectCardState extends State<ProjectCard> {
               fontSize: 11,
             ),
           ),
+          if (widget.projectWithDetails.isModifiedSinceLastExport) ...[
+            const SizedBox(width: 8),
+            Tooltip(
+              message: 'Project was modified after the last export',
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.arrow_export_24_regular,
+                      size: 10,
+                      color: Colors.orange.shade700,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      'Export outdated',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.orange.shade700,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );

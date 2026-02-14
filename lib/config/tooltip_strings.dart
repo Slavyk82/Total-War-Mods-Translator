@@ -49,6 +49,8 @@ class TooltipStrings {
       'Show projects not yet 100% translated in all configured languages';
   static const String projectsFilterHasComplete =
       'Show projects with at least one language fully translated';
+  static const String projectsFilterExportOutdated =
+      'Show projects modified since their last export';
   static const String projectsSortName = 'Sort projects alphabetically by name';
   static const String projectsSortDate =
       'Sort projects by most recently updated first';
