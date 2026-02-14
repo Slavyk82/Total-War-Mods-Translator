@@ -352,20 +352,23 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
 
       if (prepared.isEmpty || _isCancelled) return;
 
-      // --- Build commands with chunking (Windows CreateProcess limit ~32767 chars) ---
+      // --- Build commands with chunking ---
+      // Two limits: Windows CreateProcess limit (~32767 chars) and steamcmd
+      // stability (crashes after ~30 items in a single process).
       final orderedIndices = prepared.keys.toList()..sort();
       final chunks = <List<int>>[];
       var currentChunk = <int>[];
       var currentLength = 0;
-      // Reserve space for login args (~200 chars) and +quit (~10 chars)
       const maxCmdLength = 32000;
       const loginReserve = 300;
+      const maxItemsPerChunk = 15;
 
       for (final idx in orderedIndices) {
         final itemArg =
             '+workshop_build_item ${prepared[idx]!.vdfPath}'.length + 1;
         if (currentChunk.isNotEmpty &&
-            currentLength + itemArg > maxCmdLength - loginReserve) {
+            (currentLength + itemArg > maxCmdLength - loginReserve ||
+                currentChunk.length >= maxItemsPerChunk)) {
           chunks.add(currentChunk);
           currentChunk = <int>[];
           currentLength = 0;
@@ -378,6 +381,11 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       // --- Execute each chunk as a single steamcmd process ---
       for (var chunkIdx = 0; chunkIdx < chunks.length; chunkIdx++) {
         if (_isCancelled) break;
+
+        // Brief pause between chunks to let steamcmd fully release resources
+        if (chunkIdx > 0) {
+          await Future<void>.delayed(const Duration(seconds: 3));
+        }
 
         final chunk = chunks[chunkIdx];
         final List<String> command;
