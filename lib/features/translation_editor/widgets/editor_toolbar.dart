@@ -20,6 +20,7 @@ class EditorToolbar extends ConsumerStatefulWidget {
   final VoidCallback onTranslateAll;
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
+  final VoidCallback onRescanValidation;
   final VoidCallback onExport;
   final VoidCallback onImportPack;
 
@@ -31,6 +32,7 @@ class EditorToolbar extends ConsumerStatefulWidget {
     required this.onTranslateAll,
     required this.onTranslateSelected,
     required this.onValidate,
+    required this.onRescanValidation,
     required this.onExport,
     required this.onImportPack,
   });
@@ -128,6 +130,14 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                         label: 'Validate',
                         tooltip: TooltipStrings.editorValidate,
                         onPressed: widget.onValidate,
+                        compact: isCompact,
+                      ),
+                      SizedBox(width: isCompact ? 4 : 8),
+                      _buildActionButton(
+                        icon: FluentIcons.arrow_sync_24_regular,
+                        label: 'Rescan',
+                        tooltip: TooltipStrings.editorRescanValidation,
+                        onPressed: widget.onRescanValidation,
                         compact: isCompact,
                       ),
                       SizedBox(width: isCompact ? 4 : 8),

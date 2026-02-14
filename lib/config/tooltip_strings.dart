@@ -87,6 +87,8 @@ class TooltipStrings {
       'Translate only the selected entries';
   static const String editorValidate =
       'Run validation checks on all translations and open review screen';
+  static const String editorRescanValidation =
+      'Rescan all translations to update validation statuses (needs review / valid)';
   static const String editorExport =
       'Export translations to a .pack file for in-game use';
   static const String editorImportPack =

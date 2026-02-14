@@ -96,6 +96,7 @@ class _TranslationEditorScreenState
             onTranslateAll: () => _getActions().handleTranslateAll(),
             onTranslateSelected: () => _getActions().handleTranslateSelected(),
             onValidate: () => _getActions().handleValidate(),
+            onRescanValidation: () => _getActions().handleRescanValidation(),
             onExport: () => _getActions().handleExport(),
             onImportPack: () => _getActions().handleImportPack(),
           ),

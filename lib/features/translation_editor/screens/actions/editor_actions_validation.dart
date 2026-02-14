@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
+import '../../../../services/service_locator.dart';
+import '../../../../services/translation/i_validation_service.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
 import '../validation_review_screen.dart';
@@ -125,6 +127,196 @@ mixin EditorActionsValidation on EditorActionsBase {
       if (!context.mounted) return;
       EditorDialogs.showErrorDialog(
           context, 'Failed to load validation issues', e.toString());
+    }
+  }
+
+  /// Rescan all translations and update validation statuses.
+  ///
+  /// Re-runs the validation service on every translated entry,
+  /// updating the status (translated / needsReview) and storing
+  /// the validation issues JSON in the database.
+  Future<void> handleRescanValidation() async {
+    try {
+      final projectLanguageId = await getProjectLanguageId();
+      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final validationService = ServiceLocator.get<IValidationService>();
+      final logger = ref.read(loggingServiceProvider);
+
+      // Get all versions for this project language
+      final versionsResult =
+          await versionRepo.getByProjectLanguage(projectLanguageId);
+      if (versionsResult.isErr) {
+        throw Exception('Failed to load translations');
+      }
+
+      final allVersions = versionsResult.unwrap();
+
+      // Keep only versions that have translated text
+      final translatedVersions = allVersions
+          .where((v) =>
+              v.translatedText != null && v.translatedText!.isNotEmpty)
+          .toList();
+
+      if (translatedVersions.isEmpty) {
+        if (!context.mounted) return;
+        EditorDialogs.showInfoDialog(
+          context,
+          'Nothing to scan',
+          'No translated entries found.',
+        );
+        return;
+      }
+
+      logger.info(
+        'Starting full validation rescan',
+        {'totalToScan': translatedVersions.length},
+      );
+
+      // Show progress dialog
+      if (!context.mounted) return;
+      final progressNotifier = ValueNotifier<String>(
+        'Scanning 0/${translatedVersions.length}...',
+      );
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Text('Validation Rescan'),
+              ],
+            ),
+            content: ValueListenableBuilder<String>(
+              valueListenable: progressNotifier,
+              builder: (_, message, _) => Text(message),
+            ),
+          ),
+        ),
+      );
+
+      // Run the scan
+      var scanned = 0;
+      var newIssues = 0;
+      var cleared = 0;
+      var unchanged = 0;
+
+      for (final version in translatedVersions) {
+        scanned++;
+        if (scanned % 50 == 0 || scanned == translatedVersions.length) {
+          progressNotifier.value =
+              'Scanning $scanned/${translatedVersions.length}...';
+        }
+
+        // Get the unit for source text
+        final unitResult = await unitRepo.getById(version.unitId);
+        if (unitResult.isErr) continue;
+        final unit = unitResult.unwrap();
+
+        // Run validation
+        final validationResult = await validationService.validateTranslation(
+          sourceText: unit.sourceText,
+          translatedText: version.translatedText!,
+          key: unit.key,
+        );
+
+        // Determine new status
+        TranslationVersionStatus newStatus =
+            TranslationVersionStatus.translated;
+        String? newValidationIssues;
+
+        if (validationResult.isErr) {
+          newStatus = TranslationVersionStatus.needsReview;
+        } else {
+          final result = validationResult.unwrap();
+          if (result.hasErrors || result.hasWarnings) {
+            newStatus = TranslationVersionStatus.needsReview;
+            newValidationIssues = result.allMessages.toString();
+          }
+        }
+
+        // Check if status changed
+        final statusChanged = version.status != newStatus;
+        final issuesChanged =
+            version.validationIssues != newValidationIssues;
+
+        if (statusChanged || issuesChanged) {
+          // Build updated version manually to allow setting null
+          final updatedVersion = TranslationVersion(
+            id: version.id,
+            unitId: version.unitId,
+            projectLanguageId: version.projectLanguageId,
+            translatedText: version.translatedText,
+            isManuallyEdited: version.isManuallyEdited,
+            status: newStatus,
+            translationSource: version.translationSource,
+            validationIssues: newValidationIssues,
+            createdAt: version.createdAt,
+            updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          );
+          await versionRepo.update(updatedVersion);
+
+          if (newStatus == TranslationVersionStatus.needsReview) {
+            newIssues++;
+          } else {
+            cleared++;
+          }
+        } else {
+          unchanged++;
+        }
+      }
+
+      logger.info(
+        'Validation rescan complete',
+        {
+          'scanned': scanned,
+          'newIssues': newIssues,
+          'cleared': cleared,
+          'unchanged': unchanged,
+        },
+      );
+
+      // Close progress dialog and show results
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      progressNotifier.dispose();
+
+      refreshProviders();
+
+      if (!context.mounted) return;
+      EditorDialogs.showInfoDialog(
+        context,
+        'Rescan Complete',
+        'Scanned $scanned translations:\n'
+            '  - $newIssues flagged as needs review\n'
+            '  - $cleared cleared (now valid)\n'
+            '  - $unchanged unchanged',
+      );
+    } catch (e, stackTrace) {
+      ref.read(loggingServiceProvider).error(
+        'Validation rescan failed',
+        e,
+        stackTrace,
+      );
+      // Try to close progress dialog if still open
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+      if (!context.mounted) return;
+      EditorDialogs.showErrorDialog(
+        context,
+        'Rescan Failed',
+        e.toString(),
+      );
     }
   }
 
