@@ -231,7 +231,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       if (context.mounted) {
         FluentToast.success(context, 'Project resynced successfully');
         // Refresh the projects list
-        ref.invalidate(paginatedProjectsProvider);
+        ref.invalidate(projectsWithDetailsProvider);
       }
     } catch (e) {
       if (context.mounted) {

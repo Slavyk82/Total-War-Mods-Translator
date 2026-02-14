@@ -87,7 +87,7 @@ class _BatchPackExportScreenState
     if (await _confirmLeaveIfActive()) {
       if (mounted) {
         ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
-        ref.invalidate(paginatedProjectsProvider);
+        ref.invalidate(projectsWithDetailsProvider);
         context.pop();
       }
     }
@@ -181,7 +181,7 @@ class _BatchPackExportScreenState
             FilledButton.icon(
               onPressed: () {
                 ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
-                ref.invalidate(paginatedProjectsProvider);
+                ref.invalidate(projectsWithDetailsProvider);
                 context.pop();
               },
               icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
