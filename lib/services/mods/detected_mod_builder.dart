@@ -7,6 +7,7 @@ import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/mod_update_analysis_cache.dart';
 import 'package:twmt/models/domain/mod_scan_result.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
+import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
 import 'package:twmt/services/shared/logging_service.dart';
@@ -28,15 +29,18 @@ class DetectedModBuilder {
   final WorkshopModRepository _workshopModRepository;
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final ProjectAnalysisHandler _analysisHandler;
+  final ProjectRepository _projectRepository;
   final LoggingService _logger = LoggingService.instance;
 
   DetectedModBuilder({
     required WorkshopModRepository workshopModRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     required ProjectAnalysisHandler analysisHandler,
+    required ProjectRepository projectRepository,
   })  : _workshopModRepository = workshopModRepository,
         _analysisCacheRepository = analysisCacheRepository,
-        _analysisHandler = analysisHandler;
+        _analysisHandler = analysisHandler,
+        _projectRepository = projectRepository;
 
   /// Build list of DetectedMod from collected data.
   ///
@@ -93,6 +97,17 @@ class DetectedModBuilder {
 
       // Check if mod is already imported
       final existingProject = existingWorkshopIds[workshopId];
+
+      // Update project title if it changed on Steam Workshop
+      if (existingProject != null && metadata != null) {
+        await _updateProjectTitleIfChanged(
+          existingProject: existingProject,
+          newTitle: modTitle,
+          metadata: metadata,
+          existingWorkshopIds: existingWorkshopIds,
+          emitLog: emitLog,
+        );
+      }
 
       // Determine if we should analyze changes:
       // Only analyze if:
@@ -215,6 +230,47 @@ class DetectedModBuilder {
       mods: detectedMods,
       translationStatsChanged: translationStatsChanged,
     );
+  }
+
+  /// Update project name and metadata if the mod title changed on Steam Workshop.
+  ///
+  /// Only updates when the project already had a stored modTitle in metadata
+  /// (to avoid overwriting manual renames on projects without metadata).
+  Future<void> _updateProjectTitleIfChanged({
+    required Project existingProject,
+    required String newTitle,
+    required ProjectMetadata metadata,
+    required Map<String, Project> existingWorkshopIds,
+    ScanLogEmitter? emitLog,
+  }) async {
+    final storedModTitle = existingProject.parsedMetadata?.modTitle;
+    if (storedModTitle == null || storedModTitle == newTitle) return;
+
+    _logger.info(
+      'Workshop title changed for project ${existingProject.id}: '
+      '"$storedModTitle" -> "$newTitle"',
+    );
+    emitLog?.call('Title updated: "$storedModTitle" -> "$newTitle"');
+
+    try {
+      final updatedMetadata =
+          (existingProject.parsedMetadata ?? const ProjectMetadata())
+              .copyWith(modTitle: metadata.modTitle);
+
+      final updatedProject = existingProject.copyWith(
+        name: newTitle,
+        metadata: updatedMetadata.toJsonString(),
+      );
+
+      await _projectRepository.update(updatedProject);
+
+      // Update the map so downstream code sees the updated project
+      existingWorkshopIds[existingProject.modSteamId!] = updatedProject;
+    } catch (e) {
+      _logger.warning(
+        'Failed to update project title for ${existingProject.id}: $e',
+      );
+    }
   }
 
   /// Get metadata from database cache.

@@ -79,6 +79,7 @@ class WorkshopScannerService {
         _detectedModBuilder = DetectedModBuilder(
           workshopModRepository: workshopModRepository,
           analysisCacheRepository: analysisCacheRepository,
+          projectRepository: projectRepository,
           analysisHandler: ProjectAnalysisHandler(
             projectRepository: projectRepository,
             analysisCacheRepository: analysisCacheRepository,
