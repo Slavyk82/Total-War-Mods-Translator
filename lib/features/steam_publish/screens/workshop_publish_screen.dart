@@ -373,11 +373,12 @@ class _WorkshopPublishScreenState
         entriesText = '${item.projectCount} projects';
     }
 
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -481,15 +482,20 @@ class _WorkshopPublishScreenState
               ),
               const SizedBox(height: 12),
 
-              // Description
-              TextField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                  hintText: 'Describe your translation mod...',
+              // Description — expands to fill remaining vertical space
+              Expanded(
+                child: TextField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                    alignLabelWithHint: true,
+                    hintText: 'Describe your translation mod...',
+                  ),
+                  maxLines: null,
+                  expands: true,
+                  textAlignVertical: TextAlignVertical.top,
                 ),
-                maxLines: 3,
               ),
               const SizedBox(height: 12),
 

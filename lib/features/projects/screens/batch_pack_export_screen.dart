@@ -1,44 +1,52 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:go_router/go_router.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
-import '../providers/batch_pack_export_notifier.dart';
+import '../../../widgets/layouts/fluent_scaffold.dart';
+import '../providers/projects_screen_providers.dart';
 
-/// Dialog for batch pack export progress
-class BatchPackExportDialog extends ConsumerStatefulWidget {
-  final List<ProjectExportInfo> projects;
-  final String languageCode;
-  final String languageName;
-
-  const BatchPackExportDialog({
-    super.key,
-    required this.projects,
-    required this.languageCode,
-    required this.languageName,
-  });
+/// Full-screen for batch pack export progress.
+class BatchPackExportScreen extends ConsumerStatefulWidget {
+  const BatchPackExportScreen({super.key});
 
   @override
-  ConsumerState<BatchPackExportDialog> createState() => _BatchPackExportDialogState();
+  ConsumerState<BatchPackExportScreen> createState() =>
+      _BatchPackExportScreenState();
 }
 
-class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
+class _BatchPackExportScreenState
+    extends ConsumerState<BatchPackExportScreen> {
   final DateTime _startTime = DateTime.now();
+  Timer? _elapsedTimer;
+  BatchExportStagingData? _staging;
 
   @override
   void initState() {
     super.initState();
+    _staging = ref.read(batchExportStagingProvider);
+
+    // Start elapsed timer
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+
     // Start export after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(batchPackExportProvider.notifier).exportBatch(
-        projects: widget.projects,
-        languageCode: widget.languageCode,
-      );
+      if (_staging != null) {
+        ref.read(batchPackExportProvider.notifier).exportBatch(
+          projects: _staging!.projects,
+          languageCode: _staging!.languageCode,
+        );
+      }
     });
   }
 
   @override
   void dispose() {
-    // Reset state when dialog closes
+    _elapsedTimer?.cancel();
     ref.read(batchPackExportProvider.notifier).reset();
     super.dispose();
   }
@@ -50,84 +58,88 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
     return '${minutes}m ${seconds}s';
   }
 
+  Future<bool> _confirmLeaveIfActive() async {
+    final state = ref.read(batchPackExportProvider);
+    if (!state.isExporting) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Export in progress'),
+        content: const Text(
+          'A batch export is currently in progress. Are you sure you want to leave? The export will be cancelled.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Stay'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _handleBack() async {
+    if (await _confirmLeaveIfActive()) {
+      if (mounted) {
+        ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
+        ref.invalidate(paginatedProjectsProvider);
+        context.pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(batchPackExportProvider);
 
-    return Dialog(
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            _buildHeader(theme, state),
-            const Divider(height: 1),
-            // Content
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Progress section
-                    _buildProgressSection(theme, state),
-                    const SizedBox(height: 20),
-                    // Project list
-                    _buildProjectList(theme, state),
-                    // Results summary (when complete)
-                    if (state.isComplete) ...[
-                      const SizedBox(height: 20),
-                      _buildResultsSummary(theme, state),
-                    ],
-                  ],
-                ),
+    if (_staging == null) {
+      return FluentScaffold(
+        header: FluentHeader(
+          title: 'Batch Pack Export',
+          leading: FluentIconButton(
+            icon: FluentIcons.arrow_left_24_regular,
+            onPressed: () => context.pop(),
+            tooltip: 'Back',
+          ),
+        ),
+        body: const Center(child: Text('No export data.')),
+      );
+    }
+
+    final isActive = state.isExporting && !state.isCancelled;
+    final isDone = state.isComplete || state.isCancelled;
+
+    return FluentScaffold(
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      header: FluentHeader(
+        title: 'Batch Pack Export',
+        leading: FluentIconButton(
+          icon: FluentIcons.arrow_left_24_regular,
+          onPressed: _handleBack,
+          tooltip: 'Back',
+        ),
+        actions: [
+          // Info badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${_staging!.projects.length} projects \u2022 ${_staging!.languageName}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
-            const Divider(height: 1),
-            // Footer
-            _buildFooter(theme, state),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme, BatchPackExportState state) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.arrow_export_24_regular,
-            size: 28,
-            color: theme.colorScheme.primary,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Batch Pack Export',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${widget.projects.length} projects \u2022 ${widget.languageName}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Elapsed time
+          // Elapsed time badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -150,6 +162,96 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
                   ),
                 ),
               ],
+            ),
+          ),
+          // Cancel button
+          if (isActive)
+            TextButton.icon(
+              onPressed: () {
+                ref.read(batchPackExportProvider.notifier).cancel();
+              },
+              icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
+              label: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+            ),
+          // Close button
+          if (isDone)
+            FilledButton.icon(
+              onPressed: () {
+                ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
+                ref.invalidate(paginatedProjectsProvider);
+                context.pop();
+              },
+              icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
+              label: const Text('Close'),
+            ),
+        ],
+      ),
+      body: _buildBody(theme, state),
+    );
+  }
+
+  Widget _buildBody(ThemeData theme, BatchPackExportState state) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Progress section
+          _buildProgressSection(theme, state),
+          const SizedBox(height: 20),
+
+          // Results summary (when complete)
+          if (state.isComplete) ...[
+            _buildResultsSummary(theme, state),
+            const SizedBox(height: 20),
+          ],
+
+          // Project list header
+          Text(
+            'Projects',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Project list — fills remaining space
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ListView.separated(
+                itemCount: _staging!.projects.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final project = _staging!.projects[index];
+                  final status = state.projectStatuses[project.id] ??
+                      BatchProjectStatus.pending;
+                  final result = state.results
+                      .cast<ProjectExportResult?>()
+                      .firstWhere(
+                        (r) => r?.projectId == project.id,
+                        orElse: () => null,
+                      );
+
+                  return _ProjectStatusItem(
+                    name: project.name,
+                    status: status,
+                    result: result,
+                    isCurrentProject: state.currentProjectId == project.id,
+                    currentProgress: state.currentProjectId == project.id
+                        ? state.currentProjectProgress
+                        : null,
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -207,7 +309,8 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
                 : state.failedCount > 0
                     ? Colors.orange.shade700
                     : theme.colorScheme.primary,
-            backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+            backgroundColor:
+                theme.colorScheme.onSurface.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 8),
           Text(
@@ -228,53 +331,6 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildProjectList(ThemeData theme, BatchPackExportState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Projects',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          constraints: const BoxConstraints(maxHeight: 250),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: widget.projects.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final project = widget.projects[index];
-              final status = state.projectStatuses[project.id] ?? BatchProjectStatus.pending;
-              final result = state.results.cast<ProjectExportResult?>().firstWhere(
-                (r) => r?.projectId == project.id,
-                orElse: () => null,
-              );
-
-              return _ProjectStatusItem(
-                name: project.name,
-                status: status,
-                result: result,
-                isCurrentProject: state.currentProjectId == project.id,
-                currentProgress: state.currentProjectId == project.id
-                    ? state.currentProjectProgress
-                    : null,
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -301,7 +357,8 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
                 ? FluentIcons.warning_24_regular
                 : FluentIcons.checkmark_circle_24_regular,
             size: 24,
-            color: hasFailures ? Colors.orange.shade700 : Colors.green.shade700,
+            color:
+                hasFailures ? Colors.orange.shade700 : Colors.green.shade700,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -313,7 +370,9 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
                       ? 'Export completed with errors'
                       : 'All packs exported successfully',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: hasFailures ? Colors.orange.shade700 : Colors.green.shade700,
+                    color: hasFailures
+                        ? Colors.orange.shade700
+                        : Colors.green.shade700,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -321,41 +380,14 @@ class _BatchPackExportDialogState extends ConsumerState<BatchPackExportDialog> {
                 Text(
                   '${state.successCount} succeeded, ${state.failedCount} failed',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: hasFailures ? Colors.orange.shade700 : Colors.green.shade700,
+                    color: hasFailures
+                        ? Colors.orange.shade700
+                        : Colors.green.shade700,
                   ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooter(ThemeData theme, BatchPackExportState state) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (state.isExporting && !state.isCancelled)
-            TextButton.icon(
-              onPressed: () {
-                ref.read(batchPackExportProvider.notifier).cancel();
-              },
-              icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-            ),
-          if (state.isComplete || state.isCancelled) ...[
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
-              label: const Text('Close'),
-            ),
-          ],
         ],
       ),
     );
@@ -400,7 +432,8 @@ class _ProjectStatusItem extends StatelessWidget {
                 Text(
                   name,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: isCurrentProject ? FontWeight.w600 : FontWeight.w400,
+                    fontWeight:
+                        isCurrentProject ? FontWeight.w600 : FontWeight.w400,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -410,12 +443,15 @@ class _ProjectStatusItem extends StatelessWidget {
                   Text(
                     '${result!.entryCount} entries',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.5),
                       fontSize: 11,
                     ),
                   ),
                 ],
-                if (result != null && !result!.success && result!.errorMessage != null) ...[
+                if (result != null &&
+                    !result!.success &&
+                    result!.errorMessage != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     result!.errorMessage!,
@@ -439,7 +475,8 @@ class _ProjectStatusItem extends StatelessWidget {
                 value: currentProgress!,
                 height: 4,
                 color: theme.colorScheme.primary,
-                backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                backgroundColor:
+                    theme.colorScheme.onSurface.withValues(alpha: 0.1),
               ),
             ),
           ],

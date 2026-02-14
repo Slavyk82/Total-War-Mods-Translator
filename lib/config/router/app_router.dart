@@ -9,6 +9,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/mods/screens/mods_screen.dart';
 import '../../features/projects/screens/projects_screen.dart';
+import '../../features/projects/screens/batch_pack_export_screen.dart';
 import '../../features/projects/screens/project_detail_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
 import '../../features/glossary/screens/glossary_screen.dart';
@@ -40,6 +41,7 @@ class AppRoutes {
   static const String glossary = '/glossary';
   static const String translationMemory = '/translation-memory';
   static const String packCompilation = '/pack-compilation';
+  static const String batchPackExport = '/projects/batch-export';
   static const String steamPublish = '/steam-publish';
   static const String steamPublishSingle = '/steam-publish/single';
   static const String steamPublishBatch = '/steam-publish/batch';
@@ -108,6 +110,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               );
             },
             routes: [
+              // Batch Pack Export
+              GoRoute(
+                path: 'batch-export',
+                name: 'batchPackExport',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const BatchPackExportScreen(),
+                    state: state,
+                  );
+                },
+              ),
               // Project Detail
               GoRoute(
                 path: ':${AppRoutes.projectIdParam}',
@@ -288,6 +301,7 @@ extension GoRouterExtensions on BuildContext {
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
+  void goBatchPackExport() => go(AppRoutes.batchPackExport);
   void goSteamPublish() => go(AppRoutes.steamPublish);
   void goWorkshopPublishSingle() => go(AppRoutes.steamPublishSingle);
   void goWorkshopPublishBatch() => go(AppRoutes.steamPublishBatch);

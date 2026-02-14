@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import '../../../config/router/app_router.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/project_grid.dart';
 import '../widgets/projects_toolbar.dart';
-import '../widgets/batch_pack_export_dialog.dart';
 
 /// Projects screen displaying all translation projects.
 ///
@@ -267,19 +267,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
     if (projectsToExport.isEmpty) return;
 
-    // Show export dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => BatchPackExportDialog(
+    // Stage data and navigate to export screen
+    ref.read(batchExportStagingProvider.notifier).set(
+      BatchExportStagingData(
         projects: projectsToExport,
         languageCode: selectedLanguage.code,
         languageName: selectedLanguage.name,
       ),
-    ).then((_) {
-      // Exit selection mode and refresh after dialog closes
-      ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
-      ref.invalidate(paginatedProjectsProvider);
-    });
+    );
+    context.goBatchPackExport();
   }
 }

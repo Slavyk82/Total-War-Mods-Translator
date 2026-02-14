@@ -274,3 +274,29 @@ final batchPackExportProvider =
     NotifierProvider<BatchPackExportNotifier, BatchPackExportState>(
   BatchPackExportNotifier.new,
 );
+
+/// Staging data for the batch export screen.
+class BatchExportStagingData {
+  final List<ProjectExportInfo> projects;
+  final String languageCode;
+  final String languageName;
+
+  const BatchExportStagingData({
+    required this.projects,
+    required this.languageCode,
+    required this.languageName,
+  });
+}
+
+/// Set before navigating to the batch export screen, read in initState.
+class _BatchExportStagingNotifier extends Notifier<BatchExportStagingData?> {
+  @override
+  BatchExportStagingData? build() => null;
+
+  void set(BatchExportStagingData? data) => state = data;
+}
+
+final batchExportStagingProvider =
+    NotifierProvider<_BatchExportStagingNotifier, BatchExportStagingData?>(
+  _BatchExportStagingNotifier.new,
+);
