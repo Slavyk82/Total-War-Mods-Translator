@@ -169,10 +169,12 @@ class ProjectWithDetails {
   /// Check if the project has been exported at least once
   bool get hasBeenExported => lastPackExport != null;
 
-  /// Check if the project was modified after the last export
+  /// Check if the project was modified after the last export.
+  /// Uses a 60-second margin to avoid false positives when the export
+  /// process itself causes a minor timestamp update on the project.
   bool get isModifiedSinceLastExport {
     if (lastPackExport == null) return false;
-    return project.updatedAt > lastPackExport!.exportedAt;
+    return project.updatedAt > lastPackExport!.exportedAt + 60;
   }
 }
 
