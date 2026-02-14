@@ -18,6 +18,8 @@ import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
 import '../../features/game_translation/screens/game_translation_screen.dart';
 import '../../features/steam_publish/screens/steam_publish_screen.dart';
+import '../../features/steam_publish/screens/workshop_publish_screen.dart';
+import '../../features/steam_publish/screens/batch_workshop_publish_screen.dart';
 
 // Layout
 import '../../widgets/layouts/main_layout_router.dart';
@@ -39,6 +41,8 @@ class AppRoutes {
   static const String translationMemory = '/translation-memory';
   static const String packCompilation = '/pack-compilation';
   static const String steamPublish = '/steam-publish';
+  static const String steamPublishSingle = '/steam-publish/single';
+  static const String steamPublishBatch = '/steam-publish/batch';
   static const String settings = '/settings';
   static const String help = '/help';
 
@@ -197,6 +201,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 state: state,
               );
             },
+            routes: [
+              GoRoute(
+                path: 'single',
+                name: 'steamPublishSingle',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const WorkshopPublishScreen(),
+                    state: state,
+                  );
+                },
+              ),
+              GoRoute(
+                path: 'batch',
+                name: 'steamPublishBatch',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const BatchWorkshopPublishScreen(),
+                    state: state,
+                  );
+                },
+              ),
+            ],
           ),
 
           // Settings
@@ -263,6 +289,8 @@ extension GoRouterExtensions on BuildContext {
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
   void goSteamPublish() => go(AppRoutes.steamPublish);
+  void goWorkshopPublishSingle() => go(AppRoutes.steamPublishSingle);
+  void goWorkshopPublishBatch() => go(AppRoutes.steamPublishBatch);
   void goSettings() => go(AppRoutes.settings);
   void goHelp() => go(AppRoutes.help);
 

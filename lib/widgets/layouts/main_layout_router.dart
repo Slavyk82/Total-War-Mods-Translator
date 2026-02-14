@@ -84,8 +84,10 @@ class MainLayoutRouter extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    // Don't show breadcrumbs in translation editor (has its own header)
-    if (location.contains('/editor/')) {
+    // Don't show breadcrumbs in screens with their own header
+    if (location.contains('/editor/') ||
+        location == '/steam-publish/single' ||
+        location == '/steam-publish/batch') {
       return const SizedBox.shrink();
     }
 

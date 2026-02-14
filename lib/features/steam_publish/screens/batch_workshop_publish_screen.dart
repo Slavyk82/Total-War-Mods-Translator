@@ -1,52 +1,61 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
+import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
-import 'steam_guard_dialog.dart';
+import '../providers/publish_staging_provider.dart';
+import '../providers/steam_publish_providers.dart';
+import '../widgets/steam_guard_dialog.dart';
 
-/// Dialog for batch workshop publish progress.
-class BatchWorkshopPublishDialog extends ConsumerStatefulWidget {
-  final List<BatchPublishItemInfo> items;
-  final String username;
-  final String password;
-  final String? steamGuardCode;
-
-  const BatchWorkshopPublishDialog({
-    super.key,
-    required this.items,
-    required this.username,
-    required this.password,
-    this.steamGuardCode,
-  });
+/// Full-screen for batch workshop publish progress.
+class BatchWorkshopPublishScreen extends ConsumerStatefulWidget {
+  const BatchWorkshopPublishScreen({super.key});
 
   @override
-  ConsumerState<BatchWorkshopPublishDialog> createState() =>
-      _BatchWorkshopPublishDialogState();
+  ConsumerState<BatchWorkshopPublishScreen> createState() =>
+      _BatchWorkshopPublishScreenState();
 }
 
-class _BatchWorkshopPublishDialogState
-    extends ConsumerState<BatchWorkshopPublishDialog> {
-  final DateTime _startTime = DateTime.now();
+class _BatchWorkshopPublishScreenState
+    extends ConsumerState<BatchWorkshopPublishScreen> {
+  late final DateTime _startTime;
   bool _steamGuardDialogShown = false;
   late final BatchWorkshopPublishNotifier _publishNotifier;
+  BatchPublishStagingData? _stagingData;
+  Timer? _elapsedTimer;
 
   @override
   void initState() {
     super.initState();
+    _startTime = DateTime.now();
+    _stagingData = ref.read(batchPublishStagingProvider);
     _publishNotifier = ref.read(batchWorkshopPublishProvider.notifier);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _publishNotifier.publishBatch(
-            items: widget.items,
-            username: widget.username,
-            password: widget.password,
-            steamGuardCode: widget.steamGuardCode,
-          );
+
+    // Start elapsed timer for UI updates
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
     });
+
+    if (_stagingData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _publishNotifier.publishBatch(
+          items: _stagingData!.items,
+          username: _stagingData!.username,
+          password: _stagingData!.password,
+          steamGuardCode: _stagingData!.steamGuardCode,
+        );
+      });
+    }
   }
 
   @override
   void dispose() {
+    _elapsedTimer?.cancel();
     _publishNotifier.silentCleanup();
     super.dispose();
   }
@@ -58,10 +67,58 @@ class _BatchWorkshopPublishDialogState
     return '${minutes}m ${seconds}s';
   }
 
+  Future<bool> _confirmLeaveIfActive() async {
+    final state = ref.read(batchWorkshopPublishProvider);
+    if (!state.isPublishing) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Publication in progress'),
+        content: const Text(
+          'A batch publication is currently in progress. Are you sure you want to leave? The remaining uploads will be cancelled.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Stay'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<void> _handleBack() async {
+    if (await _confirmLeaveIfActive()) {
+      if (mounted) {
+        ref.invalidate(publishableItemsProvider);
+        context.pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(batchWorkshopPublishProvider);
+
+    if (_stagingData == null) {
+      return FluentScaffold(
+        header: FluentHeader(
+          title: 'Batch Publish',
+          leading: FluentIconButton(
+            icon: FluentIcons.arrow_left_24_regular,
+            onPressed: () => context.pop(),
+            tooltip: 'Back',
+          ),
+        ),
+        body: const Center(child: Text('No items to publish.')),
+      );
+    }
 
     // Handle Steam Guard
     if (state.needsSteamGuard && !_steamGuardDialogShown) {
@@ -80,73 +137,24 @@ class _BatchWorkshopPublishDialogState
       });
     }
 
-    return Dialog(
-      child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 700),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(theme, state),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildProgressSection(theme, state),
-                    const SizedBox(height: 20),
-                    _buildItemList(theme, state),
-                    if (state.isComplete) ...[
-                      const SizedBox(height: 20),
-                      _buildResultsSummary(theme, state),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            _buildFooter(theme, state),
-          ],
+    return FluentScaffold(
+      backgroundColor: theme.colorScheme.surfaceContainerLow,
+      header: FluentHeader(
+        title: 'Batch Publish',
+        leading: FluentIconButton(
+          icon: FluentIcons.arrow_left_24_regular,
+          onPressed: _handleBack,
+          tooltip: 'Back',
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme, BatchWorkshopPublishState state) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.cloud_arrow_up_24_regular,
-            size: 28,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Batch Publish',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${widget.items.length} items',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
+        actions: [
+          // Item count subtitle
+          Text(
+            '${_stagingData!.items.length} items',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
+          // Elapsed time badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -159,21 +167,60 @@ class _BatchWorkshopPublishDialogState
                 Icon(
                   FluentIcons.timer_24_regular,
                   size: 14,
-                  color:
-                      theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   _elapsedTime,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
             ),
           ),
+          // Cancel / Close buttons
+          if (state.isPublishing && !state.isCancelled)
+            TextButton.icon(
+              onPressed: () {
+                ref.read(batchWorkshopPublishProvider.notifier).cancel();
+              },
+              icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
+              label: const Text('Cancel'),
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+            ),
+          if (state.isComplete || state.isCancelled)
+            FilledButton.icon(
+              onPressed: () {
+                ref.invalidate(publishableItemsProvider);
+                context.pop();
+              },
+              icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
+              label: const Text('Close'),
+            ),
         ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildProgressSection(theme, state),
+                const SizedBox(height: 20),
+                _buildItemList(theme, state),
+                if (state.isComplete) ...[
+                  const SizedBox(height: 20),
+                  _buildResultsSummary(theme, state),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -269,7 +316,6 @@ class _BatchWorkshopPublishDialogState
         ),
         const SizedBox(height: 8),
         Container(
-          constraints: const BoxConstraints(maxHeight: 250),
           decoration: BoxDecoration(
             border: Border.all(
               color: theme.colorScheme.outline.withValues(alpha: 0.2),
@@ -278,10 +324,11 @@ class _BatchWorkshopPublishDialogState
           ),
           child: ListView.separated(
             shrinkWrap: true,
-            itemCount: widget.items.length,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _stagingData!.items.length,
             separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
-              final item = widget.items[index];
+              final item = _stagingData!.items[index];
               final status = state.itemStatuses[item.name] ??
                   BatchPublishStatus.pending;
               final result = state.results
@@ -366,38 +413,9 @@ class _BatchWorkshopPublishDialogState
       ),
     );
   }
-
-  Widget _buildFooter(ThemeData theme, BatchWorkshopPublishState state) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (state.isPublishing && !state.isCancelled)
-            TextButton.icon(
-              onPressed: () {
-                ref.read(batchWorkshopPublishProvider.notifier).cancel();
-              },
-              icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-            ),
-          if (state.isComplete || state.isCancelled) ...[
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
-              label: const Text('Close'),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
-/// Individual item status in the list
+/// Individual item status in the list.
 class _PublishStatusItem extends StatelessWidget {
   final String name;
   final BatchPublishStatus status;

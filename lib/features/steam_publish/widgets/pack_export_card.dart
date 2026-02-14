@@ -5,8 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
+import '../../../config/router/app_router.dart';
+import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
-import 'workshop_publish_dialog.dart';
 
 /// Card displaying a publishable item (project export or compilation).
 class PackExportCard extends ConsumerStatefulWidget {
@@ -305,10 +306,8 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
               onTap: () {
-                WorkshopPublishDialog.show(
-                  context,
-                  item: widget.item,
-                );
+                ref.read(singlePublishStagingProvider.notifier).set(widget.item);
+                context.goWorkshopPublishSingle();
               },
               behavior: HitTestBehavior.opaque,
               child: Container(

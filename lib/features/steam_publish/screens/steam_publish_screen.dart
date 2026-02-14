@@ -10,9 +10,10 @@ import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
+import '../../../config/router/app_router.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
+import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
-import '../widgets/batch_workshop_publish_dialog.dart';
 import '../widgets/pack_export_list.dart';
 import '../widgets/steam_login_dialog.dart';
 import '../widgets/steamcmd_install_dialog.dart';
@@ -190,22 +191,16 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       return;
     }
 
-    // Open batch publish dialog
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => BatchWorkshopPublishDialog(
-        items: items,
-        username: username,
-        password: password,
-        steamGuardCode: steamGuardCode,
-      ),
-    );
-
-    // Clear selection and refresh
+    // Navigate to batch publish screen
+    ref.read(batchPublishStagingProvider.notifier).set(BatchPublishStagingData(
+      items: items,
+      username: username,
+      password: password,
+      steamGuardCode: steamGuardCode,
+    ));
     if (mounted) {
       setState(() => _selectedPaths = {});
-      ref.invalidate(publishableItemsProvider);
+      context.goWorkshopPublishBatch();
     }
   }
 
