@@ -23,6 +23,8 @@ enum _SortMode { exportDate, name, publishDate }
 
 enum _SelectionAction { all, unpublished, outdated, none }
 
+enum _DisplayFilter { all, unpublished, outdated }
+
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
 
@@ -35,6 +37,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
   String _searchQuery = '';
   _SortMode _sortMode = _SortMode.exportDate;
   bool _sortAscending = false;
+  _DisplayFilter _displayFilter = _DisplayFilter.all;
   final TextEditingController _searchController = TextEditingController();
   Set<String> _selectedPaths = {};
 
@@ -46,6 +49,22 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
   List<PublishableItem> _filterAndSort(List<PublishableItem> items) {
     var result = items.toList();
+
+    // Apply display filter
+    switch (_displayFilter) {
+      case _DisplayFilter.all:
+        break;
+      case _DisplayFilter.unpublished:
+        result = result
+            .where((e) =>
+                e.publishedSteamId == null || e.publishedSteamId!.isEmpty)
+            .toList();
+      case _DisplayFilter.outdated:
+        result = result
+            .where((e) =>
+                e.publishedAt != null && e.exportedAt > e.publishedAt!)
+            .toList();
+    }
 
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -217,6 +236,27 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       header: FluentHeader(
         title: 'Publish on Steam',
         actions: [
+          // Active filter indicator
+          if (_displayFilter != _DisplayFilter.all)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: InputChip(
+                label: Text(
+                  _displayFilter == _DisplayFilter.unpublished
+                      ? 'Unpublished'
+                      : 'Outdated',
+                  style: theme.textTheme.labelSmall,
+                ),
+                onDeleted: () {
+                  setState(() {
+                    _displayFilter = _DisplayFilter.all;
+                    _selectedPaths = {};
+                  });
+                },
+                deleteIconColor: theme.colorScheme.onSurfaceVariant,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
           // Quick selection menu
           PopupMenuButton<_SelectionAction>(
             icon: const Icon(FluentIcons.checkbox_checked_24_regular, size: 20),
@@ -226,23 +266,23 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               setState(() {
                 switch (action) {
                   case _SelectionAction.all:
+                    _displayFilter = _DisplayFilter.all;
+                    // Recompute filtered list with new display filter
+                    final allFiltered = _filterAndSort(allItems!);
                     _selectedPaths =
-                        filteredItems.map((e) => e.outputPath).toSet();
+                        allFiltered.map((e) => e.outputPath).toSet();
                   case _SelectionAction.unpublished:
-                    _selectedPaths = filteredItems
-                        .where((e) =>
-                            e.publishedSteamId == null ||
-                            e.publishedSteamId!.isEmpty)
-                        .map((e) => e.outputPath)
-                        .toSet();
+                    _displayFilter = _DisplayFilter.unpublished;
+                    final unpubFiltered = _filterAndSort(allItems!);
+                    _selectedPaths =
+                        unpubFiltered.map((e) => e.outputPath).toSet();
                   case _SelectionAction.outdated:
-                    _selectedPaths = filteredItems
-                        .where((e) =>
-                            e.publishedAt != null &&
-                            e.exportedAt > e.publishedAt!)
-                        .map((e) => e.outputPath)
-                        .toSet();
+                    _displayFilter = _DisplayFilter.outdated;
+                    final outdatedFiltered = _filterAndSort(allItems!);
+                    _selectedPaths =
+                        outdatedFiltered.map((e) => e.outputPath).toSet();
                   case _SelectionAction.none:
+                    _displayFilter = _DisplayFilter.all;
                     _selectedPaths = {};
                 }
               });
