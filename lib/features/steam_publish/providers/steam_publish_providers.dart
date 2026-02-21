@@ -5,8 +5,10 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/repositories/compilation_repository.dart';
 import 'package:twmt/repositories/export_history_repository.dart';
+import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
@@ -141,7 +143,7 @@ class CompilationPublishItem extends PublishableItem {
   }
 }
 
-/// Provider that loads all publishable items (all projects + all compilations).
+/// Provider that loads publishable items filtered by the selected game.
 @riverpod
 Future<List<PublishableItem>> publishableItems(Ref ref) async {
   final exportHistoryRepo = ServiceLocator.get<ExportHistoryRepository>();
@@ -149,13 +151,31 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
   final compilationRepo = ServiceLocator.get<CompilationRepository>();
   final languageRepo = ServiceLocator.get<LanguageRepository>();
   final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
+  final gameInstallationRepo =
+      ServiceLocator.get<GameInstallationRepository>();
+
+  // Get selected game to filter by
+  final selectedGame = await ref.watch(selectedGameProvider.future);
+  final gameCode = selectedGame?.code;
+
+  // Resolve game installation ID for filtering
+  String? gameInstallationId;
+  if (gameCode != null) {
+    final gameInstallationResult =
+        await gameInstallationRepo.getByGameCode(gameCode);
+    if (gameInstallationResult.isOk) {
+      gameInstallationId = gameInstallationResult.value.id;
+    }
+  }
 
   final items = <PublishableItem>[];
 
-  // --- All projects ---
-  final allProjectsResult = await projectRepo.getAll();
-  if (allProjectsResult.isOk) {
-    for (final project in allProjectsResult.value) {
+  // --- Projects (filtered by game) ---
+  final projectsResult = gameInstallationId != null
+      ? await projectRepo.getByGameInstallation(gameInstallationId)
+      : await projectRepo.getAll();
+  if (projectsResult.isOk) {
+    for (final project in projectsResult.value) {
       // Load latest pack export (nullable)
       final lastExport =
           await exportHistoryRepo.getLastPackExportByProject(project.id);
@@ -180,8 +200,10 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
     }
   }
 
-  // --- All compilations ---
-  final compilationsResult = await compilationRepo.getAll();
+  // --- Compilations (filtered by game) ---
+  final compilationsResult = gameInstallationId != null
+      ? await compilationRepo.getByGameInstallation(gameInstallationId)
+      : await compilationRepo.getAll();
   if (compilationsResult.isOk) {
     for (final compilation in compilationsResult.value) {
       // Resolve language code

@@ -37,6 +37,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
   bool _isHovered = false;
   final TextEditingController _steamIdController = TextEditingController();
   bool _isSavingSteamId = false;
+  bool _isEditingSteamId = false;
   bool _isGenerating = false;
   double _generateProgress = 0.0;
   String? _generateStep;
@@ -125,6 +126,11 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                       const SizedBox(height: 4),
                       // Row 4: path (only when pack exists)
                       _buildPathRow(context),
+                    ] else if (widget.item.exportedAt > 0 ||
+                        widget.item.publishedAt != null) ...[
+                      const SizedBox(height: 4),
+                      // Row 3 (no pack): dates only
+                      _buildDatesOnlyRow(context),
                     ],
                     // Row 5: Action row
                     const SizedBox(height: 4),
@@ -265,6 +271,21 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
         ),
         const SizedBox(width: 8),
         if (!hasPack) ...[
+          if (hasPublished) ...[
+            Icon(
+              FluentIcons.cloud_checkmark_24_regular,
+              size: 14,
+              color: Colors.green.shade600,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Workshop #$publishedId',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.green.shade600,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
           Icon(
             FluentIcons.box_dismiss_24_regular,
             size: 14,
@@ -272,7 +293,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
           ),
           const SizedBox(width: 4),
           Text(
-            'No pack generated',
+            'No pack',
             style: theme.textTheme.bodySmall?.copyWith(
               color: Colors.orange.shade700,
             ),
@@ -341,6 +362,61 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     );
   }
 
+  /// Builds a row showing last modification and/or publication dates
+  /// when the pack file has been deleted but historical dates exist.
+  Widget _buildDatesOnlyRow(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.item;
+    final mutedColor =
+        theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
+
+    final List<Widget> children = [];
+
+    if (item.exportedAt > 0) {
+      final timeAgoStr = timeago.format(
+        DateTime.fromMillisecondsSinceEpoch(item.exportedAt * 1000),
+      );
+      children.add(
+        Text(
+          'Last exported $timeAgoStr',
+          style: theme.textTheme.bodySmall?.copyWith(color: mutedColor),
+        ),
+      );
+    }
+
+    if (item.publishedAt != null) {
+      if (children.isNotEmpty) {
+        children.addAll([
+          const SizedBox(width: 8),
+          Text('·',
+              style: theme.textTheme.bodySmall?.copyWith(color: mutedColor)),
+          const SizedBox(width: 8),
+        ]);
+      }
+      final publishedDate =
+          DateTime.fromMillisecondsSinceEpoch(item.publishedAt! * 1000);
+      final timeAgoStr = timeago.format(publishedDate);
+      final color = Colors.green.shade600;
+      children.addAll([
+        Icon(
+          FluentIcons.checkmark_circle_24_regular,
+          size: 12,
+          color: color,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Published $timeAgoStr',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color,
+            fontSize: 11,
+          ),
+        ),
+      ]);
+    }
+
+    return Row(children: children);
+  }
+
   Widget _buildPathRow(BuildContext context) {
     final theme = Theme.of(context);
     final mutedColor =
@@ -371,11 +447,19 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
       if (_isGenerating) {
         return _buildGenerateProgress(context);
       }
-      return _buildGeneratePackButton(context);
+      return Row(
+        children: [
+          _buildGeneratePackButton(context),
+          if (hasPublishedId) ...[
+            const SizedBox(width: 8),
+            _buildOpenInSteamButton(context),
+          ],
+        ],
+      );
     }
 
-    // State B: Pack, no Workshop ID
-    if (!hasPublishedId) {
+    // State B: Pack, no Workshop ID — or editing existing ID
+    if (!hasPublishedId || _isEditingSteamId) {
       return _buildSteamIdInput(context);
     }
 
@@ -387,55 +471,51 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final theme = Theme.of(context);
     final item = widget.item;
 
-    return Row(
-      children: [
-        Tooltip(
-          message: item.isCompilation
-              ? 'Open compilation editor to generate'
-              : 'Generate .pack file',
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => _handleGeneratePack(context),
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: Colors.orange.shade300,
+    return Tooltip(
+      message: item.isCompilation
+          ? 'Open compilation editor to generate'
+          : 'Generate .pack file',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => _handleGeneratePack(context),
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  item.isCompilation
+                      ? FluentIcons.open_24_regular
+                      : FluentIcons.box_arrow_up_24_regular,
+                  size: 14,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  item.isCompilation
+                      ? 'Open Compilation'
+                      : 'Generate Pack',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.isCompilation
-                          ? FluentIcons.open_24_regular
-                          : FluentIcons.box_arrow_up_24_regular,
-                      size: 14,
-                      color: Colors.orange.shade800,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      item.isCompilation
-                          ? 'Open Compilation'
-                          : 'Generate Pack',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.orange.shade800,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -660,11 +740,47 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
         ),
         const SizedBox(width: 8),
         _buildOpenInSteamButton(context),
+        const SizedBox(width: 8),
+        _buildEditSteamIdButton(context),
         if (widget.item.publishedAt != null) ...[
           const SizedBox(width: 8),
           _buildPublishedAtLabel(context),
         ],
       ],
+    );
+  }
+
+  Widget _buildEditSteamIdButton(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: 'Edit Workshop ID',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () {
+            _steamIdController.text = widget.item.publishedSteamId ?? '';
+            setState(() => _isEditingSteamId = true);
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: theme.colorScheme.outline.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Icon(
+              FluentIcons.edit_24_regular,
+              size: 14,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -734,6 +850,39 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             ),
           ),
         ),
+        if (_isEditingSteamId) ...[
+          const SizedBox(width: 4),
+          Tooltip(
+            message: 'Cancel',
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () {
+                  _steamIdController.clear();
+                  setState(() => _isEditingSteamId = false);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Icon(
+                    FluentIcons.dismiss_24_regular,
+                    size: 14,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -765,6 +914,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
         );
       }
       if (mounted) {
+        _isEditingSteamId = false;
         ref.invalidate(publishableItemsProvider);
       }
     } finally {
