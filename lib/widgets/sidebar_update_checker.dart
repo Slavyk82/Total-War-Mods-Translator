@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../features/release_notes/widgets/all_release_notes_dialog.dart';
 import '../features/settings/providers/update_providers.dart';
 import '../providers/app_version_provider.dart';
+import '../widgets/fluent/fluent_toast.dart';
 import '../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
 import '../widgets/fluent/fluent_progress_indicator.dart';
 
@@ -433,11 +434,9 @@ class _WhatsNewLinkState extends State<_WhatsNewLink> {
           );
         },
         err: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to load release notes: ${error.message}'),
-              behavior: SnackBarBehavior.floating,
-            ),
+          FluentToast.error(
+            context,
+            'Failed to load release notes: ${error.message}',
           );
         },
       );

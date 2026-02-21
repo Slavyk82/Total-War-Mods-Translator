@@ -13,6 +13,7 @@ import '../../../services/service_locator.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
+import '../../../widgets/fluent/fluent_toast.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
@@ -171,8 +172,9 @@ class _WorkshopPublishScreenState
     final previewPath = _previewImagePath;
     if (previewPath == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No preview image found next to the .pack file')),
+        FluentToast.warning(
+          context,
+          'No preview image found next to the .pack file',
         );
       }
       return;

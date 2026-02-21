@@ -139,16 +139,16 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
     if (result.isOk) {
       final importResult = result.unwrap();
       if (mounted) {
-        // Capture ScaffoldMessenger before closing dialog
-        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        // Capture navigator context before closing dialog
+        final navigatorContext = Navigator.of(context).context;
         // If cancelled, don't close automatically
         if (_isCancelled) {
-          _showResultSnackBar(scaffoldMessenger, importResult);
+          _showResultToast(navigatorContext, importResult);
           widget.onImportComplete?.call();
         } else {
           Navigator.of(context).pop();
           widget.onImportComplete?.call();
-          _showResultSnackBar(scaffoldMessenger, importResult);
+          _showResultToast(navigatorContext, importResult);
         }
       }
     } else {
@@ -165,7 +165,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
     });
   }
 
-  void _showResultSnackBar(ScaffoldMessengerState scaffoldMessenger, PackImportResult result) {
+  void _showResultToast(BuildContext toastContext, PackImportResult result) {
     final message = StringBuffer();
     message.write('Import complete: ${result.importedCount} translation(s) imported');
     if (result.skippedCount > 0) {
@@ -175,13 +175,11 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
       message.write(', ${result.errorCount} error(s)');
     }
 
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-        content: Text(message.toString()),
-        backgroundColor: result.hasErrors ? Colors.orange : Colors.green,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    if (result.hasErrors) {
+      FluentToast.warning(toastContext, message.toString());
+    } else {
+      FluentToast.success(toastContext, message.toString());
+    }
   }
 
   void _toggleSelectAll() {

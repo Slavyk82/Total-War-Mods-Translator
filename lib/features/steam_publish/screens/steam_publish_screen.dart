@@ -11,6 +11,7 @@ import '../../../services/service_locator.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
 import '../../../config/router/app_router.dart';
+import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
@@ -191,21 +192,16 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
     // Warn about skipped items
     if (skippedNoPreview.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Skipped ${skippedNoPreview.length} item(s) without preview image: ${skippedNoPreview.join(', ')}',
-          ),
-          duration: const Duration(seconds: 4),
-        ),
+      FluentToast.warning(
+        context,
+        'Skipped ${skippedNoPreview.length} item(s) without preview image: ${skippedNoPreview.join(', ')}',
       );
     }
 
     if (items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No items to publish (all missing preview images).'),
-        ),
+      FluentToast.warning(
+        context,
+        'No items to publish (all missing preview images).',
       );
       return;
     }

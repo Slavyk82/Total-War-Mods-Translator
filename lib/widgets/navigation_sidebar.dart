@@ -5,6 +5,7 @@ import 'package:twmt/features/release_notes/widgets/all_release_notes_dialog.dar
 import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/providers/app_version_provider.dart';
 import 'package:twmt/providers/theme_provider.dart';
+import 'package:twmt/widgets/fluent/fluent_toast.dart';
 
 class NavigationSidebar extends ConsumerWidget {
   const NavigationSidebar({
@@ -343,11 +344,9 @@ class _WhatsNewLinkState extends State<_WhatsNewLink> {
           );
         },
         err: (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to load release notes: ${error.message}'),
-              behavior: SnackBarBehavior.floating,
-            ),
+          FluentToast.error(
+            context,
+            'Failed to load release notes: ${error.message}',
           );
         },
       );

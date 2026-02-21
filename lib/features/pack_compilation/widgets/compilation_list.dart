@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import '../../../widgets/common/fluent_spinner.dart';
+import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Widget displaying the list of existing compilations.
@@ -193,20 +194,19 @@ class CompilationList extends ConsumerWidget {
         .generatePack(compilation.compilation.gameInstallationId);
 
     if (context.mounted) {
-      final theme = Theme.of(context);
       final state = ref.read(compilationEditorProvider);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success
-                ? state.successMessage ?? 'Pack generated successfully'
-                : state.errorMessage ?? 'Failed to generate pack',
-          ),
-          backgroundColor:
-              success ? Colors.green : theme.colorScheme.error,
-        ),
-      );
+      if (success) {
+        FluentToast.success(
+          context,
+          state.successMessage ?? 'Pack generated successfully',
+        );
+      } else {
+        FluentToast.error(
+          context,
+          state.errorMessage ?? 'Failed to generate pack',
+        );
+      }
     }
 
     ref.invalidate(compilationsWithDetailsProvider);
