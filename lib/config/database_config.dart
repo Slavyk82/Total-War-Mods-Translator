@@ -17,7 +17,7 @@ class DatabaseConfig {
   static const int databaseVersion = 1;
 
   /// Application directory name in AppData
-  static const String appDirectoryName = 'TWMT';
+  static const String appDirectoryName = 'com.github.slavyk82\\twmt';
 
   /// Application directory name for the installed version (used in debug mode)
   /// This allows development to use the same data as the installed app
