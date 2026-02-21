@@ -75,23 +75,28 @@ class GameInstallationSyncService {
       if (existingResult is Ok) {
         // Game installation exists, update if needed
         final existing = existingResult.value;
-        
+
         // Check if paths have changed
         final installPathChanged = existing.installationPath != gamePath;
-        final workshopPathMissing = existing.steamWorkshopPath == null || 
+        final workshopPathMissing = existing.steamWorkshopPath == null ||
                                     existing.steamWorkshopPath!.isEmpty;
-        
+
         // Also check if steamAppId is missing (from older database versions)
         final steamAppIdMissing = existing.steamAppId == null ||
                                   existing.steamAppId!.isEmpty;
 
-        if (installPathChanged || workshopPathMissing || steamAppIdMissing) {
+        // Check if the base workshop path setting has changed
+        final baseWorkshopPath = await _settingsService.getString(SettingsKeys.workshopPath);
+        final workshopPathStale = baseWorkshopPath.isNotEmpty &&
+            existing.steamWorkshopPath != null &&
+            !existing.steamWorkshopPath!.contains(baseWorkshopPath);
+
+        if (installPathChanged || workshopPathMissing || steamAppIdMissing || workshopPathStale) {
           final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-          // Only detect Workshop path if it's missing
-          // If installation path changes, keep existing Workshop path
+          // Re-detect Workshop path if it's missing or the base path setting changed
           String? workshopPath = existing.steamWorkshopPath;
-          if (workshopPathMissing) {
+          if (workshopPathMissing || workshopPathStale) {
             workshopPath = await _detectWorkshopPath(gamePath, gameInfo.steamAppId);
           }
 
