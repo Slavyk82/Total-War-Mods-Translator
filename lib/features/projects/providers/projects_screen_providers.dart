@@ -349,16 +349,29 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
     // Get game installation from pre-loaded map (O(1) instead of database query)
     final gameInstallation = gamesMap[project.gameInstallationId];
 
-    // Auto-fill missing image URL from workshop folder if available
+    // Auto-fill missing or stale image URL from workshop folder if available
     // Skip for game translation projects (they use the game icon instead)
-    if (project.imageUrl == null && project.sourceFilePath != null && project.isModTranslation) {
-      final imagePath = await _findModImage(project.sourceFilePath!);
+    final hasValidImage = project.imageUrl != null && await File(project.imageUrl!).exists();
+    if (!hasValidImage && project.isModTranslation) {
+      String? imagePath;
+
+      // Try finding image from the stored source file path
+      if (project.sourceFilePath != null) {
+        imagePath = await _findModImage(project.sourceFilePath!);
+      }
+
+      // If source path is stale, try resolving via workshop directory + mod steam ID
+      if (imagePath == null && project.modSteamId != null && gameInstallation?.steamWorkshopPath != null) {
+        final workshopModDir = path.join(gameInstallation!.steamWorkshopPath!, project.modSteamId!);
+        imagePath = await _findModImageInDir(workshopModDir);
+      }
+
       if (imagePath != null) {
         final currentMetadata = project.parsedMetadata;
         final updatedMetadata = (currentMetadata ?? const ProjectMetadata()).copyWith(
           modImageUrl: imagePath,
         );
-        
+
         final updatedProject = project.copyWith(
           metadata: updatedMetadata.toJsonString(),
           updatedAt: project.updatedAt,
@@ -593,6 +606,42 @@ Future<String?> _findModImage(String packFilePath) async {
     // Ignore errors when searching for images
   }
   
+  return null;
+}
+
+/// Find mod preview image directly in a workshop directory.
+///
+/// Used as fallback when the pack file path is stale (e.g., after PC reformat).
+/// Searches for preview.* files or any image file in the directory.
+Future<String?> _findModImageInDir(String dirPath) async {
+  const imageExtensions = ['.jpg', '.jpeg', '.png'];
+
+  try {
+    final dir = Directory(dirPath);
+    if (!await dir.exists()) return null;
+
+    // 1. Try preview.*
+    for (final ext in imageExtensions) {
+      final imagePath = path.join(dir.path, 'preview$ext');
+      if (await File(imagePath).exists()) {
+        return imagePath;
+      }
+    }
+
+    // 2. Try any image file
+    final entries = await dir.list().toList();
+    for (final entity in entries) {
+      if (entity is File) {
+        final lowerPath = entity.path.toLowerCase();
+        if (imageExtensions.any((ext) => lowerPath.endsWith(ext))) {
+          return entity.path;
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore errors when searching for images
+  }
+
   return null;
 }
 
