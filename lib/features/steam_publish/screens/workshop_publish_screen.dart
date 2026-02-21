@@ -166,8 +166,12 @@ class _WorkshopPublishScreenState
       if (!installed || !mounted) return;
     }
 
-    // Show login dialog
-    final credentials = await SteamLoginDialog.show(context);
+    // Use saved credentials if available, otherwise show login dialog
+    var credentials = await SteamLoginDialog.getSavedCredentials();
+    if (credentials == null) {
+      if (!mounted) return;
+      credentials = await SteamLoginDialog.show(context);
+    }
     if (credentials == null || !mounted) return;
 
     final (username, password, steamGuardCode) = credentials;
@@ -217,8 +221,7 @@ class _WorkshopPublishScreenState
 
     final params = WorkshopPublishParams(
       appId: '1142710', // TW:WH3
-      publishedFileId:
-          _isUpdate ? _item!.publishedSteamId! : '0',
+      publishedFileId: _item!.publishedSteamId!,
       contentFolder: packDir,
       previewFile: previewPath,
       title: _titleController.text.trim(),
@@ -251,17 +254,19 @@ class _WorkshopPublishScreenState
     final theme = Theme.of(context);
     final state = ref.watch(workshopPublishProvider);
 
-    if (_item == null) {
+    if (_item == null || !_isUpdate) {
       return FluentScaffold(
         header: FluentHeader(
-          title: 'Publish to Workshop',
+          title: 'Update Workshop Item',
           leading: FluentIconButton(
             icon: FluentIcons.arrow_left_24_regular,
             onPressed: () => context.pop(),
             tooltip: 'Back',
           ),
         ),
-        body: const Center(child: Text('No item to publish.')),
+        body: const Center(
+          child: Text('No item to update. Please set a Workshop ID first.'),
+        ),
       );
     }
 
@@ -315,33 +320,27 @@ class _WorkshopPublishScreenState
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
       header: FluentHeader(
-        title: _isUpdate ? 'Update Workshop Item' : 'Publish to Workshop',
+        title: 'Update Workshop Item',
         leading: FluentIconButton(
           icon: FluentIcons.arrow_left_24_regular,
           onPressed: _handleBack,
           tooltip: 'Back',
         ),
         actions: [
-          // New / Update badge
+          // Update badge
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _isUpdate
-                  ? Colors.blue.withValues(alpha: 0.1)
-                  : Colors.green.withValues(alpha: 0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _isUpdate
-                    ? Colors.blue.withValues(alpha: 0.3)
-                    : Colors.green.withValues(alpha: 0.3),
+                color: Colors.blue.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
-              _isUpdate
-                  ? 'Update #${_item!.publishedSteamId}'
-                  : 'New Item',
+              'Update #${_item!.publishedSteamId}',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: _isUpdate ? Colors.blue.shade700 : Colors.green.shade700,
+                color: Colors.blue.shade700,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -362,7 +361,7 @@ class _WorkshopPublishScreenState
                   ? _startPublish
                   : null,
               icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
-              label: Text(_isUpdate ? 'Update' : 'Publish'),
+              label: const Text('Update'),
             ),
           ],
           if (isActive)
@@ -554,19 +553,17 @@ class _WorkshopPublishScreenState
                 },
               ),
 
-              // Change notes (only for updates)
-              if (_isUpdate) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _changeNoteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Change Notes',
-                    border: OutlineInputBorder(),
-                    hintText: 'What changed in this update...',
-                  ),
-                  maxLines: 2,
+              // Change notes
+              const SizedBox(height: 12),
+              TextField(
+                controller: _changeNoteController,
+                decoration: const InputDecoration(
+                  labelText: 'Change Notes',
+                  border: OutlineInputBorder(),
+                  hintText: 'What changed in this update...',
                 ),
-              ],
+                maxLines: 2,
+              ),
             ],
           ),
         ),
@@ -750,9 +747,7 @@ class _WorkshopPublishScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  state.wasUpdate
-                      ? 'Workshop item updated!'
-                      : 'Published to Workshop!',
+                  'Workshop item updated!',
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: Colors.green.shade700,
                     fontWeight: FontWeight.w600,

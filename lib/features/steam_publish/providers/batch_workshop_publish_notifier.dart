@@ -162,7 +162,6 @@ class BatchWorkshopPublishNotifier
 
     final service = ServiceLocator.get<IWorkshopPublishService>();
     final results = <BatchPublishItemResult>[];
-    final failedAsNotFound = <int>[];
 
     try {
       await service.publishBatch(
@@ -208,9 +207,6 @@ class BatchWorkshopPublishNotifier
               });
             },
             err: (error) {
-              if (error is WorkshopItemNotFoundException) {
-                failedAsNotFound.add(index);
-              }
               updatedStatuses[item.name] = BatchPublishStatus.failed;
               results.add(BatchPublishItemResult(
                 name: item.name,
@@ -237,100 +233,6 @@ class BatchWorkshopPublishNotifier
       return;
     } catch (e, stack) {
       logging.error('Batch publish exception', e, stack);
-    }
-
-    // --- Retry items that failed because their workshop ID was deleted ---
-    if (failedAsNotFound.isNotEmpty && !_silentlyCleaned) {
-      logging.info('Retrying ${failedAsNotFound.length} items as new');
-
-      final retryItems = failedAsNotFound.map((idx) {
-        final item = items[idx];
-        return (
-          name: item.name,
-          params: item.params.copyWith(publishedFileId: '0'),
-        );
-      }).toList();
-
-      // Remove the failed results for these items so we can replace them
-      final retryNames = failedAsNotFound.map((i) => items[i].name).toSet();
-      results.removeWhere((r) => retryNames.contains(r.name));
-
-      // Reset statuses for retry items
-      final retryStatuses =
-          Map<String, BatchPublishStatus>.from(state.itemStatuses);
-      for (final name in retryNames) {
-        retryStatuses[name] = BatchPublishStatus.pending;
-      }
-      state = state.copyWith(
-        completedItems: results.length,
-        itemStatuses: retryStatuses,
-        results: List.from(results),
-      );
-
-      try {
-        await service.publishBatch(
-          items: retryItems,
-          username: username,
-          password: password,
-          // No steamGuardCode needed — credentials cached from first batch
-          onItemStart: (index, name) {
-            if (_silentlyCleaned) return;
-            final updatedStatuses =
-                Map<String, BatchPublishStatus>.from(state.itemStatuses);
-            updatedStatuses[name] = BatchPublishStatus.inProgress;
-            state = state.copyWith(
-              currentItemName: name,
-              currentItemProgress: 0.0,
-              itemStatuses: updatedStatuses,
-            );
-          },
-          onItemProgress: (index, progress) {
-            if (_silentlyCleaned) return;
-            state = state.copyWith(currentItemProgress: progress);
-          },
-          onItemComplete: (index, result) {
-            if (_silentlyCleaned) return;
-            final originalIdx = failedAsNotFound[index];
-            final item = items[originalIdx];
-            final updatedStatuses =
-                Map<String, BatchPublishStatus>.from(state.itemStatuses);
-
-            result.when(
-              ok: (publishResult) {
-                updatedStatuses[item.name] = BatchPublishStatus.success;
-                results.add(BatchPublishItemResult(
-                  name: item.name,
-                  success: true,
-                  workshopId: publishResult.workshopId,
-                ));
-                _saveWorkshopId(item, publishResult.workshopId);
-                logging.info('Item re-published as new successfully', {
-                  'name': item.name,
-                  'workshopId': publishResult.workshopId,
-                });
-              },
-              err: (error) {
-                updatedStatuses[item.name] = BatchPublishStatus.failed;
-                results.add(BatchPublishItemResult(
-                  name: item.name,
-                  success: false,
-                  errorMessage: error.message,
-                ));
-                logging.error(
-                    'Item retry as new failed: ${item.name} - ${error.message}');
-              },
-            );
-
-            state = state.copyWith(
-              completedItems: results.length,
-              itemStatuses: updatedStatuses,
-              results: List.from(results),
-            );
-          },
-        );
-      } catch (e, stack) {
-        logging.error('Batch retry exception', e, stack);
-      }
     }
 
     // Batch complete — skip if widget was disposed during publish

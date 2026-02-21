@@ -42,23 +42,20 @@ class WorkshopPublishParams {
   /// Visibility setting
   final WorkshopVisibility visibility;
 
-  /// Steam Workshop tags (e.g., 'compilation' for TW:WH3 launcher visibility)
+  /// Steam Workshop tags
   final List<String> tags;
 
   const WorkshopPublishParams({
     required this.appId,
-    this.publishedFileId = '0',
+    required this.publishedFileId,
     required this.contentFolder,
     required this.previewFile,
     required this.title,
     required this.description,
     this.changeNote = '',
     this.visibility = WorkshopVisibility.public_,
-    this.tags = const ['compilation'],
+    this.tags = const [],
   });
-
-  /// Whether this is a new Workshop item (not an update)
-  bool get isNewItem => publishedFileId == '0';
 
   WorkshopPublishParams copyWith({
     String? appId,

@@ -24,9 +24,9 @@ import '../widgets/workshop_publish_settings_dialog.dart';
 
 enum _SortMode { exportDate, name, publishDate }
 
-enum _SelectionAction { all, unpublished, outdated, none }
+enum _SelectionAction { all, outdated, none }
 
-enum _DisplayFilter { all, unpublished, outdated }
+enum _DisplayFilter { all, outdated }
 
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
@@ -57,11 +57,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     switch (_displayFilter) {
       case _DisplayFilter.all:
         break;
-      case _DisplayFilter.unpublished:
-        result = result
-            .where((e) =>
-                e.publishedSteamId == null || e.publishedSteamId!.isEmpty)
-            .toList();
       case _DisplayFilter.outdated:
         result = result
             .where((e) =>
@@ -111,6 +106,19 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
   }
 
   Future<void> _startBatchPublish(List<PublishableItem> allItems) async {
+    // Safety guard: all selected items must have a Workshop ID
+    final selectedItems = allItems
+        .where((e) => _selectedPaths.contains(e.outputPath))
+        .toList();
+    if (selectedItems.any((e) =>
+        e.publishedSteamId == null || e.publishedSteamId!.isEmpty)) {
+      FluentToast.warning(
+        context,
+        'All selected items must have a Workshop ID before publishing.',
+      );
+      return;
+    }
+
     // Check steamcmd availability
     final isAvailable = await SteamCmdManager().isAvailable();
     if (!mounted) return;
@@ -119,8 +127,12 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       if (!installed || !mounted) return;
     }
 
-    // Show login dialog (once for the whole batch)
-    final credentials = await SteamLoginDialog.show(context);
+    // Use saved credentials if available, otherwise show login dialog
+    var credentials = await SteamLoginDialog.getSavedCredentials();
+    if (credentials == null) {
+      if (!mounted) return;
+      credentials = await SteamLoginDialog.show(context);
+    }
     if (credentials == null || !mounted) return;
     final (username, password, steamGuardCode) = credentials;
 
@@ -137,11 +149,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             .where((v) => v.name == visibilityName)
             .firstOrNull ??
         WorkshopVisibility.public_;
-
-    // Build items from selected exports
-    final selectedItems = allItems
-        .where((e) => _selectedPaths.contains(e.outputPath))
-        .toList();
 
     final items = <BatchPublishItemInfo>[];
     final skippedNoPreview = <String>[];
@@ -191,7 +198,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
       final params = WorkshopPublishParams(
         appId: '1142710',
-        publishedFileId: item.publishedSteamId ?? '0',
+        publishedFileId: item.publishedSteamId!,
         contentFolder: packDir,
         previewFile: previewPath,
         title: titleTemplate.isNotEmpty
@@ -259,6 +266,14 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     final filteredItems =
         allItems != null ? _filterAndSort(allItems) : <PublishableItem>[];
 
+    // Check if any selected item is missing a Workshop ID
+    final hasSelectionWithoutId = _selectedPaths.isNotEmpty &&
+        allItems != null &&
+        allItems
+            .where((e) => _selectedPaths.contains(e.outputPath))
+            .any((e) =>
+                e.publishedSteamId == null || e.publishedSteamId!.isEmpty);
+
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
       header: FluentHeader(
@@ -270,9 +285,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               padding: const EdgeInsets.only(right: 4),
               child: InputChip(
                 label: Text(
-                  _displayFilter == _DisplayFilter.unpublished
-                      ? 'Unpublished'
-                      : 'Outdated',
+                  'Outdated',
                   style: theme.textTheme.labelSmall,
                 ),
                 onDeleted: () {
@@ -299,11 +312,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                     final allFiltered = _filterAndSort(allItems!);
                     _selectedPaths =
                         allFiltered.map((e) => e.outputPath).toSet();
-                  case _SelectionAction.unpublished:
-                    _displayFilter = _DisplayFilter.unpublished;
-                    final unpubFiltered = _filterAndSort(allItems!);
-                    _selectedPaths =
-                        unpubFiltered.map((e) => e.outputPath).toSet();
                   case _SelectionAction.outdated:
                     _displayFilter = _DisplayFilter.outdated;
                     final outdatedFiltered = _filterAndSort(allItems!);
@@ -321,10 +329,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                 child: Text('Select All'),
               ),
               const PopupMenuItem(
-                value: _SelectionAction.unpublished,
-                child: Text('Select Unpublished'),
-              ),
-              const PopupMenuItem(
                 value: _SelectionAction.outdated,
                 child: Text('Select Outdated'),
               ),
@@ -336,18 +340,23 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             ],
           ),
           // Publish Selection button
-          FilledButton.icon(
-            onPressed: _selectedPaths.isNotEmpty
-                ? () {
-                    final items = asyncItems.asData?.value;
-                    if (items != null) _startBatchPublish(items);
-                  }
-                : null,
-            icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
-            label: Text(
-              _selectedPaths.isEmpty
-                  ? 'Publish Selection'
-                  : 'Publish (${_selectedPaths.length})',
+          Tooltip(
+            message: hasSelectionWithoutId
+                ? 'All selected items must have a Workshop ID'
+                : '',
+            child: FilledButton.icon(
+              onPressed: _selectedPaths.isNotEmpty && !hasSelectionWithoutId
+                  ? () {
+                      final items = asyncItems.asData?.value;
+                      if (items != null) _startBatchPublish(items);
+                    }
+                  : null,
+              icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
+              label: Text(
+                _selectedPaths.isEmpty
+                    ? 'Publish Selection'
+                    : 'Publish (${_selectedPaths.length})',
+              ),
             ),
           ),
           const SizedBox(width: 8),

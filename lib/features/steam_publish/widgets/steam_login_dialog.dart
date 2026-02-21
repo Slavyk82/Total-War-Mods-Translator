@@ -13,6 +13,18 @@ const _secureStorage = FlutterSecureStorage(
 class SteamLoginDialog extends StatefulWidget {
   const SteamLoginDialog({super.key});
 
+  /// Return saved credentials without showing the dialog, or null if none saved.
+  static Future<(String, String, String?)?> getSavedCredentials() async {
+    final username =
+        await _secureStorage.read(key: SettingsKeys.steamUsername);
+    final password =
+        await _secureStorage.read(key: SettingsKeys.steamPassword);
+    if (username != null && username.isNotEmpty && password != null && password.isNotEmpty) {
+      return (username, password, null);
+    }
+    return null;
+  }
+
   /// Show the login dialog and return (username, password, steamGuardCode?) or null if cancelled.
   static Future<(String, String, String?)?> show(BuildContext context) {
     return showDialog<(String, String, String?)>(

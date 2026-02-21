@@ -133,7 +133,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
     logging.info('Starting Workshop publish', {
       'title': params.title,
-      'isNew': params.isNewItem,
+      'publishedFileId': params.publishedFileId,
       'projectId': projectId,
     });
 
@@ -214,17 +214,12 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
           statusMessage: 'Steam Guard code required',
         );
       } else if (error is WorkshopItemNotFoundException) {
-        // Automatically retry as a new item when the old one was deleted
-        logging.info('Workshop item not found — republishing as new item');
         state = state.copyWith(
-          steamcmdOutput: [
-            ...state.steamcmdOutput,
-            'Workshop item not found — republishing as new item...',
-          ],
-          statusMessage: 'Republishing as new item...',
+          phase: PublishPhase.error,
+          errorMessage: error.message,
+          statusMessage: 'Workshop item not found',
         );
-        retryAsNewItem();
-        return;
+        logging.error('Workshop item not found: ${error.message}');
       } else {
         state = state.copyWith(
           phase: PublishPhase.error,
@@ -260,27 +255,6 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       username: _cachedUsername!,
       password: _cachedPassword!,
       steamGuardCode: code,
-      projectId: _cachedProjectId,
-      compilationId: _cachedCompilationId,
-    );
-  }
-
-  /// Retry publishing as a new Workshop item (when the old one was deleted)
-  Future<void> retryAsNewItem() async {
-    if (_cachedParams == null ||
-        _cachedUsername == null ||
-        _cachedPassword == null) {
-      state = state.copyWith(
-        phase: PublishPhase.error,
-        errorMessage: 'Session expired. Please try again.',
-      );
-      return;
-    }
-
-    await publish(
-      params: _cachedParams!.copyWith(publishedFileId: '0'),
-      username: _cachedUsername!,
-      password: _cachedPassword!,
       projectId: _cachedProjectId,
       compilationId: _cachedCompilationId,
     );

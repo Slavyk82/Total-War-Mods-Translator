@@ -1,11 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
+import '../../../repositories/compilation_repository.dart';
+import '../../../repositories/project_repository.dart';
+import '../../../services/service_locator.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
 
@@ -28,6 +32,14 @@ class PackExportCard extends ConsumerStatefulWidget {
 
 class _PackExportCardState extends ConsumerState<PackExportCard> {
   bool _isHovered = false;
+  final TextEditingController _steamIdController = TextEditingController();
+  bool _isSavingSteamId = false;
+
+  @override
+  void dispose() {
+    _steamIdController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -296,12 +308,14 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final hasPublishedId = widget.item.publishedSteamId != null &&
         widget.item.publishedSteamId!.isNotEmpty;
 
+    if (!hasPublishedId) {
+      return _buildSteamIdInput(context);
+    }
+
     return Row(
       children: [
         Tooltip(
-          message: hasPublishedId
-              ? 'Update existing Workshop item'
-              : 'Publish to Steam Workshop',
+          message: 'Update existing Workshop item',
           child: MouseRegion(
             cursor: SystemMouseCursors.click,
             child: GestureDetector(
@@ -329,7 +343,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      hasPublishedId ? 'Update' : 'Publish',
+                      'Update',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.primary,
                         fontSize: 11,
@@ -342,16 +356,120 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
             ),
           ),
         ),
-        if (hasPublishedId) ...[
-          const SizedBox(width: 8),
-          _buildOpenInSteamButton(context),
-        ],
-        if (hasPublishedId && widget.item.publishedAt != null) ...[
+        const SizedBox(width: 8),
+        _buildOpenInSteamButton(context),
+        if (widget.item.publishedAt != null) ...[
           const SizedBox(width: 8),
           _buildPublishedAtLabel(context),
         ],
       ],
     );
+  }
+
+  Widget _buildSteamIdInput(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 180,
+          height: 28,
+          child: TextField(
+            controller: _steamIdController,
+            enabled: !_isSavingSteamId,
+            style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+            decoration: InputDecoration(
+              hintText: 'Enter Workshop ID...',
+              hintStyle: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              ),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onSubmitted: (_) => _saveSteamId(),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Tooltip(
+          message: 'Save Workshop ID',
+          child: MouseRegion(
+            cursor:
+                _isSavingSteamId ? SystemMouseCursors.basic : SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _isSavingSteamId ? null : _saveSteamId,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: _isSavingSteamId
+                    ? SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : Icon(
+                        FluentIcons.save_24_regular,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveSteamId() async {
+    final steamId = _steamIdController.text.trim();
+    if (steamId.isEmpty) return;
+
+    setState(() => _isSavingSteamId = true);
+
+    try {
+      final item = widget.item;
+      if (item is ProjectPublishItem) {
+        final projectRepo = ServiceLocator.get<ProjectRepository>();
+        final projectResult = await projectRepo.getById(item.project.id);
+        if (projectResult.isOk) {
+          final updated = projectResult.value.copyWith(
+            publishedSteamId: steamId,
+            updatedAt: projectResult.value.updatedAt,
+          );
+          await projectRepo.update(updated);
+        }
+      } else if (item is CompilationPublishItem) {
+        final compilationRepo = ServiceLocator.get<CompilationRepository>();
+        await compilationRepo.updateAfterPublish(
+          item.compilation.id,
+          steamId,
+          item.publishedAt ?? 0,
+        );
+      }
+      if (mounted) {
+        ref.invalidate(publishableItemsProvider);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingSteamId = false);
+      }
+    }
   }
 
   Widget _buildOpenInSteamButton(BuildContext context) {

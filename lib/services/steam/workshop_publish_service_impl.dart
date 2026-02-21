@@ -102,7 +102,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
 
       _logger.info('Publishing Workshop item', {
         'vdfPath': vdfPath,
-        'isNew': params.isNewItem,
+        'publishedFileId': params.publishedFileId,
         'title': params.title,
       });
 
@@ -158,7 +158,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         steamCmdPath: steamCmdPath,
         command: command,
         startTime: startTime,
-        initialWasUpdate: !params.isNewItem,
+        initialWasUpdate: true,
       );
 
       // Clean up VDF file
@@ -190,9 +190,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
 
       // Check for Workshop item not found (item was deleted from Steam).
-      // Return a specific error so the UI can prompt the user to re-publish.
-      if (!params.isNewItem &&
-          run.output.contains('Failed to update workshop item')) {
+      if (run.output.contains('Failed to update workshop item')) {
         _logger.info(
           'Workshop item ${params.publishedFileId} not found on Steam',
         );
@@ -212,14 +210,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
 
       // Determine workshop ID
-      final workshopId = run.workshopId ??
-          (params.isNewItem ? null : params.publishedFileId);
-
-      if (workshopId == null || workshopId == '0') {
-        return Err(const WorkshopPublishException(
-          'Could not determine Workshop ID from steamcmd output',
-        ));
-      }
+      final workshopId = run.workshopId ?? params.publishedFileId;
 
       final duration = DateTime.now().difference(startTime).inMilliseconds;
 
@@ -535,32 +526,28 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
                   trimmed.contains('PublishFileID'))) {
             // Determine final workshop ID
             final workshopId = currentWorkshopId ??
-                (items[currentIdx].params.isNewItem
-                    ? null
-                    : items[currentIdx].params.publishedFileId);
+                items[currentIdx].params.publishedFileId;
 
-            if (workshopId != null && workshopId != '0') {
-              completedInChunk.add(currentIdx);
-              final duration =
-                  DateTime.now().difference(startTime).inMilliseconds;
-              onItemComplete?.call(
-                currentIdx,
-                Ok(WorkshopPublishResult(
-                  workshopId: workshopId,
-                  wasUpdate: !items[currentIdx].params.isNewItem,
-                  durationMs: duration,
-                  timestamp: DateTime.now(),
-                  rawOutput: rawOutput.toString(),
-                )),
+            completedInChunk.add(currentIdx);
+            final duration =
+                DateTime.now().difference(startTime).inMilliseconds;
+            onItemComplete?.call(
+              currentIdx,
+              Ok(WorkshopPublishResult(
+                workshopId: workshopId,
+                wasUpdate: true,
+                durationMs: duration,
+                timestamp: DateTime.now(),
+                rawOutput: rawOutput.toString(),
+              )),
+            );
+            currentWorkshopId = null;
+            currentChunkPos++;
+            if (currentChunkPos < chunk.length) {
+              onItemStart?.call(
+                chunk[currentChunkPos],
+                items[chunk[currentChunkPos]].name,
               );
-              currentWorkshopId = null;
-              currentChunkPos++;
-              if (currentChunkPos < chunk.length) {
-                onItemStart?.call(
-                  chunk[currentChunkPos],
-                  items[chunk[currentChunkPos]].name,
-                );
-              }
             }
           }
 
