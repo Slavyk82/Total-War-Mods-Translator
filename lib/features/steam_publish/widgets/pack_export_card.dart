@@ -9,9 +9,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
 import '../../../repositories/compilation_repository.dart';
 import '../../../repositories/project_repository.dart';
+import '../../../services/file/export_orchestrator_service.dart';
 import '../../../services/service_locator.dart';
+import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
+import 'pack_language_dialog.dart';
 
 /// Card displaying a publishable item (project export or compilation).
 class PackExportCard extends ConsumerStatefulWidget {
@@ -34,6 +37,9 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
   bool _isHovered = false;
   final TextEditingController _steamIdController = TextEditingController();
   bool _isSavingSteamId = false;
+  bool _isGenerating = false;
+  double _generateProgress = 0.0;
+  String? _generateStep;
 
   @override
   void dispose() {
@@ -46,6 +52,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final theme = Theme.of(context);
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
+    final hasPack = widget.item.hasPack;
 
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
@@ -100,7 +107,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Row 1: name + steam ID
+                    // Row 1: name + steam ID / status
                     _buildTopRow(context),
                     const SizedBox(height: 4),
                     // Row 2: languages
@@ -111,15 +118,17 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (hasPack) ...[
+                      const SizedBox(height: 4),
+                      // Row 3: stats (only when pack exists)
+                      _buildStatsRow(context),
+                      const SizedBox(height: 4),
+                      // Row 4: path (only when pack exists)
+                      _buildPathRow(context),
+                    ],
+                    // Row 5: Action row
                     const SizedBox(height: 4),
-                    // Row 3: stats
-                    _buildStatsRow(context),
-                    const SizedBox(height: 4),
-                    // Row 4: path
-                    _buildPathRow(context),
-                    // Row 5: Publish button
-                    const SizedBox(height: 4),
-                    _buildPublishButton(context),
+                    _buildActionRow(context),
                   ],
                 ),
               ),
@@ -134,7 +143,9 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final item = widget.item;
     switch (item) {
       case ProjectPublishItem():
-        return 'Languages: ${item.languagesList.join(', ')}';
+        final langs = item.languagesList;
+        if (langs.isEmpty) return 'Languages: —';
+        return 'Languages: ${langs.join(', ')}';
       case CompilationPublishItem():
         if (item.languageCode != null) {
           return 'Language: ${item.languageCode}';
@@ -145,12 +156,8 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
 
   Widget _buildImage(BuildContext context) {
     final theme = Theme.of(context);
+    final hasPack = widget.item.hasPack;
     final outputPath = widget.item.outputPath;
-    final packImagePath =
-        '${outputPath.substring(0, outputPath.lastIndexOf('.'))}.png';
-    final packImageFile = File(packImagePath);
-    final imagePath =
-        packImageFile.existsSync() ? packImagePath : widget.item.imageUrl;
 
     Widget fallbackIcon() => Icon(
           widget.item.isCompilation
@@ -161,21 +168,48 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
         );
 
     Widget imageWidget;
-    if (imagePath != null && imagePath.isNotEmpty) {
-      try {
-        final bytes = File(imagePath).readAsBytesSync();
-        imageWidget = Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          width: 118,
-          height: 118,
-          errorBuilder: (context, error, stackTrace) => fallbackIcon(),
-        );
-      } catch (_) {
+    if (hasPack && outputPath.isNotEmpty) {
+      final packImagePath =
+          '${outputPath.substring(0, outputPath.lastIndexOf('.'))}.png';
+      final packImageFile = File(packImagePath);
+      final imagePath =
+          packImageFile.existsSync() ? packImagePath : widget.item.imageUrl;
+
+      if (imagePath != null && imagePath.isNotEmpty) {
+        try {
+          final bytes = File(imagePath).readAsBytesSync();
+          imageWidget = Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: 118,
+            height: 118,
+            errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+          );
+        } catch (_) {
+          imageWidget = fallbackIcon();
+        }
+      } else {
         imageWidget = fallbackIcon();
       }
     } else {
-      imageWidget = fallbackIcon();
+      // No pack — try project image directly
+      final imagePath = widget.item.imageUrl;
+      if (imagePath != null && imagePath.isNotEmpty) {
+        try {
+          final bytes = File(imagePath).readAsBytesSync();
+          imageWidget = Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            width: 118,
+            height: 118,
+            errorBuilder: (context, error, stackTrace) => fallbackIcon(),
+          );
+        } catch (_) {
+          imageWidget = fallbackIcon();
+        }
+      } else {
+        imageWidget = fallbackIcon();
+      }
     }
 
     return Container(
@@ -194,6 +228,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final theme = Theme.of(context);
     final mutedColor =
         theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6);
+    final hasPack = widget.item.hasPack;
     final publishedId = widget.item.publishedSteamId;
     final hasPublished = publishedId != null && publishedId.isNotEmpty;
 
@@ -229,20 +264,35 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
           ),
         ),
         const SizedBox(width: 8),
-        Icon(
-          hasPublished
-              ? FluentIcons.cloud_checkmark_24_regular
-              : FluentIcons.cloud_dismiss_24_regular,
-          size: 14,
-          color: hasPublished ? Colors.green.shade600 : mutedColor,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          hasPublished ? 'Workshop #$publishedId' : 'Unpublished',
-          style: theme.textTheme.bodySmall?.copyWith(
+        if (!hasPack) ...[
+          Icon(
+            FluentIcons.box_dismiss_24_regular,
+            size: 14,
+            color: Colors.orange.shade700,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'No pack generated',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: Colors.orange.shade700,
+            ),
+          ),
+        ] else ...[
+          Icon(
+            hasPublished
+                ? FluentIcons.cloud_checkmark_24_regular
+                : FluentIcons.cloud_dismiss_24_regular,
+            size: 14,
             color: hasPublished ? Colors.green.shade600 : mutedColor,
           ),
-        ),
+          const SizedBox(width: 4),
+          Text(
+            hasPublished ? 'Workshop #$publishedId' : 'Unpublished',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: hasPublished ? Colors.green.shade600 : mutedColor,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -260,8 +310,12 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     final List<String> stats = [];
     switch (item) {
       case ProjectPublishItem():
-        stats.add('${_formatEntryCount(item.entryCount)} units');
-        stats.add(item.fileSizeFormatted);
+        if (item.entryCount > 0) {
+          stats.add('${_formatEntryCount(item.entryCount)} units');
+        }
+        if (item.fileSizeFormatted.isNotEmpty) {
+          stats.add(item.fileSizeFormatted);
+        }
       case CompilationPublishItem():
         stats.add('${item.projectCount} projects');
         stats.add(item.fileSizeFormatted);
@@ -303,14 +357,262 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     );
   }
 
-  Widget _buildPublishButton(BuildContext context) {
-    final theme = Theme.of(context);
+  /// Build the action row based on the item's state:
+  /// - State A: No pack → "Generate Pack" button
+  /// - State B: Pack exists, no Workshop ID → Steam ID input
+  /// - State C: Pack + Workshop ID → Update + Open in Steam
+  Widget _buildActionRow(BuildContext context) {
+    final hasPack = widget.item.hasPack;
     final hasPublishedId = widget.item.publishedSteamId != null &&
         widget.item.publishedSteamId!.isNotEmpty;
 
+    // State A: No pack
+    if (!hasPack) {
+      if (_isGenerating) {
+        return _buildGenerateProgress(context);
+      }
+      return _buildGeneratePackButton(context);
+    }
+
+    // State B: Pack, no Workshop ID
     if (!hasPublishedId) {
       return _buildSteamIdInput(context);
     }
+
+    // State C: Pack + Workshop ID
+    return _buildPublishButton(context);
+  }
+
+  Widget _buildGeneratePackButton(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.item;
+
+    return Row(
+      children: [
+        Tooltip(
+          message: item.isCompilation
+              ? 'Open compilation editor to generate'
+              : 'Generate .pack file',
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: () => _handleGeneratePack(context),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Colors.orange.shade300,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.isCompilation
+                          ? FluentIcons.open_24_regular
+                          : FluentIcons.box_arrow_up_24_regular,
+                      size: 14,
+                      color: Colors.orange.shade800,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.isCompilation
+                          ? 'Open Compilation'
+                          : 'Generate Pack',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.orange.shade800,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGenerateProgress(BuildContext context) {
+    final theme = Theme.of(context);
+    final percent = (_generateProgress * 100).toStringAsFixed(0);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _generateStep ?? 'Generating...',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$percent%',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange.shade800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: _generateProgress,
+                  minHeight: 4,
+                  backgroundColor: Colors.orange.shade100,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.orange.shade700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleGeneratePack(BuildContext context) async {
+    final item = widget.item;
+
+    if (item is CompilationPublishItem) {
+      // Navigate to compilation editor screen
+      context.goPackCompilation();
+      return;
+    }
+
+    if (item is ProjectPublishItem) {
+      final languages = item.languageCodes;
+      if (languages.isEmpty) {
+        FluentToast.warning(
+          context,
+          'No languages configured for this project.',
+        );
+        return;
+      }
+
+      List<String> selectedLanguages;
+      if (languages.length > 1) {
+        final result = await PackLanguageDialog.show(
+          context,
+          availableLanguages: languages,
+        );
+        if (result == null) return; // Cancelled
+        selectedLanguages = result;
+      } else {
+        selectedLanguages = languages;
+      }
+
+      await _generatePackForProject(item, selectedLanguages);
+    }
+  }
+
+  Future<void> _generatePackForProject(
+    ProjectPublishItem item,
+    List<String> languageCodes,
+  ) async {
+    if (!mounted) return;
+    setState(() {
+      _isGenerating = true;
+      _generateProgress = 0.0;
+      _generateStep = 'Preparing...';
+    });
+
+    try {
+      final orchestrator =
+          ServiceLocator.get<ExportOrchestratorService>();
+
+      // Determine the output path using the orchestrator's convention
+      final result = await orchestrator.exportToPack(
+        projectId: item.project.id,
+        languageCodes: languageCodes,
+        outputPath: '', // auto-determined by the service
+        validatedOnly: false,
+        onProgress: (step, progress, {currentLanguage, currentIndex, total}) {
+          if (mounted) {
+            setState(() {
+              _generateProgress = progress;
+              _generateStep = _humanizeStep(step, currentLanguage);
+            });
+          }
+        },
+      );
+
+      if (!mounted) return;
+
+      if (result.isOk) {
+        FluentToast.success(
+          context,
+          'Pack generated: ${result.value.entryCount} entries',
+        );
+        ref.invalidate(publishableItemsProvider);
+      } else {
+        FluentToast.error(
+          context,
+          'Failed to generate pack: ${result.error}',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Error generating pack: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGenerating = false;
+          _generateProgress = 0.0;
+          _generateStep = null;
+        });
+      }
+    }
+  }
+
+  String _humanizeStep(String step, String? language) {
+    final langSuffix = language != null ? ' ($language)' : '';
+    switch (step) {
+      case 'preparingData':
+        return 'Preparing data...';
+      case 'generatingLocFiles':
+        return 'Generating .loc files$langSuffix';
+      case 'creatingPack':
+        return 'Creating .pack$langSuffix';
+      case 'generatingImage':
+        return 'Generating preview image...';
+      case 'finalizing':
+        return 'Finalizing...';
+      case 'completed':
+        return 'Completed';
+      default:
+        return step;
+    }
+  }
+
+  Widget _buildPublishButton(BuildContext context) {
+    final theme = Theme.of(context);
 
     return Row(
       children: [

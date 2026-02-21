@@ -8,6 +8,7 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/repositories/compilation_repository.dart';
 import 'package:twmt/repositories/export_history_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
+import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 
@@ -22,16 +23,28 @@ sealed class PublishableItem {
   int? get publishedAt;
   bool get isCompilation;
 
+  /// Whether a pack file exists on disk for this item.
+  bool get hasPack;
+
+  /// Unique identifier for selection (project ID or compilation ID).
+  String get itemId;
+
   /// Timestamp used for sorting by export/generation date.
+  /// Returns 0 when no pack exists (sorts to end).
   int get exportedAt;
 }
 
-/// A project export that can be published.
+/// A project that can be published.
 class ProjectPublishItem extends PublishableItem {
-  final ExportHistory export;
+  final ExportHistory? export;
   final Project project;
+  final List<String> languageCodes;
 
-  ProjectPublishItem({required this.export, required this.project});
+  ProjectPublishItem({
+    required this.export,
+    required this.project,
+    required this.languageCodes,
+  });
 
   @override
   String get displayName => project.displayName;
@@ -40,7 +53,7 @@ class ProjectPublishItem extends PublishableItem {
   String? get imageUrl => project.imageUrl;
 
   @override
-  String get outputPath => export.outputPath;
+  String get outputPath => export?.outputPath ?? '';
 
   @override
   String? get publishedSteamId => project.publishedSteamId;
@@ -52,17 +65,26 @@ class ProjectPublishItem extends PublishableItem {
   bool get isCompilation => false;
 
   @override
-  int get exportedAt => export.exportedAt;
+  bool get hasPack =>
+      export != null &&
+      export!.outputPath.isNotEmpty &&
+      File(export!.outputPath).existsSync();
+
+  @override
+  String get itemId => project.id;
+
+  @override
+  int get exportedAt => export?.exportedAt ?? 0;
 
   String? get steamWorkshopId => project.modSteamId;
 
   bool get isFromSteamWorkshop => project.isFromSteamWorkshop;
 
-  List<String> get languagesList => export.languagesList;
+  List<String> get languagesList => export?.languagesList ?? languageCodes;
 
-  int get entryCount => export.entryCount;
+  int get entryCount => export?.entryCount ?? 0;
 
-  String get fileSizeFormatted => export.fileSizeFormatted;
+  String get fileSizeFormatted => export?.fileSizeFormatted ?? '';
 }
 
 /// A compilation that can be published.
@@ -86,7 +108,7 @@ class CompilationPublishItem extends PublishableItem {
   String? get imageUrl => null;
 
   @override
-  String get outputPath => compilation.lastOutputPath!;
+  String get outputPath => compilation.lastOutputPath ?? '';
 
   @override
   String? get publishedSteamId => compilation.publishedSteamId;
@@ -98,7 +120,16 @@ class CompilationPublishItem extends PublishableItem {
   bool get isCompilation => true;
 
   @override
-  int get exportedAt => compilation.lastGeneratedAt!;
+  bool get hasPack =>
+      compilation.hasBeenGenerated &&
+      compilation.lastOutputPath != null &&
+      File(compilation.lastOutputPath!).existsSync();
+
+  @override
+  String get itemId => compilation.id;
+
+  @override
+  int get exportedAt => compilation.lastGeneratedAt ?? 0;
 
   String get fileSizeFormatted {
     if (fileSize == null) return 'Unknown';
@@ -110,43 +141,49 @@ class CompilationPublishItem extends PublishableItem {
   }
 }
 
-/// Provider that loads all publishable items (project exports + compilations).
+/// Provider that loads all publishable items (all projects + all compilations).
 @riverpod
 Future<List<PublishableItem>> publishableItems(Ref ref) async {
   final exportHistoryRepo = ServiceLocator.get<ExportHistoryRepository>();
   final projectRepo = ServiceLocator.get<ProjectRepository>();
   final compilationRepo = ServiceLocator.get<CompilationRepository>();
   final languageRepo = ServiceLocator.get<LanguageRepository>();
+  final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
 
-  // --- Project exports ---
-  final allPackExports = await exportHistoryRepo.getByFormat(ExportFormat.pack);
+  final items = <PublishableItem>[];
 
-  // Keep only the most recent export per project (already sorted by date DESC)
-  final seenProjects = <String>{};
-  final latestExports = <ExportHistory>[];
-  for (final export in allPackExports) {
-    if (seenProjects.add(export.projectId)) {
-      latestExports.add(export);
+  // --- All projects ---
+  final allProjectsResult = await projectRepo.getAll();
+  if (allProjectsResult.isOk) {
+    for (final project in allProjectsResult.value) {
+      // Load latest pack export (nullable)
+      final lastExport =
+          await exportHistoryRepo.getLastPackExportByProject(project.id);
+
+      // Load language codes for this project
+      final langCodes = <String>[];
+      final plResult = await projectLanguageRepo.getByProject(project.id);
+      if (plResult.isOk) {
+        for (final pl in plResult.value) {
+          final langResult = await languageRepo.getById(pl.languageId);
+          if (langResult.isOk) {
+            langCodes.add(langResult.value.code);
+          }
+        }
+      }
+
+      items.add(ProjectPublishItem(
+        export: lastExport,
+        project: project,
+        languageCodes: langCodes,
+      ));
     }
   }
 
-  final items = <PublishableItem>[];
-  for (final export in latestExports) {
-    final projectResult = await projectRepo.getById(export.projectId);
-    if (!projectResult.isOk) continue; // Skip deleted projects
-    items.add(ProjectPublishItem(export: export, project: projectResult.value));
-  }
-
-  // --- Compilations ---
+  // --- All compilations ---
   final compilationsResult = await compilationRepo.getAll();
   if (compilationsResult.isOk) {
     for (final compilation in compilationsResult.value) {
-      if (!compilation.hasBeenGenerated) continue;
-      if (compilation.lastOutputPath == null) continue;
-
-      // Check that the output file still exists
-      if (!File(compilation.lastOutputPath!).existsSync()) continue;
-
       // Resolve language code
       String? langCode;
       if (compilation.languageId != null) {
@@ -157,14 +194,21 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
       }
 
       // Get project count
-      final projectIdsResult = await compilationRepo.getProjectIds(compilation.id);
-      final projectCount = projectIdsResult.isOk ? projectIdsResult.value.length : 0;
+      final projectIdsResult =
+          await compilationRepo.getProjectIds(compilation.id);
+      final projectCount =
+          projectIdsResult.isOk ? projectIdsResult.value.length : 0;
 
-      // Get file size
+      // Get file size (only if pack exists)
       int? fileSize;
-      try {
-        fileSize = File(compilation.lastOutputPath!).lengthSync();
-      } catch (_) {}
+      if (compilation.hasBeenGenerated && compilation.lastOutputPath != null) {
+        try {
+          final file = File(compilation.lastOutputPath!);
+          if (file.existsSync()) {
+            fileSize = file.lengthSync();
+          }
+        } catch (_) {}
+      }
 
       items.add(CompilationPublishItem(
         compilation: compilation,
@@ -177,4 +221,3 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
 
   return items;
 }
-

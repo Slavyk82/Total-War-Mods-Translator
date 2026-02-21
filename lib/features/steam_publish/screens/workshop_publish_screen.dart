@@ -53,7 +53,9 @@ class _WorkshopPublishScreenState
   PublishableItem? _item;
 
   bool get _isUpdate =>
-      _item?.publishedSteamId != null &&
+      _item != null &&
+      _item!.hasPack &&
+      _item!.publishedSteamId != null &&
       _item!.publishedSteamId!.isNotEmpty;
 
   String get _packFilePath => _item!.outputPath;

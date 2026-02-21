@@ -6,13 +6,13 @@ import 'pack_export_card.dart';
 /// Scrollable list of publishable item cards.
 class PackExportList extends StatelessWidget {
   final List<PublishableItem> items;
-  final Set<String> selectedPaths;
+  final Set<String> selectedIds;
   final ValueChanged<String>? onToggleSelection;
 
   const PackExportList({
     super.key,
     required this.items,
-    this.selectedPaths = const {},
+    this.selectedIds = const {},
     this.onToggleSelection,
   });
 
@@ -26,9 +26,9 @@ class PackExportList extends StatelessWidget {
         final item = items[index];
         return PackExportCard(
           item: item,
-          isSelected: selectedPaths.contains(item.outputPath),
+          isSelected: selectedIds.contains(item.itemId),
           onSelectionChanged: onToggleSelection != null
-              ? (_) => onToggleSelection!(item.outputPath)
+              ? (_) => onToggleSelection!(item.itemId)
               : null,
         );
       },

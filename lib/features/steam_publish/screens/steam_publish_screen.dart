@@ -24,9 +24,9 @@ import '../widgets/workshop_publish_settings_dialog.dart';
 
 enum _SortMode { exportDate, name, publishDate }
 
-enum _SelectionAction { all, outdated, none }
+enum _SelectionAction { all, outdated, noPackGenerated, none }
 
-enum _DisplayFilter { all, outdated }
+enum _DisplayFilter { all, outdated, noPackGenerated }
 
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
@@ -42,7 +42,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
   bool _sortAscending = false;
   _DisplayFilter _displayFilter = _DisplayFilter.all;
   final TextEditingController _searchController = TextEditingController();
-  Set<String> _selectedPaths = {};
+  Set<String> _selectedIds = {};
 
   @override
   void dispose() {
@@ -62,6 +62,8 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             .where((e) =>
                 e.publishedAt != null && e.exportedAt > e.publishedAt!)
             .toList();
+      case _DisplayFilter.noPackGenerated:
+        result = result.where((e) => !e.hasPack).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -75,6 +77,15 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       int cmp;
       switch (_sortMode) {
         case _SortMode.exportDate:
+          // Items without pack (exportedAt == 0) go to the end
+          if (a.exportedAt == 0 && b.exportedAt == 0) {
+            cmp = a.displayName
+                .toLowerCase()
+                .compareTo(b.displayName.toLowerCase());
+            return cmp;
+          }
+          if (a.exportedAt == 0) return 1;
+          if (b.exportedAt == 0) return -1;
           cmp = a.exportedAt.compareTo(b.exportedAt);
         case _SortMode.name:
           cmp = a.displayName
@@ -106,10 +117,19 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
   }
 
   Future<void> _startBatchPublish(List<PublishableItem> allItems) async {
-    // Safety guard: all selected items must have a Workshop ID
+    // Safety guard: all selected items must have a pack AND Workshop ID
     final selectedItems = allItems
-        .where((e) => _selectedPaths.contains(e.outputPath))
+        .where((e) => _selectedIds.contains(e.itemId))
         .toList();
+
+    if (selectedItems.any((e) => !e.hasPack)) {
+      FluentToast.warning(
+        context,
+        'All selected items must have a generated pack before publishing.',
+      );
+      return;
+    }
+
     if (selectedItems.any((e) =>
         e.publishedSteamId == null || e.publishedSteamId!.isEmpty)) {
       FluentToast.warning(
@@ -253,7 +273,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       steamGuardCode: steamGuardCode,
     ));
     if (mounted) {
-      setState(() => _selectedPaths = {});
+      setState(() => _selectedIds = {});
       context.goWorkshopPublishBatch();
     }
   }
@@ -266,13 +286,35 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     final filteredItems =
         allItems != null ? _filterAndSort(allItems) : <PublishableItem>[];
 
-    // Check if any selected item is missing a Workshop ID
-    final hasSelectionWithoutId = _selectedPaths.isNotEmpty &&
+    // Check if any selected item is missing a Workshop ID or pack
+    final hasSelectionWithoutIdOrPack = _selectedIds.isNotEmpty &&
         allItems != null &&
         allItems
-            .where((e) => _selectedPaths.contains(e.outputPath))
+            .where((e) => _selectedIds.contains(e.itemId))
             .any((e) =>
-                e.publishedSteamId == null || e.publishedSteamId!.isEmpty);
+                !e.hasPack ||
+                e.publishedSteamId == null ||
+                e.publishedSteamId!.isEmpty);
+
+    final String batchDisabledTooltip;
+    if (!hasSelectionWithoutIdOrPack) {
+      batchDisabledTooltip = '';
+    } else {
+      final selectedItems = allItems
+          .where((e) => _selectedIds.contains(e.itemId))
+          .toList();
+      final missingPack = selectedItems.any((e) => !e.hasPack);
+      final missingId = selectedItems.any(
+          (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty);
+      if (missingPack && missingId) {
+        batchDisabledTooltip =
+            'All items must have a pack and Workshop ID';
+      } else if (missingPack) {
+        batchDisabledTooltip = 'All items must have a generated pack';
+      } else {
+        batchDisabledTooltip = 'All items must have a Workshop ID';
+      }
+    }
 
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
@@ -285,13 +327,15 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
               padding: const EdgeInsets.only(right: 4),
               child: InputChip(
                 label: Text(
-                  'Outdated',
+                  _displayFilter == _DisplayFilter.outdated
+                      ? 'Outdated'
+                      : 'No pack',
                   style: theme.textTheme.labelSmall,
                 ),
                 onDeleted: () {
                   setState(() {
                     _displayFilter = _DisplayFilter.all;
-                    _selectedPaths = {};
+                    _selectedIds = {};
                   });
                 },
                 deleteIconColor: theme.colorScheme.onSurfaceVariant,
@@ -310,16 +354,21 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                     _displayFilter = _DisplayFilter.all;
                     // Recompute filtered list with new display filter
                     final allFiltered = _filterAndSort(allItems!);
-                    _selectedPaths =
-                        allFiltered.map((e) => e.outputPath).toSet();
+                    _selectedIds =
+                        allFiltered.map((e) => e.itemId).toSet();
                   case _SelectionAction.outdated:
                     _displayFilter = _DisplayFilter.outdated;
                     final outdatedFiltered = _filterAndSort(allItems!);
-                    _selectedPaths =
-                        outdatedFiltered.map((e) => e.outputPath).toSet();
+                    _selectedIds =
+                        outdatedFiltered.map((e) => e.itemId).toSet();
+                  case _SelectionAction.noPackGenerated:
+                    _displayFilter = _DisplayFilter.noPackGenerated;
+                    final noPackFiltered = _filterAndSort(allItems!);
+                    _selectedIds =
+                        noPackFiltered.map((e) => e.itemId).toSet();
                   case _SelectionAction.none:
                     _displayFilter = _DisplayFilter.all;
-                    _selectedPaths = {};
+                    _selectedIds = {};
                 }
               });
             },
@@ -332,6 +381,10 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                 value: _SelectionAction.outdated,
                 child: Text('Select Outdated'),
               ),
+              const PopupMenuItem(
+                value: _SelectionAction.noPackGenerated,
+                child: Text('Select No Pack'),
+              ),
               const PopupMenuDivider(),
               const PopupMenuItem(
                 value: _SelectionAction.none,
@@ -341,11 +394,9 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           ),
           // Publish Selection button
           Tooltip(
-            message: hasSelectionWithoutId
-                ? 'All selected items must have a Workshop ID'
-                : '',
+            message: batchDisabledTooltip,
             child: FilledButton.icon(
-              onPressed: _selectedPaths.isNotEmpty && !hasSelectionWithoutId
+              onPressed: _selectedIds.isNotEmpty && !hasSelectionWithoutIdOrPack
                   ? () {
                       final items = asyncItems.asData?.value;
                       if (items != null) _startBatchPublish(items);
@@ -353,9 +404,9 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                   : null,
               icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
               label: Text(
-                _selectedPaths.isEmpty
+                _selectedIds.isEmpty
                     ? 'Publish Selection'
-                    : 'Publish (${_selectedPaths.length})',
+                    : 'Publish (${_selectedIds.length})',
               ),
             ),
           ),
@@ -495,14 +546,14 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No pack exports yet',
+                    'No projects or compilations yet',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Export a project as .pack or generate a compilation to see it here.',
+                    'Create a project or compilation to see it here.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant
                           .withValues(alpha: 0.7),
@@ -515,13 +566,13 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
           return PackExportList(
             items: filteredItems,
-            selectedPaths: _selectedPaths,
-            onToggleSelection: (path) {
+            selectedIds: _selectedIds,
+            onToggleSelection: (itemId) {
               setState(() {
-                if (_selectedPaths.contains(path)) {
-                  _selectedPaths = Set.from(_selectedPaths)..remove(path);
+                if (_selectedIds.contains(itemId)) {
+                  _selectedIds = Set.from(_selectedIds)..remove(itemId);
                 } else {
-                  _selectedPaths = Set.from(_selectedPaths)..add(path);
+                  _selectedIds = Set.from(_selectedIds)..add(itemId);
                 }
               });
             },
