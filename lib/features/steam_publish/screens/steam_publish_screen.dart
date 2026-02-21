@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:path/path.dart' as path;
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 
 import '../../settings/providers/settings_providers.dart';
+import '../../../services/file/i_pack_image_generator_service.dart';
 import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
@@ -143,15 +145,45 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
     final items = <BatchPublishItemInfo>[];
     final skippedNoPreview = <String>[];
+    final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
 
     for (final item in selectedItems) {
       final packPath = item.outputPath;
       final previewPath =
           '${packPath.substring(0, packPath.lastIndexOf('.'))}.png';
 
+      // Regenerate preview image if missing
       if (!File(previewPath).existsSync()) {
-        skippedNoPreview.add(item.displayName);
-        continue;
+        final packFileName = path.basename(packPath);
+        final gameDataPath = File(packPath).parent.path;
+
+        String languageCode = 'en';
+        String? modImageUrl;
+        bool useAppIcon = true;
+
+        if (item is ProjectPublishItem) {
+          final langs = item.languagesList;
+          if (langs.isNotEmpty) languageCode = langs.first;
+          modImageUrl = item.project.imageUrl;
+          useAppIcon = item.project.isGameTranslation;
+        } else if (item is CompilationPublishItem) {
+          languageCode = item.languageCode ?? 'en';
+        }
+
+        await imageGenerator.ensurePackImage(
+          packFileName: packFileName,
+          gameDataPath: gameDataPath,
+          languageCode: languageCode,
+          modImageUrl: modImageUrl,
+          generateImage: true,
+          useAppIcon: useAppIcon,
+        );
+
+        // Still skip if generation failed
+        if (!File(previewPath).existsSync()) {
+          skippedNoPreview.add(item.displayName);
+          continue;
+        }
       }
 
       final packDir = File(packPath).parent.path;

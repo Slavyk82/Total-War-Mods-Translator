@@ -7,7 +7,10 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:path/path.dart' as p;
+
 import '../../../features/settings/providers/settings_providers.dart';
+import '../../../services/file/i_pack_image_generator_service.dart';
 import '../../../services/settings/settings_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
@@ -169,15 +172,45 @@ class _WorkshopPublishScreenState
 
     final (username, password, steamGuardCode) = credentials;
 
-    final previewPath = _previewImagePath;
+    // Regenerate preview image if missing
+    var previewPath = _previewImagePath;
     if (previewPath == null) {
-      if (mounted) {
+      final packFileName = p.basename(_packFilePath);
+      final gameDataPath = File(_packFilePath).parent.path;
+      final item = _item!;
+
+      String languageCode = 'en';
+      String? modImageUrl;
+      bool useAppIcon = true;
+
+      if (item is ProjectPublishItem) {
+        final langs = item.languagesList;
+        if (langs.isNotEmpty) languageCode = langs.first;
+        modImageUrl = item.project.imageUrl;
+        useAppIcon = item.project.isGameTranslation;
+      } else if (item is CompilationPublishItem) {
+        languageCode = item.languageCode ?? 'en';
+      }
+
+      final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
+      await imageGenerator.ensurePackImage(
+        packFileName: packFileName,
+        gameDataPath: gameDataPath,
+        languageCode: languageCode,
+        modImageUrl: modImageUrl,
+        generateImage: true,
+        useAppIcon: useAppIcon,
+      );
+      if (!mounted) return;
+
+      previewPath = _previewImagePath;
+      if (previewPath == null) {
         FluentToast.warning(
           context,
-          'No preview image found next to the .pack file',
+          'Failed to generate preview image for the .pack file',
         );
+        return;
       }
-      return;
     }
 
     final packDir = File(_packFilePath).parent.path;
