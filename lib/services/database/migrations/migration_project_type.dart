@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add project_type and source_language_code columns to projects table.
@@ -8,6 +9,11 @@ import 'migration_base.dart';
 /// - project_type: 'mod' (default) or 'game'
 /// - source_language_code: The language code of the source pack for game translations (e.g., 'en', 'fr')
 class ProjectTypeMigration extends Migration {
+  final ILoggingService _logger;
+
+  ProjectTypeMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'project_type_columns';
 
@@ -27,8 +33,6 @@ class ProjectTypeMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -39,18 +43,18 @@ class ProjectTypeMigration extends Migration {
         ALTER TABLE projects
         ADD COLUMN project_type TEXT NOT NULL DEFAULT 'mod'
       ''');
-      logging.info('Added project_type column to projects');
+      _logger.info('Added project_type column to projects');
 
       // Add source_language_code column (nullable, only used for game translations)
       await DatabaseService.execute('''
         ALTER TABLE projects
         ADD COLUMN source_language_code TEXT
       ''');
-      logging.info('Added source_language_code column to projects');
+      _logger.info('Added source_language_code column to projects');
 
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add project type columns', e, stackTrace);
+      _logger.error('Failed to add project type columns', e, stackTrace);
       // Non-fatal: feature will be unavailable but app still works
       return false;
     }

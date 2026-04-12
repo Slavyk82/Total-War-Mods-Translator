@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure mod_update_analysis_cache table exists.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// This allows existing databases to get the new caching functionality
 /// without requiring a full database re-creation.
 class ModUpdateCacheMigration extends Migration {
+  final ILoggingService _logger;
+
+  ModUpdateCacheMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'mod_update_analysis_cache';
 
@@ -18,8 +24,6 @@ class ModUpdateCacheMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       await DatabaseService.execute('''
         CREATE TABLE IF NOT EXISTS mod_update_analysis_cache (
@@ -48,10 +52,10 @@ class ModUpdateCacheMigration extends Migration {
         ON mod_update_analysis_cache(pack_file_path)
       ''');
 
-      logging.debug('mod_update_analysis_cache table verified/created');
+      _logger.debug('mod_update_analysis_cache table verified/created');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create mod_update_analysis_cache table', e, stackTrace);
+      _logger.error('Failed to create mod_update_analysis_cache table', e, stackTrace);
       // Non-fatal: caching is optimization, not required for functionality
       return false;
     }

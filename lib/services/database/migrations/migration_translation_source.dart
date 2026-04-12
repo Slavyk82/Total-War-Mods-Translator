@@ -1,11 +1,17 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure translation_source column exists in translation_versions.
 ///
 /// This column tracks the source of each translation (manual, tm_exact, tm_fuzzy, llm).
 class TranslationSourceMigration extends Migration {
+  final ILoggingService _logger;
+
+  TranslationSourceMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'translation_source_column';
 
@@ -25,8 +31,6 @@ class TranslationSourceMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -36,10 +40,10 @@ class TranslationSourceMigration extends Migration {
         ALTER TABLE translation_versions
         ADD COLUMN translation_source TEXT DEFAULT 'unknown'
       ''');
-      logging.info('Added translation_source column to translation_versions');
+      _logger.info('Added translation_source column to translation_versions');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add translation_source column', e, stackTrace);
+      _logger.error('Failed to add translation_source column', e, stackTrace);
       // Non-fatal: display will fall back to confidence-based detection
       return false;
     }

@@ -1,11 +1,17 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure is_hidden column exists on workshop_mods table.
 ///
 /// This column allows users to hide mods from the main list.
 class WorkshopModsHiddenMigration extends Migration {
+  final ILoggingService _logger;
+
+  WorkshopModsHiddenMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'workshop_mods_hidden_column';
 
@@ -25,8 +31,6 @@ class WorkshopModsHiddenMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -36,10 +40,10 @@ class WorkshopModsHiddenMigration extends Migration {
         ALTER TABLE workshop_mods
         ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0
       ''');
-      logging.info('Added is_hidden column to workshop_mods');
+      _logger.info('Added is_hidden column to workshop_mods');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add is_hidden column', e, stackTrace);
+      _logger.error('Failed to add is_hidden column', e, stackTrace);
       // Non-fatal: hiding feature will be unavailable but app still works
       return false;
     }

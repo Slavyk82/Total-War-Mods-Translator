@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to fix cache triggers that reference non-existent confidence_score column.
@@ -11,6 +12,11 @@ import 'migration_base.dart';
 /// Additionally, this migration repairs any missing translation_versions that
 /// may have failed to be created due to the broken triggers.
 class FixCacheTriggersMigration extends Migration {
+  final ILoggingService _logger;
+
+  FixCacheTriggersMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'fix_cache_triggers_confidence_score';
 
@@ -23,10 +29,8 @@ class FixCacheTriggersMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
-      logging.info('Fixing cache triggers for confidence_score bug');
+      _logger.info('Fixing cache triggers for confidence_score bug');
 
       // Drop the broken triggers (IF EXISTS ensures idempotency)
       await DatabaseService.execute(
@@ -85,14 +89,14 @@ class FixCacheTriggersMigration extends Migration {
         END
       ''');
 
-      logging.info('Cache triggers fixed successfully');
+      _logger.info('Cache triggers fixed successfully');
 
       // Repair missing translation_versions
-      await _repairMissingTranslationVersions(logging);
+      await _repairMissingTranslationVersions();
 
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to fix cache triggers', e, stackTrace);
+      _logger.error('Failed to fix cache triggers', e, stackTrace);
       // This is a critical migration - re-throw to alert the user
       rethrow;
     }
@@ -103,7 +107,7 @@ class FixCacheTriggersMigration extends Migration {
   /// For each project_language, checks if there are translation_units without
   /// corresponding translation_versions and creates them.
   /// The INSERT trigger will automatically populate translation_view_cache.
-  Future<void> _repairMissingTranslationVersions(LoggingService logging) async {
+  Future<void> _repairMissingTranslationVersions() async {
     // Count missing versions
     final countResult = await DatabaseService.database.rawQuery('''
       SELECT COUNT(*) as cnt
@@ -118,11 +122,11 @@ class FixCacheTriggersMigration extends Migration {
     final missingCount = (countResult.first['cnt'] as int?) ?? 0;
 
     if (missingCount == 0) {
-      logging.debug('No missing translation_versions found');
+      _logger.debug('No missing translation_versions found');
       return;
     }
 
-    logging.info('Found $missingCount missing translation_versions, repairing...');
+    _logger.info('Found $missingCount missing translation_versions, repairing...');
 
     // Insert missing translation_versions
     // Uses UUID v4 format generated in SQL for the id
@@ -154,6 +158,6 @@ class FixCacheTriggersMigration extends Migration {
       )
     ''');
 
-    logging.info('Repaired $insertedCount missing translation_versions');
+    _logger.info('Repaired $insertedCount missing translation_versions');
   }
 }

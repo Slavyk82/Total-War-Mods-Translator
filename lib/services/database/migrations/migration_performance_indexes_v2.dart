@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add additional performance indexes to the database.
@@ -12,6 +13,11 @@ import 'migration_base.dart';
 ///
 /// Uses CREATE INDEX IF NOT EXISTS so it's safe to run multiple times.
 class PerformanceIndexesV2Migration extends Migration {
+  final ILoggingService _logger;
+
+  PerformanceIndexesV2Migration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'performance_indexes_v2';
 
@@ -23,8 +29,7 @@ class PerformanceIndexesV2Migration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-    logging.debug('Ensuring additional performance indexes exist');
+    _logger.debug('Ensuring additional performance indexes exist');
 
     const performanceIndexes = [
       // Composite index for filtering translation units by project and obsolete status
@@ -52,10 +57,10 @@ class PerformanceIndexesV2Migration extends Migration {
       for (final indexSql in performanceIndexes) {
         await DatabaseService.execute(indexSql);
       }
-      logging.info('Additional performance indexes verified/created successfully');
+      _logger.info('Additional performance indexes verified/created successfully');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create additional performance indexes', e, stackTrace);
+      _logger.error('Failed to create additional performance indexes', e, stackTrace);
       // Non-fatal: indexes are optimization, not required for functionality
       return false;
     }

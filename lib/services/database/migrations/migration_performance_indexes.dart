@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure performance indexes exist on the database.
@@ -8,6 +9,11 @@ import 'migration_base.dart';
 /// optimizations for common query patterns. Uses CREATE INDEX IF NOT EXISTS
 /// so it's safe to run multiple times.
 class PerformanceIndexesMigration extends Migration {
+  final ILoggingService _logger;
+
+  PerformanceIndexesMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'performance_indexes';
 
@@ -19,8 +25,7 @@ class PerformanceIndexesMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-    logging.debug('Ensuring performance indexes exist');
+    _logger.debug('Ensuring performance indexes exist');
 
     const performanceIndexes = [
       // Index on translation_version_history.version_id for FK lookups
@@ -35,10 +40,10 @@ class PerformanceIndexesMigration extends Migration {
       for (final indexSql in performanceIndexes) {
         await DatabaseService.execute(indexSql);
       }
-      logging.info('Performance indexes verified/created successfully');
+      _logger.info('Performance indexes verified/created successfully');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create performance indexes', e, stackTrace);
+      _logger.error('Failed to create performance indexes', e, stackTrace);
       // Non-fatal: indexes are optimization, not required for functionality
       return false;
     }

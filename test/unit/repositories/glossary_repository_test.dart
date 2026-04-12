@@ -4,6 +4,7 @@ import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
+import 'package:twmt/services/shared/logging_service.dart';
 
 void main() {
   late Database db;
@@ -71,7 +72,7 @@ void main() {
     // Initialize DatabaseService with the test database
     DatabaseService.setTestDatabase(db);
 
-    repository = GlossaryRepository();
+    repository = GlossaryRepository(logger: LoggingService.instance);
   });
 
   tearDown(() async {

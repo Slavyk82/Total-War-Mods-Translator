@@ -4,7 +4,8 @@ import '../models/common/service_exception.dart';
 import '../models/domain/glossary_entry.dart';
 import '../services/glossary/models/glossary.dart';
 import '../services/glossary/models/deepl_glossary_mapping.dart';
-import '../services/shared/logging_service.dart';
+import '../services/service_locator.dart';
+import '../services/shared/i_logging_service.dart';
 import 'base_repository.dart';
 
 /// Repository for managing Glossary and GlossaryEntry entities.
@@ -12,6 +13,11 @@ import 'base_repository.dart';
 /// Provides CRUD operations for both glossaries and their entries,
 /// including filtering by project and language.
 class GlossaryRepository extends BaseRepository<GlossaryEntry> {
+  final ILoggingService _logger;
+
+  GlossaryRepository({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get tableName => 'glossary_entries';
 
@@ -285,7 +291,7 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     required String glossaryId,
     String? targetLanguageCode,
   }) async {
-    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Fetching entries:', {
+    _logger.debug('[GlossaryRepository.getEntriesByGlossary] Fetching entries:', {
       'glossaryId': glossaryId,
       'targetLanguageCode': targetLanguageCode,
     });
@@ -299,7 +305,7 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       args.add(targetLanguageCode);
     }
 
-    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Query details', {
+    _logger.debug('[GlossaryRepository.getEntriesByGlossary] Query details', {
       'where': conditions.join(' AND '),
       'args': args,
     });
@@ -311,9 +317,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       orderBy: 'source_term ASC',
     );
 
-    LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] Found ${maps.length} entries');
+    _logger.debug('[GlossaryRepository.getEntriesByGlossary] Found ${maps.length} entries');
     if (maps.isNotEmpty) {
-      LoggingService.instance.debug('[GlossaryRepository.getEntriesByGlossary] First entry', maps.first);
+      _logger.debug('[GlossaryRepository.getEntriesByGlossary] First entry', maps.first);
     }
 
     return maps.map((map) => fromMap(map)).toList();
@@ -321,7 +327,7 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
   /// Insert entry
   Future<void> insertEntry(GlossaryEntry entry) async {
-    LoggingService.instance.debug('[GlossaryRepository.insertEntry] Inserting entry', {
+    _logger.debug('[GlossaryRepository.insertEntry] Inserting entry', {
       'id': entry.id,
       'glossaryId': entry.glossaryId,
       'sourceTerm': entry.sourceTerm,
@@ -335,9 +341,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
         toMap(entry),
         conflictAlgorithm: ConflictAlgorithm.abort,
       );
-      LoggingService.instance.debug('[GlossaryRepository.insertEntry] Insert successful', {'rowId': result});
+      _logger.debug('[GlossaryRepository.insertEntry] Insert successful', {'rowId': result});
     } catch (e, stackTrace) {
-      LoggingService.instance.error('[GlossaryRepository.insertEntry] ERROR inserting entry', e, stackTrace);
+      _logger.error('[GlossaryRepository.insertEntry] ERROR inserting entry', e, stackTrace);
       rethrow;
     }
   }

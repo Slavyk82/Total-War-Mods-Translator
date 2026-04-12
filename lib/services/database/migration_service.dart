@@ -1,9 +1,11 @@
 import 'package:flutter/services.dart';
+import 'package:meta/meta.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../config/database_config.dart';
 import '../../models/common/service_exception.dart';
 import 'database_service.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 import 'migrations/migration_base.dart';
 import 'migrations/migration_registry.dart';
@@ -17,6 +19,13 @@ import 'migrations/migration_registry.dart';
 class MigrationService {
   MigrationService._();
 
+  /// Injectable logger for testability. Defaults to the global singleton.
+  static ILoggingService _logger = LoggingService.instance;
+
+  /// Swap the logger for tests. Not for production use.
+  @visibleForTesting
+  static set loggerForTesting(ILoggingService logger) => _logger = logger;
+
   /// Initialize database schema for fresh databases and run migrations.
   ///
   /// For fresh databases (version 0), executes schema.sql to create
@@ -24,7 +33,6 @@ class MigrationService {
   ///
   /// Throws [TWMTDatabaseException] if schema execution fails.
   static Future<void> runMigrations() async {
-    final logging = LoggingService.instance;
     if (!DatabaseService.isInitialized) {
       throw StateError('DatabaseService must be initialized before migrations');
     }
@@ -32,13 +40,13 @@ class MigrationService {
     final currentVersion = await DatabaseService.getVersion();
     final targetVersion = DatabaseConfig.databaseVersion;
 
-    logging.debug('Checking database version', {
+    _logger.debug('Checking database version', {
       'currentVersion': currentVersion,
       'targetVersion': targetVersion,
     });
 
     if (currentVersion == targetVersion) {
-      logging.debug('Database is already up to date');
+      _logger.debug('Database is already up to date');
       return;
     }
 
@@ -51,9 +59,9 @@ class MigrationService {
 
     // Only support fresh database initialization
     if (currentVersion == 0) {
-      logging.info('Fresh database detected - initializing schema');
+      _logger.info('Fresh database detected - initializing schema');
       await _initializeSchema();
-      logging.info('Schema initialization completed successfully');
+      _logger.info('Schema initialization completed successfully');
     } else {
       // Existing database with different version - not supported
       throw TWMTDatabaseException(
@@ -66,12 +74,10 @@ class MigrationService {
 
   /// Execute schema.sql to create all database objects
   static Future<void> _initializeSchema() async {
-    final logging = LoggingService.instance;
-
     try {
       // Load schema from assets
       final schema = await rootBundle.loadString('lib/database/schema.sql');
-      logging.debug('Schema loaded, executing...');
+      _logger.debug('Schema loaded, executing...');
 
       await DatabaseService.transaction((txn) async {
         // Execute schema
@@ -86,9 +92,9 @@ class MigrationService {
 
       // Verify schema
       await _verifySchema();
-      logging.debug('Schema verified successfully');
+      _logger.debug('Schema verified successfully');
     } catch (e, stackTrace) {
-      logging.error('Schema initialization failed', e, stackTrace);
+      _logger.error('Schema initialization failed', e, stackTrace);
       throw TWMTDatabaseException(
         'Schema initialization failed',
         error: e,
@@ -288,12 +294,11 @@ class MigrationService {
   /// - Data fixes for legacy data
   /// - Column additions
   static Future<List<MigrationResult>> ensurePerformanceIndexes() async {
-    final logging = LoggingService.instance;
     if (!DatabaseService.isInitialized) {
       throw StateError('DatabaseService must be initialized before applying migrations');
     }
 
-    logging.debug('Running incremental migrations...');
+    _logger.debug('Running incremental migrations...');
 
     final results = <MigrationResult>[];
     final migrations = MigrationRegistry.getAllMigrations();
@@ -314,13 +319,13 @@ class MigrationService {
 
         if (applied) {
           results.add(MigrationResult.success(migration.id, stopwatch.elapsed));
-          logging.debug('Migration ${migration.id} applied in ${stopwatch.elapsedMilliseconds}ms');
+          _logger.debug('Migration ${migration.id} applied in ${stopwatch.elapsedMilliseconds}ms');
         } else {
           results.add(MigrationResult.skipped(migration.id));
         }
       } catch (e, stackTrace) {
         stopwatch.stop();
-        logging.error('Migration ${migration.id} failed', e, stackTrace);
+        _logger.error('Migration ${migration.id} failed', e, stackTrace);
         results.add(MigrationResult.error(
           migration.id,
           e.toString(),
@@ -334,7 +339,7 @@ class MigrationService {
     final skipped = results.where((r) => r.skipped).length;
     final failed = results.where((r) => !r.success).length;
 
-    logging.info('Migrations complete: $applied applied, $skipped skipped, $failed failed');
+    _logger.info('Migrations complete: $applied applied, $skipped skipped, $failed failed');
 
     return results;
   }

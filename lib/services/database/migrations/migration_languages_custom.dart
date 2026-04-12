@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure is_custom column exists on languages table.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// This column allows users to add custom languages that can be deleted,
 /// while system languages (is_custom = 0) are read-only.
 class LanguagesCustomMigration extends Migration {
+  final ILoggingService _logger;
+
+  LanguagesCustomMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'languages_custom_column';
 
@@ -26,8 +32,6 @@ class LanguagesCustomMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -37,10 +41,10 @@ class LanguagesCustomMigration extends Migration {
         ALTER TABLE languages
         ADD COLUMN is_custom INTEGER NOT NULL DEFAULT 0
       ''');
-      logging.info('Added is_custom column to languages');
+      _logger.info('Added is_custom column to languages');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add is_custom column to languages', e, stackTrace);
+      _logger.error('Failed to add is_custom column to languages', e, stackTrace);
       // Non-fatal: custom languages feature will be unavailable but app still works
       return false;
     }

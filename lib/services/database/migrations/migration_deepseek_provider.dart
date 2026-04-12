@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add DeepSeek as a translation provider.
@@ -8,6 +9,11 @@ import 'migration_base.dart';
 /// Model: deepseek-chat (DeepSeek-V3.2)
 /// Max output: Default 4K, Maximum 8K tokens
 class DeepSeekProviderMigration extends Migration {
+  final ILoggingService _logger;
+
+  DeepSeekProviderMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'deepseek_provider';
 
@@ -28,8 +34,6 @@ class DeepSeekProviderMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       // Add DeepSeek to translation_providers
       await DatabaseService.execute('''
@@ -48,10 +52,10 @@ class DeepSeekProviderMigration extends Migration {
         ('model_deepseek_chat', 'deepseek', 'deepseek-chat', 'DeepSeek V3.2', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
       ''');
 
-      logging.info('DeepSeek provider and model added successfully');
+      _logger.info('DeepSeek provider and model added successfully');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add DeepSeek provider', e, stackTrace);
+      _logger.error('Failed to add DeepSeek provider', e, stackTrace);
       // Non-fatal: DeepSeek won't be available but other providers still work
       return false;
     }
