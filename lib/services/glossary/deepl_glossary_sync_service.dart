@@ -3,7 +3,7 @@ import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/glossary_deepl_service.dart';
 import 'package:twmt/services/glossary/models/deepl_glossary_mapping.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:uuid/uuid.dart';
 
 /// Service responsible for synchronizing TWMT glossaries with DeepL.
@@ -17,13 +17,13 @@ import 'package:uuid/uuid.dart';
 class DeepLGlossarySyncService {
   final GlossaryRepository _glossaryRepository;
   final GlossaryDeepLService _deeplService;
-  final LoggingService _logging;
+  final ILoggingService _logging;
   final Uuid _uuid = const Uuid();
 
   DeepLGlossarySyncService({
     required GlossaryRepository glossaryRepository,
     required GlossaryDeepLService deeplService,
-    required LoggingService logging,
+    required ILoggingService logging,
   })  : _glossaryRepository = glossaryRepository,
         _deeplService = deeplService,
         _logging = logging;

@@ -8,12 +8,12 @@ import 'package:twmt/services/rpfm/models/rpfm_pack_info.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/rpfm/utils/rpfm_output_parser.dart';
 import 'package:twmt/services/rpfm/utils/rpfm_game_schema.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Mixin providing pack creation and inspection operations for RPFM service
 mixin RpfmPackOperationsMixin {
   RpfmCliManager get cliManager;
-  LoggingService get logger;
+  ILoggingService get logger;
   bool get isCancelled;
   set isCancelled(bool value);
   Process? get currentProcess;

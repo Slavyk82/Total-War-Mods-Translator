@@ -3,7 +3,7 @@ import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory import/export service
 ///
@@ -15,12 +15,12 @@ import 'package:twmt/services/shared/logging_service.dart';
 class TmImportExportService {
   final TranslationMemoryRepository _repository;
   final TmxService _tmxService;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmImportExportService({
     required TranslationMemoryRepository repository,
     required TmxService tmxService,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _tmxService = tmxService,
         _logger = logger;

@@ -4,6 +4,7 @@ import 'package:twmt/models/domain/workshop_mod.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/steam/models/workshop_mod_info.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Processes Steam Workshop mod data: fetching from API and persisting to database.
@@ -13,7 +14,7 @@ import 'package:twmt/services/shared/logging_service.dart';
 class WorkshopModProcessor {
   final WorkshopModRepository _workshopModRepository;
   final IWorkshopApiService _workshopApiService;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
   final Uuid _uuid = const Uuid();
 
   /// Maximum number of mods to fetch in a single Steam API batch request.

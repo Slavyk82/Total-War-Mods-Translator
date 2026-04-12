@@ -2,7 +2,7 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -22,7 +22,7 @@ class ValidationPersistenceHandler {
   final ITranslationMemoryService _tmService;
   final IHistoryService _historyService;
   final TranslationVersionRepository _versionRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   ValidationPersistenceHandler({
@@ -30,7 +30,7 @@ class ValidationPersistenceHandler {
     required ITranslationMemoryService tmService,
     required IHistoryService historyService,
     required TranslationVersionRepository versionRepository,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _validation = validation,
         _tmService = tmService,
         _historyService = historyService,

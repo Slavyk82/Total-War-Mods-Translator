@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Service for file import/export operations
@@ -21,7 +22,7 @@ class FileImportExportService {
   FileImportExportService._internal();
 
   /// Logging service instance
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
 
   // ============================================================================
   // CSV OPERATIONS

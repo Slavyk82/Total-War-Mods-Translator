@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -32,7 +33,7 @@ class RpfmCliManager {
   final Dio _dio = Dio();
 
   /// Logger
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
 
   /// Cached RPFM path
   String? _cachedRpfmPath;

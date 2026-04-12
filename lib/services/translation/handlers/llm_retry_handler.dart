@@ -3,7 +3,7 @@ import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Handles retry logic for LLM translation requests.
 ///
@@ -13,11 +13,11 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Respect provider-suggested retry-after delays
 class LlmRetryHandler {
   final ILlmService _llmService;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   LlmRetryHandler({
     required ILlmService llmService,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _llmService = llmService,
         _logger = logger;
 

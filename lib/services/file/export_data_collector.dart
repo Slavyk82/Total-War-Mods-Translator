@@ -5,7 +5,8 @@ import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Data transfer object for a single translation entry
 class TranslationExportData {
@@ -67,17 +68,17 @@ class ExportDataCollector {
   final ProjectLanguageRepository _projectLanguageRepository;
   final TranslationUnitRepository _translationUnitRepository;
   final TranslationVersionRepository _translationVersionRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   ExportDataCollector({
     required ProjectLanguageRepository projectLanguageRepository,
     required TranslationUnitRepository translationUnitRepository,
     required TranslationVersionRepository translationVersionRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _projectLanguageRepository = projectLanguageRepository,
         _translationUnitRepository = translationUnitRepository,
         _translationVersionRepository = translationVersionRepository,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Fetch translations for a specific language from the database
   ///

@@ -7,14 +7,15 @@ import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/i_pack_image_generator_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Service for generating pack images with language flag overlays
 ///
 /// Creates Steam Workshop preview images for translation packs by overlaying
 /// the target language's flag on the original mod image.
 class PackImageGeneratorService implements IPackImageGeneratorService {
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   /// Output image dimensions (Steam Workshop preview size)
   static const int _outputSize = 512;
@@ -25,8 +26,8 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
   /// Margin from edge in pixels
   static const int _flagMargin = 10;
 
-  PackImageGeneratorService({LoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+  PackImageGeneratorService({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Future<Result<String?, FileServiceException>> ensurePackImage({

@@ -5,7 +5,7 @@ import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 import 'package:twmt/services/translation_memory/tm_crud_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory maintenance service
 ///
@@ -17,13 +17,13 @@ class TmMaintenanceService {
   final TranslationMemoryRepository _repository;
   final TmCrudService _crudService;
   final TextNormalizer _normalizer;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmMaintenanceService({
     required TranslationMemoryRepository repository,
     required TmCrudService crudService,
     required TextNormalizer normalizer,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _crudService = crudService,
         _normalizer = normalizer,

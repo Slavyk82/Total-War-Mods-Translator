@@ -7,7 +7,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 
 /// Service for TMX (Translation Memory eXchange) import and export operations.
@@ -17,7 +18,7 @@ import 'package:twmt/services/translation_memory/text_normalizer.dart';
 class TmxService {
   final TranslationMemoryRepository _repository;
   final TextNormalizer _normalizer;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   static const String _creationTool = 'TWMT';
   static const String _creationToolVersion = '1.0';
@@ -29,10 +30,10 @@ class TmxService {
   TmxService({
     required TranslationMemoryRepository repository,
     required TextNormalizer normalizer,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _repository = repository,
         _normalizer = normalizer,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Export translation memory entries to TMX format.
   ///

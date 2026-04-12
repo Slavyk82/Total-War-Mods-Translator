@@ -14,7 +14,8 @@ import 'package:twmt/services/llm/utils/concurrency_semaphore.dart';
 import 'package:twmt/services/glossary/deepl_glossary_sync_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/database/database_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of high-level LLM service
 ///
@@ -31,7 +32,7 @@ class LlmServiceImpl implements ILlmService {
   final LlmBatchAdjuster _batchAdjuster;
   final SettingsService _settingsService;
   final FlutterSecureStorage _secureStorage;
-  final LoggingService _logging;
+  final ILoggingService _logging;
 
   /// Lazy getter for DeepL glossary sync service.
   /// Uses a factory function to defer resolution until the service is registered.
@@ -49,13 +50,13 @@ class LlmServiceImpl implements ILlmService {
     required SettingsService settingsService,
     required FlutterSecureStorage secureStorage,
     DeepLGlossarySyncService? Function()? deeplGlossarySyncServiceFactory,
-    LoggingService? logging,
+    ILoggingService? logging,
   })  : _providerFactory = providerFactory,
         _batchAdjuster = batchAdjuster,
         _settingsService = settingsService,
         _secureStorage = secureStorage,
         _deeplGlossarySyncServiceFactory = deeplGlossarySyncServiceFactory,
-        _logging = logging ?? LoggingService.instance;
+        _logging = logging ?? ServiceLocator.get<ILoggingService>();
 
   /// Get the DeepL glossary sync service (lazy resolution).
   DeepLGlossarySyncService? get _deeplGlossarySyncService =>

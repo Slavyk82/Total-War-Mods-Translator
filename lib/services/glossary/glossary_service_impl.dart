@@ -10,7 +10,8 @@ import 'package:twmt/services/glossary/glossary_statistics_service.dart';
 import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of glossary service
 ///
@@ -22,6 +23,7 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - GlossaryStatisticsService: Statistics calculations
 class GlossaryServiceImpl implements IGlossaryService {
   final GlossaryRepository _repository;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   // Delegate services
@@ -32,7 +34,9 @@ class GlossaryServiceImpl implements IGlossaryService {
 
   GlossaryServiceImpl({
     required GlossaryRepository repository,
-  }) : _repository = repository {
+    ILoggingService? logger,
+  })  : _repository = repository,
+        _logger = logger ?? ServiceLocator.get<ILoggingService>() {
     _importExportService = GlossaryImportExportService(_repository, this);
     _deeplService = GlossaryDeepLService(
       glossaryRepository: _repository,
@@ -55,7 +59,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String targetLanguageId,
   }) async {
     try {
-      LoggingService.instance.debug('Creating glossary', {
+      _logger.debug('Creating glossary', {
         'name': name,
         'isGlobal': isGlobal,
         'gameInstallationId': gameInstallationId,
@@ -64,14 +68,14 @@ class GlossaryServiceImpl implements IGlossaryService {
 
       // Validate input
       if (name.trim().isEmpty) {
-        LoggingService.instance.debug('Validation failed: name is empty');
+        _logger.debug('Validation failed: name is empty');
         return Err(
           InvalidGlossaryDataException(['Name cannot be empty']),
         );
       }
 
       if (!isGlobal && gameInstallationId == null) {
-        LoggingService.instance.debug('Validation failed: game-specific requires gameInstallationId');
+        _logger.debug('Validation failed: game-specific requires gameInstallationId');
         return Err(
           InvalidGlossaryDataException(
             ['Game-specific glossary requires gameInstallationId'],
@@ -80,10 +84,10 @@ class GlossaryServiceImpl implements IGlossaryService {
       }
 
       // Check for duplicate name
-      LoggingService.instance.debug('Checking for duplicate name', {'name': name});
+      _logger.debug('Checking for duplicate name', {'name': name});
       final existing = await _repository.getByName(name);
       if (existing != null) {
-        LoggingService.instance.debug('Duplicate name found', {'id': existing.id});
+        _logger.debug('Duplicate name found', {'id': existing.id});
         return Err(GlossaryAlreadyExistsException(name));
       }
 
@@ -100,13 +104,13 @@ class GlossaryServiceImpl implements IGlossaryService {
         updatedAt: now,
       );
 
-      LoggingService.instance.debug('Inserting glossary', {'glossary': glossary.toJson()});
+      _logger.debug('Inserting glossary', {'glossary': glossary.toJson()});
       await _repository.insertGlossary(glossary);
-      LoggingService.instance.info('Glossary created successfully', {'id': glossary.id});
+      _logger.info('Glossary created successfully', {'id': glossary.id});
 
       return Ok(glossary);
     } catch (e, stackTrace) {
-      LoggingService.instance.error('Error creating glossary', e, stackTrace);
+      _logger.error('Error creating glossary', e, stackTrace);
       return Err(
         GlossaryDatabaseException('Failed to create glossary', e),
       );
@@ -215,7 +219,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     String? notes,
   }) async {
     try {
-      LoggingService.instance.debug('Adding glossary entry', {
+      _logger.debug('Adding glossary entry', {
         'glossaryId': glossaryId,
         'targetLanguageCode': targetLanguageCode,
         'sourceTerm': sourceTerm,
@@ -225,24 +229,24 @@ class GlossaryServiceImpl implements IGlossaryService {
       });
 
       // Validate glossary exists
-      LoggingService.instance.debug('Checking if glossary exists', {'glossaryId': glossaryId});
+      _logger.debug('Checking if glossary exists', {'glossaryId': glossaryId});
       final glossary = await _repository.getGlossaryById(glossaryId);
       if (glossary == null) {
-        LoggingService.instance.warning('Glossary not found', {'glossaryId': glossaryId});
+        _logger.warning('Glossary not found', {'glossaryId': glossaryId});
         return Err(GlossaryNotFoundException(glossaryId));
       }
-      LoggingService.instance.debug('Glossary found', {'name': glossary.name});
+      _logger.debug('Glossary found', {'name': glossary.name});
 
       // Validate input
       if (sourceTerm.trim().isEmpty || targetTerm.trim().isEmpty) {
-        LoggingService.instance.debug('Empty terms detected');
+        _logger.debug('Empty terms detected');
         return Err(
           InvalidGlossaryDataException(['Terms cannot be empty']),
         );
       }
 
       // Check for duplicate term
-      LoggingService.instance.debug('Checking for duplicate entry');
+      _logger.debug('Checking for duplicate entry');
       final duplicate = await _repository.findDuplicateEntry(
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
@@ -250,12 +254,12 @@ class GlossaryServiceImpl implements IGlossaryService {
       );
 
       if (duplicate != null) {
-        LoggingService.instance.debug('Duplicate entry found', {'id': duplicate.id});
+        _logger.debug('Duplicate entry found', {'id': duplicate.id});
         return Err(
           DuplicateGlossaryEntryException(sourceTerm.trim(), glossaryId),
         );
       }
-      LoggingService.instance.debug('No duplicate found, proceeding');
+      _logger.debug('No duplicate found, proceeding');
 
       final now = DateTime.now().millisecondsSinceEpoch;
       final trimmedNotes = notes?.trim();
@@ -271,20 +275,20 @@ class GlossaryServiceImpl implements IGlossaryService {
         updatedAt: now,
       );
 
-      LoggingService.instance.debug('Created entry object', {'entry': entry.toJson()});
-      LoggingService.instance.debug('Calling repository.insertEntry');
+      _logger.debug('Created entry object', {'entry': entry.toJson()});
+      _logger.debug('Calling repository.insertEntry');
       await _repository.insertEntry(entry);
-      LoggingService.instance.debug('Entry inserted successfully');
+      _logger.debug('Entry inserted successfully');
 
       // Update glossary entry count
-      LoggingService.instance.debug('Updating glossary entry count');
+      _logger.debug('Updating glossary entry count');
       await _updateGlossaryEntryCount(glossaryId);
-      LoggingService.instance.debug('Entry count updated');
+      _logger.debug('Entry count updated');
 
-      LoggingService.instance.info('Entry added successfully', {'id': entry.id});
+      _logger.info('Entry added successfully', {'id': entry.id});
       return Ok(entry);
     } catch (e, stackTrace) {
-      LoggingService.instance.error('Error adding entry', e, stackTrace);
+      _logger.error('Error adding entry', e, stackTrace);
       return Err(
         GlossaryDatabaseException('Failed to add entry', e),
       );

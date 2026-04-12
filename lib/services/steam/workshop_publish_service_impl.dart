@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_publish_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
@@ -23,7 +24,7 @@ import 'package:twmt/services/steam/vdf_generator.dart';
 class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   final SteamCmdManager _manager = SteamCmdManager();
   final VdfGenerator _vdfGenerator = VdfGenerator();
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
 
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();

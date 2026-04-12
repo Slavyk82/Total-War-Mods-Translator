@@ -6,7 +6,7 @@ import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/utils/translation_text_utils.dart';
@@ -28,7 +28,7 @@ class TmLookupHandler {
   final IHistoryService _historyService;
   final TranslationVersionRepository _versionRepository;
   final TransactionManager _transactionManager;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   TmLookupHandler({
@@ -36,7 +36,7 @@ class TmLookupHandler {
     required IHistoryService historyService,
     required TranslationVersionRepository versionRepository,
     required TransactionManager transactionManager,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _tmService = tmService,
         _historyService = historyService,
         _versionRepository = versionRepository,

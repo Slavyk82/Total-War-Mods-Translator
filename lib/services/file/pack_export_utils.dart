@@ -1,17 +1,18 @@
 import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Utility functions for .pack file export operations
 ///
 /// Contains helper methods specific to Total War .pack file generation,
 /// including file structure handling and naming conventions.
 class PackExportUtils {
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
-  PackExportUtils({LoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+  PackExportUtils({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Create a temporary directory for export operations
   Future<Directory> createTempDirectory(String prefix) async {

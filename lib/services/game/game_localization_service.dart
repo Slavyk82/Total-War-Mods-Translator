@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 import '../../models/common/service_exception.dart';
-import '../shared/logging_service.dart';
+import '../service_locator.dart';
+import '../shared/i_logging_service.dart';
 
 /// Represents a detected game localization pack file.
 class DetectedLocalPack {
@@ -52,7 +53,10 @@ class DetectedLocalPack {
 /// Game localization packs are located at: {game_installation_path}/data/local_xx.pack
 /// where xx is the language code (en, fr, de, es, ru, zh, etc.)
 class GameLocalizationService {
-  final LoggingService _logging = LoggingService.instance;
+  final ILoggingService _logging;
+
+  GameLocalizationService({ILoggingService? logging})
+      : _logging = logging ?? ServiceLocator.get<ILoggingService>();
 
   /// Map of language codes to display names
   static const Map<String, String> languageCodeNames = {

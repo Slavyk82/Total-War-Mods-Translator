@@ -1,5 +1,5 @@
 import 'package:twmt/models/domain/translation_unit.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 
@@ -42,10 +42,10 @@ class CacheProcessingResult {
 /// - Register pending translations
 /// - Update cache with completed translations
 class LlmCacheManager {
-  final LoggingService _logger;
+  final ILoggingService _logger;
   final BatchTranslationCache _cache = BatchTranslationCache.instance;
 
-  LlmCacheManager({required LoggingService logger}) : _logger = logger;
+  LlmCacheManager({required ILoggingService logger}) : _logger = logger;
 
   /// Process units to find cached translations and identify what needs LLM translation.
   ///

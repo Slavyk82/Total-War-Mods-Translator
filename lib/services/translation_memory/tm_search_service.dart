@@ -4,7 +4,7 @@ import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory search service
 ///
@@ -14,11 +14,11 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - In-memory search when FTS5 unavailable
 class TmSearchService {
   final TranslationMemoryRepository _repository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmSearchService({
     required TranslationMemoryRepository repository,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _logger = logger;
 

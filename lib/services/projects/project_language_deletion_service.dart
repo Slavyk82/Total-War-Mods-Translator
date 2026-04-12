@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 import '../database/database_service.dart';
 
@@ -12,7 +13,7 @@ import '../database/database_service.dart';
 /// 3. Deletes cache entries before disabling triggers
 /// 4. Re-enables triggers and rebuilds FTS5 indexes after deletion
 class ProjectLanguageDeletionService {
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
 
   /// Delete a project language and all related translation versions.
   ///

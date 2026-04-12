@@ -1,6 +1,6 @@
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'llm_token_estimator.dart';
@@ -18,13 +18,13 @@ class SingleBatchProcessor {
   final LlmTokenEstimator _tokenEstimator;
   final LlmCacheManager _cacheManager;
   final TranslationSplitter _translationSplitter;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   SingleBatchProcessor({
     required LlmTokenEstimator tokenEstimator,
     required LlmCacheManager cacheManager,
     required TranslationSplitter translationSplitter,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _tokenEstimator = tokenEstimator,
         _cacheManager = cacheManager,
         _translationSplitter = translationSplitter,

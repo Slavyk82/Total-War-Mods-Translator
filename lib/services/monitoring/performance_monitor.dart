@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Performance monitoring service for tracking operation durations and metrics.
@@ -13,7 +14,7 @@ class PerformanceMonitor {
   factory PerformanceMonitor() => _instance;
   PerformanceMonitor._internal();
 
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
 
   /// Threshold for slow operation warning (in milliseconds)
   int slowOperationThresholdMs = 1000;

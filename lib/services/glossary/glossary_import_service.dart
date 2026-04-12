@@ -7,7 +7,8 @@ import 'package:twmt/services/file/file_import_export_service.dart';
 import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
 import 'package:twmt/services/glossary/models/tbx_entry.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:xml/xml.dart';
 
 /// Service responsible for glossary import operations
@@ -17,9 +18,11 @@ import 'package:xml/xml.dart';
 class GlossaryImportService {
   final GlossaryRepository _repository;
   final IGlossaryService _glossaryService;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
-  GlossaryImportService(this._repository, this._glossaryService);
+  GlossaryImportService(this._repository, this._glossaryService,
+      {ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   // ============================================================================
   // CSV Import

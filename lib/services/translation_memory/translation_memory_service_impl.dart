@@ -16,7 +16,8 @@ import 'package:twmt/services/translation_memory/tm_statistics_service.dart';
 import 'package:twmt/services/translation_memory/tm_search_service.dart';
 import 'package:twmt/services/translation_memory/tm_crud_service.dart';
 import 'package:twmt/services/translation_memory/tm_maintenance_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of Translation Memory Service
 ///
@@ -46,7 +47,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required SimilarityCalculator similarityCalculator,
     required TmCache cache,
     TmxService? tmxService,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _crudService = TmCrudService(
           repository: repository,
           languageRepository: languageRepository,
@@ -68,17 +69,17 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
                 normalizer: normalizer,
                 logger: logger,
               ),
-          logger: logger ?? LoggingService.instance,
+          logger: logger ?? ServiceLocator.get<ILoggingService>(),
         ),
         _statisticsService = TmStatisticsService(
           repository: repository,
           languageRepository: languageRepository,
           cache: cache,
-          logger: logger ?? LoggingService.instance,
+          logger: logger ?? ServiceLocator.get<ILoggingService>(),
         ),
         _searchService = TmSearchService(
           repository: repository,
-          logger: logger ?? LoggingService.instance,
+          logger: logger ?? ServiceLocator.get<ILoggingService>(),
         ),
         _maintenanceService = TmMaintenanceService(
           repository: repository,
@@ -89,7 +90,7 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
             logger: logger,
           ),
           normalizer: normalizer,
-          logger: logger ?? LoggingService.instance,
+          logger: logger ?? ServiceLocator.get<ILoggingService>(),
         );
 
   // ========== CRUD OPERATIONS (Delegated to TmCrudService) ==========

@@ -10,7 +10,8 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/file/i_loc_file_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of Total War .loc file service
 ///
@@ -21,19 +22,19 @@ class LocFileServiceImpl implements ILocFileService {
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _projectLanguageRepository;
   final LanguageRepository _languageRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   LocFileServiceImpl({
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository projectLanguageRepository,
     required LanguageRepository languageRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _projectLanguageRepository = projectLanguageRepository,
         _languageRepository = languageRepository,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Find project language by language code
   ///

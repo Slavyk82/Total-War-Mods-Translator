@@ -6,6 +6,7 @@ import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/rpfm/mixins/rpfm_extraction_mixin.dart';
 import 'package:twmt/services/rpfm/mixins/rpfm_pack_operations_mixin.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of RPFM service
@@ -17,7 +18,7 @@ class RpfmServiceImpl
     with RpfmExtractionMixin, RpfmPackOperationsMixin
     implements IRpfmService {
   final RpfmCliManager _cliManager = RpfmCliManager();
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger = LoggingService.instance;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
   final StreamController<RpfmLogMessage> _logController =
@@ -31,7 +32,7 @@ class RpfmServiceImpl
   RpfmCliManager get cliManager => _cliManager;
 
   @override
-  LoggingService get logger => _logger;
+  ILoggingService get logger => _logger;
 
   @override
   StreamController<double> get progressController => _progressController;

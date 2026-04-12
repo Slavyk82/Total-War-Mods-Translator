@@ -1,6 +1,6 @@
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -31,7 +31,7 @@ typedef SubBatchTranslatedCallback = Future<void> Function(
 class TranslationSplitter {
   final LlmTokenEstimator _tokenEstimator;
   final LlmRetryHandler _retryHandler;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   late final TranslationErrorRecovery _errorRecovery;
 
   /// Maximum recursion depth for batch splitting.
@@ -40,7 +40,7 @@ class TranslationSplitter {
   TranslationSplitter({
     required LlmTokenEstimator tokenEstimator,
     required LlmRetryHandler retryHandler,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _tokenEstimator = tokenEstimator,
         _retryHandler = retryHandler,
         _logger = logger {

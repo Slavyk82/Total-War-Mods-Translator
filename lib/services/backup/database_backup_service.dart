@@ -8,7 +8,8 @@ import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../database/database_service.dart';
 import '../database/migration_service.dart';
-import '../shared/logging_service.dart';
+import '../service_locator.dart';
+import '../shared/i_logging_service.dart';
 
 /// Exception thrown when backup operations fail.
 class BackupException extends ServiceException {
@@ -48,10 +49,10 @@ class BackupInfo {
 /// Creates ZIP archives containing the SQLite database files (twmt.db,
 /// twmt.db-wal, twmt.db-shm) and restores from those archives.
 class DatabaseBackupService {
-  final LoggingService _logging;
+  final ILoggingService _logging;
 
-  DatabaseBackupService({LoggingService? logging})
-      : _logging = logging ?? LoggingService.instance;
+  DatabaseBackupService({ILoggingService? logging})
+      : _logging = logging ?? ServiceLocator.get<ILoggingService>();
 
   /// Generate a suggested filename for a backup.
   ///

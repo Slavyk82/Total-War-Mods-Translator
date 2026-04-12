@@ -6,7 +6,8 @@ import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/file/file_import_export_service.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:xml/xml.dart';
 
 /// Service responsible for glossary export operations
@@ -15,9 +16,10 @@ import 'package:xml/xml.dart';
 /// Separated from import operations following Single Responsibility Principle.
 class GlossaryExportService {
   final GlossaryRepository _repository;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
-  GlossaryExportService(this._repository);
+  GlossaryExportService(this._repository, {ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   // ============================================================================
   // CSV Export

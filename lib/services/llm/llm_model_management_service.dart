@@ -2,7 +2,7 @@ import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/llm_provider_model.dart';
 import '../../repositories/llm_provider_model_repository.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 
 /// Service for managing LLM provider models.
 ///
@@ -10,7 +10,7 @@ import '../shared/logging_service.dart';
 /// model enabled/disabled/default status management.
 class LlmModelManagementService {
   final LlmProviderModelRepository _repository;
-  final LoggingService _logging;
+  final ILoggingService _logging;
 
   LlmModelManagementService(
     this._repository,

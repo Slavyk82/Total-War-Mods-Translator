@@ -3,7 +3,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/llm_custom_rule.dart';
 import 'package:twmt/repositories/llm_custom_rule_repository.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Service for managing LLM custom translation rules.
 ///
@@ -13,14 +14,14 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - **Project-specific**: Apply only to a specific mod/project
 class LlmCustomRulesService {
   final LlmCustomRuleRepository _repository;
-  final LoggingService _logging;
+  final ILoggingService _logging;
   final Uuid _uuid = const Uuid();
 
   LlmCustomRulesService({
     required LlmCustomRuleRepository repository,
-    LoggingService? logging,
+    ILoggingService? logging,
   })  : _repository = repository,
-        _logging = logging ?? LoggingService.instance;
+        _logging = logging ?? ServiceLocator.get<ILoggingService>();
 
   // ============================================================================
   // CRUD Operations

@@ -7,7 +7,8 @@ import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory CRUD service
 ///
@@ -21,7 +22,7 @@ class TmCrudService {
   final TranslationMemoryRepository _repository;
   final LanguageRepository _languageRepository;
   final TextNormalizer _normalizer;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   // Cache for language code -> ID mapping
   final Map<String, String> _languageCodeToId = {};
@@ -30,11 +31,11 @@ class TmCrudService {
     required TranslationMemoryRepository repository,
     required LanguageRepository languageRepository,
     required TextNormalizer normalizer,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _repository = repository,
         _languageRepository = languageRepository,
         _normalizer = normalizer,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Resolve language code to database ID
   /// Caches results for performance
