@@ -52,13 +52,8 @@ class CoreServiceLocator {
   /// These must be registered first as other services depend on them.
   static Future<void> registerInfrastructure(GetIt locator) async {
     // Logging service (singleton)
-    // Register under the interface type so new code depends on ILoggingService.
+    // Register under the interface type — all new code depends on ILoggingService.
     locator.registerLazySingleton<ILoggingService>(
-      () => LoggingService.instance,
-    );
-    // Keep the concrete registration during migration — removed in Task 2.5.
-    // The two registrations alias the same singleton instance.
-    locator.registerLazySingleton<LoggingService>(
       () => LoggingService.instance,
     );
 
@@ -72,16 +67,15 @@ class CoreServiceLocator {
       () => FileService.instance,
     );
 
-    // Initialize logging
-    final logging = locator<LoggingService>();
-    await logging.initialize();
-    logging.info('Core infrastructure services registered');
+    // LoggingService.initialize() is concrete-only (not on ILoggingService).
+    // Use the static singleton directly since it predates the locator.
+    await LoggingService.instance.initialize();
+    LoggingService.instance.info('Core infrastructure services registered');
   }
 
   /// Register all remaining core services with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
-    logging.info('Registering core services');
+    LoggingService.instance.info('Registering core services');
 
     // Settings service
     locator.registerLazySingleton<SettingsService>(
@@ -180,6 +174,6 @@ class CoreServiceLocator {
       ),
     );
 
-    logging.info('Core services registered successfully');
+    LoggingService.instance.info('Core services registered successfully');
   }
 }

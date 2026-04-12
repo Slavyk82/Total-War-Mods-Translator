@@ -7,7 +7,7 @@ import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/mods/workshop_scanner_service.dart';
 import 'package:twmt/services/mods/game_installation_sync_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
@@ -35,7 +35,7 @@ class DetectedMods extends _$DetectedMods {
       // Check session cache first - skip scan if already scanned this session
       final cachedMods = sessionCache.getCachedMods(gameCode);
       if (cachedMods != null) {
-        LoggingService.instance.debug('Using cached mods for game: $gameCode (${cachedMods.length} mods)');
+        ref.read(loggingServiceProvider).debug('Using cached mods for game: $gameCode (${cachedMods.length} mods)');
         return cachedMods;
       }
 
@@ -55,7 +55,7 @@ class DetectedMods extends _$DetectedMods {
             }
             // Cache the results for this session
             sessionCache.cacheMods(gameCode, result.mods);
-            LoggingService.instance.debug('Cached mods for game: $gameCode (${result.mods.length} mods)');
+            ref.read(loggingServiceProvider).debug('Cached mods for game: $gameCode (${result.mods.length} mods)');
             return result.mods;
           },
           err: (_) => <DetectedMod>[],
@@ -69,9 +69,10 @@ class DetectedMods extends _$DetectedMods {
 
   /// Update the hidden status of a mod locally without rescanning
   void updateModHidden(String workshopId, bool isHidden) {
-    LoggingService.instance.debug('updateModHidden called: workshopId=$workshopId, isHidden=$isHidden');
+    final logger = ref.read(loggingServiceProvider);
+    logger.debug('updateModHidden called: workshopId=$workshopId, isHidden=$isHidden');
     final currentState = state;
-    LoggingService.instance.debug('currentState type: ${currentState.runtimeType}');
+    logger.debug('currentState type: ${currentState.runtimeType}');
     if (currentState is AsyncData<List<DetectedMod>>) {
       final updatedMods = currentState.value.map((mod) {
         if (mod.workshopId == workshopId) {
@@ -80,7 +81,7 @@ class DetectedMods extends _$DetectedMods {
         return mod;
       }).toList();
       state = AsyncData(updatedMods);
-      LoggingService.instance.debug('state updated with ${updatedMods.length} mods');
+      logger.debug('state updated with ${updatedMods.length} mods');
 
       // Also update the session cache to keep it in sync
       ref.read(modsSessionCacheProvider.notifier).updateModInCache(workshopId, isHidden);
@@ -89,7 +90,8 @@ class DetectedMods extends _$DetectedMods {
 
   /// Mark a mod as imported locally without rescanning
   void updateModImported(String workshopId, String projectId) {
-    LoggingService.instance.debug('updateModImported called: workshopId=$workshopId, projectId=$projectId');
+    final logger = ref.read(loggingServiceProvider);
+    logger.debug('updateModImported called: workshopId=$workshopId, projectId=$projectId');
     final currentState = state;
     if (currentState is AsyncData<List<DetectedMod>>) {
       final updatedMods = currentState.value.map((mod) {
@@ -102,7 +104,7 @@ class DetectedMods extends _$DetectedMods {
         return mod;
       }).toList();
       state = AsyncData(updatedMods);
-      LoggingService.instance.debug('state updated - mod marked as imported');
+      logger.debug('state updated - mod marked as imported');
 
       // Also update the session cache to keep it in sync
       ref.read(modsSessionCacheProvider.notifier).updateModImportedInCache(workshopId, projectId);

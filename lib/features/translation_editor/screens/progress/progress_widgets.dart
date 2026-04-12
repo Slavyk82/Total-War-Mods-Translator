@@ -461,6 +461,7 @@ class _LogTerminalState extends State<LogTerminal> {
   void initState() {
     super.initState();
 
+    // Uses concrete LoggingService for logStream / recentLogs which are not on ILoggingService.
     // Load recent logs
     _logs.addAll(LoggingService.instance.recentLogs);
 

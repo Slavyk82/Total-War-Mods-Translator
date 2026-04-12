@@ -14,7 +14,7 @@ import '../../../providers/selected_game_provider.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../repositories/export_history_repository.dart';
 import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
+import '../../../providers/shared/logging_providers.dart';
 import '../../../services/mods/mod_update_analysis_service.dart';
 
 // Re-export shared repository providers for backward compatibility
@@ -287,7 +287,7 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
   // Watch translation stats version to refresh when stats change (e.g., mod update resets units)
   ref.watch(translationStatsVersionProvider);
 
-  final logging = ServiceLocator.get<LoggingService>();
+  final logging = ref.read(loggingServiceProvider);
   logging.debug('Starting projectsWithDetailsProvider');
   final projectRepo = ref.watch(projectRepositoryProvider);
   final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
@@ -668,7 +668,7 @@ class ProjectResyncNotifier extends Notifier<ResyncingProjectsState> {
 
   /// Resync a local pack project with its source file
   Future<void> resync(String projectId) async {
-    final logging = LoggingService.instance;
+    final logging = ref.read(loggingServiceProvider);
     logging.info('Starting resync for project: $projectId');
 
     // Add to resyncing set

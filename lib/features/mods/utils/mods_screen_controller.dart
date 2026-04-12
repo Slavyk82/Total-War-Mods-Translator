@@ -15,7 +15,7 @@ import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/projects/i_project_initialization_service.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 
 /// Controller for ModsScreen orchestration logic
@@ -53,9 +53,10 @@ class ModsScreenController {
 
   /// Toggle hidden status for a mod
   Future<void> handleToggleHidden(String workshopId, bool hide) async {
-    LoggingService.instance.debug('handleToggleHidden called: workshopId=$workshopId, hide=$hide');
+    final logger = _ref.read(loggingServiceProvider);
+    logger.debug('handleToggleHidden called: workshopId=$workshopId, hide=$hide');
     await _ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
-    LoggingService.instance.debug('handleToggleHidden done');
+    logger.debug('handleToggleHidden done');
   }
 
   /// Force redownload a pack file by deleting it
