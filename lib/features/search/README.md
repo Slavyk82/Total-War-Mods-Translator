@@ -1,4 +1,4 @@
-# Advanced Search UI - Phase 3.4
+# Advanced Search UI
 
 ## Overview
 
@@ -282,7 +282,7 @@ Highlighting uses FTS5's `snippet()` function with `<mark>` tags, parsed to Text
 
 ## Integration with Translation Editor
 
-The search UI is designed to work standalone or embedded in the Translation Editor (Phase 4).
+The search UI is designed to work standalone or embedded in the Translation Editor.
 
 ```dart
 // In Translation Editor

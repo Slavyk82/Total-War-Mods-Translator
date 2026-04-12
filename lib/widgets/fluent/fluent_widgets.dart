@@ -74,8 +74,6 @@
 /// | TextField | FluentTextField |
 /// | CircularProgressIndicator | FluentProgressRing |
 /// | LinearProgressIndicator | FluentProgressBar |
-///
-/// See [FLUENT_DESIGN_QUICK_FIX_GUIDE.md] for detailed migration instructions.
 library;
 
 // Buttons

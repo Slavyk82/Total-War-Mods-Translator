@@ -272,9 +272,6 @@ Each component includes:
 
 ## 🔗 Related Documentation
 
-- [MATERIAL_DESIGN_AUDIT_REPORT.md](../../../MATERIAL_DESIGN_AUDIT_REPORT.md) - Complete audit findings
-- [FLUENT_DESIGN_QUICK_FIX_GUIDE.md](../../../FLUENT_DESIGN_QUICK_FIX_GUIDE.md) - Quick reference guide
-- [FLUENT_MIGRATION_CHECKLIST.md](../../../FLUENT_MIGRATION_CHECKLIST.md) - Progress tracking
 - [CLAUDE.md](../../../CLAUDE.md) - Project requirements
 
 ## 📋 File Structure
