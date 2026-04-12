@@ -26,7 +26,7 @@ import '../projects/i_project_initialization_service.dart';
 import '../projects/project_initialization_service_impl.dart';
 import '../rpfm/i_rpfm_service.dart';
 import '../settings/settings_service.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 import '../steam/i_workshop_api_service.dart';
 import '../translation_memory/tmx_service.dart';
 
@@ -43,7 +43,7 @@ class FileServiceLocator {
 
   /// Register all file services with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
+    final logging = locator<ILoggingService>();
     logging.info('Registering file services');
 
     // File Validation

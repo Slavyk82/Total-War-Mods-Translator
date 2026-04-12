@@ -6,7 +6,7 @@ import '../glossary/glossary_service_impl.dart';
 import '../glossary/glossary_deepl_service.dart';
 import '../glossary/deepl_glossary_sync_service.dart';
 import '../glossary/i_glossary_service.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 
 /// Registers glossary-related services.
 ///
@@ -19,7 +19,7 @@ class GlossaryServiceLocator {
 
   /// Register all glossary services with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
+    final logging = locator<ILoggingService>();
     logging.info('Registering glossary services');
 
     // Main glossary service
@@ -42,7 +42,7 @@ class GlossaryServiceLocator {
       () => DeepLGlossarySyncService(
         glossaryRepository: locator<GlossaryRepository>(),
         deeplService: locator<GlossaryDeepLService>(),
-        logging: locator<LoggingService>(),
+        logging: locator<ILoggingService>(),
       ),
     );
 

@@ -17,7 +17,7 @@ import 'mods/workshop_scanner_service.dart';
 import 'steam/i_workshop_publish_service.dart';
 import 'steam/workshop_publish_service_impl.dart';
 import 'shared/event_bus.dart';
-import 'shared/logging_service.dart';
+import 'shared/i_logging_service.dart';
 import 'translation/ignored_source_text_service.dart';
 import 'translation/utils/translation_skip_filter.dart';
 
@@ -112,7 +112,7 @@ class ServiceLocator {
 
   /// Initialize database services.
   static Future<void> _initializeDatabase() async {
-    final logging = _locator<LoggingService>();
+    final logging = _locator<ILoggingService>();
 
     try {
       // Initialize database service
@@ -139,7 +139,7 @@ class ServiceLocator {
 
   /// Clean up orphaned and old translation batches.
   static Future<void> _cleanupTranslationBatches() async {
-    final logging = _locator<LoggingService>();
+    final logging = _locator<ILoggingService>();
 
     try {
       final batchRepo = TranslationBatchRepository();
@@ -174,7 +174,7 @@ class ServiceLocator {
 
   /// Initialize the TranslationSkipFilter with the database-backed service.
   static Future<void> _initializeTranslationSkipFilter() async {
-    final logging = _locator<LoggingService>();
+    final logging = _locator<ILoggingService>();
     try {
       final service = _locator<IgnoredSourceTextService>();
       TranslationSkipFilter.initialize(service);
@@ -220,7 +220,7 @@ class ServiceLocator {
   ///
   /// Should be called when the application is shutting down.
   static Future<void> dispose() async {
-    final logging = _locator<LoggingService>();
+    final logging = _locator<ILoggingService>();
     logging.info('Service locator shutting down');
 
     // Dispose services with stream controllers

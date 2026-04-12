@@ -22,7 +22,7 @@ import '../../repositories/translation_unit_repository.dart';
 import '../../repositories/translation_version_history_repository.dart';
 import '../../repositories/translation_version_repository.dart';
 import '../../repositories/workshop_mod_repository.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 
 /// Registers all data repositories as lazy singletons.
 ///
@@ -33,7 +33,7 @@ class RepositoryLocator {
 
   /// Register all repositories with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
+    final logging = locator<ILoggingService>();
     logging.info('Registering repositories');
 
     locator.registerLazySingleton<LanguageRepository>(
