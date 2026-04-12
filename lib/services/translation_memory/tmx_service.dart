@@ -121,6 +121,112 @@ class TmxService {
     }
   }
 
+  /// Export translation memory entries to TMX format using a streaming page-by-page approach.
+  ///
+  /// Instead of loading all entries into RAM, this method writes TMX content
+  /// incrementally by requesting pages via [pageFetcher]. Each page is flushed
+  /// to the [IOSink] before the next page is requested.
+  ///
+  /// [filePath]: Output path for the TMX file
+  /// [pageFetcher]: Callback that returns a page of entries given (offset, pageSize)
+  /// [sourceLanguage]: Source language code (ISO 639-1)
+  /// [targetLanguage]: Target language code (ISO 639-1)
+  /// [pageSize]: Number of entries to fetch per page (default: 5000)
+  ///
+  /// Returns Ok(int) with total entries written on success,
+  /// Err(TmExportException) on failure.
+  Future<Result<int, TmExportException>> exportToTmxStreaming({
+    required String filePath,
+    required Future<Result<List<TranslationMemoryEntry>, Object>> Function(
+            int offset, int pageSize)
+        pageFetcher,
+    required String sourceLanguage,
+    required String targetLanguage,
+    int pageSize = 5000,
+  }) async {
+    _logger.info('Starting streaming TMX export', {
+      'filePath': filePath,
+      'sourceLanguage': sourceLanguage,
+      'targetLanguage': targetLanguage,
+      'pageSize': pageSize,
+    });
+
+    final sink = File(filePath).openWrite(encoding: utf8);
+    int totalWritten = 0;
+
+    try {
+      // Write XML prolog and TMX opening tags
+      sink.write('<?xml version="1.0" encoding="UTF-8"?>\n');
+      sink.write('<tmx version="$_tmxVersion">\n');
+      sink.write('  <header'
+          ' creationtool="$_creationTool"'
+          ' creationtoolversion="$_creationToolVersion"'
+          ' datatype="$_datatype"'
+          ' segtype="$_segtype"'
+          ' adminlang="$_adminLang"'
+          ' srclang="$sourceLanguage"'
+          ' o-tmf="$_creationTool"'
+          '/>\n');
+      sink.write('  <body>\n');
+
+      int offset = 0;
+      while (true) {
+        final pageResult = await pageFetcher(offset, pageSize);
+
+        if (pageResult.isErr) {
+          return Err(TmExportException(
+            'Failed to fetch page at offset $offset: ${pageResult.error}',
+            outputPath: filePath,
+            entriesCount: totalWritten,
+            error: pageResult.error,
+          ));
+        }
+
+        final page = pageResult.value;
+        if (page.isEmpty) break;
+
+        for (final entry in page) {
+          // Build TU XML using existing helper via a throwaway XmlBuilder.
+          // buildFragment() returns an XmlDocumentFragment whose direct children
+          // are the actual XmlElement nodes. Serialize each child individually
+          // to obtain the raw <tu>...</tu> string without the fragment wrapper.
+          final tuBuilder = XmlBuilder();
+          _buildTranslationUnit(tuBuilder, entry, sourceLanguage, targetLanguage);
+          final fragment = tuBuilder.buildFragment();
+          for (final node in fragment.children) {
+            final tuString = node.toXmlString(pretty: true, indent: '  ');
+            sink.write('    $tuString\n');
+          }
+        }
+
+        totalWritten += page.length;
+        offset += pageSize;
+      }
+
+      sink.write('  </body>\n');
+      sink.write('</tmx>\n');
+      await sink.flush();
+
+      _logger.info('Streaming TMX export completed successfully', {
+        'filePath': filePath,
+        'entriesExported': totalWritten,
+      });
+
+      return Ok(totalWritten);
+    } catch (e, stackTrace) {
+      _logger.error('Failed during streaming TMX export', e, stackTrace);
+      return Err(TmExportException(
+        'Failed during streaming TMX export: ${e.toString()}',
+        outputPath: filePath,
+        entriesCount: totalWritten,
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    } finally {
+      await sink.close();
+    }
+  }
+
   /// Build a translation unit (TU) element for the TMX document.
   void _buildTranslationUnit(
     XmlBuilder builder,

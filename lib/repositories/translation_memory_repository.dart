@@ -421,6 +421,27 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
     });
   }
 
+  /// Stream TM entries in fixed-size pages. Caller is responsible for writing
+  /// each chunk to disk before requesting the next page — this avoids loading
+  /// the full TM into RAM (500+ MB at 6M rows).
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>> getPage({
+    required int offset,
+    required int pageSize,
+    String? targetLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: targetLanguageId != null ? 'target_language_id = ?' : null,
+        whereArgs: targetLanguageId != null ? [targetLanguageId] : null,
+        orderBy: 'id ASC',
+        limit: pageSize,
+        offset: offset,
+      );
+      return maps.map(fromMap).toList();
+    });
+  }
+
   /// Delete all translation memory entries for a specific language.
   ///
   /// This is used when deleting a custom language to clean up TM entries

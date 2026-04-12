@@ -99,45 +99,73 @@ class TmImportExportService {
         'targetLanguageCode': targetLanguageCode,
       });
 
-      // Get all entries from repository
-      final entriesResult = await _repository.getAll();
+      // Convert caller's language code to the DB ID format (e.g. 'FR' -> 'lang_fr').
+      // This pushes the target-language filter down to the query layer, avoiding
+      // loading the full TM into RAM.
+      final String? dbTargetLanguageId = targetLanguageCode != null
+          ? 'lang_${targetLanguageCode.toLowerCase()}'
+          : null;
 
-      if (entriesResult.isErr) {
-        return Err(
-          TmExportException(
-            'Failed to retrieve entries from database: ${entriesResult.error}',
-            outputPath: outputPath,
-            error: entriesResult.error,
-          ),
+      // Resolve target language string for the TMX header/TUV xml:lang attribute.
+      // If the caller did not specify a target language, peek at the first row
+      // to discover the actual target language stored in the DB.
+      String tgtLang;
+      if (targetLanguageCode != null) {
+        tgtLang = targetLanguageCode;
+      } else {
+        // Peek at one row to resolve the target language (option a per plan).
+        final peekResult = await _repository.getPage(
+          offset: 0,
+          pageSize: 1,
+          targetLanguageId: null,
         );
+        if (peekResult.isErr) {
+          return Err(TmExportException(
+            'Failed to peek at DB for target language resolution: ${peekResult.error}',
+            outputPath: outputPath,
+            error: peekResult.error,
+          ));
+        }
+        if (peekResult.value.isEmpty) {
+          _logger.warning('No entries match export criteria', {
+            'outputPath': outputPath,
+          });
+          // Produce a valid empty-body TMX so callers always get a well-formed file.
+          final emptyResult = await _tmxService.exportToTmxStreaming(
+            filePath: outputPath,
+            pageFetcher: (_, __) async => const Ok([]),
+            sourceLanguage: sourceLanguageCode ?? 'en',
+            targetLanguage: 'unknown',
+          );
+          if (emptyResult.isErr) {
+            return Err(TmExportException(
+              'Failed to produce empty TMX: ${emptyResult.error}',
+              outputPath: outputPath,
+              error: emptyResult.error,
+            ));
+          }
+          return Ok(0);
+        }
+        tgtLang = peekResult.value.first.targetLanguageId;
       }
 
-      var entries = entriesResult.value;
+      final srcLang = sourceLanguageCode ?? 'en';
 
-      // Apply filters
-      entries = _applyExportFilters(
-        entries,
-        sourceLanguageCode: sourceLanguageCode,
-        targetLanguageCode: targetLanguageCode,
-      );
-
-      if (entries.isEmpty) {
-        _logger.warning('No entries match export criteria', {
-          'outputPath': outputPath,
-        });
-        return Ok(0);
-      }
-
-      // Determine target language
-      // If not specified, use the most common one
-      String tgtLang = targetLanguageCode ?? entries.first.targetLanguageId;
-      // For TMX export, we use a placeholder source language since it's not stored
-      String srcLang = sourceLanguageCode ?? 'en';
-
-      // Export to TMX using TmxService
-      final exportResult = await _tmxService.exportToTmx(
+      // Stream export page-by-page — never more than pageSize entries in RAM.
+      // TODO: source-language filtering is not pushed down because the DB schema
+      // does not index source_language_id for this query path; the existing
+      // _applyExportFilters comment confirms source filtering is a no-op.
+      final exportResult = await _tmxService.exportToTmxStreaming(
         filePath: outputPath,
-        entries: entries,
+        pageFetcher: (offset, pageSize) async {
+          final result = await _repository.getPage(
+            offset: offset,
+            pageSize: pageSize,
+            targetLanguageId: dbTargetLanguageId,
+          );
+          if (result.isErr) return Err(result.error);
+          return Ok(result.value);
+        },
         sourceLanguage: srcLang,
         targetLanguage: tgtLang,
       );
@@ -146,18 +174,25 @@ class TmImportExportService {
         return Err(TmExportException(
           'Failed to export TMX: ${exportResult.error}',
           outputPath: outputPath,
-          entriesCount: entries.length,
           error: exportResult.error.error,
           stackTrace: exportResult.error.stackTrace,
         ));
       }
 
-      _logger.info('TMX export completed', {
-        'outputPath': outputPath,
-        'entriesExported': entries.length,
-      });
+      final totalWritten = exportResult.value;
 
-      return Ok(entries.length);
+      if (totalWritten == 0) {
+        _logger.warning('No entries match export criteria', {
+          'outputPath': outputPath,
+        });
+      } else {
+        _logger.info('TMX export completed', {
+          'outputPath': outputPath,
+          'entriesExported': totalWritten,
+        });
+      }
+
+      return Ok(totalWritten);
     } catch (e, stackTrace) {
       _logger.error('Unexpected error during TMX export', e, stackTrace);
       return Err(
@@ -171,23 +206,4 @@ class TmImportExportService {
     }
   }
 
-  List<TranslationMemoryEntry> _applyExportFilters(
-    List<TranslationMemoryEntry> entries, {
-    String? sourceLanguageCode,
-    String? targetLanguageCode,
-  }) {
-    var filtered = entries;
-
-    // Note: sourceLanguageCode filter is no longer applicable as source language is not stored
-
-    if (targetLanguageCode != null) {
-      // Convert language code to ID format (e.g., 'FR' -> 'lang_fr')
-      final targetLanguageId = 'lang_${targetLanguageCode.toLowerCase()}';
-      filtered = filtered
-          .where((e) => e.targetLanguageId == targetLanguageId)
-          .toList();
-    }
-
-    return filtered;
-  }
 }
