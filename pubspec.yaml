@@ -31,6 +31,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Annotations (@visibleForTesting etc.) used in production code
+  meta: ^1.15.0
+
   # Windows Desktop - Fluent Design
   fluentui_system_icons: ^1.1.273
 
