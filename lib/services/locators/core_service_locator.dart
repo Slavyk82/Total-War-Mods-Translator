@@ -16,6 +16,7 @@ import '../search/search_service_impl.dart';
 import '../settings/settings_service.dart';
 import '../shared/background_worker_service.dart';
 import '../shared/event_bus.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 import '../shared/process_service.dart';
 import '../steam/i_steamcmd_service.dart';
@@ -51,6 +52,12 @@ class CoreServiceLocator {
   /// These must be registered first as other services depend on them.
   static Future<void> registerInfrastructure(GetIt locator) async {
     // Logging service (singleton)
+    // Register under the interface type so new code depends on ILoggingService.
+    locator.registerLazySingleton<ILoggingService>(
+      () => LoggingService.instance,
+    );
+    // Keep the concrete registration during migration — removed in Task 2.5.
+    // The two registrations alias the same singleton instance.
     locator.registerLazySingleton<LoggingService>(
       () => LoggingService.instance,
     );
