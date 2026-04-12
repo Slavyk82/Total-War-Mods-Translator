@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/translation_memory_entry.dart';
+import '../../services/database/database_service.dart';
 
 /// Mixin providing batch operations for translation memory.
 ///
@@ -56,7 +57,7 @@ mixin TranslationMemoryBatchMixin {
       return const Ok(0);
     }
 
-    return executeTransaction((txn) async {
+    final result = await executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       var processedCount = 0;
 
@@ -127,6 +128,15 @@ mixin TranslationMemoryBatchMixin {
 
       return processedCount;
     });
+
+    // Opportunistic WAL checkpoint to prevent unbounded WAL file growth
+    // during long batch imports. 1 MB threshold keeps the WAL small without
+    // checkpointing after every trivial batch.
+    if (result is Ok) {
+      await DatabaseService.checkpointIfNeeded(thresholdBytes: 1048576);
+    }
+
+    return result;
   }
 
   /// Get LLM translations that are missing from TM
