@@ -56,6 +56,13 @@ class CoreServiceLocator {
     locator.registerLazySingleton<ILoggingService>(
       () => LoggingService.instance,
     );
+    // Transitional alias: 21 UI call sites still use ServiceLocator.get<LoggingService>().
+    // They are migrated to ILoggingService in Task 3.2 (remove ServiceLocator calls from UI);
+    // until then this alias must stay, otherwise the app crashes at startup when those
+    // providers resolve.
+    locator.registerLazySingleton<LoggingService>(
+      () => LoggingService.instance,
+    );
 
     // Event bus (singleton)
     locator.registerLazySingleton<EventBus>(
