@@ -377,6 +377,50 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
     });
   }
 
+  /// LIKE-based fallback search used when FTS5 is unavailable.
+  ///
+  /// Uses indexed columns with bounded LIMIT — streaming, not in-memory scan.
+  /// Not as fast as FTS5 BM25 but O(n) with early termination via LIMIT,
+  /// not O(n) with full table load into RAM.
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>>
+      searchByLike({
+    required String searchText,
+    required String searchScope,
+    String? targetLanguageId,
+    int limit = 50,
+  }) async {
+    return executeQuery(() async {
+      final pattern = '%${searchText.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+      final whereClauses = <String>[];
+      final args = <Object?>[];
+
+      if (searchScope == 'source' || searchScope == 'both') {
+        whereClauses.add('source_text LIKE ? ESCAPE ?');
+        args.addAll([pattern, r'\']);
+      }
+      if (searchScope == 'target' || searchScope == 'both') {
+        whereClauses.add('translated_text LIKE ? ESCAPE ?');
+        args.addAll([pattern, r'\']);
+      }
+
+      var where = '(${whereClauses.join(' OR ')})';
+      if (targetLanguageId != null) {
+        where = '$where AND target_language_id = ?';
+        args.add(targetLanguageId);
+      }
+
+      final maps = await database.query(
+        tableName,
+        where: where,
+        whereArgs: args,
+        orderBy: 'usage_count DESC',
+        limit: limit,
+      );
+
+      return maps.map(fromMap).toList();
+    });
+  }
+
   /// Delete all translation memory entries for a specific language.
   ///
   /// This is used when deleting a custom language to clean up TM entries
