@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
+import 'i_logging_service.dart';
+
 /// A structured log entry with level, message, and optional data.
 class LogEntry {
   final DateTime timestamp;
@@ -49,7 +51,7 @@ class LogEntry {
 /// Logs are stored in AppData\Local\TWMT\logs on Windows.
 ///
 /// Supports real-time log streaming via [logStream] for UI display.
-class LoggingService {
+class LoggingService implements ILoggingService {
   LoggingService._();
 
   static final LoggingService _instance = LoggingService._();
