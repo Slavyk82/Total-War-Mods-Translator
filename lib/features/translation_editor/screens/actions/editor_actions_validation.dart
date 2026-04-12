@@ -58,14 +58,22 @@ mixin EditorActionsValidation on EditorActionsBase {
 
       if (!context.mounted) return;
 
+      // Load all units in batch instead of one-by-one
+      final unitIds = needsReviewVersions.map((v) => v.unitId).toSet().toList();
+      final unitsResult = await unitRepo.getByIds(unitIds);
+      final unitsMap = <String, dynamic>{};
+      if (unitsResult.isOk) {
+        for (final unit in unitsResult.unwrap()) {
+          unitsMap[unit.id] = unit;
+        }
+      }
+
       // Build validation issues from needsReview versions
       final allIssues = <batch.ValidationIssue>[];
 
       for (final version in needsReviewVersions) {
-        final unitResult = await unitRepo.getById(version.unitId);
-        if (unitResult.isErr) continue;
-
-        final unit = unitResult.unwrap();
+        final unit = unitsMap[version.unitId];
+        if (unit == null) continue;
 
         // Parse validation issues from the stored JSON
         final issues = _parseValidationIssues(version.validationIssues);
@@ -109,6 +117,10 @@ mixin EditorActionsValidation on EditorActionsBase {
             },
             onRejectTranslation: (issue) => _handleRejectTranslation(issue),
             onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
+            onBulkAcceptTranslation: (issues) =>
+                _handleBulkAcceptTranslation(issues),
+            onBulkRejectTranslation: (issues) =>
+                _handleBulkRejectTranslation(issues),
             onEditTranslation: (issue, newText) =>
                 _handleEditTranslation(issue, newText),
             onClose: () => Navigator.of(routeContext).pop(),
@@ -204,23 +216,37 @@ mixin EditorActionsValidation on EditorActionsBase {
         ),
       );
 
-      // Run the scan
+      // Load all units in batch
+      final unitIds =
+          translatedVersions.map((v) => v.unitId).toSet().toList();
+      final unitsResult = await unitRepo.getByIds(unitIds);
+      final unitsMap = <String, dynamic>{};
+      if (unitsResult.isOk) {
+        for (final unit in unitsResult.unwrap()) {
+          unitsMap[unit.id] = unit;
+        }
+      }
+
+      // Run the scan and collect updates
       var scanned = 0;
       var newIssues = 0;
       var cleared = 0;
       var unchanged = 0;
+      final pendingUpdates =
+          <({String versionId, String status, String? validationIssues})>[];
 
       for (final version in translatedVersions) {
         scanned++;
-        if (scanned % 50 == 0 || scanned == translatedVersions.length) {
+        if (scanned % 100 == 0 || scanned == translatedVersions.length) {
           progressNotifier.value =
               'Scanning $scanned/${translatedVersions.length}...';
+          // Yield to UI thread for progress updates
+          await Future<void>.delayed(Duration.zero);
         }
 
-        // Get the unit for source text
-        final unitResult = await unitRepo.getById(version.unitId);
-        if (unitResult.isErr) continue;
-        final unit = unitResult.unwrap();
+        // Get the unit for source text from pre-loaded map
+        final unit = unitsMap[version.unitId];
+        if (unit == null) continue;
 
         // Run validation
         final validationResult = await validationService.validateTranslation(
@@ -250,20 +276,11 @@ mixin EditorActionsValidation on EditorActionsBase {
             version.validationIssues != newValidationIssues;
 
         if (statusChanged || issuesChanged) {
-          // Build updated version manually to allow setting null
-          final updatedVersion = TranslationVersion(
-            id: version.id,
-            unitId: version.unitId,
-            projectLanguageId: version.projectLanguageId,
-            translatedText: version.translatedText,
-            isManuallyEdited: version.isManuallyEdited,
-            status: newStatus,
-            translationSource: version.translationSource,
+          pendingUpdates.add((
+            versionId: version.id,
+            status: newStatus.name,
             validationIssues: newValidationIssues,
-            createdAt: version.createdAt,
-            updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          );
-          await versionRepo.update(updatedVersion);
+          ));
 
           if (newStatus == TranslationVersionStatus.needsReview) {
             newIssues++;
@@ -273,6 +290,12 @@ mixin EditorActionsValidation on EditorActionsBase {
         } else {
           unchanged++;
         }
+      }
+
+      // Batch write all updates in a single transaction
+      if (pendingUpdates.isNotEmpty) {
+        progressNotifier.value = 'Saving ${pendingUpdates.length} updates...';
+        await versionRepo.updateValidationBatch(pendingUpdates);
       }
 
       logger.info(
@@ -367,6 +390,48 @@ mixin EditorActionsValidation on EditorActionsBase {
           description: 'Translation needs review',
         ),
       ];
+    }
+  }
+
+  /// Batch accept multiple translations in a single transaction
+  Future<void> _handleBulkAcceptTranslation(
+      List<batch.ValidationIssue> issues) async {
+    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+
+    final result = await versionRepo.acceptBatch(versionIds);
+
+    if (result.isErr) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to batch accept translations',
+        {'count': versionIds.length, 'error': result.error},
+      );
+    } else {
+      ref.read(loggingServiceProvider).info(
+        'Batch accepted translations',
+        {'count': result.value},
+      );
+    }
+  }
+
+  /// Batch reject multiple translations in a single transaction
+  Future<void> _handleBulkRejectTranslation(
+      List<batch.ValidationIssue> issues) async {
+    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+
+    final result = await versionRepo.rejectBatch(versionIds);
+
+    if (result.isErr) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to batch reject translations',
+        {'count': versionIds.length, 'error': result.error},
+      );
+    } else {
+      ref.read(loggingServiceProvider).info(
+        'Batch rejected translations',
+        {'count': result.value},
+      );
     }
   }
 

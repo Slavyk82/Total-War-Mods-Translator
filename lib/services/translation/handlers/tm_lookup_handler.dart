@@ -74,6 +74,9 @@ class TmLookupHandler {
     var skippedCount = 0;
     var processedCount = 0;
 
+    // Accumulate usage counts across all chunks for a single batch increment at the end
+    final allEntryUsageCounts = <String, int>{};
+
     // Process exact matches in parallel chunks
     // IMPORTANT: Reads are done in parallel, but ALL writes are batched into single transaction
     final exactMatchedUnitIds = <String>{};
@@ -117,8 +120,12 @@ class TmLookupHandler {
           timestamp: DateTime.now(),
         );
         onProgressUpdate(batchId, progress);
-        
-        await _applyTmMatchesBatch(matchesToApply, context);
+
+        final chunkUsageCounts = await _applyTmMatchesBatch(matchesToApply, context);
+        // Accumulate usage counts for final batch increment
+        for (final entry in chunkUsageCounts.entries) {
+          allEntryUsageCounts.update(entry.key, (v) => v + entry.value, ifAbsent: () => entry.value);
+        }
         for (final pending in matchesToApply) {
           exactMatchedUnitIds.add(pending.unit.id);
           skippedCount++;
@@ -227,7 +234,11 @@ class TmLookupHandler {
         );
         onProgressUpdate(batchId, progress);
 
-        await _applyTmMatchesBatch(matchesToApply, context);
+        final chunkUsageCounts = await _applyTmMatchesBatch(matchesToApply, context);
+        // Accumulate usage counts for final batch increment
+        for (final entry in chunkUsageCounts.entries) {
+          allEntryUsageCounts.update(entry.key, (v) => v + entry.value, ifAbsent: () => entry.value);
+        }
         for (final pending in matchesToApply) {
           fuzzyMatchedUnitIds.add(pending.unit.id);
         }
@@ -257,6 +268,18 @@ class TmLookupHandler {
       'fuzzyMatches': fuzzyMatchedUnitIds.length,
       'tmReuseRate': tmReuseRate,
     });
+
+    // Single batch increment for ALL usage counts accumulated across all chunks
+    if (allEntryUsageCounts.isNotEmpty) {
+      try {
+        await _tmService.incrementUsageCountBatch(allEntryUsageCounts);
+      } catch (e) {
+        _logger.warning('Failed to batch increment TM usage counts (non-critical)', {
+          'entryCount': allEntryUsageCounts.length,
+          'error': e,
+        });
+      }
+    }
 
     // Combine all matched unit IDs (exact + fuzzy)
     final allMatchedUnitIds = <String>{...exactMatchedUnitIds, ...fuzzyMatchedUnitIds};
@@ -323,11 +346,12 @@ class TmLookupHandler {
   /// Apply multiple TM matches in a SINGLE transaction
   /// This prevents FTS5 corruption from concurrent writes
   /// Uses upsert to handle cases where translation already exists
-  Future<void> _applyTmMatchesBatch(
+  /// Returns a map of entry IDs to usage counts for deferred batch increment
+  Future<Map<String, int>> _applyTmMatchesBatch(
     List<_PendingTmMatch> matches,
     TranslationContext context,
   ) async {
-    if (matches.isEmpty) return;
+    if (matches.isEmpty) return {};
 
     // Store created versions for history recording
     final createdVersions = <(TranslationVersion, _PendingTmMatch)>[];
@@ -391,8 +415,8 @@ class TmLookupHandler {
       }
     }
 
-    // Increment usage count for each unique TM entry used
     // Collect unique entry IDs with their usage count (same entry can match multiple units)
+    // Return for deferred batch increment at the end of the full lookup
     final entryUsageCounts = <String, int>{};
     for (final (_, pending) in createdVersions) {
       entryUsageCounts.update(
@@ -401,24 +425,7 @@ class TmLookupHandler {
         ifAbsent: () => 1,
       );
     }
-
-    // Increment usage counts in parallel (non-critical, don't block on errors)
-    await Future.wait(
-      entryUsageCounts.entries.map((entry) async {
-        try {
-          // Increment once per usage (if same TM entry matched multiple units)
-          for (var i = 0; i < entry.value; i++) {
-            await _tmService.incrementUsageCount(entryId: entry.key);
-          }
-        } catch (e) {
-          _logger.warning('Failed to increment TM usage count (non-critical)', {
-            'entryId': entry.key,
-            'usageCount': entry.value,
-            'error': e,
-          });
-        }
-      }),
-    );
+    return entryUsageCounts;
   }
 
   /// Apply a TM match to a unit (save to database) - DEPRECATED, use _applyTmMatchesBatch

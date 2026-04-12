@@ -141,6 +141,18 @@ abstract class ITranslationMemoryService {
     required String entryId,
   });
 
+  /// Batch increment usage counts for multiple TM entries.
+  ///
+  /// Uses a single transaction for all updates, much faster than
+  /// calling incrementUsageCount() individually.
+  ///
+  /// [usageCounts] maps entry IDs to increment values.
+  ///
+  /// Returns count of entries updated.
+  Future<Result<int, TmServiceException>> incrementUsageCountBatch(
+    Map<String, int> usageCounts,
+  );
+
   /// Delete a TM entry
   ///
   /// [entryId]: TM entry identifier

@@ -382,6 +382,54 @@ class TmCrudService {
     }
   }
 
+  /// Batch increment usage counts for multiple TM entries.
+  ///
+  /// Uses a single SQL transaction with direct UPDATE (no SELECT per entry).
+  /// Much faster than calling incrementUsageCount() individually.
+  ///
+  /// [usageCounts] maps entry IDs to increment values.
+  Future<Result<int, TmServiceException>> incrementUsageCountBatch(
+    Map<String, int> usageCounts,
+  ) async {
+    if (usageCounts.isEmpty) {
+      return const Ok(0);
+    }
+
+    try {
+      _logger.debug('incrementUsageCountBatch called', {
+        'entryCount': usageCounts.length,
+        'totalIncrements': usageCounts.values.fold<int>(0, (a, b) => a + b),
+      });
+
+      final result = await _repository.incrementUsageCountBatch(usageCounts);
+
+      if (result.isErr) {
+        _logger.error('incrementUsageCountBatch failed', {
+          'error': result.error,
+        });
+        return Err(
+          TmServiceException(
+            'Failed to batch increment usage counts: ${result.error}',
+            error: result.error,
+          ),
+        );
+      }
+
+      _logger.debug('incrementUsageCountBatch success', {
+        'updatedCount': result.value,
+      });
+      return Ok(result.value);
+    } catch (e, stackTrace) {
+      return Err(
+        TmServiceException(
+          'Unexpected error in batch increment: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
   /// Delete a TM entry
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,

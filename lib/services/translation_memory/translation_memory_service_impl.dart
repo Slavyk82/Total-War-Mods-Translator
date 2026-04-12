@@ -144,6 +144,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
           _crudService.incrementUsageCount(entryId: entryId);
 
   @override
+  Future<Result<int, TmServiceException>> incrementUsageCountBatch(
+    Map<String, int> usageCounts,
+  ) =>
+      _crudService.incrementUsageCountBatch(usageCounts);
+
+  @override
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
   }) =>

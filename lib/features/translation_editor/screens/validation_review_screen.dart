@@ -18,6 +18,10 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
   final int passedCount;
   final Future<void> Function(ValidationIssue issue) onRejectTranslation;
   final Future<void> Function(ValidationIssue issue) onAcceptTranslation;
+  final Future<void> Function(List<ValidationIssue> issues)?
+      onBulkAcceptTranslation;
+  final Future<void> Function(List<ValidationIssue> issues)?
+      onBulkRejectTranslation;
   final Future<void> Function(ValidationIssue issue, String newText)?
       onEditTranslation;
   final Future<void> Function(String filePath, List<ValidationIssue> issues)?
@@ -31,6 +35,8 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
     required this.passedCount,
     required this.onRejectTranslation,
     required this.onAcceptTranslation,
+    this.onBulkAcceptTranslation,
+    this.onBulkRejectTranslation,
     this.onEditTranslation,
     this.onExportReport,
     this.onClose,
@@ -200,8 +206,39 @@ class _ValidationReviewScreenState
         .where((i) => _selectedVersionIds.contains(i.versionId))
         .toList();
 
-    for (final issue in selectedIssues) {
-      await _handleAccept(issue);
+    if (selectedIssues.isEmpty) return;
+
+    // Mark all as processing
+    setState(() {
+      for (final issue in selectedIssues) {
+        _processingVersionIds.add(issue.versionId);
+      }
+    });
+    _updateDataSource();
+
+    try {
+      if (widget.onBulkAcceptTranslation != null) {
+        // Use batch operation for all selected issues at once
+        await widget.onBulkAcceptTranslation!(selectedIssues);
+      } else {
+        // Fallback to individual calls
+        for (final issue in selectedIssues) {
+          await widget.onAcceptTranslation(issue);
+        }
+      }
+      setState(() {
+        for (final issue in selectedIssues) {
+          _processedVersionIds.add(issue.versionId);
+          _selectedVersionIds.remove(issue.versionId);
+        }
+      });
+    } finally {
+      setState(() {
+        for (final issue in selectedIssues) {
+          _processingVersionIds.remove(issue.versionId);
+        }
+      });
+      _updateDataSource();
     }
   }
 
@@ -210,8 +247,39 @@ class _ValidationReviewScreenState
         .where((i) => _selectedVersionIds.contains(i.versionId))
         .toList();
 
-    for (final issue in selectedIssues) {
-      await _handleReject(issue);
+    if (selectedIssues.isEmpty) return;
+
+    // Mark all as processing
+    setState(() {
+      for (final issue in selectedIssues) {
+        _processingVersionIds.add(issue.versionId);
+      }
+    });
+    _updateDataSource();
+
+    try {
+      if (widget.onBulkRejectTranslation != null) {
+        // Use batch operation for all selected issues at once
+        await widget.onBulkRejectTranslation!(selectedIssues);
+      } else {
+        // Fallback to individual calls
+        for (final issue in selectedIssues) {
+          await widget.onRejectTranslation(issue);
+        }
+      }
+      setState(() {
+        for (final issue in selectedIssues) {
+          _processedVersionIds.add(issue.versionId);
+          _selectedVersionIds.remove(issue.versionId);
+        }
+      });
+    } finally {
+      setState(() {
+        for (final issue in selectedIssues) {
+          _processingVersionIds.remove(issue.versionId);
+        }
+      });
+      _updateDataSource();
     }
   }
 

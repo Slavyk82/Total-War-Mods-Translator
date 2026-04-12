@@ -122,6 +122,8 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
   /// Find a translation memory entry by exact hash match.
   ///
   /// Returns [Ok] with the entry if found, [Err] with exception if not found.
+  /// Note: Does NOT update usage statistics. Callers should use
+  /// [incrementUsageCountBatch] separately after collecting all matches.
   Future<Result<TranslationMemoryEntry, TWMTDatabaseException>> findByHash(
       String sourceHash, String targetLanguageId) async {
     return executeQuery(() async {
@@ -138,21 +140,44 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
             'Translation memory entry not found for hash: $sourceHash and language: $targetLanguageId');
       }
 
-      // Update usage statistics
-      final entry = fromMap(maps.first);
+      return fromMap(maps.first);
+    });
+  }
+
+  /// Batch increment usage counts for multiple TM entries in a single transaction.
+  ///
+  /// Each entry in [usageCounts] maps an entry ID to the increment value.
+  /// Uses direct SQL UPDATE (no SELECT) for maximum performance.
+  ///
+  /// Returns [Ok] with number of entries updated, [Err] on failure.
+  Future<Result<int, TWMTDatabaseException>> incrementUsageCountBatch(
+    Map<String, int> usageCounts,
+  ) async {
+    if (usageCounts.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      var updatedCount = 0;
 
-      await database.update(
-        tableName,
-        {
-          'usage_count': entry.usageCount + 1,
-          'last_used_at': now,
-        },
-        where: 'id = ?',
-        whereArgs: [entry.id],
-      );
+      for (final entry in usageCounts.entries) {
+        final rowsAffected = await txn.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET usage_count = usage_count + ?,
+              last_used_at = ?,
+              updated_at = ?
+          WHERE id = ?
+          ''',
+          [entry.value, now, now, entry.key],
+        );
+        if (rowsAffected > 0) {
+          updatedCount++;
+        }
+      }
 
-      return entry;
+      return updatedCount;
     });
   }
 
