@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/editor_providers.dart';
-import '../../../repositories/project_language_repository.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../services/shared/event_bus.dart';
 import '../../../models/events/batch_events.dart';
 import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
@@ -17,7 +16,6 @@ import 'cell_renderers/context_menu_builder.dart';
 import 'grid_actions_handler.dart';
 import 'grid_selection_handler.dart';
 import '../../../services/translation/models/translation_context.dart';
-import '../../../repositories/glossary_repository.dart';
 import '../../../models/domain/glossary_entry.dart';
 import '../../../services/glossary/models/glossary_term_with_variants.dart';
 import '../../settings/providers/settings_providers.dart';
@@ -119,9 +117,9 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   /// Load the project language ID for filtering events
   Future<void> _loadProjectLanguageId() async {
     try {
-      final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
+      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
       final projectLanguagesResult = await projectLanguageRepo.getByProject(widget.projectId);
-      
+
       if (projectLanguagesResult.isOk) {
         final projectLanguages = projectLanguagesResult.unwrap();
         final projectLanguage = projectLanguages.firstWhere(
@@ -366,6 +364,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   void _showContextMenu(BuildContext context, Offset position, TranslationRow row, int gridRowIndex) {
     ContextMenuBuilder.showContextMenu(
       context: context,
+      ref: ref,
       position: position,
       row: row,
       selectionCount: _selectedRowIds.length,
@@ -428,8 +427,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   /// Build translation context for prompt preview
   Future<TranslationContext?> _buildTranslationContext() async {
     try {
-      final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
-      final glossaryRepo = ServiceLocator.get<GlossaryRepository>();
+      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+      final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
 
       // Get LLM provider from the toolbar's model selector dropdown
       String providerCode;

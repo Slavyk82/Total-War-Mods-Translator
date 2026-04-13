@@ -4,11 +4,10 @@ import 'package:uuid/uuid.dart';
 import '../../../models/domain/translation_batch.dart';
 import '../../../models/domain/translation_batch_unit.dart';
 import '../../../services/translation/models/translation_context.dart';
-import '../../../repositories/glossary_repository.dart';
-import '../../../repositories/project_repository.dart';
 import '../../../services/glossary/glossary_filter_service.dart';
 import '../../../services/glossary/models/glossary_term_with_variants.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart' as shared_svc;
 import '../providers/editor_providers.dart';
 
 /// Helper for managing translation batch creation and execution
@@ -184,10 +183,10 @@ class TranslationBatchHelper {
     bool? skipTranslationMemory,
   }) async {
     try {
-      final projectRepo = ServiceLocator.get<ProjectRepository>();
+      final projectRepo = ref.read(projectRepositoryProvider);
       final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
       final languageRepo = ref.read(languageRepositoryProvider);
-      final glossaryRepo = ServiceLocator.get<GlossaryRepository>();
+      final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
       final logging = ref.read(loggingServiceProvider);
 
       // Get project to determine game installation ID for glossary lookup

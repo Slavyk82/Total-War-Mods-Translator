@@ -1,5 +1,6 @@
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/history/history_providers.dart' show historyServiceProvider;
+import '../../../../providers/shared/logging_providers.dart';
 import '../../../../services/history/undo_redo_manager.dart';
 import '../../../../services/translation/utils/translation_text_utils.dart';
 import '../../providers/editor_providers.dart';

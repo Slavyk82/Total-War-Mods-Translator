@@ -13,8 +13,6 @@ import 'package:twmt/services/validation/i_translation_validation_service.dart';
 import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/services/search/i_search_service.dart';
 import 'package:twmt/services/history/undo_redo_manager.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/repositories/translation_batch_unit_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
@@ -23,6 +21,9 @@ import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
 import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
+import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
+import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
+import 'package:twmt/providers/shared/logging_providers.dart';
 
 part 'editor_providers.g.dart';
 
@@ -167,37 +168,37 @@ class EditorStats {
 /// Provider for project repository
 @riverpod
 ProjectRepository projectRepository(Ref ref) {
-  return ServiceLocator.get<ProjectRepository>();
+  return ref.watch(shared_repo.projectRepositoryProvider);
 }
 
 /// Provider for language repository
 @riverpod
 LanguageRepository languageRepository(Ref ref) {
-  return ServiceLocator.get<LanguageRepository>();
+  return ref.watch(shared_repo.languageRepositoryProvider);
 }
 
 /// Provider for translation unit repository
 @riverpod
 TranslationUnitRepository translationUnitRepository(Ref ref) {
-  return ServiceLocator.get<TranslationUnitRepository>();
+  return ref.watch(shared_repo.translationUnitRepositoryProvider);
 }
 
 /// Provider for translation version repository
 @riverpod
 TranslationVersionRepository translationVersionRepository(Ref ref) {
-  return ServiceLocator.get<TranslationVersionRepository>();
+  return ref.watch(shared_repo.translationVersionRepositoryProvider);
 }
 
 /// Provider for translation memory service
 @riverpod
 ITranslationMemoryService translationMemoryService(Ref ref) {
-  return ServiceLocator.get<ITranslationMemoryService>();
+  return ref.watch(shared_svc.translationMemoryServiceProvider);
 }
 
 /// Provider for search service
 @riverpod
 ISearchService searchService(Ref ref) {
-  return ServiceLocator.get<ISearchService>();
+  return ref.watch(shared_svc.searchServiceProvider);
 }
 
 /// Provider for undo/redo manager
@@ -335,7 +336,7 @@ Future<List<TranslationRow>> translationRows(
   String languageId,
 ) async {
   final unitRepo = ref.watch(translationUnitRepositoryProvider);
-  final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
+  final projectLanguageRepo = ref.watch(projectLanguageRepositoryProvider);
 
   // First, find the project_language_id for this project and language
   final projectLanguagesResult = await projectLanguageRepo.getByProject(projectId);
@@ -562,49 +563,43 @@ Future<EditorStats> editorStats(
 /// Provider for validation service
 @riverpod
 ITranslationValidationService validationService(Ref ref) {
-  return ServiceLocator.get<ITranslationValidationService>();
-}
-
-/// Provider for logging service
-@riverpod
-LoggingService loggingService(Ref ref) {
-  return ServiceLocator.get<LoggingService>();
+  return ref.watch(shared_svc.translationValidationServiceProvider);
 }
 
 /// Provider for translation batch repository
 @riverpod
 TranslationBatchRepository translationBatchRepository(Ref ref) {
-  return ServiceLocator.get<TranslationBatchRepository>();
+  return ref.watch(shared_svc.translationBatchRepositoryProvider);
 }
 
 /// Provider for translation batch unit repository
 @riverpod
 TranslationBatchUnitRepository translationBatchUnitRepository(Ref ref) {
-  return ServiceLocator.get<TranslationBatchUnitRepository>();
+  return ref.watch(shared_svc.translationBatchUnitRepositoryProvider);
 }
 
 /// Provider for project language repository
 @riverpod
 ProjectLanguageRepository projectLanguageRepository(Ref ref) {
-  return ServiceLocator.get<ProjectLanguageRepository>();
+  return ref.watch(shared_repo.projectLanguageRepositoryProvider);
 }
 
 /// Provider for translation orchestrator
 @riverpod
 ITranslationOrchestrator translationOrchestrator(Ref ref) {
-  return ServiceLocator.get<ITranslationOrchestrator>();
+  return ref.watch(shared_svc.translationOrchestratorProvider);
 }
 
 /// Provider for export orchestrator service
 @riverpod
 ExportOrchestratorService exportOrchestratorService(Ref ref) {
-  return ServiceLocator.get<ExportOrchestratorService>();
+  return ref.watch(shared_svc.exportOrchestratorServiceProvider);
 }
 
 /// Provider for LLM provider model repository
 @riverpod
 LlmProviderModelRepository llmProviderModelRepository(Ref ref) {
-  return ServiceLocator.get<LlmProviderModelRepository>();
+  return ref.watch(shared_svc.llmProviderModelRepositoryProvider);
 }
 
 /// Provider for available LLM models (enabled, non-archived)
