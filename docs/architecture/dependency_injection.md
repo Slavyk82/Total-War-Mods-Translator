@@ -46,6 +46,15 @@ ProjectRepository projectRepository(Ref ref) =>
 `keepAlive: true` is correct here: the underlying GetIt instance lives for
 the whole app, so there is nothing to dispose with the provider.
 
+### Adding a new bridge provider
+
+Default to `@Riverpod(keepAlive: true)` codegen in `service_providers.dart`
+or `repository_providers.dart`. Reach for a hand-written
+`Provider<T>((ref) => ...)` (like `loggingServiceProvider`) only when the
+provider must be constructible before Riverpod code generation has run — in
+practice, that's the logger and a handful of test-overridden bootstrap
+dependencies.
+
 ## Naming convention
 
 Riverpod codegen turns the function name into `<name>Provider`. For
@@ -156,8 +165,9 @@ Known follow-ups left on the table after the bridge migration:
 - **`lib/services/database/database_service.dart` and `migration_service.dart`.**
   `static ILoggingService _logger = LoggingService.instance;` is a latent
   footgun if the singleton's null-safety contract ever tightens.
-- **`ModsProjectService.create`.** Pure pass-through factory with one
-  caller — inline it.
+- **`ModsProjectService.create`.** Pure pass-through factory with two
+  callers (both in `lib/features/mods/utils/mods_screen_controller.dart`,
+  lines 160 and 237) — inline it.
 - **`ModsScreenController`.** Plain Dart class holding only a `WidgetRef`;
   convert to a `@riverpod` Notifier.
 - **`deleteCompilation(WidgetRef ref, ...)`.** Top-level function with a
