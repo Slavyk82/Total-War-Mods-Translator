@@ -296,38 +296,57 @@ void main() {
       expect(alphaAfter.unwrap().validationIssues, isNull);
       expect(charlieAfter.unwrap().validationIssues, isNull);
 
-      // The unselected row should be untouched.
+      // The unselected row should be untouched. Since bravo was seeded as
+      // `translated` already, a trivial status re-check would pass even if
+      // acceptBatch over-mutated it. Compare `updatedAt` against the
+      // pre-seeded sentinel instead: acceptBatch rewrites updated_at to
+      // "now" on touched rows, so an unchanged sentinel timestamp proves
+      // bravo was skipped entirely.
       final bravo = rows.firstWhere((r) => r.key == 'key.bravo');
+      final bravoUpdatedAtBefore = bravo.version.updatedAt;
       final bravoAfter = await versionRepository.getById(bravo.version.id);
       expect(
         bravoAfter.unwrap().status,
         equals(TranslationVersionStatus.translated),
+      );
+      expect(
+        bravoAfter.unwrap().updatedAt,
+        equals(bravoUpdatedAtBefore),
+        reason: 'acceptBatch must not touch rows outside the selection',
       );
     });
   });
 
   group('selectedLlmModelProvider', () {
     test(
-        'retains its value while any listener on the container exists '
+        'retains its value after the last listener drops '
         '(case 5: keepAlive semantics)', () async {
       final container = buildContainer();
       addTearDown(container.dispose);
 
+      // Acquire an explicit subscription so there is a real listener to
+      // drop. A bare `container.read(...)` does NOT create a subscription,
+      // so without this the test would pass for a plain `@riverpod`
+      // notifier too and wouldn't actually exercise `keepAlive: true`.
+      final sub = container.listen(selectedLlmModelProvider, (_, _) {});
       container
           .read(selectedLlmModelProvider.notifier)
           .setModel('foo-model-id');
 
       expect(container.read(selectedLlmModelProvider), equals('foo-model-id'));
 
-      // In Riverpod 3, @Riverpod(keepAlive: true) prevents the state from
-      // being disposed when the last listener drops. Allow the scheduler to
-      // run a frame with no listeners and ensure the state survives.
+      // Drop the only listener and let the scheduler run a dispose tick.
+      // With `@Riverpod(keepAlive: true)` the state must survive; flipping
+      // the annotation to plain `@riverpod` makes this assertion fail
+      // (verified locally), confirming the test has teeth.
+      sub.close();
       await Future<void>.delayed(Duration.zero);
 
       expect(
         container.read(selectedLlmModelProvider),
         equals('foo-model-id'),
-        reason: 'keepAlive: true must preserve state across dispose windows',
+        reason: 'keepAlive: true must preserve state after the last '
+            'listener drops',
       );
 
       // Also confirm that the clear() notifier method resets the state.
@@ -364,34 +383,46 @@ void main() {
     });
 
     testWidgets(
-        'a consumer reading translationInProgressProvider sees the flipped '
-        'value (widget-level contract with the navigation guard)',
-        (tester) async {
-      late bool observed;
-      final scope = ProviderScope(
+        'consumer widget rebuilds when translationInProgressProvider flips '
+        '(widget-level contract with the navigation guard)', (tester) async {
+      // Drive the REAL notifier end-to-end: start with the default state,
+      // verify the consumer observes `false`, then flip to `true` via the
+      // notifier and verify the widget actually rebuilds with the new
+      // value. Overriding with a hardcoded fake would only prove that a
+      // fake returning `true` returns `true`.
+      final container = ProviderContainer(
         overrides: [
           loggingServiceProvider.overrideWithValue(NoopLoggingService()),
-          translationInProgressProvider.overrideWith(() => _AlwaysInProgress()),
         ],
-        child: MaterialApp(
-          home: Consumer(
-            builder: (context, ref, _) {
-              observed = ref.watch(translationInProgressProvider);
-              return const SizedBox.shrink();
-            },
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Consumer(
+              builder: (context, ref, _) {
+                final inProgress = ref.watch(translationInProgressProvider);
+                return Text(inProgress ? 'blocked' : 'free');
+              },
+            ),
           ),
         ),
       );
-
-      await tester.pumpWidget(scope);
       await tester.pump();
+      expect(find.text('free'), findsOneWidget);
 
+      container
+          .read(translationInProgressProvider.notifier)
+          .setInProgress(true);
+      await tester.pump();
       expect(
-        observed,
-        isTrue,
+        find.text('blocked'),
+        findsOneWidget,
         reason:
             'The navigation guard and any other consumer must observe the '
-            'in-progress flag via translationInProgressProvider.',
+            'in-progress flag flipping via ref.watch rebuilds.',
       );
     });
   });
@@ -466,6 +497,11 @@ Future<void> _seedFixture({
     'created_at': now,
     'updated_at': now,
   });
+  // Seed bravo's `updated_at` with a distinct sentinel well in the past so
+  // the "unselected row untouched" assertion in case 4 can detect any
+  // accidental mutation: acceptBatch writes `updated_at = strftime-now`, so
+  // bravo's timestamp must stay at the sentinel if it was skipped.
+  const bravoUpdatedAtSentinel = 1000000000; // 2001-09-09T01:46:40Z
   await db.insert('translation_versions', {
     'id': 'version-bravo',
     'unit_id': 'unit-bravo',
@@ -476,7 +512,7 @@ Future<void> _seedFixture({
     'translation_source': 'llm',
     'validation_issues': null,
     'created_at': now,
-    'updated_at': now,
+    'updated_at': bravoUpdatedAtSentinel,
   });
   await db.insert('translation_versions', {
     'id': 'version-charlie',
@@ -493,10 +529,3 @@ Future<void> _seedFixture({
   });
 }
 
-/// Notifier fake that always reports a translation as in progress. Exists so
-/// test case 6 can verify the consumer-side contract without having to drive
-/// the real translation pipeline.
-class _AlwaysInProgress extends TranslationInProgress {
-  @override
-  bool build() => true;
-}
