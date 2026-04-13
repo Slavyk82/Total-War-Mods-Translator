@@ -1,8 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../services/service_locator.dart';
-import '../services/shared/logging_service.dart';
-import '../services/translation_memory/i_translation_memory_service.dart';
+import '../services/shared/i_logging_service.dart';
+import 'shared/logging_providers.dart';
+import 'shared/service_providers.dart';
 
 part 'data_migration_provider.g.dart';
 
@@ -58,7 +58,7 @@ class DataMigration extends _$DataMigration {
   static const _tmRebuildKey = 'tm_rebuild_v1_completed';
   static const _tmHashMigrationKey = 'tm_hash_migration_v1_completed';
 
-  LoggingService get _logging => ServiceLocator.get<LoggingService>();
+  ILoggingService get _logging => ref.read(loggingServiceProvider);
 
   @override
   DataMigrationState build() {
@@ -80,7 +80,7 @@ class DataMigration extends _$DataMigration {
     state = state.copyWith(isRunning: true, isComplete: false);
 
     final prefs = await SharedPreferences.getInstance();
-    final tmService = ServiceLocator.get<ITranslationMemoryService>();
+    final tmService = ref.read(translationMemoryServiceProvider);
 
     try {
       // Step 1: TM Rebuild (adds missing entries with SHA256 hashes)
