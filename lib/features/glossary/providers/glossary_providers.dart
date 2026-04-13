@@ -1,9 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
-import 'package:twmt/services/glossary/i_glossary_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 
 part 'glossary_providers.g.dart';
 
@@ -14,13 +13,13 @@ Future<List<Glossary>> glossaries(
   String? gameInstallationId,
   bool includeUniversal = true,
 }) async {
-  final logging = ServiceLocator.get<LoggingService>();
+  final logging = ref.watch(loggingServiceProvider);
   logging.debug('Starting glossaries provider', {
     'gameInstallationId': gameInstallationId,
     'includeUniversal': includeUniversal,
   });
   try {
-    final service = ServiceLocator.get<IGlossaryService>();
+    final service = ref.watch(glossaryServiceProvider);
 
     final result = await service.getAllGlossaries(
       gameInstallationId: gameInstallationId,
@@ -67,13 +66,13 @@ Future<List<GlossaryEntry>> glossaryEntries(
   required String glossaryId,
   String? targetLanguageCode,
 }) async {
-  final logging = ServiceLocator.get<LoggingService>();
+  final logging = ref.watch(loggingServiceProvider);
   logging.debug('[glossaryEntriesProvider] Fetching entries', {
     'glossaryId': glossaryId,
     'targetLanguageCode': targetLanguageCode,
   });
 
-  final service = ServiceLocator.get<IGlossaryService>();
+  final service = ref.watch(glossaryServiceProvider);
   final result = await service.getEntriesByGlossary(
     glossaryId: glossaryId,
     targetLanguageCode: targetLanguageCode,
@@ -105,7 +104,7 @@ Future<List<GlossaryEntry>> glossarySearchResults(
     return [];
   }
 
-  final service = ServiceLocator.get<IGlossaryService>();
+  final service = ref.watch(glossaryServiceProvider);
   final result = await service.searchEntries(
     query: query,
     glossaryIds: glossaryIds,
@@ -124,7 +123,7 @@ Future<GlossaryStatistics> glossaryStatistics(
   Ref ref,
   String glossaryId,
 ) async {
-  final service = ServiceLocator.get<IGlossaryService>();
+  final service = ref.watch(glossaryServiceProvider);
   final result = await service.getGlossaryStats(glossaryId);
 
   return result.when(
@@ -155,7 +154,7 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
     bool caseSensitive = false,
     String? notes,
   }) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('[GlossaryEntryEditor.save] Starting save operation', {
       'mode': state != null ? 'UPDATE' : 'ADD NEW',
       'glossaryId': glossaryId,
@@ -165,7 +164,7 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
       'notes': notes,
     });
 
-    final service = ServiceLocator.get<IGlossaryService>();
+    final service = ref.read(glossaryServiceProvider);
 
     if (state != null) {
       // Update existing entry
@@ -223,7 +222,7 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
   }
 
   Future<void> delete(String entryId) async {
-    final service = ServiceLocator.get<IGlossaryService>();
+    final service = ref.read(glossaryServiceProvider);
     await service.deleteEntry(entryId);
 
     // Clear editor state only if still mounted
@@ -292,7 +291,7 @@ class GlossaryImportState extends _$GlossaryImportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.importFromCsv(
         glossaryId: glossaryId,
         filePath: filePath,
@@ -332,7 +331,7 @@ class GlossaryImportState extends _$GlossaryImportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.importFromTbx(
         glossaryId: glossaryId,
         filePath: filePath,
@@ -373,7 +372,7 @@ class GlossaryImportState extends _$GlossaryImportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.importFromExcel(
         glossaryId: glossaryId,
         filePath: filePath,
@@ -426,7 +425,7 @@ class GlossaryExportState extends _$GlossaryExportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.exportToCsv(
         glossaryId: glossaryId,
         filePath: filePath,
@@ -458,7 +457,7 @@ class GlossaryExportState extends _$GlossaryExportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.exportToTbx(
         glossaryId: glossaryId,
         filePath: filePath,
@@ -490,7 +489,7 @@ class GlossaryExportState extends _$GlossaryExportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
       final result = await service.exportToExcel(
         glossaryId: glossaryId,
         filePath: filePath,

@@ -13,11 +13,9 @@ import '../widgets/glossary_export_dialog.dart';
 import '../widgets/glossary_new_dialog.dart';
 import '../widgets/glossary_screen_components.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/glossary/i_glossary_service.dart';
-import 'package:twmt/repositories/language_repository.dart';
-import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/models/domain/game_installation.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 
 /// Main screen for Glossary management.
 class GlossaryScreen extends ConsumerStatefulWidget {
@@ -38,7 +36,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   }
 
   Future<void> _loadGameInstallations() async {
-    final repository = ServiceLocator.get<GameInstallationRepository>();
+    final repository = ref.read(gameInstallationRepositoryProvider);
     final result = await repository.getAll();
     result.when(
       ok: (games) {
@@ -159,7 +157,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     String? targetLanguageCode;
     if (glossary.targetLanguageId != null) {
       try {
-        final languageRepo = ServiceLocator.get<LanguageRepository>();
+        final languageRepo = ref.read(languageRepositoryProvider);
         final langResult = await languageRepo.getById(glossary.targetLanguageId!);
         langResult.when(
           ok: (language) {
@@ -227,7 +225,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
 
     if (confirmed == true) {
       try {
-        final service = ServiceLocator.get<IGlossaryService>();
+        final service = ref.read(glossaryServiceProvider);
         await service.deleteGlossary(glossary.id);
 
         if (!mounted) return;
