@@ -6,8 +6,6 @@ import '../../../models/domain/project.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../providers/selected_game_provider.dart';
 import '../../../providers/shared/repository_providers.dart';
-import '../../../repositories/compilation_repository.dart';
-import '../../../services/service_locator.dart';
 import '../../projects/providers/projects_screen_providers.dart'
     show translationStatsVersionProvider;
 import '../models/compilation_editor_state.dart';
@@ -217,8 +215,8 @@ final projectsWithTranslationProvider = FutureProvider.family<
 );
 
 /// Delete a compilation.
-Future<bool> deleteCompilation(String compilationId) async {
-  final compilationRepo = ServiceLocator.get<CompilationRepository>();
+Future<bool> deleteCompilation(WidgetRef ref, String compilationId) async {
+  final compilationRepo = ref.read(compilationRepositoryProvider);
   final result = await compilationRepo.delete(compilationId);
   return result.isOk;
 }

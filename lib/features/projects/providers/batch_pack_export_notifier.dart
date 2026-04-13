@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../services/file/export_orchestrator_service.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 
 /// Result of a single project export
 class ProjectExportResult {
@@ -120,7 +119,7 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
   }) async {
     if (state.isExporting) return;
 
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.info('Starting batch pack export', {
       'projectCount': projects.length,
       'languageCode': languageCode,
@@ -141,7 +140,7 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
       results: const [],
     );
 
-    final exportService = ServiceLocator.get<ExportOrchestratorService>();
+    final exportService = ref.read(exportOrchestratorServiceProvider);
     final results = <ProjectExportResult>[];
 
     for (var i = 0; i < projects.length; i++) {

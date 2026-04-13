@@ -177,7 +177,7 @@ class CompilationList extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      await deleteCompilation(compilation.compilation.id);
+      await deleteCompilation(ref, compilation.compilation.id);
       ref.invalidate(compilationsWithDetailsProvider);
     }
   }
