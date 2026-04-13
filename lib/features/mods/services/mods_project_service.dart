@@ -11,7 +11,6 @@ import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
-import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 
@@ -91,16 +90,20 @@ class ModsProjectService {
         _projectLanguageRepo = projectLanguageRepository,
         _settingsService = settingsService;
 
-  /// Factory constructor using ServiceLocator
+  /// Factory constructor with explicit dependencies (callers resolve via DI)
   factory ModsProjectService.create({
     required ProjectRepository projectRepository,
+    required WorkshopModRepository workshopModRepository,
+    required LanguageRepository languageRepository,
+    required ProjectLanguageRepository projectLanguageRepository,
+    required SettingsService settingsService,
   }) {
     return ModsProjectService(
       projectRepository: projectRepository,
-      workshopModRepository: ServiceLocator.get<WorkshopModRepository>(),
-      languageRepository: ServiceLocator.get<LanguageRepository>(),
-      projectLanguageRepository: ServiceLocator.get<ProjectLanguageRepository>(),
-      settingsService: ServiceLocator.get<SettingsService>(),
+      workshopModRepository: workshopModRepository,
+      languageRepository: languageRepository,
+      projectLanguageRepository: projectLanguageRepository,
+      settingsService: settingsService,
     );
   }
 

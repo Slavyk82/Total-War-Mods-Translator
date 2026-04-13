@@ -3,12 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/mods/workshop_scanner_service.dart';
-import 'package:twmt/services/mods/game_installation_sync_service.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import '../shared/repository_providers.dart';
+import '../shared/service_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart'
@@ -21,8 +19,8 @@ part 'mod_list_provider.g.dart';
 class DetectedMods extends _$DetectedMods {
   @override
   Future<List<DetectedMod>> build() async {
-    final gameInstallationSyncService = ServiceLocator.get<GameInstallationSyncService>();
-    final workshopScanner = ServiceLocator.get<WorkshopScannerService>();
+    final gameInstallationSyncService = ref.watch(gameInstallationSyncServiceProvider);
+    final workshopScanner = ref.watch(workshopScannerServiceProvider);
     final sessionCache = ref.read(modsSessionCacheProvider.notifier);
 
     // Watch the selected game to trigger rescan when it changes
@@ -115,8 +113,8 @@ class DetectedMods extends _$DetectedMods {
 /// Provides list of all projects from database
 @riverpod
 Future<List<Project>> allProjects(Ref ref) async {
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  
+  final projectRepo = ref.watch(projectRepositoryProvider);
+
   // Return all projects from database
   final result = await projectRepo.getAll();
 
@@ -129,8 +127,8 @@ Future<List<Project>> allProjects(Ref ref) async {
 /// Checks if a mod has an update available
 @riverpod
 Future<bool> modUpdateAvailable(Ref ref, String projectId) async {
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  
+  final projectRepo = ref.watch(projectRepositoryProvider);
+
   final result = await projectRepo.getById(projectId);
   
   return result.when(
