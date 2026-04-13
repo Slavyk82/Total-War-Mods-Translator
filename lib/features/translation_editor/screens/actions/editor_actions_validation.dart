@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
-import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
 import '../validation_review_screen.dart';
 import 'editor_actions_base.dart';
@@ -14,8 +14,8 @@ mixin EditorActionsValidation on EditorActionsBase {
   Future<void> handleValidate() async {
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
 
       // Get all versions for this project language
       final versionsResult =
@@ -150,8 +150,8 @@ mixin EditorActionsValidation on EditorActionsBase {
   Future<void> handleRescanValidation() async {
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final validationService = ref.read(shared_svc.validationServiceProvider);
       final logger = ref.read(loggingServiceProvider);
 
@@ -396,7 +396,7 @@ mixin EditorActionsValidation on EditorActionsBase {
   /// Batch accept multiple translations in a single transaction
   Future<void> _handleBulkAcceptTranslation(
       List<batch.ValidationIssue> issues) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
     final versionIds = issues.map((i) => i.versionId).toSet().toList();
 
     final result = await versionRepo.acceptBatch(versionIds);
@@ -417,7 +417,7 @@ mixin EditorActionsValidation on EditorActionsBase {
   /// Batch reject multiple translations in a single transaction
   Future<void> _handleBulkRejectTranslation(
       List<batch.ValidationIssue> issues) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
     final versionIds = issues.map((i) => i.versionId).toSet().toList();
 
     final result = await versionRepo.rejectBatch(versionIds);
@@ -437,7 +437,7 @@ mixin EditorActionsValidation on EditorActionsBase {
 
   /// Reject a translation by clearing it
   Future<void> _handleRejectTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -466,7 +466,7 @@ mixin EditorActionsValidation on EditorActionsBase {
 
   /// Accept a translation despite validation issues (clears the validation flag)
   Future<void> _handleAcceptTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -497,7 +497,7 @@ mixin EditorActionsValidation on EditorActionsBase {
     batch.ValidationIssue issue,
     String newText,
   ) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {

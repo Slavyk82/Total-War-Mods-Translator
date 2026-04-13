@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/editor_providers.dart';
+import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../services/shared/event_bus.dart';
 import '../../../models/events/batch_events.dart';
@@ -117,7 +118,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   /// Load the project language ID for filtering events
   Future<void> _loadProjectLanguageId() async {
     try {
-      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+      final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
       final projectLanguagesResult = await projectLanguageRepo.getByProject(widget.projectId);
 
       if (projectLanguagesResult.isOk) {
@@ -427,7 +428,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   /// Build translation context for prompt preview
   Future<TranslationContext?> _buildTranslationContext() async {
     try {
-      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+      final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
       final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
 
       // Get LLM provider from the toolbar's model selector dropdown
@@ -436,7 +437,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
       final selectedModelId = ref.read(selectedLlmModelProvider);
       if (selectedModelId != null) {
-        final modelRepo = ref.read(llmProviderModelRepositoryProvider);
+        final modelRepo = ref.read(shared_svc.llmProviderModelRepositoryProvider);
         final modelResult = await modelRepo.getById(selectedModelId);
         if (modelResult.isOk) {
           final model = modelResult.unwrap();
@@ -465,7 +466,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       );
 
       // Get target language
-      final langRepo = ref.read(languageRepositoryProvider);
+      final langRepo = ref.read(shared_repo.languageRepositoryProvider);
       final langResult = await langRepo.getById(widget.languageId);
       if (langResult.isErr) return null;
       final language = langResult.unwrap();

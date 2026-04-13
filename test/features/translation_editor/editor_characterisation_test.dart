@@ -7,6 +7,7 @@ import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';

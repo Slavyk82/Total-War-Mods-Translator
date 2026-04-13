@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
 import '../providers/editor_providers.dart';
+import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import 'editor_data_source.dart';
@@ -129,7 +130,7 @@ class GridActionsHandler {
     if (selectedRowIds.isEmpty) return;
 
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
       final selectedRows = dataSource.translationRows
           .where((row) => selectedRowIds.contains(row.id))
           .toList();
@@ -239,7 +240,7 @@ class GridActionsHandler {
     }
 
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
       // Callback for progress updates
       void onProgress(int processed, int total, String phase) {
@@ -283,7 +284,7 @@ class GridActionsHandler {
     if (selectedRowIds.isEmpty) return;
 
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
       final selectedRows = dataSource.translationRows
           .where((row) => selectedRowIds.contains(row.id))
           .toList();

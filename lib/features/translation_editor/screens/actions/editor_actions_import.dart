@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:twmt/services/file/localization_parser_impl.dart';
 import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../providers/editor_providers.dart';
 import '../../services/pack_import_service.dart';
@@ -15,9 +16,9 @@ mixin EditorActionsImport on EditorActionsBase {
     final importService = PackImportService(
       rpfmService: ref.read(shared_svc.rpfmServiceProvider),
       localizationParser: LocalizationParserImpl(),
-      unitRepository: ref.read(translationUnitRepositoryProvider),
-      versionRepository: ref.read(translationVersionRepositoryProvider),
-      projectLanguageRepository: ref.read(projectLanguageRepositoryProvider),
+      unitRepository: ref.read(shared_repo.translationUnitRepositoryProvider),
+      versionRepository: ref.read(shared_repo.translationVersionRepositoryProvider),
+      projectLanguageRepository: ref.read(shared_repo.projectLanguageRepositoryProvider),
       logger: ref.read(loggingServiceProvider),
     );
 

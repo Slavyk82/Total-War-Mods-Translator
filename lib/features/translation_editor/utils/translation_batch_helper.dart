@@ -7,8 +7,8 @@ import '../../../services/translation/models/translation_context.dart';
 import '../../../services/glossary/glossary_filter_service.dart';
 import '../../../services/glossary/models/glossary_term_with_variants.dart';
 import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart' as shared_svc;
-import '../providers/editor_providers.dart';
 
 /// Helper for managing translation batch creation and execution
 ///
@@ -25,7 +25,7 @@ class TranslationBatchHelper {
     required String projectLanguageId,
   }) async {
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
       final result = await versionRepo.getUntranslatedIds(
         projectLanguageId: projectLanguageId,
@@ -51,7 +51,7 @@ class TranslationBatchHelper {
     required String projectLanguageId,
   }) async {
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
       final result = await versionRepo.filterUntranslatedIds(
         ids: unitIds,
@@ -99,8 +99,8 @@ class TranslationBatchHelper {
     required VoidCallback onError,
   }) async {
     try {
-      final batchRepo = ref.read(translationBatchRepositoryProvider);
-      final batchUnitRepo = ref.read(translationBatchUnitRepositoryProvider);
+      final batchRepo = ref.read(shared_svc.translationBatchRepositoryProvider);
+      final batchUnitRepo = ref.read(shared_svc.translationBatchUnitRepositoryProvider);
       final logging = ref.read(loggingServiceProvider);
 
       // Get the next batch number for this project language
@@ -183,9 +183,9 @@ class TranslationBatchHelper {
     bool? skipTranslationMemory,
   }) async {
     try {
-      final projectRepo = ref.read(projectRepositoryProvider);
-      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
-      final languageRepo = ref.read(languageRepositoryProvider);
+      final projectRepo = ref.read(shared_repo.projectRepositoryProvider);
+      final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
+      final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
       final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
       final logging = ref.read(loggingServiceProvider);
 

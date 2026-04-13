@@ -1,6 +1,8 @@
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/history/history_providers.dart' show historyServiceProvider;
 import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
+import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/history/undo_redo_manager.dart';
 import '../../../../services/translation/utils/translation_text_utils.dart';
 import '../../providers/editor_providers.dart';
@@ -11,8 +13,8 @@ import 'editor_actions_base.dart';
 mixin EditorActionsCellEdit on EditorActionsBase {
   Future<void> handleCellEdit(String unitId, String newText) async {
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final undoRedoManager = ref.read(undoRedoManagerProvider);
 
       // Get current version and unit
@@ -95,8 +97,8 @@ mixin EditorActionsCellEdit on EditorActionsBase {
 
   Future<void> handleApplySuggestion(String unitId, String targetText, bool isExactMatch) async {
     try {
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final undoRedoManager = ref.read(undoRedoManagerProvider);
 
       // Get current version and unit
@@ -182,17 +184,17 @@ mixin EditorActionsCellEdit on EditorActionsBase {
     String targetText,
   ) async {
     final projectLanguageId = await getProjectLanguageId();
-    final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+    final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
     final plResult = await projectLanguageRepo.getById(projectLanguageId);
 
     if (plResult.isOk) {
       final projectLanguage = plResult.unwrap();
-      final languageRepo = ref.read(languageRepositoryProvider);
+      final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
       final langResult = await languageRepo.getById(projectLanguage.languageId);
 
       if (langResult.isOk) {
         final language = langResult.unwrap();
-        final tmService = ref.read(translationMemoryServiceProvider);
+        final tmService = ref.read(shared_svc.translationMemoryServiceProvider);
         await tmService.addTranslation(
           sourceText: sourceText,
           targetText: targetText,
@@ -206,17 +208,17 @@ mixin EditorActionsCellEdit on EditorActionsBase {
     String sourceText,
   ) async {
     final projectLanguageId = await getProjectLanguageId();
-    final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+    final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
     final plResult = await projectLanguageRepo.getById(projectLanguageId);
 
     if (plResult.isOk) {
       final projectLanguage = plResult.unwrap();
-      final languageRepo = ref.read(languageRepositoryProvider);
+      final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
       final langResult = await languageRepo.getById(projectLanguage.languageId);
 
       if (langResult.isOk) {
         final language = langResult.unwrap();
-        final tmService = ref.read(translationMemoryServiceProvider);
+        final tmService = ref.read(shared_svc.translationMemoryServiceProvider);
 
         final matchResult = await tmService.findExactMatch(
           sourceText: sourceText,
