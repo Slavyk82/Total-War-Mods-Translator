@@ -9,10 +9,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:path/path.dart' as p;
 
-import '../../../features/settings/providers/settings_providers.dart';
-import '../../../services/file/i_pack_image_generator_service.dart';
-import '../../../services/settings/settings_service.dart';
-import '../../../services/service_locator.dart';
+import '../../../features/settings/providers/settings_providers.dart'
+    hide settingsServiceProvider;
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
@@ -91,7 +90,7 @@ class _WorkshopPublishScreenState
   }
 
   Future<void> _loadTemplates() async {
-    final service = ServiceLocator.get<SettingsService>();
+    final service = ref.read(settingsServiceProvider);
     final titleTemplate =
         await service.getString(SettingsKeys.workshopTitleTemplate);
     final descTemplate =
@@ -198,7 +197,7 @@ class _WorkshopPublishScreenState
         languageCode = item.languageCode ?? 'en';
       }
 
-      final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
+      final imageGenerator = ref.read(packImageGeneratorServiceProvider);
       await imageGenerator.ensurePackImage(
         packFileName: packFileName,
         gameDataPath: gameDataPath,
