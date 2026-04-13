@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/providers/shared/service_providers.dart' show steamDetectionServiceProvider;
+import 'package:twmt/providers/shared/service_providers.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
 import 'settings_section_header.dart';
