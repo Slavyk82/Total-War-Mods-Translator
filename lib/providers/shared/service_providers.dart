@@ -52,6 +52,9 @@ ExportOrchestratorService exportOrchestratorService(Ref ref) =>
     ServiceLocator.get<ExportOrchestratorService>();
 
 @Riverpod(keepAlive: true)
+IFileService fileService(Ref ref) => ServiceLocator.get<IFileService>();
+
+@Riverpod(keepAlive: true)
 GameInstallationSyncService gameInstallationSyncService(Ref ref) =>
     ServiceLocator.get<GameInstallationSyncService>();
 
@@ -60,61 +63,12 @@ GameLocalizationService gameLocalizationService(Ref ref) =>
     ServiceLocator.get<GameLocalizationService>();
 
 @Riverpod(keepAlive: true)
-IFileService iFileService(Ref ref) => ServiceLocator.get<IFileService>();
-
-@Riverpod(keepAlive: true)
-IGlossaryService iGlossaryService(Ref ref) =>
+IGlossaryService glossaryService(Ref ref) =>
     ServiceLocator.get<IGlossaryService>();
 
 @Riverpod(keepAlive: true)
-IHistoryService iHistoryService(Ref ref) =>
+IHistoryService historyService(Ref ref) =>
     ServiceLocator.get<IHistoryService>();
-
-@Riverpod(keepAlive: true)
-ILocFileService iLocFileService(Ref ref) =>
-    ServiceLocator.get<ILocFileService>();
-
-@Riverpod(keepAlive: true)
-IPackImageGeneratorService iPackImageGeneratorService(Ref ref) =>
-    ServiceLocator.get<IPackImageGeneratorService>();
-
-@Riverpod(keepAlive: true)
-IProjectInitializationService iProjectInitializationService(Ref ref) =>
-    ServiceLocator.get<IProjectInitializationService>();
-
-@Riverpod(keepAlive: true)
-IPromptBuilderService iPromptBuilderService(Ref ref) =>
-    ServiceLocator.get<IPromptBuilderService>();
-
-@Riverpod(keepAlive: true)
-IRpfmService iRpfmService(Ref ref) => ServiceLocator.get<IRpfmService>();
-
-@Riverpod(keepAlive: true)
-ISearchService iSearchService(Ref ref) => ServiceLocator.get<ISearchService>();
-
-@Riverpod(keepAlive: true)
-ISteamCmdService iSteamCmdService(Ref ref) =>
-    ServiceLocator.get<ISteamCmdService>();
-
-@Riverpod(keepAlive: true)
-ITranslationMemoryService iTranslationMemoryService(Ref ref) =>
-    ServiceLocator.get<ITranslationMemoryService>();
-
-@Riverpod(keepAlive: true)
-ITranslationOrchestrator iTranslationOrchestrator(Ref ref) =>
-    ServiceLocator.get<ITranslationOrchestrator>();
-
-@Riverpod(keepAlive: true)
-ITranslationValidationService iTranslationValidationService(Ref ref) =>
-    ServiceLocator.get<ITranslationValidationService>();
-
-@Riverpod(keepAlive: true)
-IValidationService iValidationService(Ref ref) =>
-    ServiceLocator.get<IValidationService>();
-
-@Riverpod(keepAlive: true)
-IWorkshopPublishService iWorkshopPublishService(Ref ref) =>
-    ServiceLocator.get<IWorkshopPublishService>();
 
 @Riverpod(keepAlive: true)
 IgnoredSourceTextService ignoredSourceTextService(Ref ref) =>
@@ -133,12 +87,34 @@ LlmProviderFactory llmProviderFactory(Ref ref) =>
     ServiceLocator.get<LlmProviderFactory>();
 
 @Riverpod(keepAlive: true)
+ILocFileService locFileService(Ref ref) =>
+    ServiceLocator.get<ILocFileService>();
+
+@Riverpod(keepAlive: true)
 ModUpdateAnalysisService modUpdateAnalysisService(Ref ref) =>
     ServiceLocator.get<ModUpdateAnalysisService>();
 
 @Riverpod(keepAlive: true)
+IPackImageGeneratorService packImageGeneratorService(Ref ref) =>
+    ServiceLocator.get<IPackImageGeneratorService>();
+
+@Riverpod(keepAlive: true)
+IProjectInitializationService projectInitializationService(Ref ref) =>
+    ServiceLocator.get<IProjectInitializationService>();
+
+@Riverpod(keepAlive: true)
+IPromptBuilderService promptBuilderService(Ref ref) =>
+    ServiceLocator.get<IPromptBuilderService>();
+
+@Riverpod(keepAlive: true)
 ReleaseNotesService releaseNotesService(Ref ref) =>
     ServiceLocator.get<ReleaseNotesService>();
+
+@Riverpod(keepAlive: true)
+IRpfmService rpfmService(Ref ref) => ServiceLocator.get<IRpfmService>();
+
+@Riverpod(keepAlive: true)
+ISearchService searchService(Ref ref) => ServiceLocator.get<ISearchService>();
 
 @Riverpod(keepAlive: true)
 SettingsService settingsService(Ref ref) =>
@@ -147,6 +123,30 @@ SettingsService settingsService(Ref ref) =>
 @Riverpod(keepAlive: true)
 SteamDetectionService steamDetectionService(Ref ref) =>
     ServiceLocator.get<SteamDetectionService>();
+
+@Riverpod(keepAlive: true)
+ISteamCmdService steamCmdService(Ref ref) =>
+    ServiceLocator.get<ISteamCmdService>();
+
+@Riverpod(keepAlive: true)
+ITranslationMemoryService translationMemoryService(Ref ref) =>
+    ServiceLocator.get<ITranslationMemoryService>();
+
+@Riverpod(keepAlive: true)
+ITranslationOrchestrator translationOrchestrator(Ref ref) =>
+    ServiceLocator.get<ITranslationOrchestrator>();
+
+@Riverpod(keepAlive: true)
+ITranslationValidationService translationValidationService(Ref ref) =>
+    ServiceLocator.get<ITranslationValidationService>();
+
+@Riverpod(keepAlive: true)
+IValidationService validationService(Ref ref) =>
+    ServiceLocator.get<IValidationService>();
+
+@Riverpod(keepAlive: true)
+IWorkshopPublishService workshopPublishService(Ref ref) =>
+    ServiceLocator.get<IWorkshopPublishService>();
 
 @Riverpod(keepAlive: true)
 WorkshopScannerService workshopScannerService(Ref ref) =>
