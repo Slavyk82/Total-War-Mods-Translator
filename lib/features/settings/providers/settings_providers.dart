@@ -1,10 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart' as bridge;
 import '../../../services/settings/settings_service.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/llm/llm_provider_factory.dart';
 import '../../../services/llm/llm_model_management_service.dart';
-import '../../../services/shared/logging_service.dart';
 import '../../../models/domain/llm_provider_model.dart';
 
 part 'settings_providers.g.dart';
@@ -64,13 +63,13 @@ class SettingsKeys {
 /// Provider for settings service
 @riverpod
 SettingsService settingsService(Ref ref) {
-  return ServiceLocator.get<SettingsService>();
+  return ref.watch(bridge.settingsServiceProvider);
 }
 
 /// Provider for LLM model management service
 @riverpod
 LlmModelManagementService llmModelManagementService(Ref ref) {
-  return ServiceLocator.get<LlmModelManagementService>();
+  return ref.watch(bridge.llmModelManagementServiceProvider);
 }
 
 /// General settings notifier
@@ -270,7 +269,7 @@ class LlmProviderSettings extends _$LlmProviderSettings {
   }
 
   Future<(bool, String?)> testConnection(String providerCode) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('testConnection called', {'providerCode': providerCode});
 
     try {
@@ -329,7 +328,7 @@ class LlmProviderSettings extends _$LlmProviderSettings {
 
       logging.debug('Getting provider factory');
       // Get provider instance and test connection
-      final providerFactory = ServiceLocator.get<LlmProviderFactory>();
+      final providerFactory = ref.read(bridge.llmProviderFactoryProvider);
       logging.debug('Getting provider instance', {'providerCode': providerCode});
       final provider = providerFactory.getProvider(providerCode);
       logging.debug('Provider instance obtained', {'providerName': provider.providerName});
@@ -369,7 +368,7 @@ class LlmModels extends _$LlmModels {
 
   /// Enable a model
   Future<(bool, String?)> enableModel(String modelId) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('Enabling model', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
@@ -388,7 +387,7 @@ class LlmModels extends _$LlmModels {
 
   /// Disable a model
   Future<(bool, String?)> disableModel(String modelId) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('Disabling model', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
@@ -413,7 +412,7 @@ class LlmModels extends _$LlmModels {
   /// Note: DeepL is not set as the active LLM provider since it's a
   /// translation API, not an LLM for batch translation.
   Future<(bool, String?)> setAsDefault(String modelId) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('Setting model as global default', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);
@@ -459,7 +458,7 @@ class LlmModels extends _$LlmModels {
 
   /// Toggle model enabled status
   Future<(bool, String?)> toggleEnabled(String modelId) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('Toggling model enabled status', {'modelId': modelId});
 
     final service = ref.read(llmModelManagementServiceProvider);

@@ -2,9 +2,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 import '../../../models/domain/language.dart';
 import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart' hide settingsServiceProvider;
 import '../../../repositories/language_repository.dart';
-import '../../../repositories/translation_memory_repository.dart';
-import '../../../services/service_locator.dart';
 import 'settings_providers.dart';
 
 part 'language_settings_providers.g.dart';
@@ -12,7 +11,7 @@ part 'language_settings_providers.g.dart';
 /// Provider for language repository in settings context
 @riverpod
 LanguageRepository settingsLanguageRepository(Ref ref) {
-  return ServiceLocator.get<LanguageRepository>();
+  return ref.watch(languageRepositoryProvider);
 }
 
 /// State class for language settings
@@ -158,7 +157,7 @@ class LanguageSettings extends _$LanguageSettings {
   /// This will also delete all translation memory entries associated with this language.
   Future<(bool, String?)> deleteLanguage(String languageId) async {
     final repository = ref.read(settingsLanguageRepositoryProvider);
-    final tmRepository = ServiceLocator.get<TranslationMemoryRepository>();
+    final tmRepository = ref.read(translationMemoryRepositoryProvider);
 
     // First verify it's a custom language
     final languageResult = await repository.getById(languageId);
