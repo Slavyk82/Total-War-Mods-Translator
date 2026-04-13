@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 
 part 'tm_providers.g.dart';
 
@@ -62,7 +62,7 @@ Future<List<TranslationMemoryEntry>> tmEntries(
   final sortState = ref.watch(tmSortStateProvider);
   final orderBy = sortState.toOrderBy();
 
-  final logging = ServiceLocator.get<LoggingService>();
+  final logging = ref.watch(loggingServiceProvider);
   logging.debug('Starting tmEntries provider', {
     'targetLang': targetLang,
     'page': page,
@@ -70,7 +70,7 @@ Future<List<TranslationMemoryEntry>> tmEntries(
     'orderBy': orderBy,
   });
   try {
-    final service = ServiceLocator.get<ITranslationMemoryService>();
+    final service = ref.watch(translationMemoryServiceProvider);
     final offset = (page - 1) * pageSize;
 
     final result = await service.getEntries(
@@ -104,7 +104,7 @@ Future<int> tmEntriesCount(
   Ref ref, {
   String? targetLang,
 }) async {
-  final service = ServiceLocator.get<ITranslationMemoryService>();
+  final service = ref.watch(translationMemoryServiceProvider);
 
   // Get all entries (we'll optimize this later with a count query)
   final result = await service.getEntries(
@@ -125,12 +125,12 @@ Future<TmStatistics> tmStatistics(
   Ref ref, {
   String? targetLang,
 }) async {
-  final logging = ServiceLocator.get<LoggingService>();
+  final logging = ref.watch(loggingServiceProvider);
   logging.debug('Starting tmStatistics provider', {
     'targetLang': targetLang,
   });
   try {
-    final service = ServiceLocator.get<ITranslationMemoryService>();
+    final service = ref.watch(translationMemoryServiceProvider);
 
     final result = await service.getStatistics(
       targetLanguageCode: targetLang,
@@ -167,7 +167,7 @@ Future<List<TranslationMemoryEntry>> tmSearchResults(
     return [];
   }
 
-  final service = ServiceLocator.get<ITranslationMemoryService>();
+  final service = ref.watch(translationMemoryServiceProvider);
 
   final result = await service.searchEntries(
     searchText: searchText,
@@ -255,7 +255,7 @@ class TmImportState extends _$TmImportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ITranslationMemoryService>();
+      final service = ref.read(translationMemoryServiceProvider);
 
       final result = await service.importFromTmx(
         filePath: filePath,
@@ -305,7 +305,7 @@ class TmExportState extends _$TmExportState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ITranslationMemoryService>();
+      final service = ref.read(translationMemoryServiceProvider);
 
       final result = await service.exportToTmx(
         outputPath: outputPath,
@@ -347,7 +347,7 @@ class TmCleanupState extends _$TmCleanupState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ITranslationMemoryService>();
+      final service = ref.read(translationMemoryServiceProvider);
 
       final result = await service.cleanupUnusedEntries(
         unusedDays: unusedDays,
@@ -441,7 +441,7 @@ class TmDeleteState extends _$TmDeleteState {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ITranslationMemoryService>();
+      final service = ref.read(translationMemoryServiceProvider);
 
       final result = await service.deleteEntry(entryId: entryId);
 

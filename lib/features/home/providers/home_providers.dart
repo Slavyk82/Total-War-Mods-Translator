@@ -1,10 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/repositories/game_installation_repository.dart';
+import '../../../providers/shared/repository_providers.dart';
 
 part 'home_providers.g.dart';
 
@@ -33,11 +30,9 @@ class DashboardStats {
 /// Provider for dashboard statistics filtered by selected game
 @riverpod
 Future<DashboardStats> dashboardStats(Ref ref) async {
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final translationVersionRepo =
-      ServiceLocator.get<TranslationVersionRepository>();
-  final gameInstallationRepo =
-      ServiceLocator.get<GameInstallationRepository>();
+  final projectRepo = ref.watch(projectRepositoryProvider);
+  final translationVersionRepo = ref.watch(translationVersionRepositoryProvider);
+  final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
 
   // Get selected game
   final selectedGame = await ref.watch(selectedGameProvider.future);
@@ -91,9 +86,8 @@ Future<DashboardStats> dashboardStats(Ref ref) async {
 /// Provider for recent projects (last 5) filtered by selected game
 @riverpod
 Future<List<Project>> recentProjects(Ref ref) async {
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final gameInstallationRepo =
-      ServiceLocator.get<GameInstallationRepository>();
+  final projectRepo = ref.watch(projectRepositoryProvider);
+  final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
 
   // Get selected game
   final selectedGame = await ref.watch(selectedGameProvider.future);
