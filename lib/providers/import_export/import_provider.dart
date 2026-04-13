@@ -5,11 +5,8 @@ import 'package:twmt/features/import_export/models/import_export_settings.dart'
 import 'package:twmt/features/import_export/models/import_preview.dart';
 import 'package:twmt/features/import_export/models/import_result.dart';
 import 'package:twmt/features/import_export/services/import_export_service.dart';
-import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/services/file/i_file_service.dart';
-import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/service_locator.dart';
+import '../shared/repository_providers.dart';
+import '../shared/service_providers.dart';
 
 part 'import_provider.g.dart';
 
@@ -74,10 +71,10 @@ class ImportPreviewData extends _$ImportPreviewData {
     state = null;
 
     final service = ImportExportService(
-      ServiceLocator.get<IFileService>(),
-      ServiceLocator.get<TranslationUnitRepository>(),
-      ServiceLocator.get<TranslationVersionRepository>(),
-      ServiceLocator.get<IHistoryService>(),
+      ref.read(fileServiceProvider),
+      ref.read(translationUnitRepositoryProvider),
+      ref.read(translationVersionRepositoryProvider),
+      ref.read(historyServiceProvider),
     );
 
     final result = await service.previewImport(filePath, settings);
@@ -106,10 +103,10 @@ class ImportConflictsData extends _$ImportConflictsData {
     state = [];
 
     final service = ImportExportService(
-      ServiceLocator.get<IFileService>(),
-      ServiceLocator.get<TranslationUnitRepository>(),
-      ServiceLocator.get<TranslationVersionRepository>(),
-      ServiceLocator.get<IHistoryService>(),
+      ref.read(fileServiceProvider),
+      ref.read(translationUnitRepositoryProvider),
+      ref.read(translationVersionRepositoryProvider),
+      ref.read(historyServiceProvider),
     );
 
     final result = await service.detectConflicts(preview, settings);
@@ -188,10 +185,10 @@ class ImportResultData extends _$ImportResultData {
     progressNotifier.start(100);
 
     final service = ImportExportService(
-      ServiceLocator.get<IFileService>(),
-      ServiceLocator.get<TranslationUnitRepository>(),
-      ServiceLocator.get<TranslationVersionRepository>(),
-      ServiceLocator.get<IHistoryService>(),
+      ref.read(fileServiceProvider),
+      ref.read(translationUnitRepositoryProvider),
+      ref.read(translationVersionRepositoryProvider),
+      ref.read(historyServiceProvider),
     );
 
     final result = await service.executeImport(
@@ -228,10 +225,10 @@ Future<ImportValidationResult> importValidation(
   required import_models.ImportSettings settings,
 }) async {
   final service = ImportExportService(
-    ServiceLocator.get<IFileService>(),
-    ServiceLocator.get<TranslationUnitRepository>(),
-    ServiceLocator.get<TranslationVersionRepository>(),
-    ServiceLocator.get<IHistoryService>(),
+    ref.watch(fileServiceProvider),
+    ref.watch(translationUnitRepositoryProvider),
+    ref.watch(translationVersionRepositoryProvider),
+    ref.watch(historyServiceProvider),
   );
 
   final result = await service.validateImport(preview, settings);
