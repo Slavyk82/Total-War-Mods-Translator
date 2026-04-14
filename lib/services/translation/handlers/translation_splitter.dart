@@ -253,14 +253,29 @@ class TranslationSplitter {
     SubBatchTranslatedCallback? onSubBatchTranslated,
     required DateTime apiCallStart,
   }) async {
+    // Match translations to units by unit.id key instead of positional index.
+    // Positional indexing silently misattributed translations when the LLM
+    // returned keys in a different order than requested, and silently dropped
+    // trailing units when the response contained fewer keys. Key-based
+    // matching attaches each translation to the correct unit and tracks
+    // missing keys as failed units so callers can surface them.
     final translations = <String, String>{};
-    for (var i = 0;
-        i < unitsToTranslate.length && i < llmResponse.translations.length;
-        i++) {
-      final unit = unitsToTranslate[i];
-      final translatedText = llmResponse.translations.values.elementAt(i);
+    final missingUnitIds = <String>[];
+    for (final unit in unitsToTranslate) {
+      final translatedText = llmResponse.translations[unit.id];
+      if (translatedText == null) {
+        missingUnitIds.add(unit.id);
+        continue;
+      }
       translations[unit.id] =
           TranslationTextUtils.normalizeTranslation(translatedText);
+    }
+
+    if (missingUnitIds.isNotEmpty) {
+      _logger.warning(
+        'LLM response missing translations for ${missingUnitIds.length} unit(s) '
+        'in batch $batchId: ${missingUnitIds.join(', ')}',
+      );
     }
 
     final apiCallDuration = DateTime.now().difference(apiCallStart);
@@ -309,6 +324,9 @@ class TranslationSplitter {
       currentPhase: TranslationPhase.llmTranslation,
       phaseDetail: 'Chunk saved (${translations.length} units), processing continues...',
       tokensUsed: currentProgress.tokensUsed + totalTokens,
+      // Count units whose IDs were absent from the LLM response as failed so
+      // the orchestrator can surface the gap instead of silently losing them.
+      failedUnits: currentProgress.failedUnits + missingUnitIds.length,
       llmLogs: updatedLogs,
       timestamp: DateTime.now(),
     );

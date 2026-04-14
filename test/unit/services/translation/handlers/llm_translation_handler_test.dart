@@ -308,8 +308,9 @@ void main() {
       );
     });
 
-    test('partial response: LLM returns fewer translations than units => only '
-        'the first N units (by position) receive a translation', () async {
+    test('partial response: LLM returns fewer translations than units => the '
+        'units whose keys are present get a translation and missing keys are '
+        'counted in failedUnits', () async {
       final units = [
         _fakeUnit('k1', 'Hello'),
         _fakeUnit('k2', 'World'),
@@ -317,8 +318,9 @@ void main() {
       ];
 
       _stubPromptBuilderOk(promptBuilder);
-      // LLM returns translations for 2 of 3 keys. SingleBatchProcessor zips
-      // by position: unit[0] <- values[0], unit[1] <- values[1].
+      // LLM returns translations for 2 of 3 keys. With key-based matching
+      // the third unit (unit-k3) is absent from the response and must be
+      // reported as a failure rather than silently dropped.
       when(() => llmService.translateBatch(
             any(),
             cancelToken: any(named: 'cancelToken'),
@@ -327,7 +329,8 @@ void main() {
             'unit-k2': 'Monde',
           })));
 
-      final (_, translations, __) = await handler.performTranslation(
+      final (finalProgress, translations, __) =
+          await handler.performTranslation(
         batchId: _batchId,
         units: units,
         context: _fakeContext(),
@@ -338,11 +341,95 @@ void main() {
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
-      // Only the two positionally-matched units get a translation; the third
-      // is dropped silently (handler does NOT synthesise an error per unit).
+      // Only the two units whose IDs are present in the response get a
+      // translation; the third is absent from the translations map.
       expect(translations.keys, containsAll(<String>['unit-k1', 'unit-k2']));
       expect(translations.containsKey('unit-k3'), isFalse);
       expect(translations.length, equals(2));
+
+      // The missing unit must now be surfaced via failedUnits so the
+      // orchestrator can report it instead of silently losing it.
+      expect(finalProgress.failedUnits, equals(1));
+    });
+
+    test('reordered response keys: LLM returns translations in a different '
+        'order than requested and they are still attributed to the correct '
+        'unit IDs', () async {
+      final units = [
+        _fakeUnit('k1', 'Hello'),
+        _fakeUnit('k2', 'World'),
+      ];
+
+      _stubPromptBuilderOk(promptBuilder);
+      // Response keys are in reverse order from the request. Key-based
+      // matching must still pair each translation with the right unit ID;
+      // the previous positional zip would have swapped them.
+      when(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          )).thenAnswer((_) async => Ok(_fakeLlmResponse(translations: {
+            'unit-k2': 'Monde',
+            'unit-k1': 'Bonjour',
+          })));
+
+      final (finalProgress, translations, __) =
+          await handler.performTranslation(
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(),
+        tmMatchedUnitIds: const <String>{},
+        getCancellationToken: noCancellationToken,
+        onProgressUpdate: (_, ___) {},
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+      );
+
+      expect(translations, equals({
+        'unit-k1': 'Bonjour',
+        'unit-k2': 'Monde',
+      }));
+      // No unit is missing from the response => no failures recorded here.
+      expect(finalProgress.failedUnits, equals(0));
+    });
+
+    test('extra unknown keys in response: unknown keys are ignored and known '
+        'keys are correctly attributed', () async {
+      final units = [
+        _fakeUnit('k1', 'Hello'),
+        _fakeUnit('k2', 'World'),
+      ];
+
+      _stubPromptBuilderOk(promptBuilder);
+      // LLM emits an extra unsolicited key; it must be silently dropped
+      // (not attached to any unit) while k1 and k2 are still delivered.
+      when(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          )).thenAnswer((_) async => Ok(_fakeLlmResponse(translations: {
+            'unit-k1': 'Bonjour',
+            'unit-k2': 'Monde',
+            'unit-unknown': 'Inconnu',
+          })));
+
+      final (finalProgress, translations, __) =
+          await handler.performTranslation(
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(),
+        tmMatchedUnitIds: const <String>{},
+        getCancellationToken: noCancellationToken,
+        onProgressUpdate: (_, ___) {},
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+      );
+
+      expect(translations, equals({
+        'unit-k1': 'Bonjour',
+        'unit-k2': 'Monde',
+      }));
+      expect(translations.containsKey('unit-unknown'), isFalse);
+      // All requested units were translated => no failures recorded.
+      expect(finalProgress.failedUnits, equals(0));
     });
 
     test('tmMatchedUnitIds filters units before the LLM call: matched IDs '
