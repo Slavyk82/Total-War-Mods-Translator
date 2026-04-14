@@ -366,6 +366,118 @@ void main() {
     });
   });
 
+  group('TmSearchService.getEntries', () {
+    // Reusable fixture entry for getEntries tests.
+    final fixture = TranslationMemoryEntry(
+      id: 'tm_fr_1',
+      sourceText: 'hello',
+      sourceHash: 'hash_hello',
+      sourceLanguageId: 'lang_en',
+      targetLanguageId: 'lang_fr',
+      translatedText: 'bonjour',
+      createdAt: 0,
+      lastUsedAt: 0,
+      updatedAt: 0,
+    );
+
+    test(
+        'happy path: targetLanguageCode "fr" is converted to "lang_fr" '
+        'and threaded to repository.getWithFilters', () async {
+      // Arrange
+      when(() => repo.getWithFilters(
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).thenAnswer((_) async => Ok([fixture]));
+
+      // Act
+      final result = await service.getEntries(targetLanguageCode: 'fr');
+
+      // Assert
+      expect(result.isOk, true);
+      expect(result.value, hasLength(1));
+      expect(result.value.first.id, 'tm_fr_1');
+      verify(() => repo.getWithFilters(
+            targetLanguageId: 'lang_fr',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).called(1);
+    });
+
+    test(
+        'no language filter: targetLanguageCode null forwards null '
+        'targetLanguageId to repository', () async {
+      // Arrange
+      when(() => repo.getWithFilters(
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).thenAnswer((_) async => const Ok([]));
+
+      // Act
+      final result = await service.getEntries();
+
+      // Assert
+      expect(result.isOk, true);
+      expect(result.value, isEmpty);
+      verify(() => repo.getWithFilters(
+            targetLanguageId: null,
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).called(1);
+    });
+
+    test('repo Err is wrapped into TmServiceException with informative message',
+        () async {
+      // Arrange
+      final innerDbException = const TWMTDatabaseException('db error');
+      when(() => repo.getWithFilters(
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).thenAnswer((_) async => Err(innerDbException));
+
+      // Act
+      final result = await service.getEntries();
+
+      // Assert
+      expect(result.isErr, true);
+      final exception = result.error;
+      expect(exception, isA<TmServiceException>());
+      expect(exception.message, contains('Failed to get entries'));
+      expect(exception.error, same(innerDbException));
+    });
+
+    test(
+        'unexpected synchronous throw is wrapped with stack trace into '
+        'TmServiceException', () async {
+      // Arrange: getWithFilters throws synchronously to hit outer try/catch.
+      final boom = Exception('unexpected boom');
+      when(() => repo.getWithFilters(
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).thenThrow(boom);
+
+      // Act
+      final result = await service.getEntries();
+
+      // Assert
+      expect(result.isErr, true);
+      final exception = result.error;
+      expect(exception, isA<TmServiceException>());
+      expect(exception.message, contains('Unexpected error getting entries'));
+      expect(exception.error, same(boom));
+      expect(exception.stackTrace, isNotNull);
+    });
+  });
+
   group('TmSearchService.searchEntries — FTS5 failure logs warning', () {
     test(
         'emits exactly one warning when FTS5 fails and LIKE fallback succeeds',
