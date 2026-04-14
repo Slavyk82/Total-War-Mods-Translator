@@ -20,66 +20,78 @@ import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Everything that touches the Flutter bindings must run inside the same
+  // zone. `WidgetsFlutterBinding.ensureInitialized()` and `runApp` both bind
+  // to the active zone; splitting them across zones triggers a framework
+  // assertion ("Zone mismatch"). We therefore run the entire bootstrap
+  // inside `runZonedGuarded` so the zoned error handler is active from the
+  // first binding call through to `runApp`.
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  if (Platform.isWindows) {
-    // Initialize SQLite FFI for Windows
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    if (Platform.isWindows) {
+      // Initialize SQLite FFI for Windows
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
 
-    // Initialize window manager
-    await windowManager.ensureInitialized();
-    const windowOptions = WindowOptions(
-      size: Size(1725, 975),
-      minimumSize: Size(1725, 975),
-      center: true,
-      title: 'TWMT - Total War Mods Translator',
-      titleBarStyle: TitleBarStyle.normal,
-    );
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
-  }
+      // Initialize window manager
+      await windowManager.ensureInitialized();
+      const windowOptions = WindowOptions(
+        size: Size(1725, 975),
+        minimumSize: Size(1725, 975),
+        center: true,
+        title: 'TWMT - Total War Mods Translator',
+        titleBarStyle: TitleBarStyle.normal,
+      );
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+      });
+    }
 
-  // Initialize all services via Service Locator
-  try {
-    await ServiceLocator.initialize();
-    debugPrint('✅ Application initialized successfully');
-  } catch (e, stackTrace) {
-    debugPrint('❌ Application initialization error: $e');
-    debugPrint('$stackTrace');
-    // Handle error appropriately (show error dialog, etc.)
-    rethrow;
-  }
+    // Initialize all services via Service Locator
+    try {
+      await ServiceLocator.initialize();
+      debugPrint('✅ Application initialized successfully');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Application initialization error: $e');
+      debugPrint('$stackTrace');
+      // Handle error appropriately (show error dialog, etc.)
+      rethrow;
+    }
 
-  // Install global error handlers. Must run AFTER ServiceLocator.initialize()
-  // so ILoggingService is available.
-  final logger = ServiceLocator.get<ILoggingService>();
+    // Install global error handlers. Must run AFTER ServiceLocator.initialize()
+    // so ILoggingService is available.
+    final logger = ServiceLocator.get<ILoggingService>();
 
-  FlutterError.onError = (FlutterErrorDetails details) {
-    logger.error(
-      'Uncaught Flutter framework error',
-      details.exception,
-      details.stack,
-    );
-    FlutterError.presentError(details);
-  };
+    FlutterError.onError = (FlutterErrorDetails details) {
+      logger.error(
+        'Uncaught Flutter framework error',
+        details.exception,
+        details.stack,
+      );
+      FlutterError.presentError(details);
+    };
 
-  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    logger.error('Uncaught platform error', error, stack);
-    return true;
-  };
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      logger.error('Uncaught platform error', error, stack);
+      return true;
+    };
 
-  // Register app lifecycle observer for proper cleanup
-  WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
+    // Register app lifecycle observer for proper cleanup
+    WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
 
-  runZonedGuarded(
-    () => runApp(const ProviderScope(child: MyApp())),
-    (Object error, StackTrace stack) {
-      logger.error('Uncaught zoned error', error, stack);
-    },
-  );
+    runApp(const ProviderScope(child: MyApp()));
+  }, (Object error, StackTrace stack) {
+    // If ServiceLocator already initialized, route through the logger;
+    // otherwise fall back to debugPrint so early errors are not swallowed.
+    if (ServiceLocator.isInitialized) {
+      ServiceLocator.get<ILoggingService>()
+          .error('Uncaught zoned error', error, stack);
+    } else {
+      debugPrint('Uncaught zoned error (pre-DI): $error\n$stack');
+    }
+  });
 }
 
 class MyApp extends ConsumerWidget {
