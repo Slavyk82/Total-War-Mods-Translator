@@ -478,6 +478,58 @@ void main() {
     });
   });
 
+  group('TmSearchService — language code normalization', () {
+    test(
+        'getEntries with already-prefixed code "lang_fr" forwards it as-is '
+        '(no "lang_lang_fr" double-prefix)', () async {
+      // Arrange
+      when(() => repo.getWithFilters(
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).thenAnswer((_) async => const Ok([]));
+
+      // Act: caller passes an already-prefixed code.
+      final result = await service.getEntries(targetLanguageCode: 'lang_fr');
+
+      // Assert: repository must receive 'lang_fr', not 'lang_lang_fr'.
+      expect(result.isOk, true);
+      verify(() => repo.getWithFilters(
+            targetLanguageId: 'lang_fr',
+            limit: any(named: 'limit'),
+            offset: any(named: 'offset'),
+            orderBy: any(named: 'orderBy'),
+          )).called(1);
+    });
+
+    test(
+        'searchEntries with already-prefixed code "lang_fr" forwards it as-is '
+        'to searchFts5 (no "lang_lang_fr" double-prefix)', () async {
+      // Arrange
+      when(() => repo.searchFts5(
+            searchText: any(named: 'searchText'),
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+          )).thenAnswer((_) async => const Ok([]));
+
+      // Act: caller passes an already-prefixed code.
+      await service.searchEntries(
+        searchText: 'hello',
+        targetLanguageCode: 'lang_fr',
+      );
+
+      // Assert: repository must receive 'lang_fr', not 'lang_lang_fr'.
+      verify(() => repo.searchFts5(
+            searchText: 'hello',
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: 'lang_fr',
+            limit: any(named: 'limit'),
+          )).called(1);
+    });
+  });
+
   group('TmSearchService.searchEntries — FTS5 failure logs warning', () {
     test(
         'emits exactly one warning when FTS5 fails and LIKE fallback succeeds',
