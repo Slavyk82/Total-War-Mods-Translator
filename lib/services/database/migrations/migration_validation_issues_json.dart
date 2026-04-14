@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import '../../service_locator.dart';
 import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
@@ -42,6 +44,47 @@ class ValidationIssuesJsonMigration extends Migration {
   @override
   int get priority => 110;
 
+  /// Name of the lightweight marker table used to record completion.
+  ///
+  /// A dedicated table (rather than `PRAGMA user_version`, which is reserved
+  /// for the schema version) lets data migrations record "we already ran"
+  /// without re-scanning large tables at every startup.
+  static const String _markerTable = '_migration_markers';
+
+  @override
+  Future<bool> isApplied() async {
+    await _ensureMarkerTable();
+
+    // Fast path: a marker was written by a previous successful run.
+    final marker = await DatabaseService.database.rawQuery(
+      'SELECT 1 FROM $_markerTable WHERE id = ? LIMIT 1',
+      [id],
+    );
+    if (marker.isNotEmpty) return true;
+
+    // Fallback for databases migrated before the marker existed: if no
+    // legacy-shaped rows remain, treat as applied and write the marker so
+    // future startups skip the scan entirely.
+    //
+    // Legacy `List.toString()` rows start with `[` but not with `["`, `[]`,
+    // or `[{"` — the three shapes produced by `jsonEncode` for this field.
+    // This check is O(N) over an indexed-less scan but uses no decoding.
+    final legacy = await DatabaseService.database.rawQuery('''
+      SELECT 1 FROM translation_versions
+      WHERE validation_issues IS NOT NULL
+        AND TRIM(validation_issues) <> ''
+        AND validation_issues NOT LIKE '["%'
+        AND validation_issues NOT LIKE '[]'
+        AND validation_issues NOT LIKE '[{"%'
+      LIMIT 1
+    ''');
+    if (legacy.isEmpty) {
+      await _writeMarker();
+      return true;
+    }
+    return false;
+  }
+
   @override
   Future<bool> execute() async {
     try {
@@ -56,6 +99,7 @@ class ValidationIssuesJsonMigration extends Migration {
 
       if (rows.isEmpty) {
         _logger.debug('No validation_issues rows to migrate.');
+        await _writeMarker();
         return false;
       }
 
@@ -135,6 +179,12 @@ class ValidationIssuesJsonMigration extends Migration {
         'total': rows.length,
       });
 
+      // Write the marker unconditionally: we scanned every row and handled
+      // what could be handled. Rows that failed to parse will stay legacy
+      // forever, but re-running the scan on every startup would not rescue
+      // them — it would just re-confirm the same failure at a large cost.
+      await _writeMarker();
+
       // Report "applied" only when we actually rewrote at least one row.
       return migrated > 0;
     } catch (e, stackTrace) {
@@ -144,6 +194,29 @@ class ValidationIssuesJsonMigration extends Migration {
       // the legacy string even if parsing fails downstream.
       return false;
     }
+  }
+
+  /// Create the marker table if it does not yet exist.
+  Future<void> _ensureMarkerTable() async {
+    await DatabaseService.database.execute('''
+      CREATE TABLE IF NOT EXISTS $_markerTable (
+        id TEXT PRIMARY KEY,
+        applied_at INTEGER NOT NULL
+      )
+    ''');
+  }
+
+  /// Record that this migration has completed its work on this database.
+  Future<void> _writeMarker() async {
+    await _ensureMarkerTable();
+    await DatabaseService.database.insert(
+      _markerTable,
+      {
+        'id': id,
+        'applied_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   /// Returns true if [raw] is already a valid JSON array payload.
