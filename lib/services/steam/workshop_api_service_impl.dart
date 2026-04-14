@@ -3,8 +3,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/workshop_mod_info.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/llm/utils/rate_limiter.dart';
 
 /// Implementation of Workshop API service
@@ -32,7 +32,7 @@ class WorkshopApiServiceImpl implements IWorkshopApiService {
   final RateLimiter _rateLimiter = RateLimiter(requestsPerMinute: 100);
 
   WorkshopApiServiceImpl({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Future<Result<WorkshopModInfo, SteamServiceException>> getModInfo({

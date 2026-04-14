@@ -6,8 +6,8 @@ import 'package:twmt/services/steam/i_steamcmd_service.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/steamcmd_download_result.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of SteamCMD service
 class SteamCmdServiceImpl implements ISteamCmdService {
@@ -20,7 +20,7 @@ class SteamCmdServiceImpl implements ISteamCmdService {
   bool _isCancelled = false;
 
   SteamCmdServiceImpl({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Stream<double> get progressStream => _progressController.stream;

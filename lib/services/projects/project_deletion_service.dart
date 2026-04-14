@@ -1,8 +1,8 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
+import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
-import '../shared/logging_service.dart';
 import '../database/database_service.dart';
 
 /// Highly optimized project deletion service - Version 2
@@ -20,7 +20,7 @@ class ProjectDeletionServiceV2 {
   final ILoggingService _logger;
 
   ProjectDeletionServiceV2({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Delete a project and all related data with maximum efficiency
   ///

@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/i_process_launcher.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_publish_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
@@ -36,7 +36,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   })  : _manager = manager ?? SteamCmdManager(),
         _vdfGenerator = vdfGenerator ?? VdfGenerator(),
         _processLauncher = processLauncher ?? const ProcessLauncher(),
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();

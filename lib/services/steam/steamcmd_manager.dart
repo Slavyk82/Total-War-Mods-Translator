@@ -5,8 +5,8 @@ import 'package:archive/archive.dart';
 import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 
 /// Manager for SteamCMD installation and configuration
 ///
@@ -42,7 +42,7 @@ class SteamCmdManager {
   }
 
   SteamCmdManager._internal({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Get SteamCMD executable path
   ///

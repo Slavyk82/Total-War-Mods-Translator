@@ -10,8 +10,8 @@ import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/repositories/mod_scan_cache_repository.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
@@ -92,7 +92,7 @@ class WorkshopScannerService {
           ),
           logger: logger,
         ),
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Scan Workshop folder for a game and return detected mods without creating projects.
   ///
