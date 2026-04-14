@@ -70,19 +70,27 @@ mixin TranslationMemoryBatchMixin {
       // Build query to find existing entries by hash pairs
       final existingEntries = <String, TranslationMemoryEntry>{};
 
-      // Query in chunks to avoid SQL parameter limits
+      // Query in chunks to avoid SQL parameter limits.
+      // Each pair consumes 2 placeholders; SQLite's default SQLITE_MAX_VARIABLE_NUMBER
+      // is 999, so 100 pairs = 200 placeholders is safely under the limit.
       const chunkSize = 100;
       for (var i = 0; i < hashPairs.length; i += chunkSize) {
         final chunk = hashPairs.skip(i).take(chunkSize).toList();
 
-        // Build WHERE clause for this chunk
-        final conditions = chunk.map((pair) {
+        // Build parameterised WHERE clause (one (?,?) group per pair)
+        final placeholders =
+            List.filled(chunk.length, '(source_hash = ? AND target_language_id = ?)')
+                .join(' OR ');
+        final args = <Object?>[];
+        for (final pair in chunk) {
           final parts = pair.split(':');
-          return "(source_hash = '${parts[0].replaceAll("'", "''")}' AND target_language_id = '${parts[1].replaceAll("'", "''")}')";
-        }).join(' OR ');
+          args.add(parts[0]);
+          args.add(parts[1]);
+        }
 
         final maps = await txn.rawQuery(
-          'SELECT * FROM $tableName WHERE $conditions',
+          'SELECT * FROM $tableName WHERE $placeholders',
+          args,
         );
 
         for (final map in maps) {
@@ -132,7 +140,7 @@ mixin TranslationMemoryBatchMixin {
     // Opportunistic WAL checkpoint to prevent unbounded WAL file growth
     // during long batch imports. 1 MB threshold keeps the WAL small without
     // checkpointing after every trivial batch.
-    if (result is Ok) {
+    if (result.isOk) {
       await DatabaseService.checkpointIfNeeded(thresholdBytes: 1048576);
     }
 
@@ -154,8 +162,12 @@ mixin TranslationMemoryBatchMixin {
     int offset = 0,
   }) async {
     return executeQuery(() async {
-      final projectFilter =
-          projectId != null ? "AND tu.project_id = '$projectId'" : '';
+      final projectFilter = projectId != null ? 'AND tu.project_id = ?' : '';
+      final args = <Object?>[
+        if (projectId != null) projectId,
+        limit,
+        offset,
+      ];
 
       final query = '''
         SELECT DISTINCT
@@ -170,10 +182,10 @@ mixin TranslationMemoryBatchMixin {
           AND tv.translated_text != ''
           $projectFilter
         ORDER BY tu.source_text
-        LIMIT $limit OFFSET $offset
+        LIMIT ? OFFSET ?
       ''';
 
-      final rows = await database.rawQuery(query);
+      final rows = await database.rawQuery(query, args);
       return rows;
     });
   }
@@ -183,8 +195,8 @@ mixin TranslationMemoryBatchMixin {
     String? projectId,
   }) async {
     return executeQuery(() async {
-      final projectFilter =
-          projectId != null ? "AND tu.project_id = '$projectId'" : '';
+      final projectFilter = projectId != null ? 'AND tu.project_id = ?' : '';
+      final args = <Object?>[if (projectId != null) projectId];
 
       final query = '''
         SELECT COUNT(DISTINCT tu.source_text || '|' || pl.language_id) as count
@@ -197,7 +209,7 @@ mixin TranslationMemoryBatchMixin {
           $projectFilter
       ''';
 
-      final result = await database.rawQuery(query);
+      final result = await database.rawQuery(query, args);
       return (result.first['count'] as int?) ?? 0;
     });
   }
