@@ -405,6 +405,136 @@ void main() {
         runInShell: any(named: 'runInShell'))).called(1);
   });
 
+  // --- Deferred-debt branches: steamcmd path err, vdf err, exits 6/7,
+  // and the 5-minute timeout sentinel. ----------------------------------
+
+  test(
+      'manager.getSteamCmdPath() returns Err → publish aborts before VDF '
+      'and process launch', () async {
+    // Override the default setUp stub so the manager fails early.
+    final exception = const SteamServiceException(
+      'steamcmd not installed',
+      code: 'STEAMCMD_NOT_FOUND',
+    );
+    when(() => manager.getSteamCmdPath())
+        .thenAnswer((_) async => Err(exception));
+
+    final result = await service.publish(
+      params: _params(contentFolder: packDir, previewFile: previewPath),
+      username: 'user',
+      password: 'pw',
+      steamGuardCode: '12345',
+    );
+
+    expect(result.isErr, true);
+    expect(result.error, isA<SteamServiceException>());
+    expect(result.error, same(exception));
+    verifyNever(() => vdf.generateVdf(any()));
+    verifyNever(() => launcher.start(any(), any(),
+        runInShell: any(named: 'runInShell')));
+  });
+
+  test(
+      'vdfGenerator.generateVdf() returns Err → publish aborts after VDF '
+      'stage, launcher never called', () async {
+    final vdfException =
+        const WorkshopPublishException('VDF generation failed');
+    when(() => vdf.generateVdf(any()))
+        .thenAnswer((_) async => Err(vdfException));
+    // Belt-and-braces: stub the launcher so a leak is loud rather than null.
+    when(() => launcher.start(any(), any(),
+            runInShell: any(named: 'runInShell')))
+        .thenAnswer((_) async => _okProcess());
+
+    final result = await service.publish(
+      params: _params(contentFolder: packDir, previewFile: previewPath),
+      username: 'user',
+      password: 'pw',
+      steamGuardCode: '12345',
+    );
+
+    expect(result.isErr, true);
+    expect(result.error, isA<WorkshopPublishException>());
+    expect(result.error, same(vdfException));
+    verify(() => vdf.generateVdf(any())).called(1);
+    verifyNever(() => launcher.start(any(), any(),
+        runInShell: any(named: 'runInShell')));
+  });
+
+  // The service treats 0/6/7 as success exits — covered jointly here so we
+  // do not duplicate the (otherwise identical) happy-path scaffolding.
+  for (final exitCode in [6, 7]) {
+    test(
+        'steamcmd exit code $exitCode → success (parsed workshopId, '
+        'wasUpdate=true)', () async {
+      final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+      File(vdfPath).writeAsStringSync('// stub vdf');
+      when(() => vdf.generateVdf(any()))
+          .thenAnswer((_) async => Ok(vdfPath));
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => _okProcess(
+                exitCode: exitCode,
+                stdout:
+                    'PublishFileID : 7777777777\nItem Updated\nSuccess.\n',
+              ));
+
+      final result = await service.publish(
+        params: _params(contentFolder: packDir, previewFile: previewPath),
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+      );
+
+      expect(result.isOk, true,
+          reason: 'got error: ${result.isErr ? result.error : ''}');
+      expect(result.value.workshopId, '7777777777');
+      expect(result.value.wasUpdate, isTrue);
+    });
+  }
+
+  test(
+      '_runSteamCmd 5-minute timeout (exit code -1 sentinel) → '
+      'SteamCmdTimeoutException with timeoutSeconds: 300', () async {
+    // Why exit-code -1 sentinel rather than fakeAsync + pending future:
+    //   _runSteamCmd uses .timeout(Duration(minutes: 5), onTimeout: () {
+    //     _currentProcess?.kill(); return -1;
+    //   })
+    // and publish() then matches `run.exitCode == -1` to raise the timeout
+    // exception (workshop_publish_service_impl.dart L753-L759, L182-L187).
+    // The pre-_runSteamCmd phase (manager.getSteamCmdPath, file I/O,
+    // _hasCachedCredentials, vdfGenerator) performs real disk I/O that
+    // does not interact cleanly with fakeAsync's virtual clock — driving
+    // the sentinel directly is faithful to the production timeout path
+    // and keeps the test fully deterministic without a 5-minute wait.
+    final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+    File(vdfPath).writeAsStringSync('// stub vdf');
+    when(() => vdf.generateVdf(any()))
+        .thenAnswer((_) async => Ok(vdfPath));
+    when(() => launcher.start(any(), any(),
+            runInShell: any(named: 'runInShell')))
+        .thenAnswer((_) async => _FakeProcess(
+              pid: 9999,
+              exitCodeFuture: Future<int>.value(-1),
+              stdoutStream: _empty(),
+              stderrStream: _empty(),
+            ));
+
+    final result = await service.publish(
+      params: _params(contentFolder: packDir, previewFile: previewPath),
+      username: 'user',
+      password: 'pw',
+      steamGuardCode: '12345',
+    );
+
+    expect(result.isErr, true);
+    expect(result.error, isA<SteamCmdTimeoutException>());
+    expect(
+      (result.error as SteamCmdTimeoutException).timeoutSeconds,
+      300,
+    );
+  });
+
   group('WorkshopPublishServiceImpl.publish — cached credentials', () {
     // Seeds <dirname(steamCmdPath)>/config/config.vdf so
     // _hasCachedCredentials returns true for 'user'. The service must then
