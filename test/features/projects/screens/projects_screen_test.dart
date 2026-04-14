@@ -1,3 +1,9 @@
+// NOTE: This file contains pre-existing failing tests preserved exactly
+// across Phases 1-7 of the incremental refactoring. The failures are
+// unrelated to the refactor and stem from widget-level Riverpod overrides
+// that predate Phase 3 DI unification. Do NOT attempt to "fix" them here
+// — they are the baseline that protects against unintended regression.
+// See docs/superpowers/plans/2026-04-12-incremental-refactoring.md.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
