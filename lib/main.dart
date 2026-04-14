@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -9,6 +11,7 @@ import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/config/router/app_router.dart' show goRouterProvider, rootNavigatorKey;
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
@@ -50,10 +53,33 @@ void main() async {
     rethrow;
   }
 
+  // Install global error handlers. Must run AFTER ServiceLocator.initialize()
+  // so ILoggingService is available.
+  final logger = ServiceLocator.get<ILoggingService>();
+
+  FlutterError.onError = (FlutterErrorDetails details) {
+    logger.error(
+      'Uncaught Flutter framework error',
+      details.exception,
+      details.stack,
+    );
+    FlutterError.presentError(details);
+  };
+
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    logger.error('Uncaught platform error', error, stack);
+    return true;
+  };
+
   // Register app lifecycle observer for proper cleanup
   WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
 
-  runApp(const ProviderScope(child: MyApp()));
+  runZonedGuarded(
+    () => runApp(const ProviderScope(child: MyApp())),
+    (Object error, StackTrace stack) {
+      logger.error('Uncaught zoned error', error, stack);
+    },
+  );
 }
 
 class MyApp extends ConsumerWidget {
