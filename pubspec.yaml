@@ -77,6 +77,8 @@ dependencies:
   # Utilities
   uuid: ^4.5.2
   shared_preferences: ^2.5.3
+  # Bundled font loading for design tokens
+  google_fonts: ^6.2.1
   get_it: ^9.0.5
   archive: ^3.6.1
   timeago: ^3.7.0
