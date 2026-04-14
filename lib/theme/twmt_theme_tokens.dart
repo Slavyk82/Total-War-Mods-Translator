@@ -244,5 +244,20 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
 /// theme — callers should never guard for `null` because every app theme
 /// is expected to carry this extension.
 extension TwmtTokensAccess on BuildContext {
-  TwmtThemeTokens get tokens => Theme.of(this).extension<TwmtThemeTokens>()!;
+  /// Active [TwmtThemeTokens] for this build context.
+  ///
+  /// Every TWMT `ThemeData` is expected to carry a [TwmtThemeTokens] extension.
+  /// If this fires in debug mode, the most common cause is a dialog or overlay
+  /// built under a sub-tree without the app `Theme` in its ancestry — make sure
+  /// the route inherits the main `MaterialApp` theme.
+  TwmtThemeTokens get tokens {
+    final ext = Theme.of(this).extension<TwmtThemeTokens>();
+    assert(
+      ext != null,
+      'TwmtThemeTokens missing from Theme. Register via ThemeData.extensions. '
+      'If this fires inside a dialog/overlay, ensure that subtree inherits the '
+      'main app theme.',
+    );
+    return ext!;
+  }
 }
