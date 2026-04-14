@@ -9,7 +9,9 @@ import '../../repositories/translation_batch_repository.dart';
 import '../../repositories/translation_batch_unit_repository.dart';
 import '../../repositories/translation_memory_repository.dart';
 import '../../repositories/translation_version_history_repository.dart';
+import '../../services/backup/database_backup_service.dart';
 import '../../services/file/export_orchestrator_service.dart';
+import '../../services/file/file_import_export_service.dart';
 import '../../services/file/i_file_service.dart';
 import '../../services/file/i_loc_file_service.dart';
 import '../../services/file/i_pack_image_generator_service.dart';
@@ -27,9 +29,11 @@ import '../../services/rpfm/i_rpfm_service.dart';
 import '../../services/search/i_search_service.dart';
 import '../../services/service_locator.dart';
 import '../../services/settings/settings_service.dart';
+import '../../services/shared/event_bus.dart';
 import '../../services/steam/i_steamcmd_service.dart';
 import '../../services/steam/i_workshop_publish_service.dart';
 import '../../services/steam/steam_detection_service.dart';
+import '../../services/steam/steamcmd_manager.dart';
 import '../../services/translation/i_prompt_builder_service.dart';
 import '../../services/translation/i_translation_orchestrator.dart';
 import '../../services/translation/i_validation_service.dart';
@@ -47,8 +51,19 @@ AppUpdateService appUpdateService(Ref ref) =>
     ServiceLocator.get<AppUpdateService>();
 
 @Riverpod(keepAlive: true)
+DatabaseBackupService databaseBackupService(Ref ref) =>
+    DatabaseBackupService();
+
+@Riverpod(keepAlive: true)
+EventBus eventBus(Ref ref) => EventBus.instance;
+
+@Riverpod(keepAlive: true)
 ExportOrchestratorService exportOrchestratorService(Ref ref) =>
     ServiceLocator.get<ExportOrchestratorService>();
+
+@Riverpod(keepAlive: true)
+FileImportExportService fileImportExportService(Ref ref) =>
+    ServiceLocator.get<FileImportExportService>();
 
 @Riverpod(keepAlive: true)
 IFileService fileService(Ref ref) => ServiceLocator.get<IFileService>();
@@ -122,6 +137,10 @@ SettingsService settingsService(Ref ref) =>
 @Riverpod(keepAlive: true)
 SteamDetectionService steamDetectionService(Ref ref) =>
     ServiceLocator.get<SteamDetectionService>();
+
+@Riverpod(keepAlive: true)
+SteamCmdManager steamCmdManager(Ref ref) =>
+    ServiceLocator.get<SteamCmdManager>();
 
 @Riverpod(keepAlive: true)
 ISteamCmdService steamCmdService(Ref ref) =>
