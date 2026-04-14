@@ -7,9 +7,10 @@ import 'package:twmt/models/domain/translation_batch.dart';
 import 'package:twmt/models/events/domain_event.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/services/shared/event_bus.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/handlers/batch_progress_manager.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
+
+import '../../../../helpers/fakes/fake_logger.dart';
 
 // Characterisation tests for BatchProgressManager. Pinned behaviours:
 // - getOrCreateController: idempotent per batchId, distinct across batchIds.
@@ -28,16 +29,6 @@ class _MockEventBus extends Mock implements EventBus {}
 
 // Silent logger fake — BatchProgressManager logs info/error throughout
 // pause/resume/cancel/stop and we do not want noisy stubs.
-class _FakeLogger extends Fake implements ILoggingService {
-  @override
-  void debug(String message, [dynamic data]) {}
-  @override
-  void info(String message, [dynamic data]) {}
-  @override
-  void warning(String message, [dynamic data]) {}
-  @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
-}
 
 class _FakeDomainEvent extends Fake implements DomainEvent {}
 
@@ -80,13 +71,13 @@ void main() {
 
   late _MockBatchRepository batchRepository;
   late _MockEventBus eventBus;
-  late _FakeLogger logger;
+  late FakeLogger logger;
   late BatchProgressManager manager;
 
   setUp(() {
     batchRepository = _MockBatchRepository();
     eventBus = _MockEventBus();
-    logger = _FakeLogger();
+    logger = FakeLogger();
 
     // Default: getById returns a valid batch so pause/resume/cancel/stop
     // can publish events without blowing up.

@@ -8,12 +8,13 @@ import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/handlers/tm_lookup_handler.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
+
+import '../../../../helpers/fakes/fake_logger.dart';
 
 // Characterisation tests for TmLookupHandler.performLookup. Pinned behaviours:
 // - Exact-match phase: every unit with an exact TM hit is persisted via the
@@ -40,16 +41,6 @@ class _MockTransactionManager extends Mock implements TransactionManager {}
 
 // Silent logger fake — TmLookupHandler logs heavily and we do not want
 // noisy stubs for every info/debug call.
-class _FakeLogger extends Fake implements ILoggingService {
-  @override
-  void debug(String message, [dynamic data]) {}
-  @override
-  void info(String message, [dynamic data]) {}
-  @override
-  void warning(String message, [dynamic data]) {}
-  @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
-}
 
 // Stand-in for sqflite Transaction; the handler never actually inspects the
 // object — it merely passes it through to upsertWithTransaction(), which we
@@ -158,7 +149,7 @@ void main() {
   late _MockHistoryService historyService;
   late _MockVersionRepository versionRepository;
   late _MockTransactionManager transactionManager;
-  late _FakeLogger logger;
+  late FakeLogger logger;
   late TmLookupHandler handler;
 
   // Captures every TranslationVersion the handler tries to persist via the
@@ -171,7 +162,7 @@ void main() {
     historyService = _MockHistoryService();
     versionRepository = _MockVersionRepository();
     transactionManager = _MockTransactionManager();
-    logger = _FakeLogger();
+    logger = FakeLogger();
     persistedVersions = [];
 
     // Default TM stubs: nothing matches anywhere. Individual tests override.

@@ -9,7 +9,6 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/handlers/validation_persistence_handler.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -17,6 +16,8 @@ import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
+
+import '../../../../helpers/fakes/fake_logger.dart';
 
 // Characterisation tests for ValidationPersistenceHandler.validateAndSave.
 // Pinned behaviours:
@@ -47,16 +48,6 @@ class _MockVersionRepository extends Mock
 
 // Silent logger fake — the handler logs heavily and we do not want noisy
 // stubs for every info/debug/warning call.
-class _FakeLogger extends Fake implements ILoggingService {
-  @override
-  void debug(String message, [dynamic data]) {}
-  @override
-  void info(String message, [dynamic data]) {}
-  @override
-  void warning(String message, [dynamic data]) {}
-  @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
-}
 
 class _FakeTranslationVersion extends Fake implements TranslationVersion {}
 
@@ -122,7 +113,7 @@ void main() {
   late _MockTmService tmService;
   late _MockHistoryService historyService;
   late _MockVersionRepository versionRepository;
-  late _FakeLogger logger;
+  late FakeLogger logger;
   late ValidationPersistenceHandler handler;
 
   // Captures every TranslationVersion the handler tries to persist. Lets each
@@ -134,7 +125,7 @@ void main() {
     tmService = _MockTmService();
     historyService = _MockHistoryService();
     versionRepository = _MockVersionRepository();
-    logger = _FakeLogger();
+    logger = FakeLogger();
     persistedVersions = [];
 
     // Default validation: everything is valid, no errors, no warnings.
