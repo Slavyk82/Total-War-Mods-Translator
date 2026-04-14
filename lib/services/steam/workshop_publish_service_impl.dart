@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
+import 'package:twmt/services/shared/i_process_launcher.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_publish_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
@@ -22,9 +23,20 @@ import 'package:twmt/services/steam/vdf_generator.dart';
 /// 3. After a successful full login, steamcmd caches credentials in
 ///    config/config.vdf and ssfn* files — subsequent runs use step 1.
 class WorkshopPublishServiceImpl implements IWorkshopPublishService {
-  final SteamCmdManager _manager = SteamCmdManager();
-  final VdfGenerator _vdfGenerator = VdfGenerator();
-  final ILoggingService _logger = LoggingService.instance;
+  final SteamCmdManager _manager;
+  final VdfGenerator _vdfGenerator;
+  final IProcessLauncher _processLauncher;
+  final ILoggingService _logger;
+
+  WorkshopPublishServiceImpl({
+    SteamCmdManager? manager,
+    VdfGenerator? vdfGenerator,
+    IProcessLauncher? processLauncher,
+    ILoggingService? logger,
+  })  : _manager = manager ?? SteamCmdManager(),
+        _vdfGenerator = vdfGenerator ?? VdfGenerator(),
+        _processLauncher = processLauncher ?? const ProcessLauncher(),
+        _logger = logger ?? LoggingService.instance;
 
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
@@ -453,7 +465,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
             Result<WorkshopPublishResult, SteamServiceException> result)?
         onItemComplete,
   }) async {
-    _currentProcess = await Process.start(
+    _currentProcess = await _processLauncher.start(
       steamCmdPath,
       command,
       runInShell: false,
@@ -672,7 +684,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     required DateTime startTime,
     required bool initialWasUpdate,
   }) async {
-    _currentProcess = await Process.start(
+    _currentProcess = await _processLauncher.start(
       steamCmdPath,
       command,
       runInShell: false,
