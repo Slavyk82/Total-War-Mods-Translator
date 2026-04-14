@@ -261,9 +261,10 @@ class TranslationSplitter {
     // missing keys as failed units so callers can surface them.
     final translations = <String, String>{};
     final missingUnitIds = <String>[];
+    final requestedIds = unitsToTranslate.map((u) => u.id).toSet();
     for (final unit in unitsToTranslate) {
       final translatedText = llmResponse.translations[unit.id];
-      if (translatedText == null) {
+      if (translatedText == null || translatedText.trim().isEmpty) {
         missingUnitIds.add(unit.id);
         continue;
       }
@@ -275,6 +276,17 @@ class TranslationSplitter {
       _logger.warning(
         'LLM response missing translations for ${missingUnitIds.length} unit(s) '
         'in batch $batchId: ${missingUnitIds.join(', ')}',
+      );
+    }
+
+    // Surface hallucinated keys (present in response but not in the request).
+    final extraKeys = llmResponse.translations.keys
+        .where((k) => !requestedIds.contains(k))
+        .toList();
+    if (extraKeys.isNotEmpty) {
+      _logger.debug(
+        'LLM response contained ${extraKeys.length} unrequested key(s) '
+        'in batch $batchId: ${extraKeys.join(', ')}',
       );
     }
 
