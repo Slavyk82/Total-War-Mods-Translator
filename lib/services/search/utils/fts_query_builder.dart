@@ -201,7 +201,7 @@ class FtsQueryBuilder {
 
     final whereClause = filters.isNotEmpty ? 'AND ${filters.join(' AND ')}' : '';
     final limitClause = _buildLimitClause(limit, offset);
-    final escapedQuery = _escapeSql(query);
+    final escapedQuery = _escapeSqlLikePattern(query);
 
     return '''
       SELECT
@@ -213,7 +213,7 @@ class FtsQueryBuilder {
         created_at,
         updated_at
       FROM glossary_entries
-      WHERE (term LIKE '%$escapedQuery%' OR translation LIKE '%$escapedQuery%' OR notes LIKE '%$escapedQuery%')
+      WHERE (term LIKE '%$escapedQuery%' ESCAPE '\\' OR translation LIKE '%$escapedQuery%' ESCAPE '\\' OR notes LIKE '%$escapedQuery%' ESCAPE '\\')
       $whereClause
       ORDER BY term ASC
       $limitClause
@@ -304,9 +304,10 @@ class FtsQueryBuilder {
     return 'LIMIT $safeLimit';
   }
 
-  /// Escape SQL string literals
+  /// Escape SQL string literals (single quotes only, for non-LIKE use).
   ///
-  /// Prevents SQL injection by escaping single quotes.
+  /// Prevents SQL injection by escaping single quotes. Use this for values
+  /// compared with `=` or `IN (...)`, where LIKE wildcards have no meaning.
   ///
   /// Parameters:
   /// - [value]: String to escape
@@ -314,6 +315,25 @@ class FtsQueryBuilder {
   /// Returns: Escaped string safe for SQL queries
   static String _escapeSql(String value) {
     return value.replaceAll("'", "''");
+  }
+
+  /// Escape a LIKE pattern literal.
+  ///
+  /// Order matters: escape the backslash FIRST (so later escapes' backslashes
+  /// are not re-escaped), then `%` and `_` (LIKE wildcards), then the SQL
+  /// single-quote. Callers must pair this with `ESCAPE '\'` in the SQL so
+  /// the backslash is interpreted as the LIKE escape character.
+  ///
+  /// Parameters:
+  /// - [value]: User-provided substring to match literally
+  ///
+  /// Returns: Escaped string safe for interpolation inside a LIKE pattern
+  static String _escapeSqlLikePattern(String value) {
+    return value
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_')
+        .replaceAll("'", "''");
   }
 
   /// Sanitize FTS5 query to prevent SQL injection
