@@ -26,7 +26,7 @@ class SteamCmdManager {
   final Dio _dio = Dio();
 
   /// Logger
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Cached SteamCMD path
   String? _cachedSteamCmdPath;
@@ -34,9 +34,15 @@ class SteamCmdManager {
   /// Whether SteamCMD is initialized
   bool _isInitialized = false;
 
-  factory SteamCmdManager() => _instance;
+  factory SteamCmdManager({ILoggingService? logger}) {
+    if (logger != null) {
+      return SteamCmdManager._internal(logger: logger);
+    }
+    return _instance;
+  }
 
-  SteamCmdManager._internal();
+  SteamCmdManager._internal({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Get SteamCMD executable path
   ///

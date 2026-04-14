@@ -17,12 +17,18 @@ class FileImportExportService {
   static final FileImportExportService _instance =
       FileImportExportService._internal();
 
-  factory FileImportExportService() => _instance;
+  factory FileImportExportService({ILoggingService? logger}) {
+    if (logger != null) {
+      return FileImportExportService._internal(logger: logger);
+    }
+    return _instance;
+  }
 
-  FileImportExportService._internal();
+  FileImportExportService._internal({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Logging service instance
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   // ============================================================================
   // CSV OPERATIONS

@@ -13,7 +13,10 @@ import '../database/database_service.dart';
 /// 3. Deletes cache entries before disabling triggers
 /// 4. Re-enables triggers and rebuilds FTS5 indexes after deletion
 class ProjectLanguageDeletionService {
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
+
+  ProjectLanguageDeletionService({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Delete a project language and all related translation versions.
   ///

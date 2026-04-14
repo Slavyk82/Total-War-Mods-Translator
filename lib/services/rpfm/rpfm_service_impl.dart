@@ -18,7 +18,7 @@ class RpfmServiceImpl
     with RpfmExtractionMixin, RpfmPackOperationsMixin
     implements IRpfmService {
   final RpfmCliManager _cliManager = RpfmCliManager();
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
   final StreamController<RpfmLogMessage> _logController =
@@ -26,6 +26,9 @@ class RpfmServiceImpl
 
   Process? _currentProcess;
   bool _isCancelled = false;
+
+  RpfmServiceImpl({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   // Expose internal state to mixins
   @override

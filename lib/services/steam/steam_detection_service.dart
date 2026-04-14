@@ -9,7 +9,10 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// Service for auto-detecting Steam and Total War game installations on Windows
 /// Supports installations on any drive letter, not just C:
 class SteamDetectionService {
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
+
+  SteamDetectionService({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Cache for detected Steam libraries to avoid repeated scans
   List<String>? _cachedLibraries;

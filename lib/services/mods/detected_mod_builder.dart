@@ -31,17 +31,19 @@ class DetectedModBuilder {
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final ProjectAnalysisHandler _analysisHandler;
   final ProjectRepository _projectRepository;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   DetectedModBuilder({
     required WorkshopModRepository workshopModRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     required ProjectAnalysisHandler analysisHandler,
     required ProjectRepository projectRepository,
+    ILoggingService? logger,
   })  : _workshopModRepository = workshopModRepository,
         _analysisCacheRepository = analysisCacheRepository,
         _analysisHandler = analysisHandler,
-        _projectRepository = projectRepository;
+        _projectRepository = projectRepository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Build list of DetectedMod from collected data.
   ///

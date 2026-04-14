@@ -47,7 +47,7 @@ class ModUpdateAnalysisService {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _languageRepository;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   ModUpdateAnalysisService({
@@ -56,11 +56,13 @@ class ModUpdateAnalysisService {
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
+    ILoggingService? logger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
-        _languageRepository = languageRepository;
+        _languageRepository = languageRepository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Analyze changes between pack file and existing project translations
   ///

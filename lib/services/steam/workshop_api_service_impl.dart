@@ -26,10 +26,13 @@ class WorkshopApiServiceImpl implements IWorkshopApiService {
   ));
 
   /// Logger
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Rate limiter (100 requests per minute)
   final RateLimiter _rateLimiter = RateLimiter(requestsPerMinute: 100);
+
+  WorkshopApiServiceImpl({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   @override
   Future<Result<WorkshopModInfo, SteamServiceException>> getModInfo({

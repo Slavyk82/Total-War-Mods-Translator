@@ -29,16 +29,18 @@ class ProjectAnalysisHandler {
   final ProjectRepository _projectRepository;
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final ModUpdateAnalysisService _modUpdateAnalysisService;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   ProjectAnalysisHandler({
     required ProjectRepository projectRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     required ModUpdateAnalysisService modUpdateAnalysisService,
+    ILoggingService? logger,
   })  : _projectRepository = projectRepository,
         _analysisCacheRepository = analysisCacheRepository,
-        _modUpdateAnalysisService = modUpdateAnalysisService;
+        _modUpdateAnalysisService = modUpdateAnalysisService,
+        _logger = logger ?? LoggingService.instance;
 
   /// Analyze changes for an existing project.
   ///

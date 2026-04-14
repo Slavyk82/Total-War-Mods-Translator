@@ -14,7 +14,7 @@ import 'package:twmt/services/shared/logging_service.dart';
 class WorkshopModProcessor {
   final WorkshopModRepository _workshopModRepository;
   final IWorkshopApiService _workshopApiService;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   /// Maximum number of mods to fetch in a single Steam API batch request.
@@ -23,8 +23,10 @@ class WorkshopModProcessor {
   WorkshopModProcessor({
     required WorkshopModRepository workshopModRepository,
     required IWorkshopApiService workshopApiService,
+    ILoggingService? logger,
   })  : _workshopModRepository = workshopModRepository,
-        _workshopApiService = workshopApiService;
+        _workshopApiService = workshopApiService,
+        _logger = logger ?? LoggingService.instance;
 
   /// Fetch and process mod data from Steam Workshop API.
   ///

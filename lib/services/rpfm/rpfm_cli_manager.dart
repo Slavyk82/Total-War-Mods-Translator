@@ -33,14 +33,20 @@ class RpfmCliManager {
   final Dio _dio = Dio();
 
   /// Logger
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Cached RPFM path
   String? _cachedRpfmPath;
 
-  factory RpfmCliManager() => _instance;
+  factory RpfmCliManager({ILoggingService? logger}) {
+    if (logger != null) {
+      return RpfmCliManager._internal(logger: logger);
+    }
+    return _instance;
+  }
 
-  RpfmCliManager._internal();
+  RpfmCliManager._internal({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Get Total War game setting for RPFM operations
   ///

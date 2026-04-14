@@ -24,14 +24,16 @@ typedef ScanLogEmitter = void Function(String message, [ScanLogLevel level]);
 class PackFileScanner {
   final ModScanCacheRepository _modScanCacheRepository;
   final IRpfmService _rpfmService;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   PackFileScanner({
     required ModScanCacheRepository modScanCacheRepository,
     required IRpfmService rpfmService,
+    ILoggingService? logger,
   })  : _modScanCacheRepository = modScanCacheRepository,
-        _rpfmService = rpfmService;
+        _rpfmService = rpfmService,
+        _logger = logger ?? LoggingService.instance;
 
   /// Collect local mod data from Workshop directories.
   ///

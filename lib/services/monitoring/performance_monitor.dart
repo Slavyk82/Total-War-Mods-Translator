@@ -11,10 +11,16 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Providing performance statistics
 class PerformanceMonitor {
   static final PerformanceMonitor _instance = PerformanceMonitor._internal();
-  factory PerformanceMonitor() => _instance;
-  PerformanceMonitor._internal();
+  factory PerformanceMonitor({ILoggingService? logger}) {
+    if (logger != null) {
+      return PerformanceMonitor._internal(logger: logger);
+    }
+    return _instance;
+  }
+  PerformanceMonitor._internal({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Threshold for slow operation warning (in milliseconds)
   int slowOperationThresholdMs = 1000;

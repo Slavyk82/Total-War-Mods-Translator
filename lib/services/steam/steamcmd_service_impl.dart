@@ -12,12 +12,15 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// Implementation of SteamCMD service
 class SteamCmdServiceImpl implements ISteamCmdService {
   final SteamCmdManager _manager = SteamCmdManager();
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
 
   Process? _currentProcess;
   bool _isCancelled = false;
+
+  SteamCmdServiceImpl({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   @override
   Stream<double> get progressStream => _progressController.stream;

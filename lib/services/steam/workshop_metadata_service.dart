@@ -13,14 +13,16 @@ import 'package:uuid/uuid.dart';
 class WorkshopMetadataService {
   final IWorkshopApiService _apiService;
   final WorkshopModRepository _repository;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   WorkshopMetadataService({
     required IWorkshopApiService apiService,
     required WorkshopModRepository repository,
+    ILoggingService? logger,
   })  : _apiService = apiService,
-        _repository = repository;
+        _repository = repository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Fetch and store single mod metadata
   ///

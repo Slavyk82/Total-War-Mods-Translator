@@ -15,14 +15,16 @@ import 'package:twmt/features/settings/providers/settings_providers.dart';
 class GameInstallationSyncService {
   final GameInstallationRepository _gameInstallationRepository;
   final SettingsService _settingsService;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   GameInstallationSyncService({
     required GameInstallationRepository gameInstallationRepository,
     required SettingsService settingsService,
+    ILoggingService? logger,
   })  : _gameInstallationRepository = gameInstallationRepository,
-        _settingsService = settingsService;
+        _settingsService = settingsService,
+        _logger = logger ?? LoggingService.instance;
 
   /// Sync all configured games from settings to database
   Future<Result<void, ServiceException>> syncAllGames() async {

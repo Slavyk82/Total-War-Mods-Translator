@@ -36,7 +36,7 @@ class WorkshopScannerService {
   final WorkshopModProcessor _workshopModProcessor;
   final PackFileScanner _packFileScanner;
   final DetectedModBuilder _detectedModBuilder;
-  final ILoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Stream controller for scan progress logs
   final StreamController<ScanLogMessage> _scanLogController =
@@ -66,16 +66,19 @@ class WorkshopScannerService {
     required IWorkshopApiService workshopApiService,
     required IRpfmService rpfmService,
     required ModUpdateAnalysisService modUpdateAnalysisService,
+    ILoggingService? logger,
   })  : _projectRepository = projectRepository,
         _gameInstallationRepository = gameInstallationRepository,
         _workshopModRepository = workshopModRepository,
         _workshopModProcessor = WorkshopModProcessor(
           workshopModRepository: workshopModRepository,
           workshopApiService: workshopApiService,
+          logger: logger,
         ),
         _packFileScanner = PackFileScanner(
           modScanCacheRepository: modScanCacheRepository,
           rpfmService: rpfmService,
+          logger: logger,
         ),
         _detectedModBuilder = DetectedModBuilder(
           workshopModRepository: workshopModRepository,
@@ -85,8 +88,11 @@ class WorkshopScannerService {
             projectRepository: projectRepository,
             analysisCacheRepository: analysisCacheRepository,
             modUpdateAnalysisService: modUpdateAnalysisService,
+            logger: logger,
           ),
-        );
+          logger: logger,
+        ),
+        _logger = logger ?? LoggingService.instance;
 
   /// Scan Workshop folder for a game and return detected mods without creating projects.
   ///
