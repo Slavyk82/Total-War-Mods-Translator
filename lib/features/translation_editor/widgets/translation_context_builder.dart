@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../models/domain/glossary_entry.dart';
+import '../../../providers/shared/logging_providers.dart';
 import '../../../services/glossary/models/glossary_term_with_variants.dart';
 import '../../../services/translation/models/translation_context.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
@@ -88,7 +89,12 @@ class TranslationContextBuilder {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to build translation context for prompt preview',
+        e,
+        stackTrace,
+      );
       return null;
     }
   }
