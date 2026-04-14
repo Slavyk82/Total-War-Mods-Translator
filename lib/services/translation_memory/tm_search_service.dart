@@ -3,6 +3,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
@@ -38,7 +39,7 @@ class TmSearchService {
   }) async {
     try {
       // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId = _normalizeLanguageId(targetLanguageCode);
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       final result = await _repository.getWithFilters(
         targetLanguageId: targetLanguageId,
@@ -92,7 +93,7 @@ class TmSearchService {
       }
 
       // Convert language code to ID format
-      final targetLanguageId = _normalizeLanguageId(targetLanguageCode);
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       // Convert TmSearchScope enum to string for repository
       final searchScope = switch (searchIn) {
@@ -139,15 +140,6 @@ class TmSearchService {
         ),
       );
     }
-  }
-
-  /// Normalize a raw language code into the repository's `lang_<code>` ID
-  /// format. Idempotent: if the input is already prefixed (e.g. `'lang_fr'`),
-  /// it is returned unchanged to avoid a `'lang_lang_fr'` double-prefix bug.
-  String? _normalizeLanguageId(String? code) {
-    if (code == null) return null;
-    if (code.startsWith('lang_')) return code;
-    return 'lang_$code';
   }
 
   /// Bounded LIKE fallback when FTS5 fails.

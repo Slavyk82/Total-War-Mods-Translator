@@ -1,6 +1,6 @@
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -99,12 +99,9 @@ class TmImportExportService {
         'targetLanguageCode': targetLanguageCode,
       });
 
-      // Convert caller's language code to the DB ID format (e.g. 'FR' -> 'lang_fr').
-      // This pushes the target-language filter down to the query layer, avoiding
+      // Push the target-language filter down to the query layer to avoid
       // loading the full TM into RAM.
-      final String? dbTargetLanguageId = targetLanguageCode != null
-          ? 'lang_${targetLanguageCode.toLowerCase()}'
-          : null;
+      final String? dbTargetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       // Resolve target language string for the TMX header/TUV xml:lang attribute.
       // If the caller did not specify a target language, peek at the first row
