@@ -4,6 +4,8 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
 
+import '../../helpers/test_bootstrap.dart';
+
 void main() {
   late Database db;
   late ProjectRepository repository;
@@ -14,6 +16,10 @@ void main() {
   });
 
   setUp(() async {
+    // Register a fake ILoggingService so services that fall back to
+    // ServiceLocator.get<ILoggingService>() can resolve during tests.
+    await TestBootstrap.registerFakes();
+
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
 
     // Create projects table

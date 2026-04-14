@@ -14,6 +14,7 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
 
 import '../../helpers/fakes/fake_logger.dart';
+import '../../helpers/test_bootstrap.dart';
 
 /// Characterisation tests for the Translation Editor feature.
 ///
@@ -43,6 +44,10 @@ void main() {
   });
 
   setUp(() async {
+    // Register a fake ILoggingService so services that fall back to
+    // ServiceLocator.get<ILoggingService>() can resolve during tests.
+    await TestBootstrap.registerFakes();
+
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
 
     // Minimal schema required by TranslationUnitRepository.getTranslationRowsJoined
