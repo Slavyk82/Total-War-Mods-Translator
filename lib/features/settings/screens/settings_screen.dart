@@ -4,6 +4,7 @@ import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../widgets/general_settings_tab.dart';
 import '../widgets/folders_settings_tab.dart';
 import '../widgets/llm_providers_tab.dart';
+import '../widgets/appearance_settings_tab.dart';
 
 /// Settings screen with tabbed interface for General and LLM Providers.
 class SettingsScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return FluentScaffold(
       body: DefaultTabController(
-        length: 3,
+        length: 4,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -65,6 +66,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     icon: FluentIcons.brain_circuit_24_regular,
                     label: 'LLM Providers',
                   ),
+                  _FluentTab(
+                    icon: FluentIcons.color_24_regular,
+                    label: 'Appearance',
+                  ),
                 ],
               ),
             ),
@@ -74,6 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   GeneralSettingsTab(),
                   FoldersSettingsTab(),
                   LlmProvidersTab(),
+                  AppearanceSettingsTab(),
                 ],
               ),
             ),

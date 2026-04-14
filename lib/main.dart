@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:twmt/providers/theme_provider.dart';
+import 'package:twmt/providers/theme_name_provider.dart';
 import 'package:twmt/providers/data_migration_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/config/router/app_router.dart' show goRouterProvider, rootNavigatorKey;
@@ -100,14 +101,25 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeModeAsync = ref.watch(themeProvider);
+    final themeNameAsync = ref.watch(themeNameProvider);
     final router = ref.watch(goRouterProvider);
+
+    // Combine: both must resolve before we can pick a dark theme. While
+    // themeName is loading we fall back to Atelier — avoids a flash on a
+    // stale theme during the very first frames.
+    final themeName =
+        themeNameAsync.value ?? TwmtThemeName.atelier;
+    final ThemeData darkTheme = switch (themeName) {
+      TwmtThemeName.atelier => AppTheme.atelierDarkTheme,
+      TwmtThemeName.forge => AppTheme.forgeDarkTheme,
+    };
 
     return themeModeAsync.when(
       data: (themeMode) => MaterialApp.router(
         title: 'TWMT',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
+        darkTheme: darkTheme,
         themeMode: themeMode,
         routerConfig: router,
         builder: (context, child) => _AppStartupTasks(child: child!),
