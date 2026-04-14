@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
@@ -433,8 +435,9 @@ Widget buildErrorSection(
 
 /// A terminal-like widget that displays real-time logs.
 ///
-/// Shows logs from [LoggingService] with auto-scrolling and level-based coloring.
-class LogTerminal extends StatefulWidget {
+/// Streams logs via [loggingServiceProvider] with auto-scrolling and
+/// level-based coloring.
+class LogTerminal extends ConsumerStatefulWidget {
   const LogTerminal({
     super.key,
     this.height,
@@ -448,10 +451,10 @@ class LogTerminal extends StatefulWidget {
   final bool expand;
 
   @override
-  State<LogTerminal> createState() => _LogTerminalState();
+  ConsumerState<LogTerminal> createState() => _LogTerminalState();
 }
 
-class _LogTerminalState extends State<LogTerminal> {
+class _LogTerminalState extends ConsumerState<LogTerminal> {
   final ScrollController _scrollController = ScrollController();
   final List<LogEntry> _logs = [];
   StreamSubscription<LogEntry>? _logSubscription;
@@ -461,11 +464,9 @@ class _LogTerminalState extends State<LogTerminal> {
   void initState() {
     super.initState();
 
-    // Load recent logs
-    _logs.addAll(LoggingService.instance.recentLogs);
-
-    // Subscribe to new logs
-    _logSubscription = LoggingService.instance.logStream.listen(_onNewLog);
+    final logger = ref.read(loggingServiceProvider);
+    _logs.addAll(logger.recentLogs);
+    _logSubscription = logger.logStream.listen(_onNewLog);
 
     // Scroll to bottom after initial load
     WidgetsBinding.instance.addPostFrameCallback((_) {

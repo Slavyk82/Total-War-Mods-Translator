@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to fix backslash-before-newline pattern in translations.
@@ -10,6 +11,11 @@ import 'migration_base.dart';
 ///
 /// This migration removes spurious backslashes before newlines.
 class FixBackslashNewlinesMigration extends Migration {
+  final ILoggingService _logger;
+
+  FixBackslashNewlinesMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'fix_backslash_newlines';
 
@@ -21,10 +27,8 @@ class FixBackslashNewlinesMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
-      logging.debug('Checking for backslash-before-newline patterns...');
+      _logger.debug('Checking for backslash-before-newline patterns...');
 
       // Check for backslash followed by newline (char 92 + char 10)
       final countResult = await DatabaseService.database.rawQuery('''
@@ -33,13 +37,13 @@ class FixBackslashNewlinesMigration extends Migration {
       ''');
       final count = countResult.first['cnt'] as int;
 
-      logging.debug('Found $count translations with backslash-before-newline');
+      _logger.debug('Found $count translations with backslash-before-newline');
 
       if (count == 0) {
         return false; // Nothing to fix
       }
 
-      logging.info('Fixing backslash-before-newline in $count translations...');
+      _logger.info('Fixing backslash-before-newline in $count translations...');
 
       // Process in batches
       const batchSize = 500;
@@ -59,16 +63,16 @@ class FixBackslashNewlinesMigration extends Migration {
         if (updated == 0) break;
 
         totalProcessed += updated;
-        logging.debug('Processed $totalProcessed / $count translations');
+        _logger.debug('Processed $totalProcessed / $count translations');
 
         // Yield to UI thread
         await Future.delayed(Duration.zero);
       }
 
-      logging.info('Fixed backslash-before-newline in $totalProcessed translations');
+      _logger.info('Fixed backslash-before-newline in $totalProcessed translations');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to fix backslash-before-newline', e, stackTrace);
+      _logger.error('Failed to fix backslash-before-newline', e, stackTrace);
       // Non-fatal
       return false;
     }

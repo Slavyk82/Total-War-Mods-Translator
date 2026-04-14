@@ -1,6 +1,6 @@
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -31,7 +31,7 @@ typedef SubBatchTranslatedCallback = Future<void> Function(
 class TranslationSplitter {
   final LlmTokenEstimator _tokenEstimator;
   final LlmRetryHandler _retryHandler;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   late final TranslationErrorRecovery _errorRecovery;
 
   /// Maximum recursion depth for batch splitting.
@@ -40,7 +40,7 @@ class TranslationSplitter {
   TranslationSplitter({
     required LlmTokenEstimator tokenEstimator,
     required LlmRetryHandler retryHandler,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _tokenEstimator = tokenEstimator,
         _retryHandler = retryHandler,
         _logger = logger {
@@ -253,14 +253,41 @@ class TranslationSplitter {
     SubBatchTranslatedCallback? onSubBatchTranslated,
     required DateTime apiCallStart,
   }) async {
+    // Match translations to units by unit.id key instead of positional index.
+    // Positional indexing silently misattributed translations when the LLM
+    // returned keys in a different order than requested, and silently dropped
+    // trailing units when the response contained fewer keys. Key-based
+    // matching attaches each translation to the correct unit and tracks
+    // missing keys as failed units so callers can surface them.
     final translations = <String, String>{};
-    for (var i = 0;
-        i < unitsToTranslate.length && i < llmResponse.translations.length;
-        i++) {
-      final unit = unitsToTranslate[i];
-      final translatedText = llmResponse.translations.values.elementAt(i);
+    final missingUnitIds = <String>[];
+    final requestedIds = unitsToTranslate.map((u) => u.id).toSet();
+    for (final unit in unitsToTranslate) {
+      final translatedText = llmResponse.translations[unit.id];
+      if (translatedText == null || translatedText.trim().isEmpty) {
+        missingUnitIds.add(unit.id);
+        continue;
+      }
       translations[unit.id] =
           TranslationTextUtils.normalizeTranslation(translatedText);
+    }
+
+    if (missingUnitIds.isNotEmpty) {
+      _logger.warning(
+        'LLM response missing translations for ${missingUnitIds.length} unit(s) '
+        'in batch $batchId: ${missingUnitIds.join(', ')}',
+      );
+    }
+
+    // Surface hallucinated keys (present in response but not in the request).
+    final extraKeys = llmResponse.translations.keys
+        .where((k) => !requestedIds.contains(k))
+        .toList();
+    if (extraKeys.isNotEmpty) {
+      _logger.debug(
+        'LLM response contained ${extraKeys.length} unrequested key(s) '
+        'in batch $batchId: ${extraKeys.join(', ')}',
+      );
     }
 
     final apiCallDuration = DateTime.now().difference(apiCallStart);
@@ -309,6 +336,9 @@ class TranslationSplitter {
       currentPhase: TranslationPhase.llmTranslation,
       phaseDetail: 'Chunk saved (${translations.length} units), processing continues...',
       tokensUsed: currentProgress.tokensUsed + totalTokens,
+      // Count units whose IDs were absent from the LLM response as failed so
+      // the orchestrator can surface the gap instead of silently losing them.
+      failedUnits: currentProgress.failedUnits + missingUnitIds.length,
       llmLogs: updatedLogs,
       timestamp: DateTime.now(),
     );

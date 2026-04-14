@@ -1,10 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../repositories/compilation_repository.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
-import '../../../services/steam/i_workshop_publish_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/steam_exceptions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import 'steam_publish_providers.dart';
@@ -134,7 +132,7 @@ class BatchWorkshopPublishNotifier
     if (state.isPublishing) return;
     _silentlyCleaned = false;
 
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.info('Starting batch workshop publish', {
       'itemCount': items.length,
     });
@@ -160,7 +158,7 @@ class BatchWorkshopPublishNotifier
       results: const [],
     );
 
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final service = ref.read(workshopPublishServiceProvider);
     final results = <BatchPublishItemResult>[];
 
     try {
@@ -271,12 +269,12 @@ class BatchWorkshopPublishNotifier
     BatchPublishItemInfo item,
     String workshopId,
   ) async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     if (item.projectId != null) {
       try {
-        final projectRepo = ServiceLocator.get<ProjectRepository>();
+        final projectRepo = ref.read(projectRepositoryProvider);
         final projectResult = await projectRepo.getById(item.projectId!);
         if (projectResult.isOk) {
           final updated = projectResult.value.copyWith(
@@ -291,8 +289,7 @@ class BatchWorkshopPublishNotifier
       }
     } else if (item.compilationId != null) {
       try {
-        final compilationRepo =
-            ServiceLocator.get<CompilationRepository>();
+        final compilationRepo = ref.read(compilationRepositoryProvider);
         await compilationRepo.updateAfterPublish(
           item.compilationId!,
           workshopId,
@@ -331,7 +328,7 @@ class BatchWorkshopPublishNotifier
   void cancel() {
     if (state.isPublishing && !state.isCancelled) {
       state = state.copyWith(isCancelled: true);
-      final service = ServiceLocator.get<IWorkshopPublishService>();
+      final service = ref.read(workshopPublishServiceProvider);
       service.cancel();
     }
   }
@@ -350,7 +347,7 @@ class BatchWorkshopPublishNotifier
     _cachedItems = null;
     _cachedUsername = null;
     _cachedPassword = null;
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final service = ref.read(workshopPublishServiceProvider);
     service.cancel();
   }
 }

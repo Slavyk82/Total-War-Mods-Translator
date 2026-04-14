@@ -1,14 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../models/domain/ignored_source_text.dart';
+import '../../../providers/shared/service_providers.dart' as bridge;
 import '../../../services/translation/ignored_source_text_service.dart';
-import '../../../services/service_locator.dart';
 
 part 'ignored_source_texts_providers.g.dart';
 
 /// Provider for IgnoredSourceTextService
 @riverpod
 IgnoredSourceTextService ignoredSourceTextService(Ref ref) {
-  return ServiceLocator.get<IgnoredSourceTextService>();
+  return ref.watch(bridge.ignoredSourceTextServiceProvider);
 }
 
 /// Notifier for managing ignored source texts

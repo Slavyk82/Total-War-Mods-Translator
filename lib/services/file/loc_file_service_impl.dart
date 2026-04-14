@@ -10,7 +10,8 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/file/i_loc_file_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of Total War .loc file service
 ///
@@ -21,19 +22,19 @@ class LocFileServiceImpl implements ILocFileService {
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _projectLanguageRepository;
   final LanguageRepository _languageRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   LocFileServiceImpl({
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository projectLanguageRepository,
     required LanguageRepository languageRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _projectLanguageRepository = projectLanguageRepository,
         _languageRepository = languageRepository,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Find project language by language code
   ///
@@ -145,29 +146,30 @@ class LocFileServiceImpl implements ILocFileService {
           projectLanguageId: projectLanguage.id,
         );
 
+        String textToExport;
+
         if (versionResult.isErr) {
-          // Skip units without translations
-          continue;
-        }
-
-        final version = versionResult.unwrap();
-
-        // Apply validation filter
-        if (validatedOnly) {
-          // Only export translated translations (not needsReview)
-          if (version.status != TranslationVersionStatus.translated) {
-            continue;
-          }
+          // No translation version exists — use original source text
+          textToExport = unit.sourceText;
         } else {
-          // Export any completed translation
-          if (version.translatedText == null ||
-              version.translatedText!.isEmpty) {
-            continue;
+          final version = versionResult.unwrap();
+
+          // Apply validation filter
+          if (validatedOnly) {
+            if (version.status != TranslationVersionStatus.translated) {
+              continue;
+            }
           }
+
+          // Use translated text if available, otherwise fall back to source text
+          textToExport = (version.translatedText != null &&
+                  version.translatedText!.isNotEmpty)
+              ? version.translatedText!
+              : unit.sourceText;
         }
 
         // Format as TSV row: key\ttext\ttooltip
-        final escapedText = _escapeTsvText(version.translatedText!);
+        final escapedText = _escapeTsvText(textToExport);
         buffer.writeln('${unit.key}\t$escapedText\tfalse');
 
         exportedCount++;
@@ -305,7 +307,8 @@ class LocFileServiceImpl implements ILocFileService {
         );
 
         if (versionResult.isErr) {
-          // Skip units without translations
+          // No translation version — will use source text as fallback
+          count++;
           continue;
         }
 
@@ -317,10 +320,8 @@ class LocFileServiceImpl implements ILocFileService {
             count++;
           }
         } else {
-          if (version.translatedText != null &&
-              version.translatedText!.isNotEmpty) {
-            count++;
-          }
+          // All units are exportable: translated text or source text fallback
+          count++;
         }
       }
 
@@ -389,6 +390,11 @@ class LocFileServiceImpl implements ILocFileService {
 
       final units = unitsResult.unwrap();
 
+      _logger.info('Found translation units for export', {
+        'count': units.length,
+        'projectId': projectId,
+      });
+
       if (units.isEmpty) {
         return Err(FileServiceException(
           'No translation units found for project',
@@ -398,6 +404,9 @@ class LocFileServiceImpl implements ILocFileService {
       // Group units by source .loc file
       final groupedUnits = <String, List<({String key, String translatedText})>>{};
       final langLower = languageCode.toLowerCase();
+      int noVersionCount = 0;
+      int emptyTextCount = 0;
+      int translatedCount = 0;
 
       for (final unit in units) {
         // Get translation version for this unit and language
@@ -406,35 +415,51 @@ class LocFileServiceImpl implements ILocFileService {
           projectLanguageId: projectLanguage.id,
         );
 
+        String textToExport;
+
         if (versionResult.isErr) {
-          // Skip units without translations
-          continue;
-        }
-
-        final version = versionResult.unwrap();
-
-        // Apply validation filter
-        if (validatedOnly) {
-          if (version.status != TranslationVersionStatus.translated) {
-            continue;
-          }
+          // No translation version exists — use original source text
+          noVersionCount++;
+          textToExport = unit.sourceText;
         } else {
-          if (version.translatedText == null ||
-              version.translatedText!.isEmpty) {
-            continue;
+          final version = versionResult.unwrap();
+
+          // Apply validation filter
+          if (validatedOnly) {
+            if (version.status != TranslationVersionStatus.translated) {
+              continue;
+            }
+          }
+
+          // Use translated text if available, otherwise fall back to source text
+          if (version.translatedText != null &&
+                  version.translatedText!.isNotEmpty) {
+            translatedCount++;
+            textToExport = version.translatedText!;
+          } else {
+            emptyTextCount++;
+            textToExport = unit.sourceText;
           }
         }
 
         // Determine the source file grouping key
         // Use the original source .loc file path, or fallback to a default
         final sourceFile = unit.sourceLocFile ?? 'text/db/translations.loc';
-        
+
         groupedUnits.putIfAbsent(sourceFile, () => []);
         groupedUnits[sourceFile]!.add((
           key: unit.key,
-          translatedText: version.translatedText!,
+          translatedText: textToExport,
         ));
       }
+
+      _logger.info('Export grouping complete', {
+        'groupedFiles': groupedUnits.length,
+        'totalGroupedEntries': groupedUnits.values.fold<int>(0, (s, l) => s + l.length),
+        'noVersionCount': noVersionCount,
+        'emptyTextCount': emptyTextCount,
+        'translatedCount': translatedCount,
+      });
 
       if (groupedUnits.isEmpty) {
         return Err(FileServiceException(

@@ -3,7 +3,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/search/i_search_service.dart';
 import 'package:twmt/services/search/models/search_result.dart';
 import 'package:twmt/services/search/models/search_exceptions.dart';
-import 'package:twmt/services/service_locator.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../models/search_query_model.dart';
 
 part 'search_providers.g.dart';
@@ -69,7 +69,7 @@ Future<SearchResultsModel> searchResults(
     return SearchResultsModel.empty();
   }
 
-  final service = ServiceLocator.get<ISearchService>();
+  final service = ref.watch(searchServiceProvider);
   final pageSize = query.options.resultsPerPage;
   final offset = (page - 1) * pageSize;
 
@@ -179,7 +179,7 @@ String _getScopeForRegex(SearchScope scope) {
 /// Search history (last 50 searches)
 @riverpod
 Future<List<Map<String, dynamic>>> searchHistory(Ref ref) async {
-  final service = ServiceLocator.get<ISearchService>();
+  final service = ref.watch(searchServiceProvider);
   final result = await service.getSearchHistory(limit: 50);
 
   return result.when(
@@ -191,7 +191,7 @@ Future<List<Map<String, dynamic>>> searchHistory(Ref ref) async {
 /// Saved searches list
 @riverpod
 Future<List<SavedSearch>> savedSearches(Ref ref) async {
-  final service = ServiceLocator.get<ISearchService>();
+  final service = ref.watch(searchServiceProvider);
   final result = await service.getSavedSearches();
 
   return result.when(
@@ -210,7 +210,7 @@ class SaveSearchAction extends _$SaveSearchAction {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ISearchService>();
+      final service = ref.read(searchServiceProvider);
       final result = await service.saveSearch(
         name,
         query.text,
@@ -249,7 +249,7 @@ class DeleteSearchAction extends _$DeleteSearchAction {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ISearchService>();
+      final service = ref.read(searchServiceProvider);
       final result = await service.deleteSavedSearch(searchId);
 
       result.when(
@@ -284,7 +284,7 @@ class ExecuteSavedSearchAction extends _$ExecuteSavedSearchAction {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ISearchService>();
+      final service = ref.read(searchServiceProvider);
 
       // Increment usage count
       await service.incrementSavedSearchUsage(search.id);
@@ -320,7 +320,7 @@ class ClearHistoryAction extends _$ClearHistoryAction {
     state = const AsyncValue.loading();
 
     try {
-      final service = ServiceLocator.get<ISearchService>();
+      final service = ref.read(searchServiceProvider);
       final result = await service.clearSearchHistory();
 
       result.when(

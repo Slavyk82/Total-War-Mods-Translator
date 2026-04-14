@@ -10,6 +10,7 @@ import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/repositories/mod_scan_cache_repository.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
@@ -35,7 +36,7 @@ class WorkshopScannerService {
   final WorkshopModProcessor _workshopModProcessor;
   final PackFileScanner _packFileScanner;
   final DetectedModBuilder _detectedModBuilder;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Stream controller for scan progress logs
   final StreamController<ScanLogMessage> _scanLogController =
@@ -65,16 +66,19 @@ class WorkshopScannerService {
     required IWorkshopApiService workshopApiService,
     required IRpfmService rpfmService,
     required ModUpdateAnalysisService modUpdateAnalysisService,
+    ILoggingService? logger,
   })  : _projectRepository = projectRepository,
         _gameInstallationRepository = gameInstallationRepository,
         _workshopModRepository = workshopModRepository,
         _workshopModProcessor = WorkshopModProcessor(
           workshopModRepository: workshopModRepository,
           workshopApiService: workshopApiService,
+          logger: logger,
         ),
         _packFileScanner = PackFileScanner(
           modScanCacheRepository: modScanCacheRepository,
           rpfmService: rpfmService,
+          logger: logger,
         ),
         _detectedModBuilder = DetectedModBuilder(
           workshopModRepository: workshopModRepository,
@@ -84,8 +88,11 @@ class WorkshopScannerService {
             projectRepository: projectRepository,
             analysisCacheRepository: analysisCacheRepository,
             modUpdateAnalysisService: modUpdateAnalysisService,
+            logger: logger,
           ),
-        );
+          logger: logger,
+        ),
+        _logger = logger ?? LoggingService.instance;
 
   /// Scan Workshop folder for a game and return detected mods without creating projects.
   ///

@@ -9,7 +9,7 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/batch_estimate.dart';
@@ -29,7 +29,7 @@ class BatchEstimationHandler {
   final TranslationBatchUnitRepository _batchUnitRepository;
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   BatchEstimationHandler({
     required ILlmService llmService,
@@ -38,7 +38,7 @@ class BatchEstimationHandler {
     required TranslationBatchUnitRepository batchUnitRepository,
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,
         _batchRepository = batchRepository,

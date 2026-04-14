@@ -18,7 +18,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// This provider uses safe defaults that work with most modern models.
 class OpenAiProvider implements ILlmProvider {
   final Dio _dio;
-  final TokenCalculator _tokenCalculator = TokenCalculator();
+  final TokenCalculator _tokenCalculator;
 
   @override
   final String providerCode = 'openai';
@@ -29,7 +29,7 @@ class OpenAiProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.openai;
 
-  OpenAiProvider({Dio? dio})
+  OpenAiProvider({Dio? dio, TokenCalculator? tokenCalculator})
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: LlmProviderConfig.openai.apiBaseUrl,
@@ -38,7 +38,8 @@ class OpenAiProvider implements ILlmProvider {
               headers: {
                 'Content-Type': 'application/json',
               },
-            ));
+            )),
+        _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(

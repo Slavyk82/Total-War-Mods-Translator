@@ -4,8 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import '../../../models/domain/translation_version.dart';
 import '../../../models/domain/translation_version_history.dart';
-import '../../../repositories/translation_version_history_repository.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/service_providers.dart';
 
 /// Dialog for viewing translation version history
 ///
@@ -45,7 +44,7 @@ class _TranslationHistoryDialogState
     });
 
     try {
-      final repository = ServiceLocator.get<TranslationVersionHistoryRepository>();
+      final repository = ref.read(translationVersionHistoryRepositoryProvider);
       final result = await repository.getByVersion(widget.versionId);
 
       result.when(

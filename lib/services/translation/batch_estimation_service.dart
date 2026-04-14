@@ -5,7 +5,7 @@ import 'package:twmt/repositories/translation_provider_repository.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/batch_estimate.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -20,7 +20,7 @@ import 'package:twmt/services/translation/models/translation_exceptions.dart';
 class BatchEstimationService {
   final ILlmService _llmService;
   final IPromptBuilderService _promptBuilder;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   /// Function to check if a unit is already translated (from TM)
   final Future<bool> Function(TranslationUnit, TranslationContext) _isUnitTranslated;
@@ -28,7 +28,7 @@ class BatchEstimationService {
   BatchEstimationService({
     required ILlmService llmService,
     required IPromptBuilderService promptBuilder,
-    required LoggingService logger,
+    required ILoggingService logger,
     required Future<bool> Function(TranslationUnit, TranslationContext) isUnitTranslated,
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,

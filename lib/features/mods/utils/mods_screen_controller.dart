@@ -12,11 +12,10 @@ import 'package:twmt/features/mods/services/mods_project_service.dart';
 import 'package:twmt/features/mods/utils/mods_dialog_helper.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/projects/i_project_initialization_service.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import '../../../providers/shared/service_providers.dart';
 
 /// Controller for ModsScreen orchestration logic
 ///
@@ -53,9 +52,10 @@ class ModsScreenController {
 
   /// Toggle hidden status for a mod
   Future<void> handleToggleHidden(String workshopId, bool hide) async {
-    LoggingService.instance.debug('handleToggleHidden called: workshopId=$workshopId, hide=$hide');
+    final logger = _ref.read(loggingServiceProvider);
+    logger.debug('handleToggleHidden called: workshopId=$workshopId, hide=$hide');
     await _ref.read(modHiddenToggleProvider.notifier).toggleHidden(workshopId, hide);
-    LoggingService.instance.debug('handleToggleHidden done');
+    logger.debug('handleToggleHidden done');
   }
 
   /// Force redownload a pack file by deleting it
@@ -157,7 +157,13 @@ class ModsScreenController {
     GoRouter router,
   ) async {
     final projectRepo = _ref.read(projectRepositoryProvider);
-    final service = ModsProjectService.create(projectRepository: projectRepo);
+    final service = ModsProjectService.create(
+      projectRepository: projectRepo,
+      workshopModRepository: _ref.read(workshopModRepositoryProvider),
+      languageRepository: _ref.read(languageRepositoryProvider),
+      projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
+      settingsService: _ref.read(settingsServiceProvider),
+    );
     String? projectId;
 
     try {
@@ -228,7 +234,13 @@ class ModsScreenController {
     ConfiguredGame selectedGame,
   ) async {
     final projectRepo = _ref.read(projectRepositoryProvider);
-    final service = ModsProjectService.create(projectRepository: projectRepo);
+    final service = ModsProjectService.create(
+      projectRepository: projectRepo,
+      workshopModRepository: _ref.read(workshopModRepositoryProvider),
+      languageRepository: _ref.read(languageRepositoryProvider),
+      projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
+      settingsService: _ref.read(settingsServiceProvider),
+    );
     final router = GoRouter.of(context);
     String? projectId;
 
@@ -299,7 +311,7 @@ class ModsScreenController {
     String projectName,
     String packFilePath,
   ) {
-    final initService = ServiceLocator.get<IProjectInitializationService>();
+    final initService = _ref.read(projectInitializationServiceProvider);
 
     return showDialog<bool>(
       context: context,

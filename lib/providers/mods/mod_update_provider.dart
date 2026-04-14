@@ -4,12 +4,9 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/mod_version.dart';
 import 'package:twmt/models/domain/project.dart';
-import 'package:twmt/repositories/game_installation_repository.dart';
-import 'package:twmt/repositories/mod_version_repository.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/steam/i_steamcmd_service.dart';
 import 'package:uuid/uuid.dart';
+import '../shared/repository_providers.dart';
+import '../shared/service_providers.dart';
 
 part 'mod_update_provider.g.dart';
 
@@ -135,10 +132,10 @@ class ModUpdateQueue extends _$ModUpdateQueue {
 
   /// Update a specific project
   Future<void> _updateProject(String projectId) async {
-    final steamService = ServiceLocator.get<ISteamCmdService>();
-    final versionRepo = ServiceLocator.get<ModVersionRepository>();
-    final projectRepo = ServiceLocator.get<ProjectRepository>();
-    final gameInstallationRepo = ServiceLocator.get<GameInstallationRepository>();
+    final steamService = ref.read(steamCmdServiceProvider);
+    final versionRepo = ref.read(modVersionRepositoryProvider);
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final gameInstallationRepo = ref.read(gameInstallationRepositoryProvider);
 
     try {
       // Update status to downloading
@@ -329,7 +326,7 @@ class ModUpdateQueue extends _$ModUpdateQueue {
 
     // Cancel current download
     if (_currentProjectId != null) {
-      final steamService = ServiceLocator.get<ISteamCmdService>();
+      final steamService = ref.read(steamCmdServiceProvider);
       steamService.cancel();
     }
   }

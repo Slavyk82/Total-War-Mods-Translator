@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to fix escaped newline sequences in existing translations.
@@ -12,6 +13,11 @@ import 'migration_base.dart';
 /// This migration converts stored `\n` sequences to actual newline characters
 /// to match how source texts are stored.
 class FixEscapedNewlinesMigration extends Migration {
+  final ILoggingService _logger;
+
+  FixEscapedNewlinesMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'fix_escaped_newlines';
 
@@ -23,10 +29,8 @@ class FixEscapedNewlinesMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
-      logging.debug('Checking for escaped newlines in translations...');
+      _logger.debug('Checking for escaped newlines in translations...');
 
       // Check if there are any translations with escaped newlines
       final countResult = await DatabaseService.database.rawQuery('''
@@ -35,13 +39,13 @@ class FixEscapedNewlinesMigration extends Migration {
       ''');
       final count = countResult.first['cnt'] as int;
 
-      logging.debug('Found $count translations with potential escaped newlines');
+      _logger.debug('Found $count translations with potential escaped newlines');
 
       if (count == 0) {
         return false; // Nothing to fix
       }
 
-      logging.info('Fixing escaped newlines in $count translation records...');
+      _logger.info('Fixing escaped newlines in $count translation records...');
 
       // Process in batches
       const batchSize = 500;
@@ -65,38 +69,38 @@ class FixEscapedNewlinesMigration extends Migration {
         if (updated == 0) break;
 
         totalProcessed += updated;
-        logging.debug('Processed $totalProcessed / $count translations');
+        _logger.debug('Processed $totalProcessed / $count translations');
 
         // Yield to UI thread
         await Future.delayed(Duration.zero);
       }
 
-      logging.info('Fixed escaped newlines, rebuilding search index...');
+      _logger.info('Fixed escaped newlines, rebuilding search index...');
 
       // FTS rebuild
-      await _rebuildFtsIndex(logging);
+      await _rebuildFtsIndex();
 
-      logging.info('Fixed escaped newlines in $count translation records');
+      _logger.info('Fixed escaped newlines in $count translation records');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to fix escaped newlines', e, stackTrace);
+      _logger.error('Failed to fix escaped newlines', e, stackTrace);
       // Non-fatal: translations will still work, just display incorrectly
       return false;
     }
   }
 
-  Future<void> _rebuildFtsIndex(LoggingService logging) async {
+  Future<void> _rebuildFtsIndex() async {
     try {
       await DatabaseService.execute('''
         INSERT INTO translation_versions_fts(translation_versions_fts) VALUES('rebuild')
       ''').timeout(
         const Duration(seconds: 30),
         onTimeout: () {
-          logging.warning('FTS rebuild timed out, will be done lazily');
+          _logger.warning('FTS rebuild timed out, will be done lazily');
         },
       );
     } catch (e) {
-      logging.warning('FTS rebuild skipped: $e');
+      _logger.warning('FTS rebuild skipped: $e');
     }
   }
 }

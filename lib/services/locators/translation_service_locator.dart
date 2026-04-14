@@ -15,7 +15,7 @@ import '../llm/i_llm_service.dart';
 import '../llm/llm_custom_rules_service.dart';
 import '../llm/utils/token_calculator.dart';
 import '../shared/event_bus.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 import '../translation/i_prompt_builder_service.dart';
 import '../translation/i_translation_orchestrator.dart';
 import '../translation/i_validation_service.dart';
@@ -45,7 +45,7 @@ class TranslationServiceLocator {
 
   /// Register all translation services with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
+    final logging = locator<ILoggingService>();
     logging.info('Registering translation services');
 
     // Translation Services
@@ -89,7 +89,7 @@ class TranslationServiceLocator {
       () => TmImportExportService(
         repository: locator<TranslationMemoryRepository>(),
         tmxService: locator<TmxService>(),
-        logger: locator<LoggingService>(),
+        logger: locator<ILoggingService>(),
       ),
     );
 
@@ -130,7 +130,7 @@ class TranslationServiceLocator {
         batchUnitRepository: locator<TranslationBatchUnitRepository>(),
         transactionManager: locator<TransactionManager>(),
         eventBus: locator<EventBus>(),
-        logger: locator<LoggingService>(),
+        logger: locator<ILoggingService>(),
       ),
     );
 

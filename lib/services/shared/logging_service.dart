@@ -3,45 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
-/// A structured log entry with level, message, and optional data.
-class LogEntry {
-  final DateTime timestamp;
-  final String level;
-  final String message;
-  final dynamic data;
-
-  const LogEntry({
-    required this.timestamp,
-    required this.level,
-    required this.message,
-    this.data,
-  });
-
-  /// Format the log entry as a string.
-  String format() {
-    final buffer = StringBuffer();
-    buffer.write('[${timestamp.toIso8601String()}] [$level] $message');
-    if (data != null) {
-      buffer.write(' | Data: $data');
-    }
-    return buffer.toString();
-  }
-
-  /// Get the color for this log level (for terminal display).
-  int get levelColor {
-    switch (level) {
-      case 'ERROR':
-        return 0xFFE53935; // Red
-      case 'WARN':
-        return 0xFFFFA726; // Orange
-      case 'INFO':
-        return 0xFF42A5F5; // Blue
-      case 'DEBUG':
-      default:
-        return 0xFF78909C; // Gray
-    }
-  }
-}
+import 'i_logging_service.dart';
 
 /// Logging service for TWMT application.
 ///
@@ -49,7 +11,7 @@ class LogEntry {
 /// Logs are stored in AppData\Local\TWMT\logs on Windows.
 ///
 /// Supports real-time log streaming via [logStream] for UI display.
-class LoggingService {
+class LoggingService implements ILoggingService {
   LoggingService._();
 
   static final LoggingService _instance = LoggingService._();
@@ -64,6 +26,7 @@ class LoggingService {
   /// Stream of log entries for real-time monitoring.
   ///
   /// Use this stream to display logs in UI components like a terminal widget.
+  @override
   Stream<LogEntry> get logStream => _logStreamController.stream;
 
   /// Recent log entries buffer for displaying history.
@@ -73,6 +36,7 @@ class LoggingService {
   static const int maxRecentLogs = 500;
 
   /// Get recent log entries (for initial display when opening terminal).
+  @override
   List<LogEntry> get recentLogs => List.unmodifiable(_recentLogs);
 
   /// Initialize the logging service.
@@ -111,6 +75,7 @@ class LoggingService {
   /// Log a debug message.
   ///
   /// Debug messages are only shown in development builds.
+  @override
   void debug(String message, [dynamic data]) {
     _log('DEBUG', message, data);
   }
@@ -118,6 +83,7 @@ class LoggingService {
   /// Log an info message.
   ///
   /// Info messages indicate normal operation.
+  @override
   void info(String message, [dynamic data]) {
     _log('INFO', message, data);
   }
@@ -125,6 +91,7 @@ class LoggingService {
   /// Log a warning message.
   ///
   /// Warnings indicate potential issues that don't prevent operation.
+  @override
   void warning(String message, [dynamic data]) {
     _log('WARN', message, data);
   }
@@ -132,6 +99,7 @@ class LoggingService {
   /// Log an error message.
   ///
   /// Errors indicate failures that prevent normal operation.
+  @override
   void error(String message, [dynamic error, StackTrace? stackTrace]) {
     final errorData = <String, dynamic>{};
     if (error != null) {

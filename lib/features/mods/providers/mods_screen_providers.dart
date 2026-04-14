@@ -5,19 +5,16 @@ import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/repositories/workshop_mod_repository.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/mods/workshop_scanner_service.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 
 part 'mods_screen_providers.g.dart';
 
 /// Provider for the scan log stream from WorkshopScannerService
 final scanLogStreamProvider = Provider<Stream<ScanLogMessage>>((ref) {
-  final scannerService = ServiceLocator.get<WorkshopScannerService>();
+  final scannerService = ref.watch(workshopScannerServiceProvider);
   return scannerService.scanLogStream;
 });
 
@@ -138,17 +135,18 @@ class ShowHiddenMods extends _$ShowHiddenMods {
 /// Uses cached data for instant filtering without waiting for async resolution
 @riverpod
 List<DetectedMod> filteredMods(Ref ref) {
-  LoggingService.instance.debug('filteredMods provider computing');
+  final logger = ref.read(loggingServiceProvider);
+  logger.debug('filteredMods provider computing');
   // Watch the async state - use cached value for instant filtering
   final detectedModsAsync = ref.watch(detectedModsProvider);
   final searchQuery = ref.watch(modsSearchQueryProvider).toLowerCase();
   final filter = ref.watch(modsFilterStateProvider);
   final showHidden = ref.watch(showHiddenModsProvider);
-  LoggingService.instance.debug('showHidden value: $showHidden');
+  logger.debug('showHidden value: $showHidden');
 
   // Use cached data or empty list if not yet loaded
   final detectedModsList = detectedModsAsync.value ?? <DetectedMod>[];
-  LoggingService.instance.debug('detectedModsList count: ${detectedModsList.length}, hasValue: ${detectedModsAsync.hasValue}');
+  logger.debug('detectedModsList count: ${detectedModsList.length}, hasValue: ${detectedModsAsync.hasValue}');
   var result = detectedModsList;
 
   // Apply hidden filter first
@@ -254,9 +252,9 @@ Future<int> projectsWithPendingChangesCount(Ref ref) async {
   // Watch the detected mods to refresh when mods are scanned
   ref.watch(detectedModsProvider);
 
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
-  final cacheRepo = ServiceLocator.get<ModUpdateAnalysisCacheRepository>();
+  final projectRepo = ref.watch(projectRepositoryProvider);
+  final workshopModRepo = ref.watch(workshopModRepositoryProvider);
+  final cacheRepo = ref.watch(modUpdateAnalysisCacheRepositoryProvider);
 
   final projectsResult = await projectRepo.getAll();
   if (projectsResult.isErr) return 0;
@@ -342,19 +340,20 @@ class ModHiddenToggle extends _$ModHiddenToggle {
 
   /// Toggle the hidden status of a mod
   Future<void> toggleHidden(String workshopId, bool isHidden) async {
-    LoggingService.instance.debug('toggleHidden called: workshopId=$workshopId, isHidden=$isHidden');
-    final workshopModRepo = ServiceLocator.get<WorkshopModRepository>();
+    final logger = ref.read(loggingServiceProvider);
+    logger.debug('toggleHidden called: workshopId=$workshopId, isHidden=$isHidden');
+    final workshopModRepo = ref.read(workshopModRepositoryProvider);
     await workshopModRepo.setHidden(workshopId, isHidden);
-    LoggingService.instance.debug('DB updated');
+    logger.debug('DB updated');
 
     // Update the mod list locally without rescanning
     // Use try-catch to handle potential provider disposal during async operation
     try {
-      LoggingService.instance.debug('Calling updateModHidden');
+      logger.debug('Calling updateModHidden');
       ref.read(detectedModsProvider.notifier).updateModHidden(workshopId, isHidden);
-      LoggingService.instance.debug('updateModHidden completed');
+      logger.debug('updateModHidden completed');
     } catch (e) {
-      LoggingService.instance.error('ERROR in updateModHidden', e);
+      logger.error('ERROR in updateModHidden', e);
       // Provider was disposed during async operation - state will refresh on next access
     }
   }

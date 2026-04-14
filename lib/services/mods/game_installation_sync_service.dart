@@ -6,6 +6,7 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/steam/models/game_definitions.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
@@ -14,14 +15,16 @@ import 'package:twmt/features/settings/providers/settings_providers.dart';
 class GameInstallationSyncService {
   final GameInstallationRepository _gameInstallationRepository;
   final SettingsService _settingsService;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   GameInstallationSyncService({
     required GameInstallationRepository gameInstallationRepository,
     required SettingsService settingsService,
+    ILoggingService? logger,
   })  : _gameInstallationRepository = gameInstallationRepository,
-        _settingsService = settingsService;
+        _settingsService = settingsService,
+        _logger = logger ?? LoggingService.instance;
 
   /// Sync all configured games from settings to database
   Future<Result<void, ServiceException>> syncAllGames() async {

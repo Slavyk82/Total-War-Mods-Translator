@@ -4,8 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/steam/steam_detection_service.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
 import 'settings_section_header.dart';
@@ -115,7 +114,7 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
     setState(() => _isDetecting = true);
 
     try {
-      final steamDetection = ServiceLocator.get<SteamDetectionService>();
+      final steamDetection = ref.read(steamDetectionServiceProvider);
       final result = await steamDetection.detectWorkshopFolder();
 
       if (!mounted) return;

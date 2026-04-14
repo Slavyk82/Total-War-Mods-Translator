@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/localization_parser_impl.dart';
-import 'package:twmt/services/shared/logging_service.dart';
-import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/repositories/project_language_repository.dart';
+import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
+import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../providers/editor_providers.dart';
 import '../../services/pack_import_service.dart';
 import '../../widgets/pack_import_dialog.dart';
@@ -17,12 +14,12 @@ mixin EditorActionsImport on EditorActionsBase {
   void handleImportPack() {
     // Create the import service
     final importService = PackImportService(
-      rpfmService: ServiceLocator.get<IRpfmService>(),
+      rpfmService: ref.read(shared_svc.rpfmServiceProvider),
       localizationParser: LocalizationParserImpl(),
-      unitRepository: ServiceLocator.get<TranslationUnitRepository>(),
-      versionRepository: ServiceLocator.get<TranslationVersionRepository>(),
-      projectLanguageRepository: ServiceLocator.get<ProjectLanguageRepository>(),
-      logger: ServiceLocator.get<LoggingService>(),
+      unitRepository: ref.read(shared_repo.translationUnitRepositoryProvider),
+      versionRepository: ref.read(shared_repo.translationVersionRepositoryProvider),
+      projectLanguageRepository: ref.read(shared_repo.projectLanguageRepositoryProvider),
+      logger: ref.read(loggingServiceProvider),
     );
 
     showDialog(

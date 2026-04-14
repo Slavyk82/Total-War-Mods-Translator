@@ -1,9 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../../../repositories/mod_update_analysis_cache_repository.dart';
-import '../../../repositories/translation_version_repository.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
-import '../../../services/translation_memory/i_translation_memory_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
+import '../../../services/shared/i_logging_service.dart';
 
 part 'maintenance_providers.g.dart';
 
@@ -82,7 +81,7 @@ class MaintenanceState {
 /// Notifier for maintenance operations.
 @riverpod
 class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
-  LoggingService get _logging => ServiceLocator.get<LoggingService>();
+  ILoggingService get _logging => ref.read(loggingServiceProvider);
 
   @override
   MaintenanceState build() {
@@ -102,7 +101,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     try {
       _logging.info('Starting translation status reanalysis');
 
-      final repository = ServiceLocator.get<TranslationVersionRepository>();
+      final repository = ref.read(translationVersionRepositoryProvider);
 
       // First, count inconsistencies
       state = state.copyWith(
@@ -188,7 +187,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     try {
       _logging.info('Clearing stale mod update analysis cache');
 
-      final cacheRepo = ServiceLocator.get<ModUpdateAnalysisCacheRepository>();
+      final cacheRepo = ref.read(modUpdateAnalysisCacheRepositoryProvider);
       final result = await cacheRepo.deleteAllWithChanges();
 
       if (result.isErr) {
@@ -235,7 +234,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     try {
       _logging.info('Starting Translation Memory rebuild');
 
-      final tmService = ServiceLocator.get<ITranslationMemoryService>();
+      final tmService = ref.read(translationMemoryServiceProvider);
 
       final result = await tmService.rebuildFromTranslations(
         onProgress: (processed, total, added) {
@@ -297,7 +296,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     try {
       _logging.info('Starting legacy hash migration');
 
-      final tmService = ServiceLocator.get<ITranslationMemoryService>();
+      final tmService = ref.read(translationMemoryServiceProvider);
 
       final result = await tmService.migrateLegacyHashes(
         onProgress: (processed, total) {

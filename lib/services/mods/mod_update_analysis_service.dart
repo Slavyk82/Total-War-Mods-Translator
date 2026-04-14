@@ -10,6 +10,7 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/i_localization_parser.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Data for a unit extracted from pack file
@@ -46,7 +47,7 @@ class ModUpdateAnalysisService {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _languageRepository;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   ModUpdateAnalysisService({
@@ -55,11 +56,13 @@ class ModUpdateAnalysisService {
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
+    ILoggingService? logger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
-        _languageRepository = languageRepository;
+        _languageRepository = languageRepository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Analyze changes between pack file and existing project translations
   ///

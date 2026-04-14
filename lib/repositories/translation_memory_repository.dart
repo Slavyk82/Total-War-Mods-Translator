@@ -122,6 +122,8 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
   /// Find a translation memory entry by exact hash match.
   ///
   /// Returns [Ok] with the entry if found, [Err] with exception if not found.
+  /// Note: Does NOT update usage statistics. Callers should use
+  /// [incrementUsageCountBatch] separately after collecting all matches.
   Future<Result<TranslationMemoryEntry, TWMTDatabaseException>> findByHash(
       String sourceHash, String targetLanguageId) async {
     return executeQuery(() async {
@@ -138,21 +140,44 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
             'Translation memory entry not found for hash: $sourceHash and language: $targetLanguageId');
       }
 
-      // Update usage statistics
-      final entry = fromMap(maps.first);
+      return fromMap(maps.first);
+    });
+  }
+
+  /// Batch increment usage counts for multiple TM entries in a single transaction.
+  ///
+  /// Each entry in [usageCounts] maps an entry ID to the increment value.
+  /// Uses direct SQL UPDATE (no SELECT) for maximum performance.
+  ///
+  /// Returns [Ok] with number of entries updated, [Err] on failure.
+  Future<Result<int, TWMTDatabaseException>> incrementUsageCountBatch(
+    Map<String, int> usageCounts,
+  ) async {
+    if (usageCounts.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      var updatedCount = 0;
 
-      await database.update(
-        tableName,
-        {
-          'usage_count': entry.usageCount + 1,
-          'last_used_at': now,
-        },
-        where: 'id = ?',
-        whereArgs: [entry.id],
-      );
+      for (final entry in usageCounts.entries) {
+        final rowsAffected = await txn.rawUpdate(
+          '''
+          UPDATE $tableName
+          SET usage_count = usage_count + ?,
+              last_used_at = ?,
+              updated_at = ?
+          WHERE id = ?
+          ''',
+          [entry.value, now, now, entry.key],
+        );
+        if (rowsAffected > 0) {
+          updatedCount++;
+        }
+      }
 
-      return entry;
+      return updatedCount;
     });
   }
 
@@ -349,6 +374,71 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
       }
 
       return fromMap(maps.first);
+    });
+  }
+
+  /// LIKE-based fallback search used when FTS5 is unavailable.
+  ///
+  /// Uses indexed columns with bounded LIMIT — streaming, not in-memory scan.
+  /// Not as fast as FTS5 BM25 but O(n) with early termination via LIMIT,
+  /// not O(n) with full table load into RAM.
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>>
+      searchByLike({
+    required String searchText,
+    required String searchScope,
+    String? targetLanguageId,
+    int limit = 50,
+  }) async {
+    return executeQuery(() async {
+      final pattern = '%${searchText.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+      final whereClauses = <String>[];
+      final args = <Object?>[];
+
+      if (searchScope == 'source' || searchScope == 'both') {
+        whereClauses.add('source_text LIKE ? ESCAPE ?');
+        args.addAll([pattern, r'\']);
+      }
+      if (searchScope == 'target' || searchScope == 'both') {
+        whereClauses.add('translated_text LIKE ? ESCAPE ?');
+        args.addAll([pattern, r'\']);
+      }
+
+      var where = '(${whereClauses.join(' OR ')})';
+      if (targetLanguageId != null) {
+        where = '$where AND target_language_id = ?';
+        args.add(targetLanguageId);
+      }
+
+      final maps = await database.query(
+        tableName,
+        where: where,
+        whereArgs: args,
+        orderBy: 'usage_count DESC',
+        limit: limit,
+      );
+
+      return maps.map(fromMap).toList();
+    });
+  }
+
+  /// Stream TM entries in fixed-size pages. Caller is responsible for writing
+  /// each chunk to disk before requesting the next page — this avoids loading
+  /// the full TM into RAM (500+ MB at 6M rows).
+  Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>> getPage({
+    required int offset,
+    required int pageSize,
+    String? targetLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: targetLanguageId != null ? 'target_language_id = ?' : null,
+        whereArgs: targetLanguageId != null ? [targetLanguageId] : null,
+        orderBy: 'id ASC',
+        limit: pageSize,
+        offset: offset,
+      );
+      return maps.map(fromMap).toList();
     });
   }
 

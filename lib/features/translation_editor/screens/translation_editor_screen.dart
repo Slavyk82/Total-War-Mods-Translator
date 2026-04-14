@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/services/service_locator.dart';
 import '../providers/editor_providers.dart';
+import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_toolbar.dart';
 import '../widgets/editor_sidebar.dart';
@@ -52,7 +51,7 @@ class _TranslationEditorScreenState
   /// Clear the mod update impact flag when user opens the editor.
   /// This indicates the user has acknowledged the mod update.
   Future<void> _clearModUpdateImpact() async {
-    final projectRepo = ServiceLocator.get<ProjectRepository>();
+    final projectRepo = ref.read(shared_repo.projectRepositoryProvider);
     await projectRepo.clearModUpdateImpact(widget.projectId);
   }
 

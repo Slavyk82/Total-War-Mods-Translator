@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
-import '../../../../services/service_locator.dart';
-import '../../../../services/translation/i_validation_service.dart';
-import '../../providers/editor_providers.dart';
+import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
+import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../widgets/editor_dialogs.dart';
 import '../validation_review_screen.dart';
 import 'editor_actions_base.dart';
@@ -14,8 +14,8 @@ mixin EditorActionsValidation on EditorActionsBase {
   Future<void> handleValidate() async {
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
 
       // Get all versions for this project language
       final versionsResult =
@@ -58,14 +58,22 @@ mixin EditorActionsValidation on EditorActionsBase {
 
       if (!context.mounted) return;
 
+      // Load all units in batch instead of one-by-one
+      final unitIds = needsReviewVersions.map((v) => v.unitId).toSet().toList();
+      final unitsResult = await unitRepo.getByIds(unitIds);
+      final unitsMap = <String, dynamic>{};
+      if (unitsResult.isOk) {
+        for (final unit in unitsResult.unwrap()) {
+          unitsMap[unit.id] = unit;
+        }
+      }
+
       // Build validation issues from needsReview versions
       final allIssues = <batch.ValidationIssue>[];
 
       for (final version in needsReviewVersions) {
-        final unitResult = await unitRepo.getById(version.unitId);
-        if (unitResult.isErr) continue;
-
-        final unit = unitResult.unwrap();
+        final unit = unitsMap[version.unitId];
+        if (unit == null) continue;
 
         // Parse validation issues from the stored JSON
         final issues = _parseValidationIssues(version.validationIssues);
@@ -109,6 +117,10 @@ mixin EditorActionsValidation on EditorActionsBase {
             },
             onRejectTranslation: (issue) => _handleRejectTranslation(issue),
             onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
+            onBulkAcceptTranslation: (issues) =>
+                _handleBulkAcceptTranslation(issues),
+            onBulkRejectTranslation: (issues) =>
+                _handleBulkRejectTranslation(issues),
             onEditTranslation: (issue, newText) =>
                 _handleEditTranslation(issue, newText),
             onClose: () => Navigator.of(routeContext).pop(),
@@ -138,9 +150,9 @@ mixin EditorActionsValidation on EditorActionsBase {
   Future<void> handleRescanValidation() async {
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(translationVersionRepositoryProvider);
-      final unitRepo = ref.read(translationUnitRepositoryProvider);
-      final validationService = ServiceLocator.get<IValidationService>();
+      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
+      final validationService = ref.read(shared_svc.validationServiceProvider);
       final logger = ref.read(loggingServiceProvider);
 
       // Get all versions for this project language
@@ -204,23 +216,37 @@ mixin EditorActionsValidation on EditorActionsBase {
         ),
       );
 
-      // Run the scan
+      // Load all units in batch
+      final unitIds =
+          translatedVersions.map((v) => v.unitId).toSet().toList();
+      final unitsResult = await unitRepo.getByIds(unitIds);
+      final unitsMap = <String, dynamic>{};
+      if (unitsResult.isOk) {
+        for (final unit in unitsResult.unwrap()) {
+          unitsMap[unit.id] = unit;
+        }
+      }
+
+      // Run the scan and collect updates
       var scanned = 0;
       var newIssues = 0;
       var cleared = 0;
       var unchanged = 0;
+      final pendingUpdates =
+          <({String versionId, String status, String? validationIssues})>[];
 
       for (final version in translatedVersions) {
         scanned++;
-        if (scanned % 50 == 0 || scanned == translatedVersions.length) {
+        if (scanned % 100 == 0 || scanned == translatedVersions.length) {
           progressNotifier.value =
               'Scanning $scanned/${translatedVersions.length}...';
+          // Yield to UI thread for progress updates
+          await Future<void>.delayed(Duration.zero);
         }
 
-        // Get the unit for source text
-        final unitResult = await unitRepo.getById(version.unitId);
-        if (unitResult.isErr) continue;
-        final unit = unitResult.unwrap();
+        // Get the unit for source text from pre-loaded map
+        final unit = unitsMap[version.unitId];
+        if (unit == null) continue;
 
         // Run validation
         final validationResult = await validationService.validateTranslation(
@@ -250,20 +276,11 @@ mixin EditorActionsValidation on EditorActionsBase {
             version.validationIssues != newValidationIssues;
 
         if (statusChanged || issuesChanged) {
-          // Build updated version manually to allow setting null
-          final updatedVersion = TranslationVersion(
-            id: version.id,
-            unitId: version.unitId,
-            projectLanguageId: version.projectLanguageId,
-            translatedText: version.translatedText,
-            isManuallyEdited: version.isManuallyEdited,
-            status: newStatus,
-            translationSource: version.translationSource,
+          pendingUpdates.add((
+            versionId: version.id,
+            status: newStatus.name,
             validationIssues: newValidationIssues,
-            createdAt: version.createdAt,
-            updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          );
-          await versionRepo.update(updatedVersion);
+          ));
 
           if (newStatus == TranslationVersionStatus.needsReview) {
             newIssues++;
@@ -273,6 +290,12 @@ mixin EditorActionsValidation on EditorActionsBase {
         } else {
           unchanged++;
         }
+      }
+
+      // Batch write all updates in a single transaction
+      if (pendingUpdates.isNotEmpty) {
+        progressNotifier.value = 'Saving ${pendingUpdates.length} updates...';
+        await versionRepo.updateValidationBatch(pendingUpdates);
       }
 
       logger.info(
@@ -370,9 +393,51 @@ mixin EditorActionsValidation on EditorActionsBase {
     }
   }
 
+  /// Batch accept multiple translations in a single transaction
+  Future<void> _handleBulkAcceptTranslation(
+      List<batch.ValidationIssue> issues) async {
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+
+    final result = await versionRepo.acceptBatch(versionIds);
+
+    if (result.isErr) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to batch accept translations',
+        {'count': versionIds.length, 'error': result.error},
+      );
+    } else {
+      ref.read(loggingServiceProvider).info(
+        'Batch accepted translations',
+        {'count': result.value},
+      );
+    }
+  }
+
+  /// Batch reject multiple translations in a single transaction
+  Future<void> _handleBulkRejectTranslation(
+      List<batch.ValidationIssue> issues) async {
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+
+    final result = await versionRepo.rejectBatch(versionIds);
+
+    if (result.isErr) {
+      ref.read(loggingServiceProvider).error(
+        'Failed to batch reject translations',
+        {'count': versionIds.length, 'error': result.error},
+      );
+    } else {
+      ref.read(loggingServiceProvider).info(
+        'Batch rejected translations',
+        {'count': result.value},
+      );
+    }
+  }
+
   /// Reject a translation by clearing it
   Future<void> _handleRejectTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -401,7 +466,7 @@ mixin EditorActionsValidation on EditorActionsBase {
 
   /// Accept a translation despite validation issues (clears the validation flag)
   Future<void> _handleAcceptTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -432,7 +497,7 @@ mixin EditorActionsValidation on EditorActionsBase {
     batch.ValidationIssue issue,
     String newText,
   ) async {
-    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {

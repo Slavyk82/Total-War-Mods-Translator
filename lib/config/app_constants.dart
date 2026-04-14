@@ -110,11 +110,11 @@ class AppConstants {
   /// poor quality suggestions that waste translator time.
   static const double minTmSimilarity = 0.85;
 
-  /// Auto-accept threshold for TM fuzzy matches (85%)
+  /// Auto-accept threshold for TM fuzzy matches (95%)
   ///
-  /// Matches at or above this threshold are automatically applied without
-  /// manual review. Aligned with minTmSimilarity for consistent behavior.
-  static const double autoAcceptTmThreshold = 0.85;
+  /// Fuzzy matches >=95% are auto-accepted. Matches in [0.85, 0.95) become
+  /// suggestions requiring manual review.
+  static const double autoAcceptTmThreshold = 0.95;
 
   /// Maximum number of fuzzy match results to return
   ///

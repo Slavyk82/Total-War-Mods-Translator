@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -20,10 +20,10 @@ typedef BatchTranslator = Stream<Result<TranslationProgress, TranslationOrchestr
 /// - Forward progress events from multiple batches to a single stream
 /// - Track completion state across all batches
 class ParallelBatchHandler {
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   ParallelBatchHandler({
-    required LoggingService logger,
+    required ILoggingService logger,
   }) : _logger = logger;
 
   /// Translate multiple batches in parallel with controlled concurrency

@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/repositories/export_history_repository.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Handles recording export operations to history
 ///
@@ -10,13 +11,13 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// Failures in history recording do not affect the export operation.
 class ExportHistoryRecorder {
   final ExportHistoryRepository _exportHistoryRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   ExportHistoryRecorder({
     required ExportHistoryRepository exportHistoryRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _exportHistoryRepository = exportHistoryRepository,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Ensure the export history table exists
   Future<void> ensureTableExists() async {

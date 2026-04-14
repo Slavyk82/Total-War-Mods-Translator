@@ -4,8 +4,7 @@ import 'package:twmt/models/domain/glossary_entry.dart';
 import '../providers/glossary_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
-import 'package:twmt/services/shared/logging_service.dart';
-import 'package:twmt/services/service_locator.dart';
+import '../../../providers/shared/logging_providers.dart';
 
 /// Dialog for adding or editing a glossary entry
 class GlossaryEntryEditorDialog extends ConsumerStatefulWidget {
@@ -158,7 +157,7 @@ class _GlossaryEntryEditorDialogState
   }
 
   Future<void> _saveEntry() async {
-    final logging = ServiceLocator.get<LoggingService>();
+    final logging = ref.read(loggingServiceProvider);
     logging.debug('[GlossaryEntryEditor._saveEntry] Starting save operation');
 
     if (!_formKey.currentState!.validate()) {

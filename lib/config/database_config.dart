@@ -120,12 +120,13 @@ class DatabaseConfig {
 
   /// Database connection configuration
   static const Map<String, dynamic> connectionConfig = {
-    'journal_mode': 'WAL', // Write-Ahead Logging for better performance
-    'foreign_keys': true, // Enable foreign key constraints
-    'synchronous': 'NORMAL', // Balance between safety and performance
-    'temp_store': 'MEMORY', // Use memory for temporary storage
-    'cache_size': -2000, // 2MB cache (negative = KB)
-    'busy_timeout': 30000, // Wait up to 30 seconds for locks to be released
+    'journal_mode': 'WAL',
+    'foreign_keys': true,
+    'synchronous': 'NORMAL',
+    'temp_store': 'MEMORY',
+    'cache_size': -64000, // 64 MB cache (tuned for 6M+ TM rows)
+    'mmap_size': 268435456, // 256 MB memory-mapped I/O (kernel page cache)
+    'busy_timeout': 30000,
   };
 
   /// Get database connection configuration as PRAGMA statements
@@ -135,8 +136,9 @@ class DatabaseConfig {
       'PRAGMA journal_mode = WAL',
       'PRAGMA synchronous = NORMAL',
       'PRAGMA temp_store = MEMORY',
-      'PRAGMA cache_size = -2000',
-      'PRAGMA busy_timeout = 30000', // Wait 30 seconds for locks (increased for batch operations)
+      'PRAGMA cache_size = -64000',
+      'PRAGMA mmap_size = 268435456',
+      'PRAGMA busy_timeout = 30000',
     ];
   }
 }

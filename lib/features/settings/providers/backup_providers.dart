@@ -1,7 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../providers/shared/logging_providers.dart';
 import '../../../services/backup/database_backup_service.dart';
-import '../../../services/shared/logging_service.dart';
+import '../../../services/shared/i_logging_service.dart';
 
 part 'backup_providers.g.dart';
 
@@ -82,12 +83,12 @@ class BackupState {
 @riverpod
 class BackupStateNotifier extends _$BackupStateNotifier {
   late final DatabaseBackupService _backupService;
-  late final LoggingService _logging;
+  late final ILoggingService _logging;
 
   @override
   BackupState build() {
     _backupService = DatabaseBackupService();
-    _logging = LoggingService.instance;
+    _logging = ref.read(loggingServiceProvider);
     return const BackupState();
   }
 

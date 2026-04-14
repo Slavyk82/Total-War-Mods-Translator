@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/utils/markup_tag_utils.dart';
@@ -15,6 +16,11 @@ import 'package:twmt/services/translation/utils/text_parser_utils.dart';
 /// - Common mistakes detection
 class ValidationServiceImpl implements IValidationService {
   ValidationRulesConfig _config = ValidationRulesConfig.defaultConfig;
+
+  final ILoggingService _logger;
+
+  ValidationServiceImpl({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Future<Result<common.ValidationResult, ValidationException>>
@@ -271,10 +277,10 @@ class ValidationServiceImpl implements IValidationService {
 
     // Debug logging for variable extraction
     if (sourceVars.any((v) => v.startsWith('{{'))) {
-      LoggingService.instance.debug('Variable extraction for key: $key');
-      LoggingService.instance.debug('Source double-brace vars: '
+      _logger.debug('Variable extraction for key: $key');
+      _logger.debug('Source double-brace vars: '
           '${sourceVars.where((v) => v.startsWith('{{')).toList()}');
-      LoggingService.instance.debug('Translated double-brace vars: '
+      _logger.debug('Translated double-brace vars: '
           '${translatedVars.where((v) => v.startsWith('{{')).toList()}');
     }
 

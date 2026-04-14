@@ -5,16 +5,10 @@ import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import '../../../models/domain/compilation.dart';
-import '../../../repositories/compilation_repository.dart';
-import '../../../repositories/game_installation_repository.dart';
-import '../../../repositories/language_repository.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../services/file/i_loc_file_service.dart';
-import '../../../services/file/i_pack_image_generator_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/file/pack_export_utils.dart';
-import '../../../services/rpfm/i_rpfm_service.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
 import '../models/compilation_editor_state.dart';
 import '../models/compilation_with_details.dart';
 
@@ -64,7 +58,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     }
 
     // Fetch the language to get its code and update the prefix
-    final langRepo = ServiceLocator.get<LanguageRepository>();
+    final langRepo = ref.read(languageRepositoryProvider);
     final result = await langRepo.getById(languageId);
 
     String newPrefix = state.prefix;
@@ -116,7 +110,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         currentStep: 'Cancelling...',
       );
       // Immediately cancel the RPFM service to kill any running process
-      final rpfmService = ServiceLocator.get<IRpfmService>();
+      final rpfmService = ref.read(rpfmServiceProvider);
       await rpfmService.cancel();
     }
   }
@@ -124,7 +118,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
   Future<bool> saveCompilation(String gameInstallationId) async {
     if (!state.canSave) return false;
 
-    final compilationRepo = ServiceLocator.get<CompilationRepository>();
+    final compilationRepo = ref.read(compilationRepositoryProvider);
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     try {
@@ -205,13 +199,13 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
       if (!saved) return false;
     }
 
-    final logger = ServiceLocator.get<LoggingService>();
-    final locFileService = ServiceLocator.get<ILocFileService>();
-    final rpfmService = ServiceLocator.get<IRpfmService>();
-    final compilationRepo = ServiceLocator.get<CompilationRepository>();
-    final projectRepo = ServiceLocator.get<ProjectRepository>();
-    final gameRepo = ServiceLocator.get<GameInstallationRepository>();
-    final langRepo = ServiceLocator.get<LanguageRepository>();
+    final logger = ref.read(loggingServiceProvider);
+    final locFileService = ref.read(locFileServiceProvider);
+    final rpfmService = ref.read(rpfmServiceProvider);
+    final compilationRepo = ref.read(compilationRepositoryProvider);
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final gameRepo = ref.read(gameInstallationRepositoryProvider);
+    final langRepo = ref.read(languageRepositoryProvider);
     final packUtils = PackExportUtils(logger: logger);
 
     state = state.copyWith(
@@ -374,7 +368,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
           progress: 0.96,
         );
 
-        final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
+        final imageGenerator = ref.read(packImageGeneratorServiceProvider);
         await imageGenerator.ensurePackImage(
           packFileName: state.fullPackName,
           gameDataPath: gameDataPath,

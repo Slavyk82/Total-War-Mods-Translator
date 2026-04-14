@@ -12,7 +12,8 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/i_localization_parser.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'i_project_initialization_service.dart';
 
 /// Implementation of project initialization service
@@ -27,7 +28,7 @@ class ProjectInitializationServiceImpl
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _languageRepository;
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
   final StreamController<InitializationLogMessage> _logController =
@@ -42,14 +43,14 @@ class ProjectInitializationServiceImpl
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _languageRepository = languageRepository,
         _analysisCacheRepository = analysisCacheRepository,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Stream<double> get progressStream => _progressController.stream;

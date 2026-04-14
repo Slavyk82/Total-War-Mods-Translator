@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add published_at column to projects table.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// This column stores the Unix timestamp of when the translation pack
 /// was published to the Steam Workshop.
 class PublishedAtMigration extends Migration {
+  final ILoggingService _logger;
+
+  PublishedAtMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'published_at_column';
 
@@ -26,8 +32,6 @@ class PublishedAtMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -37,10 +41,10 @@ class PublishedAtMigration extends Migration {
         ALTER TABLE projects
         ADD COLUMN published_at INTEGER
       ''');
-      logging.info('Added published_at column to projects');
+      _logger.info('Added published_at column to projects');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add published_at column', e, stackTrace);
+      _logger.error('Failed to add published_at column', e, stackTrace);
       return false;
     }
   }

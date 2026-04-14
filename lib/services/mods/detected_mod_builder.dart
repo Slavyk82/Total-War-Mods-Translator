@@ -10,6 +10,7 @@ import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/mods/utils/workshop_scan_models.dart';
 import 'package:twmt/services/mods/project_analysis_handler.dart';
@@ -30,17 +31,19 @@ class DetectedModBuilder {
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final ProjectAnalysisHandler _analysisHandler;
   final ProjectRepository _projectRepository;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   DetectedModBuilder({
     required WorkshopModRepository workshopModRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     required ProjectAnalysisHandler analysisHandler,
     required ProjectRepository projectRepository,
+    ILoggingService? logger,
   })  : _workshopModRepository = workshopModRepository,
         _analysisCacheRepository = analysisCacheRepository,
         _analysisHandler = analysisHandler,
-        _projectRepository = projectRepository;
+        _projectRepository = projectRepository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Build list of DetectedMod from collected data.
   ///

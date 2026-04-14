@@ -13,7 +13,7 @@ import '../llm/llm_provider_factory.dart';
 import '../llm/llm_service_impl.dart';
 import '../llm/utils/token_calculator.dart';
 import '../settings/settings_service.dart';
-import '../shared/logging_service.dart';
+import '../shared/i_logging_service.dart';
 import '../translation/ignored_source_text_service.dart';
 
 /// Registers LLM provider services.
@@ -30,7 +30,7 @@ class LlmServiceLocator {
 
   /// Register all LLM services with the GetIt locator.
   static void register(GetIt locator) {
-    final logging = locator<LoggingService>();
+    final logging = locator<ILoggingService>();
     logging.info('Registering LLM services');
 
     // Token Calculator
@@ -73,7 +73,7 @@ class LlmServiceLocator {
     locator.registerLazySingleton<LlmModelManagementService>(
       () => LlmModelManagementService(
         locator<LlmProviderModelRepository>(),
-        locator<LoggingService>(),
+        locator<ILoggingService>(),
       ),
     );
 
@@ -81,7 +81,7 @@ class LlmServiceLocator {
     locator.registerLazySingleton<LlmCustomRulesService>(
       () => LlmCustomRulesService(
         repository: locator<LlmCustomRuleRepository>(),
-        logging: locator<LoggingService>(),
+        logging: locator<ILoggingService>(),
       ),
     );
 
@@ -89,7 +89,7 @@ class LlmServiceLocator {
     locator.registerLazySingleton<IgnoredSourceTextService>(
       () => IgnoredSourceTextService(
         repository: locator<IgnoredSourceTextRepository>(),
-        logging: locator<LoggingService>(),
+        logging: locator<ILoggingService>(),
       ),
     );
 

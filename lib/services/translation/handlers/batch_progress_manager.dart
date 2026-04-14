@@ -3,7 +3,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/events/batch_events.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/services/shared/event_bus.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/llm_exchange_log.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
@@ -23,7 +23,7 @@ import 'package:twmt/services/llm/models/llm_cancellation_token.dart';
 class BatchProgressManager {
   final TranslationBatchRepository _batchRepository;
   final EventBus _eventBus;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   /// Active batch states (in-memory tracking)
   final Map<String, TranslationProgress> _activeBatches = {};
@@ -51,7 +51,7 @@ class BatchProgressManager {
   BatchProgressManager({
     required TranslationBatchRepository batchRepository,
     required EventBus eventBus,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _batchRepository = batchRepository,
         _eventBus = eventBus,
         _logger = logger;
@@ -447,14 +447,23 @@ class BatchProgressManager {
   void cleanup(String batchId) {
     _activeBatches.remove(batchId);
     _pausedBatches.remove(batchId);
-    _cancelledBatches.remove(batchId);
     _stoppedBatches.remove(batchId);
 
-    // Complete any pending resume completer
+    // Complete any pending resume completer.
+    //
+    // If a caller is currently awaiting checkPauseOrCancel() (batch was
+    // paused), completing the completer normally would let the caller
+    // proceed as if the batch were still active — a contract violation.
+    // Mark the batch as cancelled BEFORE completing so the post-resume
+    // cancel re-check in checkPauseOrCancel throws CancelledException.
+    // The cancelled flag is dropped on a later microtask to avoid clobbering
+    // a marker that stop()/cancel() may have posted immediately before cleanup.
     final completer = _resumeCompleters.remove(batchId);
     if (completer != null && !completer.isCompleted) {
+      _cancelledBatches.add(batchId);
       completer.complete();
     }
+    scheduleMicrotask(() => _cancelledBatches.remove(batchId));
 
     // Cancel and remove cancellation token
     final token = _cancellationTokens.remove(batchId);

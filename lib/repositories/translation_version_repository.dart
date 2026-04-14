@@ -496,6 +496,374 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
+  /// Batch accept translations despite validation issues.
+  ///
+  /// Sets status to 'translated' and clears validation_issues for all
+  /// specified version IDs in a single transaction. Disables triggers
+  /// for batches > 50 and performs manual bulk updates instead.
+  ///
+  /// [versionIds] - List of version IDs to accept
+  ///
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> acceptBatch(
+    List<String> versionIds,
+  ) async {
+    if (versionIds.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+      const batchSize = 500;
+
+      final disableTriggers = versionIds.length > 50;
+
+      if (disableTriggers) {
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
+      }
+
+      try {
+        for (var i = 0; i < versionIds.length; i += batchSize) {
+          final batch = versionIds.skip(i).take(batchSize).toList();
+          final placeholders = List.filled(batch.length, '?').join(',');
+
+          final rowsAffected = await txn.rawUpdate(
+            '''
+            UPDATE $tableName
+            SET status = 'translated',
+                validation_issues = NULL,
+                updated_at = ?
+            WHERE id IN ($placeholders)
+            ''',
+            [now, ...batch],
+          );
+          totalAffected += rowsAffected;
+        }
+
+        if (disableTriggers) {
+          // Manually update FTS index
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+
+            // Delete old FTS entries
+            await txn.rawDelete(
+              'DELETE FROM translation_versions_fts WHERE version_id IN ($placeholders)',
+              batch,
+            );
+            // Re-insert FTS entries for versions that have translated text
+            await txn.rawInsert(
+              '''
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              SELECT translated_text, validation_issues, id
+              FROM $tableName
+              WHERE id IN ($placeholders) AND translated_text IS NOT NULL
+              ''',
+              batch,
+            );
+          }
+
+          // Manually update cache
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawUpdate(
+              '''
+              UPDATE translation_view_cache
+              SET status = 'translated',
+                  version_updated_at = ?
+              WHERE version_id IN ($placeholders)
+              ''',
+              [now, ...batch],
+            );
+          }
+
+          // Manually update project language progress once
+          await txn.rawUpdate('''
+            UPDATE project_languages
+            SET progress_percent = (
+              SELECT
+                CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                NULLIF(COUNT(*), 0)
+              FROM translation_versions tv
+              INNER JOIN translation_units tu ON tv.unit_id = tu.id
+              WHERE tv.project_language_id = project_languages.id
+                AND tu.is_obsolete = 0
+            ),
+            updated_at = ?
+          ''', [now]);
+        }
+      } finally {
+        if (disableTriggers) {
+          await _recreateTriggers(txn);
+        }
+      }
+
+      return totalAffected;
+    });
+  }
+
+  /// Batch reject translations by clearing them.
+  ///
+  /// Sets translated_text to NULL, status to 'pending', and clears
+  /// validation_issues for all specified version IDs in a single transaction.
+  /// Disables triggers for batches > 50 and performs manual bulk updates.
+  ///
+  /// [versionIds] - List of version IDs to reject
+  ///
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> rejectBatch(
+    List<String> versionIds,
+  ) async {
+    if (versionIds.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+      const batchSize = 500;
+
+      final disableTriggers = versionIds.length > 50;
+
+      if (disableTriggers) {
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
+      }
+
+      try {
+        for (var i = 0; i < versionIds.length; i += batchSize) {
+          final batch = versionIds.skip(i).take(batchSize).toList();
+          final placeholders = List.filled(batch.length, '?').join(',');
+
+          final rowsAffected = await txn.rawUpdate(
+            '''
+            UPDATE $tableName
+            SET translated_text = NULL,
+                status = 'pending',
+                validation_issues = NULL,
+                updated_at = ?
+            WHERE id IN ($placeholders)
+            ''',
+            [now, ...batch],
+          );
+          totalAffected += rowsAffected;
+        }
+
+        if (disableTriggers) {
+          // Remove FTS entries for rejected versions
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawDelete(
+              'DELETE FROM translation_versions_fts WHERE version_id IN ($placeholders)',
+              batch,
+            );
+          }
+
+          // Update cache for rejected versions
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawUpdate(
+              '''
+              UPDATE translation_view_cache
+              SET translated_text = NULL,
+                  status = 'pending',
+                  version_updated_at = ?
+              WHERE version_id IN ($placeholders)
+              ''',
+              [now, ...batch],
+            );
+          }
+
+          // Update project language progress once
+          await txn.rawUpdate('''
+            UPDATE project_languages
+            SET progress_percent = (
+              SELECT
+                CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                NULLIF(COUNT(*), 0)
+              FROM translation_versions tv
+              INNER JOIN translation_units tu ON tv.unit_id = tu.id
+              WHERE tv.project_language_id = project_languages.id
+                AND tu.is_obsolete = 0
+            ),
+            updated_at = ?
+          ''', [now]);
+        }
+      } finally {
+        if (disableTriggers) {
+          await _recreateTriggers(txn);
+        }
+      }
+
+      return totalAffected;
+    });
+  }
+
+  /// Batch update validation status and issues for multiple versions.
+  ///
+  /// Used by rescan validation to update many versions in a single transaction.
+  /// Each entry maps a version ID to its new status and validation issues.
+  ///
+  /// [updates] - List of (versionId, status, validationIssues) tuples
+  ///
+  /// Returns the count of affected rows.
+  Future<Result<int, TWMTDatabaseException>> updateValidationBatch(
+    List<({String versionId, String status, String? validationIssues})> updates,
+  ) async {
+    if (updates.isEmpty) {
+      return const Ok(0);
+    }
+
+    return executeTransaction((txn) async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      int totalAffected = 0;
+
+      final disableTriggers = updates.length > 50;
+
+      if (disableTriggers) {
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
+      }
+
+      try {
+        for (final update in updates) {
+          final rowsAffected = await txn.rawUpdate(
+            '''
+            UPDATE $tableName
+            SET status = ?,
+                validation_issues = ?,
+                updated_at = ?
+            WHERE id = ?
+            ''',
+            [update.status, update.validationIssues, now, update.versionId],
+          );
+          totalAffected += rowsAffected;
+        }
+
+        if (disableTriggers) {
+          // Bulk update FTS index
+          final versionIds = updates.map((u) => u.versionId).toList();
+          const batchSize = 500;
+
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+
+            await txn.rawDelete(
+              'DELETE FROM translation_versions_fts WHERE version_id IN ($placeholders)',
+              batch,
+            );
+            await txn.rawInsert(
+              '''
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              SELECT translated_text, validation_issues, id
+              FROM $tableName
+              WHERE id IN ($placeholders) AND translated_text IS NOT NULL
+              ''',
+              batch,
+            );
+          }
+
+          // Bulk update cache
+          for (var i = 0; i < versionIds.length; i += batchSize) {
+            final batch = versionIds.skip(i).take(batchSize).toList();
+            final placeholders = List.filled(batch.length, '?').join(',');
+            await txn.rawUpdate(
+              '''
+              UPDATE translation_view_cache
+              SET status = (
+                SELECT tv.status FROM $tableName tv WHERE tv.id = translation_view_cache.version_id
+              ),
+              version_updated_at = ?
+              WHERE version_id IN ($placeholders)
+              ''',
+              [now, ...batch],
+            );
+          }
+
+          // Update project language progress once
+          await txn.rawUpdate('''
+            UPDATE project_languages
+            SET progress_percent = (
+              SELECT
+                CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                NULLIF(COUNT(*), 0)
+              FROM translation_versions tv
+              INNER JOIN translation_units tu ON tv.unit_id = tu.id
+              WHERE tv.project_language_id = project_languages.id
+                AND tu.is_obsolete = 0
+            ),
+            updated_at = ?
+          ''', [now]);
+        }
+      } finally {
+        if (disableTriggers) {
+          await _recreateTriggers(txn);
+        }
+      }
+
+      return totalAffected;
+    });
+  }
+
+  /// Recreate triggers after batch operations.
+  Future<void> _recreateTriggers(Transaction txn) async {
+    await txn.execute('''
+      CREATE TRIGGER IF NOT EXISTS trg_update_project_language_progress
+      AFTER UPDATE ON translation_versions
+      WHEN NEW.status != OLD.status
+      BEGIN
+        UPDATE project_languages
+        SET progress_percent = (
+          SELECT
+            CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+            NULLIF(COUNT(*), 0)
+          FROM translation_versions tv
+          INNER JOIN translation_units tu ON tv.unit_id = tu.id
+          WHERE tv.project_language_id = NEW.project_language_id
+            AND tu.is_obsolete = 0
+        ),
+        updated_at = strftime('%s', 'now')
+        WHERE id = NEW.project_language_id;
+      END
+    ''');
+
+    await txn.execute('''
+      CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_update
+      AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+      BEGIN
+        DELETE FROM translation_versions_fts WHERE version_id = old.id;
+        INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+        SELECT new.translated_text, new.validation_issues, new.id
+        WHERE new.translated_text IS NOT NULL;
+      END
+    ''');
+
+    await txn.execute('''
+      CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_version_change
+      AFTER UPDATE ON translation_versions
+      BEGIN
+        UPDATE translation_view_cache
+        SET translated_text = new.translated_text,
+            status = new.status,
+            confidence_score = NULL,
+            is_manually_edited = new.is_manually_edited,
+            version_id = new.id,
+            version_updated_at = new.updated_at
+        WHERE unit_id = new.unit_id
+          AND project_language_id = new.project_language_id;
+      END
+    ''');
+  }
+
   /// Reset status to pending for all translation versions of specified units.
   ///
   /// Used when source text has changed and translations need to be reviewed.

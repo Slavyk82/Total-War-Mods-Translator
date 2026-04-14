@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/translation/models/translation_context.dart';
 import '../../../projects/providers/project_detail_providers.dart';
 import '../../../settings/providers/settings_providers.dart';
@@ -193,7 +195,7 @@ mixin EditorActionsBatch on EditorActionsBase {
     if (!context.mounted) return;
 
     try {
-      final orchestrator = ref.read(translationOrchestratorProvider);
+      final orchestrator = ref.read(shared_svc.translationOrchestratorProvider);
 
       // Get project name for display
       final projectDetails = await ref.read(projectDetailsProvider(projectId).future);
@@ -230,7 +232,7 @@ mixin EditorActionsBatch on EditorActionsBase {
       List<String> unitIds, {bool forceSkipTM = false}) async {
     final projectLanguageId = await getProjectLanguageId();
     final selectedModelId = ref.read(selectedLlmModelProvider);
-    final modelRepo = ref.read(llmProviderModelRepositoryProvider);
+    final modelRepo = ref.read(shared_svc.llmProviderModelRepositoryProvider);
 
     String providerCode;
     String? modelId;

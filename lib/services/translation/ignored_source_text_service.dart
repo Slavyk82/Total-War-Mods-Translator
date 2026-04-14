@@ -3,7 +3,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/ignored_source_text.dart';
 import 'package:twmt/repositories/ignored_source_text_repository.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Service for managing ignored source texts during translation.
 ///
@@ -12,7 +13,7 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// lookups since the skip filter is called frequently.
 class IgnoredSourceTextService {
   final IgnoredSourceTextRepository _repository;
-  final LoggingService _logging;
+  final ILoggingService _logging;
   final Uuid _uuid = const Uuid();
 
   /// In-memory cache of enabled skip texts (lowercase, trimmed).
@@ -24,9 +25,9 @@ class IgnoredSourceTextService {
 
   IgnoredSourceTextService({
     required IgnoredSourceTextRepository repository,
-    LoggingService? logging,
+    ILoggingService? logging,
   })  : _repository = repository,
-        _logging = logging ?? LoggingService.instance;
+        _logging = logging ?? ServiceLocator.get<ILoggingService>();
 
   // ============================================================================
   // Cache Management

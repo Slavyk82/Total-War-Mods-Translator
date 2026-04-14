@@ -3,9 +3,10 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/tm_cache.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory statistics and maintenance service
 ///
@@ -17,13 +18,13 @@ class TmStatisticsService {
   final TranslationMemoryRepository _repository;
   final LanguageRepository _languageRepository;
   final TmCache _cache;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmStatisticsService({
     required TranslationMemoryRepository repository,
     required LanguageRepository languageRepository,
     required TmCache cache,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _languageRepository = languageRepository,
         _cache = cache,
@@ -132,9 +133,7 @@ class TmStatisticsService {
     String? targetLanguageCode,
   }) async {
     try {
-      // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId =
-          targetLanguageCode != null ? 'lang_$targetLanguageCode' : null;
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       // Get basic statistics
       final statsResult = await _repository.getStatistics(

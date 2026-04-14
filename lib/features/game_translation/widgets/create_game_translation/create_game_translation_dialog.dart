@@ -10,9 +10,9 @@ import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
 import '../../../../providers/selected_game_provider.dart';
 import '../../../projects/providers/projects_screen_providers.dart';
-import '../../../../services/service_locator.dart';
+import '../../../../providers/shared/service_providers.dart';
 import '../../../../services/projects/i_project_initialization_service.dart'
-    show IProjectInitializationService, InitializationLogMessage, InitializationLogLevel;
+    show InitializationLogMessage, InitializationLogLevel;
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
 import 'step_select_source.dart';
@@ -188,8 +188,7 @@ class _CreateGameTranslationDialogState
           _importLogs.clear();
         });
 
-        final initService =
-            ServiceLocator.get<IProjectInitializationService>();
+        final initService = ref.read(projectInitializationServiceProvider);
 
         // Listen to progress and log streams
         final progressSub = initService.progressStream.listen((progress) {

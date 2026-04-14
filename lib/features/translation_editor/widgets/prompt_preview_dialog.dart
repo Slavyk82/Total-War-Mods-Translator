@@ -5,8 +5,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../../models/domain/translation_unit.dart';
 import '../../../services/translation/models/translation_context.dart';
 import '../../../services/translation/prompt_preview_service.dart';
-import '../../../services/translation/i_prompt_builder_service.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 
 /// Dialog for previewing the LLM prompt that will be sent for a translation unit
@@ -54,7 +53,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     });
 
     try {
-      final promptBuilder = ServiceLocator.get<IPromptBuilderService>();
+      final promptBuilder = ref.read(promptBuilderServiceProvider);
       final previewService = PromptPreviewService(promptBuilder);
 
       final result = await previewService.buildPreview(

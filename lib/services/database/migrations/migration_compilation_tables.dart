@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure compilation tables exist for existing databases.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// Creates compilations and compilation_projects tables for
 /// grouping multiple projects into a single pack file.
 class CompilationTablesMigration extends Migration {
+  final ILoggingService _logger;
+
+  CompilationTablesMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'compilation_tables';
 
@@ -18,8 +24,6 @@ class CompilationTablesMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       // Create compilations table
       await DatabaseService.execute('''
@@ -69,18 +73,18 @@ class CompilationTablesMigration extends Migration {
       ''');
 
       // Add language_id column if it doesn't exist
-      await _ensureLanguageIdColumn(logging);
+      await _ensureLanguageIdColumn();
 
-      logging.debug('Compilation tables verified/created');
+      _logger.debug('Compilation tables verified/created');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create compilation tables', e, stackTrace);
+      _logger.error('Failed to create compilation tables', e, stackTrace);
       // Non-fatal: feature will be unavailable but app still works
       return false;
     }
   }
 
-  Future<void> _ensureLanguageIdColumn(LoggingService logging) async {
+  Future<void> _ensureLanguageIdColumn() async {
     final compilationColumns = await DatabaseService.database.rawQuery(
       "PRAGMA table_info(compilations)"
     );
@@ -91,7 +95,7 @@ class CompilationTablesMigration extends Migration {
         ALTER TABLE compilations ADD COLUMN language_id TEXT
           REFERENCES languages(id) ON DELETE SET NULL
       ''');
-      logging.info('Added language_id column to compilations');
+      _logger.info('Added language_id column to compilations');
     }
   }
 }

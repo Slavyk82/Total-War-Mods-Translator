@@ -1,6 +1,6 @@
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
@@ -31,7 +31,7 @@ import 'single_batch_processor.dart';
 /// - [SingleBatchProcessor] for sequential batch processing
 class LlmTranslationHandler {
   final IPromptBuilderService _promptBuilder;
-  final LoggingService _logger;
+  final ILoggingService _logger;
   final LlmTokenEstimator _tokenEstimator = LlmTokenEstimator();
   late final LlmCacheManager _cacheManager;
   late final LlmRetryHandler _retryHandler;
@@ -42,7 +42,7 @@ class LlmTranslationHandler {
   LlmTranslationHandler({
     required ILlmService llmService,
     required IPromptBuilderService promptBuilder,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _promptBuilder = promptBuilder,
         _logger = logger {
     _cacheManager = LlmCacheManager(logger: logger);

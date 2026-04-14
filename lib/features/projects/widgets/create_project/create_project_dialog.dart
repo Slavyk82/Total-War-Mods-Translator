@@ -9,9 +9,8 @@ import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
 import '../../../../models/domain/detected_mod.dart';
 import '../../providers/projects_screen_providers.dart';
-import '../../../../services/service_locator.dart';
+import '../../../../providers/shared/service_providers.dart';
 import '../../../../services/projects/i_project_initialization_service.dart';
-import '../../../../services/settings/settings_service.dart';
 import 'project_creation_state.dart';
 import 'step_basic_info.dart';
 import 'step_languages.dart';
@@ -227,7 +226,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     if (!mounted) return;
 
     // Validate RPFM schema path is configured
-    final settingsService = ServiceLocator.get<SettingsService>();
+    final settingsService = ref.read(settingsServiceProvider);
     final schemaPath = await settingsService.getString('rpfm_schema_path');
 
     if (schemaPath.isEmpty) {
@@ -246,7 +245,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       _importLogs.clear();
     });
 
-    final initService = ServiceLocator.get<IProjectInitializationService>();
+    final initService = ref.read(projectInitializationServiceProvider);
 
     // Listen to log stream
     final logSubscription = initService.logStream.listen((logMessage) {

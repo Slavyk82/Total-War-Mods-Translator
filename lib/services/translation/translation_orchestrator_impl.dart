@@ -10,7 +10,7 @@ import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/shared/event_bus.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
@@ -43,7 +43,7 @@ import 'package:twmt/services/history/i_history_service.dart';
 class TranslationOrchestratorImpl implements ITranslationOrchestrator {
   final TranslationBatchRepository _batchRepository;
   final EventBus _eventBus;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   // Handlers
   final TmLookupHandler _tmLookupHandler;
@@ -65,7 +65,7 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     required TranslationBatchUnitRepository batchUnitRepository,
     required TransactionManager transactionManager,
     required EventBus eventBus,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _batchRepository = batchRepository,
         _eventBus = eventBus,
         _logger = logger,

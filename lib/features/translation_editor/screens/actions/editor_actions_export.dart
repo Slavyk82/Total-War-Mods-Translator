@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../providers/editor_providers.dart';
+import '../../../../providers/shared/logging_providers.dart';
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
+import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../widgets/editor_dialogs.dart';
 import '../export_progress_screen.dart';
 import 'editor_actions_base.dart';
@@ -9,9 +11,9 @@ mixin EditorActionsExport on EditorActionsBase {
   Future<void> handleExport() async {
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final exportService = ref.read(exportOrchestratorServiceProvider);
-      final languageRepo = ref.read(languageRepositoryProvider);
-      final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+      final exportService = ref.read(shared_svc.exportOrchestratorServiceProvider);
+      final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
+      final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
 
       final plResult = await projectLanguageRepo.getById(projectLanguageId);
       if (plResult.isErr) {

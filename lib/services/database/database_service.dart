@@ -1,7 +1,9 @@
 import 'dart:io';
+import 'package:meta/meta.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../config/database_config.dart';
 import '../../models/common/service_exception.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 
 /// Database service for TWMT application.
@@ -17,6 +19,13 @@ class DatabaseService {
   static final DatabaseService _instance = DatabaseService._();
   static Database? _database;
   static bool _initialized = false;
+
+  /// Injectable logger for testability. Defaults to the global singleton.
+  static ILoggingService _logger = LoggingService.instance;
+
+  /// Swap the logger for tests. Not for production use.
+  @visibleForTesting
+  static set loggerForTesting(ILoggingService logger) => _logger = logger;
 
   /// Get the singleton instance
   static DatabaseService get instance => _instance;
@@ -49,18 +58,17 @@ class DatabaseService {
   ///
   /// Throws [TWMTDatabaseException] if initialization fails.
   static Future<void> initialize() async {
-    final logging = LoggingService.instance;
     if (_initialized && _database != null) {
-      logging.debug('Database already initialized, skipping');
+      _logger.debug('Database already initialized, skipping');
       return; // Already initialized
     }
 
     try {
-      logging.debug('Starting database initialization');
+      _logger.debug('Starting database initialization');
 
       // Initialize SQLite FFI for Windows
       if (Platform.isWindows) {
-        logging.debug('Initializing SQLite FFI for Windows');
+        _logger.debug('Initializing SQLite FFI for Windows');
         sqfliteFfiInit();
         databaseFactory = databaseFactoryFfi;
       }
@@ -70,16 +78,16 @@ class DatabaseService {
 
       // Get database path
       final dbPath = await DatabaseConfig.getDatabasePath();
-      logging.debug('Database path', {'path': dbPath});
+      _logger.debug('Database path', {'path': dbPath});
 
       // Check if database file exists
       final dbFile = File(dbPath);
       final dbExists = await dbFile.exists();
-      logging.debug('Database file exists', {'exists': dbExists});
+      _logger.debug('Database file exists', {'exists': dbExists});
 
       // Open database with target version
       // onCreate and onUpgrade will ensure version starts at 0 for MigrationService
-      logging.debug('Opening database');
+      _logger.debug('Opening database');
       // Open database without specifying onCreate/onUpgrade
       // We'll handle versioning manually via MigrationService
       _database = await databaseFactory.openDatabase(
@@ -90,9 +98,9 @@ class DatabaseService {
         ),
       );
 
-      logging.info('Database opened successfully');
+      _logger.info('Database opened successfully');
       final currentVersion = await _database!.getVersion();
-      logging.debug('Current database version', {'version': currentVersion});
+      _logger.debug('Current database version', {'version': currentVersion});
 
       _initialized = true;
     } catch (e, stackTrace) {
@@ -130,8 +138,6 @@ class DatabaseService {
   /// If the app is killed during such operations, triggers may be missing.
   /// This method checks and recreates them if necessary.
   static Future<void> _ensureCriticalTriggersExist(Database db) async {
-    final logging = LoggingService.instance;
-
     // List of critical triggers that may be dropped during batch operations
     final criticalTriggers = <String, String>{
       'trg_update_project_language_progress': '''
@@ -189,12 +195,12 @@ class DatabaseService {
     // Recreate missing triggers
     for (final entry in criticalTriggers.entries) {
       if (!existingNames.contains(entry.key)) {
-        logging.warning('Missing trigger detected, recreating: ${entry.key}');
+        _logger.warning('Missing trigger detected, recreating: ${entry.key}');
         try {
           await db.execute(entry.value);
-          logging.info('Trigger recreated successfully: ${entry.key}');
+          _logger.info('Trigger recreated successfully: ${entry.key}');
         } catch (e) {
-          logging.error('Failed to recreate trigger: ${entry.key}', e);
+          _logger.error('Failed to recreate trigger: ${entry.key}', e);
         }
       }
     }
@@ -318,14 +324,14 @@ class DatabaseService {
       final busy = result.first['busy'] as int;
       final checkpointed = result.first['checkpointed'] as int;
       
-      LoggingService.instance.debug('WAL checkpoint completed', {
+      _logger.debug('WAL checkpoint completed', {
         'busy': busy,
         'checkpointed': checkpointed,
       });
-      
+
       return busy == 0;
     } catch (e, stackTrace) {
-      LoggingService.instance.error('WAL checkpoint failed', e, stackTrace);
+      _logger.error('WAL checkpoint failed', e, stackTrace);
       return false;
     }
   }
@@ -362,7 +368,7 @@ class DatabaseService {
       if (stats['exists'] == true && stats['size'] != null) {
         final size = stats['size'] as int;
         if (size > thresholdBytes) {
-          LoggingService.instance.debug('WAL file exceeds threshold', {
+          _logger.debug('WAL file exceeds threshold', {
             'size': size,
             'threshold': thresholdBytes,
           });
@@ -370,7 +376,7 @@ class DatabaseService {
         }
       }
     } catch (e, stackTrace) {
-      LoggingService.instance.error(
+      _logger.error(
         'Failed to check WAL size',
         e,
         stackTrace,
@@ -407,7 +413,7 @@ class DatabaseService {
       return await database.transaction(action).timeout(
         effectiveTimeout,
         onTimeout: () {
-          LoggingService.instance.warning(
+          _logger.warning(
             'Transaction timeout after ${effectiveTimeout.inSeconds}s - SQLite may still be processing',
           );
           throw TWMTDatabaseException(
@@ -547,8 +553,21 @@ class DatabaseService {
   /// Close the database connection
   ///
   /// This should be called when the application is shutting down.
+  /// Runs a TRUNCATE checkpoint first so the WAL file is shrunk to zero
+  /// bytes — PASSIVE checkpoints during normal operation only reclaim space
+  /// when no readers hold a snapshot, so WAL can grow unbounded under a
+  /// busy-reader workload.
   static Future<void> close() async {
     if (_database != null) {
+      try {
+        await _database!.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+      } catch (e, stackTrace) {
+        _logger.warning(
+            'WAL TRUNCATE on shutdown failed (non-fatal)', {
+          'error': e.toString(),
+          'stackTrace': stackTrace.toString(),
+        });
+      }
       await _database!.close();
       _database = null;
       _initialized = false;

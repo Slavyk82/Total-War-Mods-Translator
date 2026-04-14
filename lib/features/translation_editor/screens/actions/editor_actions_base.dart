@@ -6,6 +6,7 @@ import '../../../projects/providers/project_detail_providers.dart'
     show projectDetailsProvider;
 import '../../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
+import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../providers/editor_providers.dart';
 
 /// Base mixin providing common functionality for editor actions
@@ -19,7 +20,7 @@ mixin EditorActionsBase {
 
   /// Get the project_language_id from project_id and language_id
   Future<String> getProjectLanguageId() async {
-    final projectLanguageRepo = ref.read(projectLanguageRepositoryProvider);
+    final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
     final projectLanguagesResult =
         await projectLanguageRepo.getByProject(projectId);
 

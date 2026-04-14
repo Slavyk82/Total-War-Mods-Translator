@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 import '../database/database_service.dart';
 
@@ -16,7 +17,10 @@ import '../database/database_service.dart';
 ///
 /// Expected performance: <10 seconds for 16K+ rows (vs 61+ seconds before)
 class ProjectDeletionServiceV2 {
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
+
+  ProjectDeletionServiceV2({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Delete a project and all related data with maximum efficiency
   ///

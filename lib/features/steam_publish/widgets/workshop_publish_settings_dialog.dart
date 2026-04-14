@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
-import '../../../features/settings/providers/settings_providers.dart';
-import '../../../services/settings/settings_service.dart';
-import '../../../services/service_locator.dart';
+import '../../../features/settings/providers/settings_providers.dart'
+    hide settingsServiceProvider;
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 
 /// Dialog to configure default templates for Workshop title and description.
 ///
 /// Templates support `$modName` which is replaced by the project display name
 /// at publish time.
-class WorkshopPublishSettingsDialog extends StatefulWidget {
+class WorkshopPublishSettingsDialog extends ConsumerStatefulWidget {
   const WorkshopPublishSettingsDialog({super.key});
 
   /// Show the settings dialog. Returns `true` if the user saved changes.
@@ -23,12 +24,12 @@ class WorkshopPublishSettingsDialog extends StatefulWidget {
   }
 
   @override
-  State<WorkshopPublishSettingsDialog> createState() =>
+  ConsumerState<WorkshopPublishSettingsDialog> createState() =>
       _WorkshopPublishSettingsDialogState();
 }
 
 class _WorkshopPublishSettingsDialogState
-    extends State<WorkshopPublishSettingsDialog> {
+    extends ConsumerState<WorkshopPublishSettingsDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   WorkshopVisibility? _defaultVisibility;
@@ -41,7 +42,7 @@ class _WorkshopPublishSettingsDialogState
   }
 
   Future<void> _loadTemplates() async {
-    final service = ServiceLocator.get<SettingsService>();
+    final service = ref.read(settingsServiceProvider);
     final title = await service.getString(SettingsKeys.workshopTitleTemplate);
     final description =
         await service.getString(SettingsKeys.workshopDescriptionTemplate);
@@ -57,7 +58,7 @@ class _WorkshopPublishSettingsDialogState
   }
 
   Future<void> _save() async {
-    final service = ServiceLocator.get<SettingsService>();
+    final service = ref.read(settingsServiceProvider);
     await service.setString(
       SettingsKeys.workshopTitleTemplate,
       _titleController.text,

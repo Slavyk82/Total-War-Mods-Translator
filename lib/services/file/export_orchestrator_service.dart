@@ -16,7 +16,8 @@ import 'package:twmt/services/file/file_import_export_service.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
 import 'package:twmt/services/file/pack_export_utils.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
 
 /// Export progress callback
@@ -61,7 +62,7 @@ class ExportOrchestratorService {
   final ExportDataCollector _dataCollector;
   final ExportHistoryRecorder _historyRecorder;
   final PackExportUtils _packUtils;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   ExportOrchestratorService({
     required ILocFileService locFileService,
@@ -75,7 +76,7 @@ class ExportOrchestratorService {
     required ProjectLanguageRepository projectLanguageRepository,
     required TranslationUnitRepository translationUnitRepository,
     required TranslationVersionRepository translationVersionRepository,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _locFileService = locFileService,
         _rpfmService = rpfmService,
         _fileImportExportService = fileImportExportService,
@@ -94,7 +95,7 @@ class ExportOrchestratorService {
           logger: logger,
         ),
         _packUtils = PackExportUtils(logger: logger),
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Export translations to .pack file
   ///

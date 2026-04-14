@@ -9,7 +9,7 @@ import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/localization_parser_impl.dart';
 import 'package:twmt/services/file/models/localization_entry.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Result of a pack import preview operation
 class PackImportPreview {
@@ -101,7 +101,7 @@ class PackImportService {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _projectLanguageRepository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   PackImportService({
     required IRpfmService rpfmService,
@@ -109,7 +109,7 @@ class PackImportService {
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository projectLanguageRepository,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _rpfmService = rpfmService,
         _localizationParser = localizationParser,
         _unitRepository = unitRepository,

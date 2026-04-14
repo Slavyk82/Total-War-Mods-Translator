@@ -2,7 +2,8 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/translation_batch.dart';
-import '../services/shared/logging_service.dart';
+import '../services/service_locator.dart';
+import '../services/shared/i_logging_service.dart';
 import 'base_repository.dart';
 
 /// Repository for managing TranslationBatch entities.
@@ -10,6 +11,11 @@ import 'base_repository.dart';
 /// Provides CRUD operations and custom queries for translation batches,
 /// including filtering by project language, status, and progress updates.
 class TranslationBatchRepository extends BaseRepository<TranslationBatch> {
+  final ILoggingService _logger;
+
+  TranslationBatchRepository({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get tableName => 'translation_batches';
 
@@ -195,24 +201,24 @@ class TranslationBatchRepository extends BaseRepository<TranslationBatch> {
       final totalBatches = batchCount.first['count'] as int;
       final totalUnits = unitCount.first['count'] as int;
 
-      LoggingService.instance.debug('Found batches and units to clean up', {
+      _logger.debug('Found batches and units to clean up', {
         'totalBatches': totalBatches,
         'totalUnits': totalUnits,
       });
 
       if (totalBatches == 0 && totalUnits == 0) {
-        LoggingService.instance.debug('No batches to clean up');
+        _logger.debug('No batches to clean up');
         return (deleted: 0);
       }
 
       // Delete all batch units first (due to foreign key constraint)
       final deletedUnits = await database.delete('translation_batch_units');
-      LoggingService.instance.debug('Deleted batch units', {'count': deletedUnits});
+      _logger.debug('Deleted batch units', {'count': deletedUnits});
 
       // Delete all batches
       final deletedBatches = await database.delete(tableName);
-      LoggingService.instance.debug('Deleted batches', {'count': deletedBatches});
-      LoggingService.instance.info('Cleaned up all translation batches', {
+      _logger.debug('Deleted batches', {'count': deletedBatches});
+      _logger.info('Cleaned up all translation batches', {
         'batches': deletedBatches,
         'units': deletedUnits,
       });

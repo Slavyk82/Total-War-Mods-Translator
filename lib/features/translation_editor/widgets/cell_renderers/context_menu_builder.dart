@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../../providers/editor_providers.dart';
-import '../../../../services/shared/logging_service.dart';
-import '../../../../services/service_locator.dart';
+import '../../../../providers/shared/logging_providers.dart';
 
 /// Context menu builder for DataGrid rows
 ///
@@ -11,6 +11,7 @@ class ContextMenuBuilder {
   /// Show context menu for selected rows
   static void showContextMenu({
     required BuildContext context,
+    required WidgetRef ref,
     required Offset position,
     required TranslationRow row,
     required int selectionCount,
@@ -152,7 +153,7 @@ class ContextMenuBuilder {
     ).then((value) async {
       if (value == null) return;
 
-      final logging = ServiceLocator.get<LoggingService>();
+      final logging = ref.read(loggingServiceProvider);
 
       switch (value) {
         case 'select_all':

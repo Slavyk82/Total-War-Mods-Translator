@@ -3,6 +3,7 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/workshop_mod.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,14 +13,16 @@ import 'package:uuid/uuid.dart';
 class WorkshopMetadataService {
   final IWorkshopApiService _apiService;
   final WorkshopModRepository _repository;
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
   WorkshopMetadataService({
     required IWorkshopApiService apiService,
     required WorkshopModRepository repository,
+    ILoggingService? logger,
   })  : _apiService = apiService,
-        _repository = repository;
+        _repository = repository,
+        _logger = logger ?? LoggingService.instance;
 
   /// Fetch and store single mod metadata
   ///

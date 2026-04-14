@@ -3,8 +3,9 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory search service
 ///
@@ -14,11 +15,11 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - In-memory search when FTS5 unavailable
 class TmSearchService {
   final TranslationMemoryRepository _repository;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmSearchService({
     required TranslationMemoryRepository repository,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _logger = logger;
 
@@ -38,8 +39,7 @@ class TmSearchService {
   }) async {
     try {
       // Convert language code to ID format (e.g., 'fr' -> 'lang_fr')
-      final targetLanguageId =
-          targetLanguageCode != null ? 'lang_$targetLanguageCode' : null;
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       final result = await _repository.getWithFilters(
         targetLanguageId: targetLanguageId,
@@ -93,8 +93,7 @@ class TmSearchService {
       }
 
       // Convert language code to ID format
-      final targetLanguageId =
-          targetLanguageCode != null ? 'lang_$targetLanguageCode' : null;
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
 
       // Convert TmSearchScope enum to string for repository
       final searchScope = switch (searchIn) {
@@ -126,7 +125,7 @@ class TmSearchService {
         {'error': ftsResult.error.toString()},
       );
 
-      return _searchEntriesInMemory(
+      return _searchEntriesWithLike(
         searchText: searchText,
         searchIn: searchIn,
         targetLanguageId: targetLanguageId,
@@ -143,53 +142,44 @@ class TmSearchService {
     }
   }
 
-  /// Fallback in-memory search when FTS5 is unavailable or fails.
+  /// Bounded LIKE fallback when FTS5 fails.
   ///
-  /// Performance: O(n) where n = total TM entries.
-  /// Use only as fallback when FTS5 search fails.
+  /// Streams from the DB with LIMIT instead of loading all rows into RAM.
+  /// Safe at 6M+ rows.
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
-      _searchEntriesInMemory({
+      _searchEntriesWithLike({
     required String searchText,
     required TmSearchScope searchIn,
     String? targetLanguageId,
     required int limit,
   }) async {
     try {
-      final allResult = await _repository.getAll();
+      final searchScope = switch (searchIn) {
+        TmSearchScope.source => 'source',
+        TmSearchScope.target => 'target',
+        TmSearchScope.both => 'both',
+      };
 
-      if (allResult.isErr) {
+      final result = await _repository.searchByLike(
+        searchText: searchText,
+        searchScope: searchScope,
+        targetLanguageId: targetLanguageId,
+        limit: limit,
+      );
+
+      if (result.isErr) {
         return Err(
           TmServiceException(
-            'Failed to search entries: ${allResult.error}',
-            error: allResult.error,
+            'LIKE fallback failed: ${result.error}',
+            error: result.error,
           ),
         );
       }
-
-      final searchLower = searchText.toLowerCase();
-      final filtered = allResult.value.where((entry) {
-        // Apply language filter if specified
-        if (targetLanguageId != null &&
-            entry.targetLanguageId != targetLanguageId) {
-          return false;
-        }
-
-        final matchSource =
-            searchIn == TmSearchScope.source || searchIn == TmSearchScope.both;
-        final matchTarget =
-            searchIn == TmSearchScope.target || searchIn == TmSearchScope.both;
-
-        return (matchSource &&
-                entry.sourceText.toLowerCase().contains(searchLower)) ||
-            (matchTarget &&
-                entry.translatedText.toLowerCase().contains(searchLower));
-      }).take(limit).toList();
-
-      return Ok(filtered);
+      return Ok(result.value);
     } catch (e, stackTrace) {
       return Err(
         TmServiceException(
-          'Unexpected error in fallback search: ${e.toString()}',
+          'Unexpected error in LIKE fallback: ${e.toString()}',
           error: e,
           stackTrace: stackTrace,
         ),

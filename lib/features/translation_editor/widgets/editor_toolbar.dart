@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/config/tooltip_strings.dart';
-import '../../settings/providers/settings_providers.dart';
-import '../../settings/providers/llm_custom_rules_providers.dart';
 import '../providers/editor_providers.dart';
-import '../providers/translation_settings_provider.dart';
-import 'mod_rule_editor_dialog.dart';
+import 'editor_toolbar_model_selector.dart';
+import 'editor_toolbar_skip_tm.dart';
+import 'editor_toolbar_mod_rule.dart';
 
 /// Top toolbar for the translation editor
 ///
@@ -78,11 +76,11 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
               const SizedBox(width: 16),
 
               // LLM Model selector - hide label in very compact mode
-              _buildModelSelector(compact: isVeryCompact),
+              EditorToolbarModelSelector(compact: isVeryCompact),
               SizedBox(width: isCompact ? 8 : 16),
 
               // Skip TM checkbox - icon only in compact mode
-              _buildSkipTmCheckbox(compact: isCompact),
+              EditorToolbarSkipTm(compact: isCompact),
               SizedBox(width: isCompact ? 8 : 16),
 
               // Action buttons - use Expanded to fill available space
@@ -103,7 +101,10 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
                       SizedBox(width: isCompact ? 4 : 8),
 
                       // Mod Rule button
-                      _buildModRuleButton(compact: isCompact),
+                      EditorToolbarModRule(
+                        compact: isCompact,
+                        projectId: widget.projectId,
+                      ),
                       SizedBox(width: isCompact ? 8 : 16),
 
                       // Action buttons
@@ -290,284 +291,5 @@ class _EditorToolbarState extends ConsumerState<EditorToolbar> {
     }
 
     return button;
-  }
-
-  Widget _buildModelSelector({bool compact = false}) {
-    final modelsAsync = ref.watch(availableLlmModelsProvider);
-    final selectedModelId = ref.watch(selectedLlmModelProvider);
-    final settingsAsync = ref.watch(llmProviderSettingsProvider);
-
-    return modelsAsync.when(
-      data: (models) {
-        if (models.isEmpty) {
-          return const SizedBox.shrink();
-        }
-
-        // Get the active provider from settings (e.g., 'openai', 'anthropic', 'deepl')
-        final activeProvider = settingsAsync.whenOrNull(
-          data: (settings) => settings[SettingsKeys.activeProvider],
-        ) ?? '';
-
-        // Find the current selection or default model
-        // Priority order:
-        // 1. Currently selected model (if valid)
-        // 2. Default model from the active provider
-        // 3. Any enabled model from the active provider
-        // 4. Any default model across all providers
-        // 5. First available model
-        final currentModel = selectedModelId != null
-          ? models.firstWhere(
-              (m) => m.id == selectedModelId,
-              orElse: () => _findBestDefaultModel(models, activeProvider),
-            )
-          : _findBestDefaultModel(models, activeProvider);
-
-        // Initialize provider with default model if not set
-        if (selectedModelId == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(selectedLlmModelProvider.notifier).setModel(currentModel.id);
-          });
-        }
-
-        return Tooltip(
-          message: TooltipStrings.editorModelSelector,
-          waitDuration: const Duration(milliseconds: 500),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 4 : 8,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).dividerColor,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  FluentIcons.brain_circuit_24_regular,
-                  size: 16,
-                ),
-                const SizedBox(width: 6),
-                DropdownButton<String>(
-                  value: currentModel.id,
-                  underline: const SizedBox.shrink(),
-                  isDense: true,
-                  items: models.map((model) {
-                    // In compact mode, show only model name without provider prefix
-                    final displayText = compact
-                      ? model.friendlyName
-                      : '${model.providerCode}: ${model.friendlyName}';
-                    return DropdownMenuItem<String>(
-                      value: model.id,
-                      child: Text(
-                        displayText,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      ref.read(selectedLlmModelProvider.notifier).setModel(newValue);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      loading: () => SizedBox(
-        width: compact ? 80 : 150,
-        height: 20,
-        child: const LinearProgressIndicator(),
-      ),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildSkipTmCheckbox({bool compact = false}) {
-    final settings = ref.watch(translationSettingsProvider);
-
-    return Tooltip(
-      message: TooltipStrings.editorSkipTm,
-      waitDuration: const Duration(milliseconds: 500),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            ref.read(translationSettingsProvider.notifier)
-                .setSkipTranslationMemory(!settings.skipTranslationMemory);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 6 : 8,
-              vertical: 4,
-            ),
-            decoration: BoxDecoration(
-              color: settings.skipTranslationMemory
-                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
-                  : Colors.transparent,
-              border: Border.all(
-                color: settings.skipTranslationMemory
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).dividerColor,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  settings.skipTranslationMemory
-                      ? FluentIcons.checkbox_checked_24_regular
-                      : FluentIcons.checkbox_unchecked_24_regular,
-                  size: 16,
-                  color: settings.skipTranslationMemory
-                      ? Theme.of(context).colorScheme.error
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                if (!compact) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    'Skip TM',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: settings.skipTranslationMemory
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Find the best default model based on active provider setting.
-  ///
-  /// Priority order:
-  /// 1. Default model from the active provider
-  /// 2. Any enabled model from the active provider
-  /// 3. Any default model across all providers
-  /// 4. First available model
-  LlmProviderModel _findBestDefaultModel(
-    List<LlmProviderModel> models,
-    String activeProvider,
-  ) {
-    if (activeProvider.isNotEmpty) {
-      // Try to find default model from active provider
-      final activeProviderDefault = models.where(
-        (m) => m.providerCode == activeProvider && m.isDefault,
-      ).firstOrNull;
-      if (activeProviderDefault != null) {
-        return activeProviderDefault;
-      }
-
-      // Try any enabled model from active provider
-      final activeProviderModel = models.where(
-        (m) => m.providerCode == activeProvider,
-      ).firstOrNull;
-      if (activeProviderModel != null) {
-        return activeProviderModel;
-      }
-    }
-
-    // Fallback: any default model across all providers
-    final anyDefault = models.where((m) => m.isDefault).firstOrNull;
-    if (anyDefault != null) {
-      return anyDefault;
-    }
-
-    // Final fallback: first model
-    return models.first;
-  }
-
-  Widget _buildModRuleButton({bool compact = false}) {
-    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
-    final hasRuleAsync = ref.watch(hasProjectRuleProvider(widget.projectId));
-
-    return projectAsync.when(
-      data: (project) {
-        final hasRule = hasRuleAsync.whenOrNull(data: (v) => v) ?? false;
-
-        return Tooltip(
-          message: hasRule
-              ? TooltipStrings.editorModRuleEdit
-              : TooltipStrings.editorModRuleAdd,
-          waitDuration: const Duration(milliseconds: 500),
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => _showModRuleDialog(project.name),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: EdgeInsets.symmetric(
-                  horizontal: compact ? 6 : 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: hasRule
-                      ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                      : Colors.transparent,
-                  border: Border.all(
-                    color: hasRule
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).dividerColor,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      hasRule
-                          ? FluentIcons.text_bullet_list_ltr_24_filled
-                          : FluentIcons.text_bullet_list_ltr_24_regular,
-                      size: 16,
-                      color: hasRule
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                    if (!compact) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        'Mod Rule',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: hasRule
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-
-  void _showModRuleDialog(String projectName) {
-    showDialog(
-      context: context,
-      builder: (context) => ModRuleEditorDialog(
-        projectId: widget.projectId,
-        projectName: projectName,
-      ),
-    );
   }
 }

@@ -6,13 +6,8 @@ import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import 'package:twmt/repositories/compilation_repository.dart';
-import 'package:twmt/repositories/export_history_repository.dart';
-import 'package:twmt/repositories/game_installation_repository.dart';
-import 'package:twmt/repositories/language_repository.dart';
-import 'package:twmt/repositories/project_language_repository.dart';
-import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'steam_publish_providers.g.dart';
 
@@ -146,13 +141,12 @@ class CompilationPublishItem extends PublishableItem {
 /// Provider that loads publishable items filtered by the selected game.
 @riverpod
 Future<List<PublishableItem>> publishableItems(Ref ref) async {
-  final exportHistoryRepo = ServiceLocator.get<ExportHistoryRepository>();
-  final projectRepo = ServiceLocator.get<ProjectRepository>();
-  final compilationRepo = ServiceLocator.get<CompilationRepository>();
-  final languageRepo = ServiceLocator.get<LanguageRepository>();
-  final projectLanguageRepo = ServiceLocator.get<ProjectLanguageRepository>();
-  final gameInstallationRepo =
-      ServiceLocator.get<GameInstallationRepository>();
+  final exportHistoryRepo = ref.watch(exportHistoryRepositoryProvider);
+  final projectRepo = ref.watch(projectRepositoryProvider);
+  final compilationRepo = ref.watch(compilationRepositoryProvider);
+  final languageRepo = ref.watch(languageRepositoryProvider);
+  final projectLanguageRepo = ref.watch(projectLanguageRepositoryProvider);
+  final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
 
   // Get selected game to filter by
   final selectedGame = await ref.watch(selectedGameProvider.future);

@@ -2,7 +2,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../models/domain/github_release.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/service_providers.dart' as bridge;
 import '../services/release_notes_service.dart';
 
 part 'release_notes_providers.g.dart';
@@ -10,7 +10,7 @@ part 'release_notes_providers.g.dart';
 /// Provider for the release notes service.
 @Riverpod(keepAlive: true)
 ReleaseNotesService releaseNotesService(Ref ref) {
-  return ServiceLocator.get<ReleaseNotesService>();
+  return ref.watch(bridge.releaseNotesServiceProvider);
 }
 
 /// State for the release notes check.

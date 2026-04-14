@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add published_steam_id column to projects table.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// This column stores the Steam Workshop ID of the published translation pack,
 /// distinct from mod_steam_id (the source mod being translated).
 class PublishedSteamIdMigration extends Migration {
+  final ILoggingService _logger;
+
+  PublishedSteamIdMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'published_steam_id_column';
 
@@ -26,8 +32,6 @@ class PublishedSteamIdMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       if (await isApplied()) {
         return false; // Already applied
@@ -37,10 +41,10 @@ class PublishedSteamIdMigration extends Migration {
         ALTER TABLE projects
         ADD COLUMN published_steam_id TEXT
       ''');
-      logging.info('Added published_steam_id column to projects');
+      _logger.info('Added published_steam_id column to projects');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add published_steam_id column', e, stackTrace);
+      _logger.error('Failed to add published_steam_id column', e, stackTrace);
       return false;
     }
   }

@@ -2,11 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../repositories/compilation_repository.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../services/service_locator.dart';
-import '../../../services/shared/logging_service.dart';
-import '../../../services/steam/i_workshop_publish_service.dart';
+import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/steam_exceptions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import 'steam_publish_providers.dart';
@@ -95,8 +93,8 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     String? projectId,
     String? compilationId,
   }) async {
-    final logging = ServiceLocator.get<LoggingService>();
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final logging = ref.read(loggingServiceProvider);
+    final service = ref.read(workshopPublishServiceProvider);
     _silentlyCleaned = false;
 
     // Cache credentials for potential Steam Guard retry
@@ -166,7 +164,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
         try {
           if (projectId != null) {
-            final projectRepo = ServiceLocator.get<ProjectRepository>();
+            final projectRepo = ref.read(projectRepositoryProvider);
             final projectResult = await projectRepo.getById(projectId);
             if (projectResult.isOk) {
               final updated = projectResult.value.copyWith(
@@ -177,7 +175,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
               await projectRepo.update(updated);
             }
           } else if (compilationId != null) {
-            final compilationRepo = ServiceLocator.get<CompilationRepository>();
+            final compilationRepo = ref.read(compilationRepositoryProvider);
             await compilationRepo.updateAfterPublish(
               compilationId,
               publishResult.workshopId,
@@ -262,7 +260,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
   /// Submit a Steam Guard code to the running steamcmd process
   void submitSteamGuardCode(String code) {
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final service = ref.read(workshopPublishServiceProvider);
     service.submitSteamGuardCode(code);
     state = state.copyWith(
       statusMessage: 'Steam Guard code submitted, authenticating...',
@@ -271,7 +269,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
   /// Cancel the current publish operation
   Future<void> cancel() async {
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final service = ref.read(workshopPublishServiceProvider);
     await service.cancel();
     _progressSub?.cancel();
     _outputSub?.cancel();
@@ -300,7 +298,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _outputSub?.cancel();
     _outputSub = null;
     _clearCachedCredentials();
-    final service = ServiceLocator.get<IWorkshopPublishService>();
+    final service = ref.read(workshopPublishServiceProvider);
     service.cancel();
   }
 

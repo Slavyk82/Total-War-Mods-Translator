@@ -3,14 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/services/glossary/i_glossary_service.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/settings/settings_service.dart';
-import 'package:twmt/repositories/language_repository.dart';
-import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/models/domain/game_installation.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart' hide settingsServiceProvider;
 import 'package:twmt/providers/selected_game_provider.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../providers/glossary_providers.dart';
 
 /// Dialog for creating a new glossary.
@@ -44,8 +41,8 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
   }
 
   Future<void> _loadDefaultLanguage() async {
-    final languageRepository = ServiceLocator.get<LanguageRepository>();
-    final settingsService = ServiceLocator.get<SettingsService>();
+    final languageRepository = ref.read(languageRepositoryProvider);
+    final settingsService = ref.read(settingsServiceProvider);
 
     final defaultLanguageCode = await settingsService.getString(
       SettingsKeys.defaultTargetLanguage,
@@ -74,7 +71,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
     String gameName,
     String gamePath,
   ) async {
-    final repository = ServiceLocator.get<GameInstallationRepository>();
+    final repository = ref.read(gameInstallationRepositoryProvider);
 
     // Try to find existing
     final existingResult = await repository.getByGameCode(gameCode);
@@ -243,7 +240,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
   }
 
   Widget _buildLanguageSelector() {
-    final repository = ServiceLocator.get<LanguageRepository>();
+    final repository = ref.watch(languageRepositoryProvider);
     return FutureBuilder(
       future: repository.getActive(),
       builder: (context, snapshot) {
@@ -339,7 +336,7 @@ class _NewGlossaryDialogState extends ConsumerState<NewGlossaryDialog> {
     });
 
     try {
-      final service = ServiceLocator.get<IGlossaryService>();
+      final service = ref.read(glossaryServiceProvider);
 
       if (_selectedLanguageId == null) {
         if (mounted) {

@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Manager for SteamCMD installation and configuration
@@ -25,7 +26,7 @@ class SteamCmdManager {
   final Dio _dio = Dio();
 
   /// Logger
-  final LoggingService _logger = LoggingService.instance;
+  final ILoggingService _logger;
 
   /// Cached SteamCMD path
   String? _cachedSteamCmdPath;
@@ -33,9 +34,15 @@ class SteamCmdManager {
   /// Whether SteamCMD is initialized
   bool _isInitialized = false;
 
-  factory SteamCmdManager() => _instance;
+  factory SteamCmdManager({ILoggingService? logger}) {
+    if (logger != null) {
+      return SteamCmdManager._internal(logger: logger);
+    }
+    return _instance;
+  }
 
-  SteamCmdManager._internal();
+  SteamCmdManager._internal({ILoggingService? logger})
+      : _logger = logger ?? LoggingService.instance;
 
   /// Get SteamCMD executable path
   ///

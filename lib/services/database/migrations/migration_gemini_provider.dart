@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add Google Gemini as a translation provider.
@@ -8,6 +9,11 @@ import 'migration_base.dart';
 /// Models: gemini-3-pro-preview, gemini-3-flash-preview
 /// Max output: 65,536 tokens
 class GeminiProviderMigration extends Migration {
+  final ILoggingService _logger;
+
+  GeminiProviderMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'gemini_provider';
 
@@ -27,8 +33,6 @@ class GeminiProviderMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       // Add Gemini to translation_providers
       await DatabaseService.execute('''
@@ -54,10 +58,10 @@ class GeminiProviderMigration extends Migration {
         ('model_gemini_3_flash', 'gemini', 'gemini-3-flash-preview', 'Gemini 3 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
       ''');
 
-      logging.info('Gemini provider and models added successfully');
+      _logger.info('Gemini provider and models added successfully');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to add Gemini provider', e, stackTrace);
+      _logger.error('Failed to add Gemini provider', e, stackTrace);
       return false;
     }
   }

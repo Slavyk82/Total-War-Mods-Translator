@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 import 'package:twmt/services/translation_memory/tm_crud_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Translation Memory maintenance service
 ///
@@ -17,13 +18,13 @@ class TmMaintenanceService {
   final TranslationMemoryRepository _repository;
   final TmCrudService _crudService;
   final TextNormalizer _normalizer;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   const TmMaintenanceService({
     required TranslationMemoryRepository repository,
     required TmCrudService crudService,
     required TextNormalizer normalizer,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _repository = repository,
         _crudService = crudService,
         _normalizer = normalizer,
@@ -131,9 +132,7 @@ class TmMaintenanceService {
               <String, List<({String sourceText, String targetText})>>{};
           for (final entry in entriesToAdd) {
             final langId = targetLanguageMap[entry.sourceText]!;
-            // Convert language ID to code (lang_fr -> fr)
-            final langCode =
-                langId.startsWith('lang_') ? langId.substring(5) : langId;
+            final langCode = stripLanguagePrefix(langId);
             byLanguage.putIfAbsent(langCode, () => []).add(entry);
           }
 

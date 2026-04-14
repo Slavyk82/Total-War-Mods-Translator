@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/translation_memory_entry.dart';
+import '../../services/database/database_service.dart';
 
 /// Mixin providing batch operations for translation memory.
 ///
@@ -56,7 +57,7 @@ mixin TranslationMemoryBatchMixin {
       return const Ok(0);
     }
 
-    return executeTransaction((txn) async {
+    final result = await executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       var processedCount = 0;
 
@@ -69,19 +70,27 @@ mixin TranslationMemoryBatchMixin {
       // Build query to find existing entries by hash pairs
       final existingEntries = <String, TranslationMemoryEntry>{};
 
-      // Query in chunks to avoid SQL parameter limits
+      // Query in chunks to avoid SQL parameter limits.
+      // Each pair consumes 2 placeholders; SQLite's default SQLITE_MAX_VARIABLE_NUMBER
+      // is 999, so 100 pairs = 200 placeholders is safely under the limit.
       const chunkSize = 100;
       for (var i = 0; i < hashPairs.length; i += chunkSize) {
         final chunk = hashPairs.skip(i).take(chunkSize).toList();
 
-        // Build WHERE clause for this chunk
-        final conditions = chunk.map((pair) {
+        // Build parameterised WHERE clause (one (?,?) group per pair)
+        final placeholders =
+            List.filled(chunk.length, '(source_hash = ? AND target_language_id = ?)')
+                .join(' OR ');
+        final args = <Object?>[];
+        for (final pair in chunk) {
           final parts = pair.split(':');
-          return "(source_hash = '${parts[0].replaceAll("'", "''")}' AND target_language_id = '${parts[1].replaceAll("'", "''")}')";
-        }).join(' OR ');
+          args.add(parts[0]);
+          args.add(parts[1]);
+        }
 
         final maps = await txn.rawQuery(
-          'SELECT * FROM $tableName WHERE $conditions',
+          'SELECT * FROM $tableName WHERE $placeholders',
+          args,
         );
 
         for (final map in maps) {
@@ -127,6 +136,130 @@ mixin TranslationMemoryBatchMixin {
 
       return processedCount;
     });
+
+    // Opportunistic WAL checkpoint to prevent unbounded WAL file growth
+    // during long batch imports. 1 MB threshold keeps the WAL small without
+    // checkpointing after every trivial batch.
+    if (result.isOk) {
+      await DatabaseService.checkpointIfNeeded(thresholdBytes: 1048576);
+    }
+
+    return result;
+  }
+
+  /// Bulk-insert TMX entries with TMX import semantics.
+  ///
+  /// Processes [entries] in chunks inside a single transaction per chunk.
+  /// For each entry:
+  /// - If no row exists for `(source_hash, target_language_id)`: INSERT new row.
+  /// - If a row exists and [overwriteExisting] is true: UPDATE translated_text
+  ///   and updated_at; usage_count/last_used_at are preserved.
+  /// - If a row exists and [overwriteExisting] is false: skip.
+  ///
+  /// Returns the number of rows actually written (inserted + updated).
+  /// Skipped rows are reported via [onProgress] only.
+  ///
+  /// This replaces the per-row `findByHash` + `insert` loop, collapsing up to
+  /// 2N autocommit round-trips per chunk into one batched lookup and one
+  /// batched write inside a single transaction.
+  Future<Result<({int persisted, int skipped}), TWMTDatabaseException>>
+      bulkImportTmxEntries(
+    List<TranslationMemoryEntry> entries, {
+    required bool overwriteExisting,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    if (entries.isEmpty) {
+      return const Ok((persisted: 0, skipped: 0));
+    }
+
+    const chunkSize = 500;
+    var persisted = 0;
+    var skipped = 0;
+
+    for (var start = 0; start < entries.length; start += chunkSize) {
+      final end = (start + chunkSize < entries.length)
+          ? start + chunkSize
+          : entries.length;
+      final chunk = entries.sublist(start, end);
+
+      final result = await executeTransaction((txn) async {
+        // Batch lookup: which (source_hash, target_language_id) pairs already exist?
+        final existingIds = <String, String>{}; // hash:lang -> existing row id
+        const lookupChunk = 100;
+        for (var i = 0; i < chunk.length; i += lookupChunk) {
+          final j = (i + lookupChunk < chunk.length)
+              ? i + lookupChunk
+              : chunk.length;
+          final sub = chunk.sublist(i, j);
+          final placeholders = List.filled(
+            sub.length,
+            '(source_hash = ? AND target_language_id = ?)',
+          ).join(' OR ');
+          final args = <Object?>[];
+          for (final e in sub) {
+            args.add(e.sourceHash);
+            args.add(e.targetLanguageId);
+          }
+          final rows = await txn.rawQuery(
+            'SELECT id, source_hash, target_language_id FROM $tableName '
+            'WHERE $placeholders',
+            args,
+          );
+          for (final row in rows) {
+            final key =
+                '${row['source_hash']}:${row['target_language_id']}';
+            existingIds[key] = row['id'] as String;
+          }
+        }
+
+        var chunkWrites = 0;
+        var chunkSkipped = 0;
+        for (final entry in chunk) {
+          final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+          final existingId = existingIds[key];
+
+          if (existingId != null) {
+            if (!overwriteExisting) {
+              chunkSkipped++;
+              continue;
+            }
+            await txn.update(
+              tableName,
+              {
+                'translated_text': entry.translatedText,
+                'updated_at': entry.updatedAt,
+              },
+              where: 'id = ?',
+              whereArgs: [existingId],
+            );
+            chunkWrites++;
+          } else {
+            await txn.insert(
+              tableName,
+              toMap(entry),
+              conflictAlgorithm: ConflictAlgorithm.abort,
+            );
+            chunkWrites++;
+          }
+        }
+
+        return (persisted: chunkWrites, skipped: chunkSkipped);
+      });
+
+      if (result.isErr) {
+        return Err(result.unwrapErr());
+      }
+      final counts = result.unwrap();
+      persisted += counts.persisted;
+      skipped += counts.skipped;
+
+      onProgress?.call(end, entries.length);
+    }
+
+    // Reuse the same WAL checkpoint policy as upsertBatch.
+    await DatabaseService.checkpointIfNeeded(thresholdBytes: 1048576);
+
+    return Ok((persisted: persisted, skipped: skipped));
   }
 
   /// Get LLM translations that are missing from TM
@@ -144,8 +277,12 @@ mixin TranslationMemoryBatchMixin {
     int offset = 0,
   }) async {
     return executeQuery(() async {
-      final projectFilter =
-          projectId != null ? "AND tu.project_id = '$projectId'" : '';
+      final projectFilter = projectId != null ? 'AND tu.project_id = ?' : '';
+      final args = <Object?>[
+        if (projectId != null) projectId,
+        limit,
+        offset,
+      ];
 
       final query = '''
         SELECT DISTINCT
@@ -160,10 +297,10 @@ mixin TranslationMemoryBatchMixin {
           AND tv.translated_text != ''
           $projectFilter
         ORDER BY tu.source_text
-        LIMIT $limit OFFSET $offset
+        LIMIT ? OFFSET ?
       ''';
 
-      final rows = await database.rawQuery(query);
+      final rows = await database.rawQuery(query, args);
       return rows;
     });
   }
@@ -173,8 +310,8 @@ mixin TranslationMemoryBatchMixin {
     String? projectId,
   }) async {
     return executeQuery(() async {
-      final projectFilter =
-          projectId != null ? "AND tu.project_id = '$projectId'" : '';
+      final projectFilter = projectId != null ? 'AND tu.project_id = ?' : '';
+      final args = <Object?>[if (projectId != null) projectId];
 
       final query = '''
         SELECT COUNT(DISTINCT tu.source_text || '|' || pl.language_id) as count
@@ -187,7 +324,7 @@ mixin TranslationMemoryBatchMixin {
           $projectFilter
       ''';
 
-      final result = await database.rawQuery(query);
+      final result = await database.rawQuery(query, args);
       return (result.first['count'] as int?) ?? 0;
     });
   }

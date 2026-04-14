@@ -1,8 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:meta/meta.dart';
 
 import '../database/database_service.dart';
+import '../service_locator.dart';
+import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
 
 /// Model for a single hyphen pattern.
@@ -36,6 +39,21 @@ class FrenchHyphenFixer {
   /// Cached hyphen patterns loaded from JSON asset.
   static List<HyphenPattern>? _cachedPatterns;
 
+  /// Logger instance (lazy: falls back to concrete singleton when locator not ready).
+  static ILoggingService _logger = LoggingService.instance;
+
+  /// Resolve the logger from the service locator when available,
+  /// otherwise keep the current value (useful for tests and startup).
+  static ILoggingService get _logging {
+    if (ServiceLocator.isRegistered<ILoggingService>()) {
+      _logger = ServiceLocator.get<ILoggingService>();
+    }
+    return _logger;
+  }
+
+  @visibleForTesting
+  static set loggerForTesting(ILoggingService logger) => _logger = logger;
+
   /// Load hyphen patterns from JSON asset file.
   ///
   /// Patterns are cached after first load for performance.
@@ -53,13 +71,13 @@ class FrenchHyphenFixer {
           .map((p) => HyphenPattern.fromJson(p as Map<String, dynamic>))
           .toList();
 
-      LoggingService.instance.debug(
+      _logging.debug(
         'Loaded ${_cachedPatterns!.length} French hyphen patterns from asset',
       );
 
       return _cachedPatterns!;
     } catch (e, stackTrace) {
-      LoggingService.instance.error(
+      _logging.error(
         'Failed to load French hyphen patterns from asset',
         e,
         stackTrace,
@@ -75,7 +93,7 @@ class FrenchHyphenFixer {
   ///
   /// Returns the number of translations fixed.
   static Future<int> fixMissingHyphens() async {
-    final logging = LoggingService.instance;
+    final logging = _logging;
 
     try {
       logging.debug('Checking for missing hyphens in French translations...');

@@ -6,10 +6,9 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 
-import '../../settings/providers/settings_providers.dart';
-import '../../../services/file/i_pack_image_generator_service.dart';
-import '../../../services/settings/settings_service.dart';
-import '../../../services/service_locator.dart';
+import '../../settings/providers/settings_providers.dart'
+    hide settingsServiceProvider;
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
 import '../../../config/router/app_router.dart';
@@ -157,7 +156,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     final (username, password, steamGuardCode) = credentials;
 
     // Load templates
-    final settingsService = ServiceLocator.get<SettingsService>();
+    final settingsService = ref.read(settingsServiceProvider);
     final titleTemplate =
         await settingsService.getString(SettingsKeys.workshopTitleTemplate);
     final descTemplate =
@@ -172,7 +171,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
     final items = <BatchPublishItemInfo>[];
     final skippedNoPreview = <String>[];
-    final imageGenerator = ServiceLocator.get<IPackImageGeneratorService>();
+    final imageGenerator = ref.read(packImageGeneratorServiceProvider);
 
     for (final item in selectedItems) {
       final packPath = item.outputPath;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:meta/meta.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,6 +8,7 @@ import '../../models/events/domain_event.dart';
 import '../../models/common/result.dart';
 import '../database/database_service.dart';
 import 'models/event_record.dart';
+import 'i_logging_service.dart';
 import 'logging_service.dart';
 
 /// Event bus for publishing and subscribing to domain events.
@@ -35,6 +37,14 @@ class EventBus {
 
   static final EventBus _instance = EventBus._();
   static EventBus get instance => _instance;
+
+  /// Logger used by the event bus. Defaults to the concrete singleton so that
+  /// EventBus remains usable before the service locator is initialised.
+  static ILoggingService _logger = LoggingService.instance;
+
+  /// Override the logger for tests.
+  @visibleForTesting
+  static set loggerForTesting(ILoggingService logger) => _logger = logger;
 
   final StreamController<DomainEvent> _controller =
       StreamController<DomainEvent>.broadcast();
@@ -118,7 +128,7 @@ class EventBus {
           // Log but don't throw - event persistence is best-effort
           // The event has already been broadcast to listeners, which is the primary goal
           // Persistence failure should not crash the caller
-          LoggingService.instance.warning(
+          _logger.warning(
             'Failed to persist event ${event.runtimeType}',
             {'error': e.toString()},
           );
@@ -440,7 +450,7 @@ class EventBus {
     } catch (e, stackTrace) {
       // Don't throw - event persistence failure shouldn't break the application
       // Just log the error
-      LoggingService.instance.error('Failed to persist event', e, stackTrace);
+      _logger.error('Failed to persist event', e, stackTrace);
     }
   }
 

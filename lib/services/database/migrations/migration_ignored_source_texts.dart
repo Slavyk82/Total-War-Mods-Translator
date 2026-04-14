@@ -1,7 +1,8 @@
 import 'package:uuid/uuid.dart';
 
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure ignored_source_texts table exists.
@@ -10,6 +11,11 @@ import 'migration_base.dart';
 /// during translation (e.g., placeholders, markers). Users can add, edit,
 /// delete, and reset to defaults through the Settings screen.
 class IgnoredSourceTextsMigration extends Migration {
+  final ILoggingService _logger;
+
+  IgnoredSourceTextsMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'ignored_source_texts_table';
 
@@ -21,8 +27,6 @@ class IgnoredSourceTextsMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       // Create table
       await DatabaseService.execute('''
@@ -49,18 +53,18 @@ class IgnoredSourceTextsMigration extends Migration {
       ''');
 
       // Seed default values if table is empty
-      await _seedDefaults(logging);
+      await _seedDefaults();
 
-      logging.debug('ignored_source_texts table verified/created');
+      _logger.debug('ignored_source_texts table verified/created');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create ignored_source_texts table', e, stackTrace);
+      _logger.error('Failed to create ignored_source_texts table', e, stackTrace);
       // Non-fatal: skip filter will fall back to hardcoded defaults
       return false;
     }
   }
 
-  Future<void> _seedDefaults(LoggingService logging) async {
+  Future<void> _seedDefaults() async {
     final countResult = await DatabaseService.database.rawQuery(
       'SELECT COUNT(*) as cnt FROM ignored_source_texts'
     );
@@ -81,7 +85,7 @@ class IgnoredSourceTextsMigration extends Migration {
           [id, text, now, now],
         );
       }
-      logging.info('Seeded ${defaults.length} default ignored source texts');
+      _logger.info('Seeded ${defaults.length} default ignored source texts');
     }
   }
 }

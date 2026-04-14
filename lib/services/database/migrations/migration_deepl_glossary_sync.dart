@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to add DeepL glossary synchronization support.
@@ -12,6 +13,11 @@ import 'migration_base.dart';
 /// - Tracking of sync status and timestamps
 /// - Proper cleanup when glossaries are deleted
 class DeepLGlossarySyncMigration extends Migration {
+  final ILoggingService _logger;
+
+  DeepLGlossarySyncMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'deepl_glossary_sync';
 
@@ -32,8 +38,6 @@ class DeepLGlossarySyncMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       // Create the mapping table
       await DatabaseService.execute('''
@@ -65,10 +69,10 @@ class DeepLGlossarySyncMigration extends Migration {
         ON deepl_glossary_mappings(deepl_glossary_id)
       ''');
 
-      logging.info('DeepL glossary sync table created successfully');
+      _logger.info('DeepL glossary sync table created successfully');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create DeepL glossary sync table', e, stackTrace);
+      _logger.error('Failed to create DeepL glossary sync table', e, stackTrace);
       return false;
     }
   }

@@ -7,10 +7,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
-import '../../../repositories/compilation_repository.dart';
-import '../../../repositories/project_repository.dart';
-import '../../../services/file/export_orchestrator_service.dart';
-import '../../../services/service_locator.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
@@ -623,8 +621,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     });
 
     try {
-      final orchestrator =
-          ServiceLocator.get<ExportOrchestratorService>();
+      final orchestrator = ref.read(exportOrchestratorServiceProvider);
 
       // Determine the output path using the orchestrator's convention
       final result = await orchestrator.exportToPack(
@@ -896,7 +893,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
     try {
       final item = widget.item;
       if (item is ProjectPublishItem) {
-        final projectRepo = ServiceLocator.get<ProjectRepository>();
+        final projectRepo = ref.read(projectRepositoryProvider);
         final projectResult = await projectRepo.getById(item.project.id);
         if (projectResult.isOk) {
           final updated = projectResult.value.copyWith(
@@ -906,7 +903,7 @@ class _PackExportCardState extends ConsumerState<PackExportCard> {
           await projectRepo.update(updated);
         }
       } else if (item is CompilationPublishItem) {
-        final compilationRepo = ServiceLocator.get<CompilationRepository>();
+        final compilationRepo = ref.read(compilationRepositoryProvider);
         await compilationRepo.updateAfterPublish(
           item.compilation.id,
           steamId,

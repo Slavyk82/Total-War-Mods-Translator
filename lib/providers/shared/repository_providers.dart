@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../models/domain/game_installation.dart';
 import '../../models/domain/language.dart';
 import '../../repositories/compilation_repository.dart';
@@ -11,102 +11,66 @@ import '../../repositories/translation_version_repository.dart';
 import '../../repositories/workshop_mod_repository.dart';
 import '../../services/service_locator.dart';
 
-/// Shared repository providers - use these throughout the application
-/// instead of defining local providers.
-///
-/// All providers use ServiceLocator singletons to avoid creating
-/// new instances on each read.
+part 'repository_providers.g.dart';
 
-// -----------------------------------------------------------------------------
-// Repository Providers
-// -----------------------------------------------------------------------------
+@Riverpod(keepAlive: true)
+ProjectRepository projectRepository(Ref ref) =>
+    ServiceLocator.get<ProjectRepository>();
 
-/// Provider for project repository.
-final projectRepositoryProvider = Provider<ProjectRepository>((ref) {
-  return ServiceLocator.get<ProjectRepository>();
-});
+@Riverpod(keepAlive: true)
+ProjectLanguageRepository projectLanguageRepository(Ref ref) =>
+    ServiceLocator.get<ProjectLanguageRepository>();
 
-/// Provider for project language repository.
-final projectLanguageRepositoryProvider =
-    Provider<ProjectLanguageRepository>((ref) {
-  return ServiceLocator.get<ProjectLanguageRepository>();
-});
+@Riverpod(keepAlive: true)
+LanguageRepository languageRepository(Ref ref) =>
+    ServiceLocator.get<LanguageRepository>();
 
-/// Provider for language repository.
-final languageRepositoryProvider = Provider<LanguageRepository>((ref) {
-  return ServiceLocator.get<LanguageRepository>();
-});
+@Riverpod(keepAlive: true)
+GameInstallationRepository gameInstallationRepository(Ref ref) =>
+    ServiceLocator.get<GameInstallationRepository>();
 
-/// Provider for game installation repository.
-final gameInstallationRepositoryProvider =
-    Provider<GameInstallationRepository>((ref) {
-  return ServiceLocator.get<GameInstallationRepository>();
-});
+@Riverpod(keepAlive: true)
+CompilationRepository compilationRepository(Ref ref) =>
+    ServiceLocator.get<CompilationRepository>();
 
-/// Provider for compilation repository.
-final compilationRepositoryProvider = Provider<CompilationRepository>((ref) {
-  return ServiceLocator.get<CompilationRepository>();
-});
+@Riverpod(keepAlive: true)
+TranslationVersionRepository translationVersionRepository(Ref ref) =>
+    ServiceLocator.get<TranslationVersionRepository>();
 
-/// Provider for translation version repository.
-final translationVersionRepositoryProvider =
-    Provider<TranslationVersionRepository>((ref) {
-  return ServiceLocator.get<TranslationVersionRepository>();
-});
+@Riverpod(keepAlive: true)
+TranslationUnitRepository translationUnitRepository(Ref ref) =>
+    ServiceLocator.get<TranslationUnitRepository>();
 
-/// Provider for translation unit repository.
-final translationUnitRepositoryProvider =
-    Provider<TranslationUnitRepository>((ref) {
-  return ServiceLocator.get<TranslationUnitRepository>();
-});
+@Riverpod(keepAlive: true)
+WorkshopModRepository workshopModRepository(Ref ref) =>
+    ServiceLocator.get<WorkshopModRepository>();
 
-/// Provider for workshop mod repository.
-final workshopModRepositoryProvider = Provider<WorkshopModRepository>((ref) {
-  return ServiceLocator.get<WorkshopModRepository>();
-});
-
-// -----------------------------------------------------------------------------
-// Common Data Providers
-// -----------------------------------------------------------------------------
-
-/// Provider for all languages (including inactive).
-final allLanguagesProvider = FutureProvider<List<Language>>((ref) async {
-  try {
-    final langRepo = ref.watch(languageRepositoryProvider);
-    final result = await langRepo.getAll();
-
-    if (result.isErr) {
-      final error = result.unwrapErr();
-      throw Exception('Failed to load languages: ${error.message}');
-    }
-
-    return result.unwrap();
-  } catch (e) {
-    throw Exception('Error loading languages: $e');
+@riverpod
+Future<List<Language>> allLanguages(Ref ref) async {
+  final langRepo = ref.watch(languageRepositoryProvider);
+  final result = await langRepo.getAll();
+  if (result.isErr) {
+    throw Exception('Failed to load languages: ${result.unwrapErr().message}');
   }
-});
+  return result.unwrap();
+}
 
-/// Provider for active languages only.
-final activeLanguagesProvider = FutureProvider<List<Language>>((ref) async {
+@riverpod
+Future<List<Language>> activeLanguages(Ref ref) async {
   final langRepo = ref.watch(languageRepositoryProvider);
   final result = await langRepo.getActive();
-
   if (result.isErr) {
     throw Exception('Failed to load languages');
   }
-
   return result.unwrap();
-});
+}
 
-/// Provider for all game installations.
-final allGameInstallationsProvider =
-    FutureProvider<List<GameInstallation>>((ref) async {
+@riverpod
+Future<List<GameInstallation>> allGameInstallations(Ref ref) async {
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
   final result = await gameRepo.getAll();
-
   if (result.isErr) {
     throw Exception('Failed to load game installations');
   }
-
   return result.unwrap();
-});
+}

@@ -1,5 +1,6 @@
+import '../../service_locator.dart';
+import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
-import '../../shared/logging_service.dart';
 import 'migration_base.dart';
 
 /// Migration to ensure llm_custom_rules table exists.
@@ -7,6 +8,11 @@ import 'migration_base.dart';
 /// This table stores custom rules that users can add to LLM translation prompts.
 /// Rules can be global (project_id = NULL) or project-specific.
 class LlmCustomRulesMigration extends Migration {
+  final ILoggingService _logger;
+
+  LlmCustomRulesMigration({ILoggingService? logger})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+
   @override
   String get id => 'llm_custom_rules_table';
 
@@ -18,8 +24,6 @@ class LlmCustomRulesMigration extends Migration {
 
   @override
   Future<bool> execute() async {
-    final logging = LoggingService.instance;
-
     try {
       await DatabaseService.execute('''
         CREATE TABLE IF NOT EXISTS llm_custom_rules (
@@ -36,7 +40,7 @@ class LlmCustomRulesMigration extends Migration {
       ''');
 
       // Add project_id column if it doesn't exist (for older databases)
-      await _ensureProjectIdColumn(logging);
+      await _ensureProjectIdColumn();
 
       await DatabaseService.execute('''
         CREATE INDEX IF NOT EXISTS idx_llm_custom_rules_enabled_order
@@ -49,16 +53,16 @@ class LlmCustomRulesMigration extends Migration {
         ON llm_custom_rules(project_id)
       ''');
 
-      logging.debug('llm_custom_rules table verified/created');
+      _logger.debug('llm_custom_rules table verified/created');
       return true;
     } catch (e, stackTrace) {
-      logging.error('Failed to create llm_custom_rules table', e, stackTrace);
+      _logger.error('Failed to create llm_custom_rules table', e, stackTrace);
       // Non-fatal: custom rules feature will be unavailable but app still works
       return false;
     }
   }
 
-  Future<void> _ensureProjectIdColumn(LoggingService logging) async {
+  Future<void> _ensureProjectIdColumn() async {
     final rulesColumns = await DatabaseService.database.rawQuery(
       "PRAGMA table_info(llm_custom_rules)"
     );
@@ -69,7 +73,7 @@ class LlmCustomRulesMigration extends Migration {
         ALTER TABLE llm_custom_rules ADD COLUMN project_id TEXT
           REFERENCES projects(id) ON DELETE CASCADE
       ''');
-      logging.info('Added project_id column to llm_custom_rules');
+      _logger.info('Added project_id column to llm_custom_rules');
     }
   }
 }

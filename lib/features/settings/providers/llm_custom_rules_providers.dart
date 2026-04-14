@@ -1,14 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../models/domain/llm_custom_rule.dart';
+import '../../../providers/shared/service_providers.dart' as bridge;
 import '../../../services/llm/llm_custom_rules_service.dart';
-import '../../../services/service_locator.dart';
 
 part 'llm_custom_rules_providers.g.dart';
 
 /// Provider for LlmCustomRulesService
 @riverpod
 LlmCustomRulesService llmCustomRulesService(Ref ref) {
-  return ServiceLocator.get<LlmCustomRulesService>();
+  return ref.watch(bridge.llmCustomRulesServiceProvider);
 }
 
 /// Notifier for managing LLM custom rules

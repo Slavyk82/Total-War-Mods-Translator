@@ -3,11 +3,8 @@ import 'package:twmt/features/import_export/models/import_export_settings.dart'
     as export_models;
 import 'package:twmt/features/import_export/models/export_result.dart';
 import 'package:twmt/features/import_export/services/import_export_service.dart';
-import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/services/file/i_file_service.dart';
-import 'package:twmt/services/history/i_history_service.dart';
-import 'package:twmt/services/service_locator.dart';
+import '../shared/repository_providers.dart';
+import '../shared/service_providers.dart';
 
 part 'export_provider.g.dart';
 
@@ -78,10 +75,10 @@ class ExportPreviewData extends _$ExportPreviewData {
     state = null;
 
     final service = ImportExportService(
-      ServiceLocator.get<IFileService>(),
-      ServiceLocator.get<TranslationUnitRepository>(),
-      ServiceLocator.get<TranslationVersionRepository>(),
-      ServiceLocator.get<IHistoryService>(),
+      ref.read(fileServiceProvider),
+      ref.read(translationUnitRepositoryProvider),
+      ref.read(translationVersionRepositoryProvider),
+      ref.read(historyServiceProvider),
     );
 
     final result = await service.previewExport(settings);
@@ -140,10 +137,10 @@ class ExportResultData extends _$ExportResultData {
     progressNotifier.start(100);
 
     final service = ImportExportService(
-      ServiceLocator.get<IFileService>(),
-      ServiceLocator.get<TranslationUnitRepository>(),
-      ServiceLocator.get<TranslationVersionRepository>(),
-      ServiceLocator.get<IHistoryService>(),
+      ref.read(fileServiceProvider),
+      ref.read(translationUnitRepositoryProvider),
+      ref.read(translationVersionRepositoryProvider),
+      ref.read(historyServiceProvider),
     );
 
     final result = await service.executeExport(

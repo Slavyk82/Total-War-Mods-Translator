@@ -7,7 +7,8 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 
 /// Service for TMX (Translation Memory eXchange) import and export operations.
@@ -17,7 +18,7 @@ import 'package:twmt/services/translation_memory/text_normalizer.dart';
 class TmxService {
   final TranslationMemoryRepository _repository;
   final TextNormalizer _normalizer;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   static const String _creationTool = 'TWMT';
   static const String _creationToolVersion = '1.0';
@@ -29,10 +30,10 @@ class TmxService {
   TmxService({
     required TranslationMemoryRepository repository,
     required TextNormalizer normalizer,
-    LoggingService? logger,
+    ILoggingService? logger,
   })  : _repository = repository,
         _normalizer = normalizer,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Export translation memory entries to TMX format.
   ///
@@ -118,6 +119,112 @@ class TmxService {
         error: e,
         stackTrace: stackTrace,
       ));
+    }
+  }
+
+  /// Export translation memory entries to TMX format using a streaming page-by-page approach.
+  ///
+  /// Instead of loading all entries into RAM, this method writes TMX content
+  /// incrementally by requesting pages via [pageFetcher]. Each page is flushed
+  /// to the [IOSink] before the next page is requested.
+  ///
+  /// [filePath]: Output path for the TMX file
+  /// [pageFetcher]: Callback that returns a page of entries given (offset, pageSize)
+  /// [sourceLanguage]: Source language code (ISO 639-1)
+  /// [targetLanguage]: Target language code (ISO 639-1)
+  /// [pageSize]: Number of entries to fetch per page (default: 5000)
+  ///
+  /// Returns Ok(int) with total entries written on success,
+  /// Err(TmExportException) on failure.
+  Future<Result<int, TmExportException>> exportToTmxStreaming({
+    required String filePath,
+    required Future<Result<List<TranslationMemoryEntry>, Object>> Function(
+            int offset, int pageSize)
+        pageFetcher,
+    required String sourceLanguage,
+    required String targetLanguage,
+    int pageSize = 5000,
+  }) async {
+    _logger.info('Starting streaming TMX export', {
+      'filePath': filePath,
+      'sourceLanguage': sourceLanguage,
+      'targetLanguage': targetLanguage,
+      'pageSize': pageSize,
+    });
+
+    final sink = File(filePath).openWrite(encoding: utf8);
+    int totalWritten = 0;
+
+    try {
+      // Write XML prolog and TMX opening tags
+      sink.write('<?xml version="1.0" encoding="UTF-8"?>\n');
+      sink.write('<tmx version="$_tmxVersion">\n');
+      sink.write('  <header'
+          ' creationtool="$_creationTool"'
+          ' creationtoolversion="$_creationToolVersion"'
+          ' datatype="$_datatype"'
+          ' segtype="$_segtype"'
+          ' adminlang="$_adminLang"'
+          ' srclang="$sourceLanguage"'
+          ' o-tmf="$_creationTool"'
+          '/>\n');
+      sink.write('  <body>\n');
+
+      int offset = 0;
+      while (true) {
+        final pageResult = await pageFetcher(offset, pageSize);
+
+        if (pageResult.isErr) {
+          return Err(TmExportException(
+            'Failed to fetch page at offset $offset: ${pageResult.error}',
+            outputPath: filePath,
+            entriesCount: totalWritten,
+            error: pageResult.error,
+          ));
+        }
+
+        final page = pageResult.value;
+        if (page.isEmpty) break;
+
+        for (final entry in page) {
+          // Build TU XML using existing helper via a throwaway XmlBuilder.
+          // buildFragment() returns an XmlDocumentFragment whose direct children
+          // are the actual XmlElement nodes. Serialize each child individually
+          // to obtain the raw <tu>...</tu> string without the fragment wrapper.
+          final tuBuilder = XmlBuilder();
+          _buildTranslationUnit(tuBuilder, entry, sourceLanguage, targetLanguage);
+          final fragment = tuBuilder.buildFragment();
+          for (final node in fragment.children) {
+            final tuString = node.toXmlString(pretty: true, indent: '  ');
+            sink.write('    $tuString\n');
+          }
+        }
+
+        totalWritten += page.length;
+        offset += pageSize;
+      }
+
+      sink.write('  </body>\n');
+      sink.write('</tmx>\n');
+      await sink.flush();
+
+      _logger.info('Streaming TMX export completed successfully', {
+        'filePath': filePath,
+        'entriesExported': totalWritten,
+      });
+
+      return Ok(totalWritten);
+    } catch (e, stackTrace) {
+      _logger.error('Failed during streaming TMX export', e, stackTrace);
+      return Err(TmExportException(
+        'Failed during streaming TMX export: ${e.toString()}',
+        outputPath: filePath,
+        entriesCount: totalWritten,
+        error: e,
+        stackTrace: stackTrace,
+      ));
+    } finally {
+      await sink.close();
     }
   }
 
@@ -339,71 +446,50 @@ class TmxService {
         'overwriteExisting': overwriteExisting,
       });
 
-      int persistedCount = 0;
-      int skippedCount = 0;
-      final total = entries.length;
-
-      for (int i = 0; i < total; i++) {
-        final entry = entries[i];
-
-        // Calculate source hash using SHA256 for collision resistance
+      // Convert parsed TMX entries into TM entities once; hash is computed
+      // here so the repository batch can rely on each entry's sourceHash.
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final tmEntries = entries.map((entry) {
         final normalized = _normalizer.normalize(entry.sourceText);
         final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
-
-        // Check if entry already exists
-        final existingResult = await _repository.findByHash(
-          sourceHash,
-          entry.targetLanguage,
+        return TranslationMemoryEntry(
+          id: const Uuid().v4(),
+          sourceText: entry.sourceText,
+          translatedText: entry.targetText,
+          sourceLanguageId: entry.sourceLanguage,
+          targetLanguageId: entry.targetLanguage,
+          sourceHash: sourceHash,
+          usageCount: entry.usageCount,
+          translationProviderId: entry.translationProviderId,
+          createdAt: now,
+          lastUsedAt: now,
+          updatedAt: now,
         );
+      }).toList();
 
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final result = await _repository.bulkImportTmxEntries(
+        tmEntries,
+        overwriteExisting: overwriteExisting,
+        onProgress: onProgress,
+      );
 
-        if (existingResult.isOk && !overwriteExisting) {
-          // Entry exists and we're not overwriting - skip
-          skippedCount++;
-          _logger.debug('Skipping existing entry', {
-            'sourceText': entry.sourceText.substring(
-              0,
-              entry.sourceText.length < 50 ? entry.sourceText.length : 50,
-            ),
-          });
-        } else {
-          // Create new entry with UUID for unique identification
-          final tmEntry = TranslationMemoryEntry(
-            id: const Uuid().v4(),
-            sourceText: entry.sourceText,
-            translatedText: entry.targetText,
-            sourceLanguageId: entry.sourceLanguage,
-            targetLanguageId: entry.targetLanguage,
-            sourceHash: sourceHash,
-            usageCount: entry.usageCount,
-            translationProviderId: entry.translationProviderId,
-            createdAt: now,
-            lastUsedAt: now,
-            updatedAt: now,
-          );
-
-          final insertResult = await _repository.insert(tmEntry);
-
-          if (insertResult.isOk) {
-            persistedCount++;
-          } else {
-            _logger.warning('Failed to persist TMX entry', {
-              'error': insertResult.error.toString(),
-            });
-          }
-        }
-
-        // Report progress
-        onProgress?.call(i + 1, total);
+      if (result.isErr) {
+        final err = result.unwrapErr();
+        _logger.error('Failed to persist TMX entries', err);
+        return Err(TmImportException(
+          'Failed to persist TMX entries: ${err.message}',
+          processedEntries: 0,
+          error: err,
+        ));
       }
 
+      final counts = result.unwrap();
       _logger.info('TMX entries persisted', {
-        'persisted': persistedCount,
-        'skipped': skippedCount,
+        'persisted': counts.persisted,
+        'skipped': counts.skipped,
       });
 
-      return Ok(persistedCount);
+      return Ok(counts.persisted);
     } catch (e, stackTrace) {
       _logger.error('Failed to persist TMX entries', e, stackTrace);
       return Err(TmImportException(

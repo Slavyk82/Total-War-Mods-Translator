@@ -6,7 +6,7 @@ import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/detected_mods_datagrid.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/features/mods/utils/mods_screen_controller.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 
 /// Mods screen displaying detected mods with filtering and project creation
 ///
@@ -32,10 +32,11 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    LoggingService.instance.debug('ModsScreen build() called');
+    final logger = ref.read(loggingServiceProvider);
+    logger.debug('ModsScreen build() called');
     final theme = Theme.of(context);
     final filteredMods = ref.watch(filteredModsProvider);
-    LoggingService.instance.debug('filteredMods count: ${filteredMods.length}');
+    logger.debug('filteredMods count: ${filteredMods.length}');
     final isInitialLoading = ref.watch(modsIsLoadingProvider);
     final modsError = ref.watch(modsErrorProvider);
     final searchQuery = ref.watch(modsSearchQueryProvider);
@@ -73,9 +74,9 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
               needsUpdateCount: needsUpdateCountAsync.value ?? 0,
               showHidden: showHidden,
               onShowHiddenChanged: (value) {
-                LoggingService.instance.debug('onShowHiddenChanged called with: $value');
+                logger.debug('onShowHiddenChanged called with: $value');
                 ref.read(showHiddenModsProvider.notifier).set(value);
-                LoggingService.instance.debug('showHiddenModsProvider.set() done');
+                logger.debug('showHiddenModsProvider.set() done');
               },
               hiddenCount: hiddenCountAsync.value ?? 0,
               projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,

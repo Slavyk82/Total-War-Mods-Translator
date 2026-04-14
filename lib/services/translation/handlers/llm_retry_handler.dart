@@ -3,7 +3,7 @@ import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
-import 'package:twmt/services/shared/logging_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Handles retry logic for LLM translation requests.
 ///
@@ -13,11 +13,11 @@ import 'package:twmt/services/shared/logging_service.dart';
 /// - Respect provider-suggested retry-after delays
 class LlmRetryHandler {
   final ILlmService _llmService;
-  final LoggingService _logger;
+  final ILoggingService _logger;
 
   LlmRetryHandler({
     required ILlmService llmService,
-    required LoggingService logger,
+    required ILoggingService logger,
   })  : _llmService = llmService,
         _logger = logger;
 
@@ -35,10 +35,7 @@ class LlmRetryHandler {
     required dynamic dioCancelToken,
     int maxRetries = 3,
   }) async {
-    int attempt = 0;
-    LlmServiceException? lastError;
-
-    while (attempt <= maxRetries) {
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
       final result = await _llmService.translateBatch(
         llmRequest,
         cancelToken: dioCancelToken,
@@ -49,7 +46,6 @@ class LlmRetryHandler {
       }
 
       final error = result.unwrapErr();
-      lastError = error;
 
       // Check if error is retryable
       final isRetryable = error is LlmServerException ||
@@ -82,10 +78,13 @@ class LlmRetryHandler {
       );
 
       await Future.delayed(Duration(seconds: delaySeconds));
-      attempt++;
     }
 
-    // Should not reach here, but return last error if it does
-    return Err(lastError!);
+    // Unreachable: the loop above always returns (either Ok on success, or
+    // Err on non-retryable / exhausted attempts). Reaching this line means
+    // the invariant was violated.
+    throw StateError(
+      'LlmRetryHandler.translateWithRetry loop exited without returning',
+    );
   }
 }

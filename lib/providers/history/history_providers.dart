@@ -4,7 +4,8 @@ import '../../models/history/diff_models.dart';
 import '../../repositories/translation_version_repository.dart';
 import '../../services/history/i_history_service.dart';
 import '../../services/history/undo_redo_manager.dart';
-import '../../services/service_locator.dart';
+import '../shared/repository_providers.dart';
+import '../shared/service_providers.dart' as bridge;
 
 part 'history_providers.g.dart';
 
@@ -14,7 +15,7 @@ part 'history_providers.g.dart';
 /// translation version history.
 @riverpod
 IHistoryService historyService(Ref ref) {
-  return ServiceLocator.get<IHistoryService>();
+  return ref.watch(bridge.historyServiceProvider);
 }
 
 /// Provider for history entries of a specific translation version
@@ -102,7 +103,7 @@ class UndoRedoManagerNotifier extends _$UndoRedoManagerNotifier {
 
   @override
   UndoRedoManagerState build() {
-    _repository = ServiceLocator.get<TranslationVersionRepository>();
+    _repository = ref.watch(translationVersionRepositoryProvider);
     _manager = UndoRedoManager();
     return _manager.state;
   }
