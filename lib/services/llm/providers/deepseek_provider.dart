@@ -18,7 +18,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// - Max output: Default 4K, Maximum 8K tokens
 class DeepSeekProvider implements ILlmProvider {
   final Dio _dio;
-  final TokenCalculator _tokenCalculator = TokenCalculator();
+  final TokenCalculator _tokenCalculator;
 
   @override
   final String providerCode = 'deepseek';
@@ -29,7 +29,7 @@ class DeepSeekProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.deepseek;
 
-  DeepSeekProvider({Dio? dio})
+  DeepSeekProvider({Dio? dio, TokenCalculator? tokenCalculator})
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: LlmProviderConfig.deepseek.apiBaseUrl,
@@ -38,7 +38,8 @@ class DeepSeekProvider implements ILlmProvider {
               headers: {
                 'Content-Type': 'application/json',
               },
-            ));
+            )),
+        _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
