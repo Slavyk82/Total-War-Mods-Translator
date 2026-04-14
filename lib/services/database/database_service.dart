@@ -553,8 +553,21 @@ class DatabaseService {
   /// Close the database connection
   ///
   /// This should be called when the application is shutting down.
+  /// Runs a TRUNCATE checkpoint first so the WAL file is shrunk to zero
+  /// bytes — PASSIVE checkpoints during normal operation only reclaim space
+  /// when no readers hold a snapshot, so WAL can grow unbounded under a
+  /// busy-reader workload.
   static Future<void> close() async {
     if (_database != null) {
+      try {
+        await _database!.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+      } catch (e, stackTrace) {
+        _logger.warning(
+            'WAL TRUNCATE on shutdown failed (non-fatal)', {
+          'error': e.toString(),
+          'stackTrace': stackTrace.toString(),
+        });
+      }
       await _database!.close();
       _database = null;
       _initialized = false;
