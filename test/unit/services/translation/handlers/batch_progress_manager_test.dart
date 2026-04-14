@@ -211,6 +211,49 @@ void main() {
         expect(checkError, isNull);
       });
     });
+
+    test('propagates CancelledException to pause-awaiters on cleanup()', () {
+      fakeAsync((async) {
+        // Seed active progress so pause() does not short-circuit.
+        manager.updateProgress(_batchId, _initialProgress());
+
+        // Pause the batch and let pause() resolve in simulated time.
+        bool paused = false;
+        manager.pause(batchId: _batchId).then((_) => paused = true);
+        async.flushMicrotasks();
+        expect(paused, isTrue);
+
+        // Start a pause-awaiter that captures any error thrown.
+        bool checkDone = false;
+        Object? checkError;
+        manager.checkPauseOrCancel(_batchId).then(
+          (_) {
+            checkDone = true;
+          },
+          onError: (Object e) {
+            checkError = e;
+          },
+        );
+
+        // Awaiter must remain blocked on the resume completer.
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+        expect(checkDone, isFalse);
+        expect(checkError, isNull);
+
+        // Cleanup while paused — the awaiter must NOT silently succeed.
+        manager.cleanup(_batchId);
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 1));
+        async.flushMicrotasks();
+
+        expect(checkDone, isFalse,
+            reason: 'cleanup must not let awaiter complete normally');
+        expect(checkError, isA<CancelledException>(),
+            reason:
+                'cleanup during pause must surface CancelledException to awaiters');
+      });
+    });
   });
 
   group('cleanup', () {
