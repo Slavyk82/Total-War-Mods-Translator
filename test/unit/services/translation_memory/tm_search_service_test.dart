@@ -4,6 +4,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
@@ -16,6 +17,10 @@ class _FakeLogger extends Fake implements LoggingService {
   @override void info(String m, [dynamic d]) {}
   @override void error(String m, [dynamic e, StackTrace? s]) {}
 }
+
+// Mocktail-based logger used only by tests that need to verify log calls.
+// Kept separate from _FakeLogger so the bulk of tests remain unaffected.
+class _MockLogger extends Mock implements ILoggingService {}
 
 void main() {
   late _MockRepo repo;
@@ -324,6 +329,72 @@ void main() {
       expect(exception.message, contains('Unexpected error searching entries'));
       expect(exception.error, same(boom));
       expect(exception.stackTrace, isNotNull);
+    });
+  });
+
+  group('TmSearchService.searchEntries — inner LIKE fallback exception', () {
+    test(
+        'inner try/catch wraps synchronous LIKE throw into TmServiceException',
+        () async {
+      // Arrange: FTS5 returns Err so we fall into _searchEntriesWithLike,
+      // then searchByLike throws synchronously to hit the inner catch.
+      final boom = Exception('like boom');
+      when(() => repo.searchFts5(
+            searchText: any(named: 'searchText'),
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+          )).thenAnswer(
+              (_) async => Err(const TWMTDatabaseException('FTS5 down')));
+      when(() => repo.searchByLike(
+            searchText: any(named: 'searchText'),
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+          )).thenThrow(boom);
+
+      // Act
+      final result = await service.searchEntries(searchText: 'hello');
+
+      // Assert
+      expect(result.isErr, true);
+      final exception = result.error;
+      expect(exception, isA<TmServiceException>());
+      expect(exception.message, contains('Unexpected error in LIKE fallback'));
+      expect(exception.error, same(boom));
+      expect(exception.stackTrace, isNotNull);
+    });
+  });
+
+  group('TmSearchService.searchEntries — FTS5 failure logs warning', () {
+    test(
+        'emits exactly one warning when FTS5 fails and LIKE fallback succeeds',
+        () async {
+      // Arrange: dedicated mocktail logger to observe calls.
+      final mockLogger = _MockLogger();
+      final localService =
+          TmSearchService(repository: repo, logger: mockLogger);
+
+      when(() => repo.searchFts5(
+            searchText: any(named: 'searchText'),
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+          )).thenAnswer(
+              (_) async => Err(const TWMTDatabaseException('FTS5 down')));
+      when(() => repo.searchByLike(
+            searchText: any(named: 'searchText'),
+            searchScope: any(named: 'searchScope'),
+            targetLanguageId: any(named: 'targetLanguageId'),
+            limit: any(named: 'limit'),
+          )).thenAnswer((_) async => const Ok([]));
+
+      // Act
+      final result = await localService.searchEntries(searchText: 'hello');
+
+      // Assert: fallback succeeded and logger.warning was called exactly once.
+      expect(result.isOk, true);
+      verify(() => mockLogger.warning(any(), any())).called(1);
     });
   });
 }
