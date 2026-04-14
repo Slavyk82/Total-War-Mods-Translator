@@ -17,7 +17,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// Max output: 65,536 tokens
 class GeminiProvider implements ILlmProvider {
   final Dio _dio;
-  final TokenCalculator _tokenCalculator = TokenCalculator();
+  final TokenCalculator _tokenCalculator;
 
   @override
   final String providerCode = 'gemini';
@@ -28,7 +28,7 @@ class GeminiProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.gemini;
 
-  GeminiProvider({Dio? dio})
+  GeminiProvider({Dio? dio, TokenCalculator? tokenCalculator})
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: LlmProviderConfig.gemini.apiBaseUrl,
@@ -37,7 +37,8 @@ class GeminiProvider implements ILlmProvider {
               headers: {
                 'Content-Type': 'application/json',
               },
-            ));
+            )),
+        _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
