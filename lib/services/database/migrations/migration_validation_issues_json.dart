@@ -66,46 +66,63 @@ class ValidationIssuesJsonMigration extends Migration {
       var migrated = 0;
       var skipped = 0;
       var failed = 0;
+      var splitOnCommaSamples = 0;
 
       for (var i = 0; i < rows.length; i += batchSize) {
         final end = (i + batchSize < rows.length) ? i + batchSize : rows.length;
 
-        for (var j = i; j < end; j++) {
-          final row = rows[j];
-          final id = row['id'] as String;
-          final raw = row['validation_issues'] as String;
+        // Wrap each chunk in a transaction so the rewrites commit atomically
+        // per batch. Individual row errors are swallowed inside the loop so
+        // a single bad row does not abort its entire batch.
+        await DatabaseService.database.transaction((txn) async {
+          for (var j = i; j < end; j++) {
+            final row = rows[j];
+            final id = row['id'] as String;
+            final raw = row['validation_issues'] as String;
 
-          if (_isAlreadyJson(raw)) {
-            skipped++;
-            continue;
-          }
+            if (_isAlreadyJson(raw)) {
+              skipped++;
+              continue;
+            }
 
-          final decoded = _parseDartListToString(raw);
-          if (decoded == null) {
-            failed++;
-            _logger.warning(
-              'Could not parse validation_issues for row; leaving as-is',
-              {'id': id},
-            );
-            continue;
-          }
+            final decoded = _parseDartListToString(raw);
+            if (decoded == null) {
+              failed++;
+              _logger.warning(
+                'Could not parse validation_issues for row; leaving as-is',
+                {'id': id},
+              );
+              continue;
+            }
 
-          try {
-            await DatabaseService.database.update(
-              'translation_versions',
-              {'validation_issues': jsonEncode(decoded)},
-              where: 'id = ?',
-              whereArgs: [id],
-            );
-            migrated++;
-          } catch (e) {
-            failed++;
-            _logger.warning(
-              'Failed to update validation_issues for row; leaving as-is',
-              {'id': id, 'error': e.toString()},
-            );
+            // Track a few samples of rows whose messages contained `, `,
+            // which the heuristic split would have fragmented.
+            if (raw.contains(', ') && splitOnCommaSamples < 5) {
+              splitOnCommaSamples++;
+              _logger.debug(
+                'validation_issues row contained `, ` — messages may have '
+                'been split by the heuristic parser',
+                {'id': id, 'raw': raw},
+              );
+            }
+
+            try {
+              await txn.update(
+                'translation_versions',
+                {'validation_issues': jsonEncode(decoded)},
+                where: 'id = ?',
+                whereArgs: [id],
+              );
+              migrated++;
+            } catch (e) {
+              failed++;
+              _logger.warning(
+                'Failed to update validation_issues for row; leaving as-is',
+                {'id': id, 'error': e.toString()},
+              );
+            }
           }
-        }
+        });
 
         // Yield between batches to avoid blocking the UI thread.
         await Future.delayed(Duration.zero);
@@ -144,18 +161,32 @@ class ValidationIssuesJsonMigration extends Migration {
   /// Best-effort conversion of Dart's default `List.toString()` format
   /// (e.g. `[msg1, msg2, msg3]`) into a list of string messages.
   ///
+  /// Attempts `jsonDecode` first: some rows were written by newer code
+  /// in valid JSON but with non-string elements, which [_isAlreadyJson]
+  /// accepts only when elements are strings. Falls back to splitting on
+  /// `, ` — the exact separator used by `List.toString()`. Messages that
+  /// themselves contain `, ` will be split into multiple entries; this is
+  /// documented on the class doc comment and considered acceptable for
+  /// this advisory field.
+  ///
   /// Returns null if the shape is unrecognisable (missing brackets).
   /// An empty list is returned for `[]`.
-  ///
-  /// Splitting is done on `, ` (comma + space) — the exact separator
-  /// used by `List.toString()`. Messages that themselves contain `, `
-  /// will be split into multiple entries; this is documented on the
-  /// class doc comment and considered acceptable for this advisory field.
   List<String>? _parseDartListToString(String raw) {
     final trimmed = raw.trim();
     if (!trimmed.startsWith('[') || !trimmed.endsWith(']')) {
       return null;
     }
+
+    // Prefer valid JSON when possible to avoid fragmenting messages on `, `.
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+    } catch (_) {
+      // Fall through to the heuristic split.
+    }
+
     final inner = trimmed.substring(1, trimmed.length - 1).trim();
     if (inner.isEmpty) {
       return <String>[];
