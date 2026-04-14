@@ -15,7 +15,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// Rate Limits: 50 RPM default (configurable)
 class AnthropicProvider implements ILlmProvider {
   final Dio _dio;
-  final TokenCalculator _tokenCalculator = TokenCalculator();
+  final TokenCalculator _tokenCalculator;
 
   @override
   final String providerCode = 'anthropic';
@@ -26,7 +26,7 @@ class AnthropicProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.anthropic;
 
-  AnthropicProvider({Dio? dio})
+  AnthropicProvider({Dio? dio, TokenCalculator? tokenCalculator})
       : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: LlmProviderConfig.anthropic.apiBaseUrl,
@@ -36,7 +36,8 @@ class AnthropicProvider implements ILlmProvider {
                 'Content-Type': 'application/json',
                 'anthropic-version': '2023-06-01',
               },
-            ));
+            )),
+        _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
