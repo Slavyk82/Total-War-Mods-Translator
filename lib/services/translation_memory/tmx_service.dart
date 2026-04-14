@@ -446,71 +446,50 @@ class TmxService {
         'overwriteExisting': overwriteExisting,
       });
 
-      int persistedCount = 0;
-      int skippedCount = 0;
-      final total = entries.length;
-
-      for (int i = 0; i < total; i++) {
-        final entry = entries[i];
-
-        // Calculate source hash using SHA256 for collision resistance
+      // Convert parsed TMX entries into TM entities once; hash is computed
+      // here so the repository batch can rely on each entry's sourceHash.
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final tmEntries = entries.map((entry) {
         final normalized = _normalizer.normalize(entry.sourceText);
         final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
-
-        // Check if entry already exists
-        final existingResult = await _repository.findByHash(
-          sourceHash,
-          entry.targetLanguage,
+        return TranslationMemoryEntry(
+          id: const Uuid().v4(),
+          sourceText: entry.sourceText,
+          translatedText: entry.targetText,
+          sourceLanguageId: entry.sourceLanguage,
+          targetLanguageId: entry.targetLanguage,
+          sourceHash: sourceHash,
+          usageCount: entry.usageCount,
+          translationProviderId: entry.translationProviderId,
+          createdAt: now,
+          lastUsedAt: now,
+          updatedAt: now,
         );
+      }).toList();
 
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final result = await _repository.bulkImportTmxEntries(
+        tmEntries,
+        overwriteExisting: overwriteExisting,
+        onProgress: onProgress,
+      );
 
-        if (existingResult.isOk && !overwriteExisting) {
-          // Entry exists and we're not overwriting - skip
-          skippedCount++;
-          _logger.debug('Skipping existing entry', {
-            'sourceText': entry.sourceText.substring(
-              0,
-              entry.sourceText.length < 50 ? entry.sourceText.length : 50,
-            ),
-          });
-        } else {
-          // Create new entry with UUID for unique identification
-          final tmEntry = TranslationMemoryEntry(
-            id: const Uuid().v4(),
-            sourceText: entry.sourceText,
-            translatedText: entry.targetText,
-            sourceLanguageId: entry.sourceLanguage,
-            targetLanguageId: entry.targetLanguage,
-            sourceHash: sourceHash,
-            usageCount: entry.usageCount,
-            translationProviderId: entry.translationProviderId,
-            createdAt: now,
-            lastUsedAt: now,
-            updatedAt: now,
-          );
-
-          final insertResult = await _repository.insert(tmEntry);
-
-          if (insertResult.isOk) {
-            persistedCount++;
-          } else {
-            _logger.warning('Failed to persist TMX entry', {
-              'error': insertResult.error.toString(),
-            });
-          }
-        }
-
-        // Report progress
-        onProgress?.call(i + 1, total);
+      if (result.isErr) {
+        final err = result.unwrapErr();
+        _logger.error('Failed to persist TMX entries', err);
+        return Err(TmImportException(
+          'Failed to persist TMX entries: ${err.message}',
+          processedEntries: 0,
+          error: err,
+        ));
       }
 
+      final counts = result.unwrap();
       _logger.info('TMX entries persisted', {
-        'persisted': persistedCount,
-        'skipped': skippedCount,
+        'persisted': counts.persisted,
+        'skipped': counts.skipped,
       });
 
-      return Ok(persistedCount);
+      return Ok(counts.persisted);
     } catch (e, stackTrace) {
       _logger.error('Failed to persist TMX entries', e, stackTrace);
       return Err(TmImportException(

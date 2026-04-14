@@ -147,6 +147,121 @@ mixin TranslationMemoryBatchMixin {
     return result;
   }
 
+  /// Bulk-insert TMX entries with TMX import semantics.
+  ///
+  /// Processes [entries] in chunks inside a single transaction per chunk.
+  /// For each entry:
+  /// - If no row exists for `(source_hash, target_language_id)`: INSERT new row.
+  /// - If a row exists and [overwriteExisting] is true: UPDATE translated_text
+  ///   and updated_at; usage_count/last_used_at are preserved.
+  /// - If a row exists and [overwriteExisting] is false: skip.
+  ///
+  /// Returns the number of rows actually written (inserted + updated).
+  /// Skipped rows are reported via [onProgress] only.
+  ///
+  /// This replaces the per-row `findByHash` + `insert` loop, collapsing up to
+  /// 2N autocommit round-trips per chunk into one batched lookup and one
+  /// batched write inside a single transaction.
+  Future<Result<({int persisted, int skipped}), TWMTDatabaseException>>
+      bulkImportTmxEntries(
+    List<TranslationMemoryEntry> entries, {
+    required bool overwriteExisting,
+    void Function(int processed, int total)? onProgress,
+  }) async {
+    if (entries.isEmpty) {
+      return const Ok((persisted: 0, skipped: 0));
+    }
+
+    const chunkSize = 500;
+    var persisted = 0;
+    var skipped = 0;
+
+    for (var start = 0; start < entries.length; start += chunkSize) {
+      final end = (start + chunkSize < entries.length)
+          ? start + chunkSize
+          : entries.length;
+      final chunk = entries.sublist(start, end);
+
+      final result = await executeTransaction((txn) async {
+        // Batch lookup: which (source_hash, target_language_id) pairs already exist?
+        final existingIds = <String, String>{}; // hash:lang -> existing row id
+        const lookupChunk = 100;
+        for (var i = 0; i < chunk.length; i += lookupChunk) {
+          final j = (i + lookupChunk < chunk.length)
+              ? i + lookupChunk
+              : chunk.length;
+          final sub = chunk.sublist(i, j);
+          final placeholders = List.filled(
+            sub.length,
+            '(source_hash = ? AND target_language_id = ?)',
+          ).join(' OR ');
+          final args = <Object?>[];
+          for (final e in sub) {
+            args.add(e.sourceHash);
+            args.add(e.targetLanguageId);
+          }
+          final rows = await txn.rawQuery(
+            'SELECT id, source_hash, target_language_id FROM $tableName '
+            'WHERE $placeholders',
+            args,
+          );
+          for (final row in rows) {
+            final key =
+                '${row['source_hash']}:${row['target_language_id']}';
+            existingIds[key] = row['id'] as String;
+          }
+        }
+
+        var chunkWrites = 0;
+        var chunkSkipped = 0;
+        for (final entry in chunk) {
+          final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+          final existingId = existingIds[key];
+
+          if (existingId != null) {
+            if (!overwriteExisting) {
+              chunkSkipped++;
+              continue;
+            }
+            await txn.update(
+              tableName,
+              {
+                'translated_text': entry.translatedText,
+                'updated_at': entry.updatedAt,
+              },
+              where: 'id = ?',
+              whereArgs: [existingId],
+            );
+            chunkWrites++;
+          } else {
+            await txn.insert(
+              tableName,
+              toMap(entry),
+              conflictAlgorithm: ConflictAlgorithm.abort,
+            );
+            chunkWrites++;
+          }
+        }
+
+        return (persisted: chunkWrites, skipped: chunkSkipped);
+      });
+
+      if (result.isErr) {
+        return Err(result.unwrapErr());
+      }
+      final counts = result.unwrap();
+      persisted += counts.persisted;
+      skipped += counts.skipped;
+
+      onProgress?.call(end, entries.length);
+    }
+
+    // Reuse the same WAL checkpoint policy as upsertBatch.
+    await DatabaseService.checkpointIfNeeded(thresholdBytes: 1048576);
+
+    return Ok((persisted: persisted, skipped: skipped));
+  }
+
   /// Get LLM translations that are missing from TM
   ///
   /// Returns translations that were done by LLM but not stored in TM.
