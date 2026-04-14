@@ -35,10 +35,7 @@ class LlmRetryHandler {
     required dynamic dioCancelToken,
     int maxRetries = 3,
   }) async {
-    int attempt = 0;
-    LlmServiceException? lastError;
-
-    while (attempt <= maxRetries) {
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
       final result = await _llmService.translateBatch(
         llmRequest,
         cancelToken: dioCancelToken,
@@ -49,7 +46,6 @@ class LlmRetryHandler {
       }
 
       final error = result.unwrapErr();
-      lastError = error;
 
       // Check if error is retryable
       final isRetryable = error is LlmServerException ||
@@ -82,10 +78,13 @@ class LlmRetryHandler {
       );
 
       await Future.delayed(Duration(seconds: delaySeconds));
-      attempt++;
     }
 
-    // Should not reach here, but return last error if it does
-    return Err(lastError!);
+    // Unreachable: the loop above always returns (either Ok on success, or
+    // Err on non-retryable / exhausted attempts). Reaching this line means
+    // the invariant was violated.
+    throw StateError(
+      'LlmRetryHandler.translateWithRetry loop exited without returning',
+    );
   }
 }
