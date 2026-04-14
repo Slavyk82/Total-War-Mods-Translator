@@ -11,13 +11,25 @@ import '../providers/editor_providers.dart';
 /// Watches the list of available models, the currently selected model and the
 /// active provider from settings, then picks the best default when no model is
 /// explicitly selected.
-class EditorToolbarModelSelector extends ConsumerWidget {
+class EditorToolbarModelSelector extends ConsumerStatefulWidget {
   final bool compact;
 
   const EditorToolbarModelSelector({super.key, this.compact = false});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EditorToolbarModelSelector> createState() =>
+      _EditorToolbarModelSelectorState();
+}
+
+class _EditorToolbarModelSelectorState
+    extends ConsumerState<EditorToolbarModelSelector> {
+  // Guards against re-seeding on every rebuild while the provider hasn't yet
+  // propagated the initial value. Without this flag, a stream of model-list
+  // updates can enqueue multiple post-frame writes before the first one lands.
+  bool _seeded = false;
+
+  @override
+  Widget build(BuildContext context) {
     final modelsAsync = ref.watch(availableLlmModelsProvider);
     final selectedModelId = ref.watch(selectedLlmModelProvider);
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
@@ -47,10 +59,14 @@ class EditorToolbarModelSelector extends ConsumerWidget {
             )
           : _findBestDefaultModel(models, activeProvider);
 
-        // Initialize provider with default model if not set
-        if (selectedModelId == null) {
+        // Seed the provider once with the best default when no model is set.
+        if (selectedModelId == null && !_seeded) {
+          _seeded = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            ref.read(selectedLlmModelProvider.notifier).setModel(currentModel.id);
+            if (!mounted) return;
+            ref
+                .read(selectedLlmModelProvider.notifier)
+                .setModel(currentModel.id);
           });
         }
 
@@ -59,7 +75,7 @@ class EditorToolbarModelSelector extends ConsumerWidget {
           waitDuration: const Duration(milliseconds: 500),
           child: Container(
             padding: EdgeInsets.symmetric(
-              horizontal: compact ? 4 : 8,
+              horizontal: widget.compact ? 4 : 8,
               vertical: 4,
             ),
             decoration: BoxDecoration(
@@ -82,7 +98,7 @@ class EditorToolbarModelSelector extends ConsumerWidget {
                   isDense: true,
                   items: models.map((model) {
                     // In compact mode, show only model name without provider prefix
-                    final displayText = compact
+                    final displayText = widget.compact
                       ? model.friendlyName
                       : '${model.providerCode}: ${model.friendlyName}';
                     return DropdownMenuItem<String>(
@@ -105,7 +121,7 @@ class EditorToolbarModelSelector extends ConsumerWidget {
         );
       },
       loading: () => SizedBox(
-        width: compact ? 80 : 150,
+        width: widget.compact ? 80 : 150,
         height: 20,
         child: const LinearProgressIndicator(),
       ),
