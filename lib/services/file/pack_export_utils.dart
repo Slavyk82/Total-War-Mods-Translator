@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
-import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Utility functions for .pack file export operations
@@ -11,8 +10,7 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 class PackExportUtils {
   final ILoggingService _logger;
 
-  PackExportUtils({ILoggingService? logger})
-      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+  PackExportUtils({required ILoggingService logger}) : _logger = logger;
 
   /// Create a temporary directory for export operations
   Future<Directory> createTempDirectory(String prefix) async {

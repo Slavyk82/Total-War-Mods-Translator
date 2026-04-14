@@ -29,6 +29,7 @@ class BatchEstimationHandler {
   final TranslationBatchUnitRepository _batchUnitRepository;
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
+  final TranslationProviderRepository _providerRepository;
   final ILoggingService _logger;
 
   BatchEstimationHandler({
@@ -39,13 +40,16 @@ class BatchEstimationHandler {
     required TranslationUnitRepository unitRepository,
     required TranslationVersionRepository versionRepository,
     required ILoggingService logger,
+    TranslationProviderRepository? providerRepository,
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,
         _batchRepository = batchRepository,
         _batchUnitRepository = batchUnitRepository,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
-        _logger = logger;
+        _logger = logger,
+        _providerRepository = providerRepository ??
+            ServiceLocator.get<TranslationProviderRepository>();
 
   /// Estimate tokens, TM reuse, and duration for a batch
   ///
@@ -131,8 +135,7 @@ class BatchEstimationHandler {
       // Get model name from provider configuration
       String modelName = 'Unknown';
       try {
-        final providerRepo = ServiceLocator.get<TranslationProviderRepository>();
-        final providerResult = await providerRepo.getByCode(providerCode);
+        final providerResult = await _providerRepository.getByCode(providerCode);
 
         if (providerResult.isOk) {
           final provider = providerResult.unwrap();

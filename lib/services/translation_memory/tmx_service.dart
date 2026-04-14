@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:xml/xml.dart';
 import 'package:twmt/models/common/result.dart';
@@ -26,6 +27,12 @@ class TmxService {
   static const String _datatype = 'plaintext';
   static const String _segtype = 'sentence';
   static const String _adminLang = 'en';
+
+  /// Maximum TMX file size accepted by the importer. Files larger than this
+  /// are rejected before parsing to avoid OOM. Non-const and mutable to allow
+  /// test overrides via @visibleForTesting.
+  @visibleForTesting
+  static int maxImportBytes = 200 * 1024 * 1024; // 200 MiB
 
   TmxService({
     required TranslationMemoryRepository repository,
@@ -292,6 +299,19 @@ class TmxService {
       if (!await file.exists()) {
         return Err(TmImportException(
           'TMX file not found: $filePath',
+          filePath: filePath,
+        ));
+      }
+
+      // Reject oversized TMX files before reading/parsing to avoid OOM.
+      final length = await file.length();
+      if (length > maxImportBytes) {
+        _logger.warning(
+          'TMX import rejected: file too large',
+          {'path': filePath, 'bytes': length, 'cap': maxImportBytes},
+        );
+        return Err(TmImportException(
+          'TMX file exceeds $maxImportBytes bytes ($length).',
           filePath: filePath,
         ));
       }

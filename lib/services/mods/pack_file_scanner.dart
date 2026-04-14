@@ -5,8 +5,8 @@ import 'package:twmt/models/domain/mod_scan_cache.dart';
 import 'package:twmt/repositories/mod_scan_cache_repository.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/rpfm/utils/rpfm_output_parser.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/mods/utils/workshop_scan_models.dart';
 import 'package:twmt/services/mods/utils/mod_image_finder.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
@@ -33,7 +33,7 @@ class PackFileScanner {
     ILoggingService? logger,
   })  : _modScanCacheRepository = modScanCacheRepository,
         _rpfmService = rpfmService,
-        _logger = logger ?? LoggingService.instance;
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Collect local mod data from Workshop directories.
   ///

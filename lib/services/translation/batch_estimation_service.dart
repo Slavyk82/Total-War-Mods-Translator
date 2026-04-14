@@ -21,6 +21,7 @@ class BatchEstimationService {
   final ILlmService _llmService;
   final IPromptBuilderService _promptBuilder;
   final ILoggingService _logger;
+  final TranslationProviderRepository _providerRepository;
 
   /// Function to check if a unit is already translated (from TM)
   final Future<bool> Function(TranslationUnit, TranslationContext) _isUnitTranslated;
@@ -30,10 +31,13 @@ class BatchEstimationService {
     required IPromptBuilderService promptBuilder,
     required ILoggingService logger,
     required Future<bool> Function(TranslationUnit, TranslationContext) isUnitTranslated,
+    TranslationProviderRepository? providerRepository,
   })  : _llmService = llmService,
         _promptBuilder = promptBuilder,
         _logger = logger,
-        _isUnitTranslated = isUnitTranslated;
+        _isUnitTranslated = isUnitTranslated,
+        _providerRepository = providerRepository ??
+            ServiceLocator.get<TranslationProviderRepository>();
 
   /// Estimate performance for batch translation
   ///
@@ -124,8 +128,7 @@ class BatchEstimationService {
       // Get model name from provider configuration
       String modelName = 'Unknown';
       try {
-        final providerRepo = ServiceLocator.get<TranslationProviderRepository>();
-        final providerResult = await providerRepo.getByCode(providerCode);
+        final providerResult = await _providerRepository.getByCode(providerCode);
 
         if (providerResult.isOk) {
           final provider = providerResult.unwrap();

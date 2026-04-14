@@ -6,13 +6,14 @@ import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/handlers/llm_translation_handler.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
+
+import '../../../../helpers/mock_logging_service.dart';
 
 // Characterisation tests for LlmTranslationHandler.performTranslation.
 //
@@ -30,8 +31,6 @@ import 'package:twmt/services/translation/models/translation_progress.dart';
 class _MockLlmService extends Mock implements ILlmService {}
 
 class _MockPromptBuilder extends Mock implements IPromptBuilderService {}
-
-class _MockLogger extends Mock implements ILoggingService {}
 
 class _FakeTranslationContext extends Fake implements TranslationContext {}
 
@@ -142,7 +141,7 @@ void main() {
 
   late _MockLlmService llmService;
   late _MockPromptBuilder promptBuilder;
-  late _MockLogger logger;
+  late MockLoggingService logger;
   late LlmTranslationHandler handler;
 
   setUp(() {
@@ -151,7 +150,7 @@ void main() {
 
     llmService = _MockLlmService();
     promptBuilder = _MockPromptBuilder();
-    logger = _MockLogger();
+    logger = MockLoggingService();
     handler = LlmTranslationHandler(
       llmService: llmService,
       promptBuilder: promptBuilder,

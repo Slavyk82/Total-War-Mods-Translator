@@ -186,7 +186,7 @@ class TranslationBatchHelper {
       final projectRepo = ref.read(shared_repo.projectRepositoryProvider);
       final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
       final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
-      final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
+      final glossaryRepo = ref.read(shared_repo.glossaryRepositoryProvider);
       final logging = ref.read(loggingServiceProvider);
 
       // Get project to determine game installation ID for glossary lookup

@@ -1,8 +1,16 @@
+// NOTE: This file contains pre-existing failing tests preserved exactly
+// across Phases 1-7. The failures originate from sqflite-FFI schema drift
+// (the manual CREATE TABLE may diverge from the real migration schema).
+// Do NOT attempt to "fix" them here — they are the baseline that protects
+// against unintended regression.
+// See docs/superpowers/plans/2026-04-12-incremental-refactoring.md.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
+
+import '../../helpers/test_bootstrap.dart';
 
 void main() {
   late Database db;
@@ -14,6 +22,10 @@ void main() {
   });
 
   setUp(() async {
+    // Register a fake ILoggingService so services that fall back to
+    // ServiceLocator.get<ILoggingService>() can resolve during tests.
+    await TestBootstrap.registerFakes();
+
     db = await databaseFactory.openDatabase(inMemoryDatabasePath);
 
     // Create projects table

@@ -24,7 +24,7 @@ class TranslationContextBuilder {
   ) async {
     try {
       final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
-      final glossaryRepo = ref.read(shared_svc.glossaryRepositoryProvider);
+      final glossaryRepo = ref.read(shared_repo.glossaryRepositoryProvider);
 
       // Get LLM provider from the toolbar's model selector dropdown
       String providerCode;

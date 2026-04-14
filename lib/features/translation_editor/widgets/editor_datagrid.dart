@@ -5,7 +5,7 @@ import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
-import '../../../services/shared/event_bus.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../models/events/batch_events.dart';
 import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
 import 'editor_data_source.dart';
@@ -137,10 +137,12 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   }
 
   /// Setup listeners for batch events to auto-refresh data
-  /// Uses EventBus directly to avoid ref.listen restrictions
+  /// Uses EventBus via provider to avoid ref.listen restrictions
   void _setupBatchEventListeners() {
+    final eventBus = ref.read(eventBusProvider);
+
     // Listen to batch completed events to refresh when translation finishes
-    _batchCompletedSubscription = EventBus.instance.on<BatchCompletedEvent>().listen((event) {
+    _batchCompletedSubscription = eventBus.on<BatchCompletedEvent>().listen((event) {
       // Only refresh if this event is for our current project language
       if (event.projectLanguageId == _currentProjectLanguageId) {
         _refreshTranslations();
@@ -149,7 +151,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
     // Also listen to batch progress events for real-time updates (throttled)
     // This allows users to see translations appear as they complete
-    _batchProgressSubscription = EventBus.instance.on<BatchProgressEvent>().listen((event) {
+    _batchProgressSubscription = eventBus.on<BatchProgressEvent>().listen((event) {
       // Refresh every 10 completed units to show incremental progress
       // without overwhelming the UI with constant refreshes
       if (event.completedUnits % 10 == 0 && _currentProjectLanguageId != null) {

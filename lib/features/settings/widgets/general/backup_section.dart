@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
 
-import '../../../../services/backup/database_backup_service.dart';
+import '../../../../providers/shared/service_providers.dart';
 import '../../providers/backup_providers.dart';
 import '../dialogs/backup_restore_confirmation_dialog.dart';
 import 'settings_section_header.dart';
@@ -244,7 +244,7 @@ class BackupSection extends ConsumerWidget {
   }
 
   Future<void> _exportBackup(BuildContext context, WidgetRef ref) async {
-    final backupService = DatabaseBackupService();
+    final backupService = ref.read(databaseBackupServiceProvider);
     final suggestedName = backupService.generateBackupFilename();
 
     final result = await FilePicker.platform.saveFile(

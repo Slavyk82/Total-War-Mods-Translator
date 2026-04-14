@@ -2,21 +2,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../models/domain/translation_version_history.dart';
 import '../../models/history/diff_models.dart';
 import '../../repositories/translation_version_repository.dart';
-import '../../services/history/i_history_service.dart';
 import '../../services/history/undo_redo_manager.dart';
 import '../shared/repository_providers.dart';
-import '../shared/service_providers.dart' as bridge;
+import '../shared/service_providers.dart';
 
 part 'history_providers.g.dart';
-
-/// History service provider
-///
-/// Provides access to the history service for recording and managing
-/// translation version history.
-@riverpod
-IHistoryService historyService(Ref ref) {
-  return ref.watch(bridge.historyServiceProvider);
-}
 
 /// Provider for history entries of a specific translation version
 ///

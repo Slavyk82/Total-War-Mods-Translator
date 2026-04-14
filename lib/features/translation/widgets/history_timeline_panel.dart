@@ -6,6 +6,7 @@ import '../../../config/app_constants.dart';
 import '../../../models/domain/translation_version_history.dart';
 import '../../../models/domain/translation_version.dart';
 import '../../../providers/history/history_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import 'version_comparison_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 

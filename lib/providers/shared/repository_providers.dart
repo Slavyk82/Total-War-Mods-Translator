@@ -3,6 +3,7 @@ import '../../models/domain/game_installation.dart';
 import '../../models/domain/language.dart';
 import '../../repositories/compilation_repository.dart';
 import '../../repositories/game_installation_repository.dart';
+import '../../repositories/glossary_repository.dart';
 import '../../repositories/language_repository.dart';
 import '../../repositories/project_language_repository.dart';
 import '../../repositories/project_repository.dart';
@@ -28,6 +29,10 @@ LanguageRepository languageRepository(Ref ref) =>
 @Riverpod(keepAlive: true)
 GameInstallationRepository gameInstallationRepository(Ref ref) =>
     ServiceLocator.get<GameInstallationRepository>();
+
+@Riverpod(keepAlive: true)
+GlossaryRepository glossaryRepository(Ref ref) =>
+    ServiceLocator.get<GlossaryRepository>();
 
 @Riverpod(keepAlive: true)
 CompilationRepository compilationRepository(Ref ref) =>

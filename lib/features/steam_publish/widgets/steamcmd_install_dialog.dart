@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
-import '../../../services/steam/steamcmd_manager.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 enum _InstallPhase { confirm, downloading, success, error }
 
 /// Dialog proposing to download and install SteamCMD when it's not found.
-class SteamCmdInstallDialog extends StatefulWidget {
+class SteamCmdInstallDialog extends ConsumerStatefulWidget {
   const SteamCmdInstallDialog({super.key});
 
   /// Show the install dialog. Returns `true` if installation succeeded.
@@ -21,10 +22,11 @@ class SteamCmdInstallDialog extends StatefulWidget {
   }
 
   @override
-  State<SteamCmdInstallDialog> createState() => _SteamCmdInstallDialogState();
+  ConsumerState<SteamCmdInstallDialog> createState() =>
+      _SteamCmdInstallDialogState();
 }
 
-class _SteamCmdInstallDialogState extends State<SteamCmdInstallDialog> {
+class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
   _InstallPhase _phase = _InstallPhase.confirm;
   double _progress = 0;
   String? _errorMessage;
@@ -35,7 +37,8 @@ class _SteamCmdInstallDialogState extends State<SteamCmdInstallDialog> {
       _progress = 0;
     });
 
-    final result = await SteamCmdManager().downloadAndInstall(
+    final manager = ref.read(steamCmdManagerProvider);
+    final result = await manager.downloadAndInstall(
       onProgress: (progress) {
         if (mounted) {
           setState(() => _progress = progress);

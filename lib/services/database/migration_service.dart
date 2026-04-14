@@ -19,7 +19,8 @@ import 'migrations/migration_registry.dart';
 class MigrationService {
   MigrationService._();
 
-  /// Injectable logger for testability. Defaults to the global singleton.
+  /// Static logger: this service is bootstrapped pre-DI. Override via
+  /// [loggerForTesting] in tests.
   static ILoggingService _logger = LoggingService.instance;
 
   /// Swap the logger for tests. Not for production use.

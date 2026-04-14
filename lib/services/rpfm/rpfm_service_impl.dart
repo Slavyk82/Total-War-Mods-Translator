@@ -6,8 +6,8 @@ import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/rpfm/mixins/rpfm_extraction_mixin.dart';
 import 'package:twmt/services/rpfm/mixins/rpfm_pack_operations_mixin.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 
 /// Implementation of RPFM service
 ///
@@ -28,7 +28,7 @@ class RpfmServiceImpl
   bool _isCancelled = false;
 
   RpfmServiceImpl({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   // Expose internal state to mixins
   @override

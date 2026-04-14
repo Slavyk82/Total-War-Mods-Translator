@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/models/domain/translation_batch.dart';
 import 'package:twmt/models/domain/translation_batch_unit.dart';
@@ -11,6 +13,7 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/repositories/translation_batch_unit_repository.dart';
+import 'package:twmt/repositories/translation_provider_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
@@ -20,7 +23,6 @@ import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/shared/event_bus.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
@@ -30,6 +32,8 @@ import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/translation_orchestrator_impl.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
+
+import '../../../helpers/fakes/fake_logger.dart';
 
 // --- Mocks --------------------------------------------------------------
 
@@ -57,22 +61,19 @@ class _MockTransactionManager extends Mock implements TransactionManager {}
 
 class _MockEventBus extends Mock implements EventBus {}
 
-// Silent logger fake – avoids mocktail boilerplate for void methods.
-class _FakeLogger extends Fake implements ILoggingService {
-  // Captures warning messages so tests can assert on them.
+class _MockProviderRepository extends Mock
+    implements TranslationProviderRepository {}
+
+// Silent logger fake that captures warning messages so tests can assert on
+// them. Extends the shared [FakeLogger] so it only needs to override the
+// warning path.
+class _FakeLogger extends FakeLogger {
   final List<String> warnings = [];
 
-  @override
-  void debug(String message, [dynamic data]) {}
-  @override
-  void info(String message, [dynamic data]) {}
   @override
   void warning(String message, [dynamic data]) {
     warnings.add(message);
   }
-
-  @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
 }
 
 // Fallback objects for mocktail argument matchers.
@@ -236,10 +237,22 @@ void main() {
   late _FakeLogger logger;
   late TranslationOrchestratorImpl service;
 
-  setUp(() {
+  setUp(() async {
     // Clear the shared translation cache between tests. This singleton is
     // populated by the real LlmCacheManager inside LlmTranslationHandler.
     BatchTranslationCache.instance.clear();
+
+    // BatchEstimationHandler constructor falls back to
+    // ServiceLocator.get<TranslationProviderRepository>(); register a mock
+    // so that fallback succeeds in tests that do not exercise estimation.
+    if (GetIt.I.isRegistered<TranslationProviderRepository>()) {
+      await GetIt.I.unregister<TranslationProviderRepository>();
+    }
+    final mockProviderRepo = _MockProviderRepository();
+    when(() => mockProviderRepo.getByCode(any())).thenAnswer(
+      (_) async => Err(TWMTDatabaseException('not found in test')),
+    );
+    GetIt.I.registerSingleton<TranslationProviderRepository>(mockProviderRepo);
 
     llmService = _MockLlmService();
     tmService = _MockTmService();

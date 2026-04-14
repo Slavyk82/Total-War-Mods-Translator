@@ -131,14 +131,14 @@ await tester.pumpWidget(
   createTestableWidget(
     const MyScreen(),
     overrides: [
-      loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+      loggingServiceProvider.overrideWithValue(FakeLogger()),
     ],
   ),
 );
 ```
 
-Use `test/helpers/mock_logging_service.dart::NoopLoggingService` as the
-default silent fake for the logger.
+Use `test/helpers/fakes/fake_logger.dart::FakeLogger` as the default
+silent fake for the logger.
 
 ## Why keep GetIt at all?
 

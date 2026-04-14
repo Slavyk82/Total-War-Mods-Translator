@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 
 /// Performance monitoring service for tracking operation durations and metrics.
 ///
@@ -18,7 +18,7 @@ class PerformanceMonitor {
     return _instance;
   }
   PerformanceMonitor._internal({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   final ILoggingService _logger;
 

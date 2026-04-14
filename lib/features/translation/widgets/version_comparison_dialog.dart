@@ -6,6 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../../../config/app_constants.dart';
 import '../../../models/history/diff_models.dart';
 import '../../../providers/history/history_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 /// Dialog for comparing two translation versions side by side

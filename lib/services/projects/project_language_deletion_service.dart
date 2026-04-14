@@ -1,8 +1,8 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
+import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
-import '../shared/logging_service.dart';
 import '../database/database_service.dart';
 
 /// Optimized project language deletion service.
@@ -16,7 +16,7 @@ class ProjectLanguageDeletionService {
   final ILoggingService _logger;
 
   ProjectLanguageDeletionService({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Delete a project language and all related translation versions.
   ///

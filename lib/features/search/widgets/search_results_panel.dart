@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/search/models/search_result.dart';
-import '../../../services/file/file_import_export_service.dart';
 import '../../../services/toast_notification_service.dart';
 import '../models/search_query_model.dart';
 import '../providers/search_providers.dart';
@@ -303,7 +303,7 @@ class _SearchResultsPanelState extends ConsumerState<SearchResultsPanel> {
         };
       }).toList();
 
-      final fileService = FileImportExportService();
+      final fileService = ref.read(fileImportExportServiceProvider);
 
       // Export based on file extension
       if (fileExtension == '.csv') {

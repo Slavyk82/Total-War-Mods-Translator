@@ -1,5 +1,4 @@
 import '../../../../models/domain/translation_version.dart';
-import '../../../../providers/history/history_providers.dart' show historyServiceProvider;
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
@@ -60,7 +59,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       }
 
       // Record persistent history entry
-      final historyService = ref.read(historyServiceProvider);
+      final historyService = ref.read(shared_svc.historyServiceProvider);
       await historyService.recordChange(
         versionId: currentVersion.id,
         translatedText: normalizedText,
@@ -148,7 +147,7 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       }
 
       // Record persistent history entry
-      final historyService = ref.read(historyServiceProvider);
+      final historyService = ref.read(shared_svc.historyServiceProvider);
       final matchType = isExactMatch ? 'exact' : 'fuzzy';
       await historyService.recordChange(
         versionId: currentVersion.id,

@@ -7,8 +7,9 @@ import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/handlers/llm_retry_handler.dart';
+
+import '../../../../helpers/mock_logging_service.dart';
 
 // Characterisation tests for LlmRetryHandler. Covers:
 // - happy path (single call, no retries)
@@ -19,8 +20,6 @@ import 'package:twmt/services/translation/handlers/llm_retry_handler.dart';
 // - warn-log emitted per retry iteration (pins logger contract)
 
 class _MockLlmService extends Mock implements ILlmService {}
-
-class _MockLogger extends Mock implements ILoggingService {}
 
 LlmRequest _buildRequest() {
   return LlmRequest(
@@ -58,7 +57,7 @@ void main() {
     test('returns Ok immediately when the first call succeeds '
         '(no retry, no warning logged)', () async {
       final llmService = _MockLlmService();
-      final logger = _MockLogger();
+      final logger = MockLoggingService();
       final handler =
           LlmRetryHandler(llmService: llmService, logger: logger);
       final response = _buildResponse();
@@ -87,7 +86,7 @@ void main() {
         'retryAfterSeconds delay and returns Ok on second call', () {
       fakeAsync((async) {
         final llmService = _MockLlmService();
-        final logger = _MockLogger();
+        final logger = MockLoggingService();
         final handler =
             LlmRetryHandler(llmService: llmService, logger: logger);
         final response = _buildResponse();
@@ -146,7 +145,7 @@ void main() {
         () {
       fakeAsync((async) {
         final llmService = _MockLlmService();
-        final logger = _MockLogger();
+        final logger = MockLoggingService();
         final handler =
             LlmRetryHandler(llmService: llmService, logger: logger);
         // retryAfterSeconds: 1 keeps the fake clock easy to advance.
@@ -192,7 +191,7 @@ void main() {
     test('does NOT retry on LlmAuthenticationException '
         '(wrapped op invoked exactly once, returns Err)', () async {
       final llmService = _MockLlmService();
-      final logger = _MockLogger();
+      final logger = MockLoggingService();
       final handler =
           LlmRetryHandler(llmService: llmService, logger: logger);
       final authError = const LlmAuthenticationException(
@@ -226,7 +225,7 @@ void main() {
         'uses exponential backoff (2s on first retry)', () {
       fakeAsync((async) {
         final llmService = _MockLlmService();
-        final logger = _MockLogger();
+        final logger = MockLoggingService();
         final handler =
             LlmRetryHandler(llmService: llmService, logger: logger);
         final serverError = const LlmServerException(
@@ -279,7 +278,7 @@ void main() {
         '(two rate-limit errors => two warnings, then success)', () {
       fakeAsync((async) {
         final llmService = _MockLlmService();
-        final logger = _MockLogger();
+        final logger = MockLoggingService();
         final handler =
             LlmRetryHandler(llmService: llmService, logger: logger);
         final rateLimit = const LlmRateLimitException(

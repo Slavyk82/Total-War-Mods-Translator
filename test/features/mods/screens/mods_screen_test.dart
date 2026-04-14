@@ -9,7 +9,7 @@ import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
-import '../../../helpers/mock_logging_service.dart';
+import '../../../helpers/fakes/fake_logger.dart';
 import '../../../helpers/test_helpers.dart';
 
 void main() {
@@ -20,7 +20,7 @@ void main() {
         overrides: [
           // Override bridge logging provider so widget tests don't need the
           // full DI container.
-          loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+          loggingServiceProvider.overrideWithValue(FakeLogger()),
           // Override scanLogStream provider
           scanLogStreamProvider.overrideWithValue(
             const Stream<ScanLogMessage>.empty(),

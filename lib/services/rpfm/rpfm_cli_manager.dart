@@ -7,7 +7,6 @@ import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/service_locator.dart';
 
@@ -35,26 +34,43 @@ class RpfmCliManager {
   /// Logger
   final ILoggingService _logger;
 
+  /// Settings service (injected, falls back to [ServiceLocator]).
+  final SettingsService? _injectedSettingsService;
+
   /// Cached RPFM path
   String? _cachedRpfmPath;
 
-  factory RpfmCliManager({ILoggingService? logger}) {
-    if (logger != null) {
-      return RpfmCliManager._internal(logger: logger);
+  factory RpfmCliManager({
+    ILoggingService? logger,
+    SettingsService? settingsService,
+  }) {
+    if (logger != null || settingsService != null) {
+      return RpfmCliManager._internal(
+        logger: logger,
+        settingsService: settingsService,
+      );
     }
     return _instance;
   }
 
-  RpfmCliManager._internal({ILoggingService? logger})
-      : _logger = logger ?? LoggingService.instance;
+  RpfmCliManager._internal({
+    ILoggingService? logger,
+    SettingsService? settingsService,
+  })  : _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _injectedSettingsService = settingsService;
+
+  /// Resolve the settings service lazily so the singleton default
+  /// instance does not crash when built before [ServiceLocator] is
+  /// populated.
+  SettingsService get _settingsService =>
+      _injectedSettingsService ?? ServiceLocator.get<SettingsService>();
 
   /// Get Total War game setting for RPFM operations
   ///
   /// Returns the configured game from settings or 'warhammer_3' as default
   Future<Result<String, RpfmServiceException>> getGameSetting() async {
     try {
-      final settingsService = ServiceLocator.get<SettingsService>();
-      final game = await settingsService.getTotalWarGame();
+      final game = await _settingsService.getTotalWarGame();
       return Ok(game);
     } catch (e) {
       _logger.warning('Could not get game setting, using default: $e');
@@ -68,8 +84,7 @@ class RpfmCliManager {
   /// Returns the configured schema path from settings or null if not set
   Future<String?> getSchemaPath() async {
     try {
-      final settingsService = ServiceLocator.get<SettingsService>();
-      final schemaPath = await settingsService.getString('rpfm_schema_path');
+      final schemaPath = await _settingsService.getString('rpfm_schema_path');
 
       if (schemaPath.isEmpty) {
         _logger.warning('RPFM schema path not configured in settings');
@@ -104,8 +119,7 @@ class RpfmCliManager {
     try {
       // 0. Check user-configured path from settings (highest priority)
       try {
-        final settingsService = ServiceLocator.get<SettingsService>();
-        final customPath = await settingsService.getRpfmPath();
+        final customPath = await _settingsService.getRpfmPath();
 
         if (customPath != null && customPath.isNotEmpty) {
           searchPaths.add(customPath);

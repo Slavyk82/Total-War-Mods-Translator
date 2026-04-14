@@ -6,7 +6,7 @@ import 'package:twmt/config/tooltip_strings.dart';
 import '../../models/game_display_info.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/fluent/fluent_expander.dart';
-import 'package:twmt/services/steam/steam_detection_service.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_action_button.dart';
 import 'settings_section_header.dart';
@@ -33,7 +33,6 @@ class GameInstallationsSection extends ConsumerStatefulWidget {
 class _GameInstallationsSectionState
     extends ConsumerState<GameInstallationsSection> {
   bool _isDetecting = false;
-  final SteamDetectionService _detectionService = SteamDetectionService();
 
   @override
   Widget build(BuildContext context) {
@@ -140,7 +139,8 @@ class _GameInstallationsSectionState
   Future<void> _autoDetectGame(String gameCode) async {
     setState(() => _isDetecting = true);
     try {
-      final result = await _detectionService.detectGame(gameCode);
+      final detectionService = ref.read(steamDetectionServiceProvider);
+      final result = await detectionService.detectGame(gameCode);
       result.when(
         ok: (path) {
           if (path != null) {
@@ -173,7 +173,8 @@ class _GameInstallationsSectionState
   Future<void> _autoDetectAllGames() async {
     setState(() => _isDetecting = true);
     try {
-      final result = await _detectionService.detectAllGames();
+      final detectionService = ref.read(steamDetectionServiceProvider);
+      final result = await detectionService.detectAllGames();
       result.when(
         ok: (detectedGames) {
           setState(() {
