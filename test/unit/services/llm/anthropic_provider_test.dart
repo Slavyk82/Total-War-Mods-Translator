@@ -7,6 +7,7 @@ import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/providers/anthropic_provider.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 // Characterisation tests for AnthropicProvider. Covers request shaping for
 // /v1/messages, successful response parsing (text content block + usage),
@@ -14,6 +15,19 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 // LlmRetryHandler (one layer up) and out of scope.
 
 class _MockDio extends Mock implements Dio {}
+
+// Silent logger fake — AnthropicProvider logs warnings for missing keys
+// during response parsing. Tests should not hit the real ServiceLocator.
+class _FakeLogger extends Fake implements ILoggingService {
+  @override
+  void debug(String message, [dynamic data]) {}
+  @override
+  void info(String message, [dynamic data]) {}
+  @override
+  void warning(String message, [dynamic data]) {}
+  @override
+  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
+}
 
 // Fake TokenCalculator used to avoid loading the tiktoken cl100k_base asset
 // when this file runs standalone. The real TokenCalculator eagerly loads the
@@ -72,6 +86,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 
@@ -154,6 +169,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 
@@ -202,6 +218,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 
@@ -246,6 +263,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 
@@ -291,6 +309,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 
@@ -324,6 +343,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest(texts: const {'k1': 'sensitive source'});
 
@@ -364,6 +384,7 @@ void main() {
       final provider = AnthropicProvider(
         dio: dio,
         tokenCalculator: _FakeTokenCalculator(),
+        logger: _FakeLogger(),
       );
       final request = _buildRequest();
 

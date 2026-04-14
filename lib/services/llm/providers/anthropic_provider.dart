@@ -7,6 +7,8 @@ import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/llm/models/llm_provider_config.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Anthropic (Claude) provider implementation
 ///
@@ -16,6 +18,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 class AnthropicProvider implements ILlmProvider {
   final Dio _dio;
   final TokenCalculator _tokenCalculator;
+  final ILoggingService _logger;
 
   @override
   final String providerCode = 'anthropic';
@@ -26,8 +29,11 @@ class AnthropicProvider implements ILlmProvider {
   @override
   final LlmProviderConfig config = LlmProviderConfig.anthropic;
 
-  AnthropicProvider({Dio? dio, TokenCalculator? tokenCalculator})
-      : _dio = dio ??
+  AnthropicProvider({
+    Dio? dio,
+    TokenCalculator? tokenCalculator,
+    ILoggingService? logger,
+  })  : _dio = dio ??
             Dio(BaseOptions(
               baseUrl: LlmProviderConfig.anthropic.apiBaseUrl,
               connectTimeout: const Duration(seconds: 30),
@@ -37,7 +43,8 @@ class AnthropicProvider implements ILlmProvider {
                 'anthropic-version': '2023-06-01',
               },
             )),
-        _tokenCalculator = tokenCalculator ?? TokenCalculator();
+        _tokenCalculator = tokenCalculator ?? TokenCalculator(),
+        _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   @override
   Future<Result<LlmResponse, LlmProviderException>> translate(
@@ -509,8 +516,14 @@ class AnthropicProvider implements ILlmProvider {
 
       if (missingKeys.isNotEmpty) {
         // Log warning but continue with partial results
-        // ignore: avoid_print
-        print('[Anthropic] Warning: LLM response missing ${missingKeys.length} keys: ${missingKeys.take(3).join(", ")}${missingKeys.length > 3 ? "..." : ""}');
+        _logger.warning(
+          'LLM response missing keys',
+          {
+            'provider': 'Anthropic',
+            'missingCount': missingKeys.length,
+            'sampleKeys': missingKeys.take(3).toList(),
+          },
+        );
       }
 
       // Fail only if no translations were parsed at all
