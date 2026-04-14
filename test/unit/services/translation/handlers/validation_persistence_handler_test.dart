@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
@@ -294,10 +296,19 @@ void main() {
       expect(persistedVersions, hasLength(1));
       final version = persistedVersions.single;
       expect(version.status, TranslationVersionStatus.needsReview);
-      // validationIssues is a stringified list of all messages — assert it is
-      // both populated and mentions at least one of the error/warning texts.
+      // validationIssues is persisted as a JSON-encoded array of messages.
+      // Decode it and assert the structural payload contains both the
+      // error and warning text, not a stringified Dart List.
       expect(version.validationIssues, isNotNull);
-      expect(version.validationIssues, contains('Missing variable {0}'));
+      final raw = version.validationIssues!;
+      final parsed = jsonDecode(raw) as List;
+      expect(
+        parsed,
+        containsAll(<String>[
+          'Missing variable {0}',
+          'Significantly shorter than source',
+        ]),
+      );
       // Even with issues the translation is written and history recorded.
       verify(() => historyService.recordChange(
             versionId: version.id,

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
@@ -125,7 +127,9 @@ class ValidationPersistenceHandler {
         if (result.hasErrors || result.hasWarnings) {
           // Has validation errors or warnings - needs review
           status = TranslationVersionStatus.needsReview;
-          validationIssuesJson = result.allMessages.toString();
+          // Persist as JSON array so readers can decode structurally
+          // rather than parsing Dart's default List.toString() output.
+          validationIssuesJson = jsonEncode(result.allMessages);
           _logger.debug('Translation has validation issues', {
             'batchId': batchId,
             'unitId': unit.id,

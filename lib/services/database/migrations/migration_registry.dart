@@ -19,6 +19,7 @@ import 'migration_deepl_glossary_sync.dart';
 import 'migration_published_steam_id.dart';
 import 'migration_published_at.dart';
 import 'migration_compilation_publish_fields.dart';
+import 'migration_validation_issues_json.dart';
 
 /// Registry of all database migrations.
 ///
@@ -50,6 +51,7 @@ class MigrationRegistry {
       PublishedSteamIdMigration(),
       PublishedAtMigration(),
       CompilationPublishFieldsMigration(),
+      ValidationIssuesJsonMigration(),
     ];
 
     // Sort by priority (lower numbers first)
