@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/models/common/result.dart' show Ok;
 import 'package:twmt/models/domain/game_installation.dart';
+import 'mock_logging_service.dart';
 
 /// Mock class for GameInstallationRepository
 class MockGameInstallationRepository extends Mock
@@ -49,12 +51,19 @@ Future<void> tearDownMockServices() async {
 /// Default screen size for tests to prevent layout overflow
 const Size defaultTestScreenSize = Size(1920, 1080);
 
+/// Default Riverpod overrides applied to every testable widget so bridge
+/// providers (e.g. the logger) always resolve without needing GetIt setup.
+/// Callers can supply their own overrides to replace the defaults.
+List<Override> _defaultTestOverrides() => [
+      loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+    ];
+
 /// Creates a testable widget wrapped with necessary providers
 /// Uses a SizedBox constraint to prevent layout overflow errors in tests
 Widget createTestableWidget(Widget child, {List<Override>? overrides, Size? screenSize}) {
   final size = screenSize ?? defaultTestScreenSize;
   return ProviderScope(
-    overrides: overrides ?? [],
+    overrides: [..._defaultTestOverrides(), ...?overrides],
     child: MaterialApp(
       home: SizedBox(
         width: size.width,
@@ -70,7 +79,7 @@ Widget createTestableWidgetWithScaffold(Widget child,
     {List<Override>? overrides, Size? screenSize}) {
   final size = screenSize ?? defaultTestScreenSize;
   return ProviderScope(
-    overrides: overrides ?? [],
+    overrides: [..._defaultTestOverrides(), ...?overrides],
     child: MaterialApp(
       home: SizedBox(
         width: size.width,
@@ -90,7 +99,7 @@ Widget createThemedTestableWidget(
 }) {
   final size = screenSize ?? defaultTestScreenSize;
   return ProviderScope(
-    overrides: overrides ?? [],
+    overrides: [..._defaultTestOverrides(), ...?overrides],
     child: MaterialApp(
       theme: theme ?? ThemeData.light(),
       home: SizedBox(

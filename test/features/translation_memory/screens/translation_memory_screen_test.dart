@@ -5,13 +5,11 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_memory/screens/translation_memory_screen.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
-import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
-import '../../../helpers/mock_logging_service.dart';
 import '../../../helpers/test_helpers.dart';
 
 /// Empty, no-op implementation of [ITranslationMemoryService] for widget tests.
@@ -176,8 +174,8 @@ class FakeTranslationMemoryService implements ITranslationMemoryService {
 /// These overrides replace the bridge providers (which normally resolve via
 /// `ServiceLocator.get<T>()`) with test doubles so the TM screen widgets can
 /// render without the full DI container being initialised.
+/// `loggingServiceProvider` is already overridden by the test helper.
 List<Override> _tmScreenOverrides() => [
-      loggingServiceProvider.overrideWithValue(NoopLoggingService()),
       translationMemoryServiceProvider
           .overrideWithValue(FakeTranslationMemoryService()),
     ];
