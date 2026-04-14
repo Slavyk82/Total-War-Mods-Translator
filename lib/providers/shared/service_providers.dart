@@ -2,7 +2,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/release_notes/services/release_notes_service.dart';
 import '../../repositories/export_history_repository.dart';
-import '../../repositories/glossary_repository.dart';
 import '../../repositories/llm_provider_model_repository.dart';
 import '../../repositories/mod_update_analysis_cache_repository.dart';
 import '../../repositories/mod_version_repository.dart';
@@ -157,10 +156,6 @@ WorkshopScannerService workshopScannerService(Ref ref) =>
 @Riverpod(keepAlive: true)
 ExportHistoryRepository exportHistoryRepository(Ref ref) =>
     ServiceLocator.get<ExportHistoryRepository>();
-
-@Riverpod(keepAlive: true)
-GlossaryRepository glossaryRepository(Ref ref) =>
-    ServiceLocator.get<GlossaryRepository>();
 
 @Riverpod(keepAlive: true)
 LlmProviderModelRepository llmProviderModelRepository(Ref ref) =>
