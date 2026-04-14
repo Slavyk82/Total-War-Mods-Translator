@@ -456,17 +456,14 @@ class BatchProgressManager {
     // proceed as if the batch were still active — a contract violation.
     // Mark the batch as cancelled BEFORE completing so the post-resume
     // cancel re-check in checkPauseOrCancel throws CancelledException.
-    // The cancelled flag is then cleared once awaiters have observed it.
+    // The cancelled flag is dropped on a later microtask to avoid clobbering
+    // a marker that stop()/cancel() may have posted immediately before cleanup.
     final completer = _resumeCompleters.remove(batchId);
     if (completer != null && !completer.isCompleted) {
       _cancelledBatches.add(batchId);
       completer.complete();
-      // Drop the transient cancelled marker on a later microtask, after
-      // any checkPauseOrCancel awaiters have had a chance to re-check it.
-      scheduleMicrotask(() => _cancelledBatches.remove(batchId));
-    } else {
-      _cancelledBatches.remove(batchId);
     }
+    scheduleMicrotask(() => _cancelledBatches.remove(batchId));
 
     // Cancel and remove cancellation token
     final token = _cancellationTokens.remove(batchId);
