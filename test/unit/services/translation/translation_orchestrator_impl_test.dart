@@ -20,7 +20,6 @@ import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/shared/event_bus.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
@@ -30,6 +29,8 @@ import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/translation_orchestrator_impl.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
+
+import '../../../helpers/fakes/fake_logger.dart';
 
 // --- Mocks --------------------------------------------------------------
 
@@ -57,22 +58,16 @@ class _MockTransactionManager extends Mock implements TransactionManager {}
 
 class _MockEventBus extends Mock implements EventBus {}
 
-// Silent logger fake – avoids mocktail boilerplate for void methods.
-class _FakeLogger extends Fake implements ILoggingService {
-  // Captures warning messages so tests can assert on them.
+// Silent logger fake that captures warning messages so tests can assert on
+// them. Extends the shared [FakeLogger] so it only needs to override the
+// warning path.
+class _FakeLogger extends FakeLogger {
   final List<String> warnings = [];
 
-  @override
-  void debug(String message, [dynamic data]) {}
-  @override
-  void info(String message, [dynamic data]) {}
   @override
   void warning(String message, [dynamic data]) {
     warnings.add(message);
   }
-
-  @override
-  void error(String message, [dynamic error, StackTrace? stackTrace]) {}
 }
 
 // Fallback objects for mocktail argument matchers.

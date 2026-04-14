@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/i_process_launcher.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
@@ -14,6 +13,9 @@ import 'package:twmt/services/steam/models/workshop_publish_result.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/services/steam/vdf_generator.dart';
 import 'package:twmt/services/steam/workshop_publish_service_impl.dart';
+
+import '../../../helpers/fakes/fake_logger.dart';
+import '../../../helpers/fakes/fake_process.dart';
 
 // --- Mocks --------------------------------------------------------------
 
@@ -23,75 +25,18 @@ class _MockVdfGenerator extends Mock implements VdfGenerator {}
 
 class _MockLauncher extends Mock implements IProcessLauncher {}
 
-class _FakeLogger extends Fake implements ILoggingService {
-  @override
-  void debug(String m, [dynamic d]) {}
-  @override
-  void info(String m, [dynamic d]) {}
-  @override
-  void warning(String m, [dynamic d]) {}
-  @override
-  void error(String m, [dynamic e, StackTrace? s]) {}
-}
-
-// Fake Process exposing only members actually read by the service's
-// _runSteamCmd: pid, exitCode, stdout, stderr, stdin (closed), and kill().
-class _FakeProcess extends Fake implements Process {
-  _FakeProcess({
-    required this.pid,
-    required Future<int> exitCodeFuture,
-    required Stream<List<int>> stdoutStream,
-    required Stream<List<int>> stderrStream,
-  })  : _exitCode = exitCodeFuture,
-        _stdout = stdoutStream,
-        _stderr = stderrStream,
-        _stdin = _NoopIOSink();
-
-  final Future<int> _exitCode;
-  final Stream<List<int>> _stdout;
-  final Stream<List<int>> _stderr;
-  final IOSink _stdin;
-
-  @override
-  final int pid;
-
-  @override
-  Future<int> get exitCode => _exitCode;
-
-  @override
-  Stream<List<int>> get stdout => _stdout;
-
-  @override
-  Stream<List<int>> get stderr => _stderr;
-
-  @override
-  IOSink get stdin => _stdin;
-
-  @override
-  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) => true;
-}
-
-// Minimal IOSink stub — the service only calls stdin.close().
-class _NoopIOSink extends Fake implements IOSink {
-  @override
-  Future<void> close() async {}
-
-  @override
-  Future<void> get done => Future.value();
-}
-
 // --- Helpers -----------------------------------------------------------
 
 Stream<List<int>> _bytes(String s) => Stream<List<int>>.value(utf8.encode(s));
 
 Stream<List<int>> _empty() => const Stream<List<int>>.empty();
 
-_FakeProcess _okProcess({
+FakeProcess _okProcess({
   int exitCode = 0,
   String stdout = 'PublishFileID : 1234567890\nItem Updated\nSuccess.\n',
   String stderr = '',
 }) {
-  return _FakeProcess(
+  return FakeProcess(
     pid: 4242,
     exitCodeFuture: Future<int>.value(exitCode),
     stdoutStream: _bytes(stdout),
@@ -134,7 +79,7 @@ void main() {
   late _MockManager manager;
   late _MockVdfGenerator vdf;
   late _MockLauncher launcher;
-  late _FakeLogger logger;
+  late FakeLogger logger;
   late WorkshopPublishServiceImpl service;
 
   // Real temp dir containing pack/preview files so the service's file I/O
@@ -151,7 +96,7 @@ void main() {
     manager = _MockManager();
     vdf = _MockVdfGenerator();
     launcher = _MockLauncher();
-    logger = _FakeLogger();
+    logger = FakeLogger();
 
     tempRoot = Directory.systemTemp.createTempSync('twmt_publish_test_');
     // Simulated steamcmd install dir (no config/config.vdf → cached = false).
@@ -513,7 +458,7 @@ void main() {
         .thenAnswer((_) async => Ok(vdfPath));
     when(() => launcher.start(any(), any(),
             runInShell: any(named: 'runInShell')))
-        .thenAnswer((_) async => _FakeProcess(
+        .thenAnswer((_) async => FakeProcess(
               pid: 9999,
               exitCodeFuture: Future<int>.value(-1),
               stdoutStream: _empty(),
