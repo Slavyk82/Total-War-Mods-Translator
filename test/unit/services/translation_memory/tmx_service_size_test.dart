@@ -3,25 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:twmt/repositories/translation_memory_repository.dart';
-import 'package:twmt/services/shared/logging_service.dart';
 import 'package:twmt/services/translation_memory/text_normalizer.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
 
+import '../../../helpers/fakes/fake_logger.dart';
+
 class _MockRepo extends Mock implements TranslationMemoryRepository {}
-
-class _FakeLogger extends Fake implements LoggingService {
-  @override
-  void debug(String m, [dynamic d]) {}
-
-  @override
-  void warning(String m, [dynamic d]) {}
-
-  @override
-  void info(String m, [dynamic d]) {}
-
-  @override
-  void error(String m, [dynamic e, StackTrace? s]) {}
-}
 
 void main() {
   late _MockRepo repo;
@@ -34,7 +21,7 @@ void main() {
     service = TmxService(
       repository: repo,
       normalizer: TextNormalizer(),
-      logger: _FakeLogger(),
+      logger: FakeLogger(),
     );
     tmpDir = Directory.systemTemp.createTempSync('tmx_size_test_');
     // Lower the cap to keep the test fixture small (1 KiB) while still
