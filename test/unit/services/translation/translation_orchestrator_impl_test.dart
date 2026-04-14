@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/models/domain/translation_batch.dart';
@@ -78,6 +79,8 @@ class _FakeLogger extends Fake implements ILoggingService {
 class _FakeTranslationContext extends Fake implements TranslationContext {}
 
 class _FakeTranslationUnit extends Fake implements TranslationUnit {}
+
+class _FakeTransaction extends Fake implements Transaction {}
 
 class _FakeTranslationVersion extends Fake implements TranslationVersion {}
 
@@ -208,6 +211,7 @@ void main() {
     // Register fallback values for mocktail's any() matcher.
     registerFallbackValue(_FakeTranslationContext());
     registerFallbackValue(_FakeTranslationUnit());
+    registerFallbackValue(_FakeTransaction());
     registerFallbackValue(_FakeTranslationVersion());
     registerFallbackValue(_FakeLlmRequest());
     registerFallbackValue(_FakeTranslationBatch());
@@ -298,6 +302,8 @@ void main() {
     when(() => versionRepository.upsert(any())).thenAnswer(
       (inv) async => Ok(inv.positionalArguments[0] as TranslationVersion),
     );
+    when(() => versionRepository.upsertWithTransaction(any(), any()))
+        .thenAnswer((_) async {});
 
     // Prompt builder default: minimal prompt.
     when(() => promptBuilder.buildPrompt(
@@ -351,11 +357,17 @@ void main() {
           changeReason: any(named: 'changeReason'),
         )).thenAnswer((_) async => Ok(null));
 
-    // TransactionManager default: return Ok(true) without invoking the
-    // callback. The orchestrator only cares that exact matches were found,
-    // not about actual DB persistence in unit tests.
+    // TransactionManager: invoke the callback with a fake Transaction so the
+    // write path inside the closure actually runs. Without this the fuzzy
+    // auto-accept / persistence assertions below would pass even if the
+    // orchestrator never touched its collaborators.
     when(() => transactionManager.executeTransaction<bool>(any()))
-        .thenAnswer((_) async => Ok(true));
+        .thenAnswer((inv) async {
+      final action =
+          inv.positionalArguments[0] as Future<bool> Function(Transaction);
+      final value = await action(_FakeTransaction());
+      return Ok(value);
+    });
 
     // EventBus.publish returns Future<void>; stub it so any() matches.
     when(() => eventBus.publish(any())).thenAnswer((_) async {});
