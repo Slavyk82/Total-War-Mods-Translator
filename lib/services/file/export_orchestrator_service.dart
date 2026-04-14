@@ -94,7 +94,9 @@ class ExportOrchestratorService {
           exportHistoryRepository: exportHistoryRepository,
           logger: logger,
         ),
-        _packUtils = PackExportUtils(logger: logger),
+        _packUtils = PackExportUtils(
+          logger: logger ?? ServiceLocator.get<ILoggingService>(),
+        ),
         _logger = logger ?? ServiceLocator.get<ILoggingService>();
 
   /// Export translations to .pack file

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/logging_service.dart';
 
 /// Retry utilities for handling transient failures.
@@ -10,7 +12,13 @@ class RetryUtils {
   // Private constructor to prevent instantiation
   RetryUtils._();
 
-  static final LoggingService _logger = LoggingService.instance;
+  /// Static logger: this is a utility class called from many pre-DI
+  /// locations. Override via [loggerForTesting] in tests.
+  static ILoggingService _logger = LoggingService.instance;
+
+  /// Swap the logger for tests. Not for production use.
+  @visibleForTesting
+  static set loggerForTesting(ILoggingService logger) => _logger = logger;
 
   /// Execute an operation with exponential backoff retry.
   ///
@@ -287,7 +295,11 @@ class CircuitBreaker {
   DateTime? _lastFailureTime;
   CircuitBreakerState _state = CircuitBreakerState.closed;
 
-  final LoggingService _logger = LoggingService.instance;
+  ILoggingService _logger = LoggingService.instance;
+
+  /// Swap the logger for tests. Not for production use.
+  @visibleForTesting
+  set loggerForTesting(ILoggingService logger) => _logger = logger;
 
   CircuitBreaker({
     required this.failureThreshold,
