@@ -6,7 +6,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/providers/deepseek_provider.dart';
-import 'package:twmt/services/llm/utils/token_calculator.dart';
+
+import '../../../helpers/fakes/fake_token_calculator.dart';
 
 // Characterisation tests for DeepSeekProvider. DeepSeek uses an
 // OpenAI-compatible API (/chat/completions, Bearer auth, choices[0].message
@@ -18,25 +19,6 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 // is out of scope here.
 
 class _MockDio extends Mock implements Dio {}
-
-// Fake TokenCalculator used to avoid loading the tiktoken cl100k_base asset
-// map when this test file runs standalone. The real TokenCalculator loads
-// the encoding eagerly in its constructor, which crashes with a type error
-// unless another test in the suite has already warmed it up. The provider
-// only calls `calculateTokens` and `estimateRequestTokens` on the injected
-// calculator (neither is exercised by `translate()`), so deterministic
-// stand-ins are sufficient here.
-class _FakeTokenCalculator extends Fake implements TokenCalculator {
-  @override
-  int calculateTokens(String text) => text.length ~/ 4;
-
-  @override
-  int estimateRequestTokens(LlmRequest request) {
-    final textChars =
-        request.texts.values.fold<int>(0, (sum, v) => sum + v.length);
-    return (request.systemPrompt.length + textChars) ~/ 4;
-  }
-}
 
 LlmRequest _buildRequest({Map<String, String>? texts}) {
   return LlmRequest(
@@ -77,7 +59,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -163,7 +145,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -217,7 +199,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -261,7 +243,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -306,7 +288,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -342,7 +324,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -388,7 +370,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
@@ -432,7 +414,7 @@ void main() {
       final dio = _MockDio();
       final provider = DeepSeekProvider(
         dio: dio,
-        tokenCalculator: _FakeTokenCalculator(),
+        tokenCalculator: FakeTokenCalculator(),
       );
       final request = _buildRequest();
 
