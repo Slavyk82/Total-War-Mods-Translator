@@ -4,6 +4,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/models/domain/translation_batch.dart';
 import 'package:twmt/models/domain/translation_batch_unit.dart';
+import 'package:twmt/models/events/batch_events.dart';
 import 'package:twmt/models/events/domain_event.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
@@ -57,12 +58,18 @@ class _MockEventBus extends Mock implements EventBus {}
 
 // Silent logger fake – avoids mocktail boilerplate for void methods.
 class _FakeLogger extends Fake implements ILoggingService {
+  // Captures warning messages so tests can assert on them.
+  final List<String> warnings = [];
+
   @override
   void debug(String message, [dynamic data]) {}
   @override
   void info(String message, [dynamic data]) {}
   @override
-  void warning(String message, [dynamic data]) {}
+  void warning(String message, [dynamic data]) {
+    warnings.add(message);
+  }
+
   @override
   void error(String message, [dynamic error, StackTrace? stackTrace]) {}
 }
@@ -148,6 +155,30 @@ TmMatch _fakeExactMatch({
       levenshteinScore: 1.0,
       jaroWinklerScore: 1.0,
       tokenScore: 1.0,
+      contextBoost: 0.0,
+      weights: ScoreWeights.defaultWeights,
+    ),
+    usageCount: 1,
+    lastUsedAt: DateTime.now(),
+  );
+}
+
+TmMatch _fakeFuzzyMatch({
+  required String sourceText,
+  required String targetText,
+  required double similarity,
+}) {
+  return TmMatch(
+    entryId: 'entry-fuzzy-${sourceText.hashCode}',
+    sourceText: sourceText,
+    targetText: targetText,
+    targetLanguageCode: 'fr',
+    similarityScore: similarity,
+    matchType: TmMatchType.fuzzy,
+    breakdown: SimilarityBreakdown(
+      levenshteinScore: similarity,
+      jaroWinklerScore: similarity,
+      tokenScore: similarity,
       contextBoost: 0.0,
       weights: ScoreWeights.defaultWeights,
     ),
@@ -514,6 +545,166 @@ void main() {
             any(),
             cancelToken: any(named: 'cancelToken'),
           ));
+    });
+
+    // --- Deferred orchestrator branches (Phase 6 Task 6.5) -------------
+
+    test(
+        'skipTranslationMemory=true: TM lookup is skipped, LLM handles the unit',
+        () async {
+      // Context opts out of TM lookup entirely.
+      final ctx = _fakeContext(skipTm: true);
+
+      final events = await service
+          .translateBatch(batchId: _batchId, context: ctx)
+          .toList();
+
+      final terminal = events.last;
+      expect(terminal.isOk, isTrue,
+          reason: 'Expected terminal Ok(progress.completed) but got: $terminal');
+      final finalProgress = terminal.unwrap();
+      expect(finalProgress.status, TranslationProgressStatus.completed);
+      expect(finalProgress.successfulUnits, 1);
+
+      // Neither exact nor fuzzy TM lookup ran because the context flag bypasses
+      // the TmLookupHandler entirely (see orchestrator's skipTranslationMemory branch).
+      verifyNever(() => tmService.findExactMatch(
+            sourceText: any(named: 'sourceText'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          ));
+      verifyNever(() => tmService.findFuzzyMatchesIsolate(
+            sourceText: any(named: 'sourceText'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+            minSimilarity: any(named: 'minSimilarity'),
+            maxResults: any(named: 'maxResults'),
+            category: any(named: 'category'),
+          ));
+      // LLM *was* invoked for the unit that would otherwise have hit TM.
+      verify(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          )).called(greaterThanOrEqualTo(1));
+    });
+
+    test('fuzzy TM match >=95% auto-accepts without invoking the LLM',
+        () async {
+      // Exact miss but fuzzy returns a 0.97 match -> auto-accept path.
+      // Auto-accept threshold is actually 0.85 (docstring says 95%), so 0.97
+      // comfortably exceeds it. We pin the observable behaviour at 0.97 so
+      // any future threshold tightening above 0.97 will flag this test.
+      when(() => tmService.findExactMatch(
+            sourceText: 'Hello world',
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          )).thenAnswer((_) async => Ok(null));
+      when(() => tmService.findFuzzyMatchesIsolate(
+            sourceText: 'Hello world',
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+            minSimilarity: any(named: 'minSimilarity'),
+            maxResults: any(named: 'maxResults'),
+            category: any(named: 'category'),
+          )).thenAnswer((_) async => Ok([
+            _fakeFuzzyMatch(
+              sourceText: 'Hello world',
+              targetText: 'Bonjour le monde (fuzzy)',
+              similarity: 0.97,
+            ),
+          ]));
+
+      final events = await service
+          .translateBatch(batchId: _batchId, context: _fakeContext())
+          .toList();
+
+      final terminal = events.last;
+      expect(terminal.isOk, isTrue,
+          reason: 'Expected terminal Ok(progress.completed) but got: $terminal');
+      expect(terminal.unwrap().status, TranslationProgressStatus.completed);
+
+      // Fuzzy auto-accept ran (transaction executor was called to persist the match).
+      verify(() => transactionManager.executeTransaction<bool>(any()))
+          .called(greaterThanOrEqualTo(1));
+
+      // LLM is never invoked because the fuzzy match covered the only unit.
+      verifyNever(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          ));
+    });
+
+    test(
+        'batch details load failure: workflow still completes, warning logged, batchNumber fallback 0',
+        () async {
+      // Sequence getById responses: the first call is the orchestrator's
+      // "load batch details for events" (line ~149) — make it throw so the
+      // outer catch logs a warning and leaves `batch` null. The second call
+      // is BatchEstimationHandler.validateBatch looking up the batch; we
+      // return Ok there so validation does not short-circuit the workflow.
+      var getByIdCalls = 0;
+      when(() => batchRepository.getById(any())).thenAnswer((_) async {
+        getByIdCalls++;
+        if (getByIdCalls == 1) {
+          throw StateError('simulated DB failure');
+        }
+        return Ok(_fakeBatch(_batchId, unitsCount: 1));
+      });
+
+      final events = await service
+          .translateBatch(batchId: _batchId, context: _fakeContext())
+          .toList();
+
+      final terminal = events.last;
+      expect(terminal.isOk, isTrue,
+          reason: 'Null batch must not block the workflow, got: $terminal');
+      expect(terminal.unwrap().status, TranslationProgressStatus.completed);
+      expect(terminal.unwrap().successfulUnits, 1);
+
+      // The "batch details for events" warning must have been recorded.
+      expect(
+        logger.warnings.any((m) => m.contains('batch details')),
+        isTrue,
+        reason: 'Expected a warning about failing to load batch details, got: '
+            '${logger.warnings}',
+      );
+
+      // BatchStartedEvent was published with batchNumber=0 fallback because
+      // the orchestrator could not load the real batch at event-emission time.
+      final publishedEvents =
+          verify(() => eventBus.publish(captureAny())).captured;
+      final startedEvents =
+          publishedEvents.whereType<BatchStartedEvent>().toList();
+      expect(startedEvents, isNotEmpty,
+          reason: 'Expected at least one BatchStartedEvent to be published');
+      expect(startedEvents.first.batchNumber, 0,
+          reason:
+              'When batch load fails, event emission must fall back to batchNumber=0');
+    });
+
+    test(
+        'pre-workflow validation failure: empty batchId yields Err(TranslationOrchestrationException)',
+        () async {
+      // BatchEstimationHandler.validateBatch appends a "Batch ID cannot be
+      // empty" error for a blank batchId — this is the pre-workflow Err path.
+      // Default getById stub returns Ok, so validation only fails on the
+      // batchId-empty check, not on missing-in-DB.
+      final events = await service
+          .translateBatch(batchId: '', context: _fakeContext())
+          .toList();
+
+      final terminal = events.last;
+      expect(terminal.isErr, isTrue,
+          reason: 'Pre-workflow validation failure must surface as Err, '
+              'got: $terminal');
+      expect(terminal.unwrapErr(), isA<TranslationOrchestrationException>());
+      expect(
+        terminal.unwrapErr().toString(),
+        contains('Batch validation failed'),
+      );
+
+      // Neither LLM nor persistence ran because we never reached the workflow.
+      verifyNever(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          ));
+      verifyNever(() => versionRepository.upsert(any()));
     });
   });
 }
