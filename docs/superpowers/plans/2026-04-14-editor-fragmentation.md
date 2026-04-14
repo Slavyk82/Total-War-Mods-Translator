@@ -15,7 +15,7 @@
 - Bridge imports default unprefixed; use `as bridge` prefix only when a local `@riverpod` wrapper collides with a bridge symbol name.
 - `ref.watch` in `@riverpod` function bodies, Notifier `build()`, widget `build()`. `ref.read` in Notifier mutators, imperative handlers, async callbacks.
 - Interface types drop `I` prefix in Riverpod symbol names (e.g. `ITranslationMemoryService` → `translationMemoryServiceProvider`).
-- Widget tests that read a bridge provider must pass `overrides:` via `createTestableWidget` + `overrideWithValue`. Use `NoopLoggingService` from `test/helpers/mock_logging_service.dart` for silent logger fakes.
+- Widget tests that read a bridge provider must pass `overrides:` via `createTestableWidget` + `overrideWithValue`. Use `FakeLogger` from `test/helpers/fakes/fake_logger.dart` for silent logger fakes.
 
 **Starting state (2026-04-14):** Branch `refactor/incremental-2026-04-12`, working tree clean except design spec committed at `effcc4a`. Baseline: 986 passing / 30 failing tests (30 pre-existing, unrelated). `flutter analyze lib/` 0 errors.
 
@@ -73,7 +73,7 @@ memory/project_refactoring_progress.md     Modify (Task 5 only)
 
 **Existing test pattern reference:** `test/features/translation_editor/screens/translation_editor_screen_test.dart` — use this as the scaffold for widget tests, including the `ProviderScope` + `overrideWithValue` setup and `createTestableWidget` helper. Do not duplicate code the helper already provides.
 
-**Existing logger fake:** `test/helpers/mock_logging_service.dart` exports `NoopLoggingService`. Override `loggingServiceProvider` with it in every test that triggers a code path that logs on error.
+**Existing logger fake:** `test/helpers/fakes/fake_logger.dart` exports `FakeLogger`. Override `loggingServiceProvider` with it in every test that triggers a code path that logs on error.
 
 - [ ] **Step 1: Read the existing editor screen test to match its style**
 

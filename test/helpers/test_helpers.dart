@@ -9,7 +9,7 @@ import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/models/common/result.dart' show Ok;
 import 'package:twmt/models/domain/game_installation.dart';
-import 'mock_logging_service.dart';
+import 'fakes/fake_logger.dart';
 
 /// Mock class for GameInstallationRepository
 class MockGameInstallationRepository extends Mock
@@ -55,7 +55,7 @@ const Size defaultTestScreenSize = Size(1920, 1080);
 /// providers (e.g. the logger) always resolve without needing GetIt setup.
 /// Callers can supply their own overrides to replace the defaults.
 List<Override> _defaultTestOverrides() => [
-      loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+      loggingServiceProvider.overrideWithValue(FakeLogger()),
     ];
 
 /// Creates a testable widget wrapped with necessary providers

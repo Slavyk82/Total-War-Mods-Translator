@@ -13,7 +13,7 @@ import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
 
-import '../../helpers/mock_logging_service.dart';
+import '../../helpers/fakes/fake_logger.dart';
 
 /// Characterisation tests for the Translation Editor feature.
 ///
@@ -114,7 +114,7 @@ void main() {
   ProviderContainer buildContainer() {
     return ProviderContainer(
       overrides: [
-        loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+        loggingServiceProvider.overrideWithValue(FakeLogger()),
         translationUnitRepositoryProvider.overrideWith((ref) => unitRepository),
         translationVersionRepositoryProvider
             .overrideWith((ref) => versionRepository),
@@ -393,7 +393,7 @@ void main() {
       // fake returning `true` returns `true`.
       final container = ProviderContainer(
         overrides: [
-          loggingServiceProvider.overrideWithValue(NoopLoggingService()),
+          loggingServiceProvider.overrideWithValue(FakeLogger()),
         ],
       );
       addTearDown(container.dispose);
