@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:twmt/theme/tokens/atelier_tokens.dart';
+import 'package:twmt/theme/tokens/forge_tokens.dart';
 
 /// Global test configuration, picked up automatically by `flutter test`.
 ///
@@ -55,6 +56,7 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
       // here rather than inside a per-test zone. Add new tokens instances
       // to this list as they are introduced (e.g. forgeTokens, …).
       atelierTokens.bg;
+      forgeTokens.bg;
 
       await testMain();
     },
