@@ -18,6 +18,7 @@ migrate_working_dir/
 *.iws
 .idea/
 .cursor/
+.superpowers/
 .claude/
 CLAUDE.md
 
