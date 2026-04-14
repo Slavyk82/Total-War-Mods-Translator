@@ -182,6 +182,12 @@ void main() {
   });
 
   tearDown(() {
+    // Close broadcast StreamControllers inside the service so they do not
+    // leak between tests. dispose() is synchronous and idempotent enough
+    // for these tests (kill() on a null process is a no-op).
+    try {
+      service.dispose();
+    } catch (_) {}
     try {
       tempRoot.deleteSync(recursive: true);
     } catch (_) {}
@@ -397,5 +403,89 @@ void main() {
     // Launcher WAS called — the missing preview is silently skipped.
     verify(() => launcher.start(any(), any(),
         runInShell: any(named: 'runInShell'))).called(1);
+  });
+
+  group('WorkshopPublishServiceImpl.publish — cached credentials', () {
+    // Seeds <dirname(steamCmdPath)>/config/config.vdf so
+    // _hasCachedCredentials returns true for 'user'. The service must then
+    // take the cached-login branch and OMIT the password from steamcmd args.
+    setUp(() {
+      final steamCmdDir = path.dirname(steamCmdPath);
+      final configDir = Directory(path.join(steamCmdDir, 'config'))
+        ..createSync(recursive: true);
+      // Content only has to satisfy two substring checks:
+      //   - contains 'ConnectCache'
+      //   - (lowercased) contains the lowercased username
+      // VDF syntactic validity is irrelevant to _hasCachedCredentials.
+      File(path.join(configDir.path, 'config.vdf')).writeAsStringSync(
+        '"InstallConfigStore"\n'
+        '{\n'
+        '  "Software"\n'
+        '  {\n'
+        '    "Valve"\n'
+        '    {\n'
+        '      "Steam"\n'
+        '      {\n'
+        '        "ConnectCache"\n'
+        '        {\n'
+        '          "user" "deadbeef"\n'
+        '        }\n'
+        '      }\n'
+        '    }\n'
+        '  }\n'
+        '}\n',
+      );
+    });
+
+    test(
+        'cached credentials + no Steam Guard → +login omits password '
+        '(no TOTP, no password leak)', () async {
+      // Arrange
+      final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+      File(vdfPath).writeAsStringSync('// stub vdf');
+      when(() => vdf.generateVdf(any()))
+          .thenAnswer((_) async => Ok(vdfPath));
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => _okProcess());
+
+      // Act — note: steamGuardCode is null and password must NOT appear
+      // in the launched command because _hasCachedCredentials returns true.
+      final result = await service.publish(
+        params: _params(contentFolder: packDir, previewFile: previewPath),
+        username: 'user',
+        password: 'shouldNotBeSent',
+        steamGuardCode: null,
+      );
+
+      // Assert: success
+      expect(result.isOk, true,
+          reason: 'got error: ${result.isErr ? result.error : ''}');
+      expect(result.value, isA<WorkshopPublishResult>());
+
+      // Capture the positional args passed to IProcessLauncher.start.
+      final launchCapture = verify(() => launcher.start(
+            captureAny(),
+            captureAny(),
+            runInShell: any(named: 'runInShell'),
+          )).captured;
+      expect(launchCapture, hasLength(2));
+      expect(launchCapture[0], steamCmdPath);
+      final args = launchCapture[1] as List<String>;
+
+      // Security-critical assertions: the cached-login branch must emit
+      //   ['+login', 'user', '+workshop_build_item', <vdfPath>, '+quit']
+      // with NO password, NO TOTP code between username and the next flag.
+      final loginIdx = args.indexOf('+login');
+      expect(loginIdx, greaterThanOrEqualTo(0),
+          reason: '+login flag must be present');
+      expect(args[loginIdx + 1], 'user');
+      // Whatever follows the username MUST be the next steamcmd flag, not
+      // a positional password/TOTP — this is the cache-preserving invariant.
+      expect(args[loginIdx + 2], '+workshop_build_item');
+      expect(args, isNot(contains('shouldNotBeSent')),
+          reason: 'password must never appear in steamcmd args when '
+              'cached credentials are used');
+    });
   });
 }
