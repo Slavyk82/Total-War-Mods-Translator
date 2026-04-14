@@ -21,4 +21,8 @@ class NoopLoggingService implements ILoggingService {
   void warning(String message, [dynamic data]) {}
   @override
   void error(String message, [dynamic error, StackTrace? stackTrace]) {}
+  @override
+  Stream<LogEntry> get logStream => const Stream.empty();
+  @override
+  List<LogEntry> get recentLogs => const [];
 }
