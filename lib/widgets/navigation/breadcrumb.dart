@@ -65,7 +65,6 @@ class Breadcrumb extends StatelessWidget {
       if (_uuidPattern.hasMatch(segment)) continue;
       final label = NavigationTreeResolver.labelForSegment(segment);
       crumbs.add(_Crumb(
-        rawSegment: segment,
         label: label ?? segment,
         isKnown: label != null,
       ));
@@ -76,12 +75,10 @@ class Breadcrumb extends StatelessWidget {
 
 class _Crumb {
   const _Crumb({
-    required this.rawSegment,
     required this.label,
     required this.isKnown,
   });
 
-  final String rawSegment;
   final String label;
   final bool isKnown;
 }
