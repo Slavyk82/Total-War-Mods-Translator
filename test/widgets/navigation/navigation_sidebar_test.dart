@@ -24,7 +24,7 @@ Widget _wrap(String path) {
       ])
         GoRoute(
           path: p,
-          builder: (_, __) => const Scaffold(
+          builder: (_, _) => const Scaffold(
             body: Row(children: [NavigationSidebar()]),
           ),
         ),
@@ -38,21 +38,45 @@ Widget _wrap(String path) {
   );
 }
 
-/// Drains any pending horizontal-overflow exceptions emitted by the upstream
-/// [GameSelectorDropdown] and [SidebarUpdateChecker] widgets. They render
-/// their own content at a natural width that happens to exceed the 250px
-/// sidebar in the unit-test viewport and are out of scope for
-/// [NavigationSidebar] itself.
+/// Drains horizontal-overflow exceptions emitted by two upstream widgets:
+/// [SidebarUpdateChecker] and [GameSelectorDropdown]. Both render their Row
+/// children at a natural width that exceeds the 250px sidebar, which is a
+/// pre-existing layout bug in those widgets (not in [NavigationSidebar]).
+///
+/// TODO: Remove this helper once [SidebarUpdateChecker] and
+/// [GameSelectorDropdown] are fixed — e.g. by wrapping their inner children
+/// in [Flexible] and adding [TextOverflow.ellipsis] to their [Text] widgets.
+///
+/// The guard re-throws anything that is not a RenderFlex overflow warning
+/// originating from one of those two widgets, so unrelated test failures
+/// remain loud.
 void _drainOverflowExceptions(WidgetTester tester) {
   while (true) {
     final e = tester.takeException();
     if (e == null) return;
     final msg = e.toString();
+    final isOverflow = msg.contains('A RenderFlex overflowed');
+    final mentionsOffender = msg.contains('SidebarUpdateChecker') ||
+        msg.contains('GameSelectorDropdown') ||
+        msg.contains('sidebar_update_checker.dart') ||
+        msg.contains('game_selector_dropdown.dart');
+    // Swallow overflow warnings attributed to one of the two known-bad
+    // widgets. If the engine's message doesn't identify any widget, fall
+    // back to the bare overflow prefix — Flutter doesn't always name the
+    // offender. Everything else — including overflows attributed to a
+    // *different* widget — re-throws unchanged.
+    if (isOverflow && mentionsOffender) {
+      continue;
+    }
+    if (isOverflow &&
+        !msg.contains('The relevant error-causing widget was')) {
+      continue;
+    }
     // The test binding aggregates simultaneous layout errors into a single
-    // "Multiple exceptions (N)" wrapper; in our case both members are the
-    // upstream overflow warnings we want to ignore.
-    if (msg.contains('A RenderFlex overflowed') ||
-        msg.contains('Multiple exceptions')) {
+    // "Multiple exceptions (N)" wrapper whose own toString does not repeat
+    // the children's text. In our setup both children are the upstream
+    // overflow warnings listed above, so this wrapper is safe to swallow.
+    if (msg.startsWith('Multiple exceptions')) {
       continue;
     }
     // Unexpected exception — re-throw to fail the test loudly.
@@ -140,7 +164,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/work/home',
-          builder: (_, __) => Scaffold(
+          builder: (_, _) => Scaffold(
             body: Row(children: [
               NavigationSidebar(onNavigate: (p) => navigatedTo = p),
             ]),

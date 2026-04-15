@@ -1,3 +1,4 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -222,11 +223,11 @@ class _ThemeModeButtonState extends State<_ThemeModeButton> {
   IconData get _icon {
     switch (widget.mode) {
       case ThemeMode.system:
-        return Icons.desktop_windows_outlined;
+        return FluentIcons.desktop_24_regular;
       case ThemeMode.light:
-        return Icons.light_mode_outlined;
+        return FluentIcons.weather_sunny_24_regular;
       case ThemeMode.dark:
-        return Icons.dark_mode_outlined;
+        return FluentIcons.weather_moon_24_regular;
     }
   }
 

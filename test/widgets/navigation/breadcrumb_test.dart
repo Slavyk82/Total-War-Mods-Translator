@@ -10,23 +10,23 @@ Widget _wrap(String path) {
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, __) => const Scaffold(body: SizedBox.shrink()),
+        builder: (_, _) => const Scaffold(body: SizedBox.shrink()),
       ),
       GoRoute(
         path: '/sources/mods',
-        builder: (_, __) => const Scaffold(body: Breadcrumb()),
+        builder: (_, _) => const Scaffold(body: Breadcrumb()),
       ),
       GoRoute(
         path: '/work/projects/:projectId',
-        builder: (_, __) => const Scaffold(body: Breadcrumb()),
+        builder: (_, _) => const Scaffold(body: Breadcrumb()),
       ),
       GoRoute(
         path: '/work/projects/:projectId/editor/:languageId',
-        builder: (_, __) => const Scaffold(body: Breadcrumb()),
+        builder: (_, _) => const Scaffold(body: Breadcrumb()),
       ),
       GoRoute(
         path: '/publishing/steam/batch',
-        builder: (_, __) => const Scaffold(body: Breadcrumb()),
+        builder: (_, _) => const Scaffold(body: Breadcrumb()),
       ),
     ],
   );
@@ -80,7 +80,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/sources/mods/unknown-leaf',
-          builder: (_, __) => const Scaffold(body: Breadcrumb()),
+          builder: (_, _) => const Scaffold(body: Breadcrumb()),
         ),
       ],
     );
