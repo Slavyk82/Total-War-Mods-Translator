@@ -178,7 +178,8 @@ Column [
     ),
     title: project.name,
     subtitle: [
-      TypeBadge(project.isGameTranslation),   // "mod" | "game"
+      StatusPill(label: project.isGameTranslation ? "GAME" : "MOD",
+                 semantic: project.isGameTranslation ? tertiary : accent),  // primitive Plan 5a
       if (project.isGameTranslation) Text("source: $sourceLanguage"),
       if (project.modSteamId != null) Text("steam: ${project.modSteamId}"),
       Text("${details.languages.length} languages"),
