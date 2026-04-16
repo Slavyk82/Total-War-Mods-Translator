@@ -266,12 +266,17 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 columnWidthMode: ColumnWidthMode.fill,
                 gridLinesVisibility: GridLinesVisibility.horizontal,
                 headerGridLinesVisibility: GridLinesVisibility.horizontal,
+                // The calculator returns the per-row height (44px floor for
+                // body rows, expanding for multi-line text). headerRowHeight
+                // is set explicitly because the calculator's header branch is
+                // overridden by Syncfusion when this property is non-default.
                 onQueryRowHeight: (details) => calculateRowHeight(
                   details,
                   _dataSource.translationRows,
                   MediaQuery.of(context).size.width,
                 ),
-                headerRowHeight: 48,
+                rowHeight: 44,
+                headerRowHeight: 30,
                 onCellTap: _handleCellTap,
                 onCellSecondaryTap: _handleCellSecondaryTap,
                 columns: [
