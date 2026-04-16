@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/editor_providers.dart';
 import '../providers/translation_settings_provider.dart';
@@ -83,6 +84,7 @@ class _TranslationEditorScreenState
   @override
   Widget build(BuildContext context) {
     return Material(
+      color: context.tokens.bg,
       child: Shortcuts(
         shortcuts: const <ShortcutActivator, Intent>{
           SingleActivator(LogicalKeyboardKey.keyF, control: true):
