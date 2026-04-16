@@ -1,128 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/features/activity/providers/activity_providers.dart';
+import 'package:twmt/features/home/providers/action_grid_providers.dart';
+import 'package:twmt/features/home/providers/home_providers.dart';
+import 'package:twmt/features/home/providers/home_status_provider.dart';
+import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:twmt/features/home/screens/home_screen.dart';
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/features/home/widgets/empty_state_guide.dart';
+import 'package:twmt/features/home/widgets/recent_projects_list.dart';
+import 'package:twmt/theme/app_theme.dart';
+
+import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
 void main() {
-  group('HomeScreen', () {
-    group('Widget Structure', () {
-      testWidgets('should render FluentScaffold as root widget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
+  setUp(() async {
+    await TestBootstrap.registerFakes();
+    // Ensure the viewport is wide enough for the full dashboard (workflow
+    // ribbon + recent/activity columns) without triggering overflow.
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.physicalSize =
+        const Size(1920, 1080);
+    binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
+  });
 
-        expect(find.byType(FluentScaffold), findsOneWidget);
-      });
+  tearDown(() {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.resetPhysicalSize();
+    binding.platformDispatcher.views.first.resetDevicePixelRatio();
+  });
 
-      testWidgets('should render within a SingleChildScrollView', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
+  // Shared overrides that don't depend on the active-projects count.
+  // The per-test override list injects the right `activeProjectsCountProvider`
+  // value explicitly so we never register duplicate overrides for the same
+  // provider (Riverpod resolves duplicates in an order we don't want to rely on).
+  final baseOverrides = [
+    modsDiscoveredCountProvider.overrideWith((ref) async => 187),
+    modsWithUpdatesCountProvider.overrideWith((ref) async => 5),
+    projectsToReviewCountProvider.overrideWith((ref) async => 2),
+    projectsReadyToCompileCountProvider.overrideWith((ref) async => 3),
+    packsAwaitingPublishCountProvider.overrideWith((ref) async => 1),
+    homeStatusProvider.overrideWith(
+      (ref) async => const HomeStatus(HomeStatusKind.needsAttention, 2),
+    ),
+    recentProjectsProvider.overrideWith((ref) async => const []),
+    activityFeedProvider.overrideWith((ref) async => const []),
+  ];
 
-        expect(find.byType(SingleChildScrollView), findsOneWidget);
-      });
+  testWidgets('renders full dashboard when projects > 0', (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      const HomeScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        activeProjectsCountProvider.overrideWith((ref) async => 24),
+        ...baseOverrides,
+      ],
+    ));
+    await tester.pumpAndSettle();
 
-      testWidgets('should render a Column for layout', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Workflow'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
+    expect(find.text('Recent'), findsOneWidget);
+    expect(find.text('Activity'), findsOneWidget);
+    expect(find.byType(EmptyStateGuide), findsNothing);
+    expect(find.byType(RecentProjectsList), findsOneWidget);
+  });
 
-        expect(find.byType(Column), findsWidgets);
-      });
-    });
+  testWidgets('renders empty state when projects == 0', (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      const HomeScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        activeProjectsCountProvider.overrideWith((ref) async => 0),
+        ...baseOverrides,
+      ],
+    ));
+    await tester.pumpAndSettle();
 
-    group('Child Widgets', () {
-      testWidgets('should render WelcomeCard widget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        // WelcomeCard should be present in the widget tree
-        expect(find.byType(HomeScreen), findsOneWidget);
-      });
-
-      testWidgets('should render StatsCards widget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(HomeScreen), findsOneWidget);
-      });
-
-      testWidgets('should render RecentProjectsCard widget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(HomeScreen), findsOneWidget);
-      });
-    });
-
-    group('Layout and Spacing', () {
-      testWidgets('should have correct padding of 24.0', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        final scrollView = tester.widget<SingleChildScrollView>(
-          find.byType(SingleChildScrollView),
-        );
-
-        expect(scrollView.padding, const EdgeInsets.all(24.0));
-      });
-
-      testWidgets('should have SizedBox widgets for spacing', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(SizedBox), findsWidgets);
-      });
-    });
-
-    group('StatelessWidget Behavior', () {
-      testWidgets('should be a StatelessWidget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        final homeScreen = tester.widget<HomeScreen>(find.byType(HomeScreen));
-        expect(homeScreen, isA<StatelessWidget>());
-      });
-
-      testWidgets('should have const constructor', (tester) async {
-        // This test verifies that HomeScreen can be created with const constructor
-        const homeScreen = HomeScreen();
-        expect(homeScreen, isNotNull);
-      });
-    });
-
-    group('Accessibility', () {
-      testWidgets('should be scrollable for different screen sizes', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const HomeScreen()));
-        await tester.pumpAndSettle();
-
-        final scrollView = find.byType(SingleChildScrollView);
-        expect(scrollView, findsOneWidget);
-      });
-    });
-
-    group('Theme Integration', () {
-      testWidgets('should render correctly with light theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            const HomeScreen(),
-            theme: ThemeData.light(),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(find.byType(HomeScreen), findsOneWidget);
-      });
-
-      testWidgets('should render correctly with dark theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            const HomeScreen(),
-            theme: ThemeData.dark(),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(find.byType(HomeScreen), findsOneWidget);
-      });
-    });
+    expect(find.byType(EmptyStateGuide), findsOneWidget);
+    expect(find.byType(RecentProjectsList), findsNothing);
   });
 }
