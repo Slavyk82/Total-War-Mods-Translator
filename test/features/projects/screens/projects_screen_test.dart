@@ -1,175 +1,84 @@
-// NOTE: This file contains pre-existing failing tests preserved exactly
-// across Phases 1-7 of the incremental refactoring. The failures are
-// unrelated to the refactor and stem from widget-level Riverpod overrides
-// that predate Phase 3 DI unification. Do NOT attempt to "fix" them here
-// — they are the baseline that protects against unintended regression.
-// See docs/superpowers/plans/2026-04-12-incremental-refactoring.md.
+// Screen tests for the migrated Projects screen (Plan 5a · Task 2).
+//
+// The pre-existing tests that asserted a FluentScaffold root and Fluent header
+// were replaced when the screen moved to the FilterToolbar + ListRow archetype.
+// These tests exercise the new chrome and row archetype.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/screens/projects_screen.dart';
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
+import 'package:twmt/widgets/lists/list_row.dart';
+
+import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
+Project _project(String id, String name) => Project(
+      id: id,
+      name: name,
+      gameInstallationId: 'install-1',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+
+ProjectWithDetails _details(String id, String name) => ProjectWithDetails(
+      project: _project(id, name),
+      languages: const [],
+    );
+
+List<Override> _populatedOverrides() => [
+      paginatedProjectsProvider.overrideWith((_) async => [
+            _details('p1', 'Project Alpha'),
+            _details('p2', 'Project Bravo'),
+            _details('p3', 'Project Charlie'),
+          ]),
+      allLanguagesProvider.overrideWith((_) async => const <Language>[]),
+    ];
+
+List<Override> _emptyOverrides() => [
+      paginatedProjectsProvider
+          .overrideWith((_) async => const <ProjectWithDetails>[]),
+      allLanguagesProvider.overrideWith((_) async => const <Language>[]),
+    ];
+
 void main() {
-  group('ProjectsScreen', () {
-    group('Widget Structure', () {
-      testWidgets('should render FluentScaffold as root widget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
+  setUp(() async {
+    await TestBootstrap.registerFakes();
+  });
 
-        expect(find.byType(FluentScaffold), findsOneWidget);
-      });
+  testWidgets('ProjectsScreen shows FilterToolbar and ListRows',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(createThemedTestableWidget(
+      const ProjectsScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: _populatedOverrides(),
+    ));
+    await tester.pumpAndSettle();
 
-      testWidgets('should render with correct padding', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
+    expect(find.byType(FilterToolbar), findsOneWidget);
+    expect(find.byType(ListRow), findsNWidgets(3));
+    expect(find.text('Project Alpha'), findsOneWidget);
+    expect(find.text('Project Bravo'), findsOneWidget);
+    expect(find.text('Project Charlie'), findsOneWidget);
+  });
 
-        final padding = find.byType(Padding);
-        expect(padding, findsWidgets);
-      });
+  testWidgets('ProjectsScreen empty state when no projects', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(createThemedTestableWidget(
+      const ProjectsScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: _emptyOverrides(),
+    ));
+    await tester.pumpAndSettle();
 
-      testWidgets('should render a Column layout', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        expect(find.byType(Column), findsWidgets);
-      });
-    });
-
-    group('Header Section', () {
-      testWidgets('should display folder icon in header', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        expect(find.byIcon(FluentIcons.folder_24_regular), findsWidgets);
-      });
-
-      testWidgets('should display "Projects" title', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        expect(find.text('Projects'), findsOneWidget);
-      });
-    });
-
-    group('State Management', () {
-      testWidgets('should be a ConsumerStatefulWidget', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-
-      testWidgets('should have const constructor', (tester) async {
-        const projectsScreen = ProjectsScreen();
-        expect(projectsScreen, isNotNull);
-      });
-    });
-
-    group('Loading State', () {
-      testWidgets('should show loading indicator when loading', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // During initial load, loading indicator should appear
-        // Note: Actual behavior depends on provider state
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-
-      testWidgets('should display loading message', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Check for loading state elements
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Empty State', () {
-      testWidgets('should handle empty state gracefully', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Empty state should be handled
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Error State', () {
-      testWidgets('should display error icon when error occurs', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Error state should be handled
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Navigation', () {
-      testWidgets('should support project navigation callback', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Navigation should be set up
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Resync Functionality', () {
-      testWidgets('should handle resync action', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Resync functionality should be available
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Filter State', () {
-      testWidgets('should reset filters on init', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Filters should be reset when screen is mounted
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Theme Integration', () {
-      testWidgets('should render correctly with light theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            const ProjectsScreen(),
-            theme: ThemeData.light(),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-
-      testWidgets('should render correctly with dark theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            const ProjectsScreen(),
-            theme: ThemeData.dark(),
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ProjectsScreen), findsOneWidget);
-      });
-    });
-
-    group('Accessibility', () {
-      testWidgets('should have accessible header elements', (tester) async {
-        await tester.pumpWidget(createTestableWidget(const ProjectsScreen()));
-        await tester.pump();
-
-        // Header should have semantic meaning
-        expect(find.text('Projects'), findsOneWidget);
-      });
-    });
+    expect(find.byType(ListRow), findsNothing);
+    expect(find.textContaining('No projects'), findsOneWidget);
   });
 }
