@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/features/home/providers/action_grid_providers.dart';
+import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/widgets/cards/action_card.dart';
+
+/// "Needs attention" action grid on the Home dashboard.
+///
+/// Renders four [ActionCard]s in a row, each backed by a primitive Riverpod
+/// counter. The first two cards (To review / Ready to compile) use the
+/// accent highlight treatment when their count is greater than zero; the
+/// remaining cards are informational. Tapping any card navigates to the
+/// relevant feature route with a query filter where appropriate.
+class ActionGrid extends ConsumerWidget {
+  const ActionGrid({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final toReview = ref.watch(projectsToReviewCountProvider).value ?? 0;
+    final ready = ref.watch(projectsReadyToCompileCountProvider).value ?? 0;
+    final updates = ref.watch(modsWithUpdatesCountProvider).value ?? 0;
+    final awaiting = ref.watch(packsAwaitingPublishCountProvider).value ?? 0;
+
+    return Row(children: [
+      Expanded(
+        child: ActionCard(
+          label: 'To review',
+          value: toReview,
+          description: 'projects with needs-review units',
+          highlight: true,
+          onTap: () =>
+              context.go('${AppRoutes.projects}?filter=needs-review'),
+        ),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: ActionCard(
+          label: 'Ready to compile',
+          value: ready,
+          description: 'projects 100% translated',
+          highlight: true,
+          onTap: () =>
+              context.go('${AppRoutes.projects}?filter=ready-to-compile'),
+        ),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: ActionCard(
+          label: 'Mod updates',
+          value: updates,
+          description: 'new Workshop version available',
+          onTap: () => context.go('${AppRoutes.mods}?filter=updates'),
+        ),
+      ),
+      const SizedBox(width: 14),
+      Expanded(
+        child: ActionCard(
+          label: 'Ready to publish',
+          value: awaiting,
+          description: 'pack(s) to send to Workshop',
+          onTap: () => context.go(AppRoutes.steamPublish),
+        ),
+      ),
+    ]);
+  }
+}
