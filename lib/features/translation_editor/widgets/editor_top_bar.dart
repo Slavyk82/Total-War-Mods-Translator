@@ -88,86 +88,100 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
         border: Border(bottom: BorderSide(color: tokens.border)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          // Fixed-width left side: clickable crumb + separator.
-          _Crumb(projectName: projectName, languageName: languageName),
-          const _Sep(),
+      // LayoutBuilder lets us collapse the kbd chips and shrink the selectors
+      // when the viewport is too narrow to fit the full action group inline
+      // (e.g. 1920px desktop). Below ~1600px we drop the keyboard hints and
+      // shorten the model / skip-tm / rules controls so all 4 actions remain
+      // visible without spilling into the horizontal scroll fallback.
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 1600;
+          return Row(
+            children: [
+              // Fixed-width left side: clickable crumb + separator.
+              _Crumb(projectName: projectName, languageName: languageName),
+              const _Sep(),
 
-          // Scrollable middle: model selector, skip-tm, rules chip and
-          // the 4 action buttons. Wrapped in a horizontal scroll view so
-          // narrow viewports (down to the 1280px min-width) never trigger
-          // a layout overflow.
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const EditorToolbarModelSelector(compact: false),
-                  const SizedBox(width: 14),
-                  const EditorToolbarSkipTm(compact: false),
-                  const _Sep(),
-                  EditorToolbarModRule(
-                    compact: false,
-                    projectId: widget.projectId,
-                  ),
-                  const SizedBox(width: 8),
-                  _ActionButton(
-                    icon: FluentIcons.translate_24_filled,
-                    label: 'Selection',
-                    kbd: 'Ctrl+T',
-                    onTap: selection.hasSelection
-                        ? widget.onTranslateSelected
-                        : null,
-                  ),
-                  const SizedBox(width: 8),
-                  _ActionButton(
-                    icon: FluentIcons.translate_24_regular,
-                    label: 'Translate all',
-                    kbd: 'Ctrl+Shift+T',
-                    primary: true,
-                    onTap: widget.onTranslateAll,
-                  ),
-                  const SizedBox(width: 8),
-                  _SplitButton(
-                    icon: FluentIcons.checkmark_circle_24_regular,
-                    label: 'Validate',
-                    kbd: 'Ctrl+Shift+V',
-                    onTap: widget.onValidate,
-                    menuItems: [
-                      _MenuEntry('Validate selected', widget.onValidate),
-                      _MenuEntry('Rescan all', widget.onRescanValidation),
+              // Scrollable middle: model selector, skip-tm, rules chip and
+              // the 4 action buttons. Wrapped in a horizontal scroll view so
+              // narrow viewports (down to the 1280px min-width) never trigger
+              // a layout overflow.
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      EditorToolbarModelSelector(compact: compact),
+                      const SizedBox(width: 14),
+                      EditorToolbarSkipTm(compact: compact),
+                      const _Sep(),
+                      EditorToolbarModRule(
+                        compact: compact,
+                        projectId: widget.projectId,
+                      ),
+                      const SizedBox(width: 8),
+                      _ActionButton(
+                        icon: FluentIcons.translate_24_filled,
+                        label: 'Selection',
+                        kbd: 'Ctrl+T',
+                        compact: compact,
+                        onTap: selection.hasSelection
+                            ? widget.onTranslateSelected
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      _ActionButton(
+                        icon: FluentIcons.translate_24_regular,
+                        label: 'Translate all',
+                        kbd: 'Ctrl+Shift+T',
+                        primary: true,
+                        compact: compact,
+                        onTap: widget.onTranslateAll,
+                      ),
+                      const SizedBox(width: 8),
+                      _SplitButton(
+                        icon: FluentIcons.checkmark_circle_24_regular,
+                        label: 'Validate',
+                        kbd: 'Ctrl+Shift+V',
+                        compact: compact,
+                        onTap: widget.onValidate,
+                        menuItems: [
+                          _MenuEntry('Validate selected', widget.onValidate),
+                          _MenuEntry('Rescan all', widget.onRescanValidation),
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      _SplitButton(
+                        icon: FluentIcons.box_24_regular,
+                        label: 'Pack',
+                        compact: compact,
+                        onTap: widget.onExport,
+                        menuItems: [
+                          _MenuEntry('Generate pack', widget.onExport),
+                          _MenuEntry('Import pack', widget.onImportPack),
+                        ],
+                      ),
                     ],
                   ),
-                  const SizedBox(width: 8),
-                  _SplitButton(
-                    icon: FluentIcons.box_24_regular,
-                    label: 'Pack',
-                    onTap: widget.onExport,
-                    menuItems: [
-                      _MenuEntry('Generate pack', widget.onExport),
-                      _MenuEntry('Import pack', widget.onImportPack),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
 
-          // Fixed-width right side: Settings + separator + search field.
-          IconButton(
-            icon: const Icon(FluentIcons.settings_24_regular, size: 18),
-            onPressed: widget.onTranslationSettings,
-            tooltip: 'Translation settings',
-            color: tokens.textMid,
-          ),
-          const _Sep(),
-          _SearchField(
-            controller: _searchController,
-            focus: widget.searchFocus,
-            onChanged: _onSearchChanged,
-          ),
-        ],
+              // Fixed-width right side: Settings + separator + search field.
+              IconButton(
+                icon: const Icon(FluentIcons.settings_24_regular, size: 18),
+                onPressed: widget.onTranslationSettings,
+                tooltip: 'Translation settings',
+                color: tokens.textMid,
+              ),
+              const _Sep(),
+              _SearchField(
+                controller: _searchController,
+                focus: widget.searchFocus,
+                onChanged: _onSearchChanged,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -244,6 +258,9 @@ class _ActionButton extends StatelessWidget {
   final String? kbd;
   final VoidCallback? onTap;
   final bool primary;
+  /// When true, the keyboard hint chip is hidden so the button group fits in
+  /// narrow viewports (driven by the LayoutBuilder in [_EditorTopBarState]).
+  final bool compact;
 
   const _ActionButton({
     required this.icon,
@@ -251,6 +268,7 @@ class _ActionButton extends StatelessWidget {
     this.kbd,
     required this.onTap,
     this.primary = false,
+    this.compact = false,
   });
 
   @override
@@ -290,7 +308,7 @@ class _ActionButton extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              if (kbd != null) ...[
+              if (kbd != null && !compact) ...[
                 const SizedBox(width: 8),
                 _KbdChip(label: kbd!, primary: primary),
               ],
@@ -342,6 +360,9 @@ class _SplitButton extends StatelessWidget {
   final String? kbd;
   final VoidCallback onTap;
   final List<_MenuEntry> menuItems;
+  /// Forwarded to the inner [_ActionButton] so its kbd chip is hidden in
+  /// narrow viewports.
+  final bool compact;
 
   const _SplitButton({
     required this.icon,
@@ -349,6 +370,7 @@ class _SplitButton extends StatelessWidget {
     this.kbd,
     required this.onTap,
     required this.menuItems,
+    this.compact = false,
   });
 
   @override
@@ -357,7 +379,13 @@ class _SplitButton extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _ActionButton(icon: icon, label: label, kbd: kbd, onTap: onTap),
+        _ActionButton(
+          icon: icon,
+          label: label,
+          kbd: kbd,
+          compact: compact,
+          onTap: onTap,
+        ),
         const SizedBox(width: 2),
         PopupMenuButton<int>(
           tooltip: 'More $label actions',
