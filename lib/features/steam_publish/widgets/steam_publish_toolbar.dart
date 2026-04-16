@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -92,6 +93,8 @@ class SteamPublishToolbar extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: () => onSearchChanged(''),
       ),
+      const _SortButton(),
+      const _SortDirectionButton(),
       _PublishSelectionButton(
         selectedCount: selectedCount,
         disabledTooltip: publishDisabledTooltip,
@@ -255,6 +258,113 @@ class _PublishSelectionButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 400),
       child: core,
+    );
+  }
+}
+
+class _SortButton extends ConsumerWidget {
+  const _SortButton();
+
+  String _labelFor(SteamPublishSortMode mode) {
+    switch (mode) {
+      case SteamPublishSortMode.exportDate:
+        return 'Export date';
+      case SteamPublishSortMode.name:
+        return 'Name';
+      case SteamPublishSortMode.publishDate:
+        return 'Publish date';
+    }
+  }
+
+  IconData _iconFor(SteamPublishSortMode mode) {
+    switch (mode) {
+      case SteamPublishSortMode.exportDate:
+        return FluentIcons.arrow_export_24_regular;
+      case SteamPublishSortMode.name:
+        return FluentIcons.text_sort_ascending_24_regular;
+      case SteamPublishSortMode.publishDate:
+        return FluentIcons.cloud_arrow_up_24_regular;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final mode = ref.watch(steamPublishSortModeProvider);
+    return PopupMenuButton<SteamPublishSortMode>(
+      tooltip: 'Sort packs',
+      offset: const Offset(0, 36),
+      color: tokens.panel,
+      itemBuilder: (context) => SteamPublishSortMode.values
+          .map(
+            (option) => PopupMenuItem(
+              value: option,
+              child: Row(
+                children: [
+                  Icon(_iconFor(option), size: 16, color: tokens.textMid),
+                  const SizedBox(width: 10),
+                  Text(
+                    _labelFor(option),
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                  ),
+                ],
+              ),
+            ),
+          )
+          .toList(),
+      onSelected: (option) =>
+          ref.read(steamPublishSortModeProvider.notifier).state = option,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: tokens.panel2,
+          border: Border.all(color: tokens.border),
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_iconFor(mode), size: 16, color: tokens.textMid),
+            const SizedBox(width: 6),
+            Text(
+              _labelFor(mode),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.textMid,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              FluentIcons.chevron_down_24_regular,
+              size: 14,
+              color: tokens.textDim,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SortDirectionButton extends ConsumerWidget {
+  const _SortDirectionButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ascending = ref.watch(steamPublishSortAscendingProvider);
+    return SmallIconButton(
+      icon: ascending
+          ? FluentIcons.arrow_sort_up_24_regular
+          : FluentIcons.arrow_sort_down_24_regular,
+      tooltip: ascending ? 'Sort ascending' : 'Sort descending',
+      size: 32,
+      iconSize: 16,
+      onTap: () => ref
+          .read(steamPublishSortAscendingProvider.notifier)
+          .state = !ascending,
     );
   }
 }
