@@ -7,6 +7,7 @@ import 'package:twmt/features/mods/screens/mods_screen.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
+import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_bootstrap.dart';
@@ -99,7 +100,15 @@ List<DetectedMod> _populatedMods() => [
       ),
     ];
 
+// Pinned "now" so _UpdatedCell's relative-date formatter renders stable output
+// across runs (30 days after the base epoch puts all mods into the "months"
+// bucket deterministically).
+final DateTime _pinnedNow =
+    DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+        .add(const Duration(days: 30));
+
 List<Override> _populatedOverrides() => [
+      clockProvider.overrideWithValue(() => _pinnedNow),
       scanLogStreamProvider.overrideWithValue(
         const Stream<ScanLogMessage>.empty(),
       ),

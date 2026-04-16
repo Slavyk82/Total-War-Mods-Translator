@@ -2,14 +2,17 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
+import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
 
 /// Column spec for the Mods list — mirrors the §7.1 filterable-list archetype
 /// used by Projects. Columns: thumbnail, title+id, subscribers, last-updated,
@@ -278,12 +281,12 @@ class _SubscribersCell extends StatelessWidget {
   }
 }
 
-class _UpdatedCell extends StatelessWidget {
+class _UpdatedCell extends ConsumerWidget {
   final DetectedMod mod;
   const _UpdatedCell({required this.mod});
 
-  static String _formatSince(DateTime date) {
-    final diff = DateTime.now().difference(date);
+  static String _formatSince(DateTime date, DateTime now) {
+    final diff = now.difference(date);
     final days = diff.inDays;
     if (days == 0) {
       final hours = diff.inHours;
@@ -323,7 +326,7 @@ class _UpdatedCell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     if (mod.timeUpdated == null || mod.timeUpdated == 0) {
       return Padding(
@@ -337,9 +340,10 @@ class _UpdatedCell extends StatelessWidget {
         ),
       );
     }
+    final now = ref.watch(clockProvider)();
     final steamDate =
         DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000);
-    final label = _formatSince(steamDate);
+    final label = _formatSince(steamDate, now);
     final status = mod.updateStatus;
 
     IconData? icon;
@@ -412,37 +416,11 @@ class _ImportedCell extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(tokens.radiusPill),
-            border: Border.all(color: fg.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (imported) ...[
-                Icon(
-                  FluentIcons.checkmark_circle_24_regular,
-                  size: 12,
-                  color: fg,
-                ),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
-                child: Text(
-                  imported ? 'Imported' : 'Not Imported',
-                  style: tokens.fontBody.copyWith(
-                    fontSize: 11.5,
-                    color: fg,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+        child: StatusPill(
+          label: imported ? 'Imported' : 'Not Imported',
+          foreground: fg,
+          background: bg,
+          icon: imported ? FluentIcons.checkmark_circle_24_regular : null,
         ),
       ),
     );
@@ -539,48 +517,13 @@ class _NeedsDownloadBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Tooltip(
-          message: 'Click to delete local file and force redownload',
-          waitDuration: const Duration(milliseconds: 400),
-          child: MouseRegion(
-            cursor: enabled
-                ? SystemMouseCursors.click
-                : SystemMouseCursors.basic,
-            child: GestureDetector(
-              onTap: enabled ? () => onTap!(packFilePath) : null,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: tokens.errBg,
-                  borderRadius: BorderRadius.circular(tokens.radiusPill),
-                  border: Border.all(color: tokens.err.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      FluentIcons.arrow_download_24_filled,
-                      size: 12,
-                      color: tokens.err,
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'Download required',
-                        style: tokens.fontBody.copyWith(
-                          fontSize: 11.5,
-                          color: tokens.err,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        child: StatusPill(
+          label: 'Download required',
+          foreground: tokens.err,
+          background: tokens.errBg,
+          icon: FluentIcons.arrow_download_24_filled,
+          tooltip: 'Click to delete local file and force redownload',
+          onTap: enabled ? () => onTap!(packFilePath) : null,
         ),
       ),
     );
@@ -608,39 +551,12 @@ class _HasChangesBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Align(
         alignment: Alignment.centerLeft,
-        child: Tooltip(
-          message: lines.join('\n'),
-          waitDuration: const Duration(milliseconds: 400),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: tokens.errBg,
-              borderRadius: BorderRadius.circular(tokens.radiusPill),
-              border: Border.all(color: tokens.err.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  FluentIcons.warning_24_filled,
-                  size: 12,
-                  color: tokens.err,
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    analysis.summary,
-                    style: tokens.fontBody.copyWith(
-                      fontSize: 11.5,
-                      color: tokens.err,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-          ),
+        child: StatusPill(
+          label: analysis.summary,
+          foreground: tokens.err,
+          background: tokens.errBg,
+          icon: FluentIcons.warning_24_filled,
+          tooltip: lines.join('\n'),
         ),
       ),
     );

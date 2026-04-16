@@ -7,6 +7,8 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
+import 'package:twmt/widgets/lists/toggle_chip.dart';
 
 /// Toolbar for the Mods screen.
 ///
@@ -75,10 +77,15 @@ class ModsToolbar extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: () => onSearchChanged(''),
       ),
-      _HiddenToggle(
-        showHidden: showHidden,
-        hiddenCount: hiddenCount,
-        onChanged: onShowHiddenChanged,
+      ToggleChip(
+        label: 'Hidden',
+        icon: showHidden
+            ? FluentIcons.eye_24_filled
+            : FluentIcons.eye_off_24_regular,
+        selected: showHidden,
+        count: hiddenCount > 0 ? hiddenCount : null,
+        tooltip: TooltipStrings.modsHiddenToggle,
+        onToggle: () => onShowHiddenChanged(!showHidden),
       ),
       if (onImportLocalPack != null)
         SmallTextButton(
@@ -203,50 +210,13 @@ class _PendingProjectsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Tooltip(
-      message: 'Projects with pending translation changes. Click to view.',
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor:
-            onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: tokens.errBg,
-              borderRadius: BorderRadius.circular(tokens.radiusPill),
-              border: Border.all(color: tokens.err.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  FluentIcons.warning_24_filled,
-                  size: 14,
-                  color: tokens.err,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$count project${count > 1 ? 's' : ''} pending',
-                  style: tokens.fontBody.copyWith(
-                    fontSize: 12,
-                    color: tokens.err,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  FluentIcons.arrow_right_24_regular,
-                  size: 12,
-                  color: tokens.err,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return StatusPill(
+      label: '$count project${count > 1 ? 's' : ''} pending',
+      foreground: tokens.err,
+      background: tokens.errBg,
+      icon: FluentIcons.warning_24_filled,
+      tooltip: 'Projects with pending translation changes. Click to view.',
+      onTap: onTap,
     );
   }
 }
@@ -254,75 +224,6 @@ class _PendingProjectsBanner extends StatelessWidget {
 // =============================================================================
 // Trailing widgets
 // =============================================================================
-
-class _HiddenToggle extends StatelessWidget {
-  final bool showHidden;
-  final int hiddenCount;
-  final ValueChanged<bool> onChanged;
-  const _HiddenToggle({
-    required this.showHidden,
-    required this.hiddenCount,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final fg = showHidden ? tokens.accent : tokens.textMid;
-    final bg = showHidden ? tokens.accentBg : tokens.panel2;
-    final borderColor = showHidden ? tokens.accent : tokens.border;
-    return Tooltip(
-      message: TooltipStrings.modsHiddenToggle,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () => onChanged(!showHidden),
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: bg,
-              border: Border.all(color: borderColor),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  showHidden
-                      ? FluentIcons.eye_24_filled
-                      : FluentIcons.eye_off_24_regular,
-                  size: 14,
-                  color: fg,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Hidden',
-                  style: tokens.fontBody.copyWith(
-                    fontSize: 12.5,
-                    color: fg,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (hiddenCount > 0) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    '$hiddenCount',
-                    style: tokens.fontMono.copyWith(
-                      fontSize: 11,
-                      color: tokens.textFaint,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _RefreshButton extends StatelessWidget {
   final bool isRefreshing;

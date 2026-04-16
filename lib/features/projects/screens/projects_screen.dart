@@ -15,6 +15,7 @@ import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_screen_providers.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
@@ -1153,30 +1154,12 @@ class _StatusPill extends StatelessWidget {
     required Color bg,
     String? tooltip,
   }) {
-    final child = Builder(builder: (context) {
-      final tokens = context.tokens;
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(tokens.radiusPill),
-          border: Border.all(color: fg.withValues(alpha: 0.4)),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: tokens.fontBody.copyWith(
-            fontSize: 11.5,
-            color: fg,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-    });
-    if (tooltip == null) return child;
-    return Tooltip(message: tooltip, child: child);
+    return StatusPill(
+      label: label,
+      foreground: fg,
+      background: bg,
+      tooltip: tooltip,
+    );
   }
 }
 
