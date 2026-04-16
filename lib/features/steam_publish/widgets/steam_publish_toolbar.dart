@@ -5,6 +5,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../providers/steam_publish_providers.dart';
@@ -95,15 +97,19 @@ class SteamPublishToolbar extends StatelessWidget {
         disabledTooltip: publishDisabledTooltip,
         onPublish: onPublishSelection,
       ),
-      _ToolbarIconButton(
+      SmallIconButton(
         icon: FluentIcons.arrow_sync_24_regular,
         tooltip: 'Refresh',
         onTap: onRefresh,
+        size: 32,
+        iconSize: 16,
       ),
-      _ToolbarIconButton(
+      SmallIconButton(
         icon: FluentIcons.settings_24_regular,
         tooltip: 'Publish settings',
         onTap: onOpenSettings,
+        size: 32,
+        iconSize: 16,
       ),
     ];
   }
@@ -165,40 +171,16 @@ class _Leading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final packLabel = totalItems == 1 ? 'pack' : 'packs';
     final base = searchActive
         ? '$filteredItems / $totalItems $packLabel'
         : '$totalItems $packLabel';
     final countLabel =
         selectedCount > 0 ? '$base · $selectedCount selected' : base;
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.cloud_arrow_up_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Publish on Steam',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          countLabel,
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
-          ),
-        ),
-      ],
+    return ListToolbarLeading(
+      icon: FluentIcons.cloud_arrow_up_24_regular,
+      title: 'Publish on Steam',
+      countLabel: countLabel,
     );
   }
 }
@@ -277,41 +259,3 @@ class _PublishSelectionButton extends StatelessWidget {
   }
 }
 
-class _ToolbarIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
-
-  const _ToolbarIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            height: 32,
-            width: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: tokens.panel2,
-              border: Border.all(color: tokens.border),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
-            ),
-            child: Icon(icon, size: 16, color: tokens.textMid),
-          ),
-        ),
-      ),
-    );
-  }
-}

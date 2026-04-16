@@ -6,6 +6,7 @@ import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../providers/tm_providers.dart';
@@ -133,32 +134,11 @@ class _Leading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final noun = total == 1 ? 'entry' : 'entries';
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.database_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Translation Memory',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          '$total $noun',
-          style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
-        ),
-      ],
+    return ListToolbarLeading(
+      icon: FluentIcons.database_24_regular,
+      title: 'Translation Memory',
+      countLabel: '$total $noun',
     );
   }
 }

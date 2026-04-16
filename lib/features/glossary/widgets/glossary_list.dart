@@ -343,7 +343,7 @@ class _UpdatedCell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
-    final now = ref.watch(clockProvider).call();
+    final now = ref.watch(clockProvider)();
     final date = DateTime.fromMillisecondsSinceEpoch(updatedAt);
     final relative = formatRelativeSince(date, now: now) ?? '—';
     final absolute = formatAbsoluteDate(date);

@@ -6,6 +6,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import 'package:twmt/widgets/lists/toggle_chip.dart';
@@ -160,43 +161,19 @@ class _Leading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final countLabel = searchActive
         ? '$filteredMods / $totalMods ${totalMods == 1 ? 'mod' : 'mods'}'
         : '$totalMods ${totalMods == 1 ? 'mod' : 'mods'}';
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.cube_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Mods',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          countLabel,
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
-          ),
-        ),
-        if (projectsWithPendingChanges > 0) ...[
-          const SizedBox(width: 16),
+    return ListToolbarLeading(
+      icon: FluentIcons.cube_24_regular,
+      title: 'Mods',
+      countLabel: countLabel,
+      trailing: [
+        if (projectsWithPendingChanges > 0)
           _PendingProjectsBanner(
             count: projectsWithPendingChanges,
             onTap: onNavigateToProjects,
           ),
-        ],
       ],
     );
   }
