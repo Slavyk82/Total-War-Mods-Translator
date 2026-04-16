@@ -145,6 +145,11 @@ class _TranslationEditorScreenState
               // Main content area
               Expanded(
                 child: Row(
+                  // Stretch all three columns to the full Row height so the
+                  // filter panel (sized to content via SingleChildScrollView)
+                  // does not get vertically centered inside the available
+                  // space and instead aligns its content to the top edge.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Left filter panel
                     EditorFilterPanel(
