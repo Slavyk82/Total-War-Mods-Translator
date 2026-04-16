@@ -8,6 +8,7 @@ import '../widgets/editor_intents.dart';
 import '../widgets/editor_top_bar.dart';
 import '../widgets/editor_filter_panel.dart';
 import '../widgets/editor_datagrid.dart';
+import '../widgets/editor_inspector_panel.dart';
 import '../widgets/editor_status_bar.dart';
 import 'translation_editor_actions.dart';
 
@@ -163,7 +164,16 @@ class _TranslationEditorScreenState
                       ),
                     ),
 
-                    // Inspector added in Task 5.
+                    // Right inspector panel (320px) — selection details +
+                    // Source/Target editor + TM suggestions + Validation.
+                    EditorInspectorPanel(
+                      projectId: widget.projectId,
+                      languageId: widget.languageId,
+                      onSave: (unitId, text) =>
+                        _getActions().handleCellEdit(unitId, text),
+                      onApplySuggestion: (unitId, text) =>
+                        _getActions().handleCellEdit(unitId, text),
+                    ),
                   ],
                 ),
               ),
