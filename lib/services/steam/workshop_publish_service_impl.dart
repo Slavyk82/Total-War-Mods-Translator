@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
+import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -27,16 +29,28 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   final VdfGenerator _vdfGenerator;
   final IProcessLauncher _processLauncher;
   final ILoggingService _logger;
+  final ActivityLogger? _activityLogger;
 
   WorkshopPublishServiceImpl({
     SteamCmdManager? manager,
     VdfGenerator? vdfGenerator,
     IProcessLauncher? processLauncher,
     ILoggingService? logger,
+    ActivityLogger? activityLogger,
   })  : _manager = manager ?? SteamCmdManager(),
         _vdfGenerator = vdfGenerator ?? VdfGenerator(),
         _processLauncher = processLauncher ?? const ProcessLauncher(),
-        _logger = logger ?? ServiceLocator.get<ILoggingService>();
+        _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _activityLogger = activityLogger ?? _tryResolveActivityLogger();
+
+  static ActivityLogger? _tryResolveActivityLogger() {
+    try {
+      if (ServiceLocator.isRegistered<ActivityLogger>()) {
+        return ServiceLocator.get<ActivityLogger>();
+      }
+    } catch (_) {}
+    return null;
+  }
 
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
@@ -235,6 +249,16 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         'wasUpdate': run.wasUpdate,
         'durationMs': duration,
       });
+
+      _activityLogger?.log(
+        ActivityEventType.projectPublished,
+        projectId: null, // params.projectId doesn't exist; no cheap lookup
+        gameCode: null,
+        payload: {
+          'projectName': params.title,
+          'workshopId': workshopId,
+        },
+      );
 
       return Ok(WorkshopPublishResult(
         workshopId: workshopId,
@@ -553,6 +577,15 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
                 timestamp: DateTime.now(),
                 rawOutput: rawOutput.toString(),
               )),
+            );
+            _activityLogger?.log(
+              ActivityEventType.projectPublished,
+              projectId: null,
+              gameCode: null,
+              payload: {
+                'projectName': items[currentIdx].params.title,
+                'workshopId': workshopId,
+              },
             );
             currentWorkshopId = null;
             currentChunkPos++;
