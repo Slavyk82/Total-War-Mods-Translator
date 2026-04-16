@@ -5,6 +5,7 @@ import '../providers/editor_providers.dart';
 import 'cell_renderers/checkbox_cell_renderer.dart';
 import 'cell_renderers/status_cell_renderer.dart';
 import 'cell_renderers/text_cell_renderer.dart';
+import 'cell_renderers/tm_source_cell_renderer.dart';
 
 /// DataSource for Syncfusion DataGrid
 ///
@@ -134,12 +135,13 @@ class EditorDataSource extends DataGridSource {
     final keyCell = row.getCells()[3];
     final sourceTextCell = row.getCells()[4];
     final translatedTextCell = row.getCells()[5];
-    final tmSourceCell = row.getCells()[6];
 
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
 
-    // Find the full TranslationRow for context menu callback
+    // Find the full TranslationRow for context menu callback. Also used by
+    // the TM badge renderer to read the typed translationSource enum (the
+    // string in the tmSource cell is kept only for export / CSV use cases).
     final translationRow = _rows.firstWhere(
       (r) => r.id == unitId,
       orElse: () => _rows.first, // Fallback, should not happen
@@ -181,8 +183,9 @@ class EditorDataSource extends DataGridSource {
           isEditable: true,
           onSecondaryTap: handleSecondaryTap,
         ),
-        RepaintBoundary(child: TextCellRenderer(
-          text: tmSourceCell.value,
+        RepaintBoundary(child: TmSourceCellRenderer(
+          source: translationRow.translationSource,
+          manuallyEdited: translationRow.isManuallyEdited,
           onSecondaryTap: handleSecondaryTap,
         )),
       ],
