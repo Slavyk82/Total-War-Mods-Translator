@@ -13,8 +13,10 @@ import '../../theme/twmt_theme_tokens.dart';
 /// Unknown non-UUID segments fall back to the raw segment text in a muted mono
 /// style.
 ///
-/// Non-last crumbs are clickable and navigate to their accumulated path via
-/// [onCrumbTap] (defaults to `context.go`). The last crumb is plain text.
+/// A non-last crumb is clickable only when its accumulated path resolves to a
+/// valid target — either a group default item (`/work` → `/work/home`) or an
+/// exact [NavItem.route]. Intermediate leaves whose accumulated path is not a
+/// real route (e.g. `/work/projects/<uuid>/editor`) render as plain text.
 class Breadcrumb extends StatelessWidget {
   const Breadcrumb({super.key, this.onCrumbTap});
 
@@ -61,10 +63,17 @@ class Breadcrumb extends StatelessWidget {
               ),
             _BreadcrumbSegment(
               crumb: crumbs[i],
-              isLast: i == crumbs.length - 1,
-              onTap: i == crumbs.length - 1
+              // A crumb is visually "last" only when its own accumulated URL
+              // prefix equals the current URL. When the URL has trailing
+              // dynamic segments (UUIDs, language ids) that were skipped
+              // during render, the visibly-last crumb is still considered
+              // non-last so it remains clickable (e.g. "Projects" in a
+              // project detail URL navigates back to the projects list).
+              isLast: crumbs[i].accumulatedPath == path,
+              onTap: (crumbs[i].accumulatedPath == path ||
+                      crumbs[i].path == null)
                   ? null
-                  : () => tap(context, crumbs[i].path),
+                  : () => tap(context, crumbs[i].path!),
             ),
           ],
         ],
@@ -83,24 +92,50 @@ class Breadcrumb extends StatelessWidget {
       // path so an ancestor crumb can resolve to a valid sub-route.
       if (_uuidPattern.hasMatch(segment)) continue;
       final label = NavigationTreeResolver.labelForSegment(segment);
+      final accumulated = accum.toString();
       crumbs.add(_Crumb(
-        path: accum.toString(),
+        accumulatedPath: accumulated,
+        path: _resolveClickablePath(accumulated, segment),
         label: label ?? segment,
         isKnown: label != null,
       ));
     }
     return crumbs;
   }
+
+  /// Resolves the clickable target for a crumb, or `null` when the crumb
+  /// should render as non-interactive text.
+  String? _resolveClickablePath(String accumulatedPath, String segment) {
+    // Group-level: /work → /work/home, /sources → /sources/mods, etc.
+    final groupTarget =
+        NavigationTreeResolver.defaultRouteForGroupSegment(segment);
+    if (groupTarget != null) return groupTarget;
+
+    // Item-level: /work/projects resolves to the item /work/projects.
+    final active = NavigationTreeResolver.findActive(accumulatedPath);
+    if (active.item?.route == accumulatedPath) return accumulatedPath;
+
+    // Intermediate / invalid path → not clickable.
+    return null;
+  }
 }
 
 class _Crumb {
   const _Crumb({
+    required this.accumulatedPath,
     required this.path,
     required this.label,
     required this.isKnown,
   });
 
-  final String path;
+  /// The crumb's own URL prefix (segments joined up to this point). Used to
+  /// determine whether the crumb is the visually-last one (matches the full
+  /// current URL).
+  final String accumulatedPath;
+
+  /// Clickable navigation target, or `null` when the crumb is not clickable
+  /// (intermediate leaf whose accumulated path is not a real route).
+  final String? path;
   final String label;
   final bool isKnown;
 }
@@ -148,6 +183,8 @@ class _BreadcrumbSegmentState extends State<_BreadcrumbSegment> {
       child: Text(widget.crumb.label, style: style),
     );
     if (widget.onTap == null) {
+      // Non-clickable: either the last crumb or an intermediate non-item
+      // segment. Render plain text with no hover/cursor feedback.
       return text;
     }
     return MouseRegion(

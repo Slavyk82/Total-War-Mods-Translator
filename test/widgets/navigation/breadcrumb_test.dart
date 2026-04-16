@@ -97,19 +97,16 @@ void main() {
     expect(find.text('unknown-leaf'), findsOneWidget);
   });
 
-  testWidgets('tapping a non-last crumb invokes onCrumbTap with accumulated path',
-      (tester) async {
+  testWidgets('tapping a group crumb navigates to the group default item', (tester) async {
     String? tapped;
     final router = GoRouter(
       initialLocation: '/work/projects',
       routes: [
         GoRoute(
           path: '/work/projects',
-          builder: (_, _) => Scaffold(
-            body: Breadcrumb(
-              onCrumbTap: (ctx, p) => tapped = p,
-            ),
-          ),
+          builder: (_, _) => Scaffold(body: Breadcrumb(
+            onCrumbTap: (ctx, p) => tapped = p,
+          )),
         ),
       ],
     );
@@ -118,10 +115,58 @@ void main() {
       routerConfig: router,
     ));
     await tester.pumpAndSettle();
-
-    // "Work" is the non-last crumb; tapping it should pass '/work' to the spy.
     await tester.tap(find.text('Work'));
     await tester.pump();
-    expect(tapped, '/work');
+    expect(tapped, '/work/home', reason: 'group crumb should redirect to first item');
+  });
+
+  testWidgets('intermediate non-item crumb is not clickable', (tester) async {
+    // Path /work/projects/<uuid>/editor has "editor" as a leaf, but that path
+    // alone is not a valid route (requires /editor/:languageId). Tapping must
+    // not invoke onCrumbTap.
+    var tapCount = 0;
+    final router = GoRouter(
+      initialLocation: '/work/projects/550e8400-e29b-41d4-a716-446655440000/editor/fr-FR',
+      routes: [
+        GoRoute(
+          path: '/work/projects/:projectId/editor/:languageId',
+          builder: (_, _) => Scaffold(body: Breadcrumb(
+            onCrumbTap: (ctx, p) => tapCount++,
+          )),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(
+      theme: AppTheme.atelierDarkTheme,
+      routerConfig: router,
+    ));
+    await tester.pumpAndSettle();
+    // "Editor" is a non-last crumb but its accumulated path is invalid.
+    await tester.tap(find.text('Editor'), warnIfMissed: false);
+    await tester.pump();
+    expect(tapCount, 0, reason: 'intermediate non-item crumb should not be clickable');
+  });
+
+  testWidgets('item crumb navigates to its accumulated path', (tester) async {
+    String? tapped;
+    final router = GoRouter(
+      initialLocation: '/work/projects/550e8400-e29b-41d4-a716-446655440000',
+      routes: [
+        GoRoute(
+          path: '/work/projects/:projectId',
+          builder: (_, _) => Scaffold(body: Breadcrumb(
+            onCrumbTap: (ctx, p) => tapped = p,
+          )),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(
+      theme: AppTheme.atelierDarkTheme,
+      routerConfig: router,
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Projects'));
+    await tester.pump();
+    expect(tapped, '/work/projects', reason: 'item crumb navigates to item route');
   });
 }

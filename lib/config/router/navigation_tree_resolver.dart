@@ -46,6 +46,20 @@ class NavigationTreeResolver {
   static String? labelForSegment(String segment) {
     return _segmentLabels[segment];
   }
+
+  /// Returns the default landing route for a URL [segment] that matches a
+  /// `NavGroup` label (lower-cased). Used by the breadcrumb to resolve clicks
+  /// on a group crumb like "Work" to its first item (`/work/home`).
+  ///
+  /// Returns null if the segment is not a group label.
+  static String? defaultRouteForGroupSegment(String segment) {
+    for (final group in navigationTree) {
+      if (group.label.toLowerCase() == segment) {
+        return group.items.first.route;
+      }
+    }
+    return null;
+  }
 }
 
 const Map<String, String> _segmentLabels = {

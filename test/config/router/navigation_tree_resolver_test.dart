@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/config/router/navigation_tree.dart';
 import 'package:twmt/config/router/navigation_tree_resolver.dart';
 
@@ -75,6 +76,22 @@ void main() {
     test('unknown segment returns null', () {
       expect(NavigationTreeResolver.labelForSegment('unknown'), isNull);
       expect(NavigationTreeResolver.labelForSegment(''), isNull);
+    });
+  });
+
+  group('NavigationTreeResolver.defaultRouteForGroupSegment', () {
+    test('returns first item route for each group', () {
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('sources'), AppRoutes.mods);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('work'), AppRoutes.home);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('resources'), AppRoutes.glossary);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('publishing'), AppRoutes.packCompilation);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('system'), AppRoutes.settings);
+    });
+    test('returns null for non-group segments', () {
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('mods'), isNull);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('home'), isNull);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('unknown'), isNull);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment(''), isNull);
     });
   });
 }
