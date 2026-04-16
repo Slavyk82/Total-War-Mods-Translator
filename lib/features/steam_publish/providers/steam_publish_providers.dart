@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:twmt/models/domain/compilation.dart';
@@ -10,6 +11,33 @@ import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'steam_publish_providers.g.dart';
+
+/// Sort mode for the Steam Publish list.
+enum SteamPublishSortMode { exportDate, name, publishDate }
+
+/// Display filter applied on top of the publishable-items list.
+enum SteamPublishDisplayFilter { all, outdated, noPackGenerated }
+
+/// Current set of selected item ids (project or compilation) in the Steam
+/// Publish list. Kept dumb — the screen reads membership via `contains()`
+/// and flips it via direct state assignment.
+final steamPublishSelectionProvider = StateProvider<Set<String>>((_) => {});
+
+/// Current search query for filtering publishable items by display name.
+final steamPublishSearchQueryProvider = StateProvider<String>((_) => '');
+
+/// Current sort mode. Defaults to export date, most recent first.
+final steamPublishSortModeProvider =
+    StateProvider<SteamPublishSortMode>((_) => SteamPublishSortMode.exportDate);
+
+/// Current sort direction. False means descending (default).
+final steamPublishSortAscendingProvider = StateProvider<bool>((_) => false);
+
+/// Current display filter pill selection.
+final steamPublishDisplayFilterProvider =
+    StateProvider<SteamPublishDisplayFilter>(
+  (_) => SteamPublishDisplayFilter.all,
+);
 
 /// Sealed class representing an item that can be published to Steam Workshop.
 sealed class PublishableItem {
@@ -236,4 +264,102 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
   }
 
   return items;
+}
+
+/// Returns the publishable items filtered by [steamPublishDisplayFilterProvider]
+/// and [steamPublishSearchQueryProvider], then sorted by
+/// [steamPublishSortModeProvider] and [steamPublishSortAscendingProvider].
+///
+/// When the upstream [publishableItemsProvider] is loading or errored the
+/// filtered provider returns an empty list — the screen consults
+/// `publishableItemsProvider` directly for loading/error/empty chrome.
+@riverpod
+List<PublishableItem> filteredPublishableItems(Ref ref) {
+  final asyncItems = ref.watch(publishableItemsProvider);
+  final items = asyncItems.asData?.value ?? const <PublishableItem>[];
+  if (items.isEmpty) return const [];
+
+  final filter = ref.watch(steamPublishDisplayFilterProvider);
+  final query = ref.watch(steamPublishSearchQueryProvider).toLowerCase();
+  final sortMode = ref.watch(steamPublishSortModeProvider);
+  final ascending = ref.watch(steamPublishSortAscendingProvider);
+
+  var result = items.toList();
+
+  // Apply display filter.
+  switch (filter) {
+    case SteamPublishDisplayFilter.all:
+      break;
+    case SteamPublishDisplayFilter.outdated:
+      result = result
+          .where(
+            (e) => e.publishedAt != null && e.exportedAt > e.publishedAt!,
+          )
+          .toList();
+    case SteamPublishDisplayFilter.noPackGenerated:
+      result = result.where((e) => !e.hasPack).toList();
+  }
+
+  // Apply search query.
+  if (query.isNotEmpty) {
+    result = result
+        .where((e) => e.displayName.toLowerCase().contains(query))
+        .toList();
+  }
+
+  // Apply sort.
+  result.sort((a, b) {
+    int cmp = 0;
+    switch (sortMode) {
+      case SteamPublishSortMode.exportDate:
+        // Items without pack (exportedAt == 0) go to the end.
+        if (a.exportedAt == 0 && b.exportedAt == 0) {
+          return a.displayName
+              .toLowerCase()
+              .compareTo(b.displayName.toLowerCase());
+        }
+        if (a.exportedAt == 0) return 1;
+        if (b.exportedAt == 0) return -1;
+        cmp = a.exportedAt.compareTo(b.exportedAt);
+      case SteamPublishSortMode.name:
+        cmp = a.displayName
+            .toLowerCase()
+            .compareTo(b.displayName.toLowerCase());
+      case SteamPublishSortMode.publishDate:
+        final aPub = a.publishedAt;
+        final bPub = b.publishedAt;
+        // Unpublished items always sort to the end, regardless of direction.
+        if (aPub == null && bPub == null) {
+          return a.exportedAt.compareTo(b.exportedAt);
+        }
+        if (aPub == null) return 1;
+        if (bPub == null) return -1;
+        cmp = aPub.compareTo(bPub);
+        if (cmp == 0) {
+          cmp = a.exportedAt.compareTo(b.exportedAt);
+        }
+    }
+    return ascending ? cmp : -cmp;
+  });
+
+  return result;
+}
+
+/// Count of items matching the 'outdated' display filter — used to label the
+/// Outdated filter pill and disable the Select-outdated action when zero.
+@riverpod
+int outdatedPublishableItemsCount(Ref ref) {
+  final asyncItems = ref.watch(publishableItemsProvider);
+  final items = asyncItems.asData?.value ?? const <PublishableItem>[];
+  return items
+      .where((e) => e.publishedAt != null && e.exportedAt > e.publishedAt!)
+      .length;
+}
+
+/// Count of items matching the 'no pack' display filter.
+@riverpod
+int noPackPublishableItemsCount(Ref ref) {
+  final asyncItems = ref.watch(publishableItemsProvider);
+  final items = asyncItems.asData?.value ?? const <PublishableItem>[];
+  return items.where((e) => !e.hasPack).length;
 }

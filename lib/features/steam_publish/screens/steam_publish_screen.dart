@@ -4,29 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+
+import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/services/steam/models/workshop_publish_params.dart';
+import 'package:twmt/services/steam/steamcmd_manager.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/fluent/fluent_toast.dart';
 
 import '../../settings/providers/settings_providers.dart'
     hide settingsServiceProvider;
-import '../../../providers/shared/service_providers.dart';
-import '../../../services/steam/models/workshop_publish_params.dart';
-import '../../../services/steam/steamcmd_manager.dart';
-import '../../../config/router/app_router.dart';
-import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
-import '../widgets/pack_export_list.dart';
 import '../widgets/steam_login_dialog.dart';
+import '../widgets/steam_publish_list.dart';
+import '../widgets/steam_publish_toolbar.dart';
 import '../widgets/steamcmd_install_dialog.dart';
 import '../widgets/workshop_publish_settings_dialog.dart';
 
-enum _SortMode { exportDate, name, publishDate }
-
-enum _SelectionAction { all, outdated, noPackGenerated, none }
-
-enum _DisplayFilter { all, outdated, noPackGenerated }
-
+/// Steam Publish screen — filterable list archetype per UI spec §7.1.
+///
+/// Migrated from the legacy `FluentScaffold` + card-list layout to the shared
+/// [FilterToolbar] + [ListRow] primitives introduced in Plan 5a. Selection is
+/// kept in the Riverpod [steamPublishSelectionProvider]; filter / search /
+/// sort state is likewise provider-backed so the widget tree stays stateless.
 class SteamPublishScreen extends ConsumerStatefulWidget {
   const SteamPublishScreen({super.key});
 
@@ -36,90 +38,148 @@ class SteamPublishScreen extends ConsumerStatefulWidget {
 }
 
 class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
-  String _searchQuery = '';
-  _SortMode _sortMode = _SortMode.exportDate;
-  bool _sortAscending = false;
-  _DisplayFilter _displayFilter = _DisplayFilter.all;
-  final TextEditingController _searchController = TextEditingController();
-  Set<String> _selectedIds = {};
+  @override
+  void initState() {
+    super.initState();
+    // Reset transient screen state (selection + filter + search) on entry so
+    // stale selection from a previous visit doesn't leak across navigations.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(steamPublishSelectionProvider.notifier).state = {};
+      ref.read(steamPublishSearchQueryProvider.notifier).state = '';
+      ref.read(steamPublishDisplayFilterProvider.notifier).state =
+          SteamPublishDisplayFilter.all;
+    });
+  }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final asyncItems = ref.watch(publishableItemsProvider);
+    final allItems = asyncItems.asData?.value ?? const <PublishableItem>[];
+    final filteredItems = ref.watch(filteredPublishableItemsProvider);
+    final selection = ref.watch(steamPublishSelectionProvider);
+    final searchQuery = ref.watch(steamPublishSearchQueryProvider);
+    final currentFilter = ref.watch(steamPublishDisplayFilterProvider);
+    final outdatedCount = ref.watch(outdatedPublishableItemsCountProvider);
+    final noPackCount = ref.watch(noPackPublishableItemsCountProvider);
+
+    final disabledTooltip =
+        _publishDisabledTooltip(allItems, selection);
+    final canPublish = selection.isNotEmpty && disabledTooltip == null;
+
+    return Material(
+      color: tokens.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SteamPublishToolbar(
+            totalItems: allItems.length,
+            filteredItems: filteredItems.length,
+            selectedCount: selection.length,
+            outdatedCount: outdatedCount,
+            noPackCount: noPackCount,
+            searchQuery: searchQuery,
+            onSearchChanged: (query) {
+              ref.read(steamPublishSearchQueryProvider.notifier).state = query;
+            },
+            currentFilter: currentFilter,
+            onFilterChanged: (filter) {
+              ref.read(steamPublishDisplayFilterProvider.notifier).state =
+                  filter;
+            },
+            onSelectAll: () => _selectAll(filteredItems),
+            onSelectOutdated:
+                outdatedCount > 0 ? _selectOutdated : null,
+            onPublishSelection:
+                canPublish ? () => _startBatchPublish(allItems) : null,
+            publishDisabledTooltip: disabledTooltip,
+            onRefresh: () {
+              ref.invalidate(publishableItemsProvider);
+            },
+            onOpenSettings: () =>
+                WorkshopPublishSettingsDialog.show(context),
+          ),
+          Expanded(
+            child: asyncItems.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => _ErrorState(error: error),
+              data: (items) {
+                if (items.isEmpty) {
+                  return const SteamPublishEmptyState();
+                }
+                if (filteredItems.isEmpty) {
+                  return const SteamPublishNoMatchesState();
+                }
+                return SteamPublishList(items: filteredItems);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  List<PublishableItem> _filterAndSort(List<PublishableItem> items) {
-    var result = items.toList();
+  // ---------------------------------------------------------------------------
+  // Batch selection helpers
+  // ---------------------------------------------------------------------------
 
-    // Apply display filter
-    switch (_displayFilter) {
-      case _DisplayFilter.all:
-        break;
-      case _DisplayFilter.outdated:
-        result = result
-            .where((e) =>
-                e.publishedAt != null && e.exportedAt > e.publishedAt!)
-            .toList();
-      case _DisplayFilter.noPackGenerated:
-        result = result.where((e) => !e.hasPack).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
-      result = result
-          .where((e) => e.displayName.toLowerCase().contains(query))
-          .toList();
-    }
-
-    result.sort((a, b) {
-      int cmp;
-      switch (_sortMode) {
-        case _SortMode.exportDate:
-          // Items without pack (exportedAt == 0) go to the end
-          if (a.exportedAt == 0 && b.exportedAt == 0) {
-            cmp = a.displayName
-                .toLowerCase()
-                .compareTo(b.displayName.toLowerCase());
-            return cmp;
-          }
-          if (a.exportedAt == 0) return 1;
-          if (b.exportedAt == 0) return -1;
-          cmp = a.exportedAt.compareTo(b.exportedAt);
-        case _SortMode.name:
-          cmp = a.displayName
-              .toLowerCase()
-              .compareTo(b.displayName.toLowerCase());
-        case _SortMode.publishDate:
-          final aPub = a.publishedAt;
-          final bPub = b.publishedAt;
-          // Unpublished mods always sort to the end, regardless of direction
-          if (aPub == null && bPub == null) {
-            return a.exportedAt.compareTo(b.exportedAt);
-          }
-          if (aPub == null) return 1;
-          if (bPub == null) return -1;
-          cmp = aPub.compareTo(bPub);
-          if (cmp == 0) {
-            cmp = a.exportedAt.compareTo(b.exportedAt);
-          }
-      }
-      return _sortAscending ? cmp : -cmp;
-    });
-
-    return result;
+  void _selectAll(List<PublishableItem> currentFiltered) {
+    ref.read(steamPublishSelectionProvider.notifier).state =
+        currentFiltered.map((e) => e.itemId).toSet();
   }
+
+  void _selectOutdated() {
+    // Switch the display filter so the screen matches the selection.
+    ref.read(steamPublishDisplayFilterProvider.notifier).state =
+        SteamPublishDisplayFilter.outdated;
+    // Compute outdated ids from the full list, not the current filtered view.
+    final all = ref.read(publishableItemsProvider).asData?.value ??
+        const <PublishableItem>[];
+    final outdated = all
+        .where((e) => e.publishedAt != null && e.exportedAt > e.publishedAt!)
+        .map((e) => e.itemId)
+        .toSet();
+    ref.read(steamPublishSelectionProvider.notifier).state = outdated;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Publish disabled tooltip — mirrors legacy behaviour.
+  // ---------------------------------------------------------------------------
+
+  /// Returns the reason the Publish button should be disabled, or `null` when
+  /// every selected item has both a pack and a Workshop id.
+  String? _publishDisabledTooltip(
+    List<PublishableItem> allItems,
+    Set<String> selection,
+  ) {
+    if (selection.isEmpty) return null;
+    final selected =
+        allItems.where((e) => selection.contains(e.itemId)).toList();
+    final missingPack = selected.any((e) => !e.hasPack);
+    final missingId = selected.any(
+      (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty,
+    );
+    if (missingPack && missingId) {
+      return 'All items must have a pack and Workshop id';
+    }
+    if (missingPack) return 'All items must have a generated pack';
+    if (missingId) return 'All items must have a Workshop id';
+    return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Batch publish flow (unchanged from the legacy screen).
+  // ---------------------------------------------------------------------------
 
   String _applyTemplate(String template, String modName) {
     if (template.isEmpty) return '';
-    return template.replaceAll('\$modName', modName);
+    return template.replaceAll(r'$modName', modName);
   }
 
   Future<void> _startBatchPublish(List<PublishableItem> allItems) async {
-    // Safety guard: all selected items must have a pack AND Workshop ID
-    final selectedItems = allItems
-        .where((e) => _selectedIds.contains(e.itemId))
-        .toList();
+    final selection = ref.read(steamPublishSelectionProvider);
+    final selectedItems =
+        allItems.where((e) => selection.contains(e.itemId)).toList();
 
     if (selectedItems.any((e) => !e.hasPack)) {
       FluentToast.warning(
@@ -129,8 +189,9 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       return;
     }
 
-    if (selectedItems.any((e) =>
-        e.publishedSteamId == null || e.publishedSteamId!.isEmpty)) {
+    if (selectedItems.any(
+      (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty,
+    )) {
       FluentToast.warning(
         context,
         'All selected items must have a Workshop ID before publishing.',
@@ -138,7 +199,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       return;
     }
 
-    // Check steamcmd availability
+    // Check steamcmd availability.
     final isAvailable = await SteamCmdManager().isAvailable();
     if (!mounted) return;
     if (!isAvailable) {
@@ -146,7 +207,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       if (!installed || !mounted) return;
     }
 
-    // Use saved credentials if available, otherwise show login dialog
+    // Use saved credentials if available, otherwise show login dialog.
     var credentials = await SteamLoginDialog.getSavedCredentials();
     if (credentials == null) {
       if (!mounted) return;
@@ -155,14 +216,14 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     if (credentials == null || !mounted) return;
     final (username, password, steamGuardCode) = credentials;
 
-    // Load templates
+    // Load templates.
     final settingsService = ref.read(settingsServiceProvider);
     final titleTemplate =
         await settingsService.getString(SettingsKeys.workshopTitleTemplate);
-    final descTemplate =
-        await settingsService.getString(SettingsKeys.workshopDescriptionTemplate);
-    final visibilityName =
-        await settingsService.getString(SettingsKeys.workshopDefaultVisibility);
+    final descTemplate = await settingsService
+        .getString(SettingsKeys.workshopDescriptionTemplate);
+    final visibilityName = await settingsService
+        .getString(SettingsKeys.workshopDefaultVisibility);
 
     final visibility = WorkshopVisibility.values
             .where((v) => v.name == visibilityName)
@@ -178,7 +239,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       final previewPath =
           '${packPath.substring(0, packPath.lastIndexOf('.'))}.png';
 
-      // Regenerate preview image if missing
+      // Regenerate preview image if missing.
       if (!File(previewPath).existsSync()) {
         final packFileName = path.basename(packPath);
         final gameDataPath = File(packPath).parent.path;
@@ -205,7 +266,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
           useAppIcon: useAppIcon,
         );
 
-        // Still skip if generation failed
         if (!File(previewPath).existsSync()) {
           skippedNoPreview.add(item.displayName);
           continue;
@@ -229,7 +289,6 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         visibility: visibility,
       );
 
-      // Determine project/compilation ID for saving after publish
       String? projectId;
       String? compilationId;
       if (item is ProjectPublishItem) {
@@ -248,11 +307,11 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
     if (!mounted) return;
 
-    // Warn about skipped items
     if (skippedNoPreview.isNotEmpty) {
       FluentToast.warning(
         context,
-        'Skipped ${skippedNoPreview.length} item(s) without preview image: ${skippedNoPreview.join(', ')}',
+        'Skipped ${skippedNoPreview.length} item(s) without preview image: '
+        '${skippedNoPreview.join(', ')}',
       );
     }
 
@@ -264,319 +323,112 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       return;
     }
 
-    // Navigate to batch publish screen
     ref.read(batchPublishStagingProvider.notifier).set(BatchPublishStagingData(
-      items: items,
-      username: username,
-      password: password,
-      steamGuardCode: steamGuardCode,
-    ));
+          items: items,
+          username: username,
+          password: password,
+          steamGuardCode: steamGuardCode,
+        ));
     if (mounted) {
-      setState(() => _selectedIds = {});
+      ref.read(steamPublishSelectionProvider.notifier).state = {};
       context.goWorkshopPublishBatch();
     }
   }
+}
+
+// =============================================================================
+// Error state
+// =============================================================================
+
+class _ErrorState extends ConsumerWidget {
+  final Object error;
+
+  const _ErrorState({required this.error});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.error_circle_24_regular,
+              size: 48,
+              color: tokens.err,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Failed to load publishable items',
+              style: tokens.fontDisplay.copyWith(
+                fontSize: 16,
+                color: tokens.err,
+                fontStyle: tokens.fontDisplayItalic
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            _RetryButton(onRetry: () {
+              ref.invalidate(publishableItemsProvider);
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RetryButton extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RetryButton({required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final asyncItems = ref.watch(publishableItemsProvider);
-    final allItems = asyncItems.asData?.value;
-    final filteredItems =
-        allItems != null ? _filterAndSort(allItems) : <PublishableItem>[];
-
-    // Check if any selected item is missing a Workshop ID or pack
-    final hasSelectionWithoutIdOrPack = _selectedIds.isNotEmpty &&
-        allItems != null &&
-        allItems
-            .where((e) => _selectedIds.contains(e.itemId))
-            .any((e) =>
-                !e.hasPack ||
-                e.publishedSteamId == null ||
-                e.publishedSteamId!.isEmpty);
-
-    final String batchDisabledTooltip;
-    if (!hasSelectionWithoutIdOrPack) {
-      batchDisabledTooltip = '';
-    } else {
-      final selectedItems = allItems
-          .where((e) => _selectedIds.contains(e.itemId))
-          .toList();
-      final missingPack = selectedItems.any((e) => !e.hasPack);
-      final missingId = selectedItems.any(
-          (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty);
-      if (missingPack && missingId) {
-        batchDisabledTooltip =
-            'All items must have a pack and Workshop ID';
-      } else if (missingPack) {
-        batchDisabledTooltip = 'All items must have a generated pack';
-      } else {
-        batchDisabledTooltip = 'All items must have a Workshop ID';
-      }
-    }
-
-    return FluentScaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLow,
-      header: FluentHeader(
-        title: 'Publish on Steam',
-        actions: [
-          // Active filter indicator
-          if (_displayFilter != _DisplayFilter.all)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: InputChip(
-                label: Text(
-                  _displayFilter == _DisplayFilter.outdated
-                      ? 'Outdated'
-                      : 'No pack',
-                  style: theme.textTheme.labelSmall,
-                ),
-                onDeleted: () {
-                  setState(() {
-                    _displayFilter = _DisplayFilter.all;
-                    _selectedIds = {};
-                  });
-                },
-                deleteIconColor: theme.colorScheme.onSurfaceVariant,
-                visualDensity: VisualDensity.compact,
-              ),
-            ),
-          // Quick selection menu
-          PopupMenuButton<_SelectionAction>(
-            icon: const Icon(FluentIcons.checkbox_checked_24_regular, size: 20),
-            tooltip: 'Quick select',
-            enabled: filteredItems.isNotEmpty,
-            onSelected: (action) {
-              setState(() {
-                switch (action) {
-                  case _SelectionAction.all:
-                    _displayFilter = _DisplayFilter.all;
-                    // Recompute filtered list with new display filter
-                    final allFiltered = _filterAndSort(allItems!);
-                    _selectedIds =
-                        allFiltered.map((e) => e.itemId).toSet();
-                  case _SelectionAction.outdated:
-                    _displayFilter = _DisplayFilter.outdated;
-                    final outdatedFiltered = _filterAndSort(allItems!);
-                    _selectedIds =
-                        outdatedFiltered.map((e) => e.itemId).toSet();
-                  case _SelectionAction.noPackGenerated:
-                    _displayFilter = _DisplayFilter.noPackGenerated;
-                    final noPackFiltered = _filterAndSort(allItems!);
-                    _selectedIds =
-                        noPackFiltered.map((e) => e.itemId).toSet();
-                  case _SelectionAction.none:
-                    _displayFilter = _DisplayFilter.all;
-                    _selectedIds = {};
-                }
-              });
-            },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: _SelectionAction.all,
-                child: Text('Select All'),
-              ),
-              const PopupMenuItem(
-                value: _SelectionAction.outdated,
-                child: Text('Select Outdated'),
-              ),
-              const PopupMenuItem(
-                value: _SelectionAction.noPackGenerated,
-                child: Text('Select No Pack'),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: _SelectionAction.none,
-                child: Text('Deselect All'),
-              ),
-            ],
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onRetry,
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: tokens.accent,
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
           ),
-          // Publish Selection button
-          Tooltip(
-            message: batchDisabledTooltip,
-            child: FilledButton.icon(
-              onPressed: _selectedIds.isNotEmpty && !hasSelectionWithoutIdOrPack
-                  ? () {
-                      final items = asyncItems.asData?.value;
-                      if (items != null) _startBatchPublish(items);
-                    }
-                  : null,
-              icon: const Icon(FluentIcons.cloud_arrow_up_24_regular, size: 18),
-              label: Text(
-                _selectedIds.isEmpty
-                    ? 'Publish Selection'
-                    : 'Publish (${_selectedIds.length})',
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 220,
-            child: TextField(
-              controller: _searchController,
-              style: theme.textTheme.bodySmall,
-              decoration: InputDecoration(
-                hintText: 'Search by name...',
-                hintStyle: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                prefixIcon:
-                    const Icon(FluentIcons.search_24_regular, size: 18),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(FluentIcons.dismiss_24_regular,
-                            size: 16),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                isDense: true,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onChanged: (value) => setState(() => _searchQuery = value),
-            ),
-          ),
-          PopupMenuButton<_SortMode>(
-            icon: const Icon(FluentIcons.arrow_sort_24_regular, size: 20),
-            tooltip: 'Sort by',
-            onSelected: (mode) => setState(() => _sortMode = mode),
-            itemBuilder: (_) => [
-              CheckedPopupMenuItem(
-                value: _SortMode.exportDate,
-                checked: _sortMode == _SortMode.exportDate,
-                child: const Text('Export Date'),
-              ),
-              CheckedPopupMenuItem(
-                value: _SortMode.publishDate,
-                checked: _sortMode == _SortMode.publishDate,
-                child: const Text('Publish Date'),
-              ),
-              CheckedPopupMenuItem(
-                value: _SortMode.name,
-                checked: _sortMode == _SortMode.name,
-                child: const Text('Name'),
-              ),
-            ],
-          ),
-          Tooltip(
-            message: _sortAscending ? 'Sort ascending' : 'Sort descending',
-            child: IconButton(
-              icon: Icon(
-                _sortAscending
-                    ? FluentIcons.arrow_sort_up_24_regular
-                    : FluentIcons.arrow_sort_down_lines_24_regular,
-                size: 20,
-              ),
-              onPressed: () =>
-                  setState(() => _sortAscending = !_sortAscending),
-            ),
-          ),
-          Tooltip(
-            message: 'Refresh',
-            child: IconButton(
-              icon: const Icon(FluentIcons.arrow_sync_24_regular, size: 20),
-              onPressed: () {
-                ref.invalidate(publishableItemsProvider);
-              },
-            ),
-          ),
-          Tooltip(
-            message: 'Publish settings',
-            child: IconButton(
-              icon: const Icon(FluentIcons.settings_24_regular, size: 20),
-              onPressed: () => WorkshopPublishSettingsDialog.show(context),
-            ),
-          ),
-        ],
-      ),
-      body: asyncItems.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                FluentIcons.error_circle_24_regular,
-                size: 48,
-                color: theme.colorScheme.error,
+                FluentIcons.arrow_sync_24_regular,
+                size: 14,
+                color: tokens.accentFg,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 6),
               Text(
-                'Failed to load publishable items',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.error,
+                'Retry',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12.5,
+                  color: tokens.accentFg,
+                  fontWeight: FontWeight.w600,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                error.toString(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () {
-                  ref.invalidate(publishableItemsProvider);
-                },
-                icon: const Icon(FluentIcons.arrow_sync_24_regular, size: 16),
-                label: const Text('Retry'),
               ),
             ],
           ),
         ),
-        data: (items) {
-          if (items.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    FluentIcons.box_24_regular,
-                    size: 64,
-                    color: theme.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No projects or compilations yet',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create a project or compilation to see it here.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant
-                          .withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return PackExportList(
-            items: filteredItems,
-            selectedIds: _selectedIds,
-            onToggleSelection: (itemId) {
-              setState(() {
-                if (_selectedIds.contains(itemId)) {
-                  _selectedIds = Set.from(_selectedIds)..remove(itemId);
-                } else {
-                  _selectedIds = Set.from(_selectedIds)..add(itemId);
-                }
-              });
-            },
-          );
-        },
       ),
     );
   }
