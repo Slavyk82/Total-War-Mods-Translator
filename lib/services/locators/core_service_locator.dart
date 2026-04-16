@@ -1,5 +1,9 @@
 import 'package:get_it/get_it.dart';
 
+import '../../features/activity/repositories/activity_event_repository.dart';
+import '../../features/activity/repositories/activity_event_repository_impl.dart';
+import '../../features/activity/services/activity_logger.dart';
+import '../../features/activity/services/activity_logger_impl.dart';
 import '../../repositories/settings_repository.dart';
 import '../concurrency/batch_isolation_manager.dart';
 import '../concurrency/conflict_resolver.dart';
@@ -171,6 +175,21 @@ class CoreServiceLocator {
       () => ReleaseNotesService(
         settingsService: locator<SettingsService>(),
         updateService: locator<AppUpdateService>(),
+      ),
+    );
+
+    // Activity event infrastructure (Home dashboard feed).
+    // Registered here so cross-cutting callers (orchestrator, pack
+    // compilation, workshop publish, etc.) can resolve the logger via
+    // the ServiceLocator without depending on Riverpod.
+    locator.registerLazySingleton<ActivityEventRepository>(
+      () => ActivityEventRepositoryImpl(),
+    );
+
+    locator.registerLazySingleton<ActivityLogger>(
+      () => ActivityLoggerImpl(
+        repository: locator<ActivityEventRepository>(),
+        logger: locator<ILoggingService>(),
       ),
     );
 

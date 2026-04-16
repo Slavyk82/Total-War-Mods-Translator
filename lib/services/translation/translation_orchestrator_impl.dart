@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:twmt/config/app_constants.dart';
+import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_batch.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
@@ -9,6 +11,7 @@ import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/batch_translation_cache.dart';
@@ -45,6 +48,12 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
   final EventBus _eventBus;
   final ILoggingService _logger;
 
+  /// Optional fire-and-forget activity logger for the Home dashboard feed.
+  /// Resolved from [ServiceLocator] when not supplied explicitly; remains
+  /// `null` if the locator has not been initialized (e.g. unit tests that
+  /// construct the orchestrator directly without a full locator).
+  final ActivityLogger? _activityLogger;
+
   // Handlers
   final TmLookupHandler _tmLookupHandler;
   final LlmTranslationHandler _llmTranslationHandler;
@@ -66,9 +75,11 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     required TransactionManager transactionManager,
     required EventBus eventBus,
     required ILoggingService logger,
+    ActivityLogger? activityLogger,
   })  : _batchRepository = batchRepository,
         _eventBus = eventBus,
         _logger = logger,
+        _activityLogger = activityLogger ?? _tryResolveActivityLogger(),
         _tmLookupHandler = TmLookupHandler(
           tmService: tmService,
           historyService: historyService,
@@ -105,6 +116,20 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           versionRepository: versionRepository,
           logger: logger,
         );
+
+  /// Best-effort lookup for the shared [ActivityLogger].
+  ///
+  /// Returns `null` if the [ServiceLocator] has not been initialized
+  /// or the logger is not registered — keeping the orchestrator usable
+  /// in unit tests that never call [ServiceLocator.initialize].
+  static ActivityLogger? _tryResolveActivityLogger() {
+    try {
+      if (!ServiceLocator.isRegistered<ActivityLogger>()) return null;
+      return ServiceLocator.get<ActivityLogger>();
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Stream<Result<TranslationProgress, TranslationOrchestrationException>>
@@ -416,6 +441,22 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         failedUnits: completedProgress.failedUnits,
         processingDuration: processingDuration,
       ));
+
+      // Persist a Home-dashboard activity event. Fire-and-forget: the
+      // logger swallows all failures internally, so we neither await nor
+      // wrap this call. `gameCode` is intentionally null — the context
+      // does not carry it and a DB lookup here would be too expensive.
+      _activityLogger?.log(
+        ActivityEventType.translationBatchCompleted,
+        projectId: context.projectId,
+        gameCode: null,
+        payload: {
+          'count': completedProgress.successfulUnits,
+          // Orchestrator handles LLM batches; manual flows bypass it.
+          'method': 'llm',
+          'projectName': null,
+        },
+      );
 
       _logger.info('Batch translation completed', {
         'batchId': batchId,
