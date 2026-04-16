@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,10 +13,19 @@ import 'editor_toolbar_skip_tm.dart';
 /// Top bar of the translation editor (56px).
 ///
 /// Replaces the previous EditorToolbar + FluentScaffold header.
-/// Contains: clickable crumb, model selector, skip-tm, 5 actions, Settings, search.
+/// Contains: clickable crumb, model selector, skip-tm,
+/// Rules chip + 4 action buttons (Selection · Translate all · Validate ▾ ·
+/// Pack ▾) · Settings · search.
+///
+/// Keyboard shortcuts (Ctrl+F / Ctrl+T / Ctrl+Shift+T / Ctrl+Shift+V) are
+/// wired by [TranslationEditorScreen] at screen scope so they fire from any
+/// focus context (grid, inspector, top bar). The search [FocusNode] is owned
+/// by the screen and passed in via [searchFocus] so the screen-level
+/// FocusSearchIntent can target it.
 class EditorTopBar extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
+  final FocusNode searchFocus;
   final VoidCallback onTranslationSettings;
   final VoidCallback onTranslateAll;
   final VoidCallback onTranslateSelected;
@@ -27,6 +38,7 @@ class EditorTopBar extends ConsumerStatefulWidget {
     super.key,
     required this.projectId,
     required this.languageId,
+    required this.searchFocus,
     required this.onTranslationSettings,
     required this.onTranslateAll,
     required this.onTranslateSelected,
@@ -42,13 +54,22 @@ class EditorTopBar extends ConsumerStatefulWidget {
 
 class _EditorTopBarState extends ConsumerState<EditorTopBar> {
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocus = FocusNode();
+  Timer? _debounce;
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
-    _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// Debounces search input by 200ms (spec §4.1) so large projects don't
+  /// re-filter on every keystroke.
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      ref.read(editorFilterProvider.notifier).setSearchQuery(value);
+    });
   }
 
   @override
@@ -60,155 +81,97 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
     final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
-    return Shortcuts(
-      shortcuts: const <ShortcutActivator, Intent>{
-        SingleActivator(LogicalKeyboardKey.keyF, control: true):
-            _FocusSearchIntent(),
-        SingleActivator(LogicalKeyboardKey.keyT, control: true):
-            _TranslateSelectedIntent(),
-        SingleActivator(LogicalKeyboardKey.keyT, control: true, shift: true):
-            _TranslateAllIntent(),
-        SingleActivator(LogicalKeyboardKey.keyV, control: true, shift: true):
-            _ValidateIntent(),
-      },
-      child: Actions(
-        actions: <Type, Action<Intent>>{
-          _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
-            onInvoke: (_) {
-              _searchFocus.requestFocus();
-              return null;
-            },
-          ),
-          _TranslateSelectedIntent: CallbackAction<_TranslateSelectedIntent>(
-            onInvoke: (_) {
-              if (selection.hasSelection) widget.onTranslateSelected();
-              return null;
-            },
-          ),
-          _TranslateAllIntent: CallbackAction<_TranslateAllIntent>(
-            onInvoke: (_) {
-              widget.onTranslateAll();
-              return null;
-            },
-          ),
-          _ValidateIntent: CallbackAction<_ValidateIntent>(
-            onInvoke: (_) {
-              widget.onValidate();
-              return null;
-            },
-          ),
-        },
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            color: tokens.panel,
-            border: Border(bottom: BorderSide(color: tokens.border)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              // Fixed-width left side: clickable crumb + separator.
-              _Crumb(projectName: projectName, languageName: languageName),
-              const _Sep(),
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          // Fixed-width left side: clickable crumb + separator.
+          _Crumb(projectName: projectName, languageName: languageName),
+          const _Sep(),
 
-              // Scrollable middle: model selector, skip-tm, rules chip and
-              // the 4 action buttons. Wrapped in a horizontal scroll view so
-              // narrow viewports (down to the 1280px min-width) never trigger
-              // a layout overflow.
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      const EditorToolbarModelSelector(compact: false),
-                      const SizedBox(width: 14),
-                      const EditorToolbarSkipTm(compact: false),
-                      const _Sep(),
-                      EditorToolbarModRule(
-                        compact: false,
-                        projectId: widget.projectId,
-                      ),
-                      const SizedBox(width: 8),
-                      _ActionButton(
-                        icon: FluentIcons.translate_24_filled,
-                        label: 'Selection',
-                        kbd: 'Ctrl+T',
-                        onTap: selection.hasSelection
-                            ? widget.onTranslateSelected
-                            : null,
-                      ),
-                      const SizedBox(width: 8),
-                      _ActionButton(
-                        icon: FluentIcons.translate_24_regular,
-                        label: 'Translate all',
-                        kbd: 'Ctrl+Shift+T',
-                        primary: true,
-                        onTap: widget.onTranslateAll,
-                      ),
-                      const SizedBox(width: 8),
-                      _SplitButton(
-                        icon: FluentIcons.checkmark_circle_24_regular,
-                        label: 'Validate',
-                        kbd: 'Ctrl+Shift+V',
-                        onTap: widget.onValidate,
-                        menuItems: [
-                          _MenuEntry('Validate selected', widget.onValidate),
-                          _MenuEntry('Rescan all', widget.onRescanValidation),
-                        ],
-                      ),
-                      const SizedBox(width: 8),
-                      _SplitButton(
-                        icon: FluentIcons.box_24_regular,
-                        label: 'Pack',
-                        onTap: widget.onExport,
-                        menuItems: [
-                          _MenuEntry('Generate pack', widget.onExport),
-                          _MenuEntry('Import pack', widget.onImportPack),
-                        ],
-                      ),
+          // Scrollable middle: model selector, skip-tm, rules chip and
+          // the 4 action buttons. Wrapped in a horizontal scroll view so
+          // narrow viewports (down to the 1280px min-width) never trigger
+          // a layout overflow.
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  const EditorToolbarModelSelector(compact: false),
+                  const SizedBox(width: 14),
+                  const EditorToolbarSkipTm(compact: false),
+                  const _Sep(),
+                  EditorToolbarModRule(
+                    compact: false,
+                    projectId: widget.projectId,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: FluentIcons.translate_24_filled,
+                    label: 'Selection',
+                    kbd: 'Ctrl+T',
+                    onTap: selection.hasSelection
+                        ? widget.onTranslateSelected
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: FluentIcons.translate_24_regular,
+                    label: 'Translate all',
+                    kbd: 'Ctrl+Shift+T',
+                    primary: true,
+                    onTap: widget.onTranslateAll,
+                  ),
+                  const SizedBox(width: 8),
+                  _SplitButton(
+                    icon: FluentIcons.checkmark_circle_24_regular,
+                    label: 'Validate',
+                    kbd: 'Ctrl+Shift+V',
+                    onTap: widget.onValidate,
+                    menuItems: [
+                      _MenuEntry('Validate selected', widget.onValidate),
+                      _MenuEntry('Rescan all', widget.onRescanValidation),
                     ],
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  _SplitButton(
+                    icon: FluentIcons.box_24_regular,
+                    label: 'Pack',
+                    onTap: widget.onExport,
+                    menuItems: [
+                      _MenuEntry('Generate pack', widget.onExport),
+                      _MenuEntry('Import pack', widget.onImportPack),
+                    ],
+                  ),
+                ],
               ),
-
-              // Fixed-width right side: Settings + separator + search field.
-              IconButton(
-                icon: const Icon(FluentIcons.settings_24_regular, size: 18),
-                onPressed: widget.onTranslationSettings,
-                tooltip: 'Translation settings',
-                color: tokens.textMid,
-              ),
-              const _Sep(),
-              _SearchField(
-                controller: _searchController,
-                focus: _searchFocus,
-                onChanged: (v) => ref
-                    .read(editorFilterProvider.notifier)
-                    .setSearchQuery(v),
-              ),
-            ],
+            ),
           ),
-        ),
+
+          // Fixed-width right side: Settings + separator + search field.
+          IconButton(
+            icon: const Icon(FluentIcons.settings_24_regular, size: 18),
+            onPressed: widget.onTranslationSettings,
+            tooltip: 'Translation settings',
+            color: tokens.textMid,
+          ),
+          const _Sep(),
+          _SearchField(
+            controller: _searchController,
+            focus: widget.searchFocus,
+            onChanged: _onSearchChanged,
+          ),
+        ],
       ),
     );
   }
 
-}
-
-class _FocusSearchIntent extends Intent {
-  const _FocusSearchIntent();
-}
-
-class _TranslateSelectedIntent extends Intent {
-  const _TranslateSelectedIntent();
-}
-
-class _TranslateAllIntent extends Intent {
-  const _TranslateAllIntent();
-}
-
-class _ValidateIntent extends Intent {
-  const _ValidateIntent();
 }
 
 class _Sep extends StatelessWidget {
@@ -428,61 +391,77 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return SizedBox(
-      width: 240,
-      child: TextField(
-        controller: controller,
-        focusNode: focus,
-        onChanged: onChanged,
-        style: tokens.fontMono.copyWith(
-          fontSize: 12.5,
-          color: tokens.text,
-        ),
-        decoration: InputDecoration(
-          isDense: true,
-          filled: true,
-          fillColor: tokens.panel2,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: tokens.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: tokens.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: tokens.accent),
-          ),
-          hintText: 'Search · filter · run',
-          hintStyle: tokens.fontMono.copyWith(
-            color: tokens.textFaint,
+    // Neutralizes the screen-level Ctrl+T / Ctrl+Shift+T / Ctrl+Shift+V
+    // bindings while the user is typing in the search field, so pressing
+    // those key combinations inside the field doesn't fire editor actions
+    // before the user can type those characters as input. Uses
+    // DoNothingAndStopPropagationIntent because Shortcuts walks UP the tree
+    // and an empty map would simply fall through to the parent.
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.keyT, control: true):
+            DoNothingAndStopPropagationIntent(),
+        SingleActivator(LogicalKeyboardKey.keyT, control: true, shift: true):
+            DoNothingAndStopPropagationIntent(),
+        SingleActivator(LogicalKeyboardKey.keyV, control: true, shift: true):
+            DoNothingAndStopPropagationIntent(),
+      },
+      child: SizedBox(
+        width: 240,
+        child: TextField(
+          controller: controller,
+          focusNode: focus,
+          onChanged: onChanged,
+          style: tokens.fontMono.copyWith(
             fontSize: 12.5,
+            color: tokens.text,
           ),
-          suffixIcon: Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Container(
-              alignment: Alignment.center,
-              constraints: const BoxConstraints(minHeight: 0, minWidth: 0),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                border: Border.all(color: tokens.textFaint),
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: Text(
-                'Ctrl+F',
-                style: tokens.fontMono.copyWith(
-                  fontSize: 9.5,
-                  color: tokens.textFaint,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: tokens.panel2,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 8,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: tokens.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: tokens.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: tokens.accent),
+            ),
+            hintText: 'Search · filter · run',
+            hintStyle: tokens.fontMono.copyWith(
+              color: tokens.textFaint,
+              fontSize: 12.5,
+            ),
+            suffixIcon: Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Container(
+                alignment: Alignment.center,
+                constraints: const BoxConstraints(minHeight: 0, minWidth: 0),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  border: Border.all(color: tokens.textFaint),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  'Ctrl+F',
+                  style: tokens.fontMono.copyWith(
+                    fontSize: 9.5,
+                    color: tokens.textFaint,
+                  ),
                 ),
               ),
             ),
+            suffixIconConstraints: const BoxConstraints(maxHeight: 24),
           ),
-          suffixIconConstraints: const BoxConstraints(maxHeight: 24),
         ),
       ),
     );

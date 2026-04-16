@@ -11,9 +11,10 @@ import 'package:twmt/theme/app_theme.dart';
 import '../../../helpers/test_helpers.dart';
 import '../../../helpers/test_bootstrap.dart';
 
-EditorTopBar _bar() => EditorTopBar(
+EditorTopBar _bar({FocusNode? searchFocus}) => EditorTopBar(
       projectId: 'p',
       languageId: 'fr',
+      searchFocus: searchFocus ?? FocusNode(),
       onTranslationSettings: () {},
       onTranslateAll: () {},
       onTranslateSelected: () {},
@@ -63,7 +64,7 @@ void main() {
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
   });
 
-  testWidgets('renders 5 visible actions plus Settings icon', (tester) async {
+  testWidgets('renders Rules chip + 4 action buttons + Settings icon', (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
       theme: AppTheme.atelierDarkTheme,
