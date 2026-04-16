@@ -32,7 +32,7 @@ class TmBrowserDataGrid extends ConsumerStatefulWidget {
 }
 
 class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
-  late _TmDataSource _dataSource;
+  late final _TmDataSource _dataSource;
 
   @override
   void initState() {
@@ -71,11 +71,12 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
 
     return entriesAsync.when(
       data: (entries) {
-        _dataSource = _TmDataSource(
-          entries: entries,
-          onDeleteEntry: _handleDeleteEntry,
-          onSortChanged: _handleSortChanged,
-        );
+        // Reuse the single [_TmDataSource] allocated in [initState] — a
+        // fresh instance per build would re-allocate the entire `_rows`
+        // list on every hover/tick rebuild, which is O(N) in entries and
+        // noticeable at TM scale (thousands of rows). `updateEntries` is
+        // a no-op when the upstream list reference hasn't changed.
+        _dataSource.updateEntries(entries);
         return _buildDataGrid(context, entries);
       },
       loading: () => const Center(
@@ -370,7 +371,33 @@ class _TmDataSource extends DataGridSource {
     required this.onSortChanged,
   }) {
     _entries = entries;
-    _rows = entries
+    _rows = _buildRowsFrom(entries);
+  }
+
+  List<TranslationMemoryEntry> _entries = const [];
+  List<DataGridRow> _rows = const [];
+  final void Function(TranslationMemoryEntry) onDeleteEntry;
+  final void Function(String column, bool ascending) onSortChanged;
+
+  @override
+  List<DataGridRow> get rows => _rows;
+
+  /// Reseed the data source when the upstream entries list has changed.
+  ///
+  /// Uses [identical] rather than `==` so the common hover/tick rebuilds
+  /// (which hand us the same list instance) are a true no-op. Callers can
+  /// invoke this every [build] without fear of O(N) churn.
+  void updateEntries(List<TranslationMemoryEntry> entries) {
+    if (identical(_entries, entries)) return;
+    _entries = entries;
+    _rows = _buildRowsFrom(entries);
+    notifyListeners();
+  }
+
+  static List<DataGridRow> _buildRowsFrom(
+    List<TranslationMemoryEntry> entries,
+  ) {
+    return entries
         .map((entry) => DataGridRow(cells: [
               DataGridCell<TranslationMemoryEntry>(
                   columnName: 'source', value: entry),
@@ -384,14 +411,6 @@ class _TmDataSource extends DataGridSource {
             ]))
         .toList();
   }
-
-  List<TranslationMemoryEntry> _entries = const [];
-  List<DataGridRow> _rows = const [];
-  final void Function(TranslationMemoryEntry) onDeleteEntry;
-  final void Function(String column, bool ascending) onSortChanged;
-
-  @override
-  List<DataGridRow> get rows => _rows;
 
   /// Resolve the [TranslationMemoryEntry] backing the row at [rowIndex]
   /// inside [rows] (NOT the grid's absolute row index — callers must already
@@ -443,10 +462,6 @@ class _TmDataSource extends DataGridSource {
       ],
     );
   }
-
-  // `_entries` is retained for potential future direct-index access.
-  // ignore: unused_element
-  List<TranslationMemoryEntry> get entries => _entries;
 }
 
 // =============================================================================
