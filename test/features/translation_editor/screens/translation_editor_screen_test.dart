@@ -14,7 +14,7 @@ void main() {
   setUp(() async {
     await setupMockServices();
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
-    binding.platformDispatcher.views.first.physicalSize = const Size(2400, 1080);
+    binding.platformDispatcher.views.first.physicalSize = const Size(1920, 1080);
     binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
   });
 
@@ -28,9 +28,10 @@ void main() {
   group('TranslationEditorScreen', () {
     const testProjectId = 'test-project-123';
     const testLanguageId = 'test-language-456';
-    // The new EditorTopBar packs many actions into a 56px row; widen the test
-    // viewport so the design fits horizontally without artificial overflow.
-    const wideScreenSize = Size(2400, 1080);
+    // Reference desktop size from spec §8.7. The EditorTopBar's middle action
+    // group is wrapped in a horizontal SingleChildScrollView, so this viewport
+    // (and even the 1280px min-width) renders without layout overflow.
+    const wideScreenSize = Size(1920, 1080);
 
     /// Creates test widget with mocked providers for translation editor
     Widget createTestWidget({ThemeData? theme}) {

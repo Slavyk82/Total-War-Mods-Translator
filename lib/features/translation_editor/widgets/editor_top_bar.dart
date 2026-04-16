@@ -107,58 +107,71 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             children: [
+              // Fixed-width left side: clickable crumb + separator.
               _Crumb(projectName: projectName, languageName: languageName),
               const _Sep(),
-              const EditorToolbarModelSelector(compact: false),
-              const SizedBox(width: 14),
-              const EditorToolbarSkipTm(compact: false),
-              const _Sep(),
-              EditorToolbarModRule(compact: false, projectId: widget.projectId),
-              const SizedBox(width: 8),
-              _ActionButton(
-                icon: FluentIcons.text_bullet_list_ltr_24_regular,
-                label: 'Rules',
-                onTap: () => _openRulesDialog(),
+
+              // Scrollable middle: model selector, skip-tm, rules chip and
+              // the 4 action buttons. Wrapped in a horizontal scroll view so
+              // narrow viewports (down to the 1280px min-width) never trigger
+              // a layout overflow.
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      const EditorToolbarModelSelector(compact: false),
+                      const SizedBox(width: 14),
+                      const EditorToolbarSkipTm(compact: false),
+                      const _Sep(),
+                      EditorToolbarModRule(
+                        compact: false,
+                        projectId: widget.projectId,
+                      ),
+                      const SizedBox(width: 8),
+                      _ActionButton(
+                        icon: FluentIcons.translate_24_filled,
+                        label: 'Selection',
+                        kbd: 'Ctrl+T',
+                        onTap: selection.hasSelection
+                            ? widget.onTranslateSelected
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      _ActionButton(
+                        icon: FluentIcons.translate_24_regular,
+                        label: 'Translate all',
+                        kbd: 'Ctrl+Shift+T',
+                        primary: true,
+                        onTap: widget.onTranslateAll,
+                      ),
+                      const SizedBox(width: 8),
+                      _SplitButton(
+                        icon: FluentIcons.checkmark_circle_24_regular,
+                        label: 'Validate',
+                        kbd: 'Ctrl+Shift+V',
+                        onTap: widget.onValidate,
+                        menuItems: [
+                          _MenuEntry('Validate selected', widget.onValidate),
+                          _MenuEntry('Rescan all', widget.onRescanValidation),
+                        ],
+                      ),
+                      const SizedBox(width: 8),
+                      _SplitButton(
+                        icon: FluentIcons.box_24_regular,
+                        label: 'Pack',
+                        onTap: widget.onExport,
+                        menuItems: [
+                          _MenuEntry('Generate pack', widget.onExport),
+                          _MenuEntry('Import pack', widget.onImportPack),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: 8),
-              _ActionButton(
-                icon: FluentIcons.translate_24_filled,
-                label: 'Selection',
-                kbd: 'Ctrl+T',
-                onTap: selection.hasSelection
-                    ? widget.onTranslateSelected
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              _ActionButton(
-                icon: FluentIcons.translate_24_regular,
-                label: 'Translate all',
-                kbd: 'Ctrl+Shift+T',
-                primary: true,
-                onTap: widget.onTranslateAll,
-              ),
-              const SizedBox(width: 8),
-              _SplitButton(
-                icon: FluentIcons.checkmark_circle_24_regular,
-                label: 'Validate',
-                kbd: 'Ctrl+Shift+V',
-                onTap: widget.onValidate,
-                menuItems: [
-                  _MenuEntry('Validate selected', widget.onValidate),
-                  _MenuEntry('Rescan all', widget.onRescanValidation),
-                ],
-              ),
-              const SizedBox(width: 8),
-              _SplitButton(
-                icon: FluentIcons.box_24_regular,
-                label: 'Pack',
-                onTap: widget.onExport,
-                menuItems: [
-                  _MenuEntry('Generate pack', widget.onExport),
-                  _MenuEntry('Import pack', widget.onImportPack),
-                ],
-              ),
-              const Spacer(),
+
+              // Fixed-width right side: Settings + separator + search field.
               IconButton(
                 icon: const Icon(FluentIcons.settings_24_regular, size: 18),
                 onPressed: widget.onTranslationSettings,
@@ -180,17 +193,6 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
     );
   }
 
-  /// Opens the project-scoped rules editor (delegated to mod-rule sub-widget).
-  ///
-  /// The dedicated [EditorToolbarModRule] still owns the dialog plumbing; this
-  /// helper just funnels the new "Rules" button click through the same path.
-  void _openRulesDialog() {
-    // The mod-rule chip is already in the row and handles its own dialog
-    // via tap. The "Rules" action is exposed as a labelled button for users
-    // who prefer a clear text label; it triggers the same settings dialog
-    // by surfacing the translation settings dialog (rules live there too).
-    widget.onTranslationSettings();
-  }
 }
 
 class _FocusSearchIntent extends Intent {

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/translation_editor/providers/editor_selection_notifier.dart';
+import 'package:twmt/features/settings/providers/llm_custom_rules_providers.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_top_bar.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_helpers.dart';
@@ -19,13 +23,37 @@ EditorTopBar _bar() => EditorTopBar(
       onImportPack: () {},
     );
 
+/// Default Riverpod overrides so the EditorToolbarModRule chip resolves to
+/// data state (and renders the "Rules" label) without hitting real repositories.
+List<Override> _baseOverrides() => [
+      currentProjectProvider('p').overrideWith(
+        (ref) async => Project(
+          id: 'p',
+          name: 'Test Project',
+          gameInstallationId: 'gi',
+          projectType: 'mod',
+          createdAt: 0,
+          updatedAt: 0,
+        ),
+      ),
+      currentLanguageProvider('fr').overrideWith(
+        (ref) async => const Language(
+          id: 'fr',
+          code: 'fr',
+          name: 'French',
+          nativeName: 'Francais',
+        ),
+      ),
+      hasProjectRuleProvider('p').overrideWith((ref) async => false),
+    ];
+
 void main() {
-  const wideTestSize = Size(2400, 1080);
+  const desktopTestSize = Size(1920, 1080);
 
   setUp(() async {
     await TestBootstrap.registerFakes();
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
-    binding.platformDispatcher.views.first.physicalSize = wideTestSize;
+    binding.platformDispatcher.views.first.physicalSize = desktopTestSize;
     binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
   });
 
@@ -39,7 +67,8 @@ void main() {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
       theme: AppTheme.atelierDarkTheme,
-      screenSize: wideTestSize,
+      screenSize: desktopTestSize,
+      overrides: _baseOverrides(),
     ));
     await tester.pumpAndSettle();
 
@@ -55,7 +84,8 @@ void main() {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
       theme: AppTheme.atelierDarkTheme,
-      screenSize: wideTestSize,
+      screenSize: desktopTestSize,
+      overrides: _baseOverrides(),
     ));
     await tester.pumpAndSettle();
 
@@ -67,8 +97,9 @@ void main() {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
       theme: AppTheme.atelierDarkTheme,
-      screenSize: wideTestSize,
+      screenSize: desktopTestSize,
       overrides: [
+        ..._baseOverrides(),
         editorSelectionProvider.overrideWith(() => _StubEmptySelection()),
       ],
     ));
@@ -106,7 +137,8 @@ void main() {
         initialRoute: '/',
       ),
       theme: AppTheme.atelierDarkTheme,
-      screenSize: wideTestSize,
+      screenSize: desktopTestSize,
+      overrides: _baseOverrides(),
     ));
     await tester.pumpAndSettle();
 
@@ -118,6 +150,26 @@ void main() {
     await tester.tap(find.text('Projects'));
     await tester.pumpAndSettle();
     expect(observer.popCount, 1);
+  });
+
+  testWidgets('does not overflow at min-width 1280', (tester) async {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.physicalSize =
+        const Size(1280, 800);
+    binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
+    addTearDown(() {
+      binding.platformDispatcher.views.first.resetPhysicalSize();
+      binding.platformDispatcher.views.first.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(createThemedTestableWidget(
+      Scaffold(body: _bar()),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: _baseOverrides(),
+    ));
+    await tester.pumpAndSettle();
+    // No overflow exception thrown.
+    expect(tester.takeException(), isNull);
   });
 }
 

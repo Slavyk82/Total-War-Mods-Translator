@@ -68,7 +68,7 @@ class EditorToolbarModRule extends ConsumerWidget {
                     if (!compact) ...[
                       const SizedBox(width: 6),
                       Text(
-                        'Mod Rule',
+                        'Rules',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
