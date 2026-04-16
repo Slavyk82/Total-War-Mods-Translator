@@ -10,6 +10,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../providers/tm_providers.dart';
 
@@ -515,7 +516,7 @@ class _LastUsedCell extends ConsumerWidget {
     final tokens = context.tokens;
     // [TranslationMemoryEntry.lastUsedAt] is a Unix seconds timestamp.
     final date = DateTime.fromMillisecondsSinceEpoch(lastUsedAt * 1000);
-    final now = ref.watch(clockProvider).call();
+    final now = ref.watch(clockProvider)();
     final relative = formatRelativeSince(date, now: now) ?? '—';
     final absolute = formatAbsoluteDate(date);
 
@@ -553,16 +554,13 @@ class _ActionsCell extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _IconAction(
+          SmallIconButton(
             icon: FluentIcons.copy_24_regular,
             tooltip: 'Copy',
-            foreground: tokens.textMid,
-            background: tokens.panel2,
-            borderColor: tokens.border,
             onTap: () => _copyEntry(entry),
           ),
           const SizedBox(width: 6),
-          _IconAction(
+          SmallIconButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: 'Delete entry',
             foreground: tokens.err,
@@ -582,47 +580,3 @@ class _ActionsCell extends StatelessWidget {
   }
 }
 
-class _IconAction extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final Color foreground;
-  final Color background;
-  final Color borderColor;
-  final VoidCallback onTap;
-
-  const _IconAction({
-    required this.icon,
-    required this.tooltip,
-    required this.foreground,
-    required this.background,
-    required this.borderColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            width: 28,
-            height: 28,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: background,
-              border: Border.all(color: borderColor),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
-            ),
-            child: Icon(icon, size: 14, color: foreground),
-          ),
-        ),
-      ),
-    );
-  }
-}

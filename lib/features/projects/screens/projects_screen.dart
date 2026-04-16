@@ -14,6 +14,7 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_screen_providers.dart';
@@ -91,35 +92,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   // ---------------------------------------------------------------------------
 
   Widget _buildLeading(AsyncValue<List<ProjectWithDetails>> async) {
-    final tokens = context.tokens;
     final count = async.asData?.value.length ?? 0;
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.folder_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Projects',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          '$count ${count == 1 ? 'project' : 'projects'}',
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
-          ),
-        ),
-      ],
+    return ListToolbarLeading(
+      icon: FluentIcons.folder_24_regular,
+      title: 'Projects',
+      countLabel: '$count ${count == 1 ? 'project' : 'projects'}',
     );
   }
 

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/config/tooltip_strings.dart';
-import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
 /// Toolbar for the Glossary list view.
@@ -67,37 +67,14 @@ class _Leading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final noun = totalCount == 1 ? 'glossary' : 'glossaries';
     final countLabel = searchActive
         ? '$filteredCount / $totalCount $noun'
         : '$totalCount $noun';
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.book_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Glossaries',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle:
-                tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          countLabel,
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
-          ),
-        ),
-      ],
+    return ListToolbarLeading(
+      icon: FluentIcons.book_24_regular,
+      title: 'Glossaries',
+      countLabel: countLabel,
     );
   }
 }

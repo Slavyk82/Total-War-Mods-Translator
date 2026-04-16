@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../providers/steam_publish_providers.dart';
@@ -90,20 +93,26 @@ class SteamPublishToolbar extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: () => onSearchChanged(''),
       ),
+      const _SortButton(),
+      const _SortDirectionButton(),
       _PublishSelectionButton(
         selectedCount: selectedCount,
         disabledTooltip: publishDisabledTooltip,
         onPublish: onPublishSelection,
       ),
-      _ToolbarIconButton(
+      SmallIconButton(
         icon: FluentIcons.arrow_sync_24_regular,
         tooltip: 'Refresh',
         onTap: onRefresh,
+        size: 32,
+        iconSize: 16,
       ),
-      _ToolbarIconButton(
+      SmallIconButton(
         icon: FluentIcons.settings_24_regular,
         tooltip: 'Publish settings',
         onTap: onOpenSettings,
+        size: 32,
+        iconSize: 16,
       ),
     ];
   }
@@ -165,40 +174,16 @@ class _Leading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
     final packLabel = totalItems == 1 ? 'pack' : 'packs';
     final base = searchActive
         ? '$filteredItems / $totalItems $packLabel'
         : '$totalItems $packLabel';
     final countLabel =
         selectedCount > 0 ? '$base · $selectedCount selected' : base;
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.cloud_arrow_up_24_regular,
-          size: 20,
-          color: tokens.textMid,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'Publish on Steam',
-          style: tokens.fontDisplay.copyWith(
-            fontSize: 20,
-            color: tokens.text,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          countLabel,
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
-          ),
-        ),
-      ],
+    return ListToolbarLeading(
+      icon: FluentIcons.cloud_arrow_up_24_regular,
+      title: 'Publish on Steam',
+      countLabel: countLabel,
     );
   }
 }
@@ -277,41 +262,110 @@ class _PublishSelectionButton extends StatelessWidget {
   }
 }
 
-class _ToolbarIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
+class _SortButton extends ConsumerWidget {
+  const _SortButton();
 
-  const _ToolbarIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
+  String _labelFor(SteamPublishSortMode mode) {
+    switch (mode) {
+      case SteamPublishSortMode.exportDate:
+        return 'Export date';
+      case SteamPublishSortMode.name:
+        return 'Name';
+      case SteamPublishSortMode.publishDate:
+        return 'Publish date';
+    }
+  }
+
+  IconData _iconFor(SteamPublishSortMode mode) {
+    switch (mode) {
+      case SteamPublishSortMode.exportDate:
+        return FluentIcons.arrow_export_24_regular;
+      case SteamPublishSortMode.name:
+        return FluentIcons.text_sort_ascending_24_regular;
+      case SteamPublishSortMode.publishDate:
+        return FluentIcons.cloud_arrow_up_24_regular;
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            height: 32,
-            width: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: tokens.panel2,
-              border: Border.all(color: tokens.border),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
+    final mode = ref.watch(steamPublishSortModeProvider);
+    return PopupMenuButton<SteamPublishSortMode>(
+      tooltip: 'Sort packs',
+      offset: const Offset(0, 36),
+      color: tokens.panel,
+      itemBuilder: (context) => SteamPublishSortMode.values
+          .map(
+            (option) => PopupMenuItem(
+              value: option,
+              child: Row(
+                children: [
+                  Icon(_iconFor(option), size: 16, color: tokens.textMid),
+                  const SizedBox(width: 10),
+                  Text(
+                    _labelFor(option),
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                  ),
+                ],
+              ),
             ),
-            child: Icon(icon, size: 16, color: tokens.textMid),
-          ),
+          )
+          .toList(),
+      onSelected: (option) =>
+          ref.read(steamPublishSortModeProvider.notifier).state = option,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: tokens.panel2,
+          border: Border.all(color: tokens.border),
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_iconFor(mode), size: 16, color: tokens.textMid),
+            const SizedBox(width: 6),
+            Text(
+              _labelFor(mode),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.textMid,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              FluentIcons.chevron_down_24_regular,
+              size: 14,
+              color: tokens.textDim,
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+class _SortDirectionButton extends ConsumerWidget {
+  const _SortDirectionButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ascending = ref.watch(steamPublishSortAscendingProvider);
+    return SmallIconButton(
+      icon: ascending
+          ? FluentIcons.arrow_sort_up_24_regular
+          : FluentIcons.arrow_sort_down_24_regular,
+      tooltip: ascending ? 'Sort ascending' : 'Sort descending',
+      size: 32,
+      iconSize: 16,
+      onTap: () => ref
+          .read(steamPublishSortAscendingProvider.notifier)
+          .state = !ascending,
+    );
+  }
+}
+
