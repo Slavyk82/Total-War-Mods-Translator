@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/layouts/main_layout_router.dart';
@@ -131,8 +132,16 @@ void main() {
     expect(find.byType(Breadcrumb), findsNothing);
   });
 
-  testWidgets('shows Breadcrumb on /work/home', (tester) async {
-    await tester.pumpWidget(_wrap('/work/home'));
+  testWidgets('hides Breadcrumb on AppRoutes.home', (tester) async {
+    await tester.pumpWidget(_wrap(AppRoutes.home));
+    await tester.pumpAndSettle();
+    _drainOverflowExceptions(tester);
+
+    expect(find.byType(Breadcrumb), findsNothing);
+  });
+
+  testWidgets('shows Breadcrumb on /resources/glossary', (tester) async {
+    await tester.pumpWidget(_wrap('/resources/glossary'));
     await tester.pumpAndSettle();
     _drainOverflowExceptions(tester);
 

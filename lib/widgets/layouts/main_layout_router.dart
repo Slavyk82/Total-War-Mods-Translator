@@ -67,6 +67,7 @@ class MainLayoutRouter extends ConsumerWidget {
   /// Editor and single-publish screens render their own header and would
   /// double-up with the shell breadcrumb.
   bool _shouldHideBreadcrumb(String path) {
+    if (path == AppRoutes.home) return true;
     if (path.contains('/editor/')) return true;
     if (path == AppRoutes.steamPublishSingle) return true;
     if (path == AppRoutes.steamPublishBatch) return true;
