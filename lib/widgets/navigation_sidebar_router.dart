@@ -92,7 +92,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
                   icon: FluentIcons.globe_24_regular,
                   selectedIcon: FluentIcons.globe_24_filled,
                   label: 'Game Translation',
-                  onTap: () => _navigate(context, AppRoutes.gameTranslation),
+                  onTap: () => _navigate(context, AppRoutes.gameFiles),
                 ),
                 _buildNavigationItem(
                   context: context,
@@ -220,7 +220,7 @@ class NavigationSidebarRouter extends ConsumerWidget {
     if (path == AppRoutes.home) return 0;
     if (path.startsWith(AppRoutes.mods)) return 1;
     if (path.startsWith(AppRoutes.projects)) return 2;
-    if (path.startsWith(AppRoutes.gameTranslation)) return 3;
+    if (path.startsWith(AppRoutes.gameFiles)) return 3;
     if (path.startsWith(AppRoutes.packCompilation)) return 4;
     if (path.startsWith(AppRoutes.steamPublish)) return 5;
     if (path.startsWith(AppRoutes.glossary)) return 6;

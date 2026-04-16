@@ -31,43 +31,94 @@ import 'route_transitions.dart';
 /// Global navigator key for showing dialogs from anywhere
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-/// Route path constants
+/// Route path constants.
+///
+/// Paths are nested by sidebar group (Sources, Work, Resources, Publishing,
+/// System) — see `NavigationTree`. Use `legacyRedirects` to map pre-restructure
+/// URLs onto the new ones.
 class AppRoutes {
-  // Main routes
-  static const String home = '/';
-  static const String mods = '/mods';
-  static const String projects = '/projects';
-  static const String gameTranslation = '/game-translation';
-  static const String glossary = '/glossary';
-  static const String translationMemory = '/translation-memory';
-  static const String packCompilation = '/pack-compilation';
-  static const String batchPackExport = '/projects/batch-export';
-  static const String steamPublish = '/steam-publish';
-  static const String steamPublishSingle = '/steam-publish/single';
-  static const String steamPublishBatch = '/steam-publish/batch';
-  static const String settings = '/settings';
-  static const String help = '/help';
+  // Root
+  static const String rootRedirect = '/work/home';
 
-  // Detail routes
-  static String projectDetail(String projectId) => '/projects/$projectId';
+  // Sources
+  static const String mods = '/sources/mods';
+  static const String gameFiles = '/sources/game-files';
+
+  // Work
+  static const String home = '/work/home';
+  static const String projects = '/work/projects';
+  static const String batchPackExport = '/work/projects/batch-export';
+
+  // Resources
+  static const String glossary = '/resources/glossary';
+  static const String translationMemory = '/resources/tm';
+
+  // Publishing
+  static const String packCompilation = '/publishing/pack';
+  static const String steamPublish = '/publishing/steam';
+  static const String steamPublishSingle = '/publishing/steam/single';
+  static const String steamPublishBatch = '/publishing/steam/batch';
+
+  // System
+  static const String settings = '/system/settings';
+  static const String settingsGeneral = '/system/settings/general';
+  static const String settingsLlm = '/system/settings/llm';
+  static const String help = '/system/help';
+
+  // Detail / parameterised routes
+  static String projectDetail(String projectId) => '$projects/$projectId';
   static String translationEditor(String projectId, String languageId) =>
-      '/projects/$projectId/editor/$languageId';
+      '$projects/$projectId/editor/$languageId';
 
-  // Settings sub-routes
-  static const String settingsGeneral = '/settings/general';
-  static const String settingsLlm = '/settings/llm';
-
-  // Path parameters
+  // Path parameter names
   static const String projectIdParam = 'projectId';
   static const String languageIdParam = 'languageId';
+}
+
+/// Legacy URL → new URL map. Longest match wins (handled by
+/// [appRouterRedirect]). Retained for one cycle to absorb any path that may
+/// have been persisted by the app (Windows shortcuts, cached state).
+const Map<String, String> legacyRedirects = {
+  '/': '/work/home',
+  '/mods': '/sources/mods',
+  '/game-translation': '/sources/game-files',
+  '/projects': '/work/projects',
+  '/glossary': '/resources/glossary',
+  '/translation-memory': '/resources/tm',
+  '/pack-compilation': '/publishing/pack',
+  '/steam-publish': '/publishing/steam',
+  '/settings': '/system/settings',
+  '/help': '/system/help',
+};
+
+/// Pure redirect function. Returns the new path or `null` if no redirect
+/// applies. Matches the longest legacy prefix so
+/// `/projects/abc/editor/fr` → `/work/projects/abc/editor/fr`.
+String? appRouterRedirect(String path) {
+  if (path == '/') return legacyRedirects['/'];
+
+  String? bestMatch;
+  int bestLen = 0;
+  legacyRedirects.forEach((legacy, newPrefix) {
+    if (legacy == '/') return; // handled above
+    if (path == legacy || path.startsWith('$legacy/')) {
+      if (legacy.length > bestLen) {
+        bestLen = legacy.length;
+        final tail = path.substring(legacy.length);
+        bestMatch = '$newPrefix$tail';
+      }
+    }
+  });
+  return bestMatch;
 }
 
 /// GoRouter configuration provider
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: AppRoutes.home,
+    initialLocation: AppRoutes.rootRedirect,
     debugLogDiagnostics: true,
+    redirect: (context, state) => appRouterRedirect(state.uri.path),
     routes: [
       // Shell route - wraps all main screens with MainLayout
       ShellRoute(
@@ -156,10 +207,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Game Translation
+          // Game Files
           GoRoute(
-            path: AppRoutes.gameTranslation,
-            name: 'gameTranslation',
+            path: AppRoutes.gameFiles,
+            name: 'gameFiles',
             pageBuilder: (context, state) {
               return FluentPageTransitions.fadeTransition(
                 child: const GameTranslationScreen(),
@@ -296,8 +347,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 extension GoRouterExtensions on BuildContext {
   void goHome() => go(AppRoutes.home);
   void goMods() => go(AppRoutes.mods);
+  void goGameFiles() => go(AppRoutes.gameFiles);
   void goProjects() => go(AppRoutes.projects);
-  void goGameTranslation() => go(AppRoutes.gameTranslation);
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
