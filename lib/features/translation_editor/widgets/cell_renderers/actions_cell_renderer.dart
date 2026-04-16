@@ -1,21 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
-/// Actions cell widget for DataGrid
+/// Actions cell widget for DataGrid.
 ///
-/// Displays a more options icon to indicate row actions are available
+/// Renders a faint chevron `›` indicating additional row actions are
+/// available via the context menu (right-click). Colour and size match the
+/// editor mockup spec (`tokens.textFaint`, fontSize 14).
 class ActionsCellRenderer extends StatelessWidget {
   const ActionsCellRenderer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
       alignment: Alignment.center,
       padding: const EdgeInsets.all(8.0),
-      child: const Icon(
-        FluentIcons.more_horizontal_24_regular,
-        size: 16,
-        color: Colors.grey,
+      child: Text(
+        '\u203A',
+        style: TextStyle(
+          fontSize: 14,
+          color: tokens.textFaint,
+        ),
       ),
     );
   }

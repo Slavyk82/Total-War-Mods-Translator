@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Text cell widget for DataGrid
 ///
@@ -34,13 +35,14 @@ class TextCellRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final rawText = text ?? '';
     final displayText = _escapeForDisplay(rawText);
 
     final textStyle = TextStyle(
       fontSize: 13,
       fontWeight: isKey ? FontWeight.w500 : FontWeight.normal,
-      color: rawText.isEmpty ? Colors.grey : null,
+      color: rawText.isEmpty ? tokens.textFaint : tokens.text,
     );
 
     // Use Listener to intercept right-click and show context menu immediately

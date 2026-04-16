@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../settings/providers/llm_custom_rules_providers.dart';
 import '../providers/editor_providers.dart';
 import 'mod_rule_editor_dialog.dart';
@@ -25,9 +26,12 @@ class EditorToolbarModRule extends ConsumerWidget {
     final projectAsync = ref.watch(currentProjectProvider(projectId));
     final hasRuleAsync = ref.watch(hasProjectRuleProvider(projectId));
 
+    final tokens = context.tokens;
+
     return projectAsync.when(
       data: (project) {
         final hasRule = hasRuleAsync.whenOrNull(data: (v) => v) ?? false;
+        final activeColor = hasRule ? tokens.accent : tokens.textMid;
 
         return Tooltip(
           message: hasRule
@@ -45,13 +49,9 @@ class EditorToolbarModRule extends ConsumerWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: hasRule
-                      ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                      : Colors.transparent,
+                  color: hasRule ? tokens.accentBg : Colors.transparent,
                   border: Border.all(
-                    color: hasRule
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).dividerColor,
+                    color: hasRule ? tokens.accent : tokens.border,
                   ),
                   borderRadius: BorderRadius.circular(4),
                 ),
@@ -63,20 +63,16 @@ class EditorToolbarModRule extends ConsumerWidget {
                           ? FluentIcons.text_bullet_list_ltr_24_filled
                           : FluentIcons.text_bullet_list_ltr_24_regular,
                       size: 16,
-                      color: hasRule
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: activeColor,
                     ),
                     if (!compact) ...[
                       const SizedBox(width: 6),
                       Text(
-                        'Mod Rule',
+                        'Rules',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: hasRule
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          color: activeColor,
                         ),
                       ),
                     ],

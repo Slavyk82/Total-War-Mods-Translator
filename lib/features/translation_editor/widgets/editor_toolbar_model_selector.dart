@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../settings/providers/settings_providers.dart';
 import '../providers/editor_providers.dart';
 
@@ -70,6 +71,7 @@ class _EditorToolbarModelSelectorState
           });
         }
 
+        final tokens = context.tokens;
         return Tooltip(
           message: TooltipStrings.editorModelSelector,
           waitDuration: const Duration(milliseconds: 500),
@@ -79,17 +81,16 @@ class _EditorToolbarModelSelectorState
               vertical: 4,
             ),
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).dividerColor,
-              ),
+              border: Border.all(color: tokens.border),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   FluentIcons.brain_circuit_24_regular,
                   size: 16,
+                  color: tokens.textMid,
                 ),
                 const SizedBox(width: 6),
                 DropdownButton<String>(
@@ -105,7 +106,7 @@ class _EditorToolbarModelSelectorState
                       value: model.id,
                       child: Text(
                         displayText,
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 13, color: tokens.text),
                       ),
                     );
                   }).toList(),

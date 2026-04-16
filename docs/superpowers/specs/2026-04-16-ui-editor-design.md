@@ -74,7 +74,7 @@ TranslationEditorScreen (ConsumerStatefulWidget)
 - `EditorToolbarSkipTm(compact: false)` (existant, retokenisé).
 - `tb-sep` (1×24px `--border`).
 
-**Centre** : 5 actions, chacune avec `.kbd` chip si raccourci.
+**Centre** : 1 chip `Rules` + 4 boutons d'action, chacun avec `.kbd` chip si raccourci. (Note d'implémentation : `Rules` est rendu par le widget chip existant `EditorToolbarModRule` — pas un `_ActionButton` — d'où la formulation « Rules chip + 4 action buttons » dans le code.)
 - `Rules` — ouvre `ModRuleEditorDialog`. Pas de raccourci.
 - `Selection · Ctrl+T` — `handleTranslateSelected`. Disabled si `editorSelectionProvider.hasSelection == false`.
 - `Translate all · Ctrl+Shift+T` — `handleTranslateAll`. Variant primary (bg=accent).

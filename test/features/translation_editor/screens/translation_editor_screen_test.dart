@@ -1,27 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
+import 'package:twmt/features/translation_editor/widgets/editor_top_bar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/theme/app_theme.dart';
 import '../../../helpers/test_helpers.dart';
 
 void main() {
   setUp(() async {
     await setupMockServices();
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.physicalSize = const Size(1920, 1080);
+    binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
   });
 
   tearDown(() async {
+    final binding = TestWidgetsFlutterBinding.ensureInitialized();
+    binding.platformDispatcher.views.first.resetPhysicalSize();
+    binding.platformDispatcher.views.first.resetDevicePixelRatio();
     await tearDownMockServices();
   });
 
   group('TranslationEditorScreen', () {
     const testProjectId = 'test-project-123';
     const testLanguageId = 'test-language-456';
+    // Reference desktop size from spec §8.7. The EditorTopBar's middle action
+    // group is wrapped in a horizontal SingleChildScrollView, so this viewport
+    // (and even the 1280px min-width) renders without layout overflow.
+    const wideScreenSize = Size(1920, 1080);
 
     /// Creates test widget with mocked providers for translation editor
     Widget createTestWidget({ThemeData? theme}) {
@@ -57,10 +67,12 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: theme ?? ThemeData.light(),
+          // Default to a TWMT-themed surface so widgets that read
+          // `context.tokens` (e.g. EditorStatusBar) resolve their tokens.
+          theme: theme ?? AppTheme.atelierDarkTheme,
           home: SizedBox(
-            width: defaultTestScreenSize.width,
-            height: defaultTestScreenSize.height,
+            width: wideScreenSize.width,
+            height: wideScreenSize.height,
             child: const TranslationEditorScreen(
               projectId: testProjectId,
               languageId: testLanguageId,
@@ -71,11 +83,11 @@ void main() {
     }
 
     group('Widget Structure', () {
-      testWidgets('should render FluentScaffold as root widget', (tester) async {
+      testWidgets('should render Material as root widget', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(FluentScaffold), findsOneWidget);
+        expect(find.byType(TranslationEditorScreen), findsOneWidget);
       });
 
       testWidgets('should accept projectId and languageId parameters', (tester) async {
@@ -87,11 +99,12 @@ void main() {
         expect(screen.languageId, equals(testLanguageId));
       });
 
-      testWidgets('should have header with back button', (tester) async {
+      testWidgets('should render EditorTopBar with crumb navigation', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byIcon(FluentIcons.arrow_left_24_regular), findsWidgets);
+        expect(find.byType(EditorTopBar), findsOneWidget);
+        expect(find.text('Projects'), findsOneWidget);
       });
     });
 
@@ -130,16 +143,16 @@ void main() {
     });
 
     group('Toolbar', () {
-      testWidgets('should render EditorToolbar component', (tester) async {
+      testWidgets('should render EditorTopBar component', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(TranslationEditorScreen), findsOneWidget);
+        expect(find.byType(EditorTopBar), findsOneWidget);
       });
     });
 
-    group('Sidebar', () {
-      testWidgets('should render EditorSidebar component', (tester) async {
+    group('Filter panel', () {
+      testWidgets('should render EditorFilterPanel component', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
@@ -219,15 +232,19 @@ void main() {
     });
 
     group('Theme Integration', () {
-      testWidgets('should render correctly with light theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.light()));
+      testWidgets('should render correctly with atelier theme', (tester) async {
+        await tester.pumpWidget(
+          createTestWidget(theme: AppTheme.atelierDarkTheme),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(TranslationEditorScreen), findsOneWidget);
       });
 
-      testWidgets('should render correctly with dark theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.dark()));
+      testWidgets('should render correctly with forge theme', (tester) async {
+        await tester.pumpWidget(
+          createTestWidget(theme: AppTheme.forgeDarkTheme),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(TranslationEditorScreen), findsOneWidget);
@@ -235,11 +252,11 @@ void main() {
     });
 
     group('Navigation', () {
-      testWidgets('should support back navigation', (tester) async {
+      testWidgets('should expose Projects crumb for back navigation', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byIcon(FluentIcons.arrow_left_24_regular), findsWidgets);
+        expect(find.text('Projects'), findsOneWidget);
       });
     });
   });

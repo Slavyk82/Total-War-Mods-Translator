@@ -32,13 +32,13 @@ void main() {
       expect(AppTheme.forgeDarkTheme.scaffoldBackgroundColor, forgeTokens.bg);
     });
 
-    test('both themes configure a ScrollbarTheme (thickness 20)', () {
+    test('both themes configure a ScrollbarTheme (default thickness)', () {
       for (final theme
           in [AppTheme.atelierDarkTheme, AppTheme.forgeDarkTheme]) {
         final sb = theme.scrollbarTheme;
-        final thickness =
-            sb.thickness?.resolve(const <WidgetState>{});
-        expect(thickness, 20.0);
+        // thickness is intentionally unset to inherit Material's default.
+        expect(sb.thickness, isNull);
+        expect(sb.thumbVisibility?.resolve(const <WidgetState>{}), isTrue);
       }
     });
 

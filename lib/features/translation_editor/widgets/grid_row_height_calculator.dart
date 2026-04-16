@@ -22,9 +22,11 @@ class _GridLayoutConstants {
       targetColumnWidth +
       actionsColumnWidth; // = 530
 
-  // Row heights.
-  static const double headerHeight = 48.0;
-  static const double rowBaseHeight = 56.0;
+  // Row heights. Tuned to match the editor mockup: a tighter 30px header and
+  // 44px base body row. Multi-line cells still expand via the dynamic
+  // measurement below — only the floor is shrunk.
+  static const double headerHeight = 30.0;
+  static const double rowBaseHeight = 44.0;
   static const double fallbackAvailableWidth = 400.0;
 
   // Text-column layout.

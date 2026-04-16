@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../../models/domain/translation_version.dart';
 
 /// Status cell widget for DataGrid
 ///
-/// Displays a status icon with color coding to indicate the translation version status
+/// Displays a 7x7px status dot with a token colour matching the translation
+/// version status (pending/translated/needs review).
 class StatusCellRenderer extends StatelessWidget {
   final TranslationVersionStatus status;
 
@@ -23,9 +24,12 @@ class StatusCellRenderer extends StatelessWidget {
   }
 }
 
-/// Status icon widget for DataGrid
+/// Status indicator widget rendered as a 7x7px dot.
 ///
-/// Renders the appropriate icon and color based on translation version status
+/// Colour mapping (per plan §4.3):
+/// - pending     -> tokens.textFaint
+/// - translated  -> tokens.ok
+/// - needsReview -> tokens.warn
 class StatusIcon extends StatelessWidget {
   final TranslationVersionStatus status;
 
@@ -36,35 +40,25 @@ class StatusIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = _getStatusIcon();
-    final color = _getStatusColor();
-
-    return Icon(
-      icon,
-      size: 16,
-      color: color,
+    final tokens = context.tokens;
+    return Container(
+      width: 7,
+      height: 7,
+      decoration: BoxDecoration(
+        color: _statusColor(tokens),
+        shape: BoxShape.circle,
+      ),
     );
   }
 
-  IconData _getStatusIcon() {
+  Color _statusColor(TwmtThemeTokens tokens) {
     switch (status) {
       case TranslationVersionStatus.pending:
-        return FluentIcons.circle_24_regular;
+        return tokens.textFaint;
       case TranslationVersionStatus.translated:
-        return FluentIcons.checkmark_circle_24_regular;
+        return tokens.ok;
       case TranslationVersionStatus.needsReview:
-        return FluentIcons.warning_24_regular;
-    }
-  }
-
-  Color _getStatusColor() {
-    switch (status) {
-      case TranslationVersionStatus.pending:
-        return Colors.grey;
-      case TranslationVersionStatus.translated:
-        return Colors.green;
-      case TranslationVersionStatus.needsReview:
-        return Colors.orange;
+        return tokens.warn;
     }
   }
 }
