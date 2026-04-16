@@ -46,7 +46,7 @@ class HomePageHeader extends ConsumerWidget {
                     ),
                   ),
                   loading: () => const SizedBox(height: 16),
-                  error: (_, __) => const SizedBox(height: 16),
+                  error: (_, _) => const SizedBox(height: 16),
                 ),
               ],
             ),
