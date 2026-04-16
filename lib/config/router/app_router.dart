@@ -120,7 +120,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: true,
     redirect: (context, state) => appRouterRedirect(state.uri.path),
     routes: [
-      // Shell route - wraps all main screens with MainLayout
+      // Shell route - wraps all main screens with MainLayoutRouter
       ShellRoute(
         builder: (context, state, child) {
           return MainLayoutRouter(child: child);
