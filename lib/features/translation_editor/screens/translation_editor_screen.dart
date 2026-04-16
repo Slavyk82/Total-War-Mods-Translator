@@ -6,7 +6,7 @@ import '../providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_toolbar.dart';
-import '../widgets/editor_sidebar.dart';
+import '../widgets/editor_filter_panel.dart';
 import '../widgets/editor_datagrid.dart';
 import '../widgets/editor_status_bar.dart';
 import 'translation_editor_actions.dart';
@@ -105,8 +105,8 @@ class _TranslationEditorScreenState
           Expanded(
             child: Row(
               children: [
-                // Left sidebar
-                EditorSidebar(
+                // Left filter panel
+                EditorFilterPanel(
                   projectId: widget.projectId,
                   languageId: widget.languageId,
                 ),
@@ -127,8 +127,6 @@ class _TranslationEditorScreenState
           ),
 
           // Bottom statusbar with live editor metrics.
-          // Note: the sidebar Statistics section still duplicates this for
-          // exactly one commit; Task 3 strips the sidebar copy.
           EditorStatusBar(
             projectId: widget.projectId,
             languageId: widget.languageId,

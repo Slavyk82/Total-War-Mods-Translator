@@ -141,8 +141,8 @@ void main() {
       });
     });
 
-    group('Sidebar', () {
-      testWidgets('should render EditorSidebar component', (tester) async {
+    group('Filter panel', () {
+      testWidgets('should render EditorFilterPanel component', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
