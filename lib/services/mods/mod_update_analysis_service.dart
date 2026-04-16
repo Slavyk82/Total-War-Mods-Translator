@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:uuid/uuid.dart';
+import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
@@ -50,6 +52,12 @@ class ModUpdateAnalysisService {
   final ILoggingService _logger;
   final Uuid _uuid = const Uuid();
 
+  /// Optional fire-and-forget activity logger for the Home dashboard feed.
+  /// Resolved from [ServiceLocator] when not supplied explicitly; remains
+  /// `null` if the locator has not been initialized (e.g. unit tests that
+  /// construct the service directly without a full locator).
+  final ActivityLogger? _activityLogger;
+
   ModUpdateAnalysisService({
     required IRpfmService rpfmService,
     required ILocalizationParser locParser,
@@ -57,12 +65,28 @@ class ModUpdateAnalysisService {
     required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
     ILoggingService? logger,
+    ActivityLogger? activityLogger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
         _versionRepository = versionRepository,
         _languageRepository = languageRepository,
-        _logger = logger ?? ServiceLocator.get<ILoggingService>();
+        _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _activityLogger = activityLogger ?? _tryResolveActivityLogger();
+
+  /// Best-effort lookup for the shared [ActivityLogger].
+  ///
+  /// Returns `null` if the [ServiceLocator] has not been initialized
+  /// or the logger is not registered — keeping this service usable
+  /// in unit tests that never call [ServiceLocator.initialize].
+  static ActivityLogger? _tryResolveActivityLogger() {
+    try {
+      if (!ServiceLocator.isRegistered<ActivityLogger>()) return null;
+      return ServiceLocator.get<ActivityLogger>();
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Analyze changes between pack file and existing project translations
   ///
@@ -182,6 +206,16 @@ class ModUpdateAnalysisService {
           '+${analysis.newUnitsCount} new, -${analysis.removedUnitsCount} removed, '
           '~${analysis.modifiedUnitsCount} modified, ↩${analysis.reactivatedUnitsCount} reactivated '
           '(pack: ${packUnits.length}, project: ${existingUnits.length})',
+        );
+        _activityLogger?.log(
+          ActivityEventType.modUpdatesDetected,
+          projectId: projectId,
+          gameCode: null,
+          payload: {
+            'count': analysis.newUnitsCount +
+                analysis.modifiedUnitsCount +
+                analysis.reactivatedUnitsCount,
+          },
         );
       }
 
