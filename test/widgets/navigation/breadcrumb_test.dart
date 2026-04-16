@@ -96,4 +96,32 @@ void main() {
     // Unknown segment falls back to raw text.
     expect(find.text('unknown-leaf'), findsOneWidget);
   });
+
+  testWidgets('tapping a non-last crumb invokes onCrumbTap with accumulated path',
+      (tester) async {
+    String? tapped;
+    final router = GoRouter(
+      initialLocation: '/work/projects',
+      routes: [
+        GoRoute(
+          path: '/work/projects',
+          builder: (_, _) => Scaffold(
+            body: Breadcrumb(
+              onCrumbTap: (ctx, p) => tapped = p,
+            ),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp.router(
+      theme: AppTheme.atelierDarkTheme,
+      routerConfig: router,
+    ));
+    await tester.pumpAndSettle();
+
+    // "Work" is the non-last crumb; tapping it should pass '/work' to the spy.
+    await tester.tap(find.text('Work'));
+    await tester.pump();
+    expect(tapped, '/work');
+  });
 }
