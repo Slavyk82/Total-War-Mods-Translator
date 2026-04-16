@@ -5,12 +5,12 @@ import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart';
 import '../../../models/events/batch_events.dart';
 import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
-import 'editor_data_grid_theme.dart';
 import 'editor_data_source.dart';
 import 'translation_history_dialog.dart';
 import 'prompt_preview_dialog.dart';
@@ -251,7 +251,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     return MouseRegion(
           cursor: SystemMouseCursors.basic,
           child: SfDataGridTheme(
-            data: editorGridThemeFromTokens(context.tokens),
+            data: buildTokenDataGridTheme(context.tokens),
             child: SfDataGrid(
                 source: _dataSource,
                 controller: _controller,

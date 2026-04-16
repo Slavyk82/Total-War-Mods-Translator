@@ -1,0 +1,371 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:path/path.dart' as p;
+
+import 'package:twmt/providers/clock_provider.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
+
+import '../providers/steam_publish_providers.dart';
+
+/// Column spec for the Steam Publish list (§7.1 filterable list archetype).
+/// Columns (fixed widths selected to match the checkbox + cover + action
+/// density of the sibling Mods list):
+///
+/// 1. checkbox (batch-selection toggle)
+/// 2. cover (pack preview)
+/// 3. title + pack filename mono (flex)
+/// 4. publish state badge
+/// 5. last published / exported (mono)
+/// 6. inline action
+const List<ListRowColumn> steamPublishColumns = [
+  ListRowColumn.fixed(40), // checkbox
+  ListRowColumn.fixed(56), // cover
+  ListRowColumn.flex(3), // title + filename
+  ListRowColumn.fixed(160), // publish state
+  ListRowColumn.fixed(140), // last published
+  ListRowColumn.fixed(180), // action
+];
+
+// =============================================================================
+// Selection checkbox
+// =============================================================================
+
+/// Batch-selection checkbox rendered in column 1.
+class SteamSelectionCheckbox extends StatelessWidget {
+  final bool selected;
+  final VoidCallback onToggle;
+
+  const SteamSelectionCheckbox({
+    super.key,
+    required this.selected,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Center(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onToggle,
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: selected ? tokens.accent : tokens.panel,
+              borderRadius: BorderRadius.circular(tokens.radiusXs),
+              border: Border.all(
+                color: selected ? tokens.accent : tokens.border,
+                width: 1.5,
+              ),
+            ),
+            child: selected
+                ? Icon(
+                    FluentIcons.checkmark_16_filled,
+                    size: 14,
+                    color: tokens.accentFg,
+                  )
+                : null,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Cover (pack preview image or fallback icon)
+// =============================================================================
+
+/// Pack preview image (or fallback icon) rendered in column 2.
+class SteamCoverCell extends StatelessWidget {
+  final PublishableItem item;
+
+  const SteamCoverCell({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final hasPack = item.hasPack;
+    final outputPath = item.outputPath;
+
+    Widget fallback() => Icon(
+          item.isCompilation
+              ? FluentIcons.stack_24_regular
+              : FluentIcons.box_24_regular,
+          size: 20,
+          color: tokens.textFaint,
+        );
+
+    Widget inner = fallback();
+    String? imagePath;
+    if (hasPack && outputPath.isNotEmpty) {
+      final packImagePath =
+          '${outputPath.substring(0, outputPath.lastIndexOf('.'))}.png';
+      if (File(packImagePath).existsSync()) {
+        imagePath = packImagePath;
+      } else if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+        imagePath = item.imageUrl;
+      }
+    } else if (item.imageUrl != null && item.imageUrl!.isNotEmpty) {
+      imagePath = item.imageUrl;
+    }
+
+    if (imagePath != null) {
+      try {
+        final bytes = File(imagePath).readAsBytesSync();
+        inner = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          width: 40,
+          height: 40,
+          errorBuilder: (_, _, _) => fallback(),
+        );
+      } catch (_) {
+        inner = fallback();
+      }
+    }
+
+    return Center(
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: tokens.panel,
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          border: Border.all(color: tokens.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        alignment: Alignment.center,
+        child: inner,
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Title + pack filename mono
+// =============================================================================
+
+/// Title block rendered in column 3 — display name + pack filename mono line.
+class SteamTitleBlock extends StatelessWidget {
+  final PublishableItem item;
+
+  const SteamTitleBlock({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final outputPath = item.outputPath;
+    final String subtitle;
+    if (outputPath.isNotEmpty) {
+      subtitle = p.basename(outputPath);
+    } else if (item.isCompilation) {
+      subtitle = 'Compilation · no pack yet';
+    } else {
+      subtitle = 'Project · no pack yet';
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              if (item.isCompilation) ...[
+                Icon(
+                  FluentIcons.stack_24_regular,
+                  size: 12,
+                  color: tokens.textDim,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  item.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tokens.fontMono.copyWith(
+              fontSize: 11,
+              color: tokens.textDim,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Publish state pill
+// =============================================================================
+
+/// Renders a publish-state badge in column 4. Three mutually-exclusive states:
+/// `NO PACK` (no pack on disk), `PUBLISHED` (pack + Workshop id) or
+/// `UNPUBLISHED` (pack but no Workshop id).
+class SteamStateCell extends StatelessWidget {
+  final PublishableItem item;
+
+  const SteamStateCell({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final hasPack = item.hasPack;
+    final publishedId = item.publishedSteamId;
+    final hasPublished = publishedId != null && publishedId.isNotEmpty;
+
+    final String label;
+    final Color fg;
+    final Color bg;
+    final IconData? icon;
+    final String tooltip;
+    if (!hasPack) {
+      label = 'No pack';
+      fg = tokens.warn;
+      bg = tokens.warnBg;
+      icon = FluentIcons.box_dismiss_24_regular;
+      tooltip = hasPublished
+          ? 'Workshop item #$publishedId — no local pack file'
+          : 'No pack file on disk — generate a pack first';
+    } else if (hasPublished) {
+      label = 'Published';
+      fg = tokens.ok;
+      bg = tokens.okBg;
+      icon = FluentIcons.cloud_checkmark_24_regular;
+      tooltip = 'Workshop item #$publishedId';
+    } else {
+      label = 'Unpublished';
+      fg = tokens.textDim;
+      bg = tokens.panel;
+      icon = FluentIcons.cloud_dismiss_24_regular;
+      tooltip = 'Pack ready — no Workshop id assigned yet';
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: StatusPill(
+          label: label,
+          foreground: fg,
+          background: bg,
+          icon: icon,
+          tooltip: tooltip,
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Last published / exported date (mono, relative)
+// =============================================================================
+
+/// Renders the most recent publish timestamp (or last export) relative to the
+/// ambient [clockProvider] in column 5.
+class SteamLastPublishedCell extends ConsumerWidget {
+  final PublishableItem item;
+
+  const SteamLastPublishedCell({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final publishedAt = item.publishedAt;
+    final exportedAt = item.exportedAt;
+
+    final now = ref.watch(clockProvider)();
+
+    // Prefer publish date when available. Fall back to export date; '-' when
+    // both are unset (fresh item).
+    final int? timestamp = publishedAt ?? (exportedAt > 0 ? exportedAt : null);
+    if (timestamp == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Text(
+          '-',
+          style: tokens.fontMono.copyWith(
+            fontSize: 11.5,
+            color: tokens.textFaint,
+          ),
+        ),
+      );
+    }
+
+    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+    final label = formatRelativeSince(date, now: now)!;
+
+    final bool isOutdated =
+        publishedAt != null && exportedAt > publishedAt;
+    Color fg;
+    IconData? icon;
+    String prefix;
+    if (publishedAt == null) {
+      // Export-only row (never published).
+      fg = tokens.textMid;
+      icon = null;
+      prefix = '';
+    } else if (isOutdated) {
+      fg = tokens.err;
+      icon = FluentIcons.warning_24_filled;
+      prefix = 'Outdated · ';
+    } else {
+      fg = tokens.ok;
+      icon = FluentIcons.checkmark_circle_24_regular;
+      prefix = '';
+    }
+    final tooltip = publishedAt != null
+        ? 'Last published: ${formatAbsoluteDate(date)}'
+        : 'Last exported: ${formatAbsoluteDate(date)}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 400),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: fg),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Text(
+                '$prefix$label',
+                overflow: TextOverflow.ellipsis,
+                style: tokens.fontMono.copyWith(
+                  fontSize: 11.5,
+                  color: fg,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

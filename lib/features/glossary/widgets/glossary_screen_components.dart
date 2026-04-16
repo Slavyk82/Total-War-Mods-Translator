@@ -4,48 +4,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/models/domain/game_installation.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/glossary_providers.dart';
-
-/// Header for the glossary list view.
-class GlossaryListHeader extends StatelessWidget {
-  const GlossaryListHeader({
-    super.key,
-    required this.onNewGlossary,
-  });
-
-  final VoidCallback onNewGlossary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.book_24_regular,
-            size: 32,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Glossary Management',
-              style: Theme.of(context).textTheme.headlineLarge,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 16),
-          GlossaryActionButton(
-            icon: FluentIcons.add_24_regular,
-            label: 'New Glossary',
-            tooltip: TooltipStrings.glossaryNew,
-            onPressed: onNewGlossary,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Header for the glossary editor view (with back button).
 class GlossaryEditorHeader extends ConsumerWidget {
@@ -318,43 +278,46 @@ class GlossaryEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            FluentIcons.book_24_regular,
-            size: 64,
-            color:
-                Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No glossaries yet',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create a glossary to manage your translation terminology',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.5),
-                ),
-          ),
-          const SizedBox(height: 24),
-          GlossaryActionButton(
-            icon: FluentIcons.add_24_regular,
-            label: 'Create New Glossary',
-            onPressed: onNewGlossary,
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.book_24_regular,
+              size: 56,
+              color: tokens.textFaint,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No glossaries yet',
+              style: tokens.fontDisplay.copyWith(
+                fontSize: 18,
+                color: tokens.text,
+                fontStyle: tokens.fontDisplayItalic
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create a glossary to manage your translation terminology',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            GlossaryActionButton(
+              icon: FluentIcons.add_24_regular,
+              label: 'Create New Glossary',
+              onPressed: onNewGlossary,
+            ),
+          ],
+        ),
       ),
     );
   }

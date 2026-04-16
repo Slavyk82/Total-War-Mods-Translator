@@ -1,19 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+
 import 'package:twmt/config/tooltip_strings.dart';
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+
 import '../providers/tm_providers.dart';
 import '../widgets/tm_browser_datagrid.dart';
-import '../widgets/tm_statistics_panel.dart';
-import '../widgets/tmx_import_dialog.dart';
-import '../widgets/tmx_export_dialog.dart';
-import '../widgets/tm_search_bar.dart';
 import '../widgets/tm_cleanup_dialog.dart';
 import '../widgets/tm_pagination_bar.dart';
-import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import '../widgets/tm_statistics_panel.dart';
+import '../widgets/tmx_export_dialog.dart';
+import '../widgets/tmx_import_dialog.dart';
 
-/// Main screen for Translation Memory management
+/// Main screen for Translation Memory management.
+///
+/// Migrated to the §7.1 filterable-list archetype in Plan 5a · Task 6:
+///  - Top chrome is a [FilterToolbar] (leading title + count, trailing search
+///    + Import/Export/Cleanup actions).
+///  - Left sidebar preserves the 280px [TmStatisticsPanel].
+///  - Right column stacks the tokenised [TmBrowserDataGrid] over the
+///    [TmPaginationBar].
 class TranslationMemoryScreen extends ConsumerStatefulWidget {
   const TranslationMemoryScreen({super.key});
 
@@ -26,44 +36,63 @@ class _TranslationMemoryScreenState
     extends ConsumerState<TranslationMemoryScreen> {
   @override
   Widget build(BuildContext context) {
-    return FluentScaffold(
-      body: Column(
+    final tokens = context.tokens;
+    final filtersState = ref.watch(tmFilterStateProvider);
+    final filterNotifier = ref.read(tmFilterStateProvider.notifier);
+    final totalAsync = ref.watch(tmEntriesCountProvider(
+      targetLang: filtersState.targetLanguage,
+    ));
+    final total = totalAsync.asData?.value ?? 0;
+
+    return Material(
+      color: tokens.bg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header
-          _buildHeader(context),
-
-          const Divider(height: 1),
-
-          // Main content
+          FilterToolbar(
+            leading: _Leading(total: total),
+            trailing: [
+              ListSearchField(
+                value: filtersState.searchText,
+                hintText: 'Search translation memory...',
+                onChanged: (value) {
+                  filterNotifier.setSearchText(value);
+                },
+                onClear: () => filterNotifier.setSearchText(''),
+              ),
+              SmallTextButton(
+                label: 'Import TMX',
+                icon: FluentIcons.arrow_import_24_regular,
+                tooltip: TooltipStrings.tmImport,
+                onTap: _showImportDialog,
+              ),
+              SmallTextButton(
+                label: 'Export TMX',
+                icon: FluentIcons.arrow_export_24_regular,
+                tooltip: TooltipStrings.tmExport,
+                onTap: _showExportDialog,
+              ),
+              SmallTextButton(
+                label: 'Cleanup',
+                icon: FluentIcons.broom_24_regular,
+                tooltip: TooltipStrings.tmCleanup,
+                onTap: _showCleanupDialog,
+              ),
+            ],
+          ),
           Expanded(
             child: Row(
               children: [
-                // Statistics panel (left sidebar) with fixed width
                 const SizedBox(
                   width: 280,
                   child: TmStatisticsPanel(),
                 ),
-
-                const VerticalDivider(width: 1),
-
-                // Main content area
-                Expanded(
+                VerticalDivider(width: 1, color: tokens.border),
+                const Expanded(
                   child: Column(
                     children: [
-                      // Toolbar
-                      _buildToolbar(context),
-
-                      const Divider(height: 1),
-
-                      // DataGrid
-                      const Expanded(
-                        child: TmBrowserDataGrid(),
-                      ),
-
-                      const Divider(height: 1),
-
-                      // Pagination
-                      const TmPaginationBar(),
+                      Expanded(child: TmBrowserDataGrid()),
+                      TmPaginationBar(),
                     ],
                   ),
                 ),
@@ -73,140 +102,6 @@ class _TranslationMemoryScreenState
         ],
       ),
     );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.database_24_regular,
-                size: 32,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Translation Memory',
-                style: Theme.of(context).textTheme.headlineLarge,
-              ),
-            ],
-          ),
-          // Action buttons
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildActionButton(
-                context,
-                icon: FluentIcons.arrow_import_24_regular,
-                label: 'Import',
-                tooltip: TooltipStrings.tmImport,
-                onPressed: () => _showImportDialog(),
-              ),
-              const SizedBox(width: 8),
-              _buildActionButton(
-                context,
-                icon: FluentIcons.arrow_export_24_regular,
-                label: 'Export',
-                tooltip: TooltipStrings.tmExport,
-                onPressed: () => _showExportDialog(),
-              ),
-              const SizedBox(width: 8),
-              _buildActionButton(
-                context,
-                icon: FluentIcons.broom_24_regular,
-                label: 'Cleanup',
-                tooltip: TooltipStrings.tmCleanup,
-                onPressed: () => _showCleanupDialog(),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolbar(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          // Search bar
-          const Expanded(
-            flex: 2,
-            child: TmSearchBar(),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Refresh button
-          _buildToolbarButton(
-            context,
-            icon: FluentIcons.arrow_clockwise_24_regular,
-            label: 'Refresh',
-            tooltip: TooltipStrings.refresh,
-            onPressed: () {
-              ref.invalidate(tmEntriesProvider);
-              ref.invalidate(tmStatisticsProvider);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    String? tooltip,
-  }) {
-    Widget button = FluentButton(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      child: Text(label),
-    );
-
-    if (tooltip != null) {
-      return Tooltip(
-        message: tooltip,
-        waitDuration: const Duration(milliseconds: 500),
-        child: button,
-      );
-    }
-
-    return button;
-  }
-
-  Widget _buildToolbarButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    String? tooltip,
-  }) {
-    Widget button = FluentTextButton(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      child: Text(label),
-    );
-
-    if (tooltip != null) {
-      return Tooltip(
-        message: tooltip,
-        waitDuration: const Duration(milliseconds: 500),
-        child: button,
-      );
-    }
-
-    return button;
   }
 
   void _showImportDialog() {
@@ -227,6 +122,43 @@ class _TranslationMemoryScreenState
     showDialog(
       context: context,
       builder: (context) => const TmCleanupDialog(),
+    );
+  }
+}
+
+/// Leading row 1 of the [FilterToolbar]: icon + title + entry count.
+class _Leading extends StatelessWidget {
+  final int total;
+  const _Leading({required this.total});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final noun = total == 1 ? 'entry' : 'entries';
+    return Row(
+      children: [
+        Icon(
+          FluentIcons.database_24_regular,
+          size: 20,
+          color: tokens.textMid,
+        ),
+        const SizedBox(width: 10),
+        Text(
+          'Translation Memory',
+          style: tokens.fontDisplay.copyWith(
+            fontSize: 20,
+            color: tokens.text,
+            fontStyle: tokens.fontDisplayItalic
+                ? FontStyle.italic
+                : FontStyle.normal,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          '$total $noun',
+          style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
+        ),
+      ],
     );
   }
 }
