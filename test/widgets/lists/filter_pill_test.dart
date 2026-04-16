@@ -62,4 +62,69 @@ void main() {
     expect(find.text('ÉTAT'), findsOneWidget);
     expect(find.byType(FilterPill), findsNWidgets(2));
   });
+
+  testWidgets('FilterPill renders Tooltip with message when tooltip is set', (t) async {
+    await t.pumpWidget(wrap(FilterPill(
+      label: 'X',
+      selected: false,
+      onToggle: () {},
+      tooltip: 'Filter description',
+    )));
+    expect(
+      find.descendant(
+        of: find.byType(FilterPill),
+        matching: find.byWidgetPredicate(
+          (w) => w is Tooltip && w.message == 'Filter description',
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('FilterPill has no Tooltip ancestor when tooltip is null', (t) async {
+    await t.pumpWidget(wrap(FilterPill(
+      label: 'X',
+      selected: false,
+      onToggle: () {},
+    )));
+    expect(
+      find.descendant(
+        of: find.byType(FilterPill),
+        matching: find.byType(Tooltip),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('FilterPillGroup renders clear terminator when a pill is selected', (t) async {
+    var cleared = false;
+    await t.pumpWidget(wrap(
+      FilterPillGroup(
+        label: 'STATE',
+        onClear: () => cleared = true,
+        clearLabel: 'Clear',
+        pills: [
+          FilterPill(label: 'A', selected: true, onToggle: () {}),
+          FilterPill(label: 'B', selected: false, onToggle: () {}),
+        ],
+      ),
+    ));
+    expect(find.text('Clear'), findsOneWidget);
+    await t.tap(find.text('Clear'));
+    expect(cleared, isTrue);
+  });
+
+  testWidgets('FilterPillGroup hides clear terminator when no pill is selected', (t) async {
+    await t.pumpWidget(wrap(
+      FilterPillGroup(
+        label: 'STATE',
+        onClear: () {},
+        pills: [
+          FilterPill(label: 'A', selected: false, onToggle: () {}),
+          FilterPill(label: 'B', selected: false, onToggle: () {}),
+        ],
+      ),
+    ));
+    expect(find.text('Clear'), findsNothing);
+  });
 }

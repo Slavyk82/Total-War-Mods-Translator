@@ -10,12 +10,16 @@ class FilterPill extends StatelessWidget {
   final int? count;
   final VoidCallback onToggle;
 
+  /// Optional tooltip shown on hover. Wraps the pill in a [Tooltip] when set.
+  final String? tooltip;
+
   const FilterPill({
     super.key,
     required this.label,
     required this.selected,
     required this.onToggle,
     this.count,
+    this.tooltip,
   });
 
   @override
@@ -24,7 +28,7 @@ class FilterPill extends StatelessWidget {
     final bg = selected ? tokens.accentBg : tokens.panel2;
     final borderColor = selected ? tokens.accent : tokens.border;
     final labelColor = selected ? tokens.accent : tokens.textMid;
-    return MouseRegion(
+    final core = MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         onTap: onToggle,
@@ -48,19 +52,47 @@ class FilterPill extends StatelessWidget {
         ),
       ),
     );
+    if (tooltip == null) return core;
+    return Tooltip(
+      message: tooltip!,
+      waitDuration: const Duration(milliseconds: 400),
+      child: core,
+    );
   }
 }
 
 /// A labelled group of [FilterPill]s — label caps-mono textDim + row of pills.
+///
+/// When [onClear] is provided and at least one pill is [FilterPill.selected],
+/// a terminator "x {clearLabel}" pill is appended to deselect/reset the group.
 class FilterPillGroup extends StatelessWidget {
   final String label;
   final List<FilterPill> pills;
 
-  const FilterPillGroup({super.key, required this.label, required this.pills});
+  /// Callback invoked when the terminator clear pill is tapped.
+  /// When null, the terminator pill is never rendered.
+  final VoidCallback? onClear;
+
+  /// Label shown on the terminator clear pill. Defaults to 'Clear'.
+  final String? clearLabel;
+
+  /// Optional tooltip for the terminator clear pill.
+  final String? clearTooltip;
+
+  const FilterPillGroup({
+    super.key,
+    required this.label,
+    required this.pills,
+    this.onClear,
+    this.clearLabel,
+    this.clearTooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final hasActive = pills.any((p) => p.selected);
+    final showClear = onClear != null && hasActive;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -70,7 +102,65 @@ class FilterPillGroup extends StatelessWidget {
           if (i > 0) const SizedBox(width: 6),
           pills[i],
         ],
+        if (showClear) ...[
+          const SizedBox(width: 6),
+          _FilterGroupClearPill(
+            label: clearLabel ?? 'Clear',
+            tooltip: clearTooltip,
+            onTap: onClear!,
+          ),
+        ],
       ],
+    );
+  }
+}
+
+/// Terminator pill that deselects all sibling [FilterPill]s in a group.
+/// Styled as a neutral outlined pill with a leading dismiss icon.
+class _FilterGroupClearPill extends StatelessWidget {
+  final String label;
+  final String? tooltip;
+  final VoidCallback onTap;
+
+  const _FilterGroupClearPill({
+    required this.label,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final core = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: tokens.panel2,
+            border: Border.all(color: tokens.border),
+            borderRadius: BorderRadius.circular(tokens.radiusPill),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.close, size: 12, color: tokens.textDim),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (tooltip == null) return core;
+    return Tooltip(
+      message: tooltip!,
+      waitDuration: const Duration(milliseconds: 400),
+      child: core,
     );
   }
 }

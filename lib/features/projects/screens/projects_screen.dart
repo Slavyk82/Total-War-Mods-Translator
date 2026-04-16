@@ -6,11 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../config/router/app_router.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/projects_screen_providers.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
@@ -131,10 +135,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       projectsFilterProvider.select((s) => s.quickFilter),
     );
 
-    FilterPill pill(String label, ProjectQuickFilter filter) {
+    FilterPill pill(String label, ProjectQuickFilter filter, String tooltip) {
       return FilterPill(
         label: label,
         selected: currentFilter == filter,
+        tooltip: tooltip,
         onToggle: () {
           ref.read(projectsFilterProvider.notifier).setQuickFilter(
                 currentFilter == filter ? ProjectQuickFilter.none : filter,
@@ -145,13 +150,42 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
     return FilterPillGroup(
       label: 'STATE',
+      clearLabel: 'Clear',
+      clearTooltip: TooltipStrings.projectsFilterClear,
+      onClear: () => ref
+          .read(projectsFilterProvider.notifier)
+          .setQuickFilter(ProjectQuickFilter.none),
       pills: [
-        pill('Needs Update', ProjectQuickFilter.needsUpdate),
-        pill('Incomplete', ProjectQuickFilter.incomplete),
-        pill('Has Complete', ProjectQuickFilter.hasCompleteLanguage),
-        pill('Exported', ProjectQuickFilter.exported),
-        pill('Not Exported', ProjectQuickFilter.notExported),
-        pill('Export Outdated', ProjectQuickFilter.exportOutdated),
+        pill(
+          'Needs Update',
+          ProjectQuickFilter.needsUpdate,
+          TooltipStrings.projectsFilterNeedsUpdate,
+        ),
+        pill(
+          'Incomplete',
+          ProjectQuickFilter.incomplete,
+          TooltipStrings.projectsFilterIncomplete,
+        ),
+        pill(
+          'Has Complete',
+          ProjectQuickFilter.hasCompleteLanguage,
+          TooltipStrings.projectsFilterHasComplete,
+        ),
+        pill(
+          'Exported',
+          ProjectQuickFilter.exported,
+          TooltipStrings.projectsFilterExported,
+        ),
+        pill(
+          'Not Exported',
+          ProjectQuickFilter.notExported,
+          TooltipStrings.projectsFilterNotExported,
+        ),
+        pill(
+          'Export Outdated',
+          ProjectQuickFilter.exportOutdated,
+          TooltipStrings.projectsFilterExportOutdated,
+        ),
       ],
     );
   }
@@ -336,14 +370,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     BuildContext context,
     List<ProjectWithDetails> allProjects,
     BatchProjectSelectionState selectionState,
-    List<dynamic> languages,
+    List<Language> languages,
   ) {
     if (!selectionState.canExport) return;
 
-    final selectedLanguage = languages.cast<dynamic>().firstWhere(
-          (l) => l.id == selectionState.selectedLanguageId,
-          orElse: () => null,
-        );
+    final Language? selectedLanguage = _findLanguage(
+      languages,
+      selectionState.selectedLanguageId,
+    );
     if (selectedLanguage == null) return;
 
     final projectsToExport = allProjects
@@ -363,105 +397,36 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }
 }
 
+/// Returns the first [Language] whose id matches [id], or null if not found.
+/// Replaces the older untyped `firstWhere(..., orElse: () => null)` pattern.
+Language? _findLanguage(List<Language> languages, String? id) {
+  if (id == null) return null;
+  for (final l in languages) {
+    if (l.id == id) return l;
+  }
+  return null;
+}
+
 // =============================================================================
 // Toolbar widgets (search, sort, selection toggle)
 // =============================================================================
 
-class _SearchField extends ConsumerStatefulWidget {
+class _SearchField extends ConsumerWidget {
   const _SearchField();
 
   @override
-  ConsumerState<_SearchField> createState() => _SearchFieldState();
-}
-
-class _SearchFieldState extends ConsumerState<_SearchField> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(
-      text: ref.read(projectsFilterProvider).searchQuery,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    // Sync controller if filter is reset externally (e.g. resetAll).
-    final filterQuery =
+  Widget build(BuildContext context, WidgetRef ref) {
+    final query =
         ref.watch(projectsFilterProvider.select((s) => s.searchQuery));
-    if (filterQuery != _controller.text) {
-      _controller.value = _controller.value.copyWith(
-        text: filterQuery,
-        selection: TextSelection.collapsed(offset: filterQuery.length),
-      );
-    }
-    return SizedBox(
-      width: 260,
-      height: 32,
-      child: TextField(
-        controller: _controller,
-        style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
-        onChanged: (value) => ref
-            .read(projectsFilterProvider.notifier)
-            .updateSearchQuery(value),
-        decoration: InputDecoration(
-          isDense: true,
-          filled: true,
-          fillColor: tokens.panel2,
-          hintText: 'Search projects...',
-          hintStyle: tokens.fontBody.copyWith(
-            fontSize: 13,
-            color: tokens.textFaint,
-          ),
-          prefixIcon: Icon(
-            FluentIcons.search_24_regular,
-            size: 16,
-            color: tokens.textDim,
-          ),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 32, minHeight: 32),
-          suffixIcon: _controller.text.isNotEmpty
-              ? MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () {
-                      _controller.clear();
-                      ref
-                          .read(projectsFilterProvider.notifier)
-                          .updateSearchQuery('');
-                    },
-                    child: Icon(
-                      FluentIcons.dismiss_circle_24_regular,
-                      size: 16,
-                      color: tokens.textDim,
-                    ),
-                  ),
-                )
-              : null,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(tokens.radiusSm),
-            borderSide: BorderSide(color: tokens.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(tokens.radiusSm),
-            borderSide: BorderSide(color: tokens.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(tokens.radiusSm),
-            borderSide: BorderSide(color: tokens.accent),
-          ),
-        ),
-      ),
+    return ListSearchField(
+      value: query,
+      hintText: 'Search projects...',
+      onChanged: (value) => ref
+          .read(projectsFilterProvider.notifier)
+          .updateSearchQuery(value),
+      onClear: () => ref
+          .read(projectsFilterProvider.notifier)
+          .updateSearchQuery(''),
     );
   }
 }
@@ -613,7 +578,7 @@ class _SelectionModeButton extends ConsumerWidget {
 
 class _SelectionBar extends ConsumerWidget {
   final BatchProjectSelectionState selectionState;
-  final List<dynamic> languages;
+  final List<Language> languages;
   final List<String> allProjectIds;
   final VoidCallback onExportSelected;
 
@@ -627,10 +592,10 @@ class _SelectionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
-    final selectedLanguage = languages.cast<dynamic>().firstWhere(
-          (l) => l.id == selectionState.selectedLanguageId,
-          orElse: () => null,
-        );
+    final Language? selectedLanguage = _findLanguage(
+      languages,
+      selectionState.selectedLanguageId,
+    );
     final canExport = selectionState.canExport;
     return Container(
       height: 40,
@@ -657,7 +622,7 @@ class _SelectionBar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          _SmallTextButton(
+          SmallTextButton(
             label: 'All',
             tooltip: 'Select all projects',
             onTap: () => ref
@@ -665,7 +630,7 @@ class _SelectionBar extends ConsumerWidget {
                 .selectAll(allProjectIds),
           ),
           const SizedBox(width: 6),
-          _SmallTextButton(
+          SmallTextButton(
             label: 'None',
             tooltip: 'Deselect all projects',
             onTap: () => ref
@@ -682,9 +647,9 @@ class _SelectionBar extends ConsumerWidget {
             itemBuilder: (context) => languages
                 .map<PopupMenuEntry<String>>(
                   (lang) => PopupMenuItem<String>(
-                    value: lang.id as String,
+                    value: lang.id,
                     child: Text(
-                      lang.name as String,
+                      lang.name,
                       style: tokens.fontBody
                           .copyWith(fontSize: 13, color: tokens.text),
                     ),
@@ -774,7 +739,7 @@ class _SelectionBar extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 6),
-          _SmallTextButton(
+          SmallTextButton(
             label: 'Cancel',
             tooltip: 'Exit selection mode',
             onTap: () => ref
@@ -782,50 +747,6 @@ class _SelectionBar extends ConsumerWidget {
                 .exitSelectionMode(),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SmallTextButton extends StatelessWidget {
-  final String label;
-  final String tooltip;
-  final VoidCallback onTap;
-  const _SmallTextButton({
-    required this.label,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: tokens.panel2,
-              border: Border.all(color: tokens.border),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              label,
-              style: tokens.fontBody.copyWith(
-                fontSize: 12.5,
-                color: tokens.textMid,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1212,15 +1133,15 @@ class _StatusPill extends StatelessWidget {
     );
   }
 
-  String _buildChangesTooltip(dynamic analysis) {
+  String _buildChangesTooltip(ModUpdateAnalysis analysis) {
     final lines = <String>[];
-    if (analysis.hasNewUnits == true) {
+    if (analysis.hasNewUnits) {
       lines.add('+${analysis.newUnitsCount} new translations to add');
     }
-    if (analysis.hasRemovedUnits == true) {
+    if (analysis.hasRemovedUnits) {
       lines.add('-${analysis.removedUnitsCount} translations removed');
     }
-    if (analysis.hasModifiedUnits == true) {
+    if (analysis.hasModifiedUnits) {
       lines.add('~${analysis.modifiedUnitsCount} source texts changed');
     }
     return lines.join('\n');

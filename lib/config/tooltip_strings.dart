@@ -51,6 +51,11 @@ class TooltipStrings {
       'Show projects with at least one language fully translated';
   static const String projectsFilterExportOutdated =
       'Show projects modified since their last export';
+  static const String projectsFilterExported =
+      'Show only projects that have been exported';
+  static const String projectsFilterNotExported =
+      'Show only projects that have never been exported';
+  static const String projectsFilterClear = 'Clear the active state filter';
   static const String projectsSortName = 'Sort projects alphabetically by name';
   static const String projectsSortDate =
       'Sort projects by most recently updated first';
