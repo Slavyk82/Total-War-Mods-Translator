@@ -84,6 +84,12 @@ List<Override> _populatedOverrides() => [
       selectedGlossaryProvider.overrideWith(_MockSelectedGlossaryNotifier.new),
     ];
 
+List<Override> _emptyOverrides() => [
+      clockProvider.overrideWithValue(() => _pinnedNow),
+      glossariesProvider().overrideWith((_) async => <Glossary>[]),
+      selectedGlossaryProvider.overrideWith(_MockSelectedGlossaryNotifier.new),
+    ];
+
 void main() {
   setUp(() async {
     await setupMockServices();
@@ -121,6 +127,22 @@ void main() {
     await expectLater(
       find.byType(GlossaryScreen),
       matchesGoldenFile('../goldens/glossary_forge_populated.png'),
+    );
+  });
+
+  testWidgets('glossary atelier empty', (t) async {
+    await pumpUnder(t, AppTheme.atelierDarkTheme, _emptyOverrides());
+    await expectLater(
+      find.byType(GlossaryScreen),
+      matchesGoldenFile('../goldens/glossary_atelier_empty.png'),
+    );
+  });
+
+  testWidgets('glossary forge empty', (t) async {
+    await pumpUnder(t, AppTheme.forgeDarkTheme, _emptyOverrides());
+    await expectLater(
+      find.byType(GlossaryScreen),
+      matchesGoldenFile('../goldens/glossary_forge_empty.png'),
     );
   });
 }

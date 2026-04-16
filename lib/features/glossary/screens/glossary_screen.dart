@@ -82,11 +82,16 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
 
   Widget _buildGlossaryListView(BuildContext context) {
     final glossariesAsync = ref.watch(glossariesProvider());
+    // Compute the filtered list ONCE per rebuild. The toolbar and the
+    // grid body both need it; running `_applyListSearch` twice would be
+    // wasteful on the larger datasets Translation Memory will mirror.
+    final all = glossariesAsync.asData?.value ?? const <Glossary>[];
+    final filtered = _applyListSearch(all);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildListToolbar(glossariesAsync),
+        _buildListToolbar(totalCount: all.length, filteredCount: filtered.length),
         Expanded(
           child: glossariesAsync.when(
             data: (glossaries) {
@@ -95,12 +100,11 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   onNewGlossary: _showNewGlossaryDialog,
                 );
               }
-              final visible = _applyListSearch(glossaries);
-              if (visible.isEmpty) {
+              if (filtered.isEmpty) {
                 return _buildNoMatchesState(context);
               }
               return GlossaryList(
-                glossaries: visible,
+                glossaries: filtered,
                 gameInstallations: _gameInstallations,
                 onGlossaryTap: (glossary) {
                   ref.read(selectedGlossaryProvider.notifier).select(glossary);
@@ -116,12 +120,10 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  Widget _buildListToolbar(AsyncValue<List<Glossary>> async) {
-    final all = async.asData?.value ?? const <Glossary>[];
-    final filtered = _applyListSearch(all);
+  Widget _buildListToolbar({required int totalCount, required int filteredCount}) {
     return GlossaryToolbar(
-      totalCount: all.length,
-      filteredCount: filtered.length,
+      totalCount: totalCount,
+      filteredCount: filteredCount,
       searchQuery: _listSearchQuery,
       onSearchChanged: (value) => setState(() => _listSearchQuery = value),
       onNewGlossary: _showNewGlossaryDialog,

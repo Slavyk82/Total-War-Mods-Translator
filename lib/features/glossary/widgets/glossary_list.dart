@@ -92,9 +92,13 @@ class _GlossaryListState extends ConsumerState<GlossaryList> {
           // column handles its own taps via the embedded GestureDetector.
           if (details.rowColumnIndex.rowIndex <= 0) return;
           if (details.column.columnName == 'actions') return;
-          final index = details.rowColumnIndex.rowIndex - 1;
-          if (index < 0 || index >= widget.glossaries.length) return;
-          widget.onGlossaryTap?.call(widget.glossaries[index]);
+          // Resolve the row via the data source rather than indexing the
+          // upstream list by `rowIndex - 1`. This insulates the callback
+          // from any future header/frozen-row arithmetic drift.
+          final glossary =
+              _dataSource.glossaryAtRow(details.rowColumnIndex.rowIndex - 1);
+          if (glossary == null) return;
+          widget.onGlossaryTap?.call(glossary);
         },
         columns: [
           GridColumn(
@@ -173,11 +177,23 @@ class _GlossaryDataSource extends DataGridSource {
   @override
   List<DataGridRow> get rows => _rows;
 
+  /// Resolve the [Glossary] backing the row at [rowIndex] inside [rows]
+  /// (NOT the grid's absolute row index — callers must already subtract
+  /// the header row). Returns `null` when the index is out of range so
+  /// grid callbacks can fail silently on stale taps.
+  Glossary? glossaryAtRow(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= _rows.length) return null;
+    final value = _rows[rowIndex].getCells().first.value;
+    return value is Glossary ? value : null;
+  }
+
   @override
   DataGridRowAdapter? buildRow(DataGridRow row) {
-    final index = _rows.indexOf(row);
-    if (index < 0 || index >= glossaries.length) return null;
-    final glossary = glossaries[index];
+    // O(1) lookup: the first cell of every row carries the [Glossary] as
+    // its typed `value`, which avoids the O(n) `_rows.indexOf(row)` scan
+    // that would otherwise run on every rebuild.
+    final glossary = row.getCells().first.value as Glossary?;
+    if (glossary == null) return null;
     final gameName = glossary.gameInstallationId == null
         ? null
         : gameInstallations[glossary.gameInstallationId]?.gameName;
@@ -289,7 +305,11 @@ class _TypeCell extends StatelessWidget {
               ? FluentIcons.globe_24_regular
               : FluentIcons.games_24_regular,
           foreground: isUniversal ? tokens.accent : tokens.textMid,
-          background: isUniversal ? tokens.accentBg : tokens.panel2,
+          // The game-specific pill uses `tokens.bg` (not `tokens.panel2`)
+          // because the grid theme sets `rowHoverColor: tokens.panel2`.
+          // Matching both values would make the pill disappear on hover
+          // in the Forge palette.
+          background: isUniversal ? tokens.accentBg : tokens.bg,
           tooltip:
               isUniversal ? 'Shared across every game' : 'Scoped to this game',
         ),
