@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../widgets/welcome_card.dart';
-import '../widgets/stats_cards.dart';
 import '../widgets/recent_projects_card.dart';
 
 /// Home/Dashboard screen
@@ -19,10 +18,6 @@ class HomeScreen extends StatelessWidget {
           children: [
             // Welcome Card
             const WelcomeCard(),
-            const SizedBox(height: 24),
-
-            // Statistics Cards
-            const StatsCards(),
             const SizedBox(height: 24),
 
             // Recent Projects

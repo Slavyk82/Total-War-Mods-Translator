@@ -63,8 +63,8 @@ class RecentProjectsCard extends ConsumerWidget {
                 }
 
                 return Column(
-                  children: projects.map((project) =>
-                    _ProjectTile(project: project)
+                  children: projects.map((entry) =>
+                    _ProjectTile(project: entry.project)
                   ).toList(),
                 );
               },
