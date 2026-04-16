@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:twmt/models/domain/game_installation.dart';
-import 'package:twmt/services/glossary/models/glossary.dart';
-import 'glossary_card.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
+import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
-/// List layout for displaying glossary cards.
+import 'package:twmt/models/domain/game_installation.dart';
+import 'package:twmt/providers/clock_provider.dart';
+import 'package:twmt/services/glossary/models/glossary.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
+
+/// Dense-list grid for browsing glossaries.
 ///
-/// Displays glossary cards grouped by type (Universal / Game-specific).
-class GlossaryList extends StatelessWidget {
+/// Migrated from the legacy card layout to the §7.1 dense-list archetype
+/// backed by a tokenised [SfDataGrid]. A row tap delegates to
+/// [onGlossaryTap] which the screen uses to switch to the inline entry
+/// editor view. The delete trailing action calls [onDeleteGlossary]. All
+/// chrome (grid theme, cell backgrounds, pills, delete action) reads from
+/// [TwmtThemeTokens]; no `Theme.of(context).colorScheme` or hard-coded
+/// hex values remain here.
+class GlossaryList extends ConsumerStatefulWidget {
   final List<Glossary> glossaries;
   final Map<String, GameInstallation> gameInstallations;
   final void Function(Glossary glossary)? onGlossaryTap;
@@ -21,99 +36,356 @@ class GlossaryList extends StatelessWidget {
   });
 
   @override
+  ConsumerState<GlossaryList> createState() => _GlossaryListState();
+}
+
+class _GlossaryListState extends ConsumerState<GlossaryList> {
+  late _GlossaryDataSource _dataSource;
+
+  @override
+  void initState() {
+    super.initState();
+    _dataSource = _buildDataSource();
+  }
+
+  @override
+  void didUpdateWidget(covariant GlossaryList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-seed the Syncfusion data source whenever the upstream list, the
+    // game-installation map, or the delete callback identity changes.
+    if (oldWidget.glossaries != widget.glossaries ||
+        oldWidget.gameInstallations != widget.gameInstallations ||
+        oldWidget.onDeleteGlossary != widget.onDeleteGlossary) {
+      _dataSource = _buildDataSource();
+    }
+  }
+
+  _GlossaryDataSource _buildDataSource() => _GlossaryDataSource(
+        glossaries: widget.glossaries,
+        gameInstallations: widget.gameInstallations,
+        onDelete: widget.onDeleteGlossary,
+      );
+
+  @override
   Widget build(BuildContext context) {
-    if (glossaries.isEmpty) {
+    final tokens = context.tokens;
+
+    if (widget.glossaries.isEmpty) {
       return const SizedBox.shrink();
     }
 
-    // Group glossaries by type
-    final universalGlossaries = glossaries.where((g) => g.isGlobal).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-    final gameSpecificGlossaries = glossaries.where((g) => !g.isGlobal).toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
-
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        // Universal glossaries section
-        if (universalGlossaries.isNotEmpty) ...[
-          _buildSectionHeader(context, 'Universal Glossaries', isUniversal: true),
-          const SizedBox(height: 12),
-          ...universalGlossaries.map(
-            (glossary) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: GlossaryCard(
-                glossary: glossary,
-                onTap: () => onGlossaryTap?.call(glossary),
-                onDelete: onDeleteGlossary != null
-                    ? () => onDeleteGlossary?.call(glossary)
-                    : null,
-              ),
-            ),
+    return SfDataGridTheme(
+      data: buildTokenDataGridTheme(tokens),
+      child: SfDataGrid(
+        source: _dataSource,
+        allowSorting: false,
+        allowFiltering: false,
+        columnWidthMode: ColumnWidthMode.fill,
+        gridLinesVisibility: GridLinesVisibility.horizontal,
+        headerGridLinesVisibility: GridLinesVisibility.horizontal,
+        selectionMode: SelectionMode.single,
+        navigationMode: GridNavigationMode.cell,
+        rowHeight: 48,
+        headerRowHeight: 32,
+        onCellTap: (details) {
+          // Header rows have rowIndex 0; body rows start at 1. The action
+          // column handles its own taps via the embedded GestureDetector.
+          if (details.rowColumnIndex.rowIndex <= 0) return;
+          if (details.column.columnName == 'actions') return;
+          final index = details.rowColumnIndex.rowIndex - 1;
+          if (index < 0 || index >= widget.glossaries.length) return;
+          widget.onGlossaryTap?.call(widget.glossaries[index]);
+        },
+        columns: [
+          GridColumn(
+            columnName: 'name',
+            columnWidthMode: ColumnWidthMode.fill,
+            label: _headerCell(tokens, 'NAME', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'type',
+            width: 180,
+            label: _headerCell(tokens, 'TYPE', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'entries',
+            width: 100,
+            label: _headerCell(tokens, 'ENTRIES', Alignment.centerRight),
+          ),
+          GridColumn(
+            columnName: 'updated',
+            width: 140,
+            label: _headerCell(tokens, 'UPDATED', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'actions',
+            width: 72,
+            label: _headerCell(tokens, '', Alignment.center),
           ),
         ],
-
-        // Spacing between sections
-        if (universalGlossaries.isNotEmpty && gameSpecificGlossaries.isNotEmpty)
-          const SizedBox(height: 24),
-
-        // Game-specific glossaries section
-        if (gameSpecificGlossaries.isNotEmpty) ...[
-          _buildSectionHeader(context, 'Game-specific Glossaries', isUniversal: false),
-          const SizedBox(height: 12),
-          ...gameSpecificGlossaries.map(
-            (glossary) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: GlossaryCard(
-                glossary: glossary,
-                gameName: _getGameName(glossary.gameInstallationId),
-                onTap: () => onGlossaryTap?.call(glossary),
-                onDelete: onDeleteGlossary != null
-                    ? () => onDeleteGlossary?.call(glossary)
-                    : null,
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 
-  String? _getGameName(String? gameInstallationId) {
-    if (gameInstallationId == null) return null;
-    return gameInstallations[gameInstallationId]?.gameName;
+  Widget _headerCell(TwmtThemeTokens tokens, String label, Alignment align) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: align,
+      child: Text(
+        label,
+        style: tokens.fontMono.copyWith(
+          fontSize: 11,
+          color: tokens.textDim,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Data source
+// =============================================================================
+
+class _GlossaryDataSource extends DataGridSource {
+  _GlossaryDataSource({
+    required this.glossaries,
+    required this.gameInstallations,
+    required this.onDelete,
+  }) {
+    _rows = glossaries
+        .map((g) => DataGridRow(cells: [
+              DataGridCell<Glossary>(columnName: 'name', value: g),
+              DataGridCell<Glossary>(columnName: 'type', value: g),
+              DataGridCell<int>(columnName: 'entries', value: g.entryCount),
+              DataGridCell<int>(columnName: 'updated', value: g.updatedAt),
+              DataGridCell<Glossary>(columnName: 'actions', value: g),
+            ]))
+        .toList();
   }
 
-  Widget _buildSectionHeader(
-    BuildContext context,
-    String title, {
-    required bool isUniversal,
-  }) {
-    final theme = Theme.of(context);
+  final List<Glossary> glossaries;
+  final Map<String, GameInstallation> gameInstallations;
+  final void Function(Glossary glossary)? onDelete;
 
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 20,
-          decoration: BoxDecoration(
-            color: isUniversal
-                ? theme.colorScheme.primary
-                : theme.colorScheme.secondary,
-            borderRadius: BorderRadius.circular(2),
-          ),
+  List<DataGridRow> _rows = const [];
+
+  @override
+  List<DataGridRow> get rows => _rows;
+
+  @override
+  DataGridRowAdapter? buildRow(DataGridRow row) {
+    final index = _rows.indexOf(row);
+    if (index < 0 || index >= glossaries.length) return null;
+    final glossary = glossaries[index];
+    final gameName = glossary.gameInstallationId == null
+        ? null
+        : gameInstallations[glossary.gameInstallationId]?.gameName;
+
+    return DataGridRowAdapter(
+      cells: [
+        RepaintBoundary(child: _NameCell(glossary: glossary)),
+        RepaintBoundary(
+          child: _TypeCell(glossary: glossary, gameName: gameName),
         ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: isUniversal
-                ? theme.colorScheme.primary
-                : theme.colorScheme.secondary,
+        RepaintBoundary(child: _EntriesCell(count: glossary.entryCount)),
+        RepaintBoundary(child: _UpdatedCell(updatedAt: glossary.updatedAt)),
+        RepaintBoundary(
+          child: _ActionsCell(
+            glossary: glossary,
+            onDelete: onDelete,
           ),
         ),
       ],
+    );
+  }
+}
+
+// =============================================================================
+// Cells
+// =============================================================================
+
+class _NameCell extends StatelessWidget {
+  final Glossary glossary;
+  const _NameCell({required this.glossary});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final description = glossary.description;
+    final hasDescription = description != null && description.isNotEmpty;
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            glossary.isGlobal
+                ? FluentIcons.globe_24_regular
+                : FluentIcons.games_24_regular,
+            size: 16,
+            color: tokens.textMid,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  glossary.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hasDescription) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 11.5,
+                      color: tokens.textDim,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypeCell extends StatelessWidget {
+  final Glossary glossary;
+  final String? gameName;
+
+  const _TypeCell({required this.glossary, required this.gameName});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final isUniversal = glossary.isGlobal;
+    final label =
+        isUniversal ? 'UNIVERSAL' : (gameName ?? 'GAME-SPECIFIC').toUpperCase();
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: StatusPill(
+          label: label,
+          icon: isUniversal
+              ? FluentIcons.globe_24_regular
+              : FluentIcons.games_24_regular,
+          foreground: isUniversal ? tokens.accent : tokens.textMid,
+          background: isUniversal ? tokens.accentBg : tokens.panel2,
+          tooltip:
+              isUniversal ? 'Shared across every game' : 'Scoped to this game',
+        ),
+      ),
+    );
+  }
+}
+
+class _EntriesCell extends StatelessWidget {
+  final int count;
+  const _EntriesCell({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        count.toString(),
+        style: tokens.fontMono.copyWith(fontSize: 12.5, color: tokens.textMid),
+      ),
+    );
+  }
+}
+
+class _UpdatedCell extends ConsumerWidget {
+  final int updatedAt;
+  const _UpdatedCell({required this.updatedAt});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final now = ref.watch(clockProvider).call();
+    final date = DateTime.fromMillisecondsSinceEpoch(updatedAt);
+    final relative = formatRelativeSince(date, now: now) ?? '—';
+    final absolute = formatAbsoluteDate(date);
+
+    final label = Text(
+      relative,
+      style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
+    );
+
+    return Container(
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: absolute == null
+          ? label
+          : Tooltip(
+              message: absolute,
+              waitDuration: const Duration(milliseconds: 400),
+              child: label,
+            ),
+    );
+  }
+}
+
+class _ActionsCell extends StatelessWidget {
+  final Glossary glossary;
+  final void Function(Glossary glossary)? onDelete;
+
+  const _ActionsCell({required this.glossary, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    if (onDelete == null) return const SizedBox.shrink();
+    final tokens = context.tokens;
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: 'Delete glossary',
+        waitDuration: const Duration(milliseconds: 400),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onDelete!(glossary),
+            child: Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: tokens.errBg,
+                border: Border.all(color: tokens.err.withValues(alpha: 0.4)),
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+              ),
+              child: Icon(
+                FluentIcons.delete_24_regular,
+                size: 14,
+                color: tokens.err,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

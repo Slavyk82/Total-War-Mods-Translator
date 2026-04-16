@@ -1,23 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+
+import 'package:twmt/models/domain/game_installation.dart';
+import 'package:twmt/models/domain/glossary_entry.dart';
+import 'package:twmt/services/glossary/models/glossary.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import '../providers/glossary_providers.dart';
-import '../widgets/glossary_list.dart';
-import '../widgets/glossary_datagrid.dart';
-import '../widgets/glossary_statistics_panel.dart';
-import '../widgets/glossary_entry_editor.dart';
-import '../widgets/glossary_import_dialog.dart';
-import '../widgets/glossary_export_dialog.dart';
-import '../widgets/glossary_new_dialog.dart';
-import '../widgets/glossary_screen_components.dart';
-import 'package:twmt/services/glossary/models/glossary.dart';
-import 'package:twmt/models/domain/game_installation.dart';
+
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/shared/service_providers.dart';
+import '../providers/glossary_providers.dart';
+import '../widgets/glossary_datagrid.dart';
+import '../widgets/glossary_entry_editor.dart';
+import '../widgets/glossary_export_dialog.dart';
+import '../widgets/glossary_import_dialog.dart';
+import '../widgets/glossary_list.dart';
+import '../widgets/glossary_new_dialog.dart';
+import '../widgets/glossary_screen_components.dart';
+import '../widgets/glossary_statistics_panel.dart';
+import '../widgets/glossary_toolbar.dart';
 
 /// Main screen for Glossary management.
+///
+/// List view uses the §7.1 filterable-list archetype ([GlossaryToolbar]
+/// on top of a tokenised [SfDataGrid]). Selecting a row swaps in the
+/// inline entry editor view — preserved untouched from the legacy
+/// implementation per Plan 5a Task 5 scope.
 class GlossaryScreen extends ConsumerStatefulWidget {
   const GlossaryScreen({super.key});
 
@@ -26,8 +36,9 @@ class GlossaryScreen extends ConsumerStatefulWidget {
 }
 
 class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
-  final _searchController = TextEditingController();
+  final _entrySearchController = TextEditingController();
   Map<String, GameInstallation> _gameInstallations = {};
+  String _listSearchQuery = '';
 
   @override
   void initState() {
@@ -42,7 +53,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
       ok: (games) {
         if (mounted) {
           setState(() {
-            _gameInstallations = {for (var g in games) g.id: g};
+            _gameInstallations = {for (final g in games) g.id: g};
           });
         }
       },
@@ -52,16 +63,18 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _entrySearchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final selectedGlossary = ref.watch(selectedGlossaryProvider);
 
-    return FluentScaffold(
-      body: selectedGlossary == null
+    return Material(
+      color: tokens.bg,
+      child: selectedGlossary == null
           ? _buildGlossaryListView(context)
           : _buildGlossaryEditorView(context, selectedGlossary),
     );
@@ -71,34 +84,129 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     final glossariesAsync = ref.watch(glossariesProvider());
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GlossaryListHeader(onNewGlossary: _showNewGlossaryDialog),
-        const Divider(height: 1),
+        _buildListToolbar(glossariesAsync),
         Expanded(
           child: glossariesAsync.when(
             data: (glossaries) {
               if (glossaries.isEmpty) {
-                return GlossaryEmptyState(onNewGlossary: _showNewGlossaryDialog);
+                return GlossaryEmptyState(
+                  onNewGlossary: _showNewGlossaryDialog,
+                );
+              }
+              final visible = _applyListSearch(glossaries);
+              if (visible.isEmpty) {
+                return _buildNoMatchesState(context);
               }
               return GlossaryList(
-                glossaries: glossaries,
+                glossaries: visible,
                 gameInstallations: _gameInstallations,
                 onGlossaryTap: (glossary) {
                   ref.read(selectedGlossaryProvider.notifier).select(glossary);
                 },
-                onDeleteGlossary: (glossary) => _confirmDeleteGlossary(glossary),
+                onDeleteGlossary: _confirmDeleteGlossary,
               );
             },
             loading: () => const Center(child: FluentInlineSpinner()),
-            error: (error, stack) => Center(
-              child: Text(
-                'Error loading glossaries: $error',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ),
+            error: (error, stack) => _buildError(error),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildListToolbar(AsyncValue<List<Glossary>> async) {
+    final all = async.asData?.value ?? const <Glossary>[];
+    final filtered = _applyListSearch(all);
+    return GlossaryToolbar(
+      totalCount: all.length,
+      filteredCount: filtered.length,
+      searchQuery: _listSearchQuery,
+      onSearchChanged: (value) => setState(() => _listSearchQuery = value),
+      onNewGlossary: _showNewGlossaryDialog,
+    );
+  }
+
+  List<Glossary> _applyListSearch(List<Glossary> source) {
+    final query = _listSearchQuery.trim().toLowerCase();
+    if (query.isEmpty) return source;
+    return source.where((g) {
+      if (g.name.toLowerCase().contains(query)) return true;
+      final description = g.description;
+      if (description != null && description.toLowerCase().contains(query)) {
+        return true;
+      }
+      return false;
+    }).toList();
+  }
+
+  Widget _buildNoMatchesState(BuildContext context) {
+    final tokens = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.search_24_regular,
+              size: 48,
+              color: tokens.textFaint,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No glossaries match the current search',
+              style: tokens.fontDisplay.copyWith(
+                fontSize: 16,
+                color: tokens.text,
+                fontStyle: tokens.fontDisplayItalic
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(Object error) {
+    final tokens = context.tokens;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.error_circle_24_regular,
+              size: 48,
+              color: tokens.err,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Error loading glossaries',
+              style: tokens.fontDisplay.copyWith(
+                fontSize: 16,
+                color: tokens.err,
+                fontStyle: tokens.fontDisplayItalic
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error.toString(),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -126,7 +234,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   children: [
                     GlossaryEditorToolbar(
                       glossary: glossary,
-                      searchController: _searchController,
+                      searchController: _entrySearchController,
                       onAddEntry: () => _showEntryEditor(null, glossary),
                     ),
                     const Divider(height: 1),
@@ -153,7 +261,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  void _showEntryEditor(dynamic entry, Glossary glossary) async {
+  void _showEntryEditor(GlossaryEntry? entry, Glossary glossary) async {
     String? targetLanguageCode;
     if (glossary.targetLanguageId != null) {
       try {
@@ -201,6 +309,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   }
 
   Future<void> _confirmDeleteGlossary(Glossary glossary) async {
+    final tokens = context.tokens;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -216,7 +325,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
           ),
           FluentTextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            foregroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: tokens.err,
             child: const Text('Delete'),
           ),
         ],
