@@ -20,6 +20,13 @@ final class _Flex extends ListRowColumn {
   const _Flex(this.weight);
 }
 
+/// Wraps [child] in the sizing widget dictated by [col]. Shared between
+/// [ListRow] and [ListRowHeader] so both apply column sizing identically.
+Widget _applyListRowColumn(ListRowColumn col, Widget child) => switch (col) {
+      _Fixed(:final width) => SizedBox(width: width, child: child),
+      _Flex(:final weight) => Expanded(flex: weight, child: child),
+    };
+
 /// Grid-column row for §7.1 card lists. Fixed column widths prevent vertical
 /// misalignment between rows. Border-left accent 2px when [selected].
 class ListRow extends StatelessWidget {
@@ -56,7 +63,7 @@ class ListRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (var i = 0; i < columns.length; i++) _cell(columns[i], children[i]),
+          for (var i = 0; i < columns.length; i++) _applyListRowColumn(columns[i], children[i]),
           if (trailingAction != null) ...[const SizedBox(width: 8), trailingAction!],
         ],
       ),
@@ -68,13 +75,6 @@ class ListRow extends StatelessWidget {
       );
     }
     return content;
-  }
-
-  Widget _cell(ListRowColumn col, Widget child) {
-    return switch (col) {
-      _Fixed(:final width) => SizedBox(width: width, child: child),
-      _Flex(:final weight) => Expanded(flex: weight, child: child),
-    };
   }
 }
 
@@ -105,16 +105,9 @@ class ListRowHeader extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < columns.length; i++)
-            _cell(columns[i], Text(labels[i].toUpperCase(), style: style)),
+            _applyListRowColumn(columns[i], Text(labels[i].toUpperCase(), style: style)),
         ],
       ),
     );
-  }
-
-  Widget _cell(ListRowColumn col, Widget child) {
-    return switch (col) {
-      _Fixed(:final width) => SizedBox(width: width, child: child),
-      _Flex(:final weight) => Expanded(flex: weight, child: child),
-    };
   }
 }

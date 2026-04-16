@@ -32,7 +32,12 @@ void main() {
     ));
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
     final container = t.widget<Container>(
-      find.ancestor(of: find.text('row'), matching: find.byType(Container)).first,
+      find
+          .ancestor(
+            of: find.text('row'),
+            matching: find.byWidgetPredicate((w) => w is Container && w.decoration is BoxDecoration),
+          )
+          .first,
     );
     final deco = container.decoration as BoxDecoration;
     expect((deco.border as Border).left.color, tokens.accent);

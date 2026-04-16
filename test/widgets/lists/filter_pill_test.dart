@@ -14,7 +14,10 @@ void main() {
     await t.pumpWidget(wrap(FilterPill(label: 'ALL', selected: false, onToggle: () {})));
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
     final container = t.widget<Container>(
-      find.descendant(of: find.byType(FilterPill), matching: find.byType(Container)),
+      find.descendant(
+        of: find.byType(FilterPill),
+        matching: find.byWidgetPredicate((w) => w is Container && w.decoration is BoxDecoration),
+      ),
     );
     final deco = container.decoration as BoxDecoration;
     expect(deco.color, tokens.panel2);
@@ -24,7 +27,10 @@ void main() {
     await t.pumpWidget(wrap(FilterPill(label: 'ALL', selected: true, onToggle: () {})));
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
     final container = t.widget<Container>(
-      find.descendant(of: find.byType(FilterPill), matching: find.byType(Container)),
+      find.descendant(
+        of: find.byType(FilterPill),
+        matching: find.byWidgetPredicate((w) => w is Container && w.decoration is BoxDecoration),
+      ),
     );
     final deco = container.decoration as BoxDecoration;
     expect(deco.color, tokens.accentBg);

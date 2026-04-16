@@ -66,9 +66,9 @@ class FilterPillGroup extends StatelessWidget {
       children: [
         Text(label, style: tokens.fontMono.copyWith(fontSize: 10, color: tokens.textDim, letterSpacing: 1.0)),
         const SizedBox(width: 8),
-        for (final p in pills) ...[
-          p,
-          if (p != pills.last) const SizedBox(width: 6),
+        for (var i = 0; i < pills.length; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          pills[i],
         ],
       ],
     );
