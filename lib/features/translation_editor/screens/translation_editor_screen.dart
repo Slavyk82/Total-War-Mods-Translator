@@ -8,6 +8,7 @@ import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_toolbar.dart';
 import '../widgets/editor_sidebar.dart';
 import '../widgets/editor_datagrid.dart';
+import '../widgets/editor_status_bar.dart';
 import 'translation_editor_actions.dart';
 
 /// Translation editor screen
@@ -123,6 +124,14 @@ class _TranslationEditorScreenState
                 ),
               ],
             ),
+          ),
+
+          // Bottom statusbar with live editor metrics.
+          // Note: the sidebar Statistics section still duplicates this for
+          // exactly one commit; Task 3 strips the sidebar copy.
+          EditorStatusBar(
+            projectId: widget.projectId,
+            languageId: widget.languageId,
           ),
         ],
       ),

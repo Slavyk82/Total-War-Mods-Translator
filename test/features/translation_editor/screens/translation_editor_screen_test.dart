@@ -7,6 +7,7 @@ import 'package:twmt/features/translation_editor/providers/editor_providers.dart
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 import '../../../helpers/test_helpers.dart';
 
@@ -57,7 +58,9 @@ void main() {
           ),
         ],
         child: MaterialApp(
-          theme: theme ?? ThemeData.light(),
+          // Default to a TWMT-themed surface so widgets that read
+          // `context.tokens` (e.g. EditorStatusBar) resolve their tokens.
+          theme: theme ?? AppTheme.atelierDarkTheme,
           home: SizedBox(
             width: defaultTestScreenSize.width,
             height: defaultTestScreenSize.height,
@@ -219,15 +222,19 @@ void main() {
     });
 
     group('Theme Integration', () {
-      testWidgets('should render correctly with light theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.light()));
+      testWidgets('should render correctly with atelier theme', (tester) async {
+        await tester.pumpWidget(
+          createTestWidget(theme: AppTheme.atelierDarkTheme),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(TranslationEditorScreen), findsOneWidget);
       });
 
-      testWidgets('should render correctly with dark theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.dark()));
+      testWidgets('should render correctly with forge theme', (tester) async {
+        await tester.pumpWidget(
+          createTestWidget(theme: AppTheme.forgeDarkTheme),
+        );
         await tester.pumpAndSettle();
 
         expect(find.byType(TranslationEditorScreen), findsOneWidget);
