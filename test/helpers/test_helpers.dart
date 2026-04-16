@@ -7,6 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/models/common/result.dart' show Ok;
 import 'package:twmt/models/domain/game_installation.dart';
 import 'fakes/fake_logger.dart';
@@ -40,6 +41,9 @@ Future<void> setupMockServices() async {
 
   getIt.registerSingleton<GameInstallationRepository>(mockGameInstallationRepo);
   getIt.registerSingleton<ProjectRepository>(mockProjectRepo);
+  // Register a FakeLogger so any UI that resolves the logging service via
+  // ServiceLocator (e.g. EditorStatusBar's error branch) doesn't throw.
+  getIt.registerSingleton<ILoggingService>(FakeLogger());
 }
 
 /// Cleans up mock services after tests
