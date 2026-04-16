@@ -6,6 +6,7 @@ import '../fluent/fluent_widgets.dart';
 import '../navigation/breadcrumb.dart';
 import '../navigation/navigation_sidebar.dart';
 import 'fluent_scaffold.dart';
+import '../../config/router/app_router.dart';
 import '../../features/translation_editor/providers/editor_providers.dart';
 import '../../features/pack_compilation/providers/pack_compilation_providers.dart';
 
@@ -67,8 +68,8 @@ class MainLayoutRouter extends ConsumerWidget {
   /// double-up with the shell breadcrumb.
   bool _shouldHideBreadcrumb(String path) {
     if (path.contains('/editor/')) return true;
-    if (path == '/publishing/steam/single') return true;
-    if (path == '/publishing/steam/batch') return true;
+    if (path == AppRoutes.steamPublishSingle) return true;
+    if (path == AppRoutes.steamPublishBatch) return true;
     return false;
   }
 }
