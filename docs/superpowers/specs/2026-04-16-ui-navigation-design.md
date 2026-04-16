@@ -175,8 +175,8 @@ Stateless `ConsumerWidget`. Reads the current path, splits on `/`, resolves each
 |---|---|
 | Static group (`sources`, `work`, `resources`, `publishing`, `system`) | `NavigationTreeResolver.labelForSegment` → `'Sources'` etc. |
 | Static item (`mods`, `projects`, `glossary`, …) | Same resolver → `'Mods'` etc. |
-| UUID (project id, matches `^[0-9a-f-]{36}$`) | Async via `projectProvider(id)` → project name, fallback `'…'` while loading, segment value on error |
-| Language id (`:languageId`) | Async via `languageProvider(id)` → language name, same fallback |
+| UUID (project id, matches `^[0-9a-f-]{36}$`) | Skipped (not rendered as a crumb; included only in the accumulated path for clickable navigation up) |
+| Language id or unknown non-UUID segment | Rendered in `fontMono` + `textDim` as raw text (fallback) |
 | Sub-route leaf (`editor`, `single`, `batch`, `batch-export`) | `labelForSegment` with dedicated entries |
 
 Visual: chevrons in `text-dim` between segments, non-last segments `text-mid`, last segment `text` strong, per parent spec §6.8.
@@ -241,9 +241,9 @@ Consumed **by `MainLayoutRouter` for this plan** — the global breadcrumb bar s
 
 - `test/widgets/navigation/breadcrumb_test.dart`
   - Static path `/sources/mods` → `Sources › Mods`.
-  - Deep path with UUID `/work/projects/<uuid>/editor/fr-FR` → `Work › Projects › <project name> › Editor › French` (with provider overrides).
-  - UUID with unresolved provider → `…` placeholder, no crash.
+  - Deep path with UUID `/work/projects/<uuid>/editor/fr-FR` → `Work › Projects › Editor` (UUID skipped, language id rendered as mono fallback).
   - Unknown segment → mono text-dim fallback, no crash.
+  - Tapping a non-last crumb navigates to its accumulated path (spy via `onCrumbTap`).
 
 ### 5.3 New router tests
 
