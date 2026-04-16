@@ -20,6 +20,7 @@ import 'migration_published_steam_id.dart';
 import 'migration_published_at.dart';
 import 'migration_compilation_publish_fields.dart';
 import 'migration_validation_issues_json.dart';
+import 'migration_activity_events.dart';
 
 /// Registry of all database migrations.
 ///
@@ -52,6 +53,7 @@ class MigrationRegistry {
       PublishedAtMigration(),
       CompilationPublishFieldsMigration(),
       ValidationIssuesJsonMigration(),
+      ActivityEventsMigration(),
     ];
 
     // Sort by priority (lower numbers first)
