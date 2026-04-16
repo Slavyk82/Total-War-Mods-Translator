@@ -1,6 +1,8 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/widgets.dart';
 
+import 'app_router.dart';
+
 /// Immutable group of sidebar nav items.
 class NavGroup {
   const NavGroup(this.label, this.items);
@@ -37,13 +39,13 @@ const List<NavGroup> navigationTree = [
   NavGroup('Sources', [
     NavItem(
       label: 'Mods',
-      route: '/sources/mods',
+      route: AppRoutes.mods,
       icon: FluentIcons.cube_24_regular,
       selectedIcon: FluentIcons.cube_24_filled,
     ),
     NavItem(
       label: 'Game Files',
-      route: '/sources/game-files',
+      route: AppRoutes.gameFiles,
       icon: FluentIcons.globe_24_regular,
       selectedIcon: FluentIcons.globe_24_filled,
     ),
@@ -51,13 +53,13 @@ const List<NavGroup> navigationTree = [
   NavGroup('Work', [
     NavItem(
       label: 'Home',
-      route: '/work/home',
+      route: AppRoutes.home,
       icon: FluentIcons.home_24_regular,
       selectedIcon: FluentIcons.home_24_filled,
     ),
     NavItem(
       label: 'Projects',
-      route: '/work/projects',
+      route: AppRoutes.projects,
       icon: FluentIcons.folder_24_regular,
       selectedIcon: FluentIcons.folder_24_filled,
     ),
@@ -65,13 +67,13 @@ const List<NavGroup> navigationTree = [
   NavGroup('Resources', [
     NavItem(
       label: 'Glossary',
-      route: '/resources/glossary',
+      route: AppRoutes.glossary,
       icon: FluentIcons.book_24_regular,
       selectedIcon: FluentIcons.book_24_filled,
     ),
     NavItem(
       label: 'Translation Memory',
-      route: '/resources/tm',
+      route: AppRoutes.translationMemory,
       icon: FluentIcons.database_24_regular,
       selectedIcon: FluentIcons.database_24_filled,
     ),
@@ -79,13 +81,13 @@ const List<NavGroup> navigationTree = [
   NavGroup('Publishing', [
     NavItem(
       label: 'Pack Compilation',
-      route: '/publishing/pack',
+      route: AppRoutes.packCompilation,
       icon: FluentIcons.box_multiple_24_regular,
       selectedIcon: FluentIcons.box_multiple_24_filled,
     ),
     NavItem(
       label: 'Steam Workshop',
-      route: '/publishing/steam',
+      route: AppRoutes.steamPublish,
       icon: FluentIcons.cloud_arrow_up_24_regular,
       selectedIcon: FluentIcons.cloud_arrow_up_24_filled,
     ),
@@ -93,13 +95,13 @@ const List<NavGroup> navigationTree = [
   NavGroup('System', [
     NavItem(
       label: 'Settings',
-      route: '/system/settings',
+      route: AppRoutes.settings,
       icon: FluentIcons.settings_24_regular,
       selectedIcon: FluentIcons.settings_24_filled,
     ),
     NavItem(
       label: 'Help',
-      route: '/system/help',
+      route: AppRoutes.help,
       icon: FluentIcons.question_circle_24_regular,
       selectedIcon: FluentIcons.question_circle_24_filled,
     ),
