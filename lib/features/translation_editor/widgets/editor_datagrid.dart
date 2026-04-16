@@ -257,7 +257,9 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 controller: _controller,
                 verticalScrollController: _verticalScrollController,
                 allowEditing: true,
-                allowSorting: true,
+                // Sort arrows clutter the tokenised header (mono caps); the
+                // mockup intentionally omits them in favour of filter chips.
+                allowSorting: false,
                 allowMultiColumnSorting: false,
                 selectionMode: SelectionMode.multiple,
                 navigationMode: GridNavigationMode.cell,
@@ -296,6 +298,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                   GridColumn(
                     columnName: 'status',
                     width: 60,
+                    allowSorting: false,
                     label: Container(
                       padding: const EdgeInsets.all(8.0),
                       alignment: Alignment.center,
@@ -308,28 +311,33 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                   GridColumn(
                     columnName: 'locFile',
                     width: 150,
-                    label: _buildColumnHeader('Loc File'),
+                    allowSorting: false,
+                    label: _buildColumnHeader('LOC FILE'),
                   ),
                   GridColumn(
                     columnName: 'key',
                     width: 150,
-                    label: _buildColumnHeader('Key'),
+                    allowSorting: false,
+                    label: _buildColumnHeader('KEY'),
                   ),
                   GridColumn(
                     columnName: 'sourceText',
                     columnWidthMode: ColumnWidthMode.fill,
-                    label: _buildColumnHeader('Source Text'),
+                    allowSorting: false,
+                    label: _buildColumnHeader('SOURCE'),
                   ),
                   GridColumn(
                     columnName: 'translatedText',
                     columnWidthMode: ColumnWidthMode.fill,
                     allowEditing: true,
-                    label: _buildColumnHeader('Translated Text'),
+                    allowSorting: false,
+                    label: _buildColumnHeader('TARGET'),
                   ),
                   GridColumn(
                     columnName: 'tmSource',
                     width: 120,
-                    label: _buildColumnHeader('TM Source'),
+                    allowSorting: false,
+                    label: _buildColumnHeader('TM'),
                   ),
                 ],
             ),
@@ -489,7 +497,12 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   }
 }
 
-/// Performance-optimized column header widget with const constructor
+/// Tokenised column header used by the editor data grid.
+///
+/// Renders the column label in the theme's monospace face, all-caps, with the
+/// faint text colour and wide letter-spacing called out in the mockup. The
+/// caller is expected to pass an already-uppercased [text] (matching the
+/// labels in the mockup) so the constructor can stay `const`-friendly.
 class _ColumnHeader extends StatelessWidget {
   final String text;
 
@@ -497,14 +510,17 @@ class _ColumnHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
       alignment: Alignment.centerLeft,
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+        style: tokens.fontMono.copyWith(
+          fontSize: 10,
+          color: tokens.textFaint,
+          letterSpacing: 1.5,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
