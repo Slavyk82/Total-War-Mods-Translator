@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../providers/editor_providers.dart';
 import '../../../../providers/shared/logging_providers.dart';
 
@@ -25,6 +26,10 @@ class ContextMenuBuilder {
   }) {
     final hasSelection = selectionCount > 0;
     final isSingleSelection = selectionCount == 1;
+    final tokens = context.tokens;
+    // Disabled colour for icons / labels: faint token so it reads as inactive
+    // against the menu surface in both Atelier and Forge.
+    final disabledColor = tokens.textFaint;
 
     showMenu<String>(
       context: context,
@@ -54,14 +59,14 @@ class ContextMenuBuilder {
                 Icon(
                   FluentIcons.arrow_sync_24_regular,
                   size: 16,
-                  color: hasSelection ? null : Colors.grey,
+                  color: hasSelection ? null : disabledColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   selectionCount > 1
                       ? 'Force Retranslate ($selectionCount)'
                       : 'Force Retranslate',
-                  style: TextStyle(color: hasSelection ? null : Colors.grey),
+                  style: TextStyle(color: hasSelection ? null : disabledColor),
                 ),
               ],
             ),
@@ -75,14 +80,16 @@ class ContextMenuBuilder {
                 Icon(
                   FluentIcons.checkmark_circle_24_regular,
                   size: 16,
-                  color: hasSelection ? Colors.green : Colors.grey,
+                  color: hasSelection ? tokens.ok : disabledColor,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   selectionCount > 1
                       ? 'Mark as Translated ($selectionCount)'
                       : 'Mark as Translated',
-                  style: TextStyle(color: hasSelection ? Colors.green : Colors.grey),
+                  style: TextStyle(
+                    color: hasSelection ? tokens.ok : disabledColor,
+                  ),
                 ),
               ],
             ),
@@ -95,14 +102,14 @@ class ContextMenuBuilder {
               Icon(
                 FluentIcons.delete_24_regular,
                 size: 16,
-                color: hasSelection ? null : Colors.grey,
+                color: hasSelection ? null : disabledColor,
               ),
               const SizedBox(width: 8),
               Text(
                 selectionCount > 1
                     ? 'Clear Translation ($selectionCount)'
                     : 'Clear Translation',
-                style: TextStyle(color: hasSelection ? null : Colors.grey),
+                style: TextStyle(color: hasSelection ? null : disabledColor),
               ),
             ],
           ),
@@ -139,12 +146,14 @@ class ContextMenuBuilder {
               Icon(
                 FluentIcons.delete_24_regular,
                 size: 16,
-                color: hasSelection ? Colors.red : Colors.grey,
+                color: hasSelection ? tokens.err : disabledColor,
               ),
               const SizedBox(width: 8),
               Text(
                 selectionCount > 1 ? 'Delete ($selectionCount)' : 'Delete',
-                style: TextStyle(color: hasSelection ? Colors.red : Colors.grey),
+                style: TextStyle(
+                  color: hasSelection ? tokens.err : disabledColor,
+                ),
               ),
             ],
           ),

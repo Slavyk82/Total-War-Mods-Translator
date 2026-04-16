@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
-/// Checkbox cell widget for DataGrid row selection
+/// Checkbox cell widget for DataGrid row selection.
 ///
-/// Displays a checkbox that allows users to select rows in the translation editor
+/// Displays a checkbox tinted with the active theme tokens (accent for the
+/// checked fill, border for the resting outline) so it stays consistent with
+/// the rest of the editor surface across Atelier / Forge.
 class CheckboxCellRenderer extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
@@ -15,6 +18,7 @@ class CheckboxCellRenderer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
       alignment: Alignment.center,
       padding: const EdgeInsets.all(8.0),
@@ -25,6 +29,9 @@ class CheckboxCellRenderer extends StatelessWidget {
           child: Checkbox(
             value: isSelected,
             onChanged: (_) => onTap(),
+            activeColor: tokens.accent,
+            checkColor: tokens.accentFg,
+            side: BorderSide(color: tokens.border, width: 1),
           ),
         ),
       ),

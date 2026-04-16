@@ -62,6 +62,10 @@ dependencies:
   # DataGrid for editable tables (MANDATORY per CLAUDE.md)
   syncfusion_flutter_datagrid: ^31.2.10
 
+  # Syncfusion theming primitives (SfDataGridTheme/Data) used by the editor
+  # to map TwmtThemeTokens onto the grid surface.
+  syncfusion_flutter_core: ^31.2.10
+
   # Charts for statistics visualization
   syncfusion_flutter_charts: ^31.2.10
 
