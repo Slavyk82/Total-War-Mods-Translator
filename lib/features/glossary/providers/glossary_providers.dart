@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/features/activity/providers/activity_providers.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import '../../../providers/shared/logging_providers.dart';
@@ -208,6 +212,15 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
       if (result.isErr) {
         throw Exception('Failed to add entry: ${result.error}');
       }
+
+      // Emit activity event for a successful single add.
+      unawaited(ref.read(activityLoggerProvider).log(
+            ActivityEventType.glossaryEnriched,
+            payload: const {'count': 1},
+          ));
+      if (ref.mounted) {
+        ref.invalidate(activityFeedProvider);
+      }
     }
 
     // Clear editor state only if still mounted
@@ -317,6 +330,17 @@ class GlossaryImportState extends _$GlossaryImportState {
         ref.invalidate(glossaryEntriesProvider);
         ref.invalidate(glossaryStatisticsProvider);
       }
+
+      // Emit activity event for a successful bulk CSV import.
+      if (count > 0) {
+        unawaited(ref.read(activityLoggerProvider).log(
+              ActivityEventType.glossaryEnriched,
+              payload: {'count': count},
+            ));
+        if (ref.mounted) {
+          ref.invalidate(activityFeedProvider);
+        }
+      }
     } catch (e, st) {
       if (ref.mounted) {
         state = AsyncValue.error(e, st);
@@ -354,6 +378,17 @@ class GlossaryImportState extends _$GlossaryImportState {
         ref.invalidate(glossariesProvider);
         ref.invalidate(glossaryEntriesProvider);
         ref.invalidate(glossaryStatisticsProvider);
+      }
+
+      // Emit activity event for a successful bulk TBX import.
+      if (count > 0) {
+        unawaited(ref.read(activityLoggerProvider).log(
+              ActivityEventType.glossaryEnriched,
+              payload: {'count': count},
+            ));
+        if (ref.mounted) {
+          ref.invalidate(activityFeedProvider);
+        }
       }
     } catch (e, st) {
       if (ref.mounted) {
@@ -398,6 +433,17 @@ class GlossaryImportState extends _$GlossaryImportState {
         ref.invalidate(glossariesProvider);
         ref.invalidate(glossaryEntriesProvider);
         ref.invalidate(glossaryStatisticsProvider);
+      }
+
+      // Emit activity event for a successful bulk Excel import.
+      if (count > 0) {
+        unawaited(ref.read(activityLoggerProvider).log(
+              ActivityEventType.glossaryEnriched,
+              payload: {'count': count},
+            ));
+        if (ref.mounted) {
+          ref.invalidate(activityFeedProvider);
+        }
       }
     } catch (e, st) {
       if (ref.mounted) {
