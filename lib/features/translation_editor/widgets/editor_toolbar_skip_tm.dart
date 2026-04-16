@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/translation_settings_provider.dart';
 
 /// Toggleable "Skip TM" checkbox for the editor toolbar.
@@ -16,6 +17,8 @@ class EditorToolbarSkipTm extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(translationSettingsProvider);
+    final tokens = context.tokens;
+    final activeColor = settings.skipTranslationMemory ? tokens.err : tokens.textMid;
 
     return Tooltip(
       message: TooltipStrings.editorSkipTm,
@@ -35,12 +38,12 @@ class EditorToolbarSkipTm extends ConsumerWidget {
             ),
             decoration: BoxDecoration(
               color: settings.skipTranslationMemory
-                  ? Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3)
+                  ? tokens.errBg
                   : Colors.transparent,
               border: Border.all(
                 color: settings.skipTranslationMemory
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).dividerColor,
+                    ? tokens.err
+                    : tokens.border,
               ),
               borderRadius: BorderRadius.circular(4),
             ),
@@ -52,9 +55,7 @@ class EditorToolbarSkipTm extends ConsumerWidget {
                       ? FluentIcons.checkbox_checked_24_regular
                       : FluentIcons.checkbox_unchecked_24_regular,
                   size: 16,
-                  color: settings.skipTranslationMemory
-                      ? Theme.of(context).colorScheme.error
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: activeColor,
                 ),
                 if (!compact) ...[
                   const SizedBox(width: 6),
@@ -63,9 +64,7 @@ class EditorToolbarSkipTm extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: settings.skipTranslationMemory
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      color: activeColor,
                     ),
                   ),
                 ],
