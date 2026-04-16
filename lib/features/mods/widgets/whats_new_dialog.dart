@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -176,7 +177,7 @@ class _WhatsNewDialogState extends ConsumerState<WhatsNewDialog> {
 
   void _viewModDetails(Project project) {
     Navigator.of(context).pop();
-    context.go('/projects/${project.id}');
+    context.go(AppRoutes.projectDetail(project.id));
   }
 
   void _updateAll() async {

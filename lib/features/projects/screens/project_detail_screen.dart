@@ -414,7 +414,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
                 // Navigate to appropriate screen based on project type
                 if (context.mounted) {
                   if (details.project.isGameTranslation) {
-                    context.go(AppRoutes.gameTranslation);
+                    context.go(AppRoutes.gameFiles);
                   } else {
                     context.go(AppRoutes.projects);
                   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as path;
 import 'package:file_picker/file_picker.dart';
 
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
@@ -29,7 +30,7 @@ class ModsScreenController {
   /// Navigate to projects screen with update filter applied
   void navigateToProjectsWithFilter(BuildContext context) {
     _ref.read(projectsFilterProvider.notifier).setQuickFilter(ProjectQuickFilter.needsUpdate);
-    GoRouter.of(context).go('/projects');
+    GoRouter.of(context).go(AppRoutes.projects);
   }
 
   /// Refresh the mods list by rescanning
@@ -104,7 +105,7 @@ class ModsScreenController {
       ).firstOrNull;
 
       if (existingProject != null) {
-        router.go('/projects/${existingProject.id}');
+        router.go(AppRoutes.projectDetail(existingProject.id));
         return;
       }
     }
@@ -205,7 +206,7 @@ class ModsScreenController {
         // Update the mod's imported status locally without triggering a full rescan
         _ref.read(detectedModsProvider.notifier).updateModImported(mod.workshopId, projectId);
         if (context.mounted) {
-          router.go('/projects/$projectId');
+          router.go(AppRoutes.projectDetail(projectId));
         }
       } else {
         await service.deleteProject(projectId);
@@ -283,7 +284,7 @@ class ModsScreenController {
       if (success == true) {
         _ref.invalidate(projectsWithDetailsProvider);
         if (context.mounted) {
-          router.go('/projects/$projectId');
+          router.go(AppRoutes.projectDetail(projectId));
         }
       } else {
         await service.deleteProject(projectId);

@@ -222,7 +222,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   }
 
   void _navigateToProject(BuildContext context, String projectId) {
-    context.go('/projects/$projectId');
+    context.go(AppRoutes.projectDetail(projectId));
   }
 
   Future<void> _handleResync(BuildContext context, String projectId) async {
