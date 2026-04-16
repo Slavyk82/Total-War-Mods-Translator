@@ -44,6 +44,24 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
   String? _boundUnitId;
 
   @override
+  void initState() {
+    super.initState();
+    // Listen for selection changes and resync the target controller out-of-band
+    // (i.e. NOT during build). Both listeners converge on `_rebindIfNeeded`,
+    // which is a no-op when the bound unit is already up to date.
+    ref.listenManual<EditorSelectionState>(
+      editorSelectionProvider,
+      (_, _) => _rebindIfNeeded(),
+      fireImmediately: true,
+    );
+    ref.listenManual<AsyncValue<List<TranslationRow>>>(
+      filteredTranslationRowsProvider(widget.projectId, widget.languageId),
+      (_, _) => _rebindIfNeeded(),
+      fireImmediately: true,
+    );
+  }
+
+  @override
   void dispose() {
     _targetController.dispose();
     super.dispose();
@@ -73,7 +91,6 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
         body = _EmptyState(tokens: tokens);
       } else {
         final row = rows[idx];
-        _bindControllerForUnit(row);
         body = _SingleSelectionBody(
           row: row,
           index: idx + 1,
@@ -101,9 +118,24 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
 
   /// Sync the target controller text with the currently selected row.
   ///
-  /// Called from `build` (tolerated because it only mutates the controller
-  /// when the bound unit ID changes; `_boundUnitId` guards the assignment).
-  void _bindControllerForUnit(TranslationRow row) {
+  /// Triggered from `ref.listenManual` callbacks in `initState` (selection
+  /// changes or rows changes), so it never runs during build. Guarded by
+  /// `_boundUnitId` so it's a no-op when the bound unit is already current.
+  void _rebindIfNeeded() {
+    final selection = ref.read(editorSelectionProvider);
+    if (selection.selectedCount != 1) {
+      _boundUnitId = null;
+      return;
+    }
+    final selectedId = selection.selectedUnitIds.first;
+    final rowsAsync = ref.read(
+      filteredTranslationRowsProvider(widget.projectId, widget.languageId),
+    );
+    final rows = rowsAsync.value;
+    if (rows == null) return;
+    final idx = rows.indexWhere((r) => r.id == selectedId);
+    if (idx < 0) return;
+    final row = rows[idx];
     if (_boundUnitId != row.id) {
       _boundUnitId = row.id;
       _targetController.text = row.translatedText ?? '';

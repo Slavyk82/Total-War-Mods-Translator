@@ -3,16 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
-import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
-import 'package:twmt/features/translation_editor/providers/editor_selection_notifier.dart';
-import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
-import 'package:twmt/features/translation_editor/providers/tm_suggestions_provider.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_inspector_panel.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
+import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_helpers.dart';
@@ -235,4 +232,73 @@ void main() {
     expect(savedUnit, '1');
     expect(savedText, 'Nouveau texte');
   });
+
+  testWidgets(
+    'renders inspector with validation issues without overflow',
+    (tester) async {
+      final row = _row('1');
+      final issues = <ValidationIssue>[
+        const ValidationIssue(
+          type: ValidationIssueType.lengthDifference,
+          severity: ValidationSeverity.warning,
+          description: 'Translation length differs significantly from source',
+          suggestion: 'Review the translation for completeness',
+        ),
+        const ValidationIssue(
+          type: ValidationIssueType.punctuationMismatch,
+          severity: ValidationSeverity.error,
+          description: 'Final punctuation differs from source',
+          suggestion: 'Add missing period at end',
+          autoFixable: true,
+          autoFixValue: 'Utilise le Savoir du Skald.',
+        ),
+      ];
+      final container = ProviderContainer(overrides: [
+        filteredTranslationRowsProvider('p', 'fr')
+            .overrideWith((_) async => [row]),
+        currentProjectProvider('p').overrideWith((_) async => const Project(
+              id: 'p',
+              name: 'p',
+              gameInstallationId: 'g',
+              sourceLanguageCode: 'en',
+              createdAt: 0,
+              updatedAt: 0,
+            )),
+        currentLanguageProvider('fr').overrideWith((_) async => const Language(
+              id: 'fr',
+              code: 'fr',
+              name: 'French',
+              nativeName: 'Français',
+            )),
+        tmSuggestionsForUnitProvider('1', 'en', 'fr')
+            .overrideWith((_) async => []),
+        validationIssuesProvider(row.sourceText, row.translatedText!)
+            .overrideWith((_) async => issues),
+      ]);
+      addTearDown(container.dispose);
+      container.read(editorSelectionProvider.notifier).toggleSelection('1');
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: Scaffold(
+            body: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (_, _) {},
+              onApplySuggestion: (_, _) {},
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Regression: when the panel hosts a non-empty validation list it must
+      // not blow up with a layout-bounds assertion (Expanded inside an
+      // unbounded SingleChildScrollView).
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('Validation Issues Found'), findsOneWidget);
+    },
+  );
 }

@@ -68,7 +68,12 @@ class _EditorValidationPanelState
     final infos =
         issues.where((i) => i.severity == ValidationSeverity.info).toList();
 
+    // Use a plain Column (no Expanded/ListView) so this panel can be hosted
+    // inside a parent that provides scrolling and unbounded height (e.g. the
+    // inspector's SingleChildScrollView). With Expanded/ListView we'd hit a
+    // layout assertion as soon as a row had any validation issue.
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Summary header
         _buildSummaryHeader(
@@ -77,10 +82,11 @@ class _EditorValidationPanelState
           infoCount: infos.length,
         ),
 
-        // Issues list
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(16.0),
+        // Issues list (rendered inline; parent owns the scroll viewport).
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Errors
               if (errors.isNotEmpty) ...[
