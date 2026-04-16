@@ -9,6 +9,7 @@ import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
@@ -56,6 +57,26 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     }
 
     if (!hasPack) {
+      // Legacy parity: when the local pack was deleted but the item is still
+      // published on the Workshop, surface Generate alongside Open-in-Steam so
+      // users can jump to their published listing without regenerating first.
+      if (hasPublishedId) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            children: [
+              Expanded(child: _buildGenerateButton(context, padded: false)),
+              const SizedBox(width: 6),
+              SmallTextButton(
+                label: 'Open in Steam',
+                tooltip: 'Open in Steam Workshop',
+                icon: FluentIcons.open_24_regular,
+                onTap: _openWorkshop,
+              ),
+            ],
+          ),
+        );
+      }
       return _buildGenerateButton(context);
     }
 
@@ -70,59 +91,76 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
   // State A: no pack — Generate pack / Open compilation.
   // ---------------------------------------------------------------------------
 
-  Widget _buildGenerateButton(BuildContext context) {
+  Widget _buildGenerateButton(BuildContext context, {bool padded = true}) {
     final tokens = context.tokens;
     final item = widget.item;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Tooltip(
-        message: item.isCompilation
-            ? 'Open compilation editor to generate'
-            : 'Generate .pack file',
-        waitDuration: const Duration(milliseconds: 400),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _handleGeneratePack(context),
-            child: Container(
-              height: 28,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: tokens.accentBg,
-                border: Border.all(color: tokens.accent),
-                borderRadius: BorderRadius.circular(tokens.radiusSm),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
+    final core = Tooltip(
+      message: item.isCompilation
+          ? 'Open compilation editor to generate'
+          : 'Generate .pack file',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _handleGeneratePack(context),
+          child: Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: tokens.accentBg,
+              border: Border.all(color: tokens.accent),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  item.isCompilation
+                      ? FluentIcons.open_24_regular
+                      : FluentIcons.box_arrow_up_24_regular,
+                  size: 14,
+                  color: tokens.accent,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
                     item.isCompilation
-                        ? FluentIcons.open_24_regular
-                        : FluentIcons.box_arrow_up_24_regular,
-                    size: 14,
-                    color: tokens.accent,
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      item.isCompilation
-                          ? 'Open compilation'
-                          : 'Generate pack',
-                      overflow: TextOverflow.ellipsis,
-                      style: tokens.fontBody.copyWith(
-                        fontSize: 12,
-                        color: tokens.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
+                        ? 'Open compilation'
+                        : 'Generate pack',
+                    overflow: TextOverflow.ellipsis,
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12,
+                      color: tokens.accent,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+    if (!padded) return core;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: core,
+    );
+  }
+
+  /// Opens the item's published Workshop page in the default browser.
+  ///
+  /// Shared by the "no pack but published" compound button and the
+  /// `_buildPublishButtons` State-C row. The caller is expected to guard on
+  /// `publishedSteamId != null` before invoking.
+  void _openWorkshop() {
+    final workshopId = widget.item.publishedSteamId;
+    if (workshopId == null || workshopId.isEmpty) return;
+    launchUrl(
+      Uri.parse(
+        'https://steamcommunity.com/sharedfiles/filedetails/?id=$workshopId',
       ),
     );
   }
@@ -393,8 +431,14 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
         );
       }
       if (mounted) {
-        _isEditingSteamId = false;
+        setState(() {
+          _isEditingSteamId = false;
+        });
         ref.invalidate(publishableItemsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        FluentToast.error(context, 'Failed to save Workshop id: $e');
       }
     } finally {
       if (mounted) {
@@ -467,14 +511,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
           _iconButton(
             icon: FluentIcons.open_24_regular,
             tooltip: 'Open in Steam Workshop',
-            onTap: () {
-              final workshopId = widget.item.publishedSteamId!;
-              launchUrl(
-                Uri.parse(
-                  'https://steamcommunity.com/sharedfiles/filedetails/?id=$workshopId',
-                ),
-              );
-            },
+            onTap: _openWorkshop,
           ),
           const SizedBox(width: 4),
           _iconButton(

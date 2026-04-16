@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
 import '../providers/steam_publish_providers.dart';
@@ -290,31 +291,6 @@ class SteamLastPublishedCell extends ConsumerWidget {
 
   const SteamLastPublishedCell({super.key, required this.item});
 
-  static String _formatSince(DateTime date, DateTime now) {
-    final diff = now.difference(date);
-    final days = diff.inDays;
-    if (days == 0) {
-      final hours = diff.inHours;
-      return hours == 0 ? '< 1h' : '${hours}h';
-    }
-    if (days == 1) return '1 day';
-    if (days < 30) return '$days days';
-    if (days < 365) {
-      final months = (days / 30).floor();
-      return months == 1 ? '1 month' : '$months months';
-    }
-    final years = (days / 365).floor();
-    return years == 1 ? '1 year' : '$years years';
-  }
-
-  static String _formatAbsolute(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
@@ -340,7 +316,7 @@ class SteamLastPublishedCell extends ConsumerWidget {
     }
 
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final label = _formatSince(date, now);
+    final label = formatRelativeSince(date, now: now)!;
 
     final bool isOutdated =
         publishedAt != null && exportedAt > publishedAt;
@@ -362,8 +338,8 @@ class SteamLastPublishedCell extends ConsumerWidget {
       prefix = '';
     }
     final tooltip = publishedAt != null
-        ? 'Last published: ${_formatAbsolute(date)}'
-        : 'Last exported: ${_formatAbsolute(date)}';
+        ? 'Last published: ${formatAbsoluteDate(date)}'
+        : 'Last exported: ${formatAbsoluteDate(date)}';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),

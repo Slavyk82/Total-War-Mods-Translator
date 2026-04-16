@@ -12,6 +12,7 @@ import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
 /// Column spec for the Mods list — mirrors the §7.1 filterable-list archetype
@@ -285,41 +286,16 @@ class _UpdatedCell extends ConsumerWidget {
   final DetectedMod mod;
   const _UpdatedCell({required this.mod});
 
-  static String _formatSince(DateTime date, DateTime now) {
-    final diff = now.difference(date);
-    final days = diff.inDays;
-    if (days == 0) {
-      final hours = diff.inHours;
-      return hours == 0 ? '< 1h' : '${hours}h';
-    }
-    if (days == 1) return '1 day';
-    if (days < 30) return '$days days';
-    if (days < 365) {
-      final months = (days / 30).floor();
-      return months == 1 ? '1 month' : '$months months';
-    }
-    final years = (days / 365).floor();
-    return years == 1 ? '1 year' : '$years years';
-  }
-
-  static String _formatAbsolute(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year} '
-        '${date.hour.toString().padLeft(2, '0')}:'
-        '${date.minute.toString().padLeft(2, '0')}';
-  }
-
   String _buildTooltip() {
     final lines = <String>[];
     if (mod.timeUpdated != null && mod.timeUpdated! > 0) {
       lines.add(
-        'Steam Workshop: ${_formatAbsolute(DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000))}',
+        'Steam Workshop: ${formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000))}',
       );
     }
     if (mod.localFileLastModified != null && mod.localFileLastModified! > 0) {
       lines.add(
-        'Local file: ${_formatAbsolute(DateTime.fromMillisecondsSinceEpoch(mod.localFileLastModified! * 1000))}',
+        'Local file: ${formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.localFileLastModified! * 1000))}',
       );
     }
     return lines.join('\n');
@@ -343,7 +319,7 @@ class _UpdatedCell extends ConsumerWidget {
     final now = ref.watch(clockProvider)();
     final steamDate =
         DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000);
-    final label = _formatSince(steamDate, now);
+    final label = formatRelativeSince(steamDate, now: now)!;
     final status = mod.updateStatus;
 
     IconData? icon;
