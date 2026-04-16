@@ -184,7 +184,7 @@ class ActivityEvent {
   final int id;
   final ActivityEventType type;
   final DateTime timestamp;
-  final int? projectId;         // null pour modUpdatesDetected
+  final String? projectId;      // UUID, null pour modUpdatesDetected
   final String? gameCode;       // null si event global
   final Map<String, dynamic> payload;
 }
@@ -199,7 +199,7 @@ CREATE TABLE activity_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,
   timestamp INTEGER NOT NULL,
-  project_id INTEGER,
+  project_id TEXT,
   game_code TEXT,
   payload TEXT NOT NULL
 );
@@ -228,7 +228,7 @@ abstract class ActivityEventRepository {
 abstract class ActivityLogger {
   Future<void> log(
     ActivityEventType type, {
-    int? projectId,
+    String? projectId,
     String? gameCode,
     Map<String, dynamic> payload = const {},
   });

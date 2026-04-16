@@ -1,116 +1,79 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/features/home/models/next_project_action.dart';
+import 'package:twmt/features/home/models/project_with_next_action.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import '../../../providers/shared/repository_providers.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'home_providers.g.dart';
 
-/// Dashboard statistics model
-class DashboardStats {
-  final int totalProjects;
-  final int totalTranslationUnits;
-  final int translatedUnits;
-  final int pendingUnits;
-  final int totalTranslatedWords;
-
-  const DashboardStats({
-    required this.totalProjects,
-    required this.totalTranslationUnits,
-    required this.translatedUnits,
-    required this.pendingUnits,
-    required this.totalTranslatedWords,
-  });
-
-  double get translationProgress {
-    if (totalTranslationUnits == 0) return 0.0;
-    return (translatedUnits / totalTranslationUnits) * 100;
-  }
-}
-
-/// Provider for dashboard statistics filtered by selected game
+/// Recent projects (last 5 by updatedAt desc), each annotated with its
+/// contextual next-action per the Plan 3 classifier.
+///
+/// Filter logic mirrors [activeProjectsCountProvider] / [workflow_providers]:
+/// when a game is selected, only projects attached to that game's
+/// installation are listed; otherwise all projects are considered.
+///
+/// The "pack generated" flag is derived from
+/// [ExportHistoryRepository.getLastPackExportByProject] — the same signal
+/// used by `projectsReadyToCompileCountProvider`. `needsReview` maps onto
+/// [ProjectStatistics.errorCount] (see Task 10 learnings: "errorCount" is the
+/// current needs-review counter).
 @riverpod
-Future<DashboardStats> dashboardStats(Ref ref) async {
+Future<List<ProjectWithNextAction>> recentProjects(Ref ref) async {
   final projectRepo = ref.watch(projectRepositoryProvider);
-  final translationVersionRepo = ref.watch(translationVersionRepositoryProvider);
+  final versionRepo = ref.watch(translationVersionRepositoryProvider);
   final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
-
-  // Get selected game
+  final exportHistoryRepo = ref.watch(exportHistoryRepositoryProvider);
   final selectedGame = await ref.watch(selectedGameProvider.future);
-  final gameCode = selectedGame?.code;
 
-  // Get projects filtered by game
-  List<Project> projects = [];
-  if (gameCode != null) {
-    // Find game installation for the selected game code
-    final gameInstallationResult =
-        await gameInstallationRepo.getByGameCode(gameCode);
-    if (gameInstallationResult.isOk) {
-      final gameInstallation = gameInstallationResult.value;
-      final projectsResult =
-          await projectRepo.getByGameInstallation(gameInstallation.id);
-      projects = projectsResult.isOk ? projectsResult.value : [];
-    }
+  List<Project> projects;
+  if (selectedGame != null) {
+    final installResult =
+        await gameInstallationRepo.getByGameCode(selectedGame.code);
+    if (installResult.isErr) return const [];
+    final install = installResult.value;
+    final r = await projectRepo.getByGameInstallation(install.id);
+    projects = r.isOk ? r.value : <Project>[];
   } else {
-    // No game selected, get all projects
-    final projectsResult = await projectRepo.getAll();
-    projects = projectsResult.isOk ? projectsResult.value : [];
+    final r = await projectRepo.getAll();
+    projects = r.isOk ? r.value : <Project>[];
   }
 
-  final totalProjects = projects.length;
+  // Copy into a mutable list before sorting — repository implementations (and
+  // test mocks) may return unmodifiable lists.
+  final sorted = [...projects]
+    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  final top = sorted.take(5).toList();
 
-  // Get global statistics filtered by game code
-  final statsResult =
-      await translationVersionRepo.getGlobalStatistics(gameCode: gameCode);
+  final result = <ProjectWithNextAction>[];
+  for (final p in top) {
+    final s = await versionRepo.getProjectStatistics(p.id);
+    if (s.isErr) continue;
+    final stats = s.value;
+    final pct = stats.totalCount == 0
+        ? 0
+        : ((stats.translatedCount / stats.totalCount) * 100).round();
 
-  if (statsResult.isOk) {
-    final stats = statsResult.value;
-    return DashboardStats(
-      totalProjects: totalProjects,
-      totalTranslationUnits: stats.totalUnits,
-      translatedUnits: stats.translatedUnits,
-      pendingUnits: stats.pendingUnits,
-      totalTranslatedWords: stats.totalTranslatedWords,
+    // "Pack generated" is detected via export history (no lastExportPath on
+    // Project). Matches the pattern used in workflow_providers.dart and
+    // projects_screen_providers.dart.
+    final lastExport = await exportHistoryRepo.getLastPackExportByProject(p.id);
+    final hasPack = lastExport != null;
+
+    final action = NextProjectAction.fromStats(
+      translatedPct: pct,
+      // ProjectStatistics exposes the needs-review count via errorCount (see
+      // Task 10 note: `status = 'needs_review'` is mapped onto errorCount).
+      needsReview: stats.errorCount,
+      packGenerated: hasPack,
     );
+    result.add(ProjectWithNextAction(
+      project: p,
+      action: action,
+      translatedPct: pct,
+    ));
   }
-
-  // Fallback if query fails
-  return DashboardStats(
-    totalProjects: totalProjects,
-    totalTranslationUnits: 0,
-    translatedUnits: 0,
-    pendingUnits: 0,
-    totalTranslatedWords: 0,
-  );
-}
-
-/// Provider for recent projects (last 5) filtered by selected game
-@riverpod
-Future<List<Project>> recentProjects(Ref ref) async {
-  final projectRepo = ref.watch(projectRepositoryProvider);
-  final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
-
-  // Get selected game
-  final selectedGame = await ref.watch(selectedGameProvider.future);
-  final gameCode = selectedGame?.code;
-
-  List<Project> projects = [];
-  if (gameCode != null) {
-    // Find game installation for the selected game code
-    final gameInstallationResult =
-        await gameInstallationRepo.getByGameCode(gameCode);
-    if (gameInstallationResult.isOk) {
-      final gameInstallation = gameInstallationResult.value;
-      final projectsResult =
-          await projectRepo.getByGameInstallation(gameInstallation.id);
-      projects = projectsResult.isOk ? projectsResult.value : [];
-    }
-  } else {
-    // No game selected, get all projects
-    final result = await projectRepo.getAll();
-    projects = result.isOk ? result.value : [];
-  }
-
-  // Sort by updated_at descending and take first 5
-  projects.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-  return projects.take(5).toList();
+  return result;
 }
