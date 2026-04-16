@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
 import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/features/translation_editor/providers/tm_reuse_stats_provider.dart';

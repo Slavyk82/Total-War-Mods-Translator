@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
 import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
@@ -6,6 +5,8 @@ import 'package:twmt/models/domain/translation_version.dart';
 
 part 'tm_reuse_stats_provider.g.dart';
 
+/// Aggregate stats over translated rows for the editor status bar:
+/// what fraction of finalized translations came from TM (exact/fuzzy/llm).
 class TmReuseStats {
   final int translatedCount;
   final int reusedCount;
@@ -24,6 +25,8 @@ class TmReuseStats {
       );
 }
 
+/// Computes [TmReuseStats] from [translationRowsProvider]. Pure derivation;
+/// auto-disposes per (projectId, languageId) family key.
 @riverpod
 Future<TmReuseStats> tmReuseStats(Ref ref, String projectId, String languageId) async {
   final rows = await ref.watch(translationRowsProvider(projectId, languageId).future);
