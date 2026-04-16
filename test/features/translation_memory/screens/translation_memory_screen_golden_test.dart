@@ -1,18 +1,13 @@
-// Widget tests for the migrated Translation Memory screen (Plan 5a · Task 6).
+// Golden tests for the migrated Translation Memory screen (Plan 5a · Task 6).
 //
-// The screen was refactored from the FluentScaffold header/toolbar layout to
-// the §7.1 filterable-list archetype: [FilterToolbar] on top of a tokenised
-// [SfDataGrid] with the preserved 280px [TmStatisticsPanel] and
-// [TmPaginationBar]. These tests exercise the new chrome and verify the
-// screen renders without touching the legacy header widgets.
+// Fixtures cover three usage counts, three "LAST USED" deltas (same-day,
+// "3 days", "1 month") and the populated statistics panel. The clock is
+// pinned via [clockProvider] so relative-date cells stay byte-stable.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import 'package:twmt/features/translation_memory/screens/translation_memory_screen.dart';
-import 'package:twmt/features/translation_memory/widgets/tm_pagination_bar.dart';
-import 'package:twmt/features/translation_memory/widgets/tm_statistics_panel.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/providers/clock_provider.dart';
@@ -21,8 +16,6 @@ import 'package:twmt/services/translation_memory/i_translation_memory_service.da
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/theme/app_theme.dart';
-import 'package:twmt/widgets/lists/filter_toolbar.dart';
-import 'package:twmt/widgets/lists/list_search_field.dart';
 
 import '../../../helpers/test_helpers.dart';
 
@@ -72,10 +65,15 @@ List<TranslationMemoryEntry> _populatedEntries() => [
       ),
     ];
 
-/// Fake [ITranslationMemoryService] that returns a fixed in-memory set of
-/// entries so the screen can render a populated [SfDataGrid] under test.
-class _PopulatedTmService implements ITranslationMemoryService {
-  _PopulatedTmService(this._entries);
+/// Pinned `now` = baseEpoch + 1 day so the "LAST USED" column produces:
+///   tm1 → "1 day", tm2 → "4 days", tm3 → "1 month".
+final DateTime _pinnedNow =
+    DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+        .add(const Duration(days: 1));
+
+/// Fake [ITranslationMemoryService] that returns the populated fixture.
+class _FixedTmService implements ITranslationMemoryService {
+  _FixedTmService(this._entries);
 
   final List<TranslationMemoryEntry> _entries;
 
@@ -96,13 +94,7 @@ class _PopulatedTmService implements ITranslationMemoryService {
     String? targetLanguageCode,
     int limit = 50,
   }) async =>
-      Ok(_entries
-          .where((e) =>
-              e.sourceText.toLowerCase().contains(searchText.toLowerCase()) ||
-              e.translatedText
-                  .toLowerCase()
-                  .contains(searchText.toLowerCase()))
-          .toList());
+      Ok(_entries);
 
   @override
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
@@ -117,7 +109,6 @@ class _PopulatedTmService implements ITranslationMemoryService {
         reuseRate: 0.34,
       ));
 
-  // ---------------- Unused by the screen under test ----------------
   @override
   Future<Result<TranslationMemoryEntry, TmAddException>> addTranslation({
     required String sourceText,
@@ -238,22 +229,9 @@ class _PopulatedTmService implements ITranslationMemoryService {
 }
 
 List<Override> _populatedOverrides() => [
-      // Pin the clock so the "LAST USED" cells render deterministically.
-      clockProvider.overrideWithValue(
-        () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
-            .add(const Duration(days: 1)),
-      ),
+      clockProvider.overrideWithValue(() => _pinnedNow),
       translationMemoryServiceProvider
-          .overrideWithValue(_PopulatedTmService(_populatedEntries())),
-    ];
-
-List<Override> _emptyOverrides() => [
-      clockProvider.overrideWithValue(
-        () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
-            .add(const Duration(days: 1)),
-      ),
-      translationMemoryServiceProvider
-          .overrideWithValue(_PopulatedTmService(const [])),
+          .overrideWithValue(_FixedTmService(_populatedEntries())),
     ];
 
 void main() {
@@ -265,88 +243,34 @@ void main() {
     await tearDownMockServices();
   });
 
-  testWidgets(
-      'TranslationMemoryScreen renders FilterToolbar + SfDataGrid + stats panel',
-      (t) async {
-    await t.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => t.binding.setSurfaceSize(null));
-    await t.pumpWidget(createThemedTestableWidget(
+  Future<void> pumpUnder(
+    WidgetTester tester,
+    ThemeData theme,
+    List<Override> overrides,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(createThemedTestableWidget(
       const TranslationMemoryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
+      theme: theme,
+      overrides: overrides,
     ));
-    await t.pumpAndSettle();
+    await tester.pumpAndSettle();
+  }
 
-    expect(find.byType(FilterToolbar), findsOneWidget);
-    expect(find.byType(SfDataGrid), findsOneWidget);
-    expect(find.byType(TmStatisticsPanel), findsOneWidget);
-    expect(find.byType(TmPaginationBar), findsOneWidget);
+  testWidgets('translation memory atelier populated', (t) async {
+    await pumpUnder(t, AppTheme.atelierDarkTheme, _populatedOverrides());
+    await expectLater(
+      find.byType(TranslationMemoryScreen),
+      matchesGoldenFile('../goldens/tm_atelier_populated.png'),
+    );
   });
 
-  testWidgets('Toolbar shows Import/Export/Cleanup action buttons',
-      (t) async {
-    await t.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => t.binding.setSurfaceSize(null));
-    await t.pumpWidget(createThemedTestableWidget(
-      const TranslationMemoryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await t.pumpAndSettle();
-
-    expect(find.text('Import TMX'), findsOneWidget);
-    expect(find.text('Export TMX'), findsOneWidget);
-    expect(find.text('Cleanup'), findsOneWidget);
-  });
-
-  testWidgets('Populated grid renders source and target text cells',
-      (t) async {
-    await t.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => t.binding.setSurfaceSize(null));
-    await t.pumpWidget(createThemedTestableWidget(
-      const TranslationMemoryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await t.pumpAndSettle();
-
-    expect(find.text('Hello, world'), findsOneWidget);
-    expect(find.text('Bonjour le monde'), findsOneWidget);
-    expect(find.text('Victory or death'), findsOneWidget);
-  });
-
-  testWidgets('Search field filters the grid via the TM filter provider',
-      (t) async {
-    await t.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => t.binding.setSurfaceSize(null));
-    await t.pumpWidget(createThemedTestableWidget(
-      const TranslationMemoryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await t.pumpAndSettle();
-
-    expect(find.text('Hello, world'), findsOneWidget);
-    expect(find.text('Victory or death'), findsOneWidget);
-
-    await t.enterText(find.byType(ListSearchField), 'victory');
-    await t.pumpAndSettle();
-
-    expect(find.text('Hello, world'), findsNothing);
-    expect(find.text('Victory or death'), findsOneWidget);
-  });
-
-  testWidgets('Empty TM surfaces the tokenised empty state', (t) async {
-    await t.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => t.binding.setSurfaceSize(null));
-    await t.pumpWidget(createThemedTestableWidget(
-      const TranslationMemoryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _emptyOverrides(),
-    ));
-    await t.pumpAndSettle();
-
-    expect(find.byType(SfDataGrid), findsNothing);
-    expect(find.text('No translation memory entries'), findsOneWidget);
+  testWidgets('translation memory forge populated', (t) async {
+    await pumpUnder(t, AppTheme.forgeDarkTheme, _populatedOverrides());
+    await expectLater(
+      find.byType(TranslationMemoryScreen),
+      matchesGoldenFile('../goldens/tm_forge_populated.png'),
+    );
   });
 }

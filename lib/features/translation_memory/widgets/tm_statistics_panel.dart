@@ -2,30 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import '../providers/tm_providers.dart';
 
-/// Statistics panel showing TM metrics and insights
+/// Statistics panel showing Translation Memory metrics and insights.
+///
+/// Retokenised in Plan 5a · Task 6 — the 280px sidebar is a preserve-feature
+/// of the TM screen, so the panel stays as-is in terms of structure but
+/// sources every colour and typography style from [TwmtThemeTokens].
 class TmStatisticsPanel extends ConsumerWidget {
   const TmStatisticsPanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
     final filtersState = ref.watch(tmFilterStateProvider);
     final statsAsync = ref.watch(tmStatisticsProvider(
       targetLang: filtersState.targetLanguage,
     ));
 
     return Container(
-      width: 250,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          right: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ),
+        color: tokens.panel,
+        border: Border(right: BorderSide(color: tokens.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,15 +37,20 @@ class TmStatisticsPanel extends ConsumerWidget {
               children: [
                 Icon(
                   FluentIcons.data_bar_vertical_24_regular,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
+                  size: 18,
+                  color: tokens.textMid,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Statistics',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: tokens.fontDisplay.copyWith(
+                    fontSize: 14,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                    fontStyle: tokens.fontDisplayItalic
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
                 ),
                 const Spacer(),
                 MouseRegion(
@@ -56,8 +61,8 @@ class TmStatisticsPanel extends ConsumerWidget {
                     },
                     child: Icon(
                       FluentIcons.arrow_clockwise_24_regular,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary,
+                      size: 16,
+                      color: tokens.textDim,
                     ),
                   ),
                 ),
@@ -65,36 +70,14 @@ class TmStatisticsPanel extends ConsumerWidget {
             ),
           ),
 
-          const Divider(height: 1),
+          Container(height: 1, color: tokens.border),
 
           // Content
           Expanded(
             child: statsAsync.when(
-              data: (stats) => _buildStatsContent(context, stats),
-              loading: () => const Center(
-                child: FluentSpinner(),
-              ),
-              error: (error, stack) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FluentIcons.error_circle_24_regular,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Failed to load statistics',
-                        style: Theme.of(context).textTheme.bodySmall,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              data: (stats) => _buildStatsContent(context, tokens, stats),
+              loading: () => const Center(child: FluentSpinner()),
+              error: (error, stack) => _buildError(tokens),
             ),
           ),
         ],
@@ -102,7 +85,36 @@ class TmStatisticsPanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsContent(BuildContext context, TmStatistics stats) {
+  Widget _buildError(TwmtThemeTokens tokens) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.error_circle_24_regular,
+              size: 40,
+              color: tokens.err,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Failed to load statistics',
+              style: tokens.fontBody
+                  .copyWith(fontSize: 12, color: tokens.textDim),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsContent(
+    BuildContext context,
+    TwmtThemeTokens tokens,
+    TmStatistics stats,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -110,45 +122,44 @@ class TmStatisticsPanel extends ConsumerWidget {
         children: [
           // Total Entries
           _buildBigStat(
-            context,
+            tokens,
             label: 'Total Entries',
             value: stats.totalEntries.toString(),
             icon: FluentIcons.database_24_regular,
-            color: Theme.of(context).colorScheme.primary,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Language Pairs
-          _buildSectionHeader(context, 'Language Pairs'),
+          _buildSectionHeader(tokens, 'Language Pairs'),
           const SizedBox(height: 8),
           ...stats.entriesByLanguagePair.entries.map(
             (entry) => _buildLanguagePairStat(
-              context,
+              tokens,
               languagePair: entry.key,
               count: entry.value,
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // Performance Stats
-          _buildSectionHeader(context, 'Performance'),
+          _buildSectionHeader(tokens, 'Performance'),
           const SizedBox(height: 8),
           _buildSmallStat(
-            context,
+            tokens,
             label: 'Total Reuse',
             value: stats.totalReuseCount.toString(),
           ),
           const SizedBox(height: 4),
           _buildSmallStat(
-            context,
+            tokens,
             label: 'Tokens Saved',
             value: _formatNumber(stats.tokensSaved),
           ),
           const SizedBox(height: 4),
           _buildSmallStat(
-            context,
+            tokens,
             label: 'Reuse Rate',
             value: '${(stats.reuseRate * 100).toStringAsFixed(1)}%',
           ),
@@ -158,21 +169,21 @@ class TmStatisticsPanel extends ConsumerWidget {
   }
 
   Widget _buildBigStat(
-    BuildContext context, {
+    TwmtThemeTokens tokens, {
     required String label,
     required String value,
     required IconData icon,
-    required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.accentBg,
+        border: Border.all(color: tokens.accent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 32, color: color),
+          Icon(icon, size: 28, color: tokens.accent),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -180,14 +191,19 @@ class TmStatisticsPanel extends ConsumerWidget {
               children: [
                 Text(
                   value,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: tokens.fontDisplay.copyWith(
+                    fontSize: 22,
+                    color: tokens.accent,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: tokens.fontDisplayItalic
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
                 ),
                 Text(
                   label,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: tokens.fontBody
+                      .copyWith(fontSize: 11.5, color: tokens.textDim),
                 ),
               ],
             ),
@@ -197,17 +213,20 @@ class TmStatisticsPanel extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
+  Widget _buildSectionHeader(TwmtThemeTokens tokens, String title) {
     return Text(
-      title,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+      title.toUpperCase(),
+      style: tokens.fontMono.copyWith(
+        fontSize: 11,
+        color: tokens.textDim,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.8,
+      ),
     );
   }
 
   Widget _buildLanguagePairStat(
-    BuildContext context, {
+    TwmtThemeTokens tokens, {
     required String languagePair,
     required int count,
   }) {
@@ -217,21 +236,24 @@ class TmStatisticsPanel extends ConsumerWidget {
         children: [
           Icon(
             FluentIcons.translate_24_regular,
-            size: 16,
-            color: Theme.of(context).colorScheme.secondary,
+            size: 14,
+            color: tokens.textMid,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               languagePair,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: tokens.fontBody
+                  .copyWith(fontSize: 12, color: tokens.textMid),
             ),
           ),
           Text(
             count.toString(),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: tokens.fontMono.copyWith(
+              fontSize: 12,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -239,24 +261,25 @@ class TmStatisticsPanel extends ConsumerWidget {
   }
 
   Widget _buildSmallStat(
-    BuildContext context, {
+    TwmtThemeTokens tokens, {
     required String label,
     required String value,
-    Color? valueColor,
   }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall,
+          style: tokens.fontBody
+              .copyWith(fontSize: 12, color: tokens.textMid),
         ),
         Text(
           value,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: valueColor,
-              ),
+          style: tokens.fontMono.copyWith(
+            fontSize: 12,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );

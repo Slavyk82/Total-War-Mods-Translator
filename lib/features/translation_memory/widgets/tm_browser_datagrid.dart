@@ -1,14 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
-import '../providers/tm_providers.dart';
-import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/providers/clock_provider.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
+import '../providers/tm_providers.dart';
 
-/// DataGrid for browsing and managing TM entries
+/// Tokenised [SfDataGrid] for browsing Translation Memory entries.
+///
+/// Part of the §7.1 dense-list archetype (Plan 5a · Task 6). Mirrors the
+/// Glossary dense-list pattern hardened in commit d1d4e89:
+///  - Syncfusion theme sourced from [buildTokenDataGridTheme] so row hover,
+///    selection and grid-line colours track [TwmtThemeTokens].
+///  - Row-value lookup is O(1) (`row.getCells().first.value`), not
+///    `_rows.indexOf(row)`.
+///  - `onCellTap`/`onCellDoubleTap` resolve the entry via the data source's
+///    [_TmDataSource.rowAt] helper so screen-side list arithmetic cannot
+///    drift from the grid's header offset.
 class TmBrowserDataGrid extends ConsumerStatefulWidget {
   const TmBrowserDataGrid({super.key});
 
@@ -17,14 +32,13 @@ class TmBrowserDataGrid extends ConsumerStatefulWidget {
 }
 
 class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
-  late TmDataSource _dataSource;
+  late _TmDataSource _dataSource;
 
   @override
   void initState() {
     super.initState();
-    _dataSource = TmDataSource(
+    _dataSource = _TmDataSource(
       entries: const [],
-      ref: null,
       onDeleteEntry: _handleDeleteEntry,
       onSortChanged: _handleSortChanged,
     );
@@ -57,9 +71,8 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
 
     return entriesAsync.when(
       data: (entries) {
-        _dataSource = TmDataSource(
+        _dataSource = _TmDataSource(
           entries: entries,
-          ref: ref,
           onDeleteEntry: _handleDeleteEntry,
           onSortChanged: _handleSortChanged,
         );
@@ -68,138 +81,156 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       loading: () => const Center(
         child: FluentSpinner(),
       ),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              FluentIcons.error_circle_24_regular,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
+      error: (error, stack) => _buildError(context, error),
+    );
+  }
+
+  Widget _buildError(BuildContext context, Object error) {
+    final tokens = context.tokens;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            FluentIcons.error_circle_24_regular,
+            size: 48,
+            color: tokens.err,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Failed to load entries',
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 16,
+              color: tokens.err,
+              fontStyle:
+                  tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Failed to load entries',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              error.toString(),
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            error.toString(),
+            style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataGrid(
+      BuildContext context, List<TranslationMemoryEntry> entries) {
+    if (entries.isEmpty) {
+      return _buildEmptyState(context);
+    }
+
+    final tokens = context.tokens;
+    return SfDataGridTheme(
+      data: buildTokenDataGridTheme(tokens),
+      child: SfDataGrid(
+        source: _dataSource,
+        columnWidthMode: ColumnWidthMode.fill,
+        gridLinesVisibility: GridLinesVisibility.horizontal,
+        headerGridLinesVisibility: GridLinesVisibility.horizontal,
+        selectionMode: SelectionMode.single,
+        navigationMode: GridNavigationMode.cell,
+        allowSorting: true,
+        rowHeight: 48,
+        headerRowHeight: 32,
+        columns: [
+          GridColumn(
+            columnName: 'source',
+            label: _headerCell(tokens, 'SOURCE TEXT', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'target',
+            label: _headerCell(tokens, 'TARGET TEXT', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'usage',
+            width: 90,
+            label: _headerCell(tokens, 'USAGE', Alignment.centerRight),
+          ),
+          GridColumn(
+            columnName: 'lastUsed',
+            width: 120,
+            label: _headerCell(tokens, 'LAST USED', Alignment.centerLeft),
+          ),
+          GridColumn(
+            columnName: 'actions',
+            width: 88,
+            allowSorting: false,
+            label: _headerCell(tokens, '', Alignment.center),
+          ),
+        ],
+        onCellTap: (details) {
+          // Header rows have rowIndex 0; body rows start at 1. The actions
+          // column handles its own taps via embedded GestureDetectors.
+          if (details.rowColumnIndex.rowIndex <= 0) return;
+          if (details.column.columnName == 'actions') return;
+          // Resolve the row via the data source rather than subtracting
+          // header offsets from the upstream entries list. This keeps
+          // callbacks insulated from any future frozen-row arithmetic
+          // drift (mirrors the Glossary Task 5 hardening).
+          final entry =
+              _dataSource.rowAt(details.rowColumnIndex.rowIndex - 1);
+          if (entry == null) return;
+          ref.read(selectedTmEntryProvider.notifier).select(entry);
+        },
+        onCellDoubleTap: (details) {
+          if (details.rowColumnIndex.rowIndex <= 0) return;
+          if (details.column.columnName == 'actions') return;
+          final entry =
+              _dataSource.rowAt(details.rowColumnIndex.rowIndex - 1);
+          if (entry == null) return;
+          _showDetailsDialog(context, entry);
+        },
+      ),
+    );
+  }
+
+  Widget _headerCell(TwmtThemeTokens tokens, String label, Alignment align) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      alignment: align,
+      child: Text(
+        label,
+        style: tokens.fontMono.copyWith(
+          fontSize: 11,
+          color: tokens.textDim,
+          letterSpacing: 0.8,
         ),
       ),
     );
   }
 
-  Widget _buildDataGrid(BuildContext context, List<TranslationMemoryEntry> entries) {
-    if (entries.isEmpty) {
-      return _buildEmptyState(context);
-    }
-
-    return SfDataGrid(
-      source: _dataSource,
-      columnWidthMode: ColumnWidthMode.fill,
-      gridLinesVisibility: GridLinesVisibility.horizontal,
-      headerGridLinesVisibility: GridLinesVisibility.horizontal,
-      selectionMode: SelectionMode.single,
-      navigationMode: GridNavigationMode.cell,
-      allowSorting: true,
-      rowHeight: 72,
-      headerRowHeight: 56,
-      columns: [
-        GridColumn(
-          columnName: 'source',
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Source Text',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
-        GridColumn(
-          columnName: 'target',
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'Target Text',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
-        GridColumn(
-          columnName: 'usage',
-          width: 100,
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.center,
-            child: Text(
-              'Usage',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
-        GridColumn(
-          columnName: 'actions',
-          width: 100,
-          allowSorting: false,
-          label: Container(
-            padding: const EdgeInsets.all(16),
-            alignment: Alignment.center,
-            child: Text(
-              'Actions',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ),
-      ],
-      onCellTap: (details) {
-        if (details.rowColumnIndex.rowIndex > 0) {
-          final entry = entries[details.rowColumnIndex.rowIndex - 1];
-          ref.read(selectedTmEntryProvider.notifier).select(entry);
-        }
-      },
-      onCellDoubleTap: (details) {
-        if (details.rowColumnIndex.rowIndex > 0) {
-          final entry = entries[details.rowColumnIndex.rowIndex - 1];
-          _showDetailsDialog(context, entry);
-        }
-      },
-    );
-  }
-
   Widget _buildEmptyState(BuildContext context) {
+    final tokens = context.tokens;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             FluentIcons.database_24_regular,
-            size: 64,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+            size: 48,
+            color: tokens.textFaint,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'No translation memory entries',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 16,
+              color: tokens.text,
+              fontStyle:
+                  tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Import a TMX file or start translating to build your memory',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -219,18 +250,21 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildDetailRow('Source Text', entry.sourceText),
+                _buildDetailRow(context, 'Source Text', entry.sourceText),
                 const Divider(),
-                _buildDetailRow('Target Text', entry.translatedText),
-                const Divider(),
-                _buildDetailRow('Usage Count', entry.usageCount.toString()),
+                _buildDetailRow(context, 'Target Text', entry.translatedText),
                 const Divider(),
                 _buildDetailRow(
+                    context, 'Usage Count', entry.usageCount.toString()),
+                const Divider(),
+                _buildDetailRow(
+                  context,
                   'Last Used',
                   _formatTimestamp(entry.lastUsedAt),
                 ),
                 const Divider(),
                 _buildDetailRow(
+                  context,
                   'Created',
                   _formatTimestamp(entry.createdAt),
                 ),
@@ -248,7 +282,8 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(BuildContext context, String label, String value) {
+    final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -256,14 +291,19 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: tokens.fontMono.copyWith(
+              fontSize: 11,
+              color: tokens.textDim,
+              letterSpacing: 0.8,
+            ),
           ),
           const SizedBox(height: 4),
           SelectableText(
             value,
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+            ),
           ),
         ],
       ),
@@ -272,22 +312,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
 
   String _formatTimestamp(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inDays > 365) {
-      return '${(diff.inDays / 365).floor()} years ago';
-    } else if (diff.inDays > 30) {
-      return '${(diff.inDays / 30).floor()} months ago';
-    } else if (diff.inDays > 0) {
-      return '${diff.inDays} days ago';
-    } else if (diff.inHours > 0) {
-      return '${diff.inHours} hours ago';
-    } else if (diff.inMinutes > 0) {
-      return '${diff.inMinutes} minutes ago';
-    } else {
-      return 'Just now';
-    }
+    return formatAbsoluteDate(date) ?? '';
   }
 
   Future<void> _handleDeleteEntry(TranslationMemoryEntry entry) async {
@@ -329,44 +354,62 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
   }
 }
 
-/// Data source for the TM DataGrid
-class TmDataSource extends DataGridSource {
-  TmDataSource({
+// =============================================================================
+// Data source
+// =============================================================================
+
+/// Syncfusion data source for the Translation Memory grid.
+///
+/// Stores the [TranslationMemoryEntry] as the typed value of the first cell so
+/// both [buildRow] and the [rowAt] helper can resolve it in O(1) — avoiding
+/// the O(n) `_rows.indexOf(row)` scan on every rebuild.
+class _TmDataSource extends DataGridSource {
+  _TmDataSource({
     required List<TranslationMemoryEntry> entries,
-    required this.ref,
     required this.onDeleteEntry,
     required this.onSortChanged,
   }) {
     _entries = entries;
-    _buildDataGridRows();
+    _rows = entries
+        .map((entry) => DataGridRow(cells: [
+              DataGridCell<TranslationMemoryEntry>(
+                  columnName: 'source', value: entry),
+              DataGridCell<TranslationMemoryEntry>(
+                  columnName: 'target', value: entry),
+              DataGridCell<int>(columnName: 'usage', value: entry.usageCount),
+              DataGridCell<int>(
+                  columnName: 'lastUsed', value: entry.lastUsedAt),
+              DataGridCell<TranslationMemoryEntry>(
+                  columnName: 'actions', value: entry),
+            ]))
+        .toList();
   }
 
-  List<TranslationMemoryEntry> _entries = [];
-  List<DataGridRow> _dataGridRows = [];
-  final WidgetRef? ref;
+  List<TranslationMemoryEntry> _entries = const [];
+  List<DataGridRow> _rows = const [];
   final void Function(TranslationMemoryEntry) onDeleteEntry;
   final void Function(String column, bool ascending) onSortChanged;
 
-  void _buildDataGridRows() {
-    _dataGridRows = _entries.map<DataGridRow>((entry) {
-      return DataGridRow(cells: [
-        DataGridCell<TranslationMemoryEntry>(columnName: 'source', value: entry),
-        DataGridCell<TranslationMemoryEntry>(columnName: 'target', value: entry),
-        DataGridCell<TranslationMemoryEntry>(columnName: 'usage', value: entry),
-        DataGridCell<TranslationMemoryEntry>(columnName: 'actions', value: entry),
-      ]);
-    }).toList();
-  }
-
   @override
-  List<DataGridRow> get rows => _dataGridRows;
+  List<DataGridRow> get rows => _rows;
+
+  /// Resolve the [TranslationMemoryEntry] backing the row at [rowIndex]
+  /// inside [rows] (NOT the grid's absolute row index — callers must already
+  /// subtract the header row). Returns `null` when the index is out of
+  /// range so stale taps fail silently.
+  TranslationMemoryEntry? rowAt(int rowIndex) {
+    if (rowIndex < 0 || rowIndex >= _rows.length) return null;
+    final value = _rows[rowIndex].getCells().first.value;
+    return value is TranslationMemoryEntry ? value : null;
+  }
 
   @override
   Future<void> performSorting(List<DataGridRow> rows) async {
     // Server-side sorting: trigger provider update instead of local sort
     if (sortedColumns.isNotEmpty) {
       final sortColumn = sortedColumns.first;
-      final ascending = sortColumn.sortDirection == DataGridSortDirection.ascending;
+      final ascending =
+          sortColumn.sortDirection == DataGridSortDirection.ascending;
       // Defer state change to avoid modifying provider during build
       Future.microtask(() => onSortChanged(sortColumn.name, ascending));
     }
@@ -380,76 +423,137 @@ class TmDataSource extends DataGridSource {
   }
 
   @override
-  DataGridRowAdapter buildRow(DataGridRow row) {
-    final entry = row.getCells().first.value as TranslationMemoryEntry;
+  DataGridRowAdapter? buildRow(DataGridRow row) {
+    // O(1) lookup: the first cell carries the entry as its typed value.
+    final entry = row.getCells().first.value as TranslationMemoryEntry?;
+    if (entry == null) return null;
 
     return DataGridRowAdapter(
       cells: [
-        _buildTextCell(entry.sourceText, maxLines: 2),
-        _buildTextCell(entry.translatedText, maxLines: 2),
-        _buildUsageCell(entry),
-        _buildActionsCell(entry),
+        RepaintBoundary(child: _TextCell(text: entry.sourceText)),
+        RepaintBoundary(child: _TextCell(text: entry.translatedText)),
+        RepaintBoundary(child: _UsageCell(count: entry.usageCount)),
+        RepaintBoundary(child: _LastUsedCell(lastUsedAt: entry.lastUsedAt)),
+        RepaintBoundary(
+          child: _ActionsCell(
+            entry: entry,
+            onDelete: onDeleteEntry,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildTextCell(String text, {int maxLines = 2}) {
+  // `_entries` is retained for potential future direct-index access.
+  // ignore: unused_element
+  List<TranslationMemoryEntry> get entries => _entries;
+}
+
+// =============================================================================
+// Cells
+// =============================================================================
+
+class _TextCell extends StatelessWidget {
+  final String text;
+  const _TextCell({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.all(16),
       alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Text(
         text,
-        maxLines: maxLines,
+        maxLines: 2,
         overflow: TextOverflow.ellipsis,
+        style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
       ),
     );
   }
+}
 
-  Widget _buildUsageCell(TranslationMemoryEntry entry) {
+class _UsageCell extends StatelessWidget {
+  final int count;
+  const _UsageCell({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.all(16),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            entry.usageCount.toString(),
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            entry.usageCount == 1 ? 'time' : 'times',
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        count.toString(),
+        style: tokens.fontMono.copyWith(fontSize: 12.5, color: tokens.textMid),
       ),
     );
   }
+}
 
-  Widget _buildActionsCell(TranslationMemoryEntry entry) {
+class _LastUsedCell extends ConsumerWidget {
+  final int lastUsedAt;
+  const _LastUsedCell({required this.lastUsedAt});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    // [TranslationMemoryEntry.lastUsedAt] is a Unix seconds timestamp.
+    final date = DateTime.fromMillisecondsSinceEpoch(lastUsedAt * 1000);
+    final now = ref.watch(clockProvider).call();
+    final relative = formatRelativeSince(date, now: now) ?? '—';
+    final absolute = formatAbsoluteDate(date);
+
+    final label = Text(
+      relative,
+      style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
+    );
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: absolute == null
+          ? label
+          : Tooltip(
+              message: absolute,
+              waitDuration: const Duration(milliseconds: 400),
+              child: label,
+            ),
+    );
+  }
+}
+
+class _ActionsCell extends StatelessWidget {
+  final TranslationMemoryEntry entry;
+  final void Function(TranslationMemoryEntry) onDelete;
+
+  const _ActionsCell({required this.entry, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
       alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ActionButton(
+          _IconAction(
             icon: FluentIcons.copy_24_regular,
             tooltip: 'Copy',
-            onPressed: () => _copyEntry(entry),
+            foreground: tokens.textMid,
+            background: tokens.panel2,
+            borderColor: tokens.border,
+            onTap: () => _copyEntry(entry),
           ),
-          const SizedBox(width: 4),
-          _ActionButton(
+          const SizedBox(width: 6),
+          _IconAction(
             icon: FluentIcons.delete_24_regular,
-            tooltip: 'Delete',
-            onPressed: () => _deleteEntry(entry),
-            isDestructive: true,
+            tooltip: 'Delete entry',
+            foreground: tokens.err,
+            background: tokens.errBg,
+            borderColor: tokens.err.withValues(alpha: 0.4),
+            onTap: () => onDelete(entry),
           ),
         ],
       ),
@@ -461,59 +565,46 @@ class TmDataSource extends DataGridSource {
       text: 'Source: ${entry.sourceText}\nTarget: ${entry.translatedText}',
     ));
   }
-
-  void _deleteEntry(TranslationMemoryEntry entry) {
-    onDeleteEntry(entry);
-  }
 }
 
-/// Action button widget for the actions column
-class _ActionButton extends StatefulWidget {
-  const _ActionButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-    this.isDestructive = false,
-  });
-
+class _IconAction extends StatelessWidget {
   final IconData icon;
   final String tooltip;
-  final VoidCallback onPressed;
-  final bool isDestructive;
+  final Color foreground;
+  final Color background;
+  final Color borderColor;
+  final VoidCallback onTap;
 
-  @override
-  State<_ActionButton> createState() => _ActionButtonState();
-}
-
-class _ActionButtonState extends State<_ActionButton> {
-  bool _isHovered = false;
+  const _IconAction({
+    required this.icon,
+    required this.tooltip,
+    required this.foreground,
+    required this.background,
+    required this.borderColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.primary;
-
+    final tokens = context.tokens;
     return Tooltip(
-      message: widget.tooltip,
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
         child: GestureDetector(
-          onTap: widget.onPressed,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(6),
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _isHovered ? color.withValues(alpha: 0.1) : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
+              color: background,
+              border: Border.all(color: borderColor),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
             ),
-            child: Icon(
-              widget.icon,
-              size: 18,
-              color: color,
-            ),
+            child: Icon(icon, size: 14, color: foreground),
           ),
         ),
       ),
