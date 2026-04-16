@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
+import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/features/activity/providers/activity_providers.dart';
+import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../models/domain/compilation.dart';
@@ -383,6 +387,25 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         state.compilationId!,
         packPath,
       );
+
+      // Emit activity event (fire-and-forget)
+      // Compilations span multiple projects, so projectId is null.
+      // gameCode is sourced from the resolved game installation.
+      unawaited(
+        ref.read(activityLoggerProvider).log(
+          ActivityEventType.packCompiled,
+          projectId: null,
+          gameCode: gameInstallation.gameCode,
+          payload: {
+            'projectName': state.name,
+            'packFileName': state.fullPackName,
+          },
+        ),
+      );
+
+      // Invalidate home providers affected by this change.
+      ref.invalidate(projectsReadyToCompileCountProvider);
+      ref.invalidate(packsAwaitingPublishCountProvider);
 
       state = state.copyWith(
         isCompiling: false,
