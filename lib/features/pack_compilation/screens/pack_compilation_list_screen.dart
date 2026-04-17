@@ -133,7 +133,7 @@ class _PackCompilationListScreenState
             },
             child: Text(
               'Delete',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+              style: TextStyle(color: context.tokens.err),
             ),
           ),
         ],
