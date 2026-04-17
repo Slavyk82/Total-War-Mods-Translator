@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/language.dart';
 
 /// DataGrid data source for language settings
 class LanguageSettingsDataSource extends DataGridSource {
   final List<Language> languages;
   final String defaultLanguageCode;
-  final BuildContext context;
+  final TwmtThemeTokens tokens;
   final void Function(Language) onSetDefault;
   final void Function(Language) onDelete;
 
@@ -16,7 +17,7 @@ class LanguageSettingsDataSource extends DataGridSource {
   LanguageSettingsDataSource({
     required this.languages,
     required this.defaultLanguageCode,
-    required this.context,
+    required this.tokens,
     required this.onSetDefault,
     required this.onDelete,
   }) {
@@ -76,9 +77,7 @@ class LanguageSettingsDataSource extends DataGridSource {
                   ? FluentIcons.radio_button_24_filled
                   : FluentIcons.radio_button_24_regular,
               size: 20,
-              color: isDefault
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: isDefault ? tokens.accent : tokens.textFaint,
             ),
           ),
         ),
@@ -93,15 +92,16 @@ class LanguageSettingsDataSource extends DataGridSource {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          color: tokens.panel2,
           borderRadius: BorderRadius.circular(4),
         ),
         child: Text(
           code.toUpperCase(),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontFamily: 'monospace',
-                fontWeight: FontWeight.w600,
-              ),
+          style: tokens.fontMono.copyWith(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: tokens.text,
+          ),
         ),
       ),
     );
@@ -116,7 +116,7 @@ class LanguageSettingsDataSource extends DataGridSource {
           Flexible(
             child: Text(
               name,
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -125,14 +125,15 @@ class LanguageSettingsDataSource extends DataGridSource {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
+                color: tokens.accentBg,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
                 'Custom',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSecondaryContainer,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 11,
+                  color: tokens.accent,
+                ),
               ),
             ),
           ],
@@ -154,7 +155,6 @@ class LanguageSettingsDataSource extends DataGridSource {
         icon: FluentIcons.delete_24_regular,
         tooltip: 'Delete language',
         onTap: () => onDelete(language),
-        context: context,
         isDestructive: true,
       ),
     );
@@ -166,14 +166,12 @@ class _ActionButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  final BuildContext context;
   final bool isDestructive;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
-    required this.context,
     this.isDestructive = false,
   });
 
@@ -186,9 +184,8 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.onSurface;
+    final tokens = context.tokens;
+    final color = widget.isDestructive ? tokens.err : tokens.text;
 
     return Tooltip(
       message: widget.tooltip,
@@ -203,9 +200,7 @@ class _ActionButtonState extends State<_ActionButton> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color: _isHovered ? tokens.accentBg : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/ignored_source_text.dart';
 
 /// DataGrid data source for ignored source texts
 class IgnoredSourceTextsDataSource extends DataGridSource {
   final List<IgnoredSourceText> texts;
-  final BuildContext context;
+  final TwmtThemeTokens tokens;
   final void Function(IgnoredSourceText) onEdit;
   final void Function(IgnoredSourceText) onDelete;
   final void Function(IgnoredSourceText) onToggleEnabled;
@@ -15,7 +16,7 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
 
   IgnoredSourceTextsDataSource({
     required this.texts,
-    required this.context,
+    required this.tokens,
     required this.onEdit,
     required this.onDelete,
     required this.onToggleEnabled,
@@ -74,9 +75,7 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
                   ? FluentIcons.checkbox_checked_24_filled
                   : FluentIcons.checkbox_unchecked_24_regular,
               size: 20,
-              color: text.isEnabled
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: text.isEnabled ? tokens.accent : tokens.textFaint,
             ),
           ),
         ),
@@ -94,14 +93,15 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: tokens.panel2,
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                ),
+            style: tokens.fontMono.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+            ),
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
           ),
@@ -122,14 +122,12 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
             icon: FluentIcons.edit_24_regular,
             tooltip: 'Edit',
             onTap: () => onEdit(text),
-            context: context,
           ),
           const SizedBox(width: 4),
           _ActionButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: 'Delete',
             onTap: () => onDelete(text),
-            context: context,
             isDestructive: true,
           ),
         ],
@@ -143,14 +141,12 @@ class _ActionButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  final BuildContext context;
   final bool isDestructive;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
-    required this.context,
     this.isDestructive = false,
   });
 
@@ -163,9 +159,8 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.onSurface;
+    final tokens = context.tokens;
+    final color = widget.isDestructive ? tokens.err : tokens.text;
 
     return Tooltip(
       message: widget.tooltip,
@@ -180,9 +175,7 @@ class _ActionButtonState extends State<_ActionButton> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color: _isHovered ? tokens.accentBg : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(

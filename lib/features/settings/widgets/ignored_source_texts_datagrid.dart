@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/ignored_source_text.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -32,86 +35,96 @@ class _IgnoredSourceTextsDataGridState
   @override
   Widget build(BuildContext context) {
     final textsAsync = ref.watch(ignoredSourceTextsProvider);
+    final tokens = context.tokens;
 
     return textsAsync.when(
       data: (texts) {
         _dataSource = IgnoredSourceTextsDataSource(
           texts: texts,
-          context: context,
+          tokens: tokens,
           onEdit: _editText,
           onDelete: _deleteText,
           onToggleEnabled: _toggleEnabled,
         );
-        return _buildDataGrid(texts);
+        return _buildDataGrid(texts, tokens);
       },
       loading: () => const SizedBox(
         height: 100,
         child: Center(child: FluentSpinner()),
       ),
-      error: (error, stack) => _buildErrorState(error.toString()),
+      error: (error, stack) => _buildErrorState(error.toString(), tokens),
     );
   }
 
-  Widget _buildDataGrid(List<IgnoredSourceText> texts) {
+  Widget _buildDataGrid(List<IgnoredSourceText> texts, TwmtThemeTokens tokens) {
     if (texts.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(tokens);
     }
 
     return SizedBox(
       height: _calculateGridHeight(texts.length),
-      child: SfDataGrid(
-        source: _dataSource,
-        controller: _controller,
-        allowSorting: false,
-        columnWidthMode: ColumnWidthMode.fill,
-        gridLinesVisibility: GridLinesVisibility.both,
-        headerGridLinesVisibility: GridLinesVisibility.both,
-        selectionMode: SelectionMode.single,
-        rowHeight: 44,
-        headerRowHeight: 40,
-        columns: [
-          GridColumn(
-            columnName: 'enabled',
-            width: 80,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                'Active',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: SfDataGridTheme(
+        data: buildTokenDataGridTheme(tokens),
+        child: SfDataGrid(
+          source: _dataSource,
+          controller: _controller,
+          allowSorting: false,
+          columnWidthMode: ColumnWidthMode.fill,
+          gridLinesVisibility: GridLinesVisibility.both,
+          headerGridLinesVisibility: GridLinesVisibility.both,
+          selectionMode: SelectionMode.single,
+          rowHeight: 44,
+          headerRowHeight: 40,
+          columns: [
+            GridColumn(
+              columnName: 'enabled',
+              width: 80,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  'Active',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'sourceText',
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Source Text',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'sourceText',
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Source Text',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'actions',
-            width: 100,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                'Actions',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'actions',
+              width: 100,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  'Actions',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -127,13 +140,11 @@ class _IgnoredSourceTextsDataGridState
     return headerHeight + (rowHeight * displayRows) + padding;
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(TwmtThemeTokens tokens) {
     return Container(
       height: 120,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: tokens.border),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -143,23 +154,23 @@ class _IgnoredSourceTextsDataGridState
             Icon(
               FluentIcons.text_bullet_list_ltr_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: tokens.textFaint,
             ),
             const SizedBox(height: 8),
             Text(
               'No ignored texts defined',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.textMid,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Add source texts to skip during translation',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
             ),
           ],
         ),
@@ -167,11 +178,11 @@ class _IgnoredSourceTextsDataGridState
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState(String error, TwmtThemeTokens tokens) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.error),
+        border: Border.all(color: tokens.err),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -181,14 +192,15 @@ class _IgnoredSourceTextsDataGridState
             Icon(
               FluentIcons.error_circle_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.error,
+              color: tokens.err,
             ),
             const SizedBox(height: 8),
             Text(
               'Error loading ignored texts',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.err,
+              ),
             ),
           ],
         ),
@@ -236,7 +248,7 @@ class _IgnoredSourceTextsDataGridState
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: context.tokens.err,
             ),
             child: const Text('Delete'),
           ),

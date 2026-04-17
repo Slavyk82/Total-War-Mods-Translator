@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/llm_custom_rule.dart';
 
 /// DataGrid data source for LLM custom rules
 class LlmCustomRulesDataSource extends DataGridSource {
   final List<LlmCustomRule> rules;
-  final BuildContext context;
+  final TwmtThemeTokens tokens;
   final void Function(LlmCustomRule) onEdit;
   final void Function(LlmCustomRule) onDelete;
   final void Function(LlmCustomRule) onToggleEnabled;
@@ -15,7 +16,7 @@ class LlmCustomRulesDataSource extends DataGridSource {
 
   LlmCustomRulesDataSource({
     required this.rules,
-    required this.context,
+    required this.tokens,
     required this.onEdit,
     required this.onDelete,
     required this.onToggleEnabled,
@@ -74,9 +75,7 @@ class LlmCustomRulesDataSource extends DataGridSource {
                   ? FluentIcons.checkbox_checked_24_filled
                   : FluentIcons.checkbox_unchecked_24_regular,
               size: 20,
-              color: rule.isEnabled
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: rule.isEnabled ? tokens.accent : tokens.textFaint,
             ),
           ),
         ),
@@ -97,7 +96,7 @@ class LlmCustomRulesDataSource extends DataGridSource {
         waitDuration: const Duration(milliseconds: 500),
         child: Text(
           isMultiLine ? displayText.replaceAll('\n', ' ') : displayText,
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
           overflow: TextOverflow.ellipsis,
           maxLines: 2,
         ),
@@ -117,14 +116,12 @@ class LlmCustomRulesDataSource extends DataGridSource {
             icon: FluentIcons.edit_24_regular,
             tooltip: 'Edit rule',
             onTap: () => onEdit(rule),
-            context: context,
           ),
           const SizedBox(width: 4),
           _ActionButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: 'Delete rule',
             onTap: () => onDelete(rule),
-            context: context,
             isDestructive: true,
           ),
         ],
@@ -138,14 +135,12 @@ class _ActionButton extends StatefulWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  final BuildContext context;
   final bool isDestructive;
 
   const _ActionButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
-    required this.context,
     this.isDestructive = false,
   });
 
@@ -158,9 +153,8 @@ class _ActionButtonState extends State<_ActionButton> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDestructive
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.onSurface;
+    final tokens = context.tokens;
+    final color = widget.isDestructive ? tokens.err : tokens.text;
 
     return Tooltip(
       message: widget.tooltip,
@@ -175,9 +169,7 @@ class _ActionButtonState extends State<_ActionButton> {
             duration: const Duration(milliseconds: 150),
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _isHovered
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
+              color: _isHovered ? tokens.accentBg : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
