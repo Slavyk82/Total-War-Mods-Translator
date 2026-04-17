@@ -20,6 +20,11 @@ import '../../../helpers/test_helpers.dart';
 
 const int _epoch = 1_700_000_000;
 
+// Glossary.updatedAt is stored as a Unix-millisecond timestamp. Multiply the
+// seconds epoch so the "updated <relative>" subtitle pairs correctly with
+// [_pinnedNow] and renders as "1 day".
+const int _epochMs = _epoch * 1000;
+
 Glossary _glossary() => const Glossary(
       id: 'g-1',
       name: 'Warhammer III · FR glossary',
@@ -29,8 +34,8 @@ Glossary _glossary() => const Glossary(
       gameInstallationId: 'install-1',
       targetLanguageId: 'fr',
       entryCount: 234,
-      createdAt: _epoch,
-      updatedAt: _epoch,
+      createdAt: _epochMs,
+      updatedAt: _epochMs,
     );
 
 const GlossaryStatistics _stats = GlossaryStatistics(
