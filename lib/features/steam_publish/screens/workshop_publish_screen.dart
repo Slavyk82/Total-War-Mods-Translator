@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderException;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
@@ -110,8 +111,11 @@ class _WorkshopPublishScreenState
     // tests.
     try {
       _publishNotifier.silentCleanup();
-    } catch (_) {
-      // Ignore — nothing to clean up in a test context.
+    } on StateError catch (e) {
+      debugPrint('[WorkshopPublish] silentCleanup state error: $e');
+    } on ProviderException catch (e) {
+      // Riverpod 3 wraps StateError from ServiceLocator as ProviderException.
+      debugPrint('[WorkshopPublish] silentCleanup provider error: $e');
     }
     super.dispose();
   }
@@ -135,7 +139,12 @@ class _WorkshopPublishScreenState
           await service.getString(SettingsKeys.workshopDescriptionTemplate);
       visibilityName =
           await service.getString(SettingsKeys.workshopDefaultVisibility);
-    } catch (_) {
+    } on StateError catch (e) {
+      debugPrint('[WorkshopPublish] Settings unavailable: $e');
+      return;
+    } on ProviderException catch (e) {
+      // Riverpod 3 wraps StateError from ServiceLocator as ProviderException.
+      debugPrint('[WorkshopPublish] Settings provider unavailable: $e');
       return;
     }
     if (!mounted) return;

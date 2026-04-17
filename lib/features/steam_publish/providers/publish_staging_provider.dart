@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'batch_workshop_publish_notifier.dart';
 import 'steam_publish_providers.dart';
 
 /// Staging notifier for single publish screen.
+@visibleForTesting
 class SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
   @override
   PublishableItem? build() => null;
@@ -12,6 +14,7 @@ class SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
 }
 
 /// Staging notifier for batch publish screen.
+@visibleForTesting
 class BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
   @override
   BatchPublishStagingData? build() => null;
