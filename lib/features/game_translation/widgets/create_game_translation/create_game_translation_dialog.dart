@@ -27,7 +27,7 @@ import 'step_select_targets.dart';
 /// 1. Select source pack (local_xx.pack)
 /// 2. Select target languages
 ///
-/// Retokenised (Plan 5d · Task 5): panel/accent/border tokens, `_StepHeader`
+/// Retokenised (Plan 5d · Task 5): panel/accent/border tokens, `_buildStepHeader`
 /// step indicator, [SmallTextButton] footer actions, [SmallIconButton] close.
 class CreateGameTranslationDialog extends ConsumerStatefulWidget {
   const CreateGameTranslationDialog({super.key});
