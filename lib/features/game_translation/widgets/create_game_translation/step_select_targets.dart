@@ -2,14 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+
 import '../../../../models/domain/language.dart';
 import '../../../../widgets/fluent/fluent_widgets.dart';
+import '../../../../widgets/lists/small_text_button.dart';
 import '../../../projects/providers/projects_screen_providers.dart';
 import '../../../settings/providers/language_settings_providers.dart';
 import 'add_language_wizard_dialog.dart';
 import 'game_translation_creation_state.dart';
 
-/// Step 2: Select target languages for translation
+/// Step 2: select target languages for translation.
+///
+/// Retokenised (Plan 5d · Task 5): tokens on banner / chips / helper texts,
+/// Select-All / Clear / Add-Language actions switch to [SmallTextButton].
 class StepSelectTargets extends ConsumerWidget {
   final GameTranslationCreationState state;
   final VoidCallback onStateChanged;
@@ -22,57 +28,58 @@ class StepSelectTargets extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final languagesAsync = ref.watch(allLanguagesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select Target Languages',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
           'Choose the languages you want to translate the game into.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
         // Source language info
         if (state.selectedSourcePack != null)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: tokens.accentBg,
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(color: tokens.accent.withValues(alpha: 0.4)),
             ),
             child: Row(
               children: [
                 Icon(
                   FluentIcons.arrow_right_24_regular,
-                  color: theme.colorScheme.primary,
-                  size: 20,
+                  color: tokens.accent,
+                  size: 18,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Text(
                   'Translating from: ',
-                  style: theme.textTheme.bodyMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                  ),
                 ),
                 Text(
                   state.selectedSourcePack!.languageName,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.accent,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
         // Languages list
         languagesAsync.when(
@@ -85,28 +92,36 @@ class StepSelectTargets extends ConsumerWidget {
                 .toList();
 
             if (availableLanguages.isEmpty) {
-              return _buildNoLanguages(theme);
+              return _buildNoLanguages(tokens);
             }
 
-            return _buildLanguagesList(context, theme, availableLanguages, ref);
+            return _buildLanguagesList(context, tokens, availableLanguages, ref);
           },
-          loading: () => const Center(
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(),
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+                ),
+              ),
             ),
           ),
-          error: (e, _) => _buildError(theme, e.toString()),
+          error: (e, _) => _buildError(tokens, e.toString()),
         ),
 
         // Selection summary
         if (state.selectedLanguageIds.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Text(
             '${state.selectedLanguageIds.length} language(s) selected',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w500,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.accent,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -114,30 +129,37 @@ class StepSelectTargets extends ConsumerWidget {
     );
   }
 
-  Widget _buildNoLanguages(ThemeData theme) {
+  Widget _buildNoLanguages(TwmtThemeTokens tokens) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         children: [
           Icon(
             FluentIcons.warning_24_regular,
-            size: 48,
-            color: theme.colorScheme.error,
+            size: 40,
+            color: tokens.err,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             'No languages available',
-            style: theme.textTheme.titleMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 14,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Please configure target languages in Settings.',
-            style: theme.textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12.5,
+              color: tokens.textDim,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -147,7 +169,7 @@ class StepSelectTargets extends ConsumerWidget {
 
   Widget _buildLanguagesList(
     BuildContext context,
-    ThemeData theme,
+    TwmtThemeTokens tokens,
     List<Language> languages,
     WidgetRef ref,
   ) {
@@ -157,8 +179,10 @@ class StepSelectTargets extends ConsumerWidget {
         // Quick actions
         Row(
           children: [
-            TextButton.icon(
-              onPressed: () {
+            SmallTextButton(
+              label: 'Select All',
+              icon: FluentIcons.select_all_on_24_regular,
+              onTap: () {
                 for (final lang in languages) {
                   if (!state.selectedLanguageIds.contains(lang.id)) {
                     state.selectedLanguageIds.add(lang.id);
@@ -166,23 +190,21 @@ class StepSelectTargets extends ConsumerWidget {
                 }
                 onStateChanged();
               },
-              icon: const Icon(FluentIcons.select_all_on_24_regular, size: 16),
-              label: const Text('Select All'),
             ),
             const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: () {
+            SmallTextButton(
+              label: 'Clear',
+              icon: FluentIcons.select_all_off_24_regular,
+              onTap: () {
                 state.clearLanguages();
                 onStateChanged();
               },
-              icon: const Icon(FluentIcons.select_all_off_24_regular, size: 16),
-              label: const Text('Clear'),
             ),
             const Spacer(),
-            TextButton.icon(
-              onPressed: () => _showAddLanguageDialog(context, ref),
-              icon: const Icon(FluentIcons.add_24_regular, size: 16),
-              label: const Text('Add Language'),
+            SmallTextButton(
+              label: 'Add Language',
+              icon: FluentIcons.add_24_regular,
+              onTap: () => _showAddLanguageDialog(context, ref),
             ),
           ],
         ),
@@ -194,7 +216,7 @@ class StepSelectTargets extends ConsumerWidget {
           runSpacing: 8,
           children: languages.map((language) {
             final isSelected = state.isLanguageSelected(language.id);
-            return _LanguageChip(
+            return _LanguageTile(
               language: language,
               isSelected: isSelected,
               onTap: () {
@@ -252,24 +274,29 @@ class StepSelectTargets extends ConsumerWidget {
     }
   }
 
-  Widget _buildError(ThemeData theme, String error) {
+  Widget _buildError(TwmtThemeTokens tokens, String error) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: theme.colorScheme.error,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               error,
-              style: TextStyle(color: theme.colorScheme.error),
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.err,
+              ),
             ),
           ),
         ],
@@ -278,36 +305,36 @@ class StepSelectTargets extends ConsumerWidget {
   }
 }
 
-/// A language selection chip following Fluent Design patterns
-class _LanguageChip extends StatefulWidget {
+/// A language selection tile — token themed grid cell.
+class _LanguageTile extends StatefulWidget {
   final Language language;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _LanguageChip({
+  const _LanguageTile({
     required this.language,
     required this.isSelected,
     required this.onTap,
   });
 
   @override
-  State<_LanguageChip> createState() => _LanguageChipState();
+  State<_LanguageTile> createState() => _LanguageTileState();
 }
 
-class _LanguageChipState extends State<_LanguageChip> {
+class _LanguageTileState extends State<_LanguageTile> {
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    Color backgroundColor;
+    final Color backgroundColor;
     if (widget.isSelected) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.15);
+      backgroundColor = tokens.accentBg;
     } else if (_isHovered) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.08);
+      backgroundColor = tokens.panel;
     } else {
-      backgroundColor = theme.colorScheme.surface;
+      backgroundColor = tokens.panel2;
     }
 
     return MouseRegion(
@@ -317,16 +344,14 @@ class _LanguageChipState extends State<_LanguageChip> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
             border: Border.all(
-              color: widget.isSelected
-                  ? theme.colorScheme.primary
-                  : theme.dividerColor,
-              width: widget.isSelected ? 2 : 1,
+              color: widget.isSelected ? tokens.accent : tokens.border,
+              width: widget.isSelected ? 1.5 : 1,
             ),
           ),
           child: Row(
@@ -334,18 +359,20 @@ class _LanguageChipState extends State<_LanguageChip> {
             children: [
               if (widget.isSelected)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.only(right: 6),
                   child: Icon(
                     FluentIcons.checkmark_24_regular,
-                    size: 16,
-                    color: theme.colorScheme.primary,
+                    size: 14,
+                    color: tokens.accent,
                   ),
                 ),
               Text(
                 widget.language.displayName,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: widget.isSelected ? theme.colorScheme.primary : null,
-                  fontWeight: widget.isSelected ? FontWeight.w600 : null,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12.5,
+                  color: widget.isSelected ? tokens.accent : tokens.text,
+                  fontWeight:
+                      widget.isSelected ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ],

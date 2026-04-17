@@ -3,12 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+
 import '../../../../providers/selected_game_provider.dart';
 import '../../../../services/game/game_localization_service.dart';
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
 
-/// Step 1: Select source localization pack
+/// Step 1: select source localization pack.
+///
+/// Retokenised (Plan 5d · Task 5): pack rows rebuilt as panel/accent
+/// selectable containers, empty / error states use `tokens.err` + `tokens.errBg`.
 class StepSelectSource extends ConsumerWidget {
   final GameTranslationCreationState state;
   final VoidCallback onStateChanged;
@@ -21,7 +26,7 @@ class StepSelectSource extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final selectedGameAsync = ref.watch(selectedGameProvider);
     final packsAsync = ref.watch(detectedLocalPacksProvider);
 
@@ -29,17 +34,13 @@ class StepSelectSource extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select Source Pack',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
           'Choose the game localization pack that will serve as the source for translation.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
 
         // Selected game info
         selectedGameAsync.when(
@@ -47,83 +48,126 @@ class StepSelectSource extends ConsumerWidget {
               ? Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: tokens.accentBg,
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    border: Border.all(
+                      color: tokens.accent.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         FluentIcons.games_24_regular,
-                        color: theme.colorScheme.primary,
+                        color: tokens.accent,
+                        size: 18,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Text(
                         game.name,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 13,
+                          color: tokens.text,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                 )
-              : const Text('No game selected'),
-          loading: () => const CircularProgressIndicator(),
-          error: (e, _) => Text('Error: $e'),
+              : Text(
+                  'No game selected',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.textDim,
+                  ),
+                ),
+          loading: () => SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
+          ),
+          error: (e, _) => Text(
+            'Error: $e',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.err,
+            ),
+          ),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
         // Pack selection
         Text(
-          'Available Localization Packs',
-          style: theme.textTheme.titleSmall,
+          'AVAILABLE LOCALIZATION PACKS',
+          style: tokens.fontMono.copyWith(
+            fontSize: 10,
+            color: tokens.textDim,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         packsAsync.when(
           data: (packs) {
             if (packs.isEmpty) {
-              return _buildNoPacks(theme);
+              return _buildNoPacks(tokens);
             }
-            return _buildPackList(context, theme, packs);
+            return _buildPackList(context, tokens, packs);
           },
-          loading: () => const Center(
+          loading: () => Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator(),
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+                ),
+              ),
             ),
           ),
-          error: (e, _) => _buildError(theme, e.toString()),
+          error: (e, _) => _buildError(tokens, e.toString()),
         ),
       ],
     );
   }
 
-  Widget _buildNoPacks(ThemeData theme) {
+  Widget _buildNoPacks(TwmtThemeTokens tokens) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
           Icon(
             FluentIcons.warning_24_regular,
-            size: 48,
-            color: theme.colorScheme.error,
+            size: 40,
+            color: tokens.err,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             'No localization packs found',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.error,
+            style: tokens.fontBody.copyWith(
+              fontSize: 14,
+              color: tokens.err,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Make sure the game is installed and has localization files in the data folder.',
-            style: theme.textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12.5,
+              color: tokens.textDim,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -133,7 +177,7 @@ class StepSelectSource extends ConsumerWidget {
 
   Widget _buildPackList(
     BuildContext context,
-    ThemeData theme,
+    TwmtThemeTokens tokens,
     List<DetectedLocalPack> packs,
   ) {
     final dateFormat = DateFormat.yMMMd().add_Hm();
@@ -157,24 +201,29 @@ class StepSelectSource extends ConsumerWidget {
     );
   }
 
-  Widget _buildError(ThemeData theme, String error) {
+  Widget _buildError(TwmtThemeTokens tokens, String error) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: theme.colorScheme.error,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               error,
-              style: TextStyle(color: theme.colorScheme.error),
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.err,
+              ),
             ),
           ),
         ],
@@ -183,7 +232,7 @@ class StepSelectSource extends ConsumerWidget {
   }
 }
 
-/// A selectable pack item following Fluent Design patterns
+/// A selectable pack row — token themed.
 class _PackSelectionItem extends StatefulWidget {
   final DetectedLocalPack pack;
   final bool isSelected;
@@ -206,15 +255,15 @@ class _PackSelectionItemState extends State<_PackSelectionItem> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    Color backgroundColor;
+    final Color backgroundColor;
     if (widget.isSelected) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.15);
+      backgroundColor = tokens.accentBg;
     } else if (_isHovered) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.08);
+      backgroundColor = tokens.panel2;
     } else {
-      backgroundColor = Colors.transparent;
+      backgroundColor = tokens.panel;
     }
 
     return Padding(
@@ -226,53 +275,50 @@ class _PackSelectionItemState extends State<_PackSelectionItem> {
         child: GestureDetector(
           onTap: widget.onTap,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(16),
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: backgroundColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
               border: Border.all(
-                color: widget.isSelected
-                    ? theme.colorScheme.primary
-                    : theme.dividerColor,
-                width: widget.isSelected ? 2 : 1,
+                color: widget.isSelected ? tokens.accent : tokens.border,
+                width: widget.isSelected ? 1.5 : 1,
               ),
             ),
             child: Row(
               children: [
                 // Radio indicator
                 Container(
-                  width: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: widget.isSelected
-                          ? theme.colorScheme.primary
-                          : theme.dividerColor,
+                          ? tokens.accent
+                          : tokens.border,
                       width: 2,
                     ),
                   ),
                   child: widget.isSelected
                       ? Center(
                           child: Container(
-                            width: 10,
-                            height: 10,
+                            width: 8,
+                            height: 8,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: theme.colorScheme.primary,
+                              color: tokens.accent,
                             ),
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 // Language icon
                 Icon(
                   FluentIcons.local_language_24_regular,
-                  color: widget.isSelected
-                      ? theme.colorScheme.primary
-                      : theme.iconTheme.color,
+                  size: 20,
+                  color: widget.isSelected ? tokens.accent : tokens.textDim,
                 ),
                 const SizedBox(width: 12),
                 // Pack info
@@ -282,19 +328,19 @@ class _PackSelectionItemState extends State<_PackSelectionItem> {
                     children: [
                       Text(
                         widget.pack.languageName,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: widget.isSelected
-                              ? theme.colorScheme.primary
-                              : null,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 13.5,
+                          color:
+                              widget.isSelected ? tokens.accent : tokens.text,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         'local_${widget.pack.languageCode}.pack',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color
-                              ?.withValues(alpha: 0.7),
+                        style: tokens.fontMono.copyWith(
+                          fontSize: 11.5,
+                          color: tokens.textDim,
                         ),
                       ),
                     ],
@@ -306,16 +352,18 @@ class _PackSelectionItemState extends State<_PackSelectionItem> {
                   children: [
                     Text(
                       widget.pack.formattedSize,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: tokens.fontMono.copyWith(
+                        fontSize: 12,
+                        color: tokens.textMid,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       widget.dateFormat.format(widget.pack.lastModified),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color
-                            ?.withValues(alpha: 0.7),
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
                       ),
                     ),
                   ],
