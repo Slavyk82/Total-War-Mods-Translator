@@ -12,7 +12,7 @@ class SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
 }
 
 /// Staging notifier for batch publish screen.
-class _BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
+class BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
   @override
   BatchPublishStagingData? build() => null;
 
@@ -27,8 +27,8 @@ final singlePublishStagingProvider =
 
 /// Set before navigating to the batch publish screen, read in initState.
 final batchPublishStagingProvider =
-    NotifierProvider<_BatchPublishStagingNotifier, BatchPublishStagingData?>(
-  _BatchPublishStagingNotifier.new,
+    NotifierProvider<BatchPublishStagingNotifier, BatchPublishStagingData?>(
+  BatchPublishStagingNotifier.new,
 );
 
 /// Data needed to start a batch publish.

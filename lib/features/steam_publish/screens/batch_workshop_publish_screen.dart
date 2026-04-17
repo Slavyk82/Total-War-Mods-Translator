@@ -5,14 +5,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../widgets/fluent/fluent_progress_indicator.dart';
-import '../../../widgets/layouts/fluent_scaffold.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
+import 'package:twmt/widgets/wizard/dynamic_zone_panel.dart';
+import 'package:twmt/widgets/wizard/form_section.dart';
+import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
+import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
+
+import '../../../features/translation_editor/screens/progress/progress_widgets.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
 import '../widgets/steam_guard_dialog.dart';
 
-/// Full-screen for batch workshop publish progress.
+/// Workshop Publish batch screen (§7.5 degenerate wizard archetype).
+///
+/// Layout: [WizardScreenLayout] = [DetailScreenToolbar] +
+/// [StickyFormPanel] (single "Staging" section — the form becomes the
+/// summary here) + [DynamicZonePanel] hosting an overall progress header,
+/// a scrollable per-pack row list and an inline log terminal.
+///
+/// Reads [batchPublishStagingProvider] in [initState] and kicks off
+/// [BatchWorkshopPublishNotifier.publishBatch] via an
+/// `addPostFrameCallback`. Preserves the 1-second elapsed timer and the
+/// [SteamGuardDialog] post-frame trigger.
 class BatchWorkshopPublishScreen extends ConsumerStatefulWidget {
   const BatchWorkshopPublishScreen({super.key});
 
@@ -36,7 +54,8 @@ class _BatchWorkshopPublishScreenState
     _stagingData = ref.read(batchPublishStagingProvider);
     _publishNotifier = ref.read(batchWorkshopPublishProvider.notifier);
 
-    // Start elapsed timer for UI updates
+    // Elapsed timer: rebuild once per second so the Staging > Elapsed row
+    // stays live.
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -56,15 +75,22 @@ class _BatchWorkshopPublishScreenState
   @override
   void dispose() {
     _elapsedTimer?.cancel();
-    _publishNotifier.silentCleanup();
+    // Guard against missing ServiceLocator registration (tests) — the
+    // notifier reads services that may not be registered in pure widget
+    // tests.
+    try {
+      _publishNotifier.silentCleanup();
+    } catch (_) {
+      // Ignore — nothing to clean up in a test context.
+    }
     super.dispose();
   }
 
   String get _elapsedTime {
     final elapsed = DateTime.now().difference(_startTime);
-    final minutes = elapsed.inMinutes;
-    final seconds = elapsed.inSeconds % 60;
-    return '${minutes}m ${seconds}s';
+    final m = elapsed.inMinutes;
+    final s = elapsed.inSeconds % 60;
+    return m > 0 ? '${m}m ${s.toString().padLeft(2, '0')}s' : '${s}s';
   }
 
   Future<bool> _confirmLeaveIfActive() async {
@@ -75,7 +101,8 @@ class _BatchWorkshopPublishScreenState
       builder: (context) => AlertDialog(
         title: const Text('Publication in progress'),
         content: const Text(
-          'A batch publication is currently in progress. Are you sure you want to leave? The remaining uploads will be cancelled.',
+          'A batch publication is currently in progress. Are you sure you '
+          'want to leave? The remaining uploads will be cancelled.',
         ),
         actions: [
           TextButton(
@@ -96,36 +123,103 @@ class _BatchWorkshopPublishScreenState
     if (await _confirmLeaveIfActive()) {
       if (mounted) {
         ref.invalidate(publishableItemsProvider);
-        context.pop();
+        if (context.canPop()) context.pop();
       }
     }
   }
 
+  Future<void> _confirmCancel() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel batch publish?'),
+        content: const Text(
+          'Remaining uploads will be aborted. Already-uploaded items are not '
+          'rolled back.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep going'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Stop'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      ref.read(batchWorkshopPublishProvider.notifier).cancel();
+    }
+  }
+
+  ({int publish, int update}) _modeCounts(List<BatchPublishItemInfo> items) {
+    var publish = 0;
+    var update = 0;
+    for (final item in items) {
+      final id = item.params.publishedFileId;
+      if (id.isEmpty || id == '0') {
+        publish++;
+      } else {
+        update++;
+      }
+    }
+    return (publish: publish, update: update);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final state = ref.watch(batchWorkshopPublishProvider);
+    final tokens = context.tokens;
 
+    // Fallback when no batch has been staged. Renders a toolbar + empty
+    // message so users can still navigate back.
     if (_stagingData == null) {
-      return FluentScaffold(
-        header: FluentHeader(
-          title: 'Batch Publish',
-          leading: FluentIconButton(
-            icon: FluentIcons.arrow_left_24_regular,
-            onPressed: () => context.pop(),
-            tooltip: 'Back',
-          ),
+      return Material(
+        color: tokens.bg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DetailScreenToolbar(
+              crumb: 'Publishing > Steam Workshop > No items staged',
+              onBack: () {
+                if (context.canPop()) context.pop();
+              },
+            ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'No items to publish.',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.textDim,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        body: const Center(child: Text('No items to publish.')),
       );
     }
 
-    // Handle Steam Guard
+    final state = ref.watch(batchWorkshopPublishProvider);
+    final items = _stagingData!.items;
+    final counts = _modeCounts(items);
+
+    // Surface the Steam Guard dialog when the notifier signals it. The flag
+    // prevents stacking multiple dialogs across rebuilds.
     if (state.needsSteamGuard && !_steamGuardDialogShown) {
       _steamGuardDialogShown = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          _steamGuardDialogShown = false;
+          return;
+        }
         final code = await SteamGuardDialog.show(context);
-        if (!mounted) return;
+        if (!mounted) {
+          _steamGuardDialogShown = false;
+          return;
+        }
         _steamGuardDialogShown = false;
         if (code != null) {
           ref
@@ -137,406 +231,441 @@ class _BatchWorkshopPublishScreenState
       });
     }
 
-    return FluentScaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLow,
-      header: FluentHeader(
-        title: 'Batch Publish',
-        leading: FluentIconButton(
-          icon: FluentIcons.arrow_left_24_regular,
-          onPressed: _handleBack,
-          tooltip: 'Back',
-        ),
-        actions: [
-          // Item count subtitle
-          Text(
-            '${_stagingData!.items.length} items',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-          // Elapsed time badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  FluentIcons.timer_24_regular,
-                  size: 14,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _elapsedTime,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Cancel / Close buttons
-          if (state.isPublishing && !state.isCancelled)
-            TextButton.icon(
-              onPressed: () {
-                ref.read(batchWorkshopPublishProvider.notifier).cancel();
-              },
-              icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-            ),
-          if (state.isComplete || state.isCancelled)
-            FilledButton.icon(
-              onPressed: () {
-                ref.invalidate(publishableItemsProvider);
-                context.pop();
-              },
-              icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
-              label: const Text('Close'),
-            ),
-        ],
+    return WizardScreenLayout(
+      toolbar: DetailScreenToolbar(
+        crumb:
+            'Publishing > Steam Workshop > Batch (${items.length} packs)',
+        onBack: _handleBack,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProgressSection(theme, state),
-                const SizedBox(height: 20),
-                _buildItemList(theme, state),
-                if (state.isComplete) ...[
-                  const SizedBox(height: 20),
-                  _buildResultsSummary(theme, state),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProgressSection(
-      ThemeData theme, BatchWorkshopPublishState state) {
-    final progressPercent = (state.overallProgress * 100).toStringAsFixed(1);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      formPanel: StickyFormPanel(
+        sections: [
+          FormSection(
+            label: 'Staging',
             children: [
-              Text(
-                state.isComplete
-                    ? 'Publish Complete'
-                    : state.isCancelled
-                        ? 'Cancelled'
-                        : state.needsSteamGuard
-                            ? 'Steam Guard Required'
-                            : 'Publishing...',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+              _StagingRow(
+                label: 'Packs',
+                value: '${items.length}',
               ),
-              Text(
-                '$progressPercent%',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: state.isComplete && state.failedCount == 0
-                      ? Colors.green.shade700
-                      : state.failedCount > 0
-                          ? Colors.orange.shade700
-                          : theme.colorScheme.primary,
-                ),
+              const _StagingRow(
+                label: 'Total size',
+                value: '—',
+              ),
+              _StagingRow(
+                label: 'Publish',
+                value: '${counts.publish}',
+              ),
+              _StagingRow(
+                label: 'Update',
+                value: '${counts.update}',
+              ),
+              _StagingRow(
+                label: 'Account',
+                value: _stagingData!.username.isEmpty
+                    ? '—'
+                    : _stagingData!.username,
+              ),
+              _StagingRow(
+                label: 'Elapsed',
+                value: _elapsedTime,
+              ),
+              _StagingRow(
+                label: 'Completed',
+                value: '${state.completedItems} / ${state.totalItems}',
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          FluentProgressBar(
-            value: state.overallProgress,
-            height: 8,
-            color: state.isComplete && state.failedCount == 0
-                ? Colors.green.shade700
-                : state.failedCount > 0
-                    ? Colors.orange.shade700
-                    : theme.colorScheme.primary,
-            backgroundColor:
-                theme.colorScheme.onSurface.withValues(alpha: 0.1),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${state.completedItems} / ${state.totalItems} items',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        ],
+        actions: [
+          if (state.isPublishing && !state.isCancelled)
+            SmallTextButton(
+              label: 'Stop',
+              icon: FluentIcons.stop_24_regular,
+              onTap: _confirmCancel,
+            )
+          else
+            SmallTextButton(
+              label: 'Close',
+              icon: FluentIcons.dismiss_24_regular,
+              onTap: () {
+                ref.invalidate(publishableItemsProvider);
+                if (context.canPop()) context.pop();
+              },
             ),
-          ),
-          if (state.currentItemName != null && state.isPublishing) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Current: ${state.currentItemName}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w500,
+        ],
+      ),
+      dynamicZone: DynamicZonePanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _OverallProgressHeader(state: state),
+            const SizedBox(height: 16),
+            Expanded(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: tokens.panel2,
+                  border: Border.all(color: tokens.border),
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  child: ListView.separated(
+                    padding: EdgeInsets.zero,
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: tokens.border,
+                    ),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final status = state.itemStatuses[item.name] ??
+                          BatchPublishStatus.pending;
+                      final isCurrent = state.currentItemName == item.name;
+                      final result = state.results
+                          .cast<BatchPublishItemResult?>()
+                          .firstWhere(
+                            (r) => r?.name == item.name,
+                            orElse: () => null,
+                          );
+                      final existingId = item.params.publishedFileId;
+                      final isUpdate =
+                          existingId.isNotEmpty && existingId != '0';
+                      return _BatchPackRow(
+                        name: item.name,
+                        isUpdate: isUpdate,
+                        status: status,
+                        progress: isCurrent ? state.currentItemProgress : null,
+                        result: result,
+                      );
+                    },
+                  ),
+                ),
               ),
             ),
+            const SizedBox(height: 16),
+            const SizedBox(height: 240, child: LogTerminal()),
           ],
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildItemList(ThemeData theme, BatchWorkshopPublishState state) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+// ---------------------------------------------------------------------------
+// Form panel row
+// ---------------------------------------------------------------------------
+
+/// Thin label/value row used inside the Staging form section.
+class _StagingRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StagingRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Row(
       children: [
-        Text(
-          'Items',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: Text(
+            label,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textMid,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-            ),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _stagingData!.items.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final item = _stagingData!.items[index];
-              final status = state.itemStatuses[item.name] ??
-                  BatchPublishStatus.pending;
-              final result = state.results
-                  .cast<BatchPublishItemResult?>()
-                  .firstWhere(
-                    (r) => r?.name == item.name,
-                    orElse: () => null,
-                  );
-
-              return _PublishStatusItem(
-                name: item.name,
-                status: status,
-                result: result,
-                isCurrentItem: state.currentItemName == item.name,
-                currentProgress: state.currentItemName == item.name
-                    ? state.currentItemProgress
-                    : null,
-              );
-            },
+        Text(
+          value,
+          style: tokens.fontMono.copyWith(
+            fontSize: 12,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildResultsSummary(
-      ThemeData theme, BatchWorkshopPublishState state) {
+// ---------------------------------------------------------------------------
+// Dynamic-zone sub-views
+// ---------------------------------------------------------------------------
+
+/// Compact overall progress card: completed/total count, percent, bar.
+class _OverallProgressHeader extends StatelessWidget {
+  final BatchWorkshopPublishState state;
+
+  const _OverallProgressHeader({required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final percent = (state.overallProgress * 100).toStringAsFixed(0);
     final hasFailures = state.failedCount > 0;
+    final isDone = state.isComplete;
+
+    final Color accentColor;
+    final String heading;
+    if (isDone && !hasFailures) {
+      accentColor = tokens.ok;
+      heading = 'Batch publish complete';
+    } else if (isDone && hasFailures) {
+      accentColor = tokens.warn;
+      heading = 'Completed with errors';
+    } else if (state.isCancelled) {
+      accentColor = tokens.err;
+      heading = 'Cancelled';
+    } else if (state.needsSteamGuard) {
+      accentColor = tokens.warn;
+      heading = 'Steam Guard required';
+    } else {
+      accentColor = tokens.accent;
+      heading = 'Publishing...';
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: hasFailures
-            ? Colors.orange.withValues(alpha: 0.1)
-            : Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: hasFailures
-              ? Colors.orange.withValues(alpha: 0.3)
-              : Colors.green.withValues(alpha: 0.3),
-        ),
+        color: tokens.panel2,
+        border: Border.all(color: tokens.border),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            hasFailures
-                ? FluentIcons.warning_24_regular
-                : FluentIcons.checkmark_circle_24_regular,
-            size: 24,
-            color:
-                hasFailures ? Colors.orange.shade700 : Colors.green.shade700,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasFailures
-                      ? 'Publish completed with errors'
-                      : 'All items published successfully',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: hasFailures
-                        ? Colors.orange.shade700
-                        : Colors.green.shade700,
+          Row(
+            children: [
+              Icon(
+                FluentIcons.cloud_arrow_up_24_regular,
+                size: 18,
+                color: accentColor,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  heading,
+                  style: tokens.fontDisplay.copyWith(
+                    fontSize: 14,
+                    color: tokens.text,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${state.successCount} succeeded, ${state.failedCount} failed',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: hasFailures
-                        ? Colors.orange.shade700
-                        : Colors.green.shade700,
-                  ),
+              ),
+              Text(
+                '${state.completedItems} / ${state.totalItems}',
+                style: tokens.fontMono.copyWith(
+                  fontSize: 12,
+                  color: tokens.textMid,
                 ),
-              ],
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '$percent%',
+                style: tokens.fontMono.copyWith(
+                  fontSize: 12,
+                  color: accentColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: state.overallProgress.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: tokens.panel,
+              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
             ),
           ),
+          if (state.currentItemName != null && state.isPublishing) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Current: ${state.currentItemName}',
+              style: tokens.fontMono.copyWith(
+                fontSize: 11,
+                color: tokens.textDim,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Individual item status in the list.
-class _PublishStatusItem extends StatelessWidget {
+/// Single per-pack row in the dynamic zone list.
+class _BatchPackRow extends StatelessWidget {
   final String name;
+  final bool isUpdate;
   final BatchPublishStatus status;
+  final double? progress;
   final BatchPublishItemResult? result;
-  final bool isCurrentItem;
-  final double? currentProgress;
 
-  const _PublishStatusItem({
+  const _BatchPackRow({
     required this.name,
+    required this.isUpdate,
     required this.status,
-    this.result,
-    this.isCurrentItem = false,
-    this.currentProgress,
+    required this.progress,
+    required this.result,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
+    final highlight = status == BatchPublishStatus.inProgress;
+    final barProgress = switch (status) {
+      BatchPublishStatus.success => 1.0,
+      BatchPublishStatus.failed => progress ?? 0.0,
+      BatchPublishStatus.cancelled => progress ?? 0.0,
+      BatchPublishStatus.pending => 0.0,
+      BatchPublishStatus.inProgress => progress ?? 0.0,
+    };
+    final barColor = switch (status) {
+      BatchPublishStatus.success => tokens.ok,
+      BatchPublishStatus.failed => tokens.err,
+      BatchPublishStatus.cancelled => tokens.textFaint,
+      BatchPublishStatus.pending => tokens.textFaint,
+      BatchPublishStatus.inProgress => tokens.accent,
+    };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: isCurrentItem
-          ? theme.colorScheme.primary.withValues(alpha: 0.05)
-          : null,
+      color: highlight ? tokens.rowSelected.withValues(alpha: 0.35) : null,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildStatusIcon(theme),
-          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight:
-                        isCurrentItem ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 13,
+                          color: tokens.text,
+                          fontWeight:
+                              highlight ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _ModePill(isUpdate: isUpdate),
+                  ],
                 ),
-                if (result != null && result!.success && result!.workshopId != null) ...[
-                  const SizedBox(height: 2),
+                if (result != null &&
+                    result!.success &&
+                    result!.workshopId != null) ...[
+                  const SizedBox(height: 4),
                   Text(
                     'Workshop ID: ${result!.workshopId}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5),
-                      fontSize: 11,
+                    style: tokens.fontMono.copyWith(
+                      fontSize: 10,
+                      color: tokens.textDim,
                     ),
                   ),
                 ],
                 if (result != null &&
                     !result!.success &&
                     result!.errorMessage != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     result!.errorMessage!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                      fontSize: 11,
-                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 11,
+                      color: tokens.err,
+                    ),
                   ),
                 ],
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(3),
+                  child: LinearProgressIndicator(
+                    value: barProgress.clamp(0.0, 1.0),
+                    minHeight: 4,
+                    backgroundColor: tokens.panel,
+                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                  ),
+                ),
               ],
             ),
           ),
-          if (isCurrentItem && currentProgress != null) ...[
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 60,
-              child: FluentProgressBar(
-                value: currentProgress!,
-                height: 4,
-                color: theme.colorScheme.primary,
-                backgroundColor:
-                    theme.colorScheme.onSurface.withValues(alpha: 0.1),
-              ),
-            ),
-          ],
+          const SizedBox(width: 12),
+          _StatusPillFor(status: status),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStatusIcon(ThemeData theme) {
+/// Small publish/update indicator rendered next to the pack name.
+class _ModePill extends StatelessWidget {
+  final bool isUpdate;
+  const _ModePill({required this.isUpdate});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final label = isUpdate ? 'UPDATE' : 'PUBLISH';
+    final fg = isUpdate ? tokens.accent : tokens.ok;
+    final bg = isUpdate ? tokens.accentBg : tokens.okBg;
+    return StatusPill(label: label, foreground: fg, background: bg);
+  }
+}
+
+/// Maps a [BatchPublishStatus] to a semantic [StatusPill].
+class _StatusPillFor extends StatelessWidget {
+  final BatchPublishStatus status;
+  const _StatusPillFor({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     switch (status) {
       case BatchPublishStatus.pending:
-        return Icon(
-          FluentIcons.circle_24_regular,
-          size: 18,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+        return StatusPill(
+          label: 'PENDING',
+          foreground: tokens.textDim,
+          background: tokens.panel,
         );
       case BatchPublishStatus.inProgress:
-        return SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: theme.colorScheme.primary,
-          ),
+        return StatusPill(
+          label: 'UPLOADING',
+          foreground: tokens.accent,
+          background: tokens.accentBg,
         );
       case BatchPublishStatus.success:
-        return Icon(
-          FluentIcons.checkmark_circle_24_filled,
-          size: 18,
-          color: Colors.green.shade700,
+        return StatusPill(
+          label: 'DONE',
+          foreground: tokens.ok,
+          background: tokens.okBg,
+          icon: FluentIcons.checkmark_24_regular,
         );
       case BatchPublishStatus.failed:
-        return Icon(
-          FluentIcons.error_circle_24_filled,
-          size: 18,
-          color: theme.colorScheme.error,
+        return StatusPill(
+          label: 'FAILED',
+          foreground: tokens.err,
+          background: tokens.errBg,
+          icon: FluentIcons.error_circle_24_regular,
         );
       case BatchPublishStatus.cancelled:
-        return Icon(
-          FluentIcons.dismiss_circle_24_regular,
-          size: 18,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+        return StatusPill(
+          label: 'CANCELLED',
+          foreground: tokens.textFaint,
+          background: tokens.panel,
         );
     }
   }
