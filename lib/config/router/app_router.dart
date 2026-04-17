@@ -15,6 +15,7 @@ import '../../features/translation_editor/screens/translation_editor_screen.dart
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
 import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
+import '../../features/pack_compilation/screens/pack_compilation_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
 import '../../features/game_translation/screens/game_translation_screen.dart';
@@ -252,7 +253,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: 'packCompilation',
             pageBuilder: (context, state) {
               return FluentPageTransitions.fadeTransition(
-                child: const PackCompilationScreen(),
+                child: const PackCompilationListScreen(),
                 state: state,
               );
             },
