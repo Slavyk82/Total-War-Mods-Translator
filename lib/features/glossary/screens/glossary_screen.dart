@@ -12,6 +12,7 @@ import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/detail/detail_cover.dart';
 import 'package:twmt/widgets/detail/detail_meta_banner.dart';
 import 'package:twmt/widgets/detail/detail_overview_layout.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/detail/stats_rail.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
@@ -235,7 +236,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _GlossaryToolbarCrumb(
+        DetailScreenToolbar(
           crumb: 'Resources › Glossary › ${glossary.name}',
           onBack: () =>
               ref.read(selectedGlossaryProvider.notifier).clear(),
@@ -436,49 +437,6 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         FluentToast.error(context, 'Error deleting glossary: $e');
       }
     }
-  }
-}
-
-/// Slim toolbar row at the top of the glossary detail view. Renders a back
-/// button + breadcrumb text — mirrors the Project detail `_ToolbarCrumb`.
-class _GlossaryToolbarCrumb extends StatelessWidget {
-  final String crumb;
-  final VoidCallback onBack;
-
-  const _GlossaryToolbarCrumb({required this.crumb, required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: tokens.panel,
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Row(
-        children: [
-          SmallIconButton(
-            icon: FluentIcons.arrow_left_24_regular,
-            tooltip: 'Back to glossaries',
-            onTap: onBack,
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              crumb,
-              overflow: TextOverflow.ellipsis,
-              style: tokens.fontMono.copyWith(
-                fontSize: 12,
-                color: tokens.textDim,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

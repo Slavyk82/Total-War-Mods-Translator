@@ -7,7 +7,6 @@ import '../../../models/domain/game_installation.dart';
 import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../providers/pack_compilation_providers.dart';
-import 'compilation_editor_form_widgets.dart';
 
 /// Section for selecting projects to include in compilation.
 class CompilationProjectSelectionSection extends ConsumerWidget {
@@ -479,6 +478,59 @@ class CompilationModImage extends StatelessWidget {
             FluentIcons.image_alt_text_24_regular,
             size: 24,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small button used in headers and toolbars within the compilation editor.
+class CompilationSmallButton extends StatefulWidget {
+  const CompilationSmallButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  State<CompilationSmallButton> createState() => _CompilationSmallButtonState();
+}
+
+class _CompilationSmallButtonState extends State<CompilationSmallButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.5),
+            ),
+          ),
+          child: Text(
+            widget.label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ),

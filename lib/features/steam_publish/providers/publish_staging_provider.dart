@@ -4,7 +4,7 @@ import 'batch_workshop_publish_notifier.dart';
 import 'steam_publish_providers.dart';
 
 /// Staging notifier for single publish screen.
-class _SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
+class SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
   @override
   PublishableItem? build() => null;
 
@@ -12,7 +12,7 @@ class _SinglePublishStagingNotifier extends Notifier<PublishableItem?> {
 }
 
 /// Staging notifier for batch publish screen.
-class _BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
+class BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
   @override
   BatchPublishStagingData? build() => null;
 
@@ -21,14 +21,14 @@ class _BatchPublishStagingNotifier extends Notifier<BatchPublishStagingData?> {
 
 /// Set before navigating to the publish screen, read in initState.
 final singlePublishStagingProvider =
-    NotifierProvider<_SinglePublishStagingNotifier, PublishableItem?>(
-  _SinglePublishStagingNotifier.new,
+    NotifierProvider<SinglePublishStagingNotifier, PublishableItem?>(
+  SinglePublishStagingNotifier.new,
 );
 
 /// Set before navigating to the batch publish screen, read in initState.
 final batchPublishStagingProvider =
-    NotifierProvider<_BatchPublishStagingNotifier, BatchPublishStagingData?>(
-  _BatchPublishStagingNotifier.new,
+    NotifierProvider<BatchPublishStagingNotifier, BatchPublishStagingData?>(
+  BatchPublishStagingNotifier.new,
 );
 
 /// Data needed to start a batch publish.

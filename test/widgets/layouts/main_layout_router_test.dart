@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/layouts/main_layout_router.dart';
-import 'package:twmt/widgets/navigation/breadcrumb.dart';
 import 'package:twmt/widgets/navigation/navigation_sidebar.dart';
 
 /// Builds a minimal app with a [ShellRoute] wrapping [MainLayoutRouter] so we
-/// can exercise breadcrumb visibility and navigation guards. Dummy screens
-/// are injected for each route under test.
+/// can exercise navigation guards. Dummy screens are injected for each route
+/// under test.
 Widget _wrap(
   String path, {
   bool translationInProgress = false,
@@ -26,21 +24,6 @@ Widget _wrap(
             path: '/work/home',
             builder: (_, _) =>
                 const Scaffold(body: Center(child: Text('home'))),
-          ),
-          GoRoute(
-            path: '/work/projects/:projectId/editor/:languageId',
-            builder: (_, _) =>
-                const Scaffold(body: Center(child: Text('editor'))),
-          ),
-          GoRoute(
-            path: '/publishing/steam/single',
-            builder: (_, _) =>
-                const Scaffold(body: Center(child: Text('single'))),
-          ),
-          GoRoute(
-            path: '/publishing/steam/batch',
-            builder: (_, _) =>
-                const Scaffold(body: Center(child: Text('batch'))),
           ),
           GoRoute(
             path: '/resources/glossary',
@@ -104,48 +87,6 @@ void main() {
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
     binding.platformDispatcher.views.first.resetPhysicalSize();
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
-  });
-
-  testWidgets('hides Breadcrumb on editor route', (tester) async {
-    await tester.pumpWidget(
-      _wrap('/work/projects/550e8400-e29b-41d4-a716-446655440000/editor/fr-FR'),
-    );
-    await tester.pumpAndSettle();
-    _drainOverflowExceptions(tester);
-
-    expect(find.byType(Breadcrumb), findsNothing);
-  });
-
-  testWidgets('hides Breadcrumb on /publishing/steam/single', (tester) async {
-    await tester.pumpWidget(_wrap('/publishing/steam/single'));
-    await tester.pumpAndSettle();
-    _drainOverflowExceptions(tester);
-
-    expect(find.byType(Breadcrumb), findsNothing);
-  });
-
-  testWidgets('hides Breadcrumb on /publishing/steam/batch', (tester) async {
-    await tester.pumpWidget(_wrap('/publishing/steam/batch'));
-    await tester.pumpAndSettle();
-    _drainOverflowExceptions(tester);
-
-    expect(find.byType(Breadcrumb), findsNothing);
-  });
-
-  testWidgets('hides Breadcrumb on AppRoutes.home', (tester) async {
-    await tester.pumpWidget(_wrap(AppRoutes.home));
-    await tester.pumpAndSettle();
-    _drainOverflowExceptions(tester);
-
-    expect(find.byType(Breadcrumb), findsNothing);
-  });
-
-  testWidgets('shows Breadcrumb on /resources/glossary', (tester) async {
-    await tester.pumpWidget(_wrap('/resources/glossary'));
-    await tester.pumpAndSettle();
-    _drainOverflowExceptions(tester);
-
-    expect(find.byType(Breadcrumb), findsOneWidget);
   });
 
   testWidgets(

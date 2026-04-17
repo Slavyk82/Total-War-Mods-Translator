@@ -14,7 +14,8 @@ import '../../features/projects/screens/project_detail_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
-import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
+import '../../features/pack_compilation/screens/pack_compilation_editor_screen.dart';
+import '../../features/pack_compilation/screens/pack_compilation_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
 import '../../features/game_translation/screens/game_translation_screen.dart';
@@ -55,6 +56,9 @@ class AppRoutes {
 
   // Publishing
   static const String packCompilation = '/publishing/pack';
+  static const String packCompilationNew = '/publishing/pack/new';
+  static String packCompilationEdit(String id) => '/publishing/pack/$id/edit';
+  static const String compilationIdParam = 'compilationId';
   static const String steamPublish = '/publishing/steam';
   static const String steamPublishSingle = '/publishing/steam/single';
   static const String steamPublishBatch = '/publishing/steam/batch';
@@ -249,10 +253,37 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: 'packCompilation',
             pageBuilder: (context, state) {
               return FluentPageTransitions.fadeTransition(
-                child: const PackCompilationScreen(),
+                child: const PackCompilationListScreen(),
                 state: state,
               );
             },
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'packCompilationNew',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const PackCompilationEditorScreen(
+                      compilationId: null,
+                    ),
+                    state: state,
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':${AppRoutes.compilationIdParam}/edit',
+                name: 'packCompilationEdit',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: PackCompilationEditorScreen(
+                      compilationId:
+                          state.pathParameters[AppRoutes.compilationIdParam]!,
+                    ),
+                    state: state,
+                  );
+                },
+              ),
+            ],
           ),
 
           // Steam Publish
@@ -352,6 +383,8 @@ extension GoRouterExtensions on BuildContext {
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
+  void goPackCompilationNew() => go(AppRoutes.packCompilationNew);
+  void goPackCompilationEdit(String id) => go(AppRoutes.packCompilationEdit(id));
   void goBatchPackExport() => go(AppRoutes.batchPackExport);
   void goSteamPublish() => go(AppRoutes.steamPublish);
   void goWorkshopPublishSingle() => go(AppRoutes.steamPublishSingle);
