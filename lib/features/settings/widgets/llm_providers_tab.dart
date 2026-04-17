@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
@@ -16,11 +17,12 @@ class LlmProvidersTab extends ConsumerStatefulWidget {
 }
 
 class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
-  late TextEditingController _anthropicKeyController;
-  late TextEditingController _openaiKeyController;
-  late TextEditingController _deeplKeyController;
-  late TextEditingController _deepseekKeyController;
-  late TextEditingController _geminiKeyController;
+  late final TextEditingController _anthropicKeyController;
+  late final TextEditingController _openaiKeyController;
+  late final TextEditingController _deeplKeyController;
+  late final TextEditingController _deepseekKeyController;
+  late final TextEditingController _geminiKeyController;
+  bool _initialLoadDone = false;
 
   @override
   void initState() {
@@ -30,6 +32,23 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     _deeplKeyController = TextEditingController();
     _deepseekKeyController = TextEditingController();
     _geminiKeyController = TextEditingController();
+
+    // Seed controllers from loaded settings once, via listenManual (not in build).
+    ref.listenManual<AsyncValue<Map<String, String>>>(
+      llmProviderSettingsProvider,
+      (_, next) {
+        if (_initialLoadDone) return;
+        final settings = next is AsyncData<Map<String, String>> ? next.value : null;
+        if (settings == null) return;
+        _initialLoadDone = true;
+        _anthropicKeyController.text = settings[SettingsKeys.anthropicApiKey] ?? '';
+        _openaiKeyController.text = settings[SettingsKeys.openaiApiKey] ?? '';
+        _deeplKeyController.text = settings[SettingsKeys.deeplApiKey] ?? '';
+        _deepseekKeyController.text = settings[SettingsKeys.deepseekApiKey] ?? '';
+        _geminiKeyController.text = settings[SettingsKeys.geminiApiKey] ?? '';
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -99,50 +118,35 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final settingsAsync = ref.watch(llmProviderSettingsProvider);
 
     return settingsAsync.when(
       loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
-        child: Text('Error loading settings: $error'),
+        child: Text(
+          'Error loading settings: $error',
+          style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.err),
+        ),
       ),
       data: (settings) {
-        // Initialize controllers with loaded data
-        if (_anthropicKeyController.text.isEmpty) {
-          _anthropicKeyController.text = settings[SettingsKeys.anthropicApiKey] ?? '';
-        }
-        if (_openaiKeyController.text.isEmpty) {
-          _openaiKeyController.text = settings[SettingsKeys.openaiApiKey] ?? '';
-        }
-        if (_deeplKeyController.text.isEmpty) {
-          _deeplKeyController.text = settings[SettingsKeys.deeplApiKey] ?? '';
-        }
-        if (_deepseekKeyController.text.isEmpty) {
-          _deepseekKeyController.text = settings[SettingsKeys.deepseekApiKey] ?? '';
-        }
-        if (_geminiKeyController.text.isEmpty) {
-          _geminiKeyController.text = settings[SettingsKeys.geminiApiKey] ?? '';
-        }
-
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
             // Header
             Text(
               'LLM Providers',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: tokens.fontDisplay.copyWith(
+                fontSize: 20,
+                color: tokens.text,
+                fontWeight: FontWeight.bold,
+                fontStyle: tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Configure API keys and models for translation providers',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.7),
-                  ),
+              style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.textDim),
             ),
             const SizedBox(height: 24),
 
@@ -204,13 +208,14 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
   }
 
   Widget _buildAdvancedSettings(Map<String, String> settings) {
+    final tokens = context.tokens;
     final rateLimit = int.tryParse(settings[SettingsKeys.rateLimit] ?? '500') ?? 500;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,27 +225,31 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               Icon(
                 FluentIcons.settings_24_regular,
                 size: 20,
-                color: Theme.of(context).colorScheme.primary,
+                color: tokens.accent,
               ),
               const SizedBox(width: 12),
               Text(
                 'Advanced Settings',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.text,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(FluentIcons.timer_24_regular, size: 16),
+              Icon(FluentIcons.timer_24_regular, size: 16, color: tokens.textMid),
               const SizedBox(width: 8),
               Text(
                 'Rate Limit (requests per minute)',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.text,
+                ),
               ),
             ],
           ),
@@ -248,22 +257,35 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
           Row(
             children: [
               Expanded(
-                child: Slider(
-                  value: rateLimit.toDouble(),
-                  min: 10,
-                  max: 500,
-                  divisions: 49,
-                  label: rateLimit.toString(),
-                  onChanged: (value) async {
-                    try {
-                      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-                      await notifier.updateRateLimit(value.toInt());
-                    } catch (e) {
-                      if (mounted) {
-                        FluentToast.error(context, 'Error saving rate limit: $e');
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: tokens.accent,
+                    inactiveTrackColor: tokens.border,
+                    thumbColor: tokens.accent,
+                    overlayColor: tokens.accentBg,
+                    valueIndicatorColor: tokens.accent,
+                    valueIndicatorTextStyle: tokens.fontMono.copyWith(
+                      color: tokens.accentFg,
+                      fontSize: 11,
+                    ),
+                  ),
+                  child: Slider(
+                    value: rateLimit.toDouble(),
+                    min: 10,
+                    max: 500,
+                    divisions: 49,
+                    label: rateLimit.toString(),
+                    onChanged: (value) async {
+                      try {
+                        final notifier = ref.read(llmProviderSettingsProvider.notifier);
+                        await notifier.updateRateLimit(value.toInt());
+                      } catch (e) {
+                        if (mounted) {
+                          FluentToast.error(context, 'Error saving rate limit: $e');
+                        }
                       }
-                    }
-                  },
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -271,15 +293,13 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                 width: 80,
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: tokens.border),
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
                 ),
                 child: Text(
                   rateLimit.toString(),
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
                 ),
               ),
             ],
