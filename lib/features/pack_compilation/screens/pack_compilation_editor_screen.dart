@@ -51,6 +51,36 @@ class _PackCompilationEditorScreenState
     _nameCtl = TextEditingController();
     _packNameCtl = TextEditingController();
     _prefixCtl = TextEditingController();
+
+    // Keep text controllers in sync with external state mutations
+    // (loadCompilation, updateLanguage auto-fills prefix, etc.) without
+    // re-running on every rebuild.
+    ref.listenManual<CompilationEditorState>(
+      compilationEditorProvider,
+      (previous, next) {
+        if (previous?.name != next.name && _nameCtl.text != next.name) {
+          _nameCtl.value = _nameCtl.value.copyWith(
+            text: next.name,
+            selection: TextSelection.collapsed(offset: next.name.length),
+          );
+        }
+        if (previous?.packName != next.packName &&
+            _packNameCtl.text != next.packName) {
+          _packNameCtl.value = _packNameCtl.value.copyWith(
+            text: next.packName,
+            selection: TextSelection.collapsed(offset: next.packName.length),
+          );
+        }
+        if (previous?.prefix != next.prefix &&
+            _prefixCtl.text != next.prefix) {
+          _prefixCtl.value = _prefixCtl.value.copyWith(
+            text: next.prefix,
+            selection: TextSelection.collapsed(offset: next.prefix.length),
+          );
+        }
+      },
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final notifier = ref.read(compilationEditorProvider.notifier);
@@ -102,6 +132,29 @@ class _PackCompilationEditorScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Auto-trigger / clear conflict analysis when project selection or target
+    // language changes. Replaces the prior Future.delayed(100ms) dance in
+    // onToggle / onSelectAll / onDeselectAll — by the time this listener
+    // fires the notifier state has already settled, so no delay is needed.
+    ref.listen<({Set<String> ids, String? langId})>(
+      compilationEditorProvider.select(
+        (s) => (ids: s.selectedProjectIds, langId: s.selectedLanguageId),
+      ),
+      (previous, next) {
+        if (next.ids.length >= 2 && next.langId != null) {
+          ref
+              .read(compilationConflictResolutionsStateProvider.notifier)
+              .clear();
+          ref.read(compilationConflictAnalysisProvider.notifier).analyze(
+                projectIds: next.ids.toList(),
+                languageId: next.langId!,
+              );
+        } else {
+          ref.read(compilationConflictAnalysisProvider.notifier).clear();
+        }
+      },
+    );
+
     final state = ref.watch(compilationEditorProvider);
     final languagesAsync = ref.watch(allLanguagesProvider);
     final currentGameAsync = ref.watch(currentGameInstallationProvider);
@@ -109,27 +162,6 @@ class _PackCompilationEditorScreenState
     final notifier = ref.read(compilationEditorProvider.notifier);
     final languages = languagesAsync.asData?.value ?? const <Language>[];
     final gameInstallation = currentGameAsync.asData?.value;
-
-    // Keep controllers in sync with state when the notifier mutates them
-    // externally (e.g. updateLanguage fills the prefix based on code).
-    if (_nameCtl.text != state.name) {
-      _nameCtl.value = _nameCtl.value.copyWith(
-        text: state.name,
-        selection: TextSelection.collapsed(offset: state.name.length),
-      );
-    }
-    if (_packNameCtl.text != state.packName) {
-      _packNameCtl.value = _packNameCtl.value.copyWith(
-        text: state.packName,
-        selection: TextSelection.collapsed(offset: state.packName.length),
-      );
-    }
-    if (_prefixCtl.text != state.prefix) {
-      _prefixCtl.value = _prefixCtl.value.copyWith(
-        text: state.prefix,
-        selection: TextSelection.collapsed(offset: state.prefix.length),
-      );
-    }
 
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
@@ -220,9 +252,6 @@ class _PackCompilationEditorScreenState
                   key: const ValueKey('editing'),
                   state: state,
                   currentGameAsync: currentGameAsync,
-                  onToggle: notifier.toggleProject,
-                  onSelectAll: notifier.selectAllProjects,
-                  onDeselectAll: notifier.deselectAllProjects,
                 ),
         ),
       ),
@@ -307,17 +336,11 @@ class _PackCompilationEditorScreenState
 class _EditingView extends ConsumerWidget {
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
-  final void Function(String) onToggle;
-  final void Function(List<String>) onSelectAll;
-  final VoidCallback onDeselectAll;
 
   const _EditingView({
     super.key,
     required this.state,
     required this.currentGameAsync,
-    required this.onToggle,
-    required this.onSelectAll,
-    required this.onDeselectAll,
   });
 
   @override
@@ -336,58 +359,18 @@ class _EditingView extends ConsumerWidget {
           child: CompilationProjectSelectionSection(
             state: state,
             currentGameAsync: currentGameAsync,
-            onToggle: (id) async {
-              final wasSelected = state.selectedProjectIds.contains(id);
-              ref.read(compilationEditorProvider.notifier).toggleProject(id);
-
-              // When adding a project brings the count to >= 2, re-run
-              // conflict analysis so the panel surfaces the overlap.
-              if (!wasSelected && state.selectedLanguageId != null) {
-                await Future.delayed(const Duration(milliseconds: 100));
-                final current = ref.read(compilationEditorProvider);
-                if (current.selectedProjectIds.length >= 2) {
-                  ref
-                      .read(compilationConflictResolutionsStateProvider
-                          .notifier)
-                      .clear();
-                  await ref
-                      .read(compilationConflictAnalysisProvider.notifier)
-                      .analyze(
-                        projectIds: current.selectedProjectIds.toList(),
-                        languageId: current.selectedLanguageId!,
-                      );
-                }
-              }
-            },
-            onSelectAll: (ids) async {
-              ref
-                  .read(compilationEditorProvider.notifier)
-                  .selectAllProjects(ids);
-              if (state.selectedLanguageId != null && ids.length >= 2) {
-                await Future.delayed(const Duration(milliseconds: 100));
-                final current = ref.read(compilationEditorProvider);
-                if (current.selectedProjectIds.length >= 2) {
-                  ref
-                      .read(compilationConflictResolutionsStateProvider
-                          .notifier)
-                      .clear();
-                  await ref
-                      .read(compilationConflictAnalysisProvider.notifier)
-                      .analyze(
-                        projectIds: current.selectedProjectIds.toList(),
-                        languageId: current.selectedLanguageId!,
-                      );
-                }
-              }
-            },
-            onDeselectAll: () {
-              ref
-                  .read(compilationEditorProvider.notifier)
-                  .deselectAllProjects();
-              ref
-                  .read(compilationConflictAnalysisProvider.notifier)
-                  .clear();
-            },
+            // Selection handlers only mutate the editor notifier. The parent
+            // screen's ref.listen on (selectedProjectIds, selectedLanguageId)
+            // drives conflict analysis + resolutions clearing centrally, so
+            // the prior Future.delayed race workaround is no longer needed.
+            onToggle: (id) =>
+                ref.read(compilationEditorProvider.notifier).toggleProject(id),
+            onSelectAll: (ids) => ref
+                .read(compilationEditorProvider.notifier)
+                .selectAllProjects(ids),
+            onDeselectAll: () => ref
+                .read(compilationEditorProvider.notifier)
+                .deselectAllProjects(),
           ),
         ),
         if (showConflicts) ...[
@@ -396,29 +379,10 @@ class _EditingView extends ConsumerWidget {
             height: 240,
             child: ConflictingProjectsPanel(
               selectedProjectIds: state.selectedProjectIds,
-              onToggleProject: (id) {
-                ref.read(compilationEditorProvider.notifier).toggleProject(id);
-                Future.delayed(const Duration(milliseconds: 100), () async {
-                  final current = ref.read(compilationEditorProvider);
-                  if (current.selectedProjectIds.length >= 2 &&
-                      current.selectedLanguageId != null) {
-                    ref
-                        .read(compilationConflictResolutionsStateProvider
-                            .notifier)
-                        .clear();
-                    await ref
-                        .read(compilationConflictAnalysisProvider.notifier)
-                        .analyze(
-                          projectIds: current.selectedProjectIds.toList(),
-                          languageId: current.selectedLanguageId!,
-                        );
-                  } else {
-                    ref
-                        .read(compilationConflictAnalysisProvider.notifier)
-                        .clear();
-                  }
-                });
-              },
+              // Parent screen's ref.listen handles conflict re-analysis.
+              onToggleProject: (id) => ref
+                  .read(compilationEditorProvider.notifier)
+                  .toggleProject(id),
             ),
           ),
         ],
