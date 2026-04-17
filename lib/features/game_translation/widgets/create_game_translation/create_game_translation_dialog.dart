@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/wizard_step_header.dart';
 
 import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
@@ -27,7 +28,7 @@ import 'step_select_targets.dart';
 /// 1. Select source pack (local_xx.pack)
 /// 2. Select target languages
 ///
-/// Retokenised (Plan 5d · Task 5): panel/accent/border tokens, `_buildStepHeader`
+/// Retokenised (Plan 5d · Task 5): panel/accent/border tokens, [WizardStepHeader]
 /// step indicator, [SmallTextButton] footer actions, [SmallIconButton] close.
 class CreateGameTranslationDialog extends ConsumerStatefulWidget {
   const CreateGameTranslationDialog({super.key});
@@ -285,7 +286,13 @@ class _CreateGameTranslationDialogState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Step header (Plan 5d §7 pattern)
-                          _buildStepHeader(tokens),
+                          WizardStepHeader(
+                            stepNumber: _currentStep + 1,
+                            totalSteps: 2,
+                            title: _currentStep == 0
+                                ? 'Select source pack'
+                                : 'Select target languages',
+                          ),
                           const SizedBox(height: 20),
                           // Step content
                           _buildStepContent(),
@@ -334,50 +341,12 @@ class _CreateGameTranslationDialogState
             ),
           ),
           const Spacer(),
-          SmallIconButton(
-            icon: FluentIcons.dismiss_24_regular,
-            tooltip: 'Close',
-            onTap: _isLoading ? () {} : () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Step header: monospace step counter + display-font title, with a bottom
-  /// divider. Kept inline per Plan 5d §10 (YAGNI — one caller today).
-  Widget _buildStepHeader(TwmtThemeTokens tokens) {
-    return Container(
-      padding: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'STEP ${_currentStep + 1}/2',
-            style: tokens.fontMono.copyWith(
-              fontSize: 10,
-              color: tokens.textDim,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
+          if (!_isLoading)
+            SmallIconButton(
+              icon: FluentIcons.dismiss_24_regular,
+              tooltip: 'Close',
+              onTap: () => Navigator.of(context).pop(),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _currentStep == 0
-                ? 'Select source pack'
-                : 'Select target languages',
-            style: tokens.fontDisplay.copyWith(
-              fontSize: 18,
-              color: tokens.text,
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
         ],
       ),
     );

@@ -7,6 +7,7 @@ import 'package:path/path.dart' as path;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/wizard_step_header.dart';
 
 import '../../../../widgets/fluent/fluent_widgets.dart';
 import '../../../../models/domain/project.dart';
@@ -30,7 +31,7 @@ import 'step_settings.dart';
 ///
 /// If [detectedMod] is provided, step 1 is auto-filled and skipped.
 ///
-/// Retokenised (Plan 5d · Task 6): panel/accent/border tokens, `_buildStepHeader`
+/// Retokenised (Plan 5d · Task 6): panel/accent/border tokens, [WizardStepHeader]
 /// step indicator, [SmallTextButton] footer actions, [SmallIconButton] close.
 class CreateProjectDialog extends ConsumerStatefulWidget {
   final DetectedMod? detectedMod;
@@ -338,7 +339,15 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Step header (Plan 5d §7 pattern)
-                          _buildStepHeader(tokens),
+                          WizardStepHeader(
+                            stepNumber: _currentStep + 1,
+                            totalSteps: 3,
+                            title: const [
+                              'Basic info',
+                              'Target languages',
+                              'Translation settings',
+                            ][_currentStep],
+                          ),
                           const SizedBox(height: 20),
                           // Step content
                           _buildStepContent(),
@@ -387,49 +396,12 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
             ),
           ),
           const Spacer(),
-          SmallIconButton(
-            icon: FluentIcons.dismiss_24_regular,
-            tooltip: 'Close',
-            onTap: _isLoading ? () {} : () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Step header: monospace step counter + display-font title, with a bottom
-  /// divider. Kept inline per Plan 5d §10 (YAGNI — one caller today).
-  Widget _buildStepHeader(TwmtThemeTokens tokens) {
-    const titles = ['Basic info', 'Target languages', 'Translation settings'];
-    return Container(
-      padding: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'STEP ${_currentStep + 1}/3',
-            style: tokens.fontMono.copyWith(
-              fontSize: 10,
-              color: tokens.textDim,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
+          if (!_isLoading)
+            SmallIconButton(
+              icon: FluentIcons.dismiss_24_regular,
+              tooltip: 'Close',
+              onTap: () => Navigator.of(context).pop(),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            titles[_currentStep],
-            style: tokens.fontDisplay.copyWith(
-              fontSize: 18,
-              color: tokens.text,
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
         ],
       ),
     );
