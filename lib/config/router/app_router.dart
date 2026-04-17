@@ -14,7 +14,7 @@ import '../../features/projects/screens/project_detail_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
-import '../../features/pack_compilation/screens/pack_compilation_screen.dart';
+import '../../features/pack_compilation/screens/pack_compilation_editor_screen.dart';
 import '../../features/pack_compilation/screens/pack_compilation_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/help/screens/help_screen.dart';
@@ -263,7 +263,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 name: 'packCompilationNew',
                 pageBuilder: (context, state) {
                   return FluentPageTransitions.slideFromRightTransition(
-                    child: const PackCompilationScreen(), // replaced in Task 5
+                    child: const PackCompilationEditorScreen(
+                      compilationId: null,
+                    ),
                     state: state,
                   );
                 },
@@ -273,7 +275,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 name: 'packCompilationEdit',
                 pageBuilder: (context, state) {
                   return FluentPageTransitions.slideFromRightTransition(
-                    child: const PackCompilationScreen(), // replaced in Task 5
+                    child: PackCompilationEditorScreen(
+                      compilationId:
+                          state.pathParameters[AppRoutes.compilationIdParam]!,
+                    ),
                     state: state,
                   );
                 },
