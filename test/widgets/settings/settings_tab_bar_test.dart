@@ -29,14 +29,15 @@ void main() {
     expect(find.byIcon(FluentIcons.folder_24_regular), findsOneWidget);
   });
 
-  testWidgets('active tab label uses tokens.text', (t) async {
+  testWidgets('TabBar labelColor = tokens.text, unselectedLabelColor = tokens.textDim', (t) async {
     await t.pumpWidget(wrap(const SettingsTabBar(tabs: [
       SettingsTabItem(icon: FluentIcons.settings_24_regular, label: 'General'),
       SettingsTabItem(icon: FluentIcons.folder_24_regular, label: 'Folders'),
     ])));
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
-    final label = t.widget<Text>(find.text('General'));
-    expect(label.style?.color ?? tokens.text, isNotNull);
+    final bar = t.widget<TabBar>(find.byType(TabBar));
+    expect(bar.labelColor, equals(tokens.text));
+    expect(bar.unselectedLabelColor, equals(tokens.textDim));
   });
 
   testWidgets('tab bar is horizontally scrollable', (t) async {
