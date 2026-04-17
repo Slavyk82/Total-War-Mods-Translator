@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Reusable section header for settings UI.
 ///
@@ -15,20 +16,27 @@ class SettingsSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium),
+        Text(
+          title,
+          style: tokens.fontDisplay.copyWith(
+            fontSize: 20,
+            color: tokens.text,
+            fontStyle:
+                tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+          ),
+        ),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
           Text(
             subtitle!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
-                ),
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
+            ),
           ),
         ],
       ],

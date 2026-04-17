@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 import '../../../../providers/shared/service_providers.dart';
 import '../../providers/backup_providers.dart';
@@ -21,7 +22,6 @@ class BackupSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final backupState = ref.watch(backupStateProvider);
-    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -32,7 +32,7 @@ class BackupSection extends ConsumerWidget {
               'Create backups to protect your data or restore from previous backups.',
         ),
         const SizedBox(height: 16),
-        _buildBackupCard(context, ref, backupState, theme),
+        _buildBackupCard(context, ref, backupState),
       ],
     );
   }
@@ -41,18 +41,16 @@ class BackupSection extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     BackupState state,
-    ThemeData theme,
   ) {
+    final tokens = context.tokens;
     final isRunning = state.isOperationInProgress;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.dividerColor,
-        ),
+        color: tokens.panel,
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,20 +60,24 @@ class BackupSection extends ConsumerWidget {
               Icon(
                 FluentIcons.folder_zip_24_regular,
                 size: 24,
-                color: theme.colorScheme.primary,
+                color: tokens.accent,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Backup Actions',
-                  style: theme.textTheme.titleMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.text,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (state.lastResult != null) ...[
-            _buildResultMessage(context, state.lastResult!, theme),
+            _buildResultMessage(context, state.lastResult!),
             const SizedBox(height: 16),
           ],
           if (isRunning) ...[
@@ -86,13 +88,16 @@ class BackupSection extends ConsumerWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: theme.colorScheme.primary,
+                    color: tokens.accent,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   state.progressMessage ?? 'Processing...',
-                  style: theme.textTheme.bodyMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                  ),
                 ),
               ],
             ),
@@ -100,7 +105,6 @@ class BackupSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.arrow_export_24_regular,
               title: 'Export Backup',
               description: 'Save your database to a ZIP file',
@@ -111,7 +115,6 @@ class BackupSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.arrow_import_24_regular,
               title: 'Import Backup',
               description: 'Restore database from a backup file',
@@ -126,14 +129,14 @@ class BackupSection extends ConsumerWidget {
 
   Widget _buildActionRow(
     BuildContext context,
-    WidgetRef ref,
-    ThemeData theme, {
+    WidgetRef ref, {
     required IconData icon,
     required String title,
     required String description,
     required VoidCallback onTap,
     required bool isPrimary,
   }) {
+    final tokens = context.tokens;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -141,24 +144,16 @@ class BackupSection extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isPrimary
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                : theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isPrimary
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.dividerColor,
-            ),
+            color: isPrimary ? tokens.accentBg : tokens.panel2,
+            borderRadius: BorderRadius.circular(tokens.radiusMd),
+            border: Border.all(color: tokens.border),
           ),
           child: Row(
             children: [
               Icon(
                 icon,
                 size: 20,
-                color: isPrimary
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
+                color: isPrimary ? tokens.accent : tokens.textDim,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -167,14 +162,17 @@ class BackupSection extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        color: tokens.text,
                       ),
                     ),
                     Text(
                       description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 12,
+                        color: tokens.textDim,
                       ),
                     ),
                   ],
@@ -183,7 +181,7 @@ class BackupSection extends ConsumerWidget {
               Icon(
                 FluentIcons.chevron_right_24_regular,
                 size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: tokens.textDim,
               ),
             ],
           ),
@@ -195,10 +193,11 @@ class BackupSection extends ConsumerWidget {
   Widget _buildResultMessage(
     BuildContext context,
     BackupResult result,
-    ThemeData theme,
   ) {
+    final tokens = context.tokens;
     final isSuccess = result.success;
-    final color = isSuccess ? Colors.green : theme.colorScheme.error;
+    final color = isSuccess ? tokens.ok : tokens.err;
+    final bgColor = isSuccess ? tokens.okBg : tokens.errBg;
     final icon = isSuccess
         ? FluentIcons.checkmark_circle_24_regular
         : FluentIcons.error_circle_24_regular;
@@ -206,8 +205,8 @@ class BackupSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -221,16 +220,15 @@ class BackupSection extends ConsumerWidget {
               children: [
                 Text(
                   result.message,
-                  style: theme.textTheme.bodySmall?.copyWith(color: color),
+                  style: tokens.fontBody.copyWith(fontSize: 12, color: color),
                 ),
                 if (result.filePath != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     result.filePath!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: color.withValues(alpha: 0.8),
-                      fontFamily: 'monospace',
+                    style: tokens.fontMono.copyWith(
                       fontSize: 11,
+                      color: color.withValues(alpha: 0.8),
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -304,7 +302,7 @@ class BackupSection extends ConsumerWidget {
   Future<void> _showRestartDialog(BuildContext context) async {
     if (!context.mounted) return;
 
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     await showDialog<void>(
       context: context,
@@ -319,20 +317,25 @@ class BackupSection extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: tokens.okBg,
+                  borderRadius: BorderRadius.circular(tokens.radiusMd),
                 ),
-                child: const Icon(
+                child: Icon(
                   FluentIcons.checkmark_circle_24_regular,
                   size: 48,
-                  color: Colors.green,
+                  color: tokens.ok,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Restore Complete',
-                style: theme.textTheme.titleLarge?.copyWith(
+                style: tokens.fontDisplay.copyWith(
+                  fontSize: 20,
+                  color: tokens.text,
                   fontWeight: FontWeight.w600,
+                  fontStyle: tokens.fontDisplayItalic
+                      ? FontStyle.italic
+                      : FontStyle.normal,
                 ),
               ),
               const SizedBox(height: 8),
@@ -340,8 +343,9 @@ class BackupSection extends ConsumerWidget {
                 'The database has been restored successfully. '
                 'The application will now restart to apply the changes.',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.textDim,
                 ),
               ),
               const SizedBox(height: 24),
@@ -355,13 +359,14 @@ class BackupSection extends ConsumerWidget {
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(4),
+                      color: tokens.accent,
+                      borderRadius: BorderRadius.circular(tokens.radiusSm),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Restart Now',
-                      style: TextStyle(
-                        color: Colors.white,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.accentFg,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

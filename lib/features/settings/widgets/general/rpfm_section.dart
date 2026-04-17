@@ -4,10 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/services/rpfm/rpfm_cli_manager.dart';
 import '../../providers/settings_providers.dart';
-import 'settings_action_button.dart';
 import 'settings_section_header.dart';
 
 /// RPFM Tool configuration section.
@@ -46,33 +47,43 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
   }
 
   Widget _buildRpfmPathField() {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(FluentIcons.wrench_24_regular, size: 16),
+            Icon(
+              FluentIcons.wrench_24_regular,
+              size: 16,
+              color: tokens.text,
+            ),
             const SizedBox(width: 8),
             Text(
               'RPFM Executable',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            SettingsActionButton.test(
-              onPressed: _testRpfmPath,
+            SmallTextButton(
+              label: 'Test',
+              icon: FluentIcons.beaker_24_regular,
               tooltip: TooltipStrings.settingsTestRpfm,
+              onTap: _testRpfmPath,
             ),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(
-              onPressed: _selectRpfmPath,
+            const SizedBox(width: 6),
+            SmallTextButton(
+              label: 'Browse',
+              icon: FluentIcons.folder_open_24_regular,
               tooltip: TooltipStrings.settingsBrowsePath,
+              onTap: _selectRpfmPath,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -80,8 +91,9 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
                 controller: widget.rpfmPathController,
                 decoration: InputDecoration(
                   hintText: r'C:\Path\To\rpfm_cli.exe',
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
@@ -95,43 +107,51 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
   }
 
   Widget _buildRpfmSchemaPathField() {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(FluentIcons.database_24_regular, size: 16),
+            Icon(
+              FluentIcons.database_24_regular,
+              size: 16,
+              color: tokens.text,
+            ),
             const SizedBox(width: 8),
             Text(
               'RPFM Schema Folder',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           'Folder containing RPFM schema files (e.g., schema_wh3.ron)',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.6),
-              ),
+          style: tokens.fontBody.copyWith(
+            fontSize: 12,
+            color: tokens.textDim,
+          ),
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            SettingsActionButton.defaultPath(
-              onPressed: _useDefaultRpfmSchemaPath,
+            SmallTextButton(
+              label: 'Default',
+              icon: FluentIcons.checkmark_circle_24_regular,
               tooltip: TooltipStrings.settingsDefaultPath,
+              onTap: _useDefaultRpfmSchemaPath,
             ),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(
-              onPressed: _selectRpfmSchemaPath,
+            const SizedBox(width: 6),
+            SmallTextButton(
+              label: 'Browse',
+              icon: FluentIcons.folder_open_24_regular,
               tooltip: TooltipStrings.settingsBrowsePath,
+              onTap: _selectRpfmSchemaPath,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -140,8 +160,9 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
                 decoration: InputDecoration(
                   hintText:
                       r'C:\Users\USERNAME\AppData\Roaming\FrodoWazEre\rpfm\config\schemas',
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'settings_section_header.dart';
 import '../../providers/maintenance_providers.dart';
 
@@ -14,7 +15,6 @@ class MaintenanceSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final maintenanceState = ref.watch(maintenanceStateProvider);
-    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,7 +25,7 @@ class MaintenanceSection extends ConsumerWidget {
               'Tools to maintain and fix database statistics and translation states.',
         ),
         const SizedBox(height: 16),
-        _buildMaintenanceCard(context, ref, maintenanceState, theme),
+        _buildMaintenanceCard(context, ref, maintenanceState),
       ],
     );
   }
@@ -34,18 +34,16 @@ class MaintenanceSection extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     MaintenanceState state,
-    ThemeData theme,
   ) {
+    final tokens = context.tokens;
     final isRunning = state.isReanalyzing;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.dividerColor,
-        ),
+        color: tokens.panel,
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -55,20 +53,24 @@ class MaintenanceSection extends ConsumerWidget {
               Icon(
                 FluentIcons.wrench_24_regular,
                 size: 24,
-                color: theme.colorScheme.primary,
+                color: tokens.accent,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Maintenance Actions',
-                  style: theme.textTheme.titleMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.text,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (state.lastResult != null) ...[
-            _buildResultMessage(context, state.lastResult!, theme),
+            _buildResultMessage(context, state.lastResult!),
             const SizedBox(height: 16),
           ],
           if (isRunning) ...[
@@ -79,13 +81,16 @@ class MaintenanceSection extends ConsumerWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: theme.colorScheme.primary,
+                    color: tokens.accent,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   state.progressMessage ?? 'Processing...',
-                  style: theme.textTheme.bodyMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                  ),
                 ),
               ],
             ),
@@ -93,7 +98,6 @@ class MaintenanceSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.arrow_sync_24_regular,
               title: 'Reanalyze Translations',
               description: 'Fix status inconsistencies and detect untranslated units',
@@ -104,7 +108,6 @@ class MaintenanceSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.delete_24_regular,
               title: 'Clear Mod Update Cache',
               description: 'Remove stale "pending changes" badges',
@@ -115,7 +118,6 @@ class MaintenanceSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.database_24_regular,
               title: 'Rebuild Translation Memory',
               description: 'Recover missing TM entries from existing translations',
@@ -126,7 +128,6 @@ class MaintenanceSection extends ConsumerWidget {
             _buildActionRow(
               context,
               ref,
-              theme,
               icon: FluentIcons.arrow_sync_24_regular,
               title: 'Migrate Legacy TM Hashes',
               description: 'Convert old integer hashes to SHA256 for TM lookup',
@@ -141,14 +142,14 @@ class MaintenanceSection extends ConsumerWidget {
 
   Widget _buildActionRow(
     BuildContext context,
-    WidgetRef ref,
-    ThemeData theme, {
+    WidgetRef ref, {
     required IconData icon,
     required String title,
     required String description,
     required VoidCallback onTap,
     required bool isPrimary,
   }) {
+    final tokens = context.tokens;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
@@ -156,24 +157,16 @@ class MaintenanceSection extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isPrimary
-                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                : theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isPrimary
-                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                  : theme.dividerColor,
-            ),
+            color: isPrimary ? tokens.accentBg : tokens.panel2,
+            borderRadius: BorderRadius.circular(tokens.radiusMd),
+            border: Border.all(color: tokens.border),
           ),
           child: Row(
             children: [
               Icon(
                 icon,
                 size: 20,
-                color: isPrimary
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
+                color: isPrimary ? tokens.accent : tokens.textDim,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -182,14 +175,17 @@ class MaintenanceSection extends ConsumerWidget {
                   children: [
                     Text(
                       title,
-                      style: theme.textTheme.bodyMedium?.copyWith(
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
+                        color: tokens.text,
                       ),
                     ),
                     Text(
                       description,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 12,
+                        color: tokens.textDim,
                       ),
                     ),
                   ],
@@ -198,7 +194,7 @@ class MaintenanceSection extends ConsumerWidget {
               Icon(
                 FluentIcons.chevron_right_24_regular,
                 size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: tokens.textDim,
               ),
             ],
           ),
@@ -210,10 +206,11 @@ class MaintenanceSection extends ConsumerWidget {
   Widget _buildResultMessage(
     BuildContext context,
     MaintenanceResult result,
-    ThemeData theme,
   ) {
+    final tokens = context.tokens;
     final isSuccess = result.success;
-    final color = isSuccess ? Colors.green : theme.colorScheme.error;
+    final color = isSuccess ? tokens.ok : tokens.err;
+    final bgColor = isSuccess ? tokens.okBg : tokens.errBg;
     final icon = isSuccess
         ? FluentIcons.checkmark_circle_24_regular
         : FluentIcons.error_circle_24_regular;
@@ -221,8 +218,8 @@ class MaintenanceSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -232,7 +229,7 @@ class MaintenanceSection extends ConsumerWidget {
           Expanded(
             child: Text(
               result.message,
-              style: theme.textTheme.bodySmall?.copyWith(color: color),
+              style: tokens.fontBody.copyWith(fontSize: 12, color: color),
             ),
           ),
         ],

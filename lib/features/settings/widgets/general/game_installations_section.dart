@@ -4,11 +4,12 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import '../../models/game_display_info.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/fluent/fluent_expander.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import '../../providers/settings_providers.dart';
-import 'settings_action_button.dart';
 import 'settings_section_header.dart';
 
 /// Game installations configuration section.
@@ -65,45 +66,43 @@ class _GameInstallationsSectionState
   }
 
   Widget _buildAutoDetectAllButton() {
+    final tokens = context.tokens;
     return Row(
       children: [
-        Tooltip(
-          message: TooltipStrings.settingsDetectAllGames,
-          waitDuration: const Duration(milliseconds: 500),
-          child: FluentButton(
-            onPressed: _isDetecting ? null : _autoDetectAllGames,
-            icon: _isDetecting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(FluentIcons.search_24_regular),
-            child:
-                Text(_isDetecting ? 'Detecting...' : 'Auto-Detect All Games'),
-          ),
+        SmallTextButton(
+          label: _isDetecting ? 'Detecting...' : 'Auto-Detect All Games',
+          icon: FluentIcons.search_24_regular,
+          tooltip: TooltipStrings.settingsDetectAllGames,
+          onTap: _isDetecting ? null : _autoDetectAllGames,
         ),
         const SizedBox(width: 8),
         Text(
           'Automatically find all installed Total War games',
-          style: Theme.of(context).textTheme.bodyMedium,
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildGamePathField(GameDisplayInfo game) {
+    final tokens = context.tokens;
     return Row(
       children: [
-        SettingsActionButton.detect(
-          onPressed: () => _autoDetectGame(game.code),
-          isDetecting: _isDetecting,
+        SmallTextButton(
+          label: 'Detect',
+          icon: FluentIcons.search_24_regular,
           tooltip: TooltipStrings.settingsDetectGame,
+          onTap: _isDetecting ? null : () => _autoDetectGame(game.code),
         ),
-        const SizedBox(width: 4),
-        SettingsActionButton.browse(
-          onPressed: () => _selectGamePath(game.code),
+        const SizedBox(width: 6),
+        SmallTextButton(
+          label: 'Browse',
+          icon: FluentIcons.folder_open_24_regular,
           tooltip: TooltipStrings.settingsBrowsePath,
+          onTap: () => _selectGamePath(game.code),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -111,7 +110,9 @@ class _GameInstallationsSectionState
             controller: widget.gamePathControllers[game.code],
             decoration: InputDecoration(
               hintText: 'Path to ${game.name} installation...',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+              ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),

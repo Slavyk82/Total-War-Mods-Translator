@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import '../../providers/settings_providers.dart';
-import 'settings_action_button.dart';
 import 'settings_section_header.dart';
 
 /// Steam Workshop configuration section.
@@ -44,34 +45,43 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
   }
 
   Widget _buildWorkshopPathField() {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(FluentIcons.folder_24_regular, size: 16),
+            Icon(
+              FluentIcons.folder_24_regular,
+              size: 16,
+              color: tokens.text,
+            ),
             const SizedBox(width: 8),
             Text(
               'Steam Workshop Base Folder',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyLarge
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            SettingsActionButton.detect(
-              onPressed: _autoDetectWorkshop,
-              isDetecting: _isDetecting,
+            SmallTextButton(
+              label: _isDetecting ? 'Detecting...' : 'Detect',
+              icon: FluentIcons.search_24_regular,
               tooltip: TooltipStrings.settingsDetectWorkshop,
+              onTap: _isDetecting ? null : _autoDetectWorkshop,
             ),
-            const SizedBox(width: 4),
-            SettingsActionButton.browse(
-              onPressed: _selectWorkshopPath,
+            const SizedBox(width: 6),
+            SmallTextButton(
+              label: 'Browse',
+              icon: FluentIcons.folder_open_24_regular,
               tooltip: TooltipStrings.settingsBrowsePath,
+              onTap: _selectWorkshopPath,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -80,8 +90,9 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
                 decoration: InputDecoration(
                   hintText:
                       r'C:\Program Files (x86)\Steam\steamapps\workshop\content',
-                  border:
-                      OutlineInputBorder(borderRadius: BorderRadius.circular(4)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  ),
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
