@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/settings_providers.dart';
 import '../models/game_display_info.dart';
 import 'general/game_installations_section.dart';
 import 'general/workshop_section.dart';
 import 'general/rpfm_section.dart';
 
-/// Folders settings tab for configuring game paths, workshop, and tools.
-///
-/// Delegates to specialized section widgets for each folder configuration area.
 class FoldersSettingsTab extends ConsumerStatefulWidget {
   const FoldersSettingsTab({super.key});
 
@@ -19,61 +17,22 @@ class FoldersSettingsTab extends ConsumerStatefulWidget {
 class _FoldersSettingsTabState extends ConsumerState<FoldersSettingsTab> {
   final _formKey = GlobalKey<FormState>();
 
-  late Map<String, TextEditingController> _gamePathControllers;
-  late TextEditingController _workshopPathController;
-  late TextEditingController _rpfmPathController;
-  late TextEditingController _rpfmSchemaPathController;
-
-  /// Tracks whether initial load has been performed to avoid overwriting user changes
+  late final Map<String, TextEditingController> _gamePathControllers;
+  late final TextEditingController _workshopPathController;
+  late final TextEditingController _rpfmPathController;
+  late final TextEditingController _rpfmSchemaPathController;
   bool _initialLoadDone = false;
 
-  /// Supported games with display information
   static const List<GameDisplayInfo> _games = [
-    GameDisplayInfo(
-      code: 'wh3',
-      name: 'Total War: WARHAMMER III',
-      settingsKey: SettingsKeys.gamePathWh3,
-    ),
-    GameDisplayInfo(
-      code: 'wh2',
-      name: 'Total War: WARHAMMER II',
-      settingsKey: SettingsKeys.gamePathWh2,
-    ),
-    GameDisplayInfo(
-      code: 'wh',
-      name: 'Total War: WARHAMMER',
-      settingsKey: SettingsKeys.gamePathWh,
-    ),
-    GameDisplayInfo(
-      code: 'rome2',
-      name: 'Total War: Rome II',
-      settingsKey: SettingsKeys.gamePathRome2,
-    ),
-    GameDisplayInfo(
-      code: 'attila',
-      name: 'Total War: Attila',
-      settingsKey: SettingsKeys.gamePathAttila,
-    ),
-    GameDisplayInfo(
-      code: 'troy',
-      name: 'Total War: Troy',
-      settingsKey: SettingsKeys.gamePathTroy,
-    ),
-    GameDisplayInfo(
-      code: '3k',
-      name: 'Total War: Three Kingdoms',
-      settingsKey: SettingsKeys.gamePath3k,
-    ),
-    GameDisplayInfo(
-      code: 'pharaoh',
-      name: 'Total War: Pharaoh',
-      settingsKey: SettingsKeys.gamePathPharaoh,
-    ),
-    GameDisplayInfo(
-      code: 'pharaoh_dynasties',
-      name: 'Total War: Pharaoh Dynasties',
-      settingsKey: SettingsKeys.gamePathPharaohDynasties,
-    ),
+    GameDisplayInfo(code: 'wh3', name: 'Total War: WARHAMMER III', settingsKey: SettingsKeys.gamePathWh3),
+    GameDisplayInfo(code: 'wh2', name: 'Total War: WARHAMMER II', settingsKey: SettingsKeys.gamePathWh2),
+    GameDisplayInfo(code: 'wh', name: 'Total War: WARHAMMER', settingsKey: SettingsKeys.gamePathWh),
+    GameDisplayInfo(code: 'rome2', name: 'Total War: Rome II', settingsKey: SettingsKeys.gamePathRome2),
+    GameDisplayInfo(code: 'attila', name: 'Total War: Attila', settingsKey: SettingsKeys.gamePathAttila),
+    GameDisplayInfo(code: 'troy', name: 'Total War: Troy', settingsKey: SettingsKeys.gamePathTroy),
+    GameDisplayInfo(code: '3k', name: 'Total War: Three Kingdoms', settingsKey: SettingsKeys.gamePath3k),
+    GameDisplayInfo(code: 'pharaoh', name: 'Total War: Pharaoh', settingsKey: SettingsKeys.gamePathPharaoh),
+    GameDisplayInfo(code: 'pharaoh_dynasties', name: 'Total War: Pharaoh Dynasties', settingsKey: SettingsKeys.gamePathPharaohDynasties),
   ];
 
   @override
@@ -85,6 +44,24 @@ class _FoldersSettingsTabState extends ConsumerState<FoldersSettingsTab> {
     _gamePathControllers = {
       for (final game in _games) game.code: TextEditingController(),
     };
+
+    // Load settings into controllers once, via listenManual (not in build).
+    ref.listenManual<AsyncValue<Map<String, dynamic>>>(
+      generalSettingsProvider,
+      (_, next) {
+        if (_initialLoadDone) return;
+        final settings = next is AsyncData<Map<String, dynamic>> ? next.value : null;
+        if (settings == null) return;
+        _initialLoadDone = true;
+        for (final game in _games) {
+          _gamePathControllers[game.code]!.text = settings[game.settingsKey] ?? '';
+        }
+        _workshopPathController.text = settings[SettingsKeys.workshopPath] ?? '';
+        _rpfmPathController.text = settings[SettingsKeys.rpfmPath] ?? '';
+        _rpfmSchemaPathController.text = settings[SettingsKeys.rpfmSchemaPath] ?? '';
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -101,15 +78,17 @@ class _FoldersSettingsTabState extends ConsumerState<FoldersSettingsTab> {
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(generalSettingsProvider);
+    final tokens = context.tokens;
 
     return settingsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => Center(
-        child: Text('Error loading settings: $error'),
+        child: Text(
+          'Error loading settings: $error',
+          style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.err),
+        ),
       ),
       data: (settings) {
-        _loadSettingsIntoControllers(settings);
-
         return Form(
           key: _formKey,
           child: ListView(
@@ -133,19 +112,5 @@ class _FoldersSettingsTabState extends ConsumerState<FoldersSettingsTab> {
         );
       },
     );
-  }
-
-  void _loadSettingsIntoControllers(Map<String, dynamic> settings) {
-    // Only load settings once to avoid overwriting user's unsaved changes
-    if (_initialLoadDone) return;
-    _initialLoadDone = true;
-
-    for (final game in _games) {
-      _gamePathControllers[game.code]!.text = settings[game.settingsKey] ?? '';
-    }
-    _workshopPathController.text = settings[SettingsKeys.workshopPath] ?? '';
-    _rpfmPathController.text = settings[SettingsKeys.rpfmPath] ?? '';
-    _rpfmSchemaPathController.text =
-        settings[SettingsKeys.rpfmSchemaPath] ?? '';
   }
 }
