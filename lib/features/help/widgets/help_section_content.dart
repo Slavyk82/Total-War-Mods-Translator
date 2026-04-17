@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/help_section.dart';
 
 /// Widget that renders the markdown content of a single help section.
+///
+/// Uses `context.tokens` so typography and colours follow the active TWMT
+/// theme (Atelier / Forge). Preserves the previous widget API and markdown
+/// configuration — only styling changes.
 class HelpSectionContent extends StatelessWidget {
   const HelpSectionContent({
     super.key,
@@ -22,14 +27,14 @@ class HelpSectionContent extends StatelessWidget {
   Future<void> _handleLinkTap(String? href) async {
     if (href == null) return;
 
-    // Internal anchor links
+    // Internal anchor links.
     if (href.startsWith('#')) {
       final anchor = href.substring(1);
       onNavigateToSection?.call(anchor);
       return;
     }
 
-    // External links
+    // External links.
     final uri = Uri.tryParse(href);
     if (uri != null && await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -38,28 +43,31 @@ class HelpSectionContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: MarkdownBody(
-            data: section.content,
-            selectable: true,
-            shrinkWrap: true,
-            onTapLink: (text, href, title) => _handleLinkTap(href),
-            sizedImageBuilder: (config) => _buildImage(
-              config.uri,
-              config.title,
-              config.alt,
-              config.width,
-              config.height,
-              theme,
+    return Container(
+      color: tokens.bg,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Align(
+          alignment: Alignment.topLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: MarkdownBody(
+              data: section.content,
+              selectable: true,
+              shrinkWrap: true,
+              onTapLink: (text, href, title) => _handleLinkTap(href),
+              sizedImageBuilder: (config) => _buildImage(
+                config.uri,
+                config.title,
+                config.alt,
+                config.width,
+                config.height,
+                tokens,
+              ),
+              styleSheet: _buildMarkdownStyleSheet(tokens),
             ),
-            styleSheet: _buildMarkdownStyleSheet(theme),
           ),
         ),
       ),
@@ -72,25 +80,25 @@ class HelpSectionContent extends StatelessWidget {
     String? alt,
     double? width,
     double? height,
-    ThemeData theme,
+    TwmtThemeTokens tokens,
   ) {
     final path = uri.toString();
 
     Widget imageWidget;
 
-    // Limit width to 1000px max
+    // Limit width to 1000px max.
     const double maxWidth = 1000;
     final effectiveWidth = width != null && width < maxWidth ? width : maxWidth;
 
     if (path.startsWith('http://') || path.startsWith('https://')) {
-      // Network image
+      // Network image.
       imageWidget = Image.network(
         path,
         width: effectiveWidth,
         height: height,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          return _buildImageError(theme, alt ?? 'Image failed to load');
+          return _buildImageError(tokens, alt ?? 'Image failed to load');
         },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -98,7 +106,7 @@ class HelpSectionContent extends StatelessWidget {
         },
       );
     } else {
-      // Asset image
+      // Asset image.
       final assetPath = path.startsWith('assets/') ? path : 'assets/$path';
       imageWidget = Image.asset(
         assetPath,
@@ -106,7 +114,7 @@ class HelpSectionContent extends StatelessWidget {
         height: height,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          return _buildImageError(theme, alt ?? path);
+          return _buildImageError(tokens, alt ?? path);
         },
       );
     }
@@ -118,21 +126,11 @@ class HelpSectionContent extends StatelessWidget {
         children: [
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: theme.dividerColor,
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(color: tokens.border, width: 1),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: BorderRadius.circular(tokens.radiusSm - 1),
               child: imageWidget,
             ),
           ),
@@ -140,8 +138,9 @@ class HelpSectionContent extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               alt,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -151,25 +150,25 @@ class HelpSectionContent extends StatelessWidget {
     );
   }
 
-  Widget _buildImageError(ThemeData theme, String message) {
+  Widget _buildImageError(TwmtThemeTokens tokens, String message) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             FluentIcons.image_off_24_regular,
-            color: theme.colorScheme.onErrorContainer,
+            color: tokens.err,
           ),
           const SizedBox(width: 12),
           Flexible(
             child: Text(
               message,
-              style: TextStyle(color: theme.colorScheme.onErrorContainer),
+              style: tokens.fontBody.copyWith(color: tokens.err),
             ),
           ),
         ],
@@ -184,67 +183,87 @@ class HelpSectionContent extends StatelessWidget {
     );
   }
 
-  MarkdownStyleSheet _buildMarkdownStyleSheet(ThemeData theme) {
-    final baseStyle = theme.textTheme.bodyMedium ?? const TextStyle();
+  MarkdownStyleSheet _buildMarkdownStyleSheet(TwmtThemeTokens tokens) {
+    final baseStyle = tokens.fontBody.copyWith(
+      fontSize: 13,
+      color: tokens.text,
+    );
+
+    final displayItalic =
+        tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal;
 
     return MarkdownStyleSheet(
-      p: baseStyle.copyWith(height: 1.6),
-      h1: theme.textTheme.headlineLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.primary,
+      p: baseStyle.copyWith(height: 1.6, color: tokens.textMid),
+      h1: tokens.fontDisplay.copyWith(
+        fontSize: 24,
+        fontWeight: FontWeight.w500,
+        color: tokens.accent,
+        fontStyle: displayItalic,
       ),
-      h2: theme.textTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurface,
+      h2: tokens.fontDisplay.copyWith(
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        color: tokens.text,
+        fontStyle: displayItalic,
       ),
-      h3: theme.textTheme.headlineSmall?.copyWith(
+      h3: tokens.fontDisplay.copyWith(
+        fontSize: 16,
         fontWeight: FontWeight.w600,
+        color: tokens.text,
+        fontStyle: displayItalic,
       ),
-      h4: theme.textTheme.titleLarge?.copyWith(
+      h4: tokens.fontDisplay.copyWith(
+        fontSize: 14,
         fontWeight: FontWeight.w600,
+        color: tokens.text,
+        fontStyle: displayItalic,
       ),
-      h5: theme.textTheme.titleMedium?.copyWith(
+      h5: tokens.fontBody.copyWith(
+        fontSize: 13,
         fontWeight: FontWeight.w600,
+        color: tokens.text,
       ),
-      h6: theme.textTheme.titleSmall?.copyWith(
+      h6: tokens.fontBody.copyWith(
+        fontSize: 12,
         fontWeight: FontWeight.w600,
+        color: tokens.textMid,
       ),
       a: baseStyle.copyWith(
-        color: theme.colorScheme.primary,
+        color: tokens.accent,
         decoration: TextDecoration.underline,
+        decorationColor: tokens.accent,
       ),
-      code: TextStyle(
-        fontFamily: 'Consolas',
-        fontSize: 13,
-        color: theme.colorScheme.onSurfaceVariant,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+      code: tokens.fontMono.copyWith(
+        fontSize: 12,
+        color: tokens.text,
+        backgroundColor: tokens.panel2,
       ),
       codeblockDecoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       codeblockPadding: const EdgeInsets.all(16),
       blockquote: baseStyle.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
+        color: tokens.textDim,
         fontStyle: FontStyle.italic,
       ),
       blockquoteDecoration: BoxDecoration(
         border: Border(
-          left: BorderSide(color: theme.colorScheme.primary, width: 4),
+          left: BorderSide(color: tokens.accent, width: 4),
         ),
       ),
       blockquotePadding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
       tableHead: baseStyle.copyWith(fontWeight: FontWeight.bold),
-      tableBody: baseStyle,
-      tableBorder: TableBorder.all(color: theme.dividerColor, width: 1),
+      tableBody: baseStyle.copyWith(color: tokens.textMid),
+      tableBorder: TableBorder.all(color: tokens.border, width: 1),
       tableHeadAlign: TextAlign.left,
       tableCellsPadding:
           const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      listBullet: baseStyle,
+      listBullet: baseStyle.copyWith(color: tokens.textMid),
       listIndent: 24,
       horizontalRuleDecoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.dividerColor, width: 1)),
+        border: Border(top: BorderSide(color: tokens.border, width: 1)),
       ),
     );
   }
