@@ -55,6 +55,9 @@ class AppRoutes {
 
   // Publishing
   static const String packCompilation = '/publishing/pack';
+  static const String packCompilationNew = '/publishing/pack/new';
+  static String packCompilationEdit(String id) => '/publishing/pack/$id/edit';
+  static const String compilationIdParam = 'compilationId';
   static const String steamPublish = '/publishing/steam';
   static const String steamPublishSingle = '/publishing/steam/single';
   static const String steamPublishBatch = '/publishing/steam/batch';
@@ -253,6 +256,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 state: state,
               );
             },
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'packCompilationNew',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const PackCompilationScreen(), // replaced in Task 5
+                    state: state,
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':${AppRoutes.compilationIdParam}/edit',
+                name: 'packCompilationEdit',
+                pageBuilder: (context, state) {
+                  return FluentPageTransitions.slideFromRightTransition(
+                    child: const PackCompilationScreen(), // replaced in Task 5
+                    state: state,
+                  );
+                },
+              ),
+            ],
           ),
 
           // Steam Publish
@@ -352,6 +377,8 @@ extension GoRouterExtensions on BuildContext {
   void goGlossary() => go(AppRoutes.glossary);
   void goTranslationMemory() => go(AppRoutes.translationMemory);
   void goPackCompilation() => go(AppRoutes.packCompilation);
+  void goPackCompilationNew() => go(AppRoutes.packCompilationNew);
+  void goPackCompilationEdit(String id) => go(AppRoutes.packCompilationEdit(id));
   void goBatchPackExport() => go(AppRoutes.batchPackExport);
   void goSteamPublish() => go(AppRoutes.steamPublish);
   void goWorkshopPublishSingle() => go(AppRoutes.steamPublishSingle);
