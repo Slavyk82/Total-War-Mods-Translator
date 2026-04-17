@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
-import '../../../../widgets/fluent/fluent_widgets.dart';
+
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/wizard/labeled_field.dart';
+import 'package:twmt/widgets/wizard/readonly_field.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
+
 import '../../../../models/domain/game_installation.dart';
 import '../../providers/projects_screen_providers.dart';
 import 'project_creation_state.dart';
@@ -10,6 +16,9 @@ import 'project_creation_state.dart';
 ///
 /// Collects project name and game selection.
 /// If a detected mod is provided, this step is auto-filled and skipped.
+///
+/// Retokenised (Plan 5d · Task 6): [TokenTextField] + [LabeledField] inputs,
+/// [ReadonlyField] rows for auto-filled mod metadata, token-themed dropdown.
 class StepBasicInfo extends ConsumerStatefulWidget {
   final ProjectCreationState state;
   final GlobalKey<FormState> formKey;
@@ -54,7 +63,8 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
 
       if (modResult.isOk) {
         widget.state.workshopMod = modResult.unwrap();
-        widget.state.modSteamIdController.text = widget.state.workshopMod!.workshopId;
+        widget.state.modSteamIdController.text =
+            widget.state.workshopMod!.workshopId;
 
         // Find game installation matching the mod's appId
         final games = await ref.read(allGameInstallationsProvider.future);
@@ -86,83 +96,154 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final hasDetectedMod = widget.state.detectedMod != null;
 
     if (_isLoadingModData) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
+          ),
+        ),
+      );
     }
 
+    // Auto-filled mod context: show read-only summary rows.
+    if (hasDetectedMod) {
+      return Form(
+        key: widget.formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Auto-filled from the detected mod. Review and continue.',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
+              ),
+            ),
+            const SizedBox(height: 16),
+            LabeledField(
+              label: 'PROJECT NAME',
+              child: TokenTextField(
+                controller: widget.state.nameController,
+                hint: 'Enter project name',
+                enabled: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ReadonlyField(
+              label: 'SOURCE PACK',
+              value: widget.state.sourceFileController.text,
+            ),
+            const SizedBox(height: 12),
+            ReadonlyField(
+              label: 'WORKSHOP ID',
+              value: widget.state.modSteamIdController.text,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Manual entry: name + game dropdown.
     return Form(
       key: widget.formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Project name
           Text(
-            'Project Name',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            'Enter the project name and pick a game installation.',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
             ),
-          ),
-          const SizedBox(height: 8),
-          FluentTextField(
-            controller: widget.state.nameController,
-            decoration: InputDecoration(
-              hintText: 'Enter project name',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            autofocus: true,
           ),
           const SizedBox(height: 16),
-
-          // Game selection - only show if no detected mod
-          if (!hasDetectedMod) ...[
-            Text(
-              'Game',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          LabeledField(
+            label: 'PROJECT NAME',
+            child: TokenTextField(
+              controller: widget.state.nameController,
+              hint: 'Enter project name',
+              enabled: true,
             ),
-            const SizedBox(height: 8),
-            _buildGameSelection(theme),
-            const SizedBox(height: 16),
-          ],
+          ),
+          const SizedBox(height: 12),
+          LabeledField(
+            label: 'GAME',
+            child: _buildGameSelection(tokens),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildGameSelection(ThemeData theme) {
+  Widget _buildGameSelection(TwmtThemeTokens tokens) {
     final gamesAsync = ref.watch(allGameInstallationsProvider);
 
     return gamesAsync.when(
-      data: (games) => _buildGameDropdown(games, theme),
-      loading: () => const CircularProgressIndicator(),
-      error: (err, stack) => Text('Error loading games: $err'),
+      data: (games) => _buildGameDropdown(games, tokens),
+      loading: () => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+          ),
+        ),
+      ),
+      error: (err, _) => Text(
+        'Error loading games: $err',
+        style: tokens.fontBody.copyWith(
+          fontSize: 13,
+          color: tokens.err,
+        ),
+      ),
     );
   }
 
-  Widget _buildGameDropdown(List<GameInstallation> games, ThemeData theme) {
+  Widget _buildGameDropdown(
+      List<GameInstallation> games, TwmtThemeTokens tokens) {
+    final bodyStyle = tokens.fontBody.copyWith(
+      fontSize: 13,
+      color: tokens.text,
+    );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.4),
-        ),
-        borderRadius: BorderRadius.circular(6),
+        color: tokens.panel2,
+        border: Border.all(color: tokens.border),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: widget.state.selectedGameId,
-          hint: const Text('Select a game'),
+          hint: Text(
+            'Select a game',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textFaint,
+            ),
+          ),
           isExpanded: true,
+          dropdownColor: tokens.panel2,
+          iconEnabledColor: tokens.textMid,
+          icon: const Icon(FluentIcons.chevron_down_24_regular, size: 16),
+          style: bodyStyle,
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
           items: games.map((game) {
             return DropdownMenuItem(
               value: game.id,
-              child: Text(game.gameName),
+              child: Text(game.gameName, style: bodyStyle),
             );
           }).toList(),
           onChanged: (value) {

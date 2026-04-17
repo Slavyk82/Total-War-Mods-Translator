@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../models/help_section.dart';
 
 /// Sidebar widget displaying the table of contents for help documentation.
 ///
-/// Shows all main sections and allows selection to display that section's content.
+/// Shows all main sections and allows selection to display that section's
+/// content. Styled via `context.tokens` so colours follow the active TWMT
+/// theme (Atelier / Forge).
 class HelpTocSidebar extends StatelessWidget {
   const HelpTocSidebar({
     super.key,
@@ -24,15 +27,15 @@ class HelpTocSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     return Container(
       width: 280,
-      color: theme.colorScheme.surfaceContainerLow,
+      color: tokens.panel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
+          // Header.
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -40,21 +43,29 @@ class HelpTocSidebar extends StatelessWidget {
                 Icon(
                   FluentIcons.list_24_regular,
                   size: 18,
-                  color: theme.colorScheme.primary,
+                  color: tokens.accent,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Table of Contents',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
+                Expanded(
+                  child: Text(
+                    'Table of Contents',
+                    style: tokens.fontDisplay.copyWith(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.accent,
+                      fontStyle: tokens.fontDisplayItalic
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+                      letterSpacing: 0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-          // Section list
+          Container(height: 1, color: tokens.border),
+          // Section list.
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -75,7 +86,7 @@ class HelpTocSidebar extends StatelessWidget {
   }
 }
 
-/// Individual TOC item with Fluent Design hover effects.
+/// Individual TOC item with token-themed hover / selected states.
 class _TocItem extends StatefulWidget {
   const _TocItem({
     required this.title,
@@ -96,13 +107,13 @@ class _TocItemState extends State<_TocItem> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     Color backgroundColor;
     if (widget.isActive) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.1);
+      backgroundColor = tokens.accentBg;
     } else if (_isHovered) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.05);
+      backgroundColor = tokens.panel2;
     } else {
       backgroundColor = Colors.transparent;
     }
@@ -115,13 +126,14 @@ class _TocItemState extends State<_TocItem> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
           decoration: BoxDecoration(
             color: backgroundColor,
             border: widget.isActive
                 ? Border(
                     left: BorderSide(
-                      color: theme.colorScheme.primary,
+                      color: tokens.accent,
                       width: 3,
                     ),
                   )
@@ -129,11 +141,11 @@ class _TocItemState extends State<_TocItem> {
           ),
           child: Text(
             widget.title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: widget.isActive
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface,
-              fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: widget.isActive ? tokens.accent : tokens.text,
+              fontWeight:
+                  widget.isActive ? FontWeight.w600 : FontWeight.normal,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

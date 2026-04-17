@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../../../widgets/fluent/fluent_widgets.dart';
+
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/wizard/labeled_field.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
+
 import 'project_creation_state.dart';
 
 /// Step 3: Translation settings.
 ///
 /// Configures batch size, parallel batches, and custom translation prompt.
+///
+/// Retokenised (Plan 5d · Task 6): [TokenTextField] + [LabeledField] inputs.
 class StepSettings extends StatelessWidget {
   final ProjectCreationState state;
 
@@ -15,68 +21,51 @@ class StepSettings extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Batch size
         Text(
-          'Batch Size',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+          'Tune translation throughput and optionally provide an extra prompt.',
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
           ),
-        ),
-        const SizedBox(height: 8),
-        FluentTextField(
-          controller: state.batchSizeController,
-          decoration: InputDecoration(
-            hintText: 'Number of units per batch (default: 25)',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 16),
+
+        // Batch size
+        LabeledField(
+          label: 'BATCH SIZE',
+          child: TokenTextField(
+            controller: state.batchSizeController,
+            hint: 'Number of units per batch (default: 25)',
+            enabled: true,
+          ),
+        ),
+        const SizedBox(height: 12),
 
         // Parallel batches
-        Text(
-          'Parallel Batches',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+        LabeledField(
+          label: 'PARALLEL BATCHES',
+          child: TokenTextField(
+            controller: state.parallelBatchesController,
+            hint: 'Number of batches to process in parallel (default: 3)',
+            enabled: true,
           ),
         ),
-        const SizedBox(height: 8),
-        FluentTextField(
-          controller: state.parallelBatchesController,
-          decoration: InputDecoration(
-            hintText: 'Number of batches to process in parallel (default: 3)',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          keyboardType: TextInputType.number,
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // Custom prompt
-        Text(
-          'Custom Translation Prompt (Optional)',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+        LabeledField(
+          label: 'CUSTOM TRANSLATION PROMPT (OPTIONAL)',
+          child: TokenTextField(
+            controller: state.customPromptController,
+            hint: 'Enter custom instructions for the AI translator',
+            enabled: true,
+            maxLines: 6,
           ),
-        ),
-        const SizedBox(height: 8),
-        FluentTextField(
-          controller: state.customPromptController,
-          decoration: InputDecoration(
-            hintText: 'Enter custom instructions for the AI translator',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          maxLines: 4,
         ),
       ],
     );

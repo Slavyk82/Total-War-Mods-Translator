@@ -4,7 +4,11 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 
-import '../../../../widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/wizard_step_header.dart';
+
 import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
@@ -18,11 +22,14 @@ import 'game_translation_creation_state.dart';
 import 'step_select_source.dart';
 import 'step_select_targets.dart';
 
-/// Create game translation wizard dialog following Fluent Design patterns.
+/// Create game translation wizard dialog.
 ///
 /// Two-step wizard for creating game translation projects:
 /// 1. Select source pack (local_xx.pack)
 /// 2. Select target languages
+///
+/// Retokenised (Plan 5d · Task 5): panel/accent/border tokens, [WizardStepHeader]
+/// step indicator, [SmallTextButton] footer actions, [SmallIconButton] close.
 class CreateGameTranslationDialog extends ConsumerStatefulWidget {
   const CreateGameTranslationDialog({super.key});
 
@@ -136,7 +143,8 @@ class _CreateGameTranslationDialogState
       final languageSuffix = targetLanguageNames.isNotEmpty
           ? targetLanguageNames.join(', ')
           : 'Translation';
-      final projectName = '${selectedGame.name} - Game Translation ($languageSuffix)';
+      final projectName =
+          '${selectedGame.name} - Game Translation ($languageSuffix)';
 
       // Create metadata
       final metadata = ProjectMetadata(modTitle: projectName);
@@ -251,9 +259,14 @@ class _CreateGameTranslationDialogState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     return Dialog(
+      backgroundColor: tokens.panel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        side: BorderSide(color: tokens.border),
+      ),
       child: Container(
         width: 600,
         constraints: const BoxConstraints(maxHeight: 700),
@@ -262,137 +275,80 @@ class _CreateGameTranslationDialogState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Header
-            _buildHeader(theme),
+            _buildHeader(tokens),
             // Content
             Flexible(
               child: _isLoading
-                  ? _buildProgress(theme)
+                  ? _buildProgress(tokens)
                   : SingleChildScrollView(
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Step indicator
-                          _buildStepIndicator(theme),
-                          const SizedBox(height: 24),
+                          // Step header (Plan 5d §7 pattern)
+                          WizardStepHeader(
+                            stepNumber: _currentStep + 1,
+                            totalSteps: 2,
+                            title: _currentStep == 0
+                                ? 'Select source pack'
+                                : 'Select target languages',
+                          ),
+                          const SizedBox(height: 20),
                           // Step content
                           _buildStepContent(),
                           // Error message
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 16),
-                            _buildError(theme),
+                            _buildError(tokens),
                           ],
                         ],
                       ),
                     ),
             ),
             // Footer
-            if (!_isLoading) _buildFooter(theme),
+            if (!_isLoading) _buildFooter(tokens),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  Widget _buildHeader(TwmtThemeTokens tokens) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(
-            color: theme.dividerColor,
-            width: 1,
-          ),
+          bottom: BorderSide(color: tokens.border),
         ),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.globe_24_regular,
-            size: 28,
-            color: theme.colorScheme.primary,
+            size: 22,
+            color: tokens.accent,
           ),
           const SizedBox(width: 12),
           Text(
             'Create Game Translation',
-            style: theme.textTheme.titleLarge,
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(FluentIcons.dismiss_24_regular),
-            onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStepIndicator(ThemeData theme) {
-    return Row(
-      children: [
-        _buildStepDot(theme, 0, 'Source'),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: _currentStep >= 1
-                ? theme.colorScheme.primary
-                : theme.dividerColor,
-          ),
-        ),
-        _buildStepDot(theme, 1, 'Languages'),
-      ],
-    );
-  }
-
-  Widget _buildStepDot(ThemeData theme, int step, String label) {
-    final isActive = _currentStep >= step;
-    final isCurrent = _currentStep == step;
-
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color:
-                isActive ? theme.colorScheme.primary : theme.colorScheme.surface,
-            border: Border.all(
-              color: isActive
-                  ? theme.colorScheme.primary
-                  : theme.dividerColor,
-              width: 2,
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 18,
+              color: tokens.text,
+              fontStyle: tokens.fontDisplayItalic
+                  ? FontStyle.italic
+                  : FontStyle.normal,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          child: Center(
-            child: isActive && !isCurrent
-                ? Icon(
-                    FluentIcons.checkmark_24_regular,
-                    size: 16,
-                    color: theme.colorScheme.onPrimary,
-                  )
-                : Text(
-                    '${step + 1}',
-                    style: TextStyle(
-                      color: isActive
-                          ? theme.colorScheme.onPrimary
-                          : theme.textTheme.bodyMedium?.color,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: isActive
-                ? theme.colorScheme.primary
-                : theme.textTheme.bodySmall?.color,
-            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ],
+          const Spacer(),
+          if (!_isLoading)
+            SmallIconButton(
+              icon: FluentIcons.dismiss_24_regular,
+              tooltip: 'Close',
+              onTap: () => Navigator.of(context).pop(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -413,28 +369,29 @@ class _CreateGameTranslationDialogState
     }
   }
 
-  Widget _buildError(ThemeData theme) {
+  Widget _buildError(TwmtThemeTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.error.withValues(alpha: 0.3),
-        ),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: theme.colorScheme.error,
-            size: 20,
+            color: tokens.err,
+            size: 18,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: TextStyle(color: theme.colorScheme.error),
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.err,
+              ),
             ),
           ),
         ],
@@ -442,26 +399,36 @@ class _CreateGameTranslationDialogState
     );
   }
 
-  Widget _buildProgress(ThemeData theme) {
+  Widget _buildProgress(TwmtThemeTokens tokens) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(),
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             _progressMessage ?? 'Processing...',
-            style: theme.textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+            ),
           ),
           if (_importLogs.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
               height: 200,
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.dividerColor),
+                color: tokens.panel2,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+                border: Border.all(color: tokens.border),
               ),
               child: ListView.builder(
                 controller: _logScrollController,
@@ -471,10 +438,11 @@ class _CreateGameTranslationDialogState
                   final log = _importLogs[index];
                   return Text(
                     log.message,
-                    style: theme.textTheme.bodySmall?.copyWith(
+                    style: tokens.fontMono.copyWith(
+                      fontSize: 11.5,
                       color: log.level == InitializationLogLevel.error
-                          ? theme.colorScheme.error
-                          : theme.textTheme.bodySmall?.color,
+                          ? tokens.err
+                          : tokens.textDim,
                     ),
                   );
                 },
@@ -486,40 +454,34 @@ class _CreateGameTranslationDialogState
     );
   }
 
-  Widget _buildFooter(ThemeData theme) {
+  Widget _buildFooter(TwmtThemeTokens tokens) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(
-            color: theme.dividerColor,
-            width: 1,
-          ),
+          top: BorderSide(color: tokens.border),
         ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           if (_currentStep > 0)
-            FluentButton(
-              onPressed: _previousStep,
-              icon: const Icon(FluentIcons.arrow_left_24_regular),
-              child: const Text('Back'),
-            )
-          else
-            const SizedBox.shrink(),
-          Row(
-            children: [
-              FluentButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FluentButton(
-                onPressed: _nextStep,
-                child: Text(_currentStep == 1 ? 'Create' : 'Next'),
-              ),
-            ],
+            SmallTextButton(
+              label: 'Back',
+              icon: FluentIcons.arrow_left_24_regular,
+              onTap: _isLoading ? null : _previousStep,
+            ),
+          const Spacer(),
+          SmallTextButton(
+            label: 'Cancel',
+            onTap: _isLoading ? null : () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 8),
+          SmallTextButton(
+            label: _currentStep == 0 ? 'Next' : 'Create',
+            icon: _currentStep == 0
+                ? FluentIcons.arrow_right_24_regular
+                : FluentIcons.play_24_regular,
+            onTap: _isLoading ? null : _nextStep,
           ),
         ],
       ),

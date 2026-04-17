@@ -3,6 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
+
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/wizard_step_header.dart';
+
 import '../../../../widgets/fluent/fluent_widgets.dart';
 import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
@@ -16,7 +22,7 @@ import 'step_basic_info.dart';
 import 'step_languages.dart';
 import 'step_settings.dart';
 
-/// Create project wizard dialog following Fluent Design patterns.
+/// Create project wizard dialog.
 ///
 /// Multi-step wizard coordinator for creating new translation projects:
 /// 1. Basic info (name, game, source file) - skipped if [detectedMod] provided
@@ -24,13 +30,17 @@ import 'step_settings.dart';
 /// 3. Translation settings (batch size, parallel batches, custom prompt)
 ///
 /// If [detectedMod] is provided, step 1 is auto-filled and skipped.
+///
+/// Retokenised (Plan 5d · Task 6): panel/accent/border tokens, [WizardStepHeader]
+/// step indicator, [SmallTextButton] footer actions, [SmallIconButton] close.
 class CreateProjectDialog extends ConsumerStatefulWidget {
   final DetectedMod? detectedMod;
 
   const CreateProjectDialog({super.key, this.detectedMod});
 
   @override
-  ConsumerState<CreateProjectDialog> createState() => _CreateProjectDialogState();
+  ConsumerState<CreateProjectDialog> createState() =>
+      _CreateProjectDialogState();
 }
 
 class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
@@ -59,6 +69,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     super.dispose();
   }
 
+  int get _minStep => widget.detectedMod != null ? 1 : 0;
+
   void _nextStep() {
     if (_currentStep < 2) {
       if (_validateCurrentStep()) {
@@ -70,8 +82,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
   }
 
   void _previousStep() {
-    final minStep = widget.detectedMod != null ? 1 : 0;
-    if (_currentStep > minStep) {
+    if (_currentStep > _minStep) {
       setState(() => _currentStep--);
     }
   }
@@ -87,7 +98,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       }
     } else if (_currentStep == 1) {
       if (_state.selectedLanguageIds.isEmpty) {
-        setState(() => _errorMessage = 'Please select at least one target language');
+        setState(
+            () => _errorMessage = 'Please select at least one target language');
         return false;
       }
     }
@@ -118,7 +130,9 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       // Wait for games to load
       final games = await ref.read(allGameInstallationsProvider.future);
 
-      if (gameId == null && widget.detectedMod != null && _state.workshopMod != null) {
+      if (gameId == null &&
+          widget.detectedMod != null &&
+          _state.workshopMod != null) {
         // Find game by appId if not already selected
         final matchingGame = games.firstWhere(
           (game) =>
@@ -167,7 +181,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
             : _state.sourceFileController.text.trim(),
         outputFilePath: outputFolder,
         batchSize: int.tryParse(_state.batchSizeController.text) ?? 25,
-        parallelBatches: int.tryParse(_state.parallelBatchesController.text) ?? 3,
+        parallelBatches:
+            int.tryParse(_state.parallelBatchesController.text) ?? 3,
         customPrompt: _state.customPromptController.text.trim().isEmpty
             ? null
             : _state.customPromptController.text.trim(),
@@ -198,7 +213,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       }
 
       // Initialize project: extract and import .loc files if source file exists
-      if (project.sourceFilePath != null && project.sourceFilePath!.isNotEmpty) {
+      if (project.sourceFilePath != null &&
+          project.sourceFilePath!.isNotEmpty) {
         await _initializeProjectFiles(projectId, project.sourceFilePath!);
         if (!mounted) return;
       } else {
@@ -222,7 +238,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     }
   }
 
-  Future<void> _initializeProjectFiles(String projectId, String packFilePath) async {
+  Future<void> _initializeProjectFiles(
+      String projectId, String packFilePath) async {
     if (!mounted) return;
 
     // Validate RPFM schema path is configured
@@ -276,7 +293,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       if (!mounted) return;
       setState(() {
         _progressMessage = null;
-        _errorMessage = 'Project created but failed to import translations: ${initResult.error}';
+        _errorMessage =
+            'Project created but failed to import translations: ${initResult.error}';
         _isLoading = false;
       });
       return;
@@ -294,88 +312,98 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return AlertDialog(
-      backgroundColor: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      title: Row(
-        children: [
-          Icon(
-            FluentIcons.add_circle_24_regular,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          const Text('Create New Project'),
-        ],
+    return Dialog(
+      backgroundColor: tokens.panel,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        side: BorderSide(color: tokens.border),
       ),
-      content: SizedBox(
-        width: 600,
+      child: Container(
+        width: 640,
+        constraints: const BoxConstraints(maxHeight: 760),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Progress indicator
-            _WizardStepIndicator(
-              currentStep: _currentStep,
-              hasDetectedMod: widget.detectedMod != null,
-            ),
-            const SizedBox(height: 24),
-
-            // Progress message
-            if (_progressMessage != null) ...[
-              _ProgressBanner(
-                message: _progressMessage!,
-                logs: _importLogs,
-                logScrollController: _logScrollController,
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Error message
-            if (_errorMessage != null && _progressMessage == null) ...[
-              _ErrorBanner(message: _errorMessage!),
-              const SizedBox(height: 16),
-            ],
-
-            // Step content
+            // Header
+            _buildHeader(tokens),
+            // Content
             Flexible(
-              child: SingleChildScrollView(
-                child: _buildStepContent(),
-              ),
+              child: _isLoading
+                  ? _buildProgress(tokens)
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Step header (Plan 5d §7 pattern)
+                          WizardStepHeader(
+                            stepNumber: _currentStep + 1,
+                            totalSteps: 3,
+                            title: const [
+                              'Basic info',
+                              'Target languages',
+                              'Translation settings',
+                            ][_currentStep],
+                          ),
+                          const SizedBox(height: 20),
+                          // Step content
+                          _buildStepContent(),
+                          // Error message
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            _buildError(tokens),
+                          ],
+                        ],
+                      ),
+                    ),
             ),
+            // Footer
+            if (!_isLoading) _buildFooter(tokens),
           ],
         ),
       ),
-      actions: [
-        // Cancel button
-        FluentDialogButton(
-          icon: FluentIcons.dismiss_24_regular,
-          label: 'Cancel',
-          onTap: _isLoading ? null : () => Navigator.of(context).pop(),
-        ),
-        const SizedBox(width: 8),
+    );
+  }
 
-        // Back button (only if not at initial step)
-        if (_currentStep > (widget.detectedMod != null ? 1 : 0)) ...[
-          FluentDialogButton(
-            icon: FluentIcons.arrow_left_24_regular,
-            label: 'Back',
-            onTap: _isLoading ? null : _previousStep,
+  Widget _buildHeader(TwmtThemeTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: tokens.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.add_circle_24_regular,
+            size: 22,
+            color: tokens.accent,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
+          Text(
+            'Create New Project',
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 18,
+              color: tokens.text,
+              fontStyle: tokens.fontDisplayItalic
+                  ? FontStyle.italic
+                  : FontStyle.normal,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          if (!_isLoading)
+            SmallIconButton(
+              icon: FluentIcons.dismiss_24_regular,
+              tooltip: 'Close',
+              onTap: () => Navigator.of(context).pop(),
+            ),
         ],
-
-        // Next/Create button
-        FluentDialogButton(
-          icon: _currentStep < 2
-              ? FluentIcons.arrow_right_24_regular
-              : FluentIcons.checkmark_24_regular,
-          label: _currentStep < 2 ? 'Next' : 'Create Project',
-          isPrimary: true,
-          isLoading: _isLoading,
-          onTap: _isLoading ? null : _nextStep,
-        ),
-      ],
+      ),
     );
   }
 
@@ -387,290 +415,146 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       _ => const SizedBox.shrink(),
     };
   }
-}
 
-/// Wizard step progress indicator.
-class _WizardStepIndicator extends StatelessWidget {
-  final int currentStep;
-  final bool hasDetectedMod;
-
-  const _WizardStepIndicator({
-    required this.currentStep,
-    required this.hasDetectedMod,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Row(
-      children: [
-        _StepDot(step: 0, label: 'Basic Info', currentStep: currentStep, theme: theme),
-        Expanded(child: _StepLine(step: 0, currentStep: currentStep, theme: theme)),
-        _StepDot(step: 1, label: 'Languages', currentStep: currentStep, theme: theme),
-        Expanded(child: _StepLine(step: 1, currentStep: currentStep, theme: theme)),
-        _StepDot(step: 2, label: 'Settings', currentStep: currentStep, theme: theme),
-      ],
-    );
-  }
-}
-
-/// Individual step indicator dot.
-class _StepDot extends StatelessWidget {
-  final int step;
-  final String label;
-  final int currentStep;
-  final ThemeData theme;
-
-  const _StepDot({
-    required this.step,
-    required this.label,
-    required this.currentStep,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isActive = currentStep == step;
-    final isCompleted = currentStep > step;
-
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: isCompleted || isActive
-                ? theme.colorScheme.primary
-                : theme.colorScheme.surfaceContainerHighest,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: isCompleted
-                ? Icon(
-                    FluentIcons.checkmark_24_regular,
-                    size: 16,
-                    color: theme.colorScheme.onPrimary,
-                  )
-                : Text(
-                    '${step + 1}',
-                    style: TextStyle(
-                      color: isActive
-                          ? theme.colorScheme.onPrimary
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: isActive
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Line connecting step dots.
-class _StepLine extends StatelessWidget {
-  final int step;
-  final int currentStep;
-  final ThemeData theme;
-
-  const _StepLine({
-    required this.step,
-    required this.currentStep,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isCompleted = currentStep > step;
-
-    return Container(
-      height: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: isCompleted
-          ? theme.colorScheme.primary
-          : theme.colorScheme.surfaceContainerHighest,
-    );
-  }
-}
-
-/// Progress banner with logs.
-class _ProgressBanner extends StatelessWidget {
-  final String message;
-  final List<InitializationLogMessage> logs;
-  final ScrollController logScrollController;
-
-  const _ProgressBanner({
-    required this.message,
-    required this.logs,
-    required this.logScrollController,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-            color: theme.colorScheme.primary,
-          ),
-
-          // Import logs
-          if (logs.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 240,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: ListView.builder(
-                  controller: logScrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: logs.length,
-                  itemBuilder: (context, index) {
-                    return _LogEntry(log: logs[index]);
-                  },
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Individual log entry.
-class _LogEntry extends StatelessWidget {
-  final InitializationLogMessage log;
-
-  const _LogEntry({required this.log});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    Color? logColor;
-    IconData? logIcon;
-
-    // Only show icons for warnings and errors
-    if (log.level == InitializationLogLevel.warning) {
-      logColor = Colors.orange;
-      logIcon = FluentIcons.warning_24_regular;
-    } else if (log.level == InitializationLogLevel.error) {
-      logColor = theme.colorScheme.error;
-      logIcon = FluentIcons.error_circle_24_regular;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 12, top: 2, bottom: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (logIcon != null) ...[
-            Icon(
-              logIcon,
-              size: 14,
-              color: logColor,
-            ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Text(
-              log.message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: log.level == InitializationLogLevel.error
-                    ? theme.colorScheme.error
-                    : (log.level == InitializationLogLevel.warning
-                        ? Colors.orange
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.8)),
-                fontSize: 12,
-                height: 1.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Error banner.
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildError(TwmtThemeTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: theme.colorScheme.error,
-            size: 20,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              message,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
+              _errorMessage!,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.err,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgress(TwmtThemeTokens tokens) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _progressMessage ?? 'Processing...',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+            ),
+          ),
+          if (_importLogs.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 240,
+              decoration: BoxDecoration(
+                color: tokens.panel2,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+                border: Border.all(color: tokens.border),
+              ),
+              child: ListView.builder(
+                controller: _logScrollController,
+                padding: const EdgeInsets.all(8),
+                itemCount: _importLogs.length,
+                itemBuilder: (context, index) {
+                  final log = _importLogs[index];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (log.level == InitializationLogLevel.warning ||
+                            log.level == InitializationLogLevel.error) ...[
+                          Icon(
+                            log.level == InitializationLogLevel.error
+                                ? FluentIcons.error_circle_24_regular
+                                : FluentIcons.warning_24_regular,
+                            size: 12,
+                            color: log.level == InitializationLogLevel.error
+                                ? tokens.err
+                                : tokens.warn,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        Expanded(
+                          child: Text(
+                            log.message,
+                            style: tokens.fontMono.copyWith(
+                              fontSize: 11.5,
+                              color: log.level == InitializationLogLevel.error
+                                  ? tokens.err
+                                  : (log.level ==
+                                          InitializationLogLevel.warning
+                                      ? tokens.warn
+                                      : tokens.textDim),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter(TwmtThemeTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: tokens.border),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (_currentStep > _minStep)
+            SmallTextButton(
+              label: 'Back',
+              icon: FluentIcons.arrow_left_24_regular,
+              onTap: _isLoading ? null : _previousStep,
+            ),
+          const Spacer(),
+          SmallTextButton(
+            label: 'Cancel',
+            onTap: _isLoading ? null : () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 8),
+          SmallTextButton(
+            label: _currentStep < 2 ? 'Next' : 'Create',
+            icon: _currentStep < 2
+                ? FluentIcons.arrow_right_24_regular
+                : FluentIcons.play_24_regular,
+            onTap: _isLoading ? null : _nextStep,
           ),
         ],
       ),
