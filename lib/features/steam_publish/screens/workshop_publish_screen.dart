@@ -14,8 +14,11 @@ import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/dynamic_zone_panel.dart';
 import 'package:twmt/widgets/wizard/form_section.dart';
+import 'package:twmt/widgets/wizard/labeled_field.dart';
+import 'package:twmt/widgets/wizard/readonly_field.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 import 'package:twmt/widgets/wizard/summary_box.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
 
 import '../../../features/settings/providers/settings_providers.dart'
@@ -393,25 +396,25 @@ class _WorkshopPublishScreenState
           FormSection(
             label: 'Publication',
             children: [
-              _LabeledField(
+              LabeledField(
                 label: 'Title',
-                child: _TokenTextField(
+                child: TokenTextField(
                   controller: _titleController,
                   hint: 'Workshop item title',
                   enabled: isIdle,
                   onChanged: (_) => setState(() {}),
                 ),
               ),
-              _LabeledField(
+              LabeledField(
                 label: 'Description',
-                child: _TokenTextField(
+                child: TokenTextField(
                   controller: _descriptionController,
                   hint: 'Describe your translation mod...',
                   enabled: isIdle,
                   maxLines: 6,
                 ),
               ),
-              _LabeledField(
+              LabeledField(
                 label: 'Visibility',
                 child: _VisibilityDropdown(
                   value: _visibility,
@@ -421,9 +424,9 @@ class _WorkshopPublishScreenState
                   },
                 ),
               ),
-              _LabeledField(
+              LabeledField(
                 label: 'Change note',
-                child: _TokenTextField(
+                child: TokenTextField(
                   controller: _changeNoteController,
                   hint: 'What changed in this update...',
                   enabled: isIdle,
@@ -435,12 +438,12 @@ class _WorkshopPublishScreenState
           FormSection(
             label: 'Pack',
             children: [
-              _ReadonlyField(
+              ReadonlyField(
                 label: 'Pack file',
                 value: _packFilePath,
               ),
               if (_isUpdate)
-                _ReadonlyField(
+                ReadonlyField(
                   label: 'Steam ID',
                   value: _item!.publishedSteamId!,
                 ),
@@ -1087,138 +1090,6 @@ class _PublishErrorPanel extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Small form primitives (scoped to this screen)
-// ---------------------------------------------------------------------------
-
-class _LabeledField extends StatelessWidget {
-  final String label;
-  final Widget child;
-  const _LabeledField({required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: tokens.fontBody.copyWith(
-            fontSize: 11,
-            color: tokens.textDim,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        child,
-      ],
-    );
-  }
-}
-
-class _TokenTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final String hint;
-  final bool enabled;
-  final int maxLines;
-  final ValueChanged<String>? onChanged;
-
-  const _TokenTextField({
-    required this.controller,
-    required this.hint,
-    required this.enabled,
-    this.maxLines = 1,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      onChanged: onChanged,
-      maxLines: maxLines,
-      minLines: maxLines > 1 ? 2 : 1,
-      style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: tokens.panel2,
-        hintText: hint,
-        hintStyle: tokens.fontBody.copyWith(
-          fontSize: 13,
-          color: tokens.textFaint,
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-          borderSide: BorderSide(color: tokens.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-          borderSide: BorderSide(color: tokens.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-          borderSide: BorderSide(color: tokens.accent),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-          borderSide:
-              BorderSide(color: tokens.border.withValues(alpha: 0.4)),
-        ),
-      ),
-    );
-  }
-}
-
-class _ReadonlyField extends StatelessWidget {
-  final String label;
-  final String value;
-  const _ReadonlyField({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: tokens.fontBody.copyWith(
-            fontSize: 11,
-            color: tokens.textDim,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: tokens.panel2,
-            border: Border.all(color: tokens.border),
-            borderRadius: BorderRadius.circular(tokens.radiusSm),
-          ),
-          child: Text(
-            value.isEmpty ? '—' : value,
-            style: tokens.fontMono.copyWith(
-              fontSize: 11.5,
-              color: tokens.textMid,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }
