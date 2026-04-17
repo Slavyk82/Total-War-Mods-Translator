@@ -41,7 +41,7 @@ class LanguageProgressRow extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                langDetails.language.name,
+                langDetails.language.displayName,
                 overflow: TextOverflow.ellipsis,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,

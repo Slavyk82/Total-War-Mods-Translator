@@ -39,7 +39,7 @@ void main() {
       langDetails: details(total: 100, translated: 60),
       onOpenEditor: () {},
     )));
-    expect(find.text('French'), findsOneWidget);
+    expect(find.text('French (Français)'), findsOneWidget);
     expect(find.text('60%'), findsOneWidget);
     expect(find.text('60 / 100'), findsOneWidget);
     expect(find.byType(StatusPill), findsOneWidget);
