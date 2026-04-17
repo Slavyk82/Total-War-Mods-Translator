@@ -4,10 +4,20 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
+import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/utils/string_initials.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/detail/detail_cover.dart';
+import 'package:twmt/widgets/detail/detail_meta_banner.dart';
+import 'package:twmt/widgets/detail/detail_overview_layout.dart';
+import 'package:twmt/widgets/detail/stats_rail.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/relative_date.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/shared/service_providers.dart';
@@ -19,7 +29,6 @@ import '../widgets/glossary_import_dialog.dart';
 import '../widgets/glossary_list.dart';
 import '../widgets/glossary_new_dialog.dart';
 import '../widgets/glossary_screen_components.dart';
-import '../widgets/glossary_statistics_panel.dart';
 import '../widgets/glossary_toolbar.dart';
 
 /// Main screen for Glossary management.
@@ -213,43 +222,115 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   }
 
   Widget _buildGlossaryEditorView(BuildContext context, Glossary glossary) {
+    final tokens = context.tokens;
+    final statsAsync = ref.watch(glossaryStatisticsProvider(glossary.id));
+    final now = ref.watch(clockProvider)();
+    final gameName = _gameInstallations[glossary.gameInstallationId]?.gameName ??
+        (glossary.isGlobal ? 'Universal' : (glossary.gameInstallationId ?? '—'));
+    final relative = formatRelativeSince(
+      DateTime.fromMillisecondsSinceEpoch(glossary.updatedAt),
+      now: now,
+    );
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GlossaryEditorHeader(
-          glossary: glossary,
-          gameInstallations: _gameInstallations,
-          onImport: _showImportDialog,
-          onExport: _showExportDialog,
-          onDelete: () => _confirmDeleteGlossary(glossary),
+        _GlossaryToolbarCrumb(
+          crumb: 'Resources › Glossary › ${glossary.name}',
+          onBack: () =>
+              ref.read(selectedGlossaryProvider.notifier).clear(),
         ),
-        const Divider(height: 1),
+        DetailMetaBanner(
+          cover: DetailCover(
+            imageUrl: null,
+            monogramFallback: initials(glossary.name),
+          ),
+          title: glossary.name,
+          subtitle: [
+            Text(gameName),
+            if (glossary.targetLanguageId != null)
+              Text('target: ${glossary.targetLanguageId!.toUpperCase()}'),
+            statsAsync.maybeWhen(
+              data: (s) => Text('${s.totalEntries} entries'),
+              orElse: () => const Text('— entries'),
+            ),
+            if (relative != null) Text('updated $relative'),
+          ],
+          description: glossary.description,
+          actions: [
+            SmallTextButton(
+              label: '+ Entry',
+              icon: FluentIcons.add_24_regular,
+              onTap: () => _showEntryEditor(null, glossary),
+            ),
+            SmallTextButton(
+              label: 'Import',
+              icon: FluentIcons.arrow_import_24_regular,
+              onTap: _showImportDialog,
+            ),
+            SmallTextButton(
+              label: 'Export',
+              icon: FluentIcons.arrow_export_24_regular,
+              onTap: _showExportDialog,
+            ),
+            SmallIconButton(
+              icon: FluentIcons.delete_24_regular,
+              tooltip: 'Delete glossary',
+              onTap: () => _confirmDeleteGlossary(glossary),
+              foreground: tokens.err,
+              background: tokens.errBg,
+              borderColor: tokens.err.withValues(alpha: 0.3),
+            ),
+          ],
+        ),
         Expanded(
-          child: Row(
-            children: [
-              SizedBox(
-                width: 280,
-                child: GlossaryStatisticsPanel(glossaryId: glossary.id),
+          child: DetailOverviewLayout(
+            main: Container(
+              decoration: BoxDecoration(
+                color: tokens.panel,
+                border: Border.all(color: tokens.border),
+                borderRadius: BorderRadius.circular(tokens.radiusLg),
               ),
-              const VerticalDivider(width: 1),
-              Expanded(
-                child: Column(
-                  children: [
-                    GlossaryEditorToolbar(
-                      glossary: glossary,
-                      searchController: _entrySearchController,
-                      onAddEntry: () => _showEntryEditor(null, glossary),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: ListSearchField(
+                      value: _entrySearchController.text,
+                      hintText: 'Search entries...',
+                      onChanged: (value) {
+                        setState(() {
+                          _entrySearchController.text = value;
+                        });
+                        ref
+                            .read(glossaryFilterStateProvider.notifier)
+                            .setSearchText(value);
+                      },
+                      onClear: () {
+                        setState(_entrySearchController.clear);
+                        ref
+                            .read(glossaryFilterStateProvider.notifier)
+                            .setSearchText('');
+                      },
                     ),
-                    const Divider(height: 1),
-                    Expanded(child: GlossaryDataGrid(glossaryId: glossary.id)),
-                    const Divider(height: 1),
-                    GlossaryEditorFooter(
-                      glossary: glossary,
-                      gameInstallations: _gameInstallations,
-                    ),
-                  ],
-                ),
+                  ),
+                  Container(height: 1, color: tokens.border),
+                  Expanded(
+                    child: GlossaryDataGrid(glossaryId: glossary.id),
+                  ),
+                ],
               ),
-            ],
+            ),
+            rail: statsAsync.when(
+              data: (s) => _GlossaryStatsRail(stats: s),
+              loading: () => const Center(child: FluentInlineSpinner()),
+              error: (err, _) => Text(
+                'Stats error: $err',
+                style: tokens.fontBody.copyWith(color: tokens.err),
+              ),
+            ),
           ),
         ),
       ],
@@ -355,5 +436,128 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         FluentToast.error(context, 'Error deleting glossary: $e');
       }
     }
+  }
+}
+
+/// Slim toolbar row at the top of the glossary detail view. Renders a back
+/// button + breadcrumb text — mirrors the Project detail `_ToolbarCrumb`.
+class _GlossaryToolbarCrumb extends StatelessWidget {
+  final String crumb;
+  final VoidCallback onBack;
+
+  const _GlossaryToolbarCrumb({required this.crumb, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      child: Row(
+        children: [
+          SmallIconButton(
+            icon: FluentIcons.arrow_left_24_regular,
+            tooltip: 'Back to glossaries',
+            onTap: onBack,
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              crumb,
+              overflow: TextOverflow.ellipsis,
+              style: tokens.fontMono.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Right-column stats rail for the Glossary detail view. Mirrors the
+/// Project detail `_ProjectStatsRail` structure: Overview / Usage / Quality.
+class _GlossaryStatsRail extends StatelessWidget {
+  final GlossaryStatistics stats;
+  const _GlossaryStatsRail({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return StatsRail(
+      sections: [
+        StatsRailSection(
+          label: 'Overview',
+          rows: [
+            StatsRailRow(
+              label: 'Total entries',
+              value: stats.totalEntries.toString(),
+            ),
+          ],
+        ),
+        StatsRailSection(
+          label: 'Usage',
+          rows: [
+            StatsRailRow(
+              label: 'Used in translations',
+              value: stats.usedInTranslations.toString(),
+              semantics: StatsSemantics.ok,
+            ),
+            StatsRailRow(
+              label: 'Unused',
+              value: stats.unusedEntries.toString(),
+            ),
+            StatsRailRow(
+              label: 'Usage rate',
+              value: '${(stats.usageRate * 100).toStringAsFixed(1)}%',
+            ),
+          ],
+        ),
+        StatsRailSection(
+          label: 'Quality',
+          rows: [
+            StatsRailRow(
+              label: 'Duplicates',
+              value: stats.duplicatesDetected.toString(),
+              semantics: stats.duplicatesDetected > 0
+                  ? StatsSemantics.warn
+                  : StatsSemantics.neutral,
+            ),
+            StatsRailRow(
+              label: 'Missing translations',
+              value: stats.missingTranslations.toString(),
+              semantics: stats.missingTranslations > 0
+                  ? StatsSemantics.warn
+                  : StatsSemantics.neutral,
+            ),
+          ],
+        ),
+      ],
+      hint: _computeHint(stats),
+    );
+  }
+
+  StatsRailHint? _computeHint(GlossaryStatistics stats) {
+    if (stats.missingTranslations > 0) {
+      return StatsRailHint(
+        kicker: 'NEXT',
+        message: '${stats.missingTranslations} entries to complete',
+        semantics: StatsSemantics.warn,
+      );
+    }
+    if (stats.duplicatesDetected > 0) {
+      return StatsRailHint(
+        kicker: 'NEXT',
+        message: '${stats.duplicatesDetected} duplicates to review',
+        semantics: StatsSemantics.warn,
+      );
+    }
+    return null;
   }
 }
