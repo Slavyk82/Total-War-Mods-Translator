@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/settings/settings_accordion_section.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -30,7 +32,6 @@ class LlmProviderSection extends ConsumerStatefulWidget {
 }
 
 class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
-  bool _isExpanded = false;
   bool _isTesting = false;
 
   Future<void> _testConnection() async {
@@ -38,7 +39,8 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
 
     try {
       final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      final (success, errorMessage) = await notifier.testConnection(widget.providerCode);
+      final (success, errorMessage) =
+          await notifier.testConnection(widget.providerCode);
 
       if (mounted) {
         if (success) {
@@ -59,162 +61,133 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
 
   @override
   Widget build(BuildContext context) {
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          // Header (always visible)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _isExpanded
-                      ? Theme.of(context).colorScheme.surfaceContainerHighest
-                      : null,
-                  borderRadius: _isExpanded
-                      ? const BorderRadius.only(
-                          topLeft: Radius.circular(8),
-                          topRight: Radius.circular(8),
-                        )
-                      : BorderRadius.circular(8),
-                ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isExpanded
-                        ? FluentIcons.chevron_down_24_regular
-                        : FluentIcons.chevron_right_24_regular,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.providerName,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: SettingsAccordionSection(
+        icon: FluentIcons.plug_connected_24_regular,
+        title: widget.providerName,
+        subtitle: 'Configure API key and models',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // API Key label
+            Text(
+              'API Key',
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: tokens.text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: widget.apiKeyController,
+                    obscureText: true,
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      filled: true,
+                      fillColor: tokens.panel2,
+                      hintText: 'Enter API key...',
+                      hintStyle: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.textFaint,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.accent),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            ),
-          ),
-
-          // Expanded content
-          if (_isExpanded)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                    onChanged: (_) => widget.onSaveApiKey(),
                   ),
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // API Key field
-                  Text(
-                    'API Key',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: widget.apiKeyController,
-                          obscureText: true,
-                          decoration: InputDecoration(
-                            hintText: 'Enter API key...',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
-                            ),
-                          ),
-                          onChanged: (_) => widget.onSaveApiKey(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      _buildIconButton(
-                        icon: FluentIcons.plug_connected_24_regular,
-                        tooltip: 'Test connection',
-                        isLoading: _isTesting,
-                        onTap: _testConnection,
-                      ),
-                    ],
-                  ),
-
-                  // Additional settings (model dropdown, etc.)
-                  if (widget.additionalSettings != null) ...[
-                    const SizedBox(height: 16),
-                    widget.additionalSettings!,
-                  ],
-
-                  // Models list
-                  const SizedBox(height: 16),
-                  LlmModelsList(providerCode: widget.providerCode),
-                ],
-              ),
+                const SizedBox(width: 8),
+                _TestConnectionButton(
+                  isLoading: _isTesting,
+                  onTap: _testConnection,
+                ),
+              ],
             ),
-        ],
+
+            // Additional settings (model dropdown, etc.)
+            if (widget.additionalSettings != null) ...[
+              const SizedBox(height: 16),
+              widget.additionalSettings!,
+            ],
+
+            // Models list
+            const SizedBox(height: 16),
+            LlmModelsList(providerCode: widget.providerCode),
+          ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildIconButton({
-    required IconData icon,
-    required String tooltip,
-    required bool isLoading,
-    required VoidCallback onTap,
-  }) {
+class _TestConnectionButton extends StatelessWidget {
+  const _TestConnectionButton({
+    required this.isLoading,
+    required this.onTap,
+  });
+
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Tooltip(
-      message: tooltip,
-      waitDuration: const Duration(milliseconds: 500),
+      message: 'Test connection',
+      waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
-        cursor: isLoading ? SystemMouseCursors.basic : SystemMouseCursors.click,
+        cursor:
+            isLoading ? SystemMouseCursors.basic : SystemMouseCursors.click,
         child: GestureDetector(
           onTap: isLoading ? null : onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.all(12),
+          child: Container(
+            height: 40,
+            width: 40,
             decoration: BoxDecoration(
+              color: tokens.panel2,
               border: Border.all(
                 color: isLoading
-                    ? Theme.of(context).disabledColor
-                    : Theme.of(context).colorScheme.primary,
+                    ? tokens.border.withValues(alpha: 0.4)
+                    : tokens.border,
               ),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
             ),
+            alignment: Alignment.center,
             child: isLoading
                 ? const FluentSpinner(size: 16, strokeWidth: 2)
                 : Icon(
-                    icon,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
+                    FluentIcons.plug_connected_24_regular,
+                    size: 18,
+                    color: tokens.accent,
                   ),
           ),
         ),
       ),
     );
   }
-
 }
