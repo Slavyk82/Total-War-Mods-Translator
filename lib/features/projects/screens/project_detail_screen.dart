@@ -15,6 +15,7 @@ import 'package:twmt/utils/string_initials.dart';
 import 'package:twmt/widgets/detail/detail_cover.dart';
 import 'package:twmt/widgets/detail/detail_meta_banner.dart';
 import 'package:twmt/widgets/detail/detail_overview_layout.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/detail/stats_rail.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
@@ -224,7 +225,7 @@ class _Content extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ToolbarCrumb(
+        DetailScreenToolbar(
           crumb:
               'Work › Projects › ${p.name}',
           onBack: onBack,
@@ -281,47 +282,6 @@ class _Content extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ToolbarCrumb extends StatelessWidget {
-  final String crumb;
-  final VoidCallback onBack;
-
-  const _ToolbarCrumb({required this.crumb, required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: tokens.panel,
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Row(
-        children: [
-          SmallIconButton(
-            icon: FluentIcons.arrow_left_24_regular,
-            tooltip: 'Back',
-            onTap: onBack,
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              crumb,
-              overflow: TextOverflow.ellipsis,
-              style: tokens.fontMono.copyWith(
-                fontSize: 12,
-                color: tokens.textDim,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
