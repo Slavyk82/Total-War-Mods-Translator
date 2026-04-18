@@ -63,6 +63,9 @@ const int rowHeightCacheMaxEntries = 4096;
 ///
 /// Visible for testing so the cache can be cleared between tests. Not thread
 /// safe - the grid row-height callback runs on the platform thread only.
+/// `_HeightKey` is library-private on purpose; tests interact with this map
+/// only via `.clear()` / `.length`, never constructing keys directly.
+// ignore: library_private_types_in_public_api
 final LinkedHashMap<_HeightKey, double> rowHeightCache =
     LinkedHashMap<_HeightKey, double>();
 
