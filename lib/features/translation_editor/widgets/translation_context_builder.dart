@@ -66,11 +66,12 @@ class TranslationContextBuilder {
       if (langResult.isErr) return null;
       final language = langResult.unwrap();
 
-      // Load glossary entries for this project (global + project-specific)
+      // Load glossary entries for this project (global + game-installation
+      // scoped), filtered to the target language.
       List<GlossaryTermWithVariants>? glossaryEntries;
       final entriesResult = await glossaryRepo.getByProjectAndLanguage(
-        projectId,
-        languageId,
+        projectId: projectId,
+        targetLanguageCode: language.code,
       );
       if (entriesResult.isOk) {
         final entries = entriesResult.unwrap();

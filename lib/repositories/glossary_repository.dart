@@ -115,41 +115,31 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     });
   }
 
-  /// Get all glossary entries for a specific project.
+  /// Get glossary entries applicable to a project for a given target language.
   ///
-  /// This includes both project-specific entries (where project_id matches)
-  /// and global entries (where project_id is NULL).
-  ///
-  /// Returns [Ok] with list of entries, ordered by source term.
-  Future<Result<List<GlossaryEntry>, TWMTDatabaseException>> getByProject(
-      String projectId) async {
-    return executeQuery(() async {
-      final maps = await database.query(
-        tableName,
-        where: 'project_id = ? OR project_id IS NULL',
-        whereArgs: [projectId],
-        orderBy: 'source_term ASC',
-      );
-
-      return maps.map((map) => fromMap(map)).toList();
-    });
-  }
-
-  /// Get all glossary entries for a specific project and language.
-  ///
-  /// This includes both project-specific entries (where project_id matches)
-  /// and global entries (where project_id is NULL), filtered by language.
-  ///
-  /// Returns [Ok] with list of entries, ordered by source term.
+  /// Returns entries from every glossary that is either global
+  /// (`is_global = 1`) or attached to the project's `game_installation_id`,
+  /// restricted to entries whose `target_language_code` matches
+  /// [targetLanguageCode] (case-insensitive).
   Future<Result<List<GlossaryEntry>, TWMTDatabaseException>>
-      getByProjectAndLanguage(String projectId, String languageId) async {
+      getByProjectAndLanguage({
+    required String projectId,
+    required String targetLanguageCode,
+  }) async {
     return executeQuery(() async {
-      final maps = await database.query(
-        tableName,
-        where: '(project_id = ? OR project_id IS NULL) AND language_id = ?',
-        whereArgs: [projectId, languageId],
-        orderBy: 'source_term ASC',
-      );
+      final maps = await database.rawQuery('''
+        SELECT ge.*
+        FROM $tableName ge
+        INNER JOIN $glossaryTableName g ON g.id = ge.glossary_id
+        WHERE LOWER(ge.target_language_code) = LOWER(?)
+          AND (
+            g.is_global = 1
+            OR g.game_installation_id = (
+              SELECT game_installation_id FROM projects WHERE id = ?
+            )
+          )
+        ORDER BY ge.source_term ASC
+      ''', [targetLanguageCode, projectId]);
 
       return maps.map((map) => fromMap(map)).toList();
     });

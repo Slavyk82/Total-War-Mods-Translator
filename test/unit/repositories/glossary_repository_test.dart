@@ -2,82 +2,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/services/shared/logging_service.dart';
+
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late GlossaryRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create glossaries table
-    await db.execute('''
-      CREATE TABLE glossaries (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT,
-        is_global INTEGER DEFAULT 0,
-        game_installation_id TEXT,
-        target_language_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-
-    // Create glossary_entries table
-    await db.execute('''
-      CREATE TABLE glossary_entries (
-        id TEXT PRIMARY KEY,
-        glossary_id TEXT NOT NULL,
-        target_language_code TEXT NOT NULL,
-        source_term TEXT NOT NULL,
-        target_term TEXT NOT NULL,
-        case_sensitive INTEGER DEFAULT 0,
-        notes TEXT,
-        usage_count INTEGER DEFAULT 0,
-        project_id TEXT,
-        language_id TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (glossary_id) REFERENCES glossaries(id) ON DELETE CASCADE
-      )
-    ''');
-
-    // Create deepl_glossary_mappings table
-    await db.execute('''
-      CREATE TABLE deepl_glossary_mappings (
-        id TEXT PRIMARY KEY,
-        twmt_glossary_id TEXT NOT NULL,
-        deepl_glossary_id TEXT NOT NULL,
-        deepl_glossary_name TEXT NOT NULL,
-        source_language_code TEXT NOT NULL,
-        target_language_code TEXT NOT NULL,
-        entry_count INTEGER NOT NULL DEFAULT 0,
-        sync_status TEXT NOT NULL DEFAULT 'synced',
-        synced_at INTEGER NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (twmt_glossary_id) REFERENCES glossaries(id) ON DELETE CASCADE
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = GlossaryRepository(logger: LoggingService.instance);
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('GlossaryRepository', () {
@@ -87,6 +27,7 @@ void main() {
       String? description,
       bool? isGlobal,
       String? gameInstallationId,
+      String? targetLanguageId,
       int? createdAt,
       int? updatedAt,
     }) {
@@ -97,6 +38,9 @@ void main() {
         description: description,
         isGlobal: isGlobal ?? true,
         gameInstallationId: gameInstallationId,
+        // schema requires target_language_id NOT NULL; domain model still
+        // keeps it nullable. Tests must provide a value explicitly.
+        targetLanguageId: targetLanguageId ?? 'lang_en',
         createdAt: createdAt ?? now,
         updatedAt: updatedAt ?? now,
       );
@@ -114,11 +58,15 @@ void main() {
       int? updatedAt,
     }) {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final resolvedId = id ?? 'entry-id';
       return GlossaryEntry(
-        id: id ?? 'entry-id',
+        id: resolvedId,
         glossaryId: glossaryId ?? 'glossary-id',
         targetLanguageCode: targetLanguageCode ?? 'fr',
-        sourceTerm: sourceTerm ?? 'Hello',
+        // schema enforces UNIQUE(glossary_id, target_language_code,
+        // source_term, case_sensitive); derive source_term from id when
+        // callers leave it defaulted so distinct ids stay distinct rows.
+        sourceTerm: sourceTerm ?? 'Hello-$resolvedId',
         targetTerm: targetTerm ?? 'Bonjour',
         caseSensitive: caseSensitive ?? false,
         notes: notes,
@@ -293,7 +241,7 @@ void main() {
           final result = await repository.insert(entry);
 
           expect(result.isOk, isTrue);
-          expect(result.value.sourceTerm, equals('Hello'));
+          expect(result.value.sourceTerm, equals(entry.sourceTerm));
         });
       });
 
@@ -305,7 +253,7 @@ void main() {
 
           final result = await repository.getEntryById(entry.id);
           expect(result, isNotNull);
-          expect(result!.sourceTerm, equals('Hello'));
+          expect(result!.sourceTerm, equals(entry.sourceTerm));
         });
       });
 
@@ -538,78 +486,141 @@ void main() {
       });
     });
 
-    group('Project-specific entry queries', () {
-      setUp(() async {
-        final glossary = createTestGlossary();
-        await repository.insertGlossary(glossary);
+    group('getByProjectAndLanguage', () {
+      test(
+          'returns global + game-installation-scoped entries filtered by language',
+          () async {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+        // project-a lives under game-1; project-b under game-2.
+        await db.insert('projects', {
+          'id': 'project-a',
+          'name': 'Project A',
+          'game_installation_id': 'game-1',
+          'batch_size': 25,
+          'parallel_batches': 3,
+          'created_at': now,
+          'updated_at': now,
+        });
+        await db.insert('projects', {
+          'id': 'project-b',
+          'name': 'Project B',
+          'game_installation_id': 'game-2',
+          'batch_size': 25,
+          'parallel_batches': 3,
+          'created_at': now,
+          'updated_at': now,
+        });
+
+        // Three glossaries: global, game-1, game-2.
+        final globalGlossary = createTestGlossary(
+          id: 'g-global',
+          name: 'Global',
+          isGlobal: true,
+        );
+        final game1Glossary = createTestGlossary(
+          id: 'g-game1',
+          name: 'Game 1',
+          isGlobal: false,
+          gameInstallationId: 'game-1',
+        );
+        final game2Glossary = createTestGlossary(
+          id: 'g-game2',
+          name: 'Game 2',
+          isGlobal: false,
+          gameInstallationId: 'game-2',
+        );
+        await repository.insertGlossary(globalGlossary);
+        await repository.insertGlossary(game1Glossary);
+        await repository.insertGlossary(game2Glossary);
+
+        // Entries: one FR in each glossary, one DE in game-1.
+        await repository.insertEntry(createTestEntry(
+          id: 'e-global-fr',
+          glossaryId: 'g-global',
+          targetLanguageCode: 'fr',
+          sourceTerm: 'Hello',
+        ));
+        await repository.insertEntry(createTestEntry(
+          id: 'e-game1-fr',
+          glossaryId: 'g-game1',
+          targetLanguageCode: 'fr',
+          sourceTerm: 'World',
+        ));
+        await repository.insertEntry(createTestEntry(
+          id: 'e-game1-de',
+          glossaryId: 'g-game1',
+          targetLanguageCode: 'de',
+          sourceTerm: 'German',
+        ));
+        await repository.insertEntry(createTestEntry(
+          id: 'e-game2-fr',
+          glossaryId: 'g-game2',
+          targetLanguageCode: 'fr',
+          sourceTerm: 'Other',
+        ));
+
+        final result = await repository.getByProjectAndLanguage(
+          projectId: 'project-a',
+          targetLanguageCode: 'fr',
+        );
+
+        expect(result.isOk, isTrue);
+        final entries = result.value;
+        final ids = entries.map((e) => e.id).toSet();
+        // Includes global + game-1 FR entries; excludes game-1 DE entry
+        // (wrong language) and game-2 FR entry (wrong game installation).
+        expect(ids, equals({'e-global-fr', 'e-game1-fr'}));
       });
 
-      group('getByProject', () {
-        test('should return project-specific and global entries', () async {
-          // Create entries
-          await db.insert('glossary_entries', {
-            'id': 'e1',
-            'glossary_id': 'glossary-id',
-            'project_id': 'project-1',
-            'target_language_code': 'fr',
-            'source_term': 'Hello',
-            'target_term': 'Bonjour',
-            'case_sensitive': 0,
-            'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          });
-          await db.insert('glossary_entries', {
-            'id': 'e2',
-            'glossary_id': 'glossary-id',
-            'project_id': null,
-            'target_language_code': 'fr',
-            'source_term': 'World',
-            'target_term': 'Monde',
-            'case_sensitive': 0,
-            'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          });
-
-          final result = await repository.getByProject('project-1');
-
-          expect(result.isOk, isTrue);
-          expect(result.value.length, equals(2));
+      test('matches language code case-insensitively', () async {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await db.insert('projects', {
+          'id': 'project-a',
+          'name': 'Project A',
+          'game_installation_id': 'game-1',
+          'batch_size': 25,
+          'parallel_batches': 3,
+          'created_at': now,
+          'updated_at': now,
         });
+        await repository.insertGlossary(
+            createTestGlossary(id: 'g-global', name: 'Global', isGlobal: true));
+        await repository.insertEntry(createTestEntry(
+          id: 'e1',
+          glossaryId: 'g-global',
+          targetLanguageCode: 'FR',
+        ));
+
+        final result = await repository.getByProjectAndLanguage(
+          projectId: 'project-a',
+          targetLanguageCode: 'fr',
+        );
+
+        expect(result.isOk, isTrue);
+        expect(result.value, hasLength(1));
       });
 
-      group('getByProjectAndLanguage', () {
-        test('should filter by project and language', () async {
-          await db.insert('glossary_entries', {
-            'id': 'e1',
-            'glossary_id': 'glossary-id',
-            'project_id': 'project-1',
-            'language_id': 'fr',
-            'target_language_code': 'fr',
-            'source_term': 'Hello',
-            'target_term': 'Bonjour',
-            'case_sensitive': 0,
-            'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          });
-          await db.insert('glossary_entries', {
-            'id': 'e2',
-            'glossary_id': 'glossary-id',
-            'project_id': 'project-1',
-            'language_id': 'de',
-            'target_language_code': 'de',
-            'source_term': 'Hello',
-            'target_term': 'Hallo',
-            'case_sensitive': 0,
-            'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
-          });
-
-          final result = await repository.getByProjectAndLanguage('project-1', 'fr');
-
-          expect(result.isOk, isTrue);
-          expect(result.value.length, equals(1));
-          expect(result.value.first.targetLanguageCode, equals('fr'));
+      test('returns empty list when project has no matching glossary',
+          () async {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await db.insert('projects', {
+          'id': 'project-a',
+          'name': 'Project A',
+          'game_installation_id': 'game-1',
+          'batch_size': 25,
+          'parallel_batches': 3,
+          'created_at': now,
+          'updated_at': now,
         });
+
+        final result = await repository.getByProjectAndLanguage(
+          projectId: 'project-a',
+          targetLanguageCode: 'fr',
+        );
+
+        expect(result.isOk, isTrue);
+        expect(result.value, isEmpty);
       });
     });
 
