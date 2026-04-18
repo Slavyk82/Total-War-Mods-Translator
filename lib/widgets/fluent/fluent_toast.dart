@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import '../../theme/twmt_theme_tokens.dart';
+
+/// Types of toast notifications.
+enum FluentToastType {
+  /// Success message (green, checkmark icon).
+  success,
+
+  /// Error message (red, error icon).
+  error,
+
+  /// Warning message (orange, warning icon).
+  warning,
+
+  /// Info message (blue, info icon).
+  info,
+}
+
 /// A Fluent Design toast notification component that replaces Material SnackBar.
 ///
 /// Follows Windows Fluent Design System guidelines:
-/// - Appears in top-right corner (Windows-style)
-/// - Smooth slide-in/slide-out animations
-/// - Auto-dismisses after duration
+/// - Appears in the bottom-right corner
+/// - Smooth slide-in/fade-out animations
+/// - Auto-dismisses after [duration]
 /// - Supports manual dismiss with close button
-/// - Color-coded by severity (success, error, warning, info)
-///
-/// Visual design:
-/// - Elevated card with shadow
-/// - Icon indicating type
-/// - Clear, concise message
-/// - Optional action button
-/// - Close button (X)
+/// - Colour-coded by severity via [TwmtThemeTokens]
 ///
 /// Example:
 /// ```dart
@@ -27,6 +37,10 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 /// ```
 class FluentToast {
   /// Show a toast notification.
+  ///
+  /// [actionLabel] and [onActionPressed] are accepted for source-compat with
+  /// the previous façade API but are currently not rendered by the unified
+  /// bottom-right toast widget.
   static void show({
     required BuildContext context,
     required String message,
@@ -39,23 +53,19 @@ class FluentToast {
     late final OverlayEntry overlayEntry;
 
     overlayEntry = OverlayEntry(
-      builder: (context) => _FluentToastWidget(
+      builder: (context) => FluentToastWidget(
         message: message,
         type: type,
-        actionLabel: actionLabel,
-        onActionPressed: onActionPressed,
-        onDismiss: () => overlayEntry.remove(),
+        duration: duration,
+        onDismissed: () {
+          if (overlayEntry.mounted) {
+            overlayEntry.remove();
+          }
+        },
       ),
     );
 
     overlay.insert(overlayEntry);
-
-    // Auto-dismiss after duration
-    Future.delayed(duration, () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
   }
 
   /// Show a success toast (green).
@@ -79,46 +89,49 @@ class FluentToast {
   }
 }
 
-/// Toast widget that displays the actual notification.
-class _FluentToastWidget extends StatefulWidget {
-  const _FluentToastWidget({
+/// Animated toast widget rendered by the [FluentToast] façade.
+///
+/// Exposed publicly so it can be embedded in custom overlays (e.g. the shared
+/// [ToastNotificationService]) and exercised in widget tests.
+class FluentToastWidget extends StatefulWidget {
+  const FluentToastWidget({
+    super.key,
     required this.message,
     required this.type,
-    required this.onDismiss,
-    this.actionLabel,
-    this.onActionPressed,
+    required this.duration,
+    required this.onDismissed,
   });
 
   final String message;
   final FluentToastType type;
-  final VoidCallback onDismiss;
-  final String? actionLabel;
-  final VoidCallback? onActionPressed;
+  final Duration duration;
+  final VoidCallback onDismissed;
 
   @override
-  State<_FluentToastWidget> createState() => _FluentToastWidgetState();
+  State<FluentToastWidget> createState() => _FluentToastWidgetState();
 }
 
-class _FluentToastWidgetState extends State<_FluentToastWidget>
+class _FluentToastWidgetState extends State<FluentToastWidget>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<Offset> _slideAnimation;
-  late final Animation<double> _fadeAnimation;
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
       vsync: this,
+      duration: const Duration(milliseconds: 200),
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0), // Slide from right
+      begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeOut,
     ));
 
     _fadeAnimation = Tween<double>(
@@ -126,10 +139,17 @@ class _FluentToastWidgetState extends State<_FluentToastWidget>
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _controller,
-      curve: Curves.easeIn,
+      curve: Curves.easeOut,
     ));
 
     _controller.forward();
+
+    // Auto-dismiss after duration.
+    Future.delayed(widget.duration, () {
+      if (mounted) {
+        _dismiss();
+      }
+    });
   }
 
   @override
@@ -140,17 +160,52 @@ class _FluentToastWidgetState extends State<_FluentToastWidget>
 
   Future<void> _dismiss() async {
     await _controller.reverse();
-    widget.onDismiss();
+    if (mounted) {
+      widget.onDismissed();
+    }
+  }
+
+  _ToastConfig _getConfig(TwmtThemeTokens tokens) {
+    switch (widget.type) {
+      case FluentToastType.success:
+        return _ToastConfig(
+          icon: FluentIcons.checkmark_circle_24_filled,
+          iconColor: tokens.ok,
+          backgroundColor: tokens.okBg,
+          borderColor: tokens.ok,
+        );
+      case FluentToastType.error:
+        return _ToastConfig(
+          icon: FluentIcons.error_circle_24_filled,
+          iconColor: tokens.err,
+          backgroundColor: tokens.errBg,
+          borderColor: tokens.err,
+        );
+      case FluentToastType.warning:
+        return _ToastConfig(
+          icon: FluentIcons.warning_24_filled,
+          iconColor: tokens.warn,
+          backgroundColor: tokens.warnBg,
+          borderColor: tokens.warn,
+        );
+      case FluentToastType.info:
+        return _ToastConfig(
+          icon: FluentIcons.info_24_filled,
+          iconColor: tokens.info,
+          backgroundColor: tokens.infoBg,
+          borderColor: tokens.info,
+        );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final config = _getTypeConfig(theme);
+    final tokens = context.tokens;
+    final config = _getConfig(tokens);
 
     return Positioned(
-      top: 16,
       right: 16,
+      bottom: 16,
       child: SlideTransition(
         position: _slideAnimation,
         child: FadeTransition(
@@ -159,85 +214,52 @@ class _FluentToastWidgetState extends State<_FluentToastWidget>
             color: Colors.transparent,
             child: Container(
               constraints: const BoxConstraints(
+                minWidth: 280,
                 maxWidth: 400,
-                minWidth: 300,
               ),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                color: config.backgroundColor,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
                 border: Border.all(
                   color: config.borderColor,
-                  width: 1.5,
+                  width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withValues(alpha: 0.13),
+                    blurRadius: 6.4,
+                    offset: const Offset(0, 3.2),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.11),
+                    blurRadius: 1.6,
+                    offset: const Offset(0, 0.8),
                   ),
                 ],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Type icon
                     Icon(
                       config.icon,
                       color: config.iconColor,
-                      size: 24,
+                      size: 20,
                     ),
                     const SizedBox(width: 12),
-
-                    // Message
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.message,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          if (widget.actionLabel != null &&
-                              widget.onActionPressed != null) ...[
-                            const SizedBox(height: 8),
-                            MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: GestureDetector(
-                                onTap: () {
-                                  widget.onActionPressed?.call();
-                                  _dismiss();
-                                },
-                                child: Text(
-                                  widget.actionLabel!,
-                                  style: theme.textTheme.bodyMedium!.copyWith(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Close button
-                    MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: _dismiss,
-                        child: Icon(
-                          FluentIcons.dismiss_24_regular,
-                          size: 20,
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    Flexible(
+                      child: Text(
+                        widget.message,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: tokens.text,
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    _DismissButton(onPressed: _dismiss),
                   ],
                 ),
               ),
@@ -247,61 +269,61 @@ class _FluentToastWidgetState extends State<_FluentToastWidget>
       ),
     );
   }
-
-  _ToastTypeConfig _getTypeConfig(ThemeData theme) {
-    switch (widget.type) {
-      case FluentToastType.success:
-        return _ToastTypeConfig(
-          icon: FluentIcons.checkmark_circle_24_filled,
-          iconColor: const Color(0xFF107C10), // Success green
-          borderColor: const Color(0xFF107C10),
-        );
-      case FluentToastType.error:
-        return _ToastTypeConfig(
-          icon: FluentIcons.error_circle_24_filled,
-          iconColor: const Color(0xFFD13438), // Error red
-          borderColor: const Color(0xFFD13438),
-        );
-      case FluentToastType.warning:
-        return _ToastTypeConfig(
-          icon: FluentIcons.warning_24_filled,
-          iconColor: const Color(0xFFF7630C), // Warning orange
-          borderColor: const Color(0xFFF7630C),
-        );
-      case FluentToastType.info:
-        return _ToastTypeConfig(
-          icon: FluentIcons.info_24_filled,
-          iconColor: theme.colorScheme.primary,
-          borderColor: theme.colorScheme.primary,
-        );
-    }
-  }
 }
 
-/// Configuration for toast appearance based on type.
-class _ToastTypeConfig {
-  const _ToastTypeConfig({
+/// Per-type icon + colour configuration for [FluentToastWidget].
+class _ToastConfig {
+  const _ToastConfig({
     required this.icon,
     required this.iconColor,
+    required this.backgroundColor,
     required this.borderColor,
   });
 
   final IconData icon;
   final Color iconColor;
+  final Color backgroundColor;
   final Color borderColor;
 }
 
-/// Types of toast notifications.
-enum FluentToastType {
-  /// Success message (green, checkmark icon).
-  success,
+/// Dismiss button for toast notification.
+class _DismissButton extends StatefulWidget {
+  const _DismissButton({required this.onPressed});
 
-  /// Error message (red, error icon).
-  error,
+  final VoidCallback onPressed;
 
-  /// Warning message (orange, warning icon).
-  warning,
+  @override
+  State<_DismissButton> createState() => _DismissButtonState();
+}
 
-  /// Info message (blue, info icon).
-  info,
+class _DismissButtonState extends State<_DismissButton> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onPressed,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? tokens.border.withValues(alpha: 0.5)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(tokens.radiusXs),
+          ),
+          child: Icon(
+            FluentIcons.dismiss_24_regular,
+            size: 12,
+            color: tokens.textMid,
+          ),
+        ),
+      ),
+    );
+  }
 }
