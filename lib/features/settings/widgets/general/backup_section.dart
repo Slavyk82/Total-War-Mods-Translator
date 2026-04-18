@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../../../providers/shared/service_providers.dart';
 import '../../providers/backup_providers.dart';
@@ -347,29 +348,10 @@ class BackupSection extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: tokens.accent,
-                      borderRadius: BorderRadius.circular(tokens.radiusSm),
-                    ),
-                    child: Text(
-                      'Restart Now',
-                      style: tokens.fontBody.copyWith(
-                        fontSize: 13,
-                        color: tokens.accentFg,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
+              SmallTextButton(
+                label: 'Restart Now',
+                filled: true,
+                onTap: () => Navigator.of(context).pop(),
               ),
             ],
           ),

@@ -66,4 +66,46 @@ void main() {
     )));
     expect(find.byIcon(Icons.close), findsOneWidget);
   });
+
+  testWidgets('SmallTextButton filled=true uses accent bg + accentFg label',
+      (t) async {
+    await t.pumpWidget(wrap(SmallTextButton(
+      label: 'Go',
+      filled: true,
+      onTap: () {},
+    )));
+    final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
+    final container = t.widget<Container>(
+      find.descendant(
+        of: find.byType(SmallTextButton),
+        matching: find.byWidgetPredicate(
+          (w) => w is Container && w.decoration is BoxDecoration,
+        ),
+      ),
+    );
+    final deco = container.decoration as BoxDecoration;
+    // Filled variant routes bg through tokens.accent and border through
+    // tokens.accent (not tokens.panel2 / tokens.border as in the outlined
+    // default).
+    expect(deco.color, tokens.accent);
+    expect(deco.color, isNot(tokens.panel2));
+    expect((deco.border as Border).top.color, tokens.accent);
+    // Label text colour is tokens.accentFg (not tokens.textMid).
+    final text = t.widget<Text>(find.text('Go'));
+    expect(text.style?.color, tokens.accentFg);
+    expect(text.style?.color, isNot(tokens.textMid));
+  });
+
+  testWidgets('SmallTextButton filled=true with icon tints icon with accentFg',
+      (t) async {
+    await t.pumpWidget(wrap(SmallTextButton(
+      label: 'Go',
+      icon: Icons.play_arrow,
+      filled: true,
+      onTap: () {},
+    )));
+    final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
+    final icon = t.widget<Icon>(find.byIcon(Icons.play_arrow));
+    expect(icon.color, tokens.accentFg);
+  });
 }

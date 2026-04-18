@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
-/// Small outlined text button used inside list toolbars and selection bars.
+/// Small text button used inside list toolbars, selection bars, and dialog
+/// action rows.
 ///
-/// Token-themed: panel2 background, border outline, textMid label. Height 28.
+/// Default (outlined) variant: panel2 background, border outline, textMid
+/// label/icon. Height 28.
+///
+/// Filled variant ([filled] = true): accent background, accent border,
+/// accentFg label/icon — used for primary/affirmative dialog actions.
+///
 /// Optionally wrapped in a [Tooltip] and prefixed with an [IconData] icon.
 class SmallTextButton extends StatelessWidget {
   /// Label displayed on the button.
@@ -15,8 +21,12 @@ class SmallTextButton extends StatelessWidget {
   /// Tap callback. When null, the button is visually present but non-interactive.
   final VoidCallback? onTap;
 
-  /// Optional leading icon. Rendered at 14px in [TwmtThemeTokens.textMid].
+  /// Optional leading icon. Rendered at 14px; colour follows the variant.
   final IconData? icon;
+
+  /// When true, renders the accent-filled variant. Defaults to false
+  /// (outlined).
+  final bool filled;
 
   const SmallTextButton({
     super.key,
@@ -24,11 +34,16 @@ class SmallTextButton extends StatelessWidget {
     this.tooltip,
     this.onTap,
     this.icon,
+    this.filled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final bgColor = filled ? tokens.accent : tokens.panel2;
+    final fgColor = filled ? tokens.accentFg : tokens.textMid;
+    final borderColor = filled ? tokens.accent : tokens.border;
+
     final core = MouseRegion(
       cursor:
           onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -38,8 +53,8 @@ class SmallTextButton extends StatelessWidget {
           height: 28,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: tokens.panel2,
-            border: Border.all(color: tokens.border),
+            color: bgColor,
+            border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(tokens.radiusSm),
           ),
           alignment: Alignment.center,
@@ -47,14 +62,14 @@ class SmallTextButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 14, color: tokens.textMid),
+                Icon(icon, size: 14, color: fgColor),
                 const SizedBox(width: 6),
               ],
               Text(
                 label,
                 style: tokens.fontBody.copyWith(
                   fontSize: 12.5,
-                  color: tokens.textMid,
+                  color: fgColor,
                   fontWeight: FontWeight.w500,
                 ),
               ),
