@@ -4,12 +4,11 @@ import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/token_card.dart';
 
-/// Three-step onboarding guide rendered when the user has no active projects.
+/// Five-step onboarding guide rendered when the user has no active projects.
 ///
-/// Each step is a [TokenCard] containing a numbered badge, a title and a CTA
-/// label. Tapping a step routes to the relevant feature (Sources for steps 1
-/// and 2, Projects for step 3). The row lays the three steps side by side
-/// using [Expanded] children separated by a 14 px gap.
+/// The first three steps are clickable and route to the feature that makes the
+/// step actionable. The last two (Compile, Publish) are rendered greyed and
+/// non-clickable so a brand-new user sees the full journey on first launch.
 class EmptyStateGuide extends StatelessWidget {
   const EmptyStateGuide({super.key});
 
@@ -43,6 +42,24 @@ class EmptyStateGuide extends StatelessWidget {
             onTap: () => context.go(AppRoutes.projects),
           ),
         ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _Step(
+            number: 4,
+            title: 'Compile your pack',
+            ctaLabel: null,
+            onTap: null,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: _Step(
+            number: 5,
+            title: 'Publish on Steam Workshop',
+            ctaLabel: null,
+            onTap: null,
+          ),
+        ),
       ],
     );
   }
@@ -51,8 +68,8 @@ class EmptyStateGuide extends StatelessWidget {
 class _Step extends StatelessWidget {
   final int number;
   final String title;
-  final String ctaLabel;
-  final VoidCallback onTap;
+  final String? ctaLabel;
+  final VoidCallback? onTap;
 
   const _Step({
     required this.number,
@@ -64,47 +81,52 @@ class _Step extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      child: TokenCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: tokens.accent,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '$number',
-                style: tokens.fontMono.copyWith(
-                  fontSize: 14,
-                  color: tokens.accentFg,
-                ),
+    final disabled = onTap == null;
+    final content = TokenCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: disabled ? tokens.panel2 : tokens.accent,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$number',
+              style: tokens.fontMono.copyWith(
+                fontSize: 14,
+                color: disabled ? tokens.textFaint : tokens.accentFg,
               ),
             ),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: tokens.fontBody.copyWith(
-                fontSize: 15,
-                color: tokens.text,
-              ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: tokens.fontBody.copyWith(
+              fontSize: 15,
+              color: disabled ? tokens.textDim : tokens.text,
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 10),
+          if (ctaLabel != null)
             Text(
-              ctaLabel,
+              ctaLabel!,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.accent,
               ),
-            ),
-          ],
-        ),
+            )
+          else
+            const SizedBox(height: 16),
+        ],
       ),
+    );
+    return GestureDetector(
+      onTap: onTap,
+      child: disabled ? Opacity(opacity: 0.5, child: content) : content,
     );
   }
 }
