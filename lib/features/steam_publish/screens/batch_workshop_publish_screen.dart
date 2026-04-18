@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
@@ -181,7 +183,11 @@ class _BatchWorkshopPublishScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DetailScreenToolbar(
-              crumb: 'Publishing > Steam Workshop > No items staged',
+              crumbs: const [
+                CrumbSegment('Publishing'),
+                CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+                CrumbSegment('No items staged'),
+              ],
               onBack: () {
                 if (context.canPop()) context.pop();
               },
@@ -233,8 +239,11 @@ class _BatchWorkshopPublishScreenState
 
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
-        crumb:
-            'Publishing > Steam Workshop > Batch (${items.length} packs)',
+        crumbs: [
+          const CrumbSegment('Publishing'),
+          const CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+          CrumbSegment('Batch (${items.length} packs)'),
+        ],
         onBack: _handleBack,
       ),
       formPanel: StickyFormPanel(
