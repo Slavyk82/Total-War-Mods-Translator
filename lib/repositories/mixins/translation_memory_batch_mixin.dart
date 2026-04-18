@@ -67,8 +67,10 @@ mixin TranslationMemoryBatchMixin {
           .toSet()
           .toList();
 
-      // Build query to find existing entries by hash pairs
-      final existingEntries = <String, TranslationMemoryEntry>{};
+      // Lightweight projection: the upsert path only needs `id` and `usage_count`
+      // keyed by (source_hash, target_language_id). Avoid SELECT * to stop pulling
+      // source_text / translated_text (each 1-2 KB) into memory for nothing.
+      final existing = <String, ({String id, int usageCount})>{};
 
       // Query in chunks to avoid SQL parameter limits.
       // Each pair consumes 2 placeholders; SQLite's default SQLITE_MAX_VARIABLE_NUMBER
@@ -89,34 +91,37 @@ mixin TranslationMemoryBatchMixin {
         }
 
         final maps = await txn.rawQuery(
-          'SELECT * FROM $tableName WHERE $placeholders',
+          'SELECT id, source_hash, target_language_id, usage_count '
+          'FROM $tableName WHERE $placeholders',
           args,
         );
 
         for (final map in maps) {
-          final entry = fromMap(map);
-          final key = '${entry.sourceHash}:${entry.targetLanguageId}';
-          existingEntries[key] = entry;
+          final key = '${map['source_hash']}:${map['target_language_id']}';
+          existing[key] = (
+            id: map['id'] as String,
+            usageCount: map['usage_count'] as int,
+          );
         }
       }
 
       // Process each entry: update existing or insert new
       for (final entry in entries) {
         final key = '${entry.sourceHash}:${entry.targetLanguageId}';
-        final existing = existingEntries[key];
+        final match = existing[key];
 
-        if (existing != null) {
+        if (match != null) {
           // Update existing entry
           await txn.update(
             tableName,
             {
               'translated_text': entry.translatedText,
-              'usage_count': existing.usageCount + 1,
+              'usage_count': match.usageCount + 1,
               'last_used_at': now,
               'updated_at': now,
             },
             where: 'id = ?',
-            whereArgs: [existing.id],
+            whereArgs: [match.id],
           );
         } else {
           // Insert new entry
