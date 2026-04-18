@@ -15,12 +15,15 @@ import 'translation_editor_actions.dart';
 
 /// Translation editor screen.
 ///
-/// Main editing interface for translating mod content.
-/// Three-panel layout: filter sidebar, Syncfusion DataGrid, inspector (Task 5).
+/// Main editing interface for translating mod content. Three-panel body
+/// (filter sidebar, read-only Syncfusion DataGrid, inspector) sandwiched
+/// between a stacked header (`DetailScreenToolbar` + `EditorActionBar`)
+/// and `EditorStatusBar`.
 ///
 /// Screen responsibilities:
-/// - Layout and navigation structure (top bar replaces the old FluentHeader).
-/// - Coordinate between top bar, filter panel, datagrid and status bar.
+/// - Layout and navigation structure (back button + crumb via DetailScreenToolbar).
+/// - Coordinate between the two header bars, filter panel, datagrid, inspector
+///   and status bar.
 /// - Handle high-level translation workflow coordination.
 class TranslationEditorScreen extends ConsumerStatefulWidget {
   const TranslationEditorScreen({

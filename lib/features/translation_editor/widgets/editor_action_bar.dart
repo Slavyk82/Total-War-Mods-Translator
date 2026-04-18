@@ -11,10 +11,10 @@ import 'editor_toolbar_skip_tm.dart';
 
 /// Action bar of the translation editor (56px).
 ///
-/// Replaces the previous EditorToolbar + FluentScaffold header.
-/// Contains: model selector, skip-tm,
-/// Rules chip + 4 action buttons (Selection · Translate all · Validate ▾ ·
-/// Pack ▾) · Settings · search.
+/// Second row of the editor header: back button + crumb live in the stacked
+/// `DetailScreenToolbar` above this widget. Contains: model selector,
+/// skip-tm, Rules chip + 4 action buttons (Selection · Translate all ·
+/// Validate ▾ · Pack ▾) · Settings · search.
 class EditorActionBar extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
