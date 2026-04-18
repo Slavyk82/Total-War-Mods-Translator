@@ -38,29 +38,10 @@ void main() {
     expect(find.text('All caught up'), findsOneWidget);
   });
 
-  testWidgets('renders Command and New project button labels', (tester) async {
+  testWidgets('renders New project button label', (tester) async {
     await tester.pumpWidget(wrap(const HomePageHeader()));
     await tester.pumpAndSettle();
 
-    // The command button label is "Command  ⌘K"; match on the "Command"
-    // prefix via a widget predicate to stay resilient to spacing changes.
-    expect(
-      find.byWidgetPredicate(
-        (w) => w is Text && (w.data?.startsWith('Command') ?? false),
-      ),
-      findsOneWidget,
-    );
     expect(find.text('+ New project'), findsOneWidget);
-  });
-
-  testWidgets('Command button is disabled (onPressed == null)',
-      (tester) async {
-    await tester.pumpWidget(wrap(const HomePageHeader()));
-    await tester.pumpAndSettle();
-
-    final btn = tester.widget<TextButton>(
-      find.byKey(const Key('HomePageHeader.CommandButton')),
-    );
-    expect(btn.onPressed, isNull);
   });
 }

@@ -8,9 +8,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Header shown at the top of the Home page.
 ///
 /// Layout: display-font "Home" title with a status sub-line on the left and
-/// two trailing buttons on the right — a disabled `Command ⌘K` placeholder
-/// (palette opens in a later plan, see parent spec §11) and a `+ New project`
-/// primary action that navigates to the Mods library.
+/// a `+ New project` primary action on the right that navigates to the Mods
+/// library.
 class HomePageHeader extends ConsumerWidget {
   const HomePageHeader({super.key});
 
@@ -51,12 +50,6 @@ class HomePageHeader extends ConsumerWidget {
               ],
             ),
           ),
-          TextButton(
-            key: const Key('HomePageHeader.CommandButton'),
-            onPressed: null, // placeholder — palette lands in a later plan
-            child: const Text('Command  ⌘K'),
-          ),
-          const SizedBox(width: 8),
           FilledButton(
             key: const Key('HomePageHeader.NewProjectButton'),
             onPressed: () => context.go(AppRoutes.mods),
