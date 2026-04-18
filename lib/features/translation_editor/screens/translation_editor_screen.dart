@@ -1,3 +1,4 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:twmt/features/translation_editor/providers/editor_providers.dart
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
+import 'package:twmt/widgets/workflow/next_step_cta.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_action_bar.dart';
@@ -76,8 +78,20 @@ class _TranslationEditorScreenState
   Widget build(BuildContext context) {
     final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
     final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
+    final statsAsync = ref.watch(
+      editorStatsProvider(widget.projectId, widget.languageId),
+    );
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
     final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
+
+    // Task 11 (workflow-improvements): surface a Next-step CTA routing to Pack
+    // Compilation when the current language is fully translated. Progress is
+    // reported on a 0-100 scale by [EditorStats.completionPercentage] and only
+    // the strict 100% threshold triggers the CTA. Loading/error states are
+    // treated as "not yet ready" and keep the CTA hidden.
+    final stats = statsAsync.asData?.value;
+    final isFullyTranslated =
+        stats != null && stats.totalUnits > 0 && stats.completionPercentage >= 100.0;
 
     return Material(
       color: context.tokens.bg,
@@ -92,6 +106,14 @@ class _TranslationEditorScreenState
                 route: AppRoutes.projectDetail(widget.projectId),
               ),
               CrumbSegment(languageName),
+            ],
+            trailing: [
+              if (isFullyTranslated)
+                NextStepCta(
+                  label: 'Compile this pack',
+                  icon: FluentIcons.box_multiple_24_regular,
+                  onTap: () => context.goPackCompilation(),
+                ),
             ],
             onBack: () {
               if (context.canPop()) {
