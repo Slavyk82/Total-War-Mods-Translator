@@ -21,7 +21,7 @@ class LlmCustomRulesDataGrid extends ConsumerStatefulWidget {
 }
 
 class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid> {
-  late LlmCustomRulesDataSource _dataSource;
+  LlmCustomRulesDataSource? _dataSource;
   final DataGridController _controller = DataGridController();
 
   @override
@@ -37,6 +37,10 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
 
     return rulesAsync.when(
       data: (rules) {
+        // Settings datagrids have small N (<100 rows), and the data source needs
+        // `tokens` baked in at construction time. Re-creating on every build is
+        // cheap and naturally picks up theme switches without manual invalidation.
+        // For larger grids, see `tm_browser_datagrid.dart`'s updateEntries pattern.
         _dataSource = LlmCustomRulesDataSource(
           rules: rules,
           tokens: tokens,
@@ -64,7 +68,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
       child: SfDataGridTheme(
         data: buildTokenDataGridTheme(tokens),
         child: SfDataGrid(
-          source: _dataSource,
+          source: _dataSource!,
           controller: _controller,
           allowSorting: false,
           columnWidthMode: ColumnWidthMode.fill,

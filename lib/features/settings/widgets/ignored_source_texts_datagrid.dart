@@ -23,7 +23,7 @@ class IgnoredSourceTextsDataGrid extends ConsumerStatefulWidget {
 
 class _IgnoredSourceTextsDataGridState
     extends ConsumerState<IgnoredSourceTextsDataGrid> {
-  late IgnoredSourceTextsDataSource _dataSource;
+  IgnoredSourceTextsDataSource? _dataSource;
   final DataGridController _controller = DataGridController();
 
   @override
@@ -39,6 +39,10 @@ class _IgnoredSourceTextsDataGridState
 
     return textsAsync.when(
       data: (texts) {
+        // Settings datagrids have small N (<100 rows), and the data source needs
+        // `tokens` baked in at construction time. Re-creating on every build is
+        // cheap and naturally picks up theme switches without manual invalidation.
+        // For larger grids, see `tm_browser_datagrid.dart`'s updateEntries pattern.
         _dataSource = IgnoredSourceTextsDataSource(
           texts: texts,
           tokens: tokens,
@@ -66,7 +70,7 @@ class _IgnoredSourceTextsDataGridState
       child: SfDataGridTheme(
         data: buildTokenDataGridTheme(tokens),
         child: SfDataGrid(
-          source: _dataSource,
+          source: _dataSource!,
           controller: _controller,
           allowSorting: false,
           columnWidthMode: ColumnWidthMode.fill,
