@@ -43,4 +43,56 @@ void main() {
     final tf = t.widget<TextField>(find.byType(TextField));
     expect(tf.enabled, isFalse);
   });
+
+  group('TokenTextField API props', () {
+    testWidgets('obscureText=true hides characters with bullets', (tester) async {
+      final controller = TextEditingController();
+      await tester.pumpWidget(wrap(TokenTextField(
+        controller: controller,
+        hint: 'API key',
+        enabled: true,
+        obscureText: true,
+      )));
+      await tester.enterText(find.byType(TextField), 'secret');
+      await tester.pump();
+      final editable = tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable.obscureText, isTrue);
+    });
+
+    testWidgets('autofocus=true requests focus on mount', (tester) async {
+      final controller = TextEditingController();
+      await tester.pumpWidget(wrap(TokenTextField(
+        controller: controller,
+        hint: 'h',
+        enabled: true,
+        autofocus: true,
+      )));
+      await tester.pump();
+      final editable = tester.widget<EditableText>(find.byType(EditableText));
+      expect(editable.autofocus, isTrue);
+    });
+
+    testWidgets('maxLength caps input length', (tester) async {
+      final controller = TextEditingController();
+      await tester.pumpWidget(wrap(TokenTextField(
+        controller: controller,
+        hint: 'h',
+        enabled: true,
+        maxLength: 5,
+      )));
+      await tester.enterText(find.byType(TextField), 'abcdefgh');
+      expect(controller.text.length, lessThanOrEqualTo(5));
+    });
+
+    testWidgets('prefixIcon renders leading widget', (tester) async {
+      final controller = TextEditingController();
+      await tester.pumpWidget(wrap(TokenTextField(
+        controller: controller,
+        hint: 'h',
+        enabled: true,
+        prefixIcon: const Icon(Icons.search, key: Key('prefix-icon')),
+      )));
+      expect(find.byKey(const Key('prefix-icon')), findsOneWidget);
+    });
+  });
 }
