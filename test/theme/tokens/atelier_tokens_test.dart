@@ -24,8 +24,8 @@ void main() {
       expect(atelierTokens.radiusPill, 20.0);
     });
 
-    test('fontDisplayItalic is true (Instrument Serif italic)', () {
-      expect(atelierTokens.fontDisplayItalic, isTrue);
+    test('fontDisplayItalic is false (shared IBM Plex typography)', () {
+      expect(atelierTokens.fontDisplayItalic, isFalse);
     });
   });
 }

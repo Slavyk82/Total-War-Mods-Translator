@@ -10,9 +10,6 @@ import 'package:twmt/theme/app_theme.dart';
 import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
-/// Shared epoch used for all created/updated timestamps. Value is irrelevant
-/// for widget tests (relative-date formatting isn't asserted) but anchors
-/// the goldens via `clockProvider` in the golden test.
 const int _epoch = 1_700_000_000;
 
 Compilation _c(String id, String name) => Compilation(

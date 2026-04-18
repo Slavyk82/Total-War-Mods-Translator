@@ -11,10 +11,9 @@ import 'package:twmt/theme/app_theme.dart';
 import '../../../helpers/test_helpers.dart';
 import '../../../helpers/test_bootstrap.dart';
 
-EditorTopBar _bar({FocusNode? searchFocus}) => EditorTopBar(
+EditorTopBar _bar() => EditorTopBar(
       projectId: 'p',
       languageId: 'fr',
-      searchFocus: searchFocus ?? FocusNode(),
       onTranslationSettings: () {},
       onTranslateAll: () {},
       onTranslateSelected: () {},
@@ -81,7 +80,7 @@ void main() {
     expect(find.byTooltip('Translation settings'), findsOneWidget);
   });
 
-  testWidgets('renders the search field with cmdk hint', (tester) async {
+  testWidgets('renders the search field', (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
       theme: AppTheme.atelierDarkTheme,
@@ -91,7 +90,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('Ctrl+F'), findsOneWidget);
   });
 
   testWidgets('Selection button is disabled when no selection', (tester) async {

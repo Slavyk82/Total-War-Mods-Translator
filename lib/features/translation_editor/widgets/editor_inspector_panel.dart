@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
@@ -7,7 +6,7 @@ import 'package:twmt/features/translation_editor/widgets/editor_validation_panel
 import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
-/// Callback fired when the user commits a target text edit (Ctrl+Enter).
+/// Callback fired when the user commits a target text edit (on focus loss).
 typedef OnInspectorSave = void Function(String unitId, String text);
 
 /// Callback fired when the user applies a TM suggestion or auto-fix.
@@ -185,14 +184,6 @@ class _MultiSelectHeader extends StatelessWidget {
               color: tokens.accent,
             ),
           ),
-          const SizedBox(height: 16),
-          _Hint(label: 'Ctrl+T', text: 'translate selected', tokens: tokens),
-          _Hint(label: 'Ctrl+R', text: 'retranslate selected', tokens: tokens),
-          _Hint(
-            label: 'Ctrl+Shift+V',
-            text: 'validate selected',
-            tokens: tokens,
-          ),
         ],
       );
 }
@@ -266,8 +257,6 @@ class _SingleSelectionBody extends ConsumerWidget {
             onApplyFix: (fixed) => onApplySuggestion(fixed),
             onValidate: () {},
           ),
-          const SizedBox(height: 14),
-          _FooterHints(tokens: tokens),
         ],
       ),
     );
@@ -389,59 +378,45 @@ class _TargetBlock extends StatelessWidget {
             withBullet: true,
           ),
           const SizedBox(height: 6),
-          Shortcuts(
-            shortcuts: <ShortcutActivator, Intent>{
-              const SingleActivator(LogicalKeyboardKey.enter, control: true):
-                  const _SaveIntent(),
+          Focus(
+            onFocusChange: (hasFocus) {
+              // Commit the edit when the field loses focus.
+              if (!hasFocus) onSave(controller.text);
             },
-            child: Actions(
-              actions: <Type, Action<Intent>>{
-                _SaveIntent: CallbackAction<_SaveIntent>(
-                  onInvoke: (_) {
-                    onSave(controller.text);
-                    return null;
-                  },
+            child: TextField(
+              key: const Key('editor-inspector-target-field'),
+              controller: controller,
+              maxLines: null,
+              minLines: 3,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: tokens.text,
+                height: 1.6,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: tokens.accentBg,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 10,
                 ),
-              },
-              child: TextField(
-                key: const Key('editor-inspector-target-field'),
-                controller: controller,
-                maxLines: null,
-                minLines: 3,
-                style: TextStyle(
-                  fontSize: 13.5,
-                  color: tokens.text,
-                  height: 1.6,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(color: tokens.accent),
                 ),
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: tokens.accentBg,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide(color: tokens.accent),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide(color: tokens.accent),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                    borderSide: BorderSide(color: tokens.accent, width: 1.5),
-                  ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(color: tokens.accent),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(4),
+                  borderSide: BorderSide(color: tokens.accent, width: 1.5),
                 ),
               ),
             ),
           ),
         ],
       );
-}
-
-class _SaveIntent extends Intent {
-  const _SaveIntent();
 }
 
 class _SuggestionsSection extends StatelessWidget {
@@ -586,63 +561,3 @@ class _Label extends StatelessWidget {
       );
 }
 
-class _Hint extends StatelessWidget {
-  final String label;
-  final String text;
-  final TwmtThemeTokens tokens;
-  const _Hint({
-    required this.label,
-    required this.text,
-    required this.tokens,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        // `Wrap` instead of `Row` so the kbd chip + label can flow onto two
-        // lines when the host width is tight (multi-select column @ 280px) and
-        // still lay out as a single line inside the footer `Wrap` parent.
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 2,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              decoration: BoxDecoration(
-                border: Border.all(color: tokens.border),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(
-                label,
-                style: tokens.fontMono.copyWith(
-                  fontSize: 9.5,
-                  color: tokens.textMid,
-                ),
-              ),
-            ),
-            Text(
-              text,
-              style: TextStyle(fontSize: 12, color: tokens.textMid),
-            ),
-          ],
-        ),
-      );
-}
-
-class _FooterHints extends StatelessWidget {
-  final TwmtThemeTokens tokens;
-  const _FooterHints({required this.tokens});
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-        spacing: 8,
-        runSpacing: 4,
-        children: [
-          _Hint(label: 'Ctrl+Enter', text: 'save', tokens: tokens),
-          _Hint(label: '↓', text: 'next', tokens: tokens),
-          _Hint(label: 'Ctrl+R', text: 'retranslate', tokens: tokens),
-          _Hint(label: 'Ctrl+Shift+V', text: 'validate', tokens: tokens),
-        ],
-      );
-}

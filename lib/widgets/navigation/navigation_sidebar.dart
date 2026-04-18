@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../config/router/navigation_tree.dart';
 import '../../config/router/navigation_tree_resolver.dart';
@@ -80,31 +81,51 @@ class NavigationSidebar extends ConsumerWidget {
 class _BrandHeader extends ConsumerWidget {
   const _BrandHeader();
 
+  // Fixed brand colour, theme-independent. Warm antique gold that evokes
+  // the Total War visual identity and reads on both Atelier and Forge.
+  static const Color _brandColor = Color(0xFFC9A96E);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
     final themeNameAsync = ref.watch(themeNameProvider);
     final themeName =
         themeNameAsync.value ?? TwmtThemeName.atelier;
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Image.asset(
-            'assets/twmt_icon.png',
-            width: 32,
-            height: 32,
-            cacheWidth: 64,
-            cacheHeight: 64,
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'TWMT',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.bold, color: tokens.text),
+            child: FittedBox(
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.centerLeft,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'TOTAL WAR',
+                    style: GoogleFonts.cinzel(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.4,
+                      height: 1.05,
+                      color: _brandColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Mods Translator',
+                    style: GoogleFonts.cinzel(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.8,
+                      height: 1.1,
+                      color: _brandColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           _ThemeNameButton(
@@ -225,14 +246,9 @@ class _ThemeNameButton extends StatefulWidget {
 class _ThemeNameButtonState extends State<_ThemeNameButton> {
   bool _hover = false;
 
-  IconData get _icon {
-    switch (widget.themeName) {
-      case TwmtThemeName.atelier:
-        return FluentIcons.paint_brush_24_regular;
-      case TwmtThemeName.forge:
-        return FluentIcons.wrench_24_regular;
-    }
-  }
+  // Fixed theme-switch icon and colour, identical on every palette.
+  static const IconData _icon = FluentIcons.color_24_regular;
+  static const Color _iconColor = Color(0xFFC9A96E);
 
   @override
   Widget build(BuildContext context) {
@@ -252,7 +268,7 @@ class _ThemeNameButtonState extends State<_ThemeNameButton> {
               color: _hover ? tokens.panel2 : Colors.transparent,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Icon(_icon, size: 18, color: tokens.accent),
+            child: const Icon(_icon, size: 18, color: _iconColor),
           ),
         ),
       ),

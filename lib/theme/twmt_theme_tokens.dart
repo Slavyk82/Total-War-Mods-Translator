@@ -70,8 +70,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
   /// Base body font, already wired to a variable-weight TextStyle.
   final TextStyle fontBody;
 
-  /// Display font used for page / section titles. In Forge this is the same
-  /// family as body at weight 500; in Atelier it is Instrument Serif italic.
+  /// Display font used for page / section titles. Both themes share the
+  /// body family at weight 500.
   final TextStyle fontDisplay;
 
   /// Monospace font used for keys, paths, kbd hints, tabular numerics.

@@ -4,8 +4,9 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Atelier palette + typography — default TWMT theme.
 ///
-/// Warm greige charcoal, ambre accent. Editorial typography: Instrument
-/// Sans body, Instrument Serif italic display, JetBrains Mono for code.
+/// Warm greige charcoal, ambre accent. Typography is shared with Forge
+/// (IBM Plex Sans / IBM Plex Mono) so palette is the only thing that
+/// changes between themes.
 ///
 /// See spec §4.1.
 final TwmtThemeTokens atelierTokens = TwmtThemeTokens(
@@ -33,13 +34,11 @@ final TwmtThemeTokens atelierTokens = TwmtThemeTokens(
   llmBg: const Color(0xFF2E263A),
   rowSelected: const Color(0xFF221B13),
 
-  // Typography
-  fontBody: GoogleFonts.instrumentSans(),
-  fontDisplay: GoogleFonts.instrumentSerif(
-    fontStyle: FontStyle.italic,
-  ),
-  fontMono: GoogleFonts.jetBrainsMono(),
-  fontDisplayItalic: true,
+  // Typography — shared with Forge: IBM Plex Sans body + display, IBM Plex Mono.
+  fontBody: GoogleFonts.ibmPlexSans(),
+  fontDisplay: GoogleFonts.ibmPlexSans(fontWeight: FontWeight.w500),
+  fontMono: GoogleFonts.ibmPlexMono(),
+  fontDisplayItalic: false,
 
   // Radius
   radiusXs: 3.0,

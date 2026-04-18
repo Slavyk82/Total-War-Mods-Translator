@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
@@ -173,10 +172,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('2 unités sélectionnées'), findsOneWidget);
-    expect(find.textContaining('Ctrl+T'), findsOneWidget);
   });
 
-  testWidgets('Ctrl+Enter on target field calls onSave', (tester) async {
+  testWidgets('target field calls onSave when focus is lost', (tester) async {
     String? savedUnit;
     String? savedText;
     final container = ProviderContainer(overrides: [
@@ -224,9 +222,8 @@ void main() {
     final field = find.byKey(const Key('editor-inspector-target-field'));
     await tester.tap(field);
     await tester.enterText(field, 'Nouveau texte');
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    // Blur the field to trigger save-on-focus-loss.
+    FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
 
     expect(savedUnit, '1');
