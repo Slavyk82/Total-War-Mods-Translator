@@ -78,6 +78,11 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
   /// doesn't ship an italic cut.
   final bool fontDisplayItalic;
 
+  /// Derived: `FontStyle.italic` when `fontDisplayItalic == true`, else `FontStyle.normal`.
+  /// Avoids repeating the ternary at every display-font callsite.
+  FontStyle get fontDisplayStyle =>
+      fontDisplayItalic ? FontStyle.italic : FontStyle.normal;
+
   // ---------- Radius ----------
   final double radiusXs;
   final double radiusSm;

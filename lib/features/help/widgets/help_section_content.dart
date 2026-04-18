@@ -189,8 +189,7 @@ class HelpSectionContent extends StatelessWidget {
       color: tokens.text,
     );
 
-    final displayItalic =
-        tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal;
+    final displayItalic = tokens.fontDisplayStyle;
 
     return MarkdownStyleSheet(
       p: baseStyle.copyWith(height: 1.6, color: tokens.textMid),

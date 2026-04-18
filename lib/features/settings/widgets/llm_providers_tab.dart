@@ -140,7 +140,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                 fontSize: 20,
                 color: tokens.text,
                 fontWeight: FontWeight.bold,
-                fontStyle: tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),
