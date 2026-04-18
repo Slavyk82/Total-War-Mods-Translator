@@ -2,41 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/repositories/language_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
+
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late LanguageRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create languages table
-    await db.execute('''
-      CREATE TABLE languages (
-        id TEXT PRIMARY KEY,
-        code TEXT NOT NULL UNIQUE,
-        name TEXT NOT NULL,
-        native_name TEXT NOT NULL,
-        is_active INTEGER DEFAULT 1,
-        is_custom INTEGER DEFAULT 0
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = LanguageRepository();
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('LanguageRepository', () {

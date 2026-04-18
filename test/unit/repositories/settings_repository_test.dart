@@ -2,40 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/setting.dart';
 import 'package:twmt/repositories/settings_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
+
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late SettingsRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create settings table
-    await db.execute('''
-      CREATE TABLE settings (
-        id TEXT PRIMARY KEY,
-        key TEXT NOT NULL UNIQUE,
-        value TEXT NOT NULL,
-        value_type TEXT NOT NULL DEFAULT 'string',
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = SettingsRepository();
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('SettingsRepository', () {

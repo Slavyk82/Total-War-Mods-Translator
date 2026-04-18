@@ -95,23 +95,6 @@ class ProjectRepository extends BaseRepository<Project> {
     return _deletionService.deleteProject(id);
   }
 
-  /// Get all projects with a specific status.
-  ///
-  /// Returns [Ok] with list of projects matching the status, ordered by updated date.
-  Future<Result<List<Project>, TWMTDatabaseException>> getByStatus(
-      String status) async {
-    return executeQuery(() async {
-      final maps = await database.query(
-        tableName,
-        where: 'status = ?',
-        whereArgs: [status],
-        orderBy: 'updated_at DESC',
-      );
-
-      return maps.map((map) => fromMap(map)).toList();
-    });
-  }
-
   /// Get all projects for a specific game installation.
   ///
   /// Returns [Ok] with list of projects for the game, ordered by updated date.

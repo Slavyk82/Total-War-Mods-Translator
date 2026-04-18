@@ -1,68 +1,21 @@
-// NOTE: This file contains pre-existing failing tests preserved exactly
-// across Phases 1-7. The failures originate from sqflite-FFI schema drift
-// (the manual CREATE TABLE may diverge from the real migration schema).
-// Do NOT attempt to "fix" them here — they are the baseline that protects
-// against unintended regression.
-// See docs/superpowers/plans/2026-04-12-incremental-refactoring.md.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/repositories/project_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
 
-import '../../helpers/test_bootstrap.dart';
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late ProjectRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    // Register a fake ILoggingService so services that fall back to
-    // ServiceLocator.get<ILoggingService>() can resolve during tests.
-    await TestBootstrap.registerFakes();
-
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create projects table
-    await db.execute('''
-      CREATE TABLE projects (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        mod_steam_id TEXT,
-        mod_version TEXT,
-        game_installation_id TEXT NOT NULL,
-        source_file_path TEXT,
-        output_file_path TEXT,
-        last_update_check INTEGER,
-        source_mod_updated INTEGER,
-        batch_size INTEGER DEFAULT 25,
-        parallel_batches INTEGER DEFAULT 3,
-        custom_prompt TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        completed_at INTEGER,
-        metadata TEXT,
-        has_mod_update_impact INTEGER DEFAULT 0,
-        project_type TEXT DEFAULT 'mod',
-        source_language_code TEXT,
-        status TEXT
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = ProjectRepository();
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('ProjectRepository', () {
@@ -77,6 +30,11 @@ void main() {
       bool? hasModUpdateImpact,
     }) {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      // schema.sql enforces CHECK (created_at <= updated_at). When tests
+      // backdate updated_at to exercise ordering, default created_at to
+      // match so the insert is not rejected by the constraint.
+      final resolvedUpdatedAt = updatedAt ?? now;
+      final resolvedCreatedAt = createdAt ?? resolvedUpdatedAt;
       return Project(
         id: id ?? 'test-project-id',
         name: name ?? 'Test Project',
@@ -84,8 +42,8 @@ void main() {
         gameInstallationId: gameInstallationId ?? 'game-install-id',
         batchSize: 25,
         parallelBatches: 3,
-        createdAt: createdAt ?? now,
-        updatedAt: updatedAt ?? now,
+        createdAt: resolvedCreatedAt,
+        updatedAt: resolvedUpdatedAt,
         projectType: projectType ?? 'mod',
         hasModUpdateImpact: hasModUpdateImpact ?? false,
       );
@@ -201,32 +159,6 @@ void main() {
 
         expect(result.isErr, isTrue);
         expect(result.error.message, contains('not found'));
-      });
-    });
-
-    group('getByStatus', () {
-      test('should return projects with matching status', () async {
-        // Insert projects with status in metadata or similar field
-        // Note: The current implementation uses 'status' column which might not exist
-        // This test demonstrates the pattern
-        final project1 = createTestProject(id: 'project-1', name: 'Project 1');
-        final project2 = createTestProject(id: 'project-2', name: 'Project 2');
-
-        await repository.insert(project1);
-        await repository.insert(project2);
-
-        // Update one with status
-        await db.update(
-          'projects',
-          {'status': 'active'},
-          where: 'id = ?',
-          whereArgs: ['project-1'],
-        );
-
-        final result = await repository.getByStatus('active');
-
-        // Note: This may return empty if status column doesn't exist
-        expect(result.isOk, isTrue);
       });
     });
 

@@ -2,62 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
+
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late TranslationUnitRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create translation_units table
-    await db.execute('''
-      CREATE TABLE translation_units (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL,
-        key TEXT NOT NULL,
-        source_text TEXT NOT NULL,
-        context TEXT,
-        notes TEXT,
-        source_loc_file TEXT,
-        is_obsolete INTEGER DEFAULT 0,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-
-    // Create translation_versions table for join tests
-    await db.execute('''
-      CREATE TABLE translation_versions (
-        id TEXT PRIMARY KEY,
-        unit_id TEXT NOT NULL,
-        project_language_id TEXT NOT NULL,
-        translated_text TEXT,
-        is_manually_edited INTEGER DEFAULT 0,
-        status TEXT DEFAULT 'pending',
-        translation_source TEXT,
-        validation_issues TEXT,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY (unit_id) REFERENCES translation_units(id) ON DELETE CASCADE
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = TranslationUnitRepository();
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('TranslationUnitRepository', () {
@@ -74,17 +32,24 @@ void main() {
       int? updatedAt,
     }) {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final resolvedId = id ?? 'unit-id';
+      // schema enforces UNIQUE(project_id, key); derive key from id so
+      // distinct ids yield distinct rows without every call site overriding.
+      // schema enforces CHECK (created_at <= updated_at); default
+      // created_at to the resolved updated_at when tests backdate.
+      final resolvedUpdatedAt = updatedAt ?? now;
+      final resolvedCreatedAt = createdAt ?? resolvedUpdatedAt;
       return TranslationUnit(
-        id: id ?? 'unit-id',
+        id: resolvedId,
         projectId: projectId ?? 'project-id',
-        key: key ?? 'unit.key',
+        key: key ?? 'unit.key.$resolvedId',
         sourceText: sourceText ?? 'Hello World',
         context: context,
         notes: notes,
         sourceLocFile: sourceLocFile,
         isObsolete: isObsolete ?? false,
-        createdAt: createdAt ?? now,
-        updatedAt: updatedAt ?? now,
+        createdAt: resolvedCreatedAt,
+        updatedAt: resolvedUpdatedAt,
       );
     }
 
@@ -100,7 +65,7 @@ void main() {
         // Verify it's in the database
         final maps = await db.query('translation_units', where: 'id = ?', whereArgs: [unit.id]);
         expect(maps.length, equals(1));
-        expect(maps.first['key'], equals('unit.key'));
+        expect(maps.first['key'], equals(unit.key));
       });
 
       test('should fail when inserting duplicate ID', () async {
@@ -591,8 +556,8 @@ void main() {
           'project_language_id': 'pl1',
           'translated_text': 'Translated',
           'is_manually_edited': 0,
-          'status': 'completed',
-          'translation_source': 'ai',
+          'status': 'translated',
+          'translation_source': 'llm',
           'validation_issues': null,
           'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
           'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
@@ -623,8 +588,8 @@ void main() {
           'project_language_id': 'pl1',
           'translated_text': 'Active Translation',
           'is_manually_edited': 0,
-          'status': 'completed',
-          'translation_source': 'ai',
+          'status': 'translated',
+          'translation_source': 'llm',
           'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
           'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         });
@@ -634,8 +599,8 @@ void main() {
           'project_language_id': 'pl1',
           'translated_text': 'Obsolete Translation',
           'is_manually_edited': 0,
-          'status': 'completed',
-          'translation_source': 'ai',
+          'status': 'translated',
+          'translation_source': 'llm',
           'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
           'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         });
@@ -661,8 +626,8 @@ void main() {
           'project_language_id': 'french',
           'translated_text': 'Bonjour',
           'is_manually_edited': 0,
-          'status': 'completed',
-          'translation_source': 'ai',
+          'status': 'translated',
+          'translation_source': 'llm',
           'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
           'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         });
@@ -672,8 +637,8 @@ void main() {
           'project_language_id': 'german',
           'translated_text': 'Hallo',
           'is_manually_edited': 0,
-          'status': 'completed',
-          'translation_source': 'ai',
+          'status': 'translated',
+          'translation_source': 'llm',
           'created_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
           'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
         });

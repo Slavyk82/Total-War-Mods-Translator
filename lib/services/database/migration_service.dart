@@ -27,6 +27,12 @@ class MigrationService {
   @visibleForTesting
   static set loggerForTesting(ILoggingService logger) => _logger = logger;
 
+  /// Expose the SQL script splitter so tests can install schema.sql into a
+  /// test database without duplicating the BEGIN/END-aware parser.
+  @visibleForTesting
+  static List<String> splitSqlScriptForTesting(String script) =>
+      _splitSqlScript(script);
+
   /// Initialize database schema for fresh databases and run migrations.
   ///
   /// For fresh databases (version 0), executes schema.sql to create

@@ -2,46 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
-import 'package:twmt/services/database/database_service.dart';
+
+import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late GameInstallationRepository repository;
 
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
-
   setUp(() async {
-    db = await databaseFactory.openDatabase(inMemoryDatabasePath);
-
-    // Create game_installations table
-    await db.execute('''
-      CREATE TABLE game_installations (
-        id TEXT PRIMARY KEY,
-        game_code TEXT NOT NULL,
-        game_name TEXT NOT NULL,
-        installation_path TEXT,
-        steam_workshop_path TEXT,
-        steam_app_id TEXT,
-        is_auto_detected INTEGER DEFAULT 0,
-        is_valid INTEGER DEFAULT 1,
-        last_validated_at INTEGER,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
-    ''');
-
-    // Initialize DatabaseService with the test database
-    DatabaseService.setTestDatabase(db);
-
+    db = await TestDatabase.openMigrated();
     repository = GameInstallationRepository();
   });
 
   tearDown(() async {
-    await db.close();
-    DatabaseService.resetTestDatabase();
+    await TestDatabase.close(db);
   });
 
   group('GameInstallationRepository', () {
@@ -59,9 +33,14 @@ void main() {
       int? updatedAt,
     }) {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final resolvedId = id ?? 'install-id';
       return GameInstallation(
-        id: id ?? 'install-id',
-        gameCode: gameCode ?? 'wh3',
+        id: resolvedId,
+        // schema enforces UNIQUE(game_code). When the caller leaves both
+        // id and gameCode unset, keep the long-standing 'wh3' default; but
+        // when they pass a custom id (and no code), derive code from id so
+        // multi-row tests don't collide.
+        gameCode: gameCode ?? (id == null ? 'wh3' : resolvedId),
         gameName: gameName ?? 'Total War: WARHAMMER III',
         installationPath: installationPath ?? 'C:\\Games\\TotalWar\\Warhammer3',
         steamWorkshopPath: steamWorkshopPath ?? 'C:\\Steam\\steamapps\\workshop\\content\\1142710',
