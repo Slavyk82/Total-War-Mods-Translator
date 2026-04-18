@@ -3,7 +3,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
 import 'package:twmt/services/database/database_service.dart';
-import '../helpers/test_bootstrap.dart';
+import '../../helpers/test_bootstrap.dart';
 
 void main() {
   late Database db;
