@@ -1708,3 +1708,6 @@ These audit items are **not** in this plan — they have their own follow-up pla
 - Batch `Future.wait` in `projectsWithDetailsProvider` / N+1 rebuild in `TmMaintenanceService` — Waves 2-3.
 - Drop `translation_view_cache` table + triggers — Wave 3 (high risk).
 - `flutter_markdown` migration — Wave 3.
+- Move `File(packImagePath).existsSync()` in `SteamCoverCell` off the UI thread — Wave 2 (deferred follow-up from Task 8).
+- Defensive id-chunking (~900 ids per UPDATE) in `incrementUsageCountBatch` — Wave 2 (deferred follow-up from Task 4).
+- Widget test for `SteamCoverCell` covering pack/missing/url paths — Wave 2 hygiene (deferred from Task 8).
