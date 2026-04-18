@@ -117,27 +117,50 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
 
   /// Sync the target controller text with the currently selected row.
   ///
-  /// Triggered from `ref.listenManual` callbacks in `initState` (selection
-  /// changes or rows changes), so it never runs during build. Guarded by
-  /// `_boundUnitId` so it's a no-op when the bound unit is already current.
+  /// Before rebinding to a new unit, fire `onSave` for the *previous* unit
+  /// whenever the controller holds text that differs from the previously
+  /// bound row's persisted translation. This prevents silent data loss when
+  /// the user types then switches selection without blurring the field.
   void _rebindIfNeeded() {
     final selection = ref.read(editorSelectionProvider);
-    if (selection.selectedCount != 1) {
-      _boundUnitId = null;
-      return;
-    }
-    final selectedId = selection.selectedUnitIds.first;
     final rowsAsync = ref.read(
       filteredTranslationRowsProvider(widget.projectId, widget.languageId),
     );
     final rows = rowsAsync.value;
+
+    if (selection.selectedCount != 1) {
+      // Multi/zero select: flush any dirty text for the previously bound unit
+      // before we drop the binding.
+      _flushDirtyIfNeeded(rows);
+      _boundUnitId = null;
+      return;
+    }
+
     if (rows == null) return;
+    final selectedId = selection.selectedUnitIds.first;
     final idx = rows.indexWhere((r) => r.id == selectedId);
     if (idx < 0) return;
     final row = rows[idx];
+
     if (_boundUnitId != row.id) {
+      _flushDirtyIfNeeded(rows);
       _boundUnitId = row.id;
       _targetController.text = row.translatedText ?? '';
+    }
+  }
+
+  /// Fire `onSave(previousId, dirtyText)` if the controller holds text that
+  /// differs from the previously bound row's persisted translation.
+  void _flushDirtyIfNeeded(List<TranslationRow>? rows) {
+    final previousId = _boundUnitId;
+    if (previousId == null) return;
+    if (rows == null) return;
+    final prevIdx = rows.indexWhere((r) => r.id == previousId);
+    if (prevIdx < 0) return;
+    final previousPersisted = rows[prevIdx].translatedText ?? '';
+    final currentText = _targetController.text;
+    if (currentText != previousPersisted) {
+      widget.onSave(previousId, currentText);
     }
   }
 }

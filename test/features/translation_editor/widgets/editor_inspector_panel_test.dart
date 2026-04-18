@@ -231,6 +231,71 @@ void main() {
   });
 
   testWidgets(
+    'dirty target text auto-saves for previous unit when selection switches',
+    (tester) async {
+      final saves = <MapEntry<String, String>>[];
+      final container = ProviderContainer(overrides: [
+        filteredTranslationRowsProvider('p', 'fr')
+            .overrideWith((_) async => [_row('1'), _row('2')]),
+        currentProjectProvider('p').overrideWith((_) async => const Project(
+              id: 'p',
+              name: 'p',
+              gameInstallationId: 'g',
+              sourceLanguageCode: 'en',
+              createdAt: 0,
+              updatedAt: 0,
+            )),
+        currentLanguageProvider('fr').overrideWith((_) async => const Language(
+              id: 'fr',
+              code: 'fr',
+              name: 'French',
+              nativeName: 'Français',
+            )),
+        tmSuggestionsForUnitProvider('1', 'en', 'fr')
+            .overrideWith((_) async => []),
+        tmSuggestionsForUnitProvider('2', 'en', 'fr')
+            .overrideWith((_) async => []),
+      ]);
+      addTearDown(container.dispose);
+      container.read(editorSelectionProvider.notifier).toggleSelection('1');
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: Scaffold(
+            body: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (id, text) => saves.add(MapEntry(id, text)),
+              onApplySuggestion: (_, _) {},
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Type something into unit 1's target without blurring.
+      final field = find.byKey(const Key('editor-inspector-target-field'));
+      await tester.tap(field);
+      await tester.enterText(field, 'Draft unit 1 text');
+
+      // Switch selection to unit 2 — this must flush unit 1's dirty text first.
+      container.read(editorSelectionProvider.notifier)
+        ..clearSelection()
+        ..toggleSelection('2');
+      await tester.pumpAndSettle();
+
+      expect(
+        saves.any((e) => e.key == '1' && e.value == 'Draft unit 1 text'),
+        isTrue,
+        reason: 'Expected an auto-save for unit 1 with the typed text, '
+            'got: $saves',
+      );
+    },
+  );
+
+  testWidgets(
     'renders inspector with validation issues without overflow',
     (tester) async {
       final row = _row('1');
