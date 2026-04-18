@@ -66,9 +66,6 @@ dependencies:
   # to map TwmtThemeTokens onto the grid surface.
   syncfusion_flutter_core: ^31.2.10
 
-  # Charts for statistics visualization
-  syncfusion_flutter_charts: ^31.2.10
-
   # LLM Token Calculation
   tiktoken: ^1.0.3
 
