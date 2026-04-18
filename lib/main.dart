@@ -173,8 +173,6 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   }
 
   Future<void> _runDataMigrations() async {
-    // Wait a moment for UI to be ready
-    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
     // Check if migrations are needed
@@ -196,25 +194,22 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
 
     // After migrations, continue with other startup tasks
     if (!mounted) return;
-    _continueStartupTasks();
+    unawaited(_continueStartupTasks());
   }
 
-  void _continueStartupTasks() {
-    // Trigger auto-update check directly
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        ref.read(updateCheckerProvider.notifier).checkForUpdates();
-      }
-    });
+  Future<void> _continueStartupTasks() async {
+    // Trigger auto-update check (no delay: post-frame already fired).
+    if (!mounted) return;
+    unawaited(
+      ref.read(updateCheckerProvider.notifier).checkForUpdates(),
+    );
 
-    // Check for release notes after update check
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        _checkReleaseNotes();
-      }
-    });
+    // Check for release notes straight after.
+    if (!mounted) return;
+    await _checkReleaseNotes();
 
-    // Trigger cleanup of old installer files
+    // Trigger cleanup of old installer files.
+    if (!mounted) return;
     ref.read(cleanupOldInstallersProvider);
   }
 
