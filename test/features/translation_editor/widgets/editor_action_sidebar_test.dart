@@ -178,4 +178,17 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets('tapping Translation settings invokes onTranslationSettings',
+      (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onTranslationSettings: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    await tester.tap(find.text('Translation settings'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
 }
