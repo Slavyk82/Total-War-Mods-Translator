@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/providers/clock_provider.dart';
@@ -9,6 +10,7 @@ import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/utils/string_initials.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_cover.dart';
 import 'package:twmt/widgets/detail/detail_meta_banner.dart';
 import 'package:twmt/widgets/detail/detail_overview_layout.dart';
@@ -233,7 +235,11 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DetailScreenToolbar(
-          crumb: 'Resources › Glossary › ${glossary.name}',
+          crumbs: [
+            const CrumbSegment('Resources'),
+            const CrumbSegment('Glossary', route: AppRoutes.glossary),
+            CrumbSegment(glossary.name),
+          ],
           onBack: () =>
               ref.read(selectedGlossaryProvider.notifier).clear(),
         ),
