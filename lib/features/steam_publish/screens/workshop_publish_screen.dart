@@ -9,7 +9,9 @@ import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -323,7 +325,11 @@ class _WorkshopPublishScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DetailScreenToolbar(
-              crumb: 'Publishing > Steam Workshop > No pack staged',
+              crumbs: const [
+                CrumbSegment('Publishing'),
+                CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+                CrumbSegment('No pack staged'),
+              ],
               onBack: () {
                 if (context.canPop()) context.pop();
               },
@@ -385,8 +391,11 @@ class _WorkshopPublishScreenState
 
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
-        crumb:
-            'Publishing > Steam Workshop > ${_projectName()}',
+        crumbs: [
+          const CrumbSegment('Publishing'),
+          const CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+          CrumbSegment(_projectName()),
+        ],
         onBack: _handleBack,
         trailing: [
           SmallIconButton(
