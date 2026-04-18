@@ -251,7 +251,7 @@ class _FluentToastWidgetState extends State<FluentToastWidget>
                     Flexible(
                       child: Text(
                         widget.message,
-                        style: TextStyle(
+                        style: tokens.fontBody.copyWith(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: tokens.text,
