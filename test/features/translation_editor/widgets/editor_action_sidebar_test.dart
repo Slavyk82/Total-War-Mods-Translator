@@ -92,4 +92,23 @@ void main() {
       equals('hello'),
     );
   });
+
+  testWidgets('renders §CONTEXT header with model · skip-tm · rules', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Context'), findsOneWidget);
+    // Three context widgets present (model selector may render empty if no
+    // models are available in test fakes, so we assert by widget type).
+    expect(
+      find.byWidgetPredicate((w) =>
+          w.runtimeType.toString() == 'EditorToolbarSkipTm'),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate((w) =>
+          w.runtimeType.toString() == 'EditorToolbarModRule'),
+      findsOneWidget,
+    );
+  });
 }

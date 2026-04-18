@@ -6,6 +6,10 @@ import 'package:twmt/features/translation_editor/providers/editor_filter_notifie
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
 
+import 'editor_toolbar_mod_rule.dart';
+import 'editor_toolbar_model_selector.dart';
+import 'editor_toolbar_skip_tm.dart';
+
 /// Left sidebar of the translation editor (240 px).
 ///
 /// Replaces the ex-`EditorFilterPanel`. Filters moved to the top
@@ -83,6 +87,17 @@ class _EditorActionSidebarState extends ConsumerState<EditorActionSidebar> {
               hint: 'Search · filter · run',
               enabled: true,
               onChanged: _onSearchChanged,
+            ),
+            const SizedBox(height: 20),
+            _SectionHeader(label: 'Context', tokens: tokens),
+            const SizedBox(height: 10),
+            const EditorToolbarModelSelector(compact: true),
+            const SizedBox(height: 10),
+            const EditorToolbarSkipTm(compact: true),
+            const SizedBox(height: 10),
+            EditorToolbarModRule(
+              compact: true,
+              projectId: widget.projectId,
             ),
           ],
         ),
