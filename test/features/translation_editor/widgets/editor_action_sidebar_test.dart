@@ -123,16 +123,17 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('Selection is disabled when no selection', (tester) async {
-    await tester.pumpWidget(build());
+  testWidgets('tapping Selection is a no-op when no selection', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onTranslateSelected: () => tapped = true));
     await tester.pumpAndSettle();
 
-    // Row is present but its GestureDetector has a null onTap.
-    final selectionFinder = find.ancestor(
-      of: find.text('Selection'),
-      matching: find.byType(GestureDetector),
-    );
-    expect(selectionFinder, findsWidgets);
+    await tester.tap(find.text('Selection'));
+    await tester.pumpAndSettle();
+
+    // With no selection, the Selection button's onTap is null, so tapping
+    // it must not invoke the callback.
+    expect(tapped, isFalse);
   });
 
   testWidgets('tapping Validate selected invokes onValidate', (tester) async {
