@@ -8,7 +8,6 @@
 // than through gesture geometry, which is fragile for ranged sliders),
 // then advance past the 300ms debounce and assert exactly one write.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/settings/providers/llm_custom_rules_providers.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
