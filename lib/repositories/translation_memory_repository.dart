@@ -159,22 +159,29 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
 
     return executeTransaction((txn) async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      var updatedCount = 0;
 
+      // Group ids by the increment delta so we can flush one UPDATE per delta
+      // instead of one per entry. In practice the vast majority of deltas are
+      // +1, so this collapses to a single statement for a TM lookup batch.
+      final byDelta = <int, List<String>>{};
       for (final entry in usageCounts.entries) {
+        (byDelta[entry.value] ??= <String>[]).add(entry.key);
+      }
+
+      var updatedCount = 0;
+      for (final group in byDelta.entries) {
+        final delta = group.key;
+        final ids = group.value;
+        final placeholders = List.filled(ids.length, '?').join(',');
         final rowsAffected = await txn.rawUpdate(
-          '''
-          UPDATE $tableName
-          SET usage_count = usage_count + ?,
-              last_used_at = ?,
-              updated_at = ?
-          WHERE id = ?
-          ''',
-          [entry.value, now, now, entry.key],
+          'UPDATE $tableName '
+          'SET usage_count = usage_count + ?, '
+          '    last_used_at = ?, '
+          '    updated_at = ? '
+          'WHERE id IN ($placeholders)',
+          [delta, now, now, ...ids],
         );
-        if (rowsAffected > 0) {
-          updatedCount++;
-        }
+        updatedCount += rowsAffected;
       }
 
       return updatedCount;
