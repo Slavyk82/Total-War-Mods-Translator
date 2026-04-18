@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart'
+    hide settingsServiceProvider;
+import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'settings_section_header.dart';
 import '../../providers/maintenance_providers.dart';
 
@@ -134,6 +138,17 @@ class MaintenanceSection extends ConsumerWidget {
               onTap: () => _migrateLegacyHashes(ref),
               isPrimary: true,
             ),
+            const SizedBox(height: 12),
+            _buildActionRow(
+              context,
+              ref,
+              icon: FluentIcons.eye_24_regular,
+              title: 'Reset onboarding hints',
+              description:
+                  'Bring back the Workshop onboarding card if you hid it',
+              onTap: () => _resetOnboardingHints(context, ref),
+              isPrimary: false,
+            ),
           ],
         ],
       ),
@@ -251,5 +266,19 @@ class MaintenanceSection extends ConsumerWidget {
 
   void _migrateLegacyHashes(WidgetRef ref) {
     ref.read(maintenanceStateProvider.notifier).migrateLegacyHashes();
+  }
+
+  /// Clears the persisted "hidden" flag for the Workshop onboarding card so
+  /// it renders again on subsequent visits to the Steam publish screen.
+  Future<void> _resetOnboardingHints(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await ref.read(settingsServiceProvider).setBool(
+          SettingsKeys.workshopOnboardingCardHidden,
+          false,
+        );
+    if (!context.mounted) return;
+    FluentToast.success(context, 'Onboarding hints will show again.');
   }
 }
