@@ -17,19 +17,10 @@ void main() {
         ),
       );
 
-  testWidgets('renders crumb and back icon', (t) async {
-    await t.pumpWidget(wrap(DetailScreenToolbar(
-      crumb: 'Work › Projects › Foo',
-      onBack: () {},
-    )));
-    expect(find.text('Work › Projects › Foo'), findsOneWidget);
-    expect(find.byIcon(FluentIcons.arrow_left_24_regular), findsOneWidget);
-  });
-
   testWidgets('back icon tap fires onBack', (t) async {
     var tapped = false;
     await t.pumpWidget(wrap(DetailScreenToolbar(
-      crumb: 'X',
+      crumbs: const [CrumbSegment('X')],
       onBack: () => tapped = true,
     )));
     await t.tap(find.byIcon(FluentIcons.arrow_left_24_regular));
@@ -38,7 +29,7 @@ void main() {
 
   testWidgets('renders trailing widgets', (t) async {
     await t.pumpWidget(wrap(DetailScreenToolbar(
-      crumb: 'X',
+      crumbs: const [CrumbSegment('X')],
       onBack: () {},
       trailing: const [Text('ACT-1'), Text('ACT-2')],
     )));
@@ -48,7 +39,7 @@ void main() {
 
   testWidgets('toolbar height is 48', (t) async {
     await t.pumpWidget(wrap(DetailScreenToolbar(
-      crumb: 'X',
+      crumbs: const [CrumbSegment('X')],
       onBack: () {},
     )));
     final container = t.widget<Container>(find.descendant(
@@ -59,15 +50,19 @@ void main() {
     expect(constraints?.maxHeight ?? (container.decoration != null ? 48.0 : 0.0), 48);
   });
 
-  testWidgets('crumb uses font-mono 12px textDim', (t) async {
+  testWidgets('single-segment crumb renders the only segment as current bold',
+      (t) async {
     await t.pumpWidget(wrap(DetailScreenToolbar(
-      crumb: 'X',
+      crumbs: const [CrumbSegment('Solo')],
       onBack: () {},
     )));
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
-    final text = t.widget<Text>(find.text('X'));
+    final text = t.widget<Text>(find.text('Solo'));
     expect(text.style?.fontSize, 12);
-    expect(text.style?.color, tokens.textDim);
+    expect(text.style?.color, tokens.text);
+    expect(text.style?.fontWeight, FontWeight.w600);
+    // No separators for a single segment.
+    expect(find.text('›'), findsNothing);
   });
 
   group('crumbs API (new)', () {

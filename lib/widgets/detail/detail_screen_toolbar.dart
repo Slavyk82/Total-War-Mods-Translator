@@ -16,26 +16,16 @@ import 'crumb_segment.dart';
 /// middle segment with a non-null `route` is clickable and navigates via
 /// [GoRouter] after passing the [canNavigateNow] guard.
 class DetailScreenToolbar extends ConsumerWidget {
-  final List<CrumbSegment>? crumbs;
-
-  /// Legacy single-string API. Deprecated; kept temporarily so the migration
-  /// of individual feature screens can be staged commit by commit. Will be
-  /// removed in the final task of this plan.
-  final String? crumb;
-
+  final List<CrumbSegment> crumbs;
   final VoidCallback onBack;
   final List<Widget> trailing;
 
   const DetailScreenToolbar({
     super.key,
-    this.crumbs,
-    this.crumb,
+    required this.crumbs,
     required this.onBack,
     this.trailing = const [],
-  }) : assert(
-          (crumbs == null) != (crumb == null),
-          'DetailScreenToolbar requires exactly one of `crumbs` or `crumb`.',
-        );
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,19 +45,7 @@ class DetailScreenToolbar extends ConsumerWidget {
             onTap: onBack,
           ),
           const SizedBox(width: 12),
-          Expanded(
-            child: crumbs != null
-                ? _CrumbTrail(crumbs: crumbs!)
-                : Text(
-                    crumb!,
-                    overflow: TextOverflow.ellipsis,
-                    style: tokens.fontMono.copyWith(
-                      fontSize: 12,
-                      color: tokens.textDim,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-          ),
+          Expanded(child: _CrumbTrail(crumbs: crumbs)),
           if (trailing.isNotEmpty) ...[
             const SizedBox(width: 12),
             ...trailing,
