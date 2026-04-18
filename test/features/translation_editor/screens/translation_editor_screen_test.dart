@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_top_bar.dart';
+import 'package:twmt/features/translation_editor/widgets/editor_action_bar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -29,7 +29,7 @@ void main() {
   group('TranslationEditorScreen', () {
     const testProjectId = 'test-project-123';
     const testLanguageId = 'test-language-456';
-    // Reference desktop size from spec §8.7. The EditorTopBar's middle action
+    // Reference desktop size from spec §8.7. The EditorActionBar's middle action
     // group is wrapped in a horizontal SingleChildScrollView, so this viewport
     // (and even the 1280px min-width) renders without layout overflow.
     const wideScreenSize = Size(1920, 1080);
@@ -100,12 +100,11 @@ void main() {
         expect(screen.languageId, equals(testLanguageId));
       });
 
-      testWidgets('should render EditorTopBar with crumb navigation', (tester) async {
+      testWidgets('should render EditorActionBar', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(EditorTopBar), findsOneWidget);
-        expect(find.text('Projects'), findsOneWidget);
+        expect(find.byType(EditorActionBar), findsOneWidget);
       });
     });
 
@@ -144,11 +143,11 @@ void main() {
     });
 
     group('Toolbar', () {
-      testWidgets('should render EditorTopBar component', (tester) async {
+      testWidgets('should render EditorActionBar component', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(EditorTopBar), findsOneWidget);
+        expect(find.byType(EditorActionBar), findsOneWidget);
       });
     });
 

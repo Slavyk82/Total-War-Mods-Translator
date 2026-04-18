@@ -6,7 +6,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
-import '../widgets/editor_top_bar.dart';
+import '../widgets/editor_action_bar.dart';
 import '../widgets/editor_filter_panel.dart';
 import '../widgets/editor_datagrid.dart';
 import '../widgets/editor_inspector_panel.dart';
@@ -88,7 +88,7 @@ class _TranslationEditorScreenState
               }
             },
           ),
-          EditorTopBar(
+          EditorActionBar(
             projectId: widget.projectId,
             languageId: widget.languageId,
             onTranslationSettings: () => _getActions().handleTranslationSettings(),

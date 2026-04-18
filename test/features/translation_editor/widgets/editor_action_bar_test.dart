@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/settings/providers/llm_custom_rules_providers.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_top_bar.dart';
+import 'package:twmt/features/translation_editor/widgets/editor_action_bar.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -11,7 +11,7 @@ import 'package:twmt/theme/app_theme.dart';
 import '../../../helpers/test_helpers.dart';
 import '../../../helpers/test_bootstrap.dart';
 
-EditorTopBar _bar() => EditorTopBar(
+EditorActionBar _bar() => EditorActionBar(
       projectId: 'p',
       languageId: 'fr',
       onTranslationSettings: () {},
@@ -92,6 +92,18 @@ void main() {
     expect(find.byType(TextField), findsOneWidget);
   });
 
+  testWidgets('does not render a Projects crumb anymore', (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      Scaffold(body: _bar()),
+      theme: AppTheme.atelierDarkTheme,
+      screenSize: desktopTestSize,
+      overrides: _baseOverrides(),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Projects'), findsNothing);
+  });
+
   testWidgets('Selection button is disabled when no selection', (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: _bar()),
@@ -110,45 +122,6 @@ void main() {
     );
     final detector = tester.widget<GestureDetector>(selectionFinder.first);
     expect(detector.onTap, isNull);
-  });
-
-  testWidgets('crumb shows project and language and pops on tap', (tester) async {
-    final observer = _PopCountingObserver();
-    final navKey = GlobalKey<NavigatorState>();
-    await tester.pumpWidget(createThemedTestableWidget(
-      Navigator(
-        key: navKey,
-        observers: [observer],
-        onGenerateRoute: (settings) {
-          if (settings.name == '/second') {
-            return MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => Scaffold(body: _bar()),
-            );
-          }
-          // Root placeholder; '/second' is pushed so the crumb has a route
-          // to pop back to.
-          return MaterialPageRoute<void>(
-            settings: settings,
-            builder: (_) => const Scaffold(body: SizedBox.shrink()),
-          );
-        },
-        initialRoute: '/',
-      ),
-      theme: AppTheme.atelierDarkTheme,
-      screenSize: desktopTestSize,
-      overrides: _baseOverrides(),
-    ));
-    await tester.pumpAndSettle();
-
-    // Push the editor route so the crumb has somewhere to pop back to.
-    navKey.currentState!.pushNamed('/second');
-    await tester.pumpAndSettle();
-
-    expect(find.text('Projects'), findsOneWidget);
-    await tester.tap(find.text('Projects'));
-    await tester.pumpAndSettle();
-    expect(observer.popCount, 1);
   });
 
   testWidgets('does not overflow at min-width 1280', (tester) async {
@@ -175,13 +148,4 @@ void main() {
 class _StubEmptySelection extends EditorSelection {
   @override
   EditorSelectionState build() => const EditorSelectionState();
-}
-
-class _PopCountingObserver extends NavigatorObserver {
-  int popCount = 0;
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    popCount++;
-    super.didPop(route, previousRoute);
-  }
 }

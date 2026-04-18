@@ -9,13 +9,13 @@ import 'editor_toolbar_mod_rule.dart';
 import 'editor_toolbar_model_selector.dart';
 import 'editor_toolbar_skip_tm.dart';
 
-/// Top bar of the translation editor (56px).
+/// Action bar of the translation editor (56px).
 ///
 /// Replaces the previous EditorToolbar + FluentScaffold header.
-/// Contains: clickable crumb, model selector, skip-tm,
+/// Contains: model selector, skip-tm,
 /// Rules chip + 4 action buttons (Selection · Translate all · Validate ▾ ·
 /// Pack ▾) · Settings · search.
-class EditorTopBar extends ConsumerStatefulWidget {
+class EditorActionBar extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
   final VoidCallback onTranslationSettings;
@@ -26,7 +26,7 @@ class EditorTopBar extends ConsumerStatefulWidget {
   final VoidCallback onExport;
   final VoidCallback onImportPack;
 
-  const EditorTopBar({
+  const EditorActionBar({
     super.key,
     required this.projectId,
     required this.languageId,
@@ -40,10 +40,10 @@ class EditorTopBar extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<EditorTopBar> createState() => _EditorTopBarState();
+  ConsumerState<EditorActionBar> createState() => _EditorActionBarState();
 }
 
-class _EditorTopBarState extends ConsumerState<EditorTopBar> {
+class _EditorActionBarState extends ConsumerState<EditorActionBar> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode(debugLabel: 'editor-search');
   Timer? _debounce;
@@ -69,10 +69,6 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final selection = ref.watch(editorSelectionProvider);
-    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
-    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
-    final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
-    final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
     return Container(
       height: 56,
@@ -91,10 +87,6 @@ class _EditorTopBarState extends ConsumerState<EditorTopBar> {
           final compact = constraints.maxWidth < 1600;
           return Row(
             children: [
-              // Fixed-width left side: clickable crumb + separator.
-              _Crumb(projectName: projectName, languageName: languageName),
-              const _Sep(),
-
               // Scrollable middle: model selector, skip-tm, rules chip and
               // the 4 action buttons. Wrapped in a horizontal scroll view so
               // narrow viewports (down to the 1280px min-width) never trigger
@@ -183,57 +175,6 @@ class _Sep extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 14),
         color: context.tokens.border,
       );
-}
-
-class _Crumb extends StatelessWidget {
-  final String projectName;
-  final String languageName;
-  const _Crumb({required this.projectName, required this.languageName});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Row(
-      children: [
-        InkWell(
-          onTap: () => Navigator.of(context).maybePop(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            child: Text(
-              'Projects',
-              style: TextStyle(fontSize: 13.5, color: tokens.textMid),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text('›', style: TextStyle(color: tokens.border)),
-        ),
-        if (projectName.isNotEmpty)
-          Text(
-            projectName,
-            style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayStyle,
-              fontSize: 18,
-              color: tokens.text,
-            ),
-          ),
-        if (languageName.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text('›', style: TextStyle(color: tokens.border)),
-          ),
-          Text(
-            languageName,
-            style: TextStyle(
-              fontSize: 13.5,
-              color: tokens.accent,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }
 
 class _ActionButton extends StatelessWidget {
