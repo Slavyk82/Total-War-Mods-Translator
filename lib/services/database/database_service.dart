@@ -560,6 +560,19 @@ class DatabaseService {
   /// busy-reader workload.
   static Future<void> close() async {
     if (_database != null) {
+      // PRAGMA optimize (SQLite 3.18+) updates planner statistics on
+      // recently-written indexes without the cost of a full ANALYZE. Runs
+      // first so the subsequent TRUNCATE checkpoint can also reclaim any
+      // pages touched by the analyze pass.
+      try {
+        await _database!.execute('PRAGMA optimize');
+      } catch (e, stackTrace) {
+        _logger.warning(
+            'PRAGMA optimize on shutdown failed (non-fatal)', {
+          'error': e.toString(),
+          'stackTrace': stackTrace.toString(),
+        });
+      }
       try {
         await _database!.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
       } catch (e, stackTrace) {
