@@ -21,6 +21,7 @@ import '../widgets/steam_login_dialog.dart';
 import '../widgets/steam_publish_list.dart';
 import '../widgets/steam_publish_toolbar.dart';
 import '../widgets/steamcmd_install_dialog.dart';
+import '../widgets/workshop_onboarding_card.dart';
 import '../widgets/workshop_publish_settings_dialog.dart';
 
 /// Steam Publish screen — filterable list archetype per UI spec §7.1.
@@ -72,6 +73,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const WorkshopOnboardingCard(),
           SteamPublishToolbar(
             totalItems: allItems.length,
             filteredItems: filteredItems.length,

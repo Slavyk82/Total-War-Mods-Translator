@@ -58,6 +58,10 @@ class SettingsKeys {
   static const String workshopTitleTemplate = 'workshop_title_template';
   static const String workshopDescriptionTemplate = 'workshop_description_template';
   static const String workshopDefaultVisibility = 'workshop_default_visibility';
+
+  // Workshop onboarding
+  static const String workshopOnboardingCardHidden =
+      'workshop_onboarding_card_hidden';
 }
 
 /// Provider for settings service
