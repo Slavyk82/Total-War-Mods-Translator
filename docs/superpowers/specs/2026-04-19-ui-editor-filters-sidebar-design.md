@@ -97,7 +97,7 @@ Layout:
 2. **Selection** — full-width secondary, icon `FluentIcons.translate_24_filled`. Disabled when `editorSelectionProvider.selectedCount == 0`. Shortcut `Ctrl+Shift+T`.
 3. 8 px gap.
 4. **Validate selected** — full-width secondary, icon `FluentIcons.checkmark_circle_24_regular`. Shortcut `Ctrl+Shift+V`.
-5. **Rescan all** — `SmallTextButton`, centered or leading-aligned to match the parent button's text alignment. No shortcut.
+5. **Rescan all** — `SmallTextButton`, leading-aligned under Validate selected. No shortcut.
 6. 8 px gap.
 7. **Generate pack** — full-width secondary, icon `FluentIcons.box_24_regular`.
 8. **Import pack** — `SmallTextButton`.
@@ -117,7 +117,7 @@ Changes in `translation_editor_screen.dart`:
 1. Remove the `EditorActionBar` widget from the `Column` children.
 2. Insert a `FilterToolbar` between `DetailScreenToolbar` and the body `Expanded(Row(...))`, configured per §3.
 3. Replace `EditorFilterPanel(...)` with `EditorActionSidebar(...)` in the body `Row`. Props unchanged in spirit (projectId / languageId / all the `onXxx` callbacks that were passed to the old action bar — they now arrive at the sidebar instead).
-4. Shortcuts (`Ctrl+F` / `Ctrl+T` / `Ctrl+Shift+T` / `Ctrl+Shift+V`) stay wired at screen scope (unchanged from the Plan 4 lift). The `Ctrl+F` target focus node is exposed via a `GlobalKey<State>` on the sidebar or via a `FocusNode` owned by the screen and handed down — we pick whichever is cleanest against the existing `translation_editor_actions.dart` plumbing; an implementation detail.
+4. Shortcuts (`Ctrl+F` / `Ctrl+T` / `Ctrl+Shift+T` / `Ctrl+Shift+V`) stay wired at screen scope (unchanged from the Plan 4 lift). The `Ctrl+F` target `FocusNode` is owned by the screen state and handed to `EditorActionSidebar` via a constructor prop (`searchFocusNode`). The sidebar's search field binds to this node. This keeps the Actions/Shortcuts map unchanged at screen scope and avoids a `GlobalKey`.
 
 All the `TranslationEditorActions` handlers (`handleTranslateAll`, `handleTranslateSelected`, `handleValidate`, `handleRescanValidation`, `handleExport`, `handleImportPack`, `handleTranslationSettings`) stay unchanged — only the widget that invokes them moves.
 
