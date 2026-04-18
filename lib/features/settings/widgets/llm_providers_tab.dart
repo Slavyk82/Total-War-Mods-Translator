@@ -61,57 +61,16 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
     super.dispose();
   }
 
-  Future<void> _saveAnthropicApiKey() async {
+  Future<void> _saveApiKey({
+    required String providerLabel,
+    required TextEditingController controller,
+    required Future<void> Function(String) update,
+  }) async {
     try {
-      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      await notifier.updateAnthropicApiKey(_anthropicKeyController.text);
+      await update(controller.text);
     } catch (e) {
       if (mounted) {
-        FluentToast.error(context, 'Error saving Anthropic API key: $e');
-      }
-    }
-  }
-
-  Future<void> _saveOpenaiApiKey() async {
-    try {
-      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      await notifier.updateOpenaiApiKey(_openaiKeyController.text);
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Error saving OpenAI API key: $e');
-      }
-    }
-  }
-
-  Future<void> _saveDeeplApiKey() async {
-    try {
-      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      await notifier.updateDeeplApiKey(_deeplKeyController.text);
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Error saving DeepL API key: $e');
-      }
-    }
-  }
-
-  Future<void> _saveDeepseekApiKey() async {
-    try {
-      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      await notifier.updateDeepseekApiKey(_deepseekKeyController.text);
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Error saving DeepSeek API key: $e');
-      }
-    }
-  }
-
-  Future<void> _saveGeminiApiKey() async {
-    try {
-      final notifier = ref.read(llmProviderSettingsProvider.notifier);
-      await notifier.updateGeminiApiKey(_geminiKeyController.text);
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Error saving Gemini API key: $e');
+        FluentToast.error(context, 'Error saving $providerLabel API key: $e');
       }
     }
   }
@@ -155,7 +114,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerCode: 'anthropic',
               providerName: 'Anthropic (Claude)',
               apiKeyController: _anthropicKeyController,
-              onSaveApiKey: _saveAnthropicApiKey,
+              onSaveApiKey: () => _saveApiKey(
+                providerLabel: 'Anthropic',
+                controller: _anthropicKeyController,
+                update: ref.read(llmProviderSettingsProvider.notifier).updateAnthropicApiKey,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -164,7 +127,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerCode: 'openai',
               providerName: 'OpenAI',
               apiKeyController: _openaiKeyController,
-              onSaveApiKey: _saveOpenaiApiKey,
+              onSaveApiKey: () => _saveApiKey(
+                providerLabel: 'OpenAI',
+                controller: _openaiKeyController,
+                update: ref.read(llmProviderSettingsProvider.notifier).updateOpenaiApiKey,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -173,7 +140,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerCode: 'deepl',
               providerName: 'DeepL',
               apiKeyController: _deeplKeyController,
-              onSaveApiKey: _saveDeeplApiKey,
+              onSaveApiKey: () => _saveApiKey(
+                providerLabel: 'DeepL',
+                controller: _deeplKeyController,
+                update: ref.read(llmProviderSettingsProvider.notifier).updateDeeplApiKey,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -182,7 +153,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerCode: 'deepseek',
               providerName: 'DeepSeek',
               apiKeyController: _deepseekKeyController,
-              onSaveApiKey: _saveDeepseekApiKey,
+              onSaveApiKey: () => _saveApiKey(
+                providerLabel: 'DeepSeek',
+                controller: _deepseekKeyController,
+                update: ref.read(llmProviderSettingsProvider.notifier).updateDeepseekApiKey,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -191,7 +166,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               providerCode: 'gemini',
               providerName: 'Google Gemini',
               apiKeyController: _geminiKeyController,
-              onSaveApiKey: _saveGeminiApiKey,
+              onSaveApiKey: () => _saveApiKey(
+                providerLabel: 'Gemini',
+                controller: _geminiKeyController,
+                update: ref.read(llmProviderSettingsProvider.notifier).updateGeminiApiKey,
+              ),
             ),
             const SizedBox(height: 24),
 
