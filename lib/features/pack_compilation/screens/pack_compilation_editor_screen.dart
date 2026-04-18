@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/screens/progress/progress_widgets.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -165,9 +167,15 @@ class _PackCompilationEditorScreenState
 
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
-        crumb: state.isEditing
-            ? 'Publishing > Pack compilation > ${state.name.isEmpty ? "Untitled" : state.name}'
-            : 'Publishing > Pack compilation > New',
+        crumbs: [
+          const CrumbSegment('Publishing'),
+          const CrumbSegment('Pack compilation', route: AppRoutes.packCompilation),
+          CrumbSegment(
+            state.isEditing
+                ? (state.name.isEmpty ? 'Untitled' : state.name)
+                : 'New',
+          ),
+        ],
         onBack: _handleBack,
       ),
       formPanel: StickyFormPanel(
