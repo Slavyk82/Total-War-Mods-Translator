@@ -30,8 +30,6 @@ class EditorDataGrid extends ConsumerStatefulWidget {
   final Function(String unitId, String newText) onCellEdit;
   final Function(String unitId)? onRowDoubleTap;
   final Future<void> Function()? onForceRetranslate;
-  /// Callback when a row is selected (single click) - provides full row details
-  final Function(TranslationRow row)? onRowSelected;
 
   const EditorDataGrid({
     super.key,
@@ -40,7 +38,6 @@ class EditorDataGrid extends ConsumerStatefulWidget {
     required this.onCellEdit,
     this.onRowDoubleTap,
     this.onForceRetranslate,
-    this.onRowSelected,
   });
 
   @override
@@ -332,14 +329,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   void _handleCellTap(DataGridCellTapDetails details) {
     _selectionHandler.handleCellTap(details);
-
-    // Notify parent of selected row for bottom panel
-    if (widget.onRowSelected != null) {
-      final rowIndex = details.rowColumnIndex.rowIndex - 1; // Skip header
-      if (rowIndex >= 0 && rowIndex < _dataSource.translationRows.length) {
-        widget.onRowSelected!(_dataSource.translationRows[rowIndex]);
-      }
-    }
   }
 
   void _handleCellSecondaryTap(DataGridCellTapDetails details) {
