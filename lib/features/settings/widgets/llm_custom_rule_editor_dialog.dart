@@ -78,9 +78,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
-                      fontStyle: tokens.fontDisplayItalic
-                          ? FontStyle.italic
-                          : FontStyle.normal,
+                      fontStyle: tokens.fontDisplayStyle,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

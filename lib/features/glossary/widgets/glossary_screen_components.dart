@@ -27,9 +27,7 @@ class GlossaryEmptyState extends StatelessWidget {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 18,
                 color: tokens.text,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),

@@ -116,9 +116,7 @@ class _HelpHeader extends StatelessWidget {
             style: tokens.fontDisplay.copyWith(
               fontSize: 24,
               color: tokens.text,
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -162,9 +160,7 @@ class _HelpError extends StatelessWidget {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),

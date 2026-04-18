@@ -47,9 +47,7 @@ class TmStatisticsPanel extends ConsumerWidget {
                     fontSize: 14,
                     color: tokens.text,
                     fontWeight: FontWeight.w600,
-                    fontStyle: tokens.fontDisplayItalic
-                        ? FontStyle.italic
-                        : FontStyle.normal,
+                    fontStyle: tokens.fontDisplayStyle,
                   ),
                 ),
                 const Spacer(),
@@ -195,9 +193,7 @@ class TmStatisticsPanel extends ConsumerWidget {
                     fontSize: 22,
                     color: tokens.accent,
                     fontWeight: FontWeight.w700,
-                    fontStyle: tokens.fontDisplayItalic
-                        ? FontStyle.italic
-                        : FontStyle.normal,
+                    fontStyle: tokens.fontDisplayStyle,
                   ),
                 ),
                 Text(

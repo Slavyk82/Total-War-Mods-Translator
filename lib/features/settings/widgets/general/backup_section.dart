@@ -333,9 +333,7 @@ class BackupSection extends ConsumerWidget {
                   fontSize: 20,
                   color: tokens.text,
                   fontWeight: FontWeight.w600,
-                  fontStyle: tokens.fontDisplayItalic
-                      ? FontStyle.italic
-                      : FontStyle.normal,
+                  fontStyle: tokens.fontDisplayStyle,
                 ),
               ),
               const SizedBox(height: 8),

@@ -180,9 +180,7 @@ class _MultiSelectHeader extends StatelessWidget {
           Text(
             '$count unités sélectionnées',
             style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
               fontSize: 16,
               color: tokens.accent,
             ),
@@ -293,9 +291,7 @@ class _Header extends StatelessWidget {
           Text(
             'Unité',
             style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
               fontSize: 14,
               color: tokens.accent,
             ),
