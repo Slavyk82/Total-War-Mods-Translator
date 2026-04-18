@@ -189,6 +189,8 @@ class _Thumbnail extends StatelessWidget {
           File(url),
           width: 40,
           height: 40,
+          cacheWidth: 80,
+          cacheHeight: 80,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => fallback(),
         );

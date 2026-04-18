@@ -434,6 +434,8 @@ class CompilationModImage extends StatelessWidget {
           File(imageUrl!),
           width: 75,
           height: 75,
+          cacheWidth: 150,
+          cacheHeight: 150,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => Container(
             width: 75,

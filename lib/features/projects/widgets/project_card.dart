@@ -546,6 +546,8 @@ class _ProjectCardState extends State<ProjectCard> {
         fit: BoxFit.cover,
         width: 75,
         height: 75,
+        cacheWidth: 150,
+        cacheHeight: 150,
         errorBuilder: (context, error, stackTrace) => fallbackIcon(),
       );
     } else if (imagePath != null && imagePath.isNotEmpty) {
@@ -554,6 +556,8 @@ class _ProjectCardState extends State<ProjectCard> {
         fit: BoxFit.cover,
         width: 75,
         height: 75,
+        cacheWidth: 150,
+        cacheHeight: 150,
         errorBuilder: (context, error, stackTrace) => fallbackIcon(),
       );
     } else {

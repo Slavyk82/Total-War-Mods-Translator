@@ -92,7 +92,13 @@ class _BrandHeader extends ConsumerWidget {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          Image.asset('assets/twmt_icon.png', width: 32, height: 32),
+          Image.asset(
+            'assets/twmt_icon.png',
+            width: 32,
+            height: 32,
+            cacheWidth: 64,
+            cacheHeight: 64,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

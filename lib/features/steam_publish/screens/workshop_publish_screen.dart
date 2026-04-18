@@ -714,6 +714,8 @@ class _PreviewImage extends StatelessWidget {
       child: Image.file(
         File(path!),
         fit: BoxFit.cover,
+        cacheWidth: 240,
+        cacheHeight: 240,
         errorBuilder: (_, _, _) => Icon(
           FluentIcons.image_24_regular,
           size: 32,

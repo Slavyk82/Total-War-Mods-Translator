@@ -967,6 +967,8 @@ class _CoverThumbnail extends StatelessWidget {
         fit: BoxFit.cover,
         width: 40,
         height: 40,
+        cacheWidth: 80,
+        cacheHeight: 80,
         errorBuilder: (_, _, _) => fallback(),
       );
     } else if (imageUrl != null && imageUrl!.isNotEmpty) {
@@ -975,6 +977,8 @@ class _CoverThumbnail extends StatelessWidget {
         fit: BoxFit.cover,
         width: 40,
         height: 40,
+        cacheWidth: 80,
+        cacheHeight: 80,
         errorBuilder: (_, _, _) => fallback(),
       );
     } else {
