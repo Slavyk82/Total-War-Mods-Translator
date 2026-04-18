@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
@@ -82,7 +84,15 @@ class _TranslationEditorScreenState
       child: Column(
         children: [
           DetailScreenToolbar(
-            crumb: 'Work › Projects › $projectName › $languageName',
+            crumbs: [
+              const CrumbSegment('Work'),
+              const CrumbSegment('Projects', route: AppRoutes.projects),
+              CrumbSegment(
+                projectName,
+                route: AppRoutes.projectDetail(widget.projectId),
+              ),
+              CrumbSegment(languageName),
+            ],
             onBack: () {
               if (context.canPop()) {
                 context.pop();

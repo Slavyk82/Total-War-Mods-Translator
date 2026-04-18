@@ -258,11 +258,12 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(DetailScreenToolbar), findsOneWidget);
-        // Crumb format: "Work › Projects › <project> › <language>".
-        expect(
-          find.textContaining('Work › Projects › Test Project › Spanish'),
-          findsOneWidget,
-        );
+        expect(find.text('Work'), findsOneWidget);
+        expect(find.text('Projects'), findsOneWidget);
+        expect(find.text('Test Project'), findsOneWidget);
+        expect(find.text('Spanish'), findsOneWidget);
+        // Three separators between four segments.
+        expect(find.text('›'), findsNWidgets(3));
         expect(find.byTooltip('Back'), findsOneWidget);
       });
     });
