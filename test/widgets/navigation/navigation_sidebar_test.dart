@@ -99,12 +99,12 @@ void main() {
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
   });
 
-  testWidgets('renders all five group headers in order', (tester) async {
+  testWidgets('renders all four group headers in order', (tester) async {
     await tester.pumpWidget(_wrap('/work/home'));
     await tester.pumpAndSettle();
     _drainOverflowExceptions(tester);
 
-    for (final label in ['Sources', 'Work', 'Resources', 'Publishing', 'System']) {
+    for (final label in ['Workflow', 'Work', 'Resources', 'System']) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
   });
@@ -115,9 +115,9 @@ void main() {
     _drainOverflowExceptions(tester);
 
     for (final label in [
-      'Mods', 'Game Files', 'Home', 'Projects',
-      'Glossary', 'Translation Memory',
-      'Pack Compilation', 'Steam Workshop',
+      'Detect', 'Translate', 'Compile', 'Publish',
+      'Home',
+      'Glossary', 'Translation Memory', 'Game Files',
       'Settings', 'Help',
     ]) {
       expect(find.text(label), findsWidgets, reason: label);
@@ -153,7 +153,7 @@ void main() {
         matching: find.byType(Text),
       ),
     );
-    expect(text.data, 'Projects');
+    expect(text.data, 'Translate');
   });
 
   testWidgets('tapping a nav item fires onNavigate with target route',

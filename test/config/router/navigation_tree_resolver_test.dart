@@ -7,16 +7,16 @@ void main() {
   group('NavigationTreeResolver.findActive', () {
     test('exact top-level match resolves to its item and group', () {
       final result = NavigationTreeResolver.findActive('/sources/mods');
-      expect(result.group?.label, 'Sources');
-      expect(result.item?.label, 'Mods');
+      expect(result.group?.label, 'Workflow');
+      expect(result.item?.label, 'Detect');
     });
 
     test('sub-route resolves to parent item (longest-prefix match)', () {
       final result = NavigationTreeResolver.findActive(
         '/work/projects/abc-123/editor/fr-FR',
       );
-      expect(result.group?.label, 'Work');
-      expect(result.item?.label, 'Projects');
+      expect(result.group?.label, 'Workflow');
+      expect(result.item?.label, 'Translate');
     });
 
     test('unknown path returns null group and item', () {
@@ -81,10 +81,9 @@ void main() {
 
   group('NavigationTreeResolver.defaultRouteForGroupSegment', () {
     test('returns first item route for each group', () {
-      expect(NavigationTreeResolver.defaultRouteForGroupSegment('sources'), AppRoutes.mods);
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('workflow'), AppRoutes.mods);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('work'), AppRoutes.home);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('resources'), AppRoutes.glossary);
-      expect(NavigationTreeResolver.defaultRouteForGroupSegment('publishing'), AppRoutes.packCompilation);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('system'), AppRoutes.settings);
     });
     test('returns null for non-group segments', () {

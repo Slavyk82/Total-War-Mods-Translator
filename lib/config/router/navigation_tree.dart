@@ -36,18 +36,30 @@ class NavItem {
 /// Single source of truth for the sidebar structure and breadcrumb label
 /// resolution. Mutating this list is a user-facing change — update spec first.
 const List<NavGroup> navigationTree = [
-  NavGroup('Sources', [
+  NavGroup('Workflow', [
     NavItem(
-      label: 'Mods',
+      label: 'Detect',
       route: AppRoutes.mods,
       icon: FluentIcons.cube_24_regular,
       selectedIcon: FluentIcons.cube_24_filled,
     ),
     NavItem(
-      label: 'Game Files',
-      route: AppRoutes.gameFiles,
-      icon: FluentIcons.globe_24_regular,
-      selectedIcon: FluentIcons.globe_24_filled,
+      label: 'Translate',
+      route: AppRoutes.projects,
+      icon: FluentIcons.folder_24_regular,
+      selectedIcon: FluentIcons.folder_24_filled,
+    ),
+    NavItem(
+      label: 'Compile',
+      route: AppRoutes.packCompilation,
+      icon: FluentIcons.box_multiple_24_regular,
+      selectedIcon: FluentIcons.box_multiple_24_filled,
+    ),
+    NavItem(
+      label: 'Publish',
+      route: AppRoutes.steamPublish,
+      icon: FluentIcons.cloud_arrow_up_24_regular,
+      selectedIcon: FluentIcons.cloud_arrow_up_24_filled,
     ),
   ]),
   NavGroup('Work', [
@@ -56,12 +68,6 @@ const List<NavGroup> navigationTree = [
       route: AppRoutes.home,
       icon: FluentIcons.home_24_regular,
       selectedIcon: FluentIcons.home_24_filled,
-    ),
-    NavItem(
-      label: 'Projects',
-      route: AppRoutes.projects,
-      icon: FluentIcons.folder_24_regular,
-      selectedIcon: FluentIcons.folder_24_filled,
     ),
   ]),
   NavGroup('Resources', [
@@ -77,19 +83,11 @@ const List<NavGroup> navigationTree = [
       icon: FluentIcons.database_24_regular,
       selectedIcon: FluentIcons.database_24_filled,
     ),
-  ]),
-  NavGroup('Publishing', [
     NavItem(
-      label: 'Pack Compilation',
-      route: AppRoutes.packCompilation,
-      icon: FluentIcons.box_multiple_24_regular,
-      selectedIcon: FluentIcons.box_multiple_24_filled,
-    ),
-    NavItem(
-      label: 'Steam Workshop',
-      route: AppRoutes.steamPublish,
-      icon: FluentIcons.cloud_arrow_up_24_regular,
-      selectedIcon: FluentIcons.cloud_arrow_up_24_filled,
+      label: 'Game Files',
+      route: AppRoutes.gameFiles,
+      icon: FluentIcons.globe_24_regular,
+      selectedIcon: FluentIcons.globe_24_filled,
     ),
   ]),
   NavGroup('System', [
