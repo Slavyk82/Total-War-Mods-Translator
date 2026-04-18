@@ -12,6 +12,7 @@ import 'package:twmt/features/projects/widgets/language_progress_row.dart';
 import 'package:twmt/services/game/game_localization_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/utils/string_initials.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_cover.dart';
 import 'package:twmt/widgets/detail/detail_meta_banner.dart';
 import 'package:twmt/widgets/detail/detail_overview_layout.dart';
@@ -226,8 +227,11 @@ class _Content extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DetailScreenToolbar(
-          crumb:
-              'Work › Projects › ${p.name}',
+          crumbs: [
+            const CrumbSegment('Work'),
+            const CrumbSegment('Projects', route: AppRoutes.projects),
+            CrumbSegment(p.name),
+          ],
           onBack: onBack,
         ),
         DetailMetaBanner(
