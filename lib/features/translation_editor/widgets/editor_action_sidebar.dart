@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/translation_editor/providers/editor_filter_notifier.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
 
 import 'editor_toolbar_mod_rule.dart';
@@ -99,6 +101,56 @@ class _EditorActionSidebarState extends ConsumerState<EditorActionSidebar> {
               compact: true,
               projectId: widget.projectId,
             ),
+            const SizedBox(height: 20),
+            _SectionHeader(label: 'Actions', tokens: tokens),
+            const SizedBox(height: 10),
+            _SidebarActionButton(
+              icon: FluentIcons.translate_24_regular,
+              label: 'Translate all',
+              primary: true,
+              onTap: widget.onTranslateAll,
+            ),
+            const SizedBox(height: 8),
+            Consumer(
+              builder: (context, ref, _) {
+                final selection = ref.watch(editorSelectionProvider);
+                return _SidebarActionButton(
+                  icon: FluentIcons.translate_24_filled,
+                  label: 'Selection',
+                  onTap: selection.hasSelection
+                      ? widget.onTranslateSelected
+                      : null,
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _SidebarActionButton(
+              icon: FluentIcons.checkmark_circle_24_regular,
+              label: 'Validate selected',
+              onTap: widget.onValidate,
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SmallTextButton(
+                label: 'Rescan all',
+                onTap: widget.onRescanValidation,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _SidebarActionButton(
+              icon: FluentIcons.box_24_regular,
+              label: 'Generate pack',
+              onTap: widget.onExport,
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SmallTextButton(
+                label: 'Import pack',
+                onTap: widget.onImportPack,
+              ),
+            ),
           ],
         ),
       ),
@@ -139,6 +191,69 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SidebarActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  final bool primary;
+
+  const _SidebarActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final enabled = onTap != null;
+    final bg = primary
+        ? tokens.accent
+        : (enabled ? tokens.panel2 : Colors.transparent);
+    final fg = primary
+        ? tokens.accentFg
+        : (enabled ? tokens.text : tokens.textFaint);
+    final borderColor = primary
+        ? tokens.accent
+        : tokens.border;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: fg,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

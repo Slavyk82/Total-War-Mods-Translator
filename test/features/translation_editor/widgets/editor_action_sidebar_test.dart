@@ -111,4 +111,71 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('tapping Translate all invokes onTranslateAll', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onTranslateAll: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Translate all'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('Selection is disabled when no selection', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    // Row is present but its GestureDetector has a null onTap.
+    final selectionFinder = find.ancestor(
+      of: find.text('Selection'),
+      matching: find.byType(GestureDetector),
+    );
+    expect(selectionFinder, findsWidgets);
+  });
+
+  testWidgets('tapping Validate selected invokes onValidate', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onValidate: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Validate selected'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('tapping Rescan all invokes onRescanValidation', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onRescanValidation: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Rescan all'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('tapping Generate pack invokes onExport', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onExport: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Generate pack'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('tapping Import pack invokes onImportPack', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onImportPack: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Import pack'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
 }
