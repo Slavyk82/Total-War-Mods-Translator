@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import '../providers/editor_providers.dart';
@@ -50,6 +52,31 @@ class _GridLayoutConstants {
 
   // Text style.
   static const double cellFontSize = 13;
+}
+
+/// Upper bound on the row-height cache. Past this count the least-recently
+/// inserted entry is evicted. 4096 entries x ~32 bytes each ~= 128 KB - a
+/// rounding error on any Flutter desktop build.
+const int rowHeightCacheMaxEntries = 4096;
+
+/// Memoised `(text, width) -> height` map for `calculateTextHeight`.
+///
+/// Visible for testing so the cache can be cleared between tests. Not thread
+/// safe - the grid row-height callback runs on the platform thread only.
+final LinkedHashMap<_HeightKey, double> rowHeightCache =
+    LinkedHashMap<_HeightKey, double>();
+
+class _HeightKey {
+  final String text;
+  final double width;
+  const _HeightKey(this.text, this.width);
+
+  @override
+  bool operator ==(Object other) =>
+      other is _HeightKey && other.text == text && other.width == width;
+
+  @override
+  int get hashCode => Object.hash(text, width);
 }
 
 /// Calculate dynamic row height based on text content.
@@ -106,6 +133,14 @@ double calculateRowHeight(
 double calculateTextHeight(String text, double maxWidth) {
   if (text.isEmpty) return _GridLayoutConstants.emptyTextHeight;
 
+  final key = _HeightKey(text, maxWidth);
+  final cached = rowHeightCache.remove(key);
+  if (cached != null) {
+    // Reinsert at the tail to mark this entry as recently used.
+    rowHeightCache[key] = cached;
+    return cached;
+  }
+
   // Escape special characters to match what's actually displayed.
   final escapedText = text
       .replaceAll('\r\n', '\\r\\n')
@@ -124,13 +159,19 @@ double calculateTextHeight(String text, double maxWidth) {
     textDirection: TextDirection.ltr,
     maxLines: null,
   );
-
-  // Layout with available width minus horizontal padding.
   textPainter.layout(
     maxWidth: maxWidth - _GridLayoutConstants.textPainterHorizontalPadding,
   );
 
-  // Apply safety margin to measured height.
-  return textPainter.height *
+  // Read the height before disposing - TextPainter.dispose releases the
+  // underlying paragraph and accessing properties afterwards is undefined.
+  final height = textPainter.height *
       _GridLayoutConstants.textHeightSafetyMultiplier;
+  textPainter.dispose();
+
+  rowHeightCache[key] = height;
+  if (rowHeightCache.length > rowHeightCacheMaxEntries) {
+    rowHeightCache.remove(rowHeightCache.keys.first);
+  }
+  return height;
 }
