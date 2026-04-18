@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -23,6 +25,12 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
   late final TextEditingController _deepseekKeyController;
   late final TextEditingController _geminiKeyController;
   bool _initialLoadDone = false;
+
+  // Debounce bursts of Slider `onChanged` events so a single drag collapses
+  // to one provider write. `_pendingRateLimit` drives the Slider's `value`
+  // while the debounce is in flight so the thumb doesn't snap back.
+  Timer? _rateLimitDebounce;
+  int? _pendingRateLimit;
 
   @override
   void initState() {
@@ -53,6 +61,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
 
   @override
   void dispose() {
+    _rateLimitDebounce?.cancel();
     _anthropicKeyController.dispose();
     _openaiKeyController.dispose();
     _deeplKeyController.dispose();
@@ -188,7 +197,11 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
 
   Widget _buildAdvancedSettings(Map<String, String> settings) {
     final tokens = context.tokens;
-    final rateLimit = int.tryParse(settings[SettingsKeys.rateLimit] ?? '500') ?? 500;
+    final savedRateLimit =
+        int.tryParse(settings[SettingsKeys.rateLimit] ?? '500') ?? 500;
+    // While a debounce is in flight, follow the pending value so the thumb
+    // and the numeric label track the drag without waiting for the write.
+    final rateLimit = _pendingRateLimit ?? savedRateLimit;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -254,15 +267,33 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                     max: 500,
                     divisions: 49,
                     label: rateLimit.toString(),
-                    onChanged: (value) async {
-                      try {
-                        final notifier = ref.read(llmProviderSettingsProvider.notifier);
-                        await notifier.updateRateLimit(value.toInt());
-                      } catch (e) {
-                        if (mounted) {
-                          FluentToast.error(context, 'Error saving rate limit: $e');
-                        }
-                      }
+                    onChanged: (value) {
+                      final next = value.toInt();
+                      // Optimistic UI: reflect the new value immediately so
+                      // the thumb doesn't snap back while the write is
+                      // debounced. See `_pendingRateLimit` above.
+                      setState(() => _pendingRateLimit = next);
+                      _rateLimitDebounce?.cancel();
+                      _rateLimitDebounce = Timer(
+                        const Duration(milliseconds: 300),
+                        () async {
+                          try {
+                            final notifier = ref
+                                .read(llmProviderSettingsProvider.notifier);
+                            await notifier.updateRateLimit(next);
+                            if (mounted) {
+                              setState(() => _pendingRateLimit = null);
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              FluentToast.error(
+                                context,
+                                'Error saving rate limit: $e',
+                              );
+                            }
+                          }
+                        },
+                      );
                     },
                   ),
                 ),
