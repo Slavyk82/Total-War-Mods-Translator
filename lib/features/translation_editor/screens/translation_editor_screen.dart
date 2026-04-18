@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_top_bar.dart';
@@ -66,10 +69,25 @@ class _TranslationEditorScreenState
 
   @override
   Widget build(BuildContext context) {
+    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
+    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
+    final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
+    final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
+
     return Material(
       color: context.tokens.bg,
       child: Column(
         children: [
+          DetailScreenToolbar(
+            crumb: 'Work › Projects › $projectName › $languageName',
+            onBack: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                Navigator.of(context).maybePop();
+              }
+            },
+          ),
           EditorTopBar(
             projectId: widget.projectId,
             languageId: widget.languageId,
@@ -82,22 +100,14 @@ class _TranslationEditorScreenState
             onImportPack: () => _getActions().handleImportPack(),
           ),
 
-          // Main content area
           Expanded(
             child: Row(
-              // Stretch all three columns to the full Row height so the
-              // filter panel (sized to content via SingleChildScrollView)
-              // does not get vertically centered inside the available
-              // space and instead aligns its content to the top edge.
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Left filter panel
                 EditorFilterPanel(
                   projectId: widget.projectId,
                   languageId: widget.languageId,
                 ),
-
-                // Main DataGrid area
                 Expanded(
                   child: EditorDataGrid(
                     projectId: widget.projectId,
@@ -108,9 +118,6 @@ class _TranslationEditorScreenState
                       _getActions().handleForceRetranslateSelected(),
                   ),
                 ),
-
-                // Right inspector panel (320px) — selection details +
-                // Source/Target editor + TM suggestions + Validation.
                 EditorInspectorPanel(
                   projectId: widget.projectId,
                   languageId: widget.languageId,
@@ -123,7 +130,6 @@ class _TranslationEditorScreenState
             ),
           ),
 
-          // Bottom statusbar with live editor metrics.
           EditorStatusBar(
             projectId: widget.projectId,
             languageId: widget.languageId,

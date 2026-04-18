@@ -8,6 +8,7 @@ import 'package:twmt/features/translation_editor/widgets/editor_top_bar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import '../../../helpers/test_helpers.dart';
 
 void main() {
@@ -252,11 +253,18 @@ void main() {
     });
 
     group('Navigation', () {
-      testWidgets('should expose Projects crumb for back navigation', (tester) async {
+      testWidgets('renders DetailScreenToolbar with crumb and back button',
+          (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.text('Projects'), findsOneWidget);
+        expect(find.byType(DetailScreenToolbar), findsOneWidget);
+        // Crumb format: "Work › Projects › <project> › <language>".
+        expect(
+          find.textContaining('Work › Projects › Test Project › Spanish'),
+          findsOneWidget,
+        );
+        expect(find.byTooltip('Back'), findsOneWidget);
       });
     });
   });
