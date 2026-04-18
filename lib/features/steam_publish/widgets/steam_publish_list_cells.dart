@@ -120,18 +120,20 @@ class SteamCoverCell extends StatelessWidget {
     }
 
     if (imagePath != null) {
-      try {
-        final bytes = File(imagePath).readAsBytesSync();
-        inner = Image.memory(
-          bytes,
-          fit: BoxFit.cover,
-          width: 40,
-          height: 40,
-          errorBuilder: (_, _, _) => fallback(),
-        );
-      } catch (_) {
-        inner = fallback();
-      }
+      // `Image.file` decodes off the main isolate and hands bytes to the engine
+      // cache. `cacheWidth`/`cacheHeight` cap the decoded bitmap to the render
+      // size (2× for HiDPI), cutting ARGB memory from hundreds of KB down to
+      // 16 KB per cell. `filterQuality.medium` keeps the cover crisp.
+      inner = Image.file(
+        File(imagePath),
+        fit: BoxFit.cover,
+        width: 40,
+        height: 40,
+        cacheWidth: 80,
+        cacheHeight: 80,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, _, _) => fallback(),
+      );
     }
 
     return Center(
