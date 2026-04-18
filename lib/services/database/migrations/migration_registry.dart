@@ -22,6 +22,7 @@ import 'migration_published_at.dart';
 import 'migration_compilation_publish_fields.dart';
 import 'migration_validation_issues_json.dart';
 import 'migration_activity_events.dart';
+import 'migration_projects_filter_indexes.dart';
 
 /// Registry of all database migrations.
 ///
@@ -56,6 +57,7 @@ class MigrationRegistry {
       CompilationPublishFieldsMigration(),
       ValidationIssuesJsonMigration(),
       ActivityEventsMigration(),
+      ProjectsFilterIndexesMigration(), // Priority 120 — must run after column-adding migrations
     ];
 
     // Sort by priority (lower numbers first)
