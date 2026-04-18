@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 
@@ -65,10 +66,12 @@ class LoggingService implements ILoggingService {
       _initialized = true;
       info('Logging service initialized', {'logFile': _logFile!.path});
     } catch (e, stackTrace) {
-      // ignore: avoid_print
-      print('Failed to initialize logging service: $e');
-      // ignore: avoid_print
-      print(stackTrace);
+      if (kDebugMode) {
+        // ignore: avoid_print
+        print('Failed to initialize logging service: $e');
+        // ignore: avoid_print
+        print(stackTrace);
+      }
     }
   }
 
@@ -126,9 +129,13 @@ class LoggingService implements ILoggingService {
 
     final logLine = entry.format();
 
-    // Always log to console
-    // ignore: avoid_print
-    print(logLine);
+    // Mirror to the IDE/dev console in debug builds only — release users
+    // don't have a console attached and `print` hits Windows stdio every
+    // call, which shows up under logging-heavy batch translations.
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print(logLine);
+    }
 
     // Add to recent logs buffer
     _recentLogs.add(entry);
@@ -150,8 +157,10 @@ class LoggingService implements ILoggingService {
           flush: true,
         );
       } catch (e) {
-        // ignore: avoid_print
-        print('Failed to write to log file: $e');
+        if (kDebugMode) {
+          // ignore: avoid_print
+          print('Failed to write to log file: $e');
+        }
       }
     }
   }
