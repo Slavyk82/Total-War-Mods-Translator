@@ -312,9 +312,7 @@ class _DismissButtonState extends State<_DismissButton> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: _isHovered
-                ? tokens.border.withValues(alpha: 0.5)
-                : Colors.transparent,
+            color: _isHovered ? tokens.panel2 : Colors.transparent,
             borderRadius: BorderRadius.circular(tokens.radiusXs),
           ),
           child: Icon(
