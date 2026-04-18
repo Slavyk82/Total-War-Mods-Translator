@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/features/translation_editor/providers/editor_filter_notifier.dart';
+import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
+import 'package:twmt/theme/app_theme.dart';
+
+import '../../../helpers/test_bootstrap.dart';
+import '../../../helpers/test_helpers.dart';
+
+void main() {
+  setUp(() async {
+    await TestBootstrap.registerFakes();
+  });
+
+  Widget build({
+    FocusNode? focusNode,
+    VoidCallback? onTranslationSettings,
+    VoidCallback? onTranslateAll,
+    VoidCallback? onTranslateSelected,
+    VoidCallback? onValidate,
+    VoidCallback? onRescanValidation,
+    VoidCallback? onExport,
+    VoidCallback? onImportPack,
+  }) {
+    return createThemedTestableWidget(
+      Scaffold(
+        body: EditorActionSidebar(
+          projectId: 'p',
+          languageId: 'fr',
+          searchFocusNode: focusNode ?? FocusNode(),
+          onTranslationSettings: onTranslationSettings ?? () {},
+          onTranslateAll: onTranslateAll ?? () {},
+          onTranslateSelected: onTranslateSelected ?? () {},
+          onValidate: onValidate ?? () {},
+          onRescanValidation: onRescanValidation ?? () {},
+          onExport: onExport ?? () {},
+          onImportPack: onImportPack ?? () {},
+        ),
+      ),
+      theme: AppTheme.atelierDarkTheme,
+    );
+  }
+
+  testWidgets('renders §SEARCH header and search field', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+  });
+
+  testWidgets('typing in search field debounces to editorFilterProvider',
+      (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    // Hold a live subscription: `editorFilterProvider` is auto-dispose,
+    // so without it each `container.read` rebuilds fresh initial state
+    // and forgets the widget's mutation.
+    final sub = container.listen(editorFilterProvider, (_, _) {});
+    addTearDown(sub.close);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.atelierDarkTheme,
+        home: Scaffold(
+          body: EditorActionSidebar(
+            projectId: 'p',
+            languageId: 'fr',
+            searchFocusNode: FocusNode(),
+            onTranslationSettings: () {},
+            onTranslateAll: () {},
+            onTranslateSelected: () {},
+            onValidate: () {},
+            onRescanValidation: () {},
+            onExport: () {},
+            onImportPack: () {},
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'hello');
+    // Wait past the 200ms debounce, then let the async body complete.
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    expect(
+      container.read(editorFilterProvider).searchQuery,
+      equals('hello'),
+    );
+  });
+}
