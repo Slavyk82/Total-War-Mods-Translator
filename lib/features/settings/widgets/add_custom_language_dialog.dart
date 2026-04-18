@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/labeled_field.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
 
-/// Dialog for adding a custom language
+/// Dialog for adding a custom language.
+///
+/// Retokenised (Plan 5e · Task 7): token-themed `Dialog` wrapper with
+/// two [LabeledField] + [TokenTextField] pairs (code + display name) and
+/// [SmallTextButton] actions.
 ///
 /// Returns a record (code, name) if the user confirms, null otherwise.
 class AddCustomLanguageDialog extends StatefulWidget {
@@ -13,9 +21,10 @@ class AddCustomLanguageDialog extends StatefulWidget {
 }
 
 class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
-  final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
+  String? _codeError;
+  String? _nameError;
 
   @override
   void dispose() {
@@ -26,119 +35,134 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            FluentIcons.add_circle_24_regular,
-            size: 24,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          const Text('Add Custom Language'),
-        ],
+    final tokens = context.tokens;
+    return Dialog(
+      backgroundColor: tokens.panel,
+      insetPadding: const EdgeInsets.all(40),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusMd),
+        side: BorderSide(color: tokens.border),
       ),
-      content: SizedBox(
-        width: 400,
-        child: Form(
-          key: _formKey,
+      child: SizedBox(
+        width: 440,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Header
+              Row(
+                children: [
+                  Icon(
+                    FluentIcons.add_circle_24_regular,
+                    size: 22,
+                    color: tokens.accent,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Add Custom Language',
+                    style: tokens.fontDisplay.copyWith(
+                      fontSize: 18,
+                      color: tokens.text,
+                      fontStyle: tokens.fontDisplayItalic
+                          ? FontStyle.italic
+                          : FontStyle.normal,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               Text(
                 'Add a custom language that will be available for translation projects.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.7),
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.textDim,
+                ),
               ),
               const SizedBox(height: 20),
               // Language code field
-              TextFormField(
-                controller: _codeController,
-                decoration: InputDecoration(
-                  labelText: 'Language Code',
-                  hintText: 'e.g., pl, ko, ja',
-                  helperText: 'ISO 639-1 code (2-3 characters)',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  prefixIcon: const Icon(FluentIcons.code_24_regular),
+              LabeledField(
+                label: 'Language code (ISO 639-1, 2-3 letters)',
+                child: TokenTextField(
+                  controller: _codeController,
+                  hint: 'e.g., pl, ko, ja',
+                  enabled: true,
+                  onChanged: (_) {
+                    if (_codeError != null) {
+                      setState(() => _codeError = null);
+                    }
+                  },
                 ),
-                textCapitalization: TextCapitalization.none,
-                maxLength: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Language code is required';
-                  }
-                  if (value.trim().length < 2) {
-                    return 'Code must be at least 2 characters';
-                  }
-                  if (!RegExp(r'^[a-zA-Z]+$').hasMatch(value.trim())) {
-                    return 'Code must contain only letters';
-                  }
-                  return null;
-                },
-                autofocus: true,
               ),
+              if (_codeError != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _codeError!,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12,
+                    color: tokens.err,
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               // Language name field
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: 'Language Name',
-                  hintText: 'e.g., Polish, Korean, Japanese',
-                  helperText: 'Display name for this language',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.surface,
-                  prefixIcon: const Icon(FluentIcons.local_language_24_regular),
+              LabeledField(
+                label: 'Language name',
+                child: TokenTextField(
+                  controller: _nameController,
+                  hint: 'e.g., Polish, Korean, Japanese',
+                  enabled: true,
+                  onChanged: (_) {
+                    if (_nameError != null) {
+                      setState(() => _nameError = null);
+                    }
+                  },
                 ),
-                textCapitalization: TextCapitalization.words,
-                maxLength: 50,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Language name is required';
-                  }
-                  return null;
-                },
               ),
-              const SizedBox(height: 12),
-              _buildInfoSection(),
+              if (_nameError != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  _nameError!,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12,
+                    color: tokens.err,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              _buildInfoSection(tokens),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SmallTextButton(
+                    label: 'Cancel',
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 8),
+                  SmallTextButton(
+                    label: 'Add',
+                    icon: FluentIcons.add_24_regular,
+                    onTap: _save,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _save,
-          icon: const Icon(FluentIcons.add_24_regular, size: 18),
-          label: const Text('Add'),
-        ),
-      ],
     );
   }
 
-  Widget _buildInfoSection() {
+  Widget _buildInfoSection(TwmtThemeTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-        ),
+        color: tokens.accentBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.accent.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,16 +170,16 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
           Icon(
             FluentIcons.info_24_regular,
             size: 16,
-            color: Theme.of(context).colorScheme.primary,
+            color: tokens.accent,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Custom languages can be deleted later. System languages (English, French, etc.) cannot be modified.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
             ),
           ),
         ],
@@ -164,11 +188,36 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
   }
 
   void _save() {
-    if (_formKey.currentState!.validate()) {
-      Navigator.pop(context, (
-        code: _codeController.text.trim(),
-        name: _nameController.text.trim(),
-      ));
+    final code = _codeController.text.trim();
+    final name = _nameController.text.trim();
+
+    String? codeError;
+    String? nameError;
+
+    if (code.isEmpty) {
+      codeError = 'Language code is required';
+    } else if (code.length < 2) {
+      codeError = 'Code must be at least 2 characters';
+    } else if (!RegExp(r'^[a-zA-Z]+$').hasMatch(code)) {
+      codeError = 'Code must contain only letters';
+    } else if (code.length > 5) {
+      codeError = 'Code must be at most 5 characters';
     }
+
+    if (name.isEmpty) {
+      nameError = 'Language name is required';
+    } else if (name.length > 50) {
+      nameError = 'Name must be at most 50 characters';
+    }
+
+    if (codeError != null || nameError != null) {
+      setState(() {
+        _codeError = codeError;
+        _nameError = nameError;
+      });
+      return;
+    }
+
+    Navigator.pop(context, (code: code, name: name));
   }
 }

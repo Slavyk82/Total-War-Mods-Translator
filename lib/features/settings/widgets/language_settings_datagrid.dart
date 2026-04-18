@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/language.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/language_settings_providers.dart';
@@ -18,7 +21,7 @@ class LanguageSettingsDataGrid extends ConsumerStatefulWidget {
 
 class _LanguageSettingsDataGridState
     extends ConsumerState<LanguageSettingsDataGrid> {
-  late LanguageSettingsDataSource _dataSource;
+  LanguageSettingsDataSource? _dataSource;
   final DataGridController _controller = DataGridController();
 
   @override
@@ -30,100 +33,116 @@ class _LanguageSettingsDataGridState
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(languageSettingsProvider);
+    final tokens = context.tokens;
 
     return settingsAsync.when(
       data: (state) {
+        // Settings datagrids have small N (<100 rows), and the data source needs
+        // `tokens` baked in at construction time. Re-creating on every build is
+        // cheap and naturally picks up theme switches without manual invalidation.
+        // For larger grids, see `tm_browser_datagrid.dart`'s updateEntries pattern.
         _dataSource = LanguageSettingsDataSource(
           languages: state.languages,
           defaultLanguageCode: state.defaultLanguageCode,
-          context: context,
+          tokens: tokens,
           onSetDefault: _setDefaultLanguage,
           onDelete: _deleteLanguage,
         );
-        return _buildDataGrid(state.languages);
+        return _buildDataGrid(state.languages, tokens);
       },
       loading: () => const SizedBox(
         height: 100,
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (error, stack) => _buildErrorState(error.toString()),
+      error: (error, stack) => _buildErrorState(error.toString(), tokens),
     );
   }
 
-  Widget _buildDataGrid(List<Language> languages) {
+  Widget _buildDataGrid(List<Language> languages, TwmtThemeTokens tokens) {
     if (languages.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(tokens);
     }
 
     return SizedBox(
       height: _calculateGridHeight(languages.length),
-      child: SfDataGrid(
-        source: _dataSource,
-        controller: _controller,
-        allowSorting: false,
-        columnWidthMode: ColumnWidthMode.fill,
-        gridLinesVisibility: GridLinesVisibility.both,
-        headerGridLinesVisibility: GridLinesVisibility.both,
-        selectionMode: SelectionMode.single,
-        rowHeight: 48,
-        headerRowHeight: 40,
-        columns: [
-          GridColumn(
-            columnName: 'default',
-            width: 80,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                'Default',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: SfDataGridTheme(
+        data: buildTokenDataGridTheme(tokens),
+        child: SfDataGrid(
+          source: _dataSource!,
+          controller: _controller,
+          allowSorting: false,
+          columnWidthMode: ColumnWidthMode.fill,
+          gridLinesVisibility: GridLinesVisibility.both,
+          headerGridLinesVisibility: GridLinesVisibility.both,
+          selectionMode: SelectionMode.single,
+          rowHeight: 48,
+          headerRowHeight: 40,
+          columns: [
+            GridColumn(
+              columnName: 'default',
+              width: 80,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  'Default',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'code',
-            width: 100,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Code',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'code',
+              width: 100,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Code',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'name',
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Language',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'name',
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Language',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'actions',
-            width: 60,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                '',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'actions',
+              width: 60,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  '',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -138,13 +157,11 @@ class _LanguageSettingsDataGridState
     return headerHeight + (rowHeight * displayRows) + padding;
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(TwmtThemeTokens tokens) {
     return Container(
       height: 120,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: tokens.border),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -154,15 +171,15 @@ class _LanguageSettingsDataGridState
             Icon(
               FluentIcons.local_language_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: tokens.textFaint,
             ),
             const SizedBox(height: 8),
             Text(
               'No languages available',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.textMid,
+              ),
             ),
           ],
         ),
@@ -170,11 +187,11 @@ class _LanguageSettingsDataGridState
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState(String error, TwmtThemeTokens tokens) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.error),
+        border: Border.all(color: tokens.err),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -184,14 +201,15 @@ class _LanguageSettingsDataGridState
             Icon(
               FluentIcons.error_circle_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.error,
+              color: tokens.err,
             ),
             const SizedBox(height: 8),
             Text(
               'Error loading languages',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.err,
+              ),
             ),
           ],
         ),
@@ -233,7 +251,7 @@ class _LanguageSettingsDataGridState
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: context.tokens.err,
             ),
             child: const Text('Delete'),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
 import 'general/backup_section.dart';
@@ -16,12 +17,19 @@ class GeneralSettingsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
     final settingsAsync = ref.watch(generalSettingsProvider);
 
     return settingsAsync.when(
       loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
-        child: Text('Error loading settings: $error'),
+        child: Text(
+          'Error loading settings: $error',
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.err,
+          ),
+        ),
       ),
       data: (settings) {
         return ListView(

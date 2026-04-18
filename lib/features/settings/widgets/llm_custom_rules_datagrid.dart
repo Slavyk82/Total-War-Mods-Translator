@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/llm_custom_rule.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/llm_custom_rules_providers.dart';
@@ -18,7 +21,7 @@ class LlmCustomRulesDataGrid extends ConsumerStatefulWidget {
 }
 
 class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid> {
-  late LlmCustomRulesDataSource _dataSource;
+  LlmCustomRulesDataSource? _dataSource;
   final DataGridController _controller = DataGridController();
 
   @override
@@ -30,86 +33,100 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
   @override
   Widget build(BuildContext context) {
     final rulesAsync = ref.watch(llmCustomRulesProvider);
+    final tokens = context.tokens;
 
     return rulesAsync.when(
       data: (rules) {
+        // Settings datagrids have small N (<100 rows), and the data source needs
+        // `tokens` baked in at construction time. Re-creating on every build is
+        // cheap and naturally picks up theme switches without manual invalidation.
+        // For larger grids, see `tm_browser_datagrid.dart`'s updateEntries pattern.
         _dataSource = LlmCustomRulesDataSource(
           rules: rules,
-          context: context,
+          tokens: tokens,
           onEdit: _editRule,
           onDelete: _deleteRule,
           onToggleEnabled: _toggleEnabled,
         );
-        return _buildDataGrid(rules);
+        return _buildDataGrid(rules, tokens);
       },
       loading: () => const SizedBox(
         height: 100,
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (error, stack) => _buildErrorState(error.toString()),
+      error: (error, stack) => _buildErrorState(error.toString(), tokens),
     );
   }
 
-  Widget _buildDataGrid(List<LlmCustomRule> rules) {
+  Widget _buildDataGrid(List<LlmCustomRule> rules, TwmtThemeTokens tokens) {
     if (rules.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(tokens);
     }
 
     return SizedBox(
       height: _calculateGridHeight(rules.length),
-      child: SfDataGrid(
-        source: _dataSource,
-        controller: _controller,
-        allowSorting: false,
-        columnWidthMode: ColumnWidthMode.fill,
-        gridLinesVisibility: GridLinesVisibility.both,
-        headerGridLinesVisibility: GridLinesVisibility.both,
-        selectionMode: SelectionMode.single,
-        rowHeight: 52,
-        headerRowHeight: 40,
-        columns: [
-          GridColumn(
-            columnName: 'enabled',
-            width: 80,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                'Active',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+      child: SfDataGridTheme(
+        data: buildTokenDataGridTheme(tokens),
+        child: SfDataGrid(
+          source: _dataSource!,
+          controller: _controller,
+          allowSorting: false,
+          columnWidthMode: ColumnWidthMode.fill,
+          gridLinesVisibility: GridLinesVisibility.both,
+          headerGridLinesVisibility: GridLinesVisibility.both,
+          selectionMode: SelectionMode.single,
+          rowHeight: 52,
+          headerRowHeight: 40,
+          columns: [
+            GridColumn(
+              columnName: 'enabled',
+              width: 80,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  'Active',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'ruleText',
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Rule Text',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'ruleText',
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Rule Text',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-          GridColumn(
-            columnName: 'actions',
-            width: 100,
-            label: Container(
-              padding: const EdgeInsets.all(8.0),
-              alignment: Alignment.center,
-              child: Text(
-                'Actions',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+            GridColumn(
+              columnName: 'actions',
+              width: 100,
+              label: Container(
+                padding: const EdgeInsets.all(8.0),
+                alignment: Alignment.center,
+                child: Text(
+                  'Actions',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.text,
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -125,13 +142,11 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
     return headerHeight + (rowHeight * displayRows) + padding;
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(TwmtThemeTokens tokens) {
     return Container(
       height: 120,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: tokens.border),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -141,23 +156,23 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             Icon(
               FluentIcons.document_text_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: tokens.textFaint,
             ),
             const SizedBox(height: 8),
             Text(
               'No custom rules defined',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.textMid,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Add global rules to customize all translation prompts',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
             ),
           ],
         ),
@@ -165,11 +180,11 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
     );
   }
 
-  Widget _buildErrorState(String error) {
+  Widget _buildErrorState(String error, TwmtThemeTokens tokens) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.error),
+        border: Border.all(color: tokens.err),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Center(
@@ -179,14 +194,15 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             Icon(
               FluentIcons.error_circle_24_regular,
               size: 32,
-              color: Theme.of(context).colorScheme.error,
+              color: tokens.err,
             ),
             const SizedBox(height: 8),
             Text(
               'Error loading rules',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.err,
+              ),
             ),
           ],
         ),
@@ -233,7 +249,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: context.tokens.err,
             ),
             child: const Text('Delete'),
           ),

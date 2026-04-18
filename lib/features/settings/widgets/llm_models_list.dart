@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/llm_provider_model.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
@@ -23,16 +24,15 @@ class LlmModelsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
     final modelsAsync = ref.watch(llmModelsProvider(providerCode));
 
     return modelsAsync.when(
       loading: () => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-          ),
-          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tokens.border),
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),
         child: const Center(
           child: FluentSpinner(size: 16, strokeWidth: 2),
@@ -41,24 +41,22 @@ class LlmModelsList extends ConsumerWidget {
       error: (error, stack) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
-          ),
-          borderRadius: BorderRadius.circular(8),
+          color: tokens.errBg,
+          border: Border.all(color: tokens.err),
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
         ),
         child: Row(
           children: [
             Icon(
               FluentIcons.error_circle_24_regular,
               size: 16,
-              color: Theme.of(context).colorScheme.error,
+              color: tokens.err,
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'Error loading models: $error',
-                style: Theme.of(context).textTheme.bodySmall,
+                style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
               ),
             ),
           ],
@@ -72,25 +70,21 @@ class LlmModelsList extends ConsumerWidget {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-              ),
-              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: tokens.border),
+              borderRadius: BorderRadius.circular(tokens.radiusMd),
             ),
             child: Row(
               children: [
                 Icon(
                   FluentIcons.info_24_regular,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  color: tokens.textDim,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'No models available for this provider',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
+                    style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
                   ),
                 ),
               ],
@@ -103,17 +97,17 @@ class LlmModelsList extends ConsumerWidget {
           children: [
             Text(
               'Models',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: tokens.text,
+              ),
             ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-                ),
-                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: tokens.border),
+                borderRadius: BorderRadius.circular(tokens.radiusMd),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -138,9 +132,7 @@ class LlmModelsList extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(
               'Check models to enable them. Click the star to set as global default.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+              style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
             ),
           ],
         );
@@ -178,7 +170,7 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
       final (success, errorMessage) = await notifier.toggleEnabled(widget.model.id);
 
       if (!mounted) return;
-      
+
       if (success) {
         FluentToast.success(
           context,
@@ -213,7 +205,7 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
       final (success, errorMessage) = await notifier.setAsDefault(widget.model.id);
 
       if (!mounted) return;
-      
+
       if (success) {
         FluentToast.success(context, 'Model set as default');
       } else {
@@ -236,6 +228,7 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -248,7 +241,7 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: widget.model.isEnabled
-                    ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1)
+                    ? tokens.accentBg
                     : Colors.transparent,
               ),
               child: Row(
@@ -262,21 +255,21 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                       height: 20,
                       decoration: BoxDecoration(
                         color: widget.model.isEnabled
-                            ? Theme.of(context).colorScheme.primary
+                            ? tokens.accent
                             : Colors.transparent,
                         border: Border.all(
                           color: widget.model.isEnabled
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outline,
+                              ? tokens.accent
+                              : tokens.border,
                           width: 2,
                         ),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(tokens.radiusSm),
                       ),
                       child: widget.model.isEnabled
                           ? Icon(
                               FluentIcons.checkmark_24_regular,
                               size: 14,
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: tokens.accentFg,
                             )
                           : null,
                     ),
@@ -293,11 +286,13 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                             Expanded(
                               child: Text(
                                 widget.model.friendlyName,
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontWeight: widget.model.isDefault
-                                          ? FontWeight.w600
-                                          : FontWeight.normal,
-                                    ),
+                                style: tokens.fontBody.copyWith(
+                                  fontSize: 13,
+                                  color: tokens.text,
+                                  fontWeight: widget.model.isDefault
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
                               ),
                             ),
                             if (widget.model.isDefault) ...[
@@ -308,19 +303,16 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .primary
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
+                                  color: tokens.accentBg,
+                                  borderRadius: BorderRadius.circular(tokens.radiusSm),
                                 ),
                                 child: Text(
                                   'Default',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
+                                  style: tokens.fontBody.copyWith(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: tokens.accent,
+                                  ),
                                 ),
                               ),
                             ],
@@ -330,12 +322,10 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                           const SizedBox(height: 2),
                           Text(
                             widget.model.modelId,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
+                            style: tokens.fontBody.copyWith(
+                              fontSize: 12,
+                              color: tokens.textDim,
+                            ),
                           ),
                         ],
                       ],
@@ -360,12 +350,9 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: widget.model.isDefault
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .primary
-                                    .withValues(alpha: 0.1)
+                                ? tokens.accentBg
                                 : Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(tokens.radiusSm),
                           ),
                           child: Icon(
                             widget.model.isDefault
@@ -373,11 +360,8 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
                                 : FluentIcons.star_24_regular,
                             size: 20,
                             color: widget.model.isDefault
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withValues(alpha: 0.5),
+                                ? tokens.accent
+                                : tokens.textDim,
                           ),
                         ),
                       ),
@@ -392,10 +376,9 @@ class _ModelItemState extends ConsumerState<_ModelItem> {
           Divider(
             height: 1,
             thickness: 1,
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            color: tokens.border,
           ),
       ],
     );
   }
 }
-
