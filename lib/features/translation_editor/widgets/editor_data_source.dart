@@ -22,6 +22,10 @@ class EditorDataSource extends DataGridSource {
   // Performance: Cache for DataGridRow objects to avoid rebuilding unchanged rows
   final Map<int, DataGridRow> _rowCache = {};
 
+  // Performance: id → row lookup table, kept in sync with `_rows` so
+  // `buildRow` avoids O(N) firstWhere scans on every visible cell.
+  final Map<String, TranslationRow> _rowsById = <String, TranslationRow>{};
+
   // Memory management: Track edit controllers to dispose them properly
   TextEditingController? _activeEditController;
 
@@ -39,6 +43,7 @@ class EditorDataSource extends DataGridSource {
     _activeEditController?.dispose();
     _activeEditController = null;
     _rowCache.clear();
+    _rowsById.clear();
     super.dispose();
   }
 
@@ -48,6 +53,9 @@ class EditorDataSource extends DataGridSource {
     if (_rows == rows) return; // Early exit if data hasn't changed
     _rows = rows;
     _rowCache.clear(); // Clear cache when data changes
+    _rowsById
+      ..clear()
+      ..addEntries(rows.map((r) => MapEntry(r.id, r)));
     notifyListeners();
   }
 
@@ -56,6 +64,11 @@ class EditorDataSource extends DataGridSource {
 
   /// Get all unit IDs
   List<String> get allUnitIds => _rows.map((row) => row.id).toList();
+
+  /// O(1) lookup of the full `TranslationRow` for a given unit id. Falls back
+  /// to the first row if `id` is unknown (the old `firstWhere` behaviour).
+  TranslationRow rowById(String id) =>
+      _rowsById[id] ?? _rows.first;
 
   /// Notify listeners to refresh display (e.g., after selection change)
   void refreshDisplay() {
@@ -139,13 +152,9 @@ class EditorDataSource extends DataGridSource {
     final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
 
-    // Find the full TranslationRow for context menu callback. Also used by
-    // the TM badge renderer to read the typed translationSource enum (the
-    // string in the tmSource cell is kept only for export / CSV use cases).
-    final translationRow = _rows.firstWhere(
-      (r) => r.id == unitId,
-      orElse: () => _rows.first, // Fallback, should not happen
-    );
+    // Find the full TranslationRow for context menu + TM badge. O(1) via the
+    // id index rebuilt in updateDataSource.
+    final translationRow = rowById(unitId);
 
     // Secondary tap callback for context menu
     void handleSecondaryTap(Offset position) {
