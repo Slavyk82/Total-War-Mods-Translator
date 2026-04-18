@@ -6,7 +6,9 @@ import 'cell_renderers/text_cell_renderer.dart';
 
 /// DataSource for Syncfusion DataGrid
 ///
-/// Handles data display and inline editing for translation rows
+/// Read-only surface: editing flows through the inspector panel via
+/// `handleCellEdit`, not inline grid editing. The `onCellEdit` callback is
+/// kept so the inspector can write through the data source.
 class EditorDataSource extends DataGridSource {
   List<TranslationRow> _rows = [];
   final Function(String unitId, String newText) onCellEdit;
@@ -31,9 +33,6 @@ class EditorDataSource extends DataGridSource {
   // `buildRow` avoids O(N) firstWhere scans on every visible cell.
   final Map<String, TranslationRow> _rowsById = <String, TranslationRow>{};
 
-  // Memory management: Track edit controllers to dispose them properly
-  TextEditingController? _activeEditController;
-
   EditorDataSource({
     required this.onCellEdit,
     required this.onCheckboxTap,
@@ -44,8 +43,6 @@ class EditorDataSource extends DataGridSource {
   /// Dispose resources to prevent memory leaks
   @override
   void dispose() {
-    _activeEditController?.dispose();
-    _activeEditController = null;
     _rowCache.clear();
     _rowsById.clear();
     super.dispose();
@@ -142,102 +139,4 @@ class EditorDataSource extends DataGridSource {
     );
   }
 
-  @override
-  Future<void> onCellSubmit(
-    DataGridRow dataGridRow,
-    RowColumnIndex rowColumnIndex,
-    GridColumn column,
-  ) async {
-    final dynamic oldValue = dataGridRow
-      .getCells()
-      .firstWhere((cell) => cell.columnName == column.columnName)
-      .value;
-
-    final dynamic newValue = newCellValue;
-
-    if (oldValue == newValue || newValue == null) {
-      return;
-    }
-
-    // Find the row index
-    final rowIndex = rows.indexOf(dataGridRow);
-    if (rowIndex == -1) return;
-
-    final row = _rows[rowIndex];
-
-    // Only allow editing of translated text column
-    if (column.columnName == 'translatedText') {
-      onCellEdit(row.id, newValue.toString());
-    }
-  }
-
-  dynamic newCellValue;
-
-  /// Escape special characters for display (actual newlines → \n literal)
-  static String _escapeForDisplay(String text) {
-    return text
-        .replaceAll('\r\n', '\\r\\n')
-        .replaceAll('\n', '\\n')
-        .replaceAll('\r', '\\r')
-        .replaceAll('\t', '\\t');
-  }
-
-  /// Unescape special characters for storage (\n literal → actual newlines)
-  static String _unescapeForStorage(String text) {
-    return text
-        .replaceAll('\\r\\n', '\r\n')
-        .replaceAll('\\n', '\n')
-        .replaceAll('\\r', '\r')
-        .replaceAll('\\t', '\t');
-  }
-
-  @override
-  Widget? buildEditWidget(
-    DataGridRow dataGridRow,
-    RowColumnIndex rowColumnIndex,
-    GridColumn column,
-    CellSubmit submitCell,
-  ) {
-    // Only allow editing of translated text column
-    if (column.columnName != 'translatedText') {
-      return null;
-    }
-
-    final String? rawText = dataGridRow
-      .getCells()
-      .firstWhere((cell) => cell.columnName == column.columnName)
-      .value;
-
-    // Show escaped text in editor (newlines displayed as \n)
-    final escapedText = _escapeForDisplay(rawText ?? '');
-    newCellValue = rawText;
-
-    // Memory management: Dispose previous controller before creating new one
-    _activeEditController?.dispose();
-    _activeEditController = TextEditingController(text: escapedText);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-      alignment: Alignment.centerLeft,
-      child: TextField(
-        autofocus: true,
-        controller: _activeEditController,
-        style: const TextStyle(fontSize: 13),
-        maxLines: null,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
-        onChanged: (value) {
-          // Convert escaped sequences back to actual characters for storage
-          newCellValue = _unescapeForStorage(value);
-        },
-        onSubmitted: (value) {
-          // Convert escaped sequences back to actual characters for storage
-          newCellValue = _unescapeForStorage(value);
-          submitCell();
-        },
-      ),
-    );
-  }
 }

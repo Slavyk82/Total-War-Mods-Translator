@@ -37,6 +37,12 @@ class GridSelectionHandler {
   void handleCellTap(DataGridCellTapDetails details) {
     if (details.rowColumnIndex.rowIndex == 0) return; // Header row
 
+    // The CheckboxCellRenderer owns the tap gesture on the checkbox column,
+    // so the grid's onCellTap must not also promote the row to a single
+    // selection — that would clobber the multi-select the checkbox just
+    // applied.
+    if (details.column.columnName == 'checkbox') return;
+
     final rowIndex = details.rowColumnIndex.rowIndex - 1;
     if (rowIndex < 0 || rowIndex >= dataSource.rows.length) return;
 

@@ -257,13 +257,13 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 source: _dataSource,
                 controller: _controller,
                 verticalScrollController: _verticalScrollController,
-                allowEditing: true,
+                allowEditing: false,
                 // Sort arrows clutter the tokenised header (mono caps); the
                 // mockup intentionally omits them in favour of filter chips.
                 allowSorting: false,
                 allowMultiColumnSorting: false,
-                selectionMode: SelectionMode.multiple,
-                navigationMode: GridNavigationMode.cell,
+                selectionMode: SelectionMode.none,
+                navigationMode: GridNavigationMode.row,
                 columnWidthMode: ColumnWidthMode.fill,
                 gridLinesVisibility: GridLinesVisibility.horizontal,
                 headerGridLinesVisibility: GridLinesVisibility.horizontal,
