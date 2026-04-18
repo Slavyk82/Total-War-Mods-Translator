@@ -30,6 +30,8 @@ TwmtThemeTokens _fixture() {
     warnBg: Color(0xFF221800),
     err: Color(0xFFAA0000),
     errBg: Color(0xFF220000),
+    info: Color(0xFF3366AA),
+    infoBg: Color(0xFF001122),
     llm: Color(0xFF8800AA),
     llmBg: Color(0xFF180022),
     rowSelected: Color(0xFF112233),

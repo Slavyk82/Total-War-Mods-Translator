@@ -26,6 +26,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
     required this.warnBg,
     required this.err,
     required this.errBg,
+    required this.info,
+    required this.infoBg,
     required this.llm,
     required this.llmBg,
     required this.rowSelected,
@@ -58,6 +60,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
   final Color warnBg;
   final Color err;
   final Color errBg;
+  final Color info;
+  final Color infoBg;
   final Color llm;
   final Color llmBg;
   final Color rowSelected;
@@ -109,6 +113,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
     Color? warnBg,
     Color? err,
     Color? errBg,
+    Color? info,
+    Color? infoBg,
     Color? llm,
     Color? llmBg,
     Color? rowSelected,
@@ -140,6 +146,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
       warnBg: warnBg ?? this.warnBg,
       err: err ?? this.err,
       errBg: errBg ?? this.errBg,
+      info: info ?? this.info,
+      infoBg: infoBg ?? this.infoBg,
       llm: llm ?? this.llm,
       llmBg: llmBg ?? this.llmBg,
       rowSelected: rowSelected ?? this.rowSelected,
@@ -176,6 +184,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
       warnBg: Color.lerp(warnBg, other.warnBg, t) ?? warnBg,
       err: Color.lerp(err, other.err, t) ?? err,
       errBg: Color.lerp(errBg, other.errBg, t) ?? errBg,
+      info: Color.lerp(info, other.info, t) ?? info,
+      infoBg: Color.lerp(infoBg, other.infoBg, t) ?? infoBg,
       llm: Color.lerp(llm, other.llm, t) ?? llm,
       llmBg: Color.lerp(llmBg, other.llmBg, t) ?? llmBg,
       rowSelected:
@@ -217,6 +227,8 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
         warnBg == other.warnBg &&
         err == other.err &&
         errBg == other.errBg &&
+        info == other.info &&
+        infoBg == other.infoBg &&
         llm == other.llm &&
         llmBg == other.llmBg &&
         rowSelected == other.rowSelected &&
@@ -236,7 +248,7 @@ class TwmtThemeTokens extends ThemeExtension<TwmtThemeTokens> {
         bg, panel, panel2, border,
         text, textMid, textDim, textFaint,
         accent, accentFg, accentBg,
-        ok, okBg, warn, warnBg, err, errBg, llm, llmBg,
+        ok, okBg, warn, warnBg, err, errBg, info, infoBg, llm, llmBg,
         rowSelected,
         fontBody, fontDisplay, fontMono, fontDisplayItalic,
         radiusXs, radiusSm, radiusMd, radiusLg, radiusPill,

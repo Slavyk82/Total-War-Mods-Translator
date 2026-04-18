@@ -27,6 +27,8 @@ final TwmtThemeTokens forgeTokens = TwmtThemeTokens(
   warnBg: const Color(0xFF241A00),
   err: const Color(0xFFFF3366),
   errBg: const Color(0xFF240914),
+  info: const Color(0xFF4DA6FF),
+  infoBg: const Color(0xFF0A1A2E),
   llm: const Color(0xFFC28EFF),
   llmBg: const Color(0xFF1B0F28),
   rowSelected: const Color(0xFF0F1418),
