@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:twmt/providers/theme_provider.dart';
 import 'package:twmt/providers/theme_name_provider.dart';
 import 'package:twmt/providers/data_migration_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -17,7 +16,6 @@ import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
 import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
-import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
 
 void main() async {
@@ -100,44 +98,24 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeModeAsync = ref.watch(themeProvider);
     final themeNameAsync = ref.watch(themeNameProvider);
     final router = ref.watch(goRouterProvider);
 
-    // Combine: both must resolve before we can pick a dark theme. While
-    // themeName is loading we fall back to Atelier — avoids a flash on a
-    // stale theme during the very first frames.
-    final themeName =
-        themeNameAsync.value ?? TwmtThemeName.atelier;
-    final ThemeData darkTheme = switch (themeName) {
+    // Fall back to Atelier while the saved theme name is loading — avoids
+    // a flash on first frames. Light-mode support was dropped; the app is
+    // dark-only and cycles between custom palettes.
+    final themeName = themeNameAsync.value ?? TwmtThemeName.atelier;
+    final ThemeData theme = switch (themeName) {
       TwmtThemeName.atelier => AppTheme.atelierDarkTheme,
       TwmtThemeName.forge => AppTheme.forgeDarkTheme,
     };
 
-    return themeModeAsync.when(
-      data: (themeMode) => MaterialApp.router(
-        title: 'TWMT',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        darkTheme: darkTheme,
-        themeMode: themeMode,
-        routerConfig: router,
-        builder: (context, child) => _AppStartupTasks(child: child!),
-      ),
-      loading: () => MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: FluentSpinner(),
-          ),
-        ),
-      ),
-      error: (error, stack) => MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Error loading theme: $error'),
-          ),
-        ),
-      ),
+    return MaterialApp.router(
+      title: 'TWMT',
+      debugShowCheckedModeBanner: false,
+      theme: theme,
+      routerConfig: router,
+      builder: (context, child) => _AppStartupTasks(child: child!),
     );
   }
 }

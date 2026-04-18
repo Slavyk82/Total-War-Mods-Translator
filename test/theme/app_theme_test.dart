@@ -41,11 +41,5 @@ void main() {
         expect(sb.thumbVisibility?.resolve(const <WidgetState>{}), isTrue);
       }
     });
-
-    test('lightTheme still exists and has no TwmtThemeTokens yet', () {
-      // Light theme is deliberately left untouched in plan 1.
-      final tokens = AppTheme.lightTheme.extension<TwmtThemeTokens>();
-      expect(tokens, isNull);
-    });
   });
 }

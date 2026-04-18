@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/router/navigation_tree.dart';
 import '../../config/router/navigation_tree_resolver.dart';
-import '../../providers/theme_provider.dart';
+import '../../providers/theme_name_provider.dart';
 import '../../theme/twmt_theme_tokens.dart';
 import '../game_selector_dropdown.dart';
 import '../sidebar_update_checker.dart';
@@ -83,11 +83,9 @@ class _BrandHeader extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
-    final themeModeAsync = ref.watch(themeProvider);
-    final themeMode = themeModeAsync.maybeWhen(
-      data: (m) => m,
-      orElse: () => ThemeMode.system,
-    );
+    final themeNameAsync = ref.watch(themeNameProvider);
+    final themeName =
+        themeNameAsync.value ?? TwmtThemeName.atelier;
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(
@@ -109,9 +107,10 @@ class _BrandHeader extends ConsumerWidget {
                   ?.copyWith(fontWeight: FontWeight.bold, color: tokens.text),
             ),
           ),
-          _ThemeModeButton(
-            mode: themeMode,
-            onPressed: () => ref.read(themeProvider.notifier).cycleTheme(),
+          _ThemeNameButton(
+            themeName: themeName,
+            onPressed: () =>
+                ref.read(themeNameProvider.notifier).cycleTheme(),
           ),
         ],
       ),
@@ -213,27 +212,25 @@ class _NavItemTileState extends State<_NavItemTile> {
   }
 }
 
-class _ThemeModeButton extends StatefulWidget {
-  const _ThemeModeButton({required this.mode, required this.onPressed});
+class _ThemeNameButton extends StatefulWidget {
+  const _ThemeNameButton({required this.themeName, required this.onPressed});
 
-  final ThemeMode mode;
+  final TwmtThemeName themeName;
   final VoidCallback onPressed;
 
   @override
-  State<_ThemeModeButton> createState() => _ThemeModeButtonState();
+  State<_ThemeNameButton> createState() => _ThemeNameButtonState();
 }
 
-class _ThemeModeButtonState extends State<_ThemeModeButton> {
+class _ThemeNameButtonState extends State<_ThemeNameButton> {
   bool _hover = false;
 
   IconData get _icon {
-    switch (widget.mode) {
-      case ThemeMode.system:
-        return FluentIcons.desktop_24_regular;
-      case ThemeMode.light:
-        return FluentIcons.weather_sunny_24_regular;
-      case ThemeMode.dark:
-        return FluentIcons.weather_moon_24_regular;
+    switch (widget.themeName) {
+      case TwmtThemeName.atelier:
+        return FluentIcons.paint_brush_24_regular;
+      case TwmtThemeName.forge:
+        return FluentIcons.wrench_24_regular;
     }
   }
 
@@ -241,7 +238,7 @@ class _ThemeModeButtonState extends State<_ThemeModeButton> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Tooltip(
-      message: 'Theme: ${widget.mode.name} (click to cycle)',
+      message: 'Theme: ${widget.themeName.name} (click to cycle)',
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _hover = true),

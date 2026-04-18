@@ -51,4 +51,14 @@ class ThemeNameNotifier extends _$ThemeNameNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, name.storageKey);
   }
+
+  /// Cycle through the available palettes: atelier -> forge -> atelier.
+  Future<void> cycleTheme() async {
+    final current = await future;
+    final next = switch (current) {
+      TwmtThemeName.atelier => TwmtThemeName.forge,
+      TwmtThemeName.forge => TwmtThemeName.atelier,
+    };
+    await setThemeName(next);
+  }
 }
