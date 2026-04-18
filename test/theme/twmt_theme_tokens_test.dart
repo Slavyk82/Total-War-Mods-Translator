@@ -78,6 +78,29 @@ void main() {
       final lerped = a.lerp(b, 1.0);
       expect(lerped.accent, b.accent);
     });
+
+    test('copyWith overrides info and infoBg independently', () {
+      final base = _fixture();
+      final modified = base.copyWith(
+        info: const Color(0xFF11AAFF),
+        infoBg: const Color(0xFF001133),
+      );
+      expect(modified.info, const Color(0xFF11AAFF));
+      expect(modified.infoBg, const Color(0xFF001133));
+      expect(modified.bg, base.bg);
+      expect(modified.accent, base.accent);
+    });
+
+    test('lerp interpolates the info pair between endpoints', () {
+      final a = _fixture();
+      final b = a.copyWith(
+        info: const Color(0xFF11AAFF),
+        infoBg: const Color(0xFF001133),
+      );
+      final lerped = a.lerp(b, 0.5);
+      expect(lerped.info, Color.lerp(a.info, b.info, 0.5));
+      expect(lerped.infoBg, Color.lerp(a.infoBg, b.infoBg, 0.5));
+    });
   });
 
   testWidgets('context.tokens returns the active extension', (tester) async {
