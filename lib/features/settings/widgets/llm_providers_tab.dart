@@ -106,7 +106,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               'LLM Providers',
               style: tokens.fontDisplay.copyWith(
                 fontSize: 20,
-                color: tokens.text,
+                color: tokens.accent,
                 fontWeight: FontWeight.bold,
                 fontStyle: tokens.fontDisplayStyle,
               ),

@@ -1,36 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/features/translation_editor/providers/editor_inspector_width_notifier.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_validation_panel.dart';
-import 'package:twmt/services/translation_memory/models/tm_match.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Callback fired when the user commits a target text edit (on focus loss).
 typedef OnInspectorSave = void Function(String unitId, String text);
 
-/// Callback fired when the user applies a TM suggestion or auto-fix.
-typedef OnInspectorApplySuggestion =
-    void Function(String unitId, String text);
-
-/// 320px right inspector panel of the translation editor.
+/// Right inspector panel of the translation editor.
+///
+/// Width is user-resizable via the drag handle on the left edge, backed by
+/// [editorInspectorWidthProvider] and clamped to `[minWidth, maxWidth]`.
 ///
 /// Three render branches based on `editorSelectionProvider.selectedCount`:
 /// - 0 -> empty placeholder.
-/// - 1 -> full inspector (key + Source + Target + Suggestions + Validation).
+/// - 1 -> full inspector (key + Source + Target), responsive layout with
+///   equal-sized source/target fields that scroll internally when needed.
 /// - N>1 -> multi-select header with batch hints.
 class EditorInspectorPanel extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
   final OnInspectorSave onSave;
-  final OnInspectorApplySuggestion onApplySuggestion;
 
   const EditorInspectorPanel({
     super.key,
     required this.projectId,
     required this.languageId,
     required this.onSave,
-    required this.onApplySuggestion,
   });
 
   @override
@@ -96,7 +93,6 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
           total: rows.length,
           controller: _targetController,
           onSave: (text) => widget.onSave(row.id, text),
-          onApplySuggestion: (text) => widget.onApplySuggestion(row.id, text),
           tokens: tokens,
           projectId: widget.projectId,
           languageId: widget.languageId,
@@ -104,14 +100,34 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
       }
     }
 
+    final width = ref.watch(editorInspectorWidthProvider);
     return Container(
-      width: 320,
+      width: width,
       decoration: BoxDecoration(
         color: tokens.panel,
         border: Border(left: BorderSide(color: tokens.border)),
       ),
-      padding: const EdgeInsets.all(20),
-      child: body,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ResizeHandle(
+            tokens: tokens,
+            onDrag: (dx) {
+              // Dragging the handle left (negative dx) widens the panel; the
+              // notifier clamps within [minWidth, maxWidth].
+              final notifier =
+                  ref.read(editorInspectorWidthProvider.notifier);
+              notifier.setWidth(ref.read(editorInspectorWidthProvider) - dx);
+            },
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: body,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -181,7 +197,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Sélectionnez une unité pour voir les détails',
+              'Select a unit to view details',
               textAlign: TextAlign.center,
               style: TextStyle(color: tokens.textMid, fontSize: 13),
             ),
@@ -200,7 +216,7 @@ class _MultiSelectHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$count unités sélectionnées',
+            '$count units selected',
             style: tokens.fontDisplay.copyWith(
               fontStyle: tokens.fontDisplayStyle,
               fontSize: 16,
@@ -217,7 +233,6 @@ class _SingleSelectionBody extends ConsumerWidget {
   final int total;
   final TextEditingController controller;
   final void Function(String) onSave;
-  final void Function(String) onApplySuggestion;
   final TwmtThemeTokens tokens;
   final String projectId;
   final String languageId;
@@ -228,7 +243,6 @@ class _SingleSelectionBody extends ConsumerWidget {
     required this.total,
     required this.controller,
     required this.onSave,
-    required this.onApplySuggestion,
     required this.tokens,
     required this.projectId,
     required this.languageId,
@@ -241,47 +255,33 @@ class _SingleSelectionBody extends ConsumerWidget {
     final sourceCode = project?.sourceLanguageCode ?? 'en';
     final targetCode = language?.code ?? 'fr';
 
-    final suggestionsAsync = ref.watch(
-      tmSuggestionsForUnitProvider(row.id, sourceCode, targetCode),
-    );
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _Header(index: index, total: total, tokens: tokens),
-          const SizedBox(height: 10),
-          _KeyChip(
-            text: '${row.sourceLocFile ?? ''} / ${row.key}',
-            tokens: tokens,
-          ),
-          const SizedBox(height: 14),
-          _SourceBlock(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Header(index: index, total: total, tokens: tokens),
+        const SizedBox(height: 10),
+        _KeyChip(
+          text: '${row.sourceLocFile ?? ''} / ${row.key}',
+          tokens: tokens,
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: _SourceBlock(
             text: row.sourceText,
             lang: sourceCode,
             tokens: tokens,
           ),
-          const SizedBox(height: 14),
-          _TargetBlock(
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: _TargetBlock(
             controller: controller,
             lang: targetCode,
             onSave: onSave,
             tokens: tokens,
           ),
-          const SizedBox(height: 14),
-          _SuggestionsSection(
-            async: suggestionsAsync,
-            onApply: onApplySuggestion,
-            tokens: tokens,
-          ),
-          const SizedBox(height: 14),
-          EditorValidationPanel(
-            sourceText: row.sourceText,
-            translatedText: row.translatedText,
-            onApplyFix: (fixed) => onApplySuggestion(fixed),
-            onValidate: () {},
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -301,7 +301,7 @@ class _Header extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Unité',
+            'Unit',
             style: tokens.fontDisplay.copyWith(
               fontStyle: tokens.fontDisplayStyle,
               fontSize: 14,
@@ -359,19 +359,27 @@ class _SourceBlock extends StatelessWidget {
         children: [
           _Label(text: 'Source · $lang', tokens: tokens),
           const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-            decoration: BoxDecoration(
-              color: tokens.panel2,
-              border: Border.all(color: tokens.border),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: tokens.textMid,
-                height: 1.6,
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 13,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: tokens.panel2,
+                border: Border.all(color: tokens.border),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: tokens.textMid,
+                    height: 1.6,
+                  ),
+                ),
               ),
             ),
           ),
@@ -396,44 +404,47 @@ class _TargetBlock extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Label(
-            text: 'Cible · $lang — édition',
+            text: 'Target · $lang — editing',
             tokens: tokens,
             withBullet: true,
           ),
           const SizedBox(height: 6),
-          Focus(
-            onFocusChange: (hasFocus) {
-              // Commit the edit when the field loses focus.
-              if (!hasFocus) onSave(controller.text);
-            },
-            child: TextField(
-              key: const Key('editor-inspector-target-field'),
-              controller: controller,
-              maxLines: null,
-              minLines: 3,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: tokens.text,
-                height: 1.6,
-              ),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: tokens.accentBg,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 10,
+          Expanded(
+            child: Focus(
+              onFocusChange: (hasFocus) {
+                // Commit the edit when the field loses focus.
+                if (!hasFocus) onSave(controller.text);
+              },
+              child: TextField(
+                key: const Key('editor-inspector-target-field'),
+                controller: controller,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                style: TextStyle(
+                  fontSize: 13.5,
+                  color: tokens.text,
+                  height: 1.6,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: tokens.accent),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: tokens.accent),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: tokens.accent, width: 1.5),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: tokens.accentBg,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide(color: tokens.accent),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide(color: tokens.accent),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(4),
+                    borderSide: BorderSide(color: tokens.accent, width: 1.5),
+                  ),
                 ),
               ),
             ),
@@ -442,104 +453,44 @@ class _TargetBlock extends StatelessWidget {
       );
 }
 
-class _SuggestionsSection extends StatelessWidget {
-  final AsyncValue<List<TmMatch>> async;
-  final void Function(String) onApply;
+/// Vertical drag strip that sits on the left edge of the inspector panel.
+///
+/// Keeps a generous 6px hit-target but only paints a visible grip line on
+/// hover or while dragging, so the resting state stays quiet. The horizontal
+/// drag delta is forwarded to the parent which updates the width provider.
+class _ResizeHandle extends StatefulWidget {
   final TwmtThemeTokens tokens;
-  const _SuggestionsSection({
-    required this.async,
-    required this.onApply,
-    required this.tokens,
-  });
+  final void Function(double dx) onDrag;
+
+  const _ResizeHandle({required this.tokens, required this.onDrag});
 
   @override
-  Widget build(BuildContext context) {
-    final children = async.when(
-      data: (matches) {
-        if (matches.isEmpty) {
-          return [
-            Text(
-              'Aucune correspondance',
-              style: TextStyle(color: tokens.textFaint, fontSize: 12),
-            ),
-          ];
-        }
-        return matches
-            .map((m) => _SuggestionRow(
-                  match: m,
-                  onTap: () => onApply(m.targetText),
-                  tokens: tokens,
-                ))
-            .toList();
-      },
-      loading: () => [
-        Text('· · ·', style: TextStyle(color: tokens.textFaint)),
-      ],
-      error: (_, _) => [
-        Text(
-          'Erreur de chargement TM',
-          style: TextStyle(color: tokens.err, fontSize: 12),
-        ),
-      ],
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _Label(text: 'Suggestions', tokens: tokens),
-        const SizedBox(height: 6),
-        ...children,
-      ],
-    );
-  }
+  State<_ResizeHandle> createState() => _ResizeHandleState();
 }
 
-class _SuggestionRow extends StatelessWidget {
-  final TmMatch match;
-  final VoidCallback onTap;
-  final TwmtThemeTokens tokens;
-  const _SuggestionRow({
-    required this.match,
-    required this.onTap,
-    required this.tokens,
-  });
+class _ResizeHandleState extends State<_ResizeHandle> {
+  bool _hovered = false;
+  bool _dragging = false;
 
   @override
   Widget build(BuildContext context) {
-    final pct = match.matchType == TmMatchType.exact
-        ? 'TM 100%'
-        : 'TM ${(match.similarityScore * 100).round()}%';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: tokens.panel2,
-              border: Border.all(color: tokens.border),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    match.targetText,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12, color: tokens.textMid),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  pct,
-                  style: tokens.fontMono.copyWith(
-                    fontSize: 10,
-                    color: tokens.textFaint,
-                  ),
-                ),
-              ],
+    final active = _hovered || _dragging;
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (_) => setState(() => _dragging = true),
+        onHorizontalDragEnd: (_) => setState(() => _dragging = false),
+        onHorizontalDragCancel: () => setState(() => _dragging = false),
+        onHorizontalDragUpdate: (d) => widget.onDrag(d.delta.dx),
+        child: SizedBox(
+          width: 6,
+          child: Center(
+            child: Container(
+              width: 2,
+              color: active ? widget.tokens.accent : Colors.transparent,
             ),
           ),
         ),
@@ -583,4 +534,3 @@ class _Label extends StatelessWidget {
         ],
       );
 }
-

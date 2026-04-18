@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Forge palette + typography — pro-tool variant.
@@ -34,9 +33,12 @@ final TwmtThemeTokens forgeTokens = TwmtThemeTokens(
   rowSelected: const Color(0xFF0F1418),
 
   // Typography — same family for body & display; weight differs at use site.
-  fontBody: GoogleFonts.ibmPlexSans(),
-  fontDisplay: GoogleFonts.ibmPlexSans(fontWeight: FontWeight.w500),
-  fontMono: GoogleFonts.ibmPlexMono(),
+  fontBody: const TextStyle(fontFamily: 'IBMPlexSans'),
+  fontDisplay: const TextStyle(
+    fontFamily: 'IBMPlexSans',
+    fontWeight: FontWeight.w500,
+  ),
+  fontMono: const TextStyle(fontFamily: 'IBMPlexMono'),
   fontDisplayItalic: false,
 
   // Radius

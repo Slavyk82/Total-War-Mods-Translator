@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -11,9 +13,7 @@ import 'package:twmt/features/projects/widgets/add_language_dialog.dart';
 import 'package:twmt/features/projects/widgets/language_progress_row.dart';
 import 'package:twmt/services/game/game_localization_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import 'package:twmt/utils/string_initials.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
-import 'package:twmt/widgets/detail/detail_cover.dart';
 import 'package:twmt/widgets/detail/detail_meta_banner.dart';
 import 'package:twmt/widgets/detail/detail_overview_layout.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
@@ -63,7 +63,13 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   }
 
   void _handleBack() {
-    ref.read(translationStatsVersionProvider.notifier).increment();
+    // Refresh only the project we're leaving; avoid a full list reload.
+    // Fire-and-forget — navigation must not wait on DB work.
+    unawaited(
+      ref
+          .read(projectsWithDetailsProvider.notifier)
+          .refreshProject(widget.projectId),
+    );
     Navigator.of(context).pop();
   }
 
@@ -85,7 +91,12 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     );
     if (!mounted) return;
     ref.invalidate(projectDetailsProvider(widget.projectId));
-    ref.invalidate(projectsWithDetailsProvider);
+    // Patch just this project's row in the list instead of reloading all.
+    unawaited(
+      ref
+          .read(projectsWithDetailsProvider.notifier)
+          .refreshProject(widget.projectId),
+    );
   }
 
   Future<void> _launchSteamWorkshop(String modId) async {
@@ -139,7 +150,9 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     }
     if (!context.mounted) return;
     if (result.isOk) {
-      ref.invalidate(projectsWithDetailsProvider);
+      ref
+          .read(projectsWithDetailsProvider.notifier)
+          .removeProject(details.project.id);
       ref.invalidate(gameTranslationProjectsProvider);
       if (details.project.isGameTranslation) {
         context.go(AppRoutes.gameFiles);
@@ -180,7 +193,12 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
               if (!context.mounted) return;
               if (result.isOk) {
                 ref.invalidate(projectDetailsProvider(widget.projectId));
-                ref.invalidate(projectsWithDetailsProvider);
+                // Patch this project's row rather than reloading the whole list.
+                unawaited(
+                  ref
+                      .read(projectsWithDetailsProvider.notifier)
+                      .refreshProject(widget.projectId),
+                );
                 FluentToast.success(context, '"$name" removed from project');
               } else {
                 FluentToast.error(
@@ -235,10 +253,6 @@ class _Content extends StatelessWidget {
           onBack: onBack,
         ),
         DetailMetaBanner(
-          cover: DetailCover(
-            imageUrl: p.imageUrl,
-            monogramFallback: initials(p.name),
-          ),
           title: p.name,
           subtitle: [
             StatusPill(
@@ -320,13 +334,11 @@ class _LanguagesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ListRowHeader(
-            columns: const [
-              ListRowColumn.flex(1),
-              ListRowColumn.fixed(60),
-              ListRowColumn.fixed(120),
-              ListRowColumn.fixed(100),
-            ],
-            labels: const ['Language', '%', 'Progress', 'Units'],
+            columns: languageProgressColumns,
+            labels: const ['Language', 'Progress', 'Modified', 'Status'],
+            // Reserves space matching the delete SmallIconButton (28px) + 8px gap
+            // in each ListRow's trailingAction, so fixed columns align.
+            trailingActionWidth: languageProgressTrailingActionWidth,
           ),
           for (final ld in details.languages)
             LanguageProgressRow(

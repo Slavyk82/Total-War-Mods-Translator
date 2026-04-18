@@ -14,9 +14,6 @@ class EditorDataSource extends DataGridSource {
   final Function(String unitId, String newText) onCellEdit;
   Function(String unitId) onCheckboxTap;
   bool Function(String unitId) isRowSelected;
-  /// Callback for secondary tap (right-click) on a cell to show context menu
-  Function(TranslationRow row, Offset globalPosition)? onCellSecondaryTap;
-
   Color? _selectedRowColor;
 
   /// Token-aware background colour for selected rows. Plumbed in from the
@@ -37,7 +34,6 @@ class EditorDataSource extends DataGridSource {
     required this.onCellEdit,
     required this.onCheckboxTap,
     required this.isRowSelected,
-    this.onCellSecondaryTap,
   });
 
   /// Dispose resources to prevent memory leaks
@@ -105,11 +101,6 @@ class EditorDataSource extends DataGridSource {
     final translatedTextValue = cells[3].value as String?;
 
     final isSelected = isRowSelected(unitId);
-    final translationRow = rowById(unitId);
-
-    void handleSecondaryTap(Offset position) {
-      onCellSecondaryTap?.call(translationRow, position);
-    }
 
     return DataGridRowAdapter(
       color: isSelected ? _selectedRowColor : null,
@@ -124,17 +115,10 @@ class EditorDataSource extends DataGridSource {
           child: TextCellRenderer(
             text: keyValue,
             isKey: true,
-            onSecondaryTap: handleSecondaryTap,
           ),
         ),
-        TextCellRenderer(
-          text: sourceTextValue,
-          onSecondaryTap: handleSecondaryTap,
-        ),
-        TextCellRenderer(
-          text: translatedTextValue,
-          onSecondaryTap: handleSecondaryTap,
-        ),
+        TextCellRenderer(text: sourceTextValue),
+        TextCellRenderer(text: translatedTextValue),
       ],
     );
   }

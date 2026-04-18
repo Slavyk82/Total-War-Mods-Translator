@@ -5,21 +5,26 @@ import 'package:twmt/features/projects/widgets/language_progress_row.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
 void main() {
   const fr = Language(id: 'l-fr', code: 'fr', name: 'French', nativeName: 'Français');
 
+  // 2026-04-18 12:00 UTC — epoch seconds
+  const fixedUpdatedAt = 1776859200;
+
   ProjectLanguageDetails details({
     int total = 100,
     int translated = 60,
+    int updatedAt = fixedUpdatedAt,
   }) => ProjectLanguageDetails(
-        projectLanguage: const ProjectLanguage(
+        projectLanguage: ProjectLanguage(
           id: 'pl-1',
           projectId: 'p-1',
           languageId: 'l-fr',
           createdAt: 0,
-          updatedAt: 0,
+          updatedAt: updatedAt,
         ),
         language: fr,
         totalUnits: total,
@@ -33,7 +38,7 @@ void main() {
         ),
       );
 
-  testWidgets('renders language name, percent, units and status pill',
+  testWidgets('renders language name, percent, modified date and status pill',
       (t) async {
     await t.pumpWidget(wrap(LanguageProgressRow(
       langDetails: details(total: 100, translated: 60),
@@ -41,18 +46,45 @@ void main() {
     )));
     expect(find.text('French (Français)'), findsOneWidget);
     expect(find.text('60%'), findsOneWidget);
-    expect(find.text('60 / 100'), findsOneWidget);
     expect(find.byType(StatusPill), findsOneWidget);
+    // Modified date is rendered (exact string varies by locale/timezone, so
+    // only check the pattern).
+    expect(find.textContaining(RegExp(r'\d{2}/\d{2}/\d{4} \d{2}:\d{2}')),
+        findsOneWidget);
   });
 
-  testWidgets('onOpenEditor tap fires', (t) async {
+  testWidgets('does not render a units column anymore', (t) async {
+    await t.pumpWidget(wrap(LanguageProgressRow(
+      langDetails: details(total: 100, translated: 60),
+      onOpenEditor: () {},
+    )));
+    expect(find.text('60 / 100'), findsNothing);
+  });
+
+  testWidgets('shows "—" when updatedAt is zero', (t) async {
+    await t.pumpWidget(wrap(LanguageProgressRow(
+      langDetails: details(updatedAt: 0),
+      onOpenEditor: () {},
+    )));
+    expect(find.text('—'), findsOneWidget);
+  });
+
+  testWidgets('onOpenEditor fires when row is tapped', (t) async {
     var opened = false;
     await t.pumpWidget(wrap(LanguageProgressRow(
       langDetails: details(),
       onOpenEditor: () => opened = true,
     )));
-    await t.tap(find.text('Open'));
+    await t.tap(find.byType(ListRow));
     expect(opened, isTrue);
+  });
+
+  testWidgets('no Open button is rendered', (t) async {
+    await t.pumpWidget(wrap(LanguageProgressRow(
+      langDetails: details(),
+      onOpenEditor: () {},
+    )));
+    expect(find.text('Open'), findsNothing);
   });
 
   testWidgets('onDelete fires when delete icon tapped', (t) async {

@@ -3,11 +3,11 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Full-width meta-bandeau for detail screens (§7.2).
 ///
-/// Lays out cover (110×68 typically) + title + subtitle segments (font-mono,
-/// separator "·" auto-inserted between non-empty children) + optional
-/// description + actions anchored to the right.
+/// Lays out optional cover (110×68 typically) + title + subtitle segments
+/// (font-mono, separator "·" auto-inserted between non-empty children) +
+/// optional description + actions anchored to the right.
 class DetailMetaBanner extends StatelessWidget {
-  final Widget cover;
+  final Widget? cover;
   final String title;
   final List<Widget> subtitle;
   final String? description;
@@ -15,7 +15,7 @@ class DetailMetaBanner extends StatelessWidget {
 
   const DetailMetaBanner({
     super.key,
-    required this.cover,
+    this.cover,
     required this.title,
     required this.subtitle,
     this.description,
@@ -34,8 +34,10 @@ class DetailMetaBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          cover,
-          const SizedBox(width: 16),
+          if (cover != null) ...[
+            cover!,
+            const SizedBox(width: 16),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
-// Plain TextStyle fixtures are used instead of GoogleFonts.* factories because
-// google_fonts triggers runtime HTTP fetches (or asset lookups) even when the
-// returned TextStyle is never rendered, which breaks hermetic unit tests.
 // TwmtThemeTokens only cares about receiving TextStyle values — the concrete
 // font source is irrelevant to the behaviour exercised here.
 const TextStyle _bodyFont = TextStyle(fontFamily: 'TestBody');

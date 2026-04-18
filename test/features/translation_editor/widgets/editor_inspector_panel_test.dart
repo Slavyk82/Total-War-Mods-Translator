@@ -7,8 +7,6 @@ import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
-import 'package:twmt/services/translation_memory/models/tm_match.dart';
-import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_helpers.dart';
@@ -37,31 +35,6 @@ TranslationRow _row(String id) {
   return TranslationRow(unit: unit, version: version);
 }
 
-TmMatch _suggestion({
-  required String entryId,
-  required String targetText,
-  double similarity = 1.0,
-  TmMatchType type = TmMatchType.exact,
-}) {
-  return TmMatch(
-    entryId: entryId,
-    sourceText: 'src',
-    targetText: targetText,
-    targetLanguageCode: 'fr',
-    similarityScore: similarity,
-    matchType: type,
-    breakdown: const SimilarityBreakdown(
-      levenshteinScore: 1.0,
-      jaroWinklerScore: 1.0,
-      tokenScore: 1.0,
-      contextBoost: 0.0,
-      weights: ScoreWeights.defaultWeights,
-    ),
-    usageCount: 3,
-    lastUsedAt: DateTime.utc(2024, 1, 1),
-  );
-}
-
 void main() {
   setUp(() async {
     await TestBootstrap.registerFakes();
@@ -84,7 +57,6 @@ void main() {
           projectId: 'p',
           languageId: 'fr',
           onSave: (_, _) {},
-          onApplySuggestion: (_, _) {},
         ),
       ),
       theme: AppTheme.atelierDarkTheme,
@@ -95,7 +67,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Sélectionnez une unité'), findsOneWidget);
+    expect(find.textContaining('Select a unit'), findsOneWidget);
   });
 
   testWidgets('shows full inspector for single selection', (tester) async {
@@ -116,9 +88,6 @@ void main() {
             name: 'French',
             nativeName: 'Français',
           )),
-      tmSuggestionsForUnitProvider('1', 'en', 'fr').overrideWith((_) async => [
-            _suggestion(entryId: 'e1', targetText: 'Suggestion alpha'),
-          ]),
     ]);
     addTearDown(container.dispose);
     container.read(editorSelectionProvider.notifier).toggleSelection('1');
@@ -132,18 +101,16 @@ void main() {
             projectId: 'p',
             languageId: 'fr',
             onSave: (_, _) {},
-            onApplySuggestion: (_, _) {},
           ),
         ),
       ),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Unité'), findsOneWidget);
+    expect(find.textContaining('Unit'), findsOneWidget);
     expect(find.textContaining('agent_actions_localised'), findsOneWidget);
     expect(find.textContaining('Use the Skald'), findsOneWidget);
     expect(find.textContaining('Utilise le Savoir'), findsOneWidget);
-    expect(find.textContaining('Suggestion alpha'), findsOneWidget);
   });
 
   testWidgets('shows multi-select header for N>1', (tester) async {
@@ -164,14 +131,13 @@ void main() {
             projectId: 'p',
             languageId: 'fr',
             onSave: (_, _) {},
-            onApplySuggestion: (_, _) {},
           ),
         ),
       ),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('2 unités sélectionnées'), findsOneWidget);
+    expect(find.text('2 units selected'), findsOneWidget);
   });
 
   testWidgets('target field calls onSave when focus is lost', (tester) async {
@@ -194,8 +160,6 @@ void main() {
             name: 'French',
             nativeName: 'Français',
           )),
-      tmSuggestionsForUnitProvider('1', 'en', 'fr')
-          .overrideWith((_) async => []),
     ]);
     addTearDown(container.dispose);
     container.read(editorSelectionProvider.notifier).toggleSelection('1');
@@ -212,7 +176,6 @@ void main() {
               savedUnit = id;
               savedText = text;
             },
-            onApplySuggestion: (_, _) {},
           ),
         ),
       ),
@@ -251,10 +214,6 @@ void main() {
               name: 'French',
               nativeName: 'Français',
             )),
-        tmSuggestionsForUnitProvider('1', 'en', 'fr')
-            .overrideWith((_) async => []),
-        tmSuggestionsForUnitProvider('2', 'en', 'fr')
-            .overrideWith((_) async => []),
       ]);
       addTearDown(container.dispose);
       container.read(editorSelectionProvider.notifier).toggleSelection('1');
@@ -268,7 +227,6 @@ void main() {
               projectId: 'p',
               languageId: 'fr',
               onSave: (id, text) => saves.add(MapEntry(id, text)),
-              onApplySuggestion: (_, _) {},
             ),
           ),
         ),
@@ -296,28 +254,11 @@ void main() {
   );
 
   testWidgets(
-    'renders inspector with validation issues without overflow',
+    'single-selection body lays out without overflow at panel height',
     (tester) async {
-      final row = _row('1');
-      final issues = <ValidationIssue>[
-        const ValidationIssue(
-          type: ValidationIssueType.lengthDifference,
-          severity: ValidationSeverity.warning,
-          description: 'Translation length differs significantly from source',
-          suggestion: 'Review the translation for completeness',
-        ),
-        const ValidationIssue(
-          type: ValidationIssueType.punctuationMismatch,
-          severity: ValidationSeverity.error,
-          description: 'Final punctuation differs from source',
-          suggestion: 'Add missing period at end',
-          autoFixable: true,
-          autoFixValue: 'Utilise le Savoir du Skald.',
-        ),
-      ];
       final container = ProviderContainer(overrides: [
         filteredTranslationRowsProvider('p', 'fr')
-            .overrideWith((_) async => [row]),
+            .overrideWith((_) async => [_row('1')]),
         currentProjectProvider('p').overrideWith((_) async => const Project(
               id: 'p',
               name: 'p',
@@ -332,10 +273,6 @@ void main() {
               name: 'French',
               nativeName: 'Français',
             )),
-        tmSuggestionsForUnitProvider('1', 'en', 'fr')
-            .overrideWith((_) async => []),
-        validationIssuesProvider(row.sourceText, row.translatedText!)
-            .overrideWith((_) async => issues),
       ]);
       addTearDown(container.dispose);
       container.read(editorSelectionProvider.notifier).toggleSelection('1');
@@ -345,22 +282,22 @@ void main() {
         child: MaterialApp(
           theme: AppTheme.atelierDarkTheme,
           home: Scaffold(
-            body: EditorInspectorPanel(
-              projectId: 'p',
-              languageId: 'fr',
-              onSave: (_, _) {},
-              onApplySuggestion: (_, _) {},
+            body: SizedBox(
+              height: 600,
+              child: EditorInspectorPanel(
+                projectId: 'p',
+                languageId: 'fr',
+                onSave: (_, _) {},
+              ),
             ),
           ),
         ),
       ));
       await tester.pumpAndSettle();
 
-      // Regression: when the panel hosts a non-empty validation list it must
-      // not blow up with a layout-bounds assertion (Expanded inside an
-      // unbounded SingleChildScrollView).
+      // Responsive layout with Expanded children must not overflow even at
+      // constrained heights.
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('Validation Issues Found'), findsOneWidget);
     },
   );
 }

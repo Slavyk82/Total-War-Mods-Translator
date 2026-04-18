@@ -41,7 +41,7 @@ class EditorFilterPanel extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionHeader(label: 'État', tokens: tokens),
+            _SectionHeader(label: 'Status', tokens: tokens),
             const SizedBox(height: 10),
             _StatusChip(
               label: 'Pending',
@@ -62,7 +62,7 @@ class EditorFilterPanel extends ConsumerWidget {
               count: stats?.needsReviewCount,
             ),
             const SizedBox(height: 20),
-            _SectionHeader(label: 'Source mémoire', tokens: tokens),
+            _SectionHeader(label: 'TM source', tokens: tokens),
             const SizedBox(height: 10),
             const _TmSourceChip(label: 'Exact match', type: TmSourceType.exactMatch),
             const _TmSourceChip(label: 'Fuzzy match', type: TmSourceType.fuzzyMatch),

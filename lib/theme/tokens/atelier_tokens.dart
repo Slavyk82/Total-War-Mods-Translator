@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Atelier palette + typography — default TWMT theme.
@@ -35,9 +34,12 @@ final TwmtThemeTokens atelierTokens = TwmtThemeTokens(
   rowSelected: const Color(0xFF221B13),
 
   // Typography — shared with Forge: IBM Plex Sans body + display, IBM Plex Mono.
-  fontBody: GoogleFonts.ibmPlexSans(),
-  fontDisplay: GoogleFonts.ibmPlexSans(fontWeight: FontWeight.w500),
-  fontMono: GoogleFonts.ibmPlexMono(),
+  fontBody: const TextStyle(fontFamily: 'IBMPlexSans'),
+  fontDisplay: const TextStyle(
+    fontFamily: 'IBMPlexSans',
+    fontWeight: FontWeight.w500,
+  ),
+  fontMono: const TextStyle(fontFamily: 'IBMPlexMono'),
   fontDisplayItalic: false,
 
   // Radius

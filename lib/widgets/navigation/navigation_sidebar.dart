@@ -2,7 +2,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../config/router/navigation_tree.dart';
 import '../../config/router/navigation_tree_resolver.dart';
@@ -105,7 +104,8 @@ class _BrandHeader extends ConsumerWidget {
                 children: [
                   Text(
                     'TOTAL WAR',
-                    style: GoogleFonts.cinzel(
+                    style: TextStyle(
+                      fontFamily: 'Cinzel',
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2.4,
@@ -116,7 +116,8 @@ class _BrandHeader extends ConsumerWidget {
                   const SizedBox(height: 2),
                   Text(
                     'Mods Translator',
-                    style: GoogleFonts.cinzel(
+                    style: TextStyle(
+                      fontFamily: 'Cinzel',
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 1.8,

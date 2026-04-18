@@ -279,93 +279,168 @@ final projectsFilterProvider =
     NotifierProvider<ProjectsFilterNotifier, ProjectsFilterState>(
         ProjectsFilterNotifier.new);
 
-/// Provider for all projects with details
-final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {
-  // Watch translation stats version to refresh when stats change (e.g., mod update resets units)
-  ref.watch(translationStatsVersionProvider);
+/// Notifier backing [projectsWithDetailsProvider].
+///
+/// `build()` does the full list load. [refreshProject] recomputes a single
+/// project and patches its entry in place — avoiding a full reload when only
+/// one project was modified (e.g. returning from the project detail screen).
+/// [removeProject] drops a project from the cached state after a local delete.
+class ProjectsWithDetailsNotifier
+    extends AsyncNotifier<List<ProjectWithDetails>> {
+  @override
+  Future<List<ProjectWithDetails>> build() => _loadAll();
 
-  final logging = ref.read(loggingServiceProvider);
-  logging.debug('Starting projectsWithDetailsProvider');
-  final projectRepo = ref.watch(projectRepositoryProvider);
-  final projectLangRepo = ref.watch(projectLanguageRepositoryProvider);
-  final langRepo = ref.watch(languageRepositoryProvider);
-  final gameRepo = ref.watch(gameInstallationRepositoryProvider);
-  final workshopModRepo = ref.watch(workshopModRepositoryProvider);
-  final versionRepo = ref.watch(translationVersionRepositoryProvider);
-  final updateAnalysisService = ref.watch(modUpdateAnalysisServiceProvider);
-  final exportHistoryRepo = ref.watch(exportHistoryRepositoryProvider);
-
-  // Watch the selected game to filter projects
-  final selectedGame = await ref.watch(selectedGameProvider.future);
-  if (selectedGame == null) {
-    logging.debug('No game selected, returning empty project list');
-    return <ProjectWithDetails>[];
-  }
-
-  // Get the GameInstallation for the selected game
-  final gameInstallationResult = await gameRepo.getByGameCode(selectedGame.code);
-  if (gameInstallationResult.isErr) {
-    logging.debug('No game installation found for ${selectedGame.code}');
-    return <ProjectWithDetails>[];
-  }
-  final gameInstallation = gameInstallationResult.unwrap();
-
-  // Fetch mod translation projects for the selected game only (exclude game translations)
-  final projectsResult = await projectRepo.getModTranslationsByInstallation(gameInstallation.id);
-  if (projectsResult.isErr) {
-    final error = projectsResult.unwrapErr();
-    logging.error('Failed to fetch projects', error);
-    throw Exception('Failed to load projects');
-  }
-
-  final projects = projectsResult.unwrap();
-  logging.debug('Loaded projects', {'count': projects.length});
-  final List<ProjectWithDetails> projectsWithDetails = [];
-
-  // Optimization: Pre-load all languages once to avoid N+1 queries
-  // Languages are a small fixed set, so loading all is efficient
-  final allLanguagesResult = await langRepo.getAll();
-  final languagesMap = <String, Language>{};
-  if (allLanguagesResult.isOk) {
-    for (final lang in allLanguagesResult.unwrap()) {
-      languagesMap[lang.id] = lang;
+  /// Recompute details for [projectId] and replace its entry in the list.
+  ///
+  /// If no cached data exists yet, falls back to a full rebuild.
+  /// If the project no longer exists in the database, removes it from the list.
+  Future<void> refreshProject(String projectId) async {
+    final current = state.value;
+    if (current == null) {
+      ref.invalidateSelf();
+      return;
     }
-  }
 
-  // Optimization: Pre-load all game installations to avoid N+1 queries
-  final allGamesResult = await gameRepo.getAll();
-  final gamesMap = <String, GameInstallation>{};
-  if (allGamesResult.isOk) {
-    for (final game in allGamesResult.unwrap()) {
-      gamesMap[game.id] = game;
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final projectResult = await projectRepo.getById(projectId);
+    if (projectResult.isErr) {
+      state = AsyncData(
+        current.where((p) => p.project.id != projectId).toList(growable: false),
+      );
+      return;
     }
+
+    final project = projectResult.unwrap();
+    final (languagesMap, gamesMap) = await _loadLookupMaps();
+    final updated = await _computeOne(
+      project: project,
+      gameInstallation: gamesMap[project.gameInstallationId],
+      languagesMap: languagesMap,
+    );
+
+    state = AsyncData([
+      for (final p in current)
+        if (p.project.id == projectId) updated else p,
+    ]);
   }
 
-  // Load details for each project
-  for (var project in projects) {
-    // Get game installation from pre-loaded map (O(1) instead of database query)
-    final gameInstallation = gamesMap[project.gameInstallationId];
+  /// Remove [projectId] from the cached list without reloading others.
+  void removeProject(String projectId) {
+    final current = state.value;
+    if (current == null) return;
+    state = AsyncData(
+      current.where((p) => p.project.id != projectId).toList(growable: false),
+    );
+  }
+
+  Future<List<ProjectWithDetails>> _loadAll() async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('Starting projectsWithDetailsProvider');
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final gameRepo = ref.read(gameInstallationRepositoryProvider);
+
+    // Watch the selected game to filter projects (full rebuild when it changes)
+    final selectedGame = await ref.watch(selectedGameProvider.future);
+    if (selectedGame == null) {
+      logging.debug('No game selected, returning empty project list');
+      return <ProjectWithDetails>[];
+    }
+
+    final gameInstallationResult =
+        await gameRepo.getByGameCode(selectedGame.code);
+    if (gameInstallationResult.isErr) {
+      logging.debug('No game installation found for ${selectedGame.code}');
+      return <ProjectWithDetails>[];
+    }
+    final gameInstallation = gameInstallationResult.unwrap();
+
+    final projectsResult =
+        await projectRepo.getModTranslationsByInstallation(gameInstallation.id);
+    if (projectsResult.isErr) {
+      final error = projectsResult.unwrapErr();
+      logging.error('Failed to fetch projects', error);
+      throw Exception('Failed to load projects');
+    }
+
+    final projects = projectsResult.unwrap();
+    logging.debug('Loaded projects', {'count': projects.length});
+
+    final (languagesMap, gamesMap) = await _loadLookupMaps();
+
+    final List<ProjectWithDetails> projectsWithDetails = [];
+    for (final project in projects) {
+      projectsWithDetails.add(await _computeOne(
+        project: project,
+        gameInstallation: gamesMap[project.gameInstallationId],
+        languagesMap: languagesMap,
+      ));
+    }
+    return projectsWithDetails;
+  }
+
+  /// Pre-load languages and game installations once.
+  /// Both are small fixed sets, so loading all is cheaper than N+1 queries.
+  Future<(Map<String, Language>, Map<String, GameInstallation>)>
+      _loadLookupMaps() async {
+    final langRepo = ref.read(languageRepositoryProvider);
+    final gameRepo = ref.read(gameInstallationRepositoryProvider);
+
+    final languagesMap = <String, Language>{};
+    final langResult = await langRepo.getAll();
+    if (langResult.isOk) {
+      for (final lang in langResult.unwrap()) {
+        languagesMap[lang.id] = lang;
+      }
+    }
+
+    final gamesMap = <String, GameInstallation>{};
+    final gamesResult = await gameRepo.getAll();
+    if (gamesResult.isOk) {
+      for (final g in gamesResult.unwrap()) {
+        gamesMap[g.id] = g;
+      }
+    }
+
+    return (languagesMap, gamesMap);
+  }
+
+  /// Compute full [ProjectWithDetails] for a single project, reusing pre-loaded
+  /// language and game installation lookups.
+  Future<ProjectWithDetails> _computeOne({
+    required Project project,
+    required GameInstallation? gameInstallation,
+    required Map<String, Language> languagesMap,
+  }) async {
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
+    final workshopModRepo = ref.read(workshopModRepositoryProvider);
+    final versionRepo = ref.read(translationVersionRepositoryProvider);
+    final updateAnalysisService = ref.read(modUpdateAnalysisServiceProvider);
+    final exportHistoryRepo = ref.read(exportHistoryRepositoryProvider);
 
     // Auto-fill missing or stale image URL from workshop folder if available
     // Skip for game translation projects (they use the game icon instead)
-    final hasValidImage = project.imageUrl != null && await File(project.imageUrl!).exists();
+    final hasValidImage =
+        project.imageUrl != null && await File(project.imageUrl!).exists();
     if (!hasValidImage && project.isModTranslation) {
       String? imagePath;
 
-      // Try finding image from the stored source file path
       if (project.sourceFilePath != null) {
         imagePath = await _findModImage(project.sourceFilePath!);
       }
 
-      // If source path is stale, try resolving via workshop directory + mod steam ID
-      if (imagePath == null && project.modSteamId != null && gameInstallation?.steamWorkshopPath != null) {
-        final workshopModDir = path.join(gameInstallation!.steamWorkshopPath!, project.modSteamId!);
+      if (imagePath == null &&
+          project.modSteamId != null &&
+          gameInstallation?.steamWorkshopPath != null) {
+        final workshopModDir = path.join(
+            gameInstallation!.steamWorkshopPath!, project.modSteamId!);
         imagePath = await _findModImageInDir(workshopModDir);
       }
 
       if (imagePath != null) {
         final currentMetadata = project.parsedMetadata;
-        final updatedMetadata = (currentMetadata ?? const ProjectMetadata()).copyWith(
+        final updatedMetadata =
+            (currentMetadata ?? const ProjectMetadata()).copyWith(
           modImageUrl: imagePath,
         );
 
@@ -374,7 +449,6 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
           updatedAt: project.updatedAt,
         );
 
-        // Save the updated project
         await projectRepo.update(updatedProject);
         project = updatedProject;
       }
@@ -385,16 +459,10 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
     final List<ProjectLanguageWithInfo> languagesWithInfo = [];
 
     if (langResult.isOk) {
-      final projectLanguages = langResult.unwrap();
-
-      // Load language info and stats for each project language
-      for (final projLang in projectLanguages) {
-        // Get language from pre-loaded map (O(1) instead of database query)
+      for (final projLang in langResult.unwrap()) {
         final language = languagesMap[projLang.languageId];
-
-        // Get per-language translation stats
-        // Statistics include totalCount which excludes bracket-only units
-        final statsResult = await versionRepo.getLanguageStatistics(projLang.id);
+        final statsResult =
+            await versionRepo.getLanguageStatistics(projLang.id);
         final stats = statsResult.isOk
             ? statsResult.unwrap()
             : ProjectStatistics.empty();
@@ -409,18 +477,16 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
       }
     }
 
-    // Get last pack export for this project
-    final lastPackExport = await exportHistoryRepo.getLastPackExportByProject(project.id);
+    final lastPackExport =
+        await exportHistoryRepo.getLastPackExportByProject(project.id);
 
     // Check for updates by comparing Steam timestamp vs local file timestamp
-    // Same logic as DetectedMod.needsUpdate in the Mods screen
     ModUpdateAnalysis? updateAnalysis;
     bool needsUpdate = false;
 
     if (project.hasSourceFile &&
         project.sourceFilePath != null &&
         project.modSteamId != null) {
-      // Get Steam Workshop timestamp from cache
       int? steamTimestamp;
       final workshopModResult =
           await workshopModRepo.getByWorkshopId(project.modSteamId!);
@@ -428,7 +494,6 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
         steamTimestamp = workshopModResult.unwrap().timeUpdated;
       }
 
-      // Get local file timestamp
       int? localTimestamp;
       final sourceFile = File(project.sourceFilePath!);
       if (await sourceFile.exists()) {
@@ -436,12 +501,10 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
         localTimestamp = stat.modified.millisecondsSinceEpoch ~/ 1000;
       }
 
-      // Compare timestamps (same as DetectedMod.needsUpdate)
       if (steamTimestamp != null && localTimestamp != null) {
         needsUpdate = steamTimestamp > localTimestamp;
       }
 
-      // Only run expensive analysis if update is needed
       if (needsUpdate) {
         final analysisResult = await updateAnalysisService.analyzeChanges(
           projectId: project.id,
@@ -451,22 +514,28 @@ final projectsWithDetailsProvider = FutureProvider<List<ProjectWithDetails>>((re
           updateAnalysis = analysisResult.unwrap();
         }
       } else if (steamTimestamp != null && localTimestamp != null) {
-        // No update needed - project is up to date
         updateAnalysis = ModUpdateAnalysis.empty;
       }
     }
 
-    projectsWithDetails.add(ProjectWithDetails(
+    return ProjectWithDetails(
       project: project,
       gameInstallation: gameInstallation,
       languages: languagesWithInfo,
       updateAnalysis: updateAnalysis,
       lastPackExport: lastPackExport,
-    ));
+    );
   }
+}
 
-  return projectsWithDetails;
-});
+/// Provider for all projects with details.
+///
+/// Prefer [ProjectsWithDetailsNotifier.refreshProject] over
+/// `ref.invalidate(projectsWithDetailsProvider)` when only one project changed,
+/// to avoid a full list reload.
+final projectsWithDetailsProvider = AsyncNotifierProvider<
+    ProjectsWithDetailsNotifier,
+    List<ProjectWithDetails>>(ProjectsWithDetailsNotifier.new);
 
 /// Provider for filtered and sorted projects
 final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) async {

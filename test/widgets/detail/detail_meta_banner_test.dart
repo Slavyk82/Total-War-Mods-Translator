@@ -79,4 +79,16 @@ void main() {
         tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal);
     expect(text.style?.color, tokens.text);
   });
+
+  testWidgets('omits cover when null', (t) async {
+    await t.pumpWidget(wrap(
+      const DetailMetaBanner(
+        title: 'Name',
+        subtitle: [Text('sub')],
+      ),
+    ));
+    expect(find.byType(DetailCover), findsNothing);
+    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('sub'), findsOneWidget);
+  });
 }

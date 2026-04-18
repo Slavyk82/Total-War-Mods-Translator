@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -19,7 +20,6 @@ import 'cell_renderers/context_menu_builder.dart';
 import 'grid_actions_handler.dart';
 import 'grid_selection_handler.dart';
 import 'translation_context_builder.dart';
-import 'grid_row_height_calculator.dart';
 
 /// Main DataGrid widget for translation editor
 ///
@@ -54,6 +54,11 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   // Scroll controller to preserve scroll position on data refresh
   final ScrollController _verticalScrollController = ScrollController();
 
+  // Focus node that captures arrow-key presses so the user can walk the
+  // selection up/down with the keyboard. The inspector's target TextField
+  // owns its own focus, so caret navigation inside that field is unaffected.
+  final FocusNode _gridFocusNode = FocusNode(debugLabel: 'EditorDataGrid');
+
   // Cache previous rows to maintain display during refresh
   List<TranslationRow>? _cachedRows;
 
@@ -70,7 +75,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       onCellEdit: widget.onCellEdit,
       onCheckboxTap: (unitId) {}, // Placeholder, will be replaced
       isRowSelected: (unitId) => _selectedRowIds.contains(unitId),
-      onCellSecondaryTap: _handleCellSecondaryTapFromRenderer,
     );
 
     // Create selection handler with the data source
@@ -94,21 +98,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
     // Listen to batch events and refresh data when translations are completed
     _setupBatchEventListeners();
-  }
-
-  /// Handle secondary tap from TextCellRenderer (right-click on text)
-  void _handleCellSecondaryTapFromRenderer(TranslationRow row, Offset globalPosition) {
-    // Find the row index
-    final rowIndex = _dataSource.translationRows.indexWhere((r) => r.id == row.id);
-    if (rowIndex < 0) return;
-
-    // If the right-clicked row is not in the current selection, select only it
-    if (!_selectedRowIds.contains(row.id)) {
-      _selectionHandler.selectSingleRow(row.id, rowIndex);
-    }
-
-    // Show context menu (gridRowIndex = rowIndex + 1 because of header)
-    _showContextMenu(context, globalPosition, row, rowIndex + 1);
   }
 
   /// Load the project language ID for filtering events
@@ -173,6 +162,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     _batchCompletedSubscription?.cancel();
     _batchProgressSubscription?.cancel();
     _verticalScrollController.dispose();
+    _gridFocusNode.dispose();
     _dataSource.dispose();
     _controller.dispose();
     super.dispose();
@@ -248,7 +238,10 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
     return MouseRegion(
           cursor: SystemMouseCursors.basic,
-          child: SfDataGridTheme(
+          child: Focus(
+            focusNode: _gridFocusNode,
+            onKeyEvent: _handleKeyEvent,
+            child: SfDataGridTheme(
             data: buildTokenDataGridTheme(context.tokens),
             child: SfDataGrid(
                 source: _dataSource,
@@ -264,15 +257,12 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 columnWidthMode: ColumnWidthMode.fill,
                 gridLinesVisibility: GridLinesVisibility.horizontal,
                 headerGridLinesVisibility: GridLinesVisibility.horizontal,
-                // The calculator returns the per-row height (44px floor for
-                // body rows, expanding for multi-line text). headerRowHeight
-                // is set explicitly because the calculator's header branch is
-                // overridden by Syncfusion when this property is non-default.
-                onQueryRowHeight: (details) => calculateRowHeight(
-                  details,
-                  _dataSource.translationRows,
-                  MediaQuery.of(context).size.width,
-                ),
+                // Fixed row height: using a static height (instead of
+                // `onQueryRowHeight`) avoids Syncfusion re-measuring rows on
+                // every `notifyListeners()`, which otherwise shifts the
+                // scroll offset when the user clicks a tall row. Long text
+                // is truncated here and shown in full by the right-hand
+                // inspector.
                 rowHeight: 44,
                 headerRowHeight: 30,
                 onCellTap: _handleCellTap,
@@ -319,6 +309,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                 ],
             ),
           ),
+          ),
         );
   }
 
@@ -329,6 +320,57 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   void _handleCellTap(DataGridCellTapDetails details) {
     _selectionHandler.handleCellTap(details);
+    // Pull focus onto the grid so subsequent arrow-key presses drive row
+    // navigation (instead of leaving focus on whatever last held it, e.g.
+    // the inspector's target text field).
+    _gridFocusNode.requestFocus();
+  }
+
+  /// Keyboard navigation: Up/Down arrows move the single selection one row
+  /// at a time, replacing the current selection. The inspector's selection
+  /// listener picks this up and rebinds the target field automatically,
+  /// flushing any dirty text for the previous unit before switching.
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final int delta;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      delta = 1;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      delta = -1;
+    } else {
+      return KeyEventResult.ignored;
+    }
+
+    final rows = _dataSource.translationRows;
+    if (rows.isEmpty) return KeyEventResult.ignored;
+
+    int? currentIndex = _selectionHandler.lastClickedIndex;
+    if (currentIndex == null && _selectedRowIds.length == 1) {
+      final id = _selectedRowIds.first;
+      final idx = rows.indexWhere((r) => r.id == id);
+      if (idx >= 0) currentIndex = idx;
+    }
+    if (currentIndex == null) return KeyEventResult.ignored;
+
+    final newIndex = (currentIndex + delta).clamp(0, rows.length - 1);
+    if (newIndex == currentIndex) return KeyEventResult.handled;
+
+    _selectionHandler.selectSingleRow(rows[newIndex].id, newIndex);
+    // Only scroll when the new row would otherwise fall outside the viewport.
+    // The default `DataGridScrollPosition.start` mode snaps every step to the
+    // top of the viewport, which both looks jumpy and forces Syncfusion to
+    // rebuild the visible row window — a rebuild that tears down our Focus
+    // subtree and drops the keyboard focus mid-navigation. `makeVisible`
+    // leaves the scroll alone while the row is in view and only nudges it
+    // when needed, so arrow-key focus survives the walk.
+    _controller.scrollToRow(
+      newIndex.toDouble(),
+      position: DataGridScrollPosition.makeVisible,
+    );
+    return KeyEventResult.handled;
   }
 
   void _handleCellSecondaryTap(DataGridCellTapDetails details) {
@@ -343,6 +385,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     if (!_selectedRowIds.contains(row.id)) {
       _selectionHandler.selectSingleRow(row.id, rowIndex);
     }
+
+    _gridFocusNode.requestFocus();
 
     // Show context menu with grid row index for editing
     _showContextMenu(context, details.globalPosition, row, details.rowColumnIndex.rowIndex);

@@ -34,8 +34,8 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('État'), findsOneWidget);
-    expect(find.text('Source mémoire'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('TM source'), findsOneWidget);
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('Translated'), findsOneWidget);
     expect(find.text('Needs review'), findsOneWidget);

@@ -79,17 +79,28 @@ class ListRow extends StatelessWidget {
 }
 
 /// Header row mirror of [ListRow]. Labels rendered in mono 10-11px caps.
+///
+/// [alignments] optionally sets per-column [TextAlign] so numeric columns
+/// (right-aligned in [ListRow] content) stay visually aligned with their
+/// header. [trailingActionWidth] reserves trailing space matching the rows'
+/// `trailingAction` (icon size + 8px gap) so fixed columns land at the same
+/// x-coordinate in header and rows.
 class ListRowHeader extends StatelessWidget {
   final List<ListRowColumn> columns;
   final List<String> labels;
+  final List<TextAlign>? alignments;
+  final double trailingActionWidth;
   final double height;
 
   const ListRowHeader({
     super.key,
     required this.columns,
     required this.labels,
+    this.alignments,
+    this.trailingActionWidth = 0,
     this.height = 32,
-  }) : assert(columns.length == labels.length);
+  })  : assert(columns.length == labels.length),
+        assert(alignments == null || alignments.length == labels.length);
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +116,15 @@ class ListRowHeader extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < columns.length; i++)
-            _applyListRowColumn(columns[i], Text(labels[i].toUpperCase(), style: style)),
+            _applyListRowColumn(
+              columns[i],
+              Text(
+                labels[i].toUpperCase(),
+                style: style,
+                textAlign: alignments?[i],
+              ),
+            ),
+          if (trailingActionWidth > 0) SizedBox(width: trailingActionWidth),
         ],
       ),
     );

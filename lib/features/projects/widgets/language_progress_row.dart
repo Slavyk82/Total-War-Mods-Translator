@@ -1,14 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:twmt/features/projects/providers/project_detail_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
-import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
-/// Single-language row for Project Detail — consumes [ListRow] with fixed
-/// columns and a status pill derived from translation progress.
+/// Column sizing shared between [LanguageProgressRow] and its header so the
+/// project-detail languages list visually matches the projects list archetype
+/// (see `ProjectsScreen._projectColumns`).
+const List<ListRowColumn> languageProgressColumns = [
+  ListRowColumn.flex(1), // language name
+  ListRowColumn.fixed(200), // progress bar + %
+  ListRowColumn.fixed(150), // last modified
+  ListRowColumn.fixed(120), // status pill
+];
+
+/// Trailing-action width reserved for [LanguageProgressRow] so fixed columns
+/// in the header land at the same x-coordinate as the row content.
+const double languageProgressTrailingActionWidth = 36;
+
+/// Single-language row for Project Detail — mirrors the projects-list row
+/// layout: progress bar precedes percent with an 8px gap, followed by the
+/// last-updated date and a status pill.
 class LanguageProgressRow extends StatelessWidget {
   final ProjectLanguageDetails langDetails;
   final VoidCallback? onOpenEditor;
@@ -25,83 +40,21 @@ class LanguageProgressRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final percent = langDetails.progressPercent;
-    final percentInt = percent.clamp(0, 100).toInt();
     final barColor = _progressColor(tokens, percent);
     final (pillLabel, pillFg, pillBg) = _statusAppearance(tokens, percent);
+    final updatedAtMs =
+        langDetails.projectLanguage.updatedAt * 1000;
+    final lastModified = updatedAtMs > 0
+        ? DateFormat('dd/MM/yyyy HH:mm')
+            .format(DateTime.fromMillisecondsSinceEpoch(updatedAtMs))
+        : '—';
 
     return ListRow(
-      columns: const [
-        ListRowColumn.flex(1),
-        ListRowColumn.fixed(60),
-        ListRowColumn.fixed(120),
-        ListRowColumn.fixed(100),
-      ],
-      children: [
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                langDetails.language.displayName,
-                overflow: TextOverflow.ellipsis,
-                style: tokens.fontBody.copyWith(
-                  fontSize: 13,
-                  color: tokens.text,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            StatusPill(
-              label: pillLabel,
-              foreground: pillFg,
-              background: pillBg,
-            ),
-          ],
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            '$percentInt%',
-            style: tokens.fontMono.copyWith(
-              fontSize: 12,
-              color: barColor,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: percent / 100,
-              minHeight: 4,
-              backgroundColor: tokens.border,
-              valueColor: AlwaysStoppedAnimation(barColor),
-            ),
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            '${langDetails.translatedUnits} / ${langDetails.totalUnits}',
-            style: tokens.fontMono.copyWith(
-              fontSize: 11,
-              color: tokens.textDim,
-            ),
-          ),
-        ),
-      ],
-      trailingAction: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SmallTextButton(
-            label: 'Open',
-            onTap: onOpenEditor,
-          ),
-          if (onDelete != null) ...[
-            const SizedBox(width: 6),
-            SmallIconButton(
+      columns: languageProgressColumns,
+      onTap: onOpenEditor,
+      trailingAction: onDelete == null
+          ? null
+          : SmallIconButton(
               icon: FluentIcons.delete_24_regular,
               tooltip: 'Delete language',
               onTap: onDelete!,
@@ -109,9 +62,42 @@ class LanguageProgressRow extends StatelessWidget {
               background: tokens.errBg,
               borderColor: tokens.err.withValues(alpha: 0.3),
             ),
-          ],
-        ],
-      ),
+      children: [
+        Text(
+          langDetails.language.displayName,
+          overflow: TextOverflow.ellipsis,
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: _ProgressBar(percent: percent, color: barColor),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            lastModified,
+            style: tokens.fontMono.copyWith(
+              fontSize: 11.5,
+              color: tokens.textDim,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: StatusPill(
+              label: pillLabel,
+              foreground: pillFg,
+              background: pillBg,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -126,5 +112,53 @@ class LanguageProgressRow extends StatelessWidget {
     if (percent >= 100) return ('COMPLETED', tokens.ok, tokens.okBg);
     if (percent > 0) return ('TRANSLATING', tokens.accent, tokens.accentBg);
     return ('PENDING', tokens.textDim, tokens.panel2);
+  }
+}
+
+/// Progress cell: bar on the left, percent right-aligned in a fixed 36px gutter,
+/// matching the projects-list `_ProgressBar` layout.
+class _ProgressBar extends StatelessWidget {
+  final double percent;
+  final Color color;
+  const _ProgressBar({required this.percent, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final clamped = percent.clamp(0.0, 100.0);
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              height: 6,
+              child: Stack(
+                children: [
+                  Container(color: tokens.panel),
+                  FractionallySizedBox(
+                    widthFactor: clamped / 100,
+                    child: Container(color: color),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 36,
+          child: Text(
+            '${clamped.toInt()}%',
+            textAlign: TextAlign.right,
+            style: tokens.fontMono.copyWith(
+              fontSize: 11.5,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

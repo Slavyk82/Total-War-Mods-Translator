@@ -47,6 +47,14 @@ class GridSelectionHandler {
     if (rowIndex < 0 || rowIndex >= dataSource.rows.length) return;
 
     final unitId = dataSource.translationRows[rowIndex].id;
+    handleRowTap(unitId, rowIndex);
+  }
+
+  /// Select a row by unit id, honouring Ctrl/Shift modifiers. Used when the
+  /// row identity is known up front (e.g. a cell renderer that intercepted
+  /// the primary click because `SelectableText` swallowed the tap before it
+  /// reached Syncfusion's `onCellTap`).
+  void handleRowTap(String unitId, int rowIndex) {
     final isCtrlPressed = HardwareKeyboard.instance.isControlPressed;
     final isShiftPressed = HardwareKeyboard.instance.isShiftPressed;
 
@@ -110,6 +118,17 @@ class GridSelectionHandler {
 
   /// Handle normal click for single selection
   void _handleNormalClick(String unitId, int rowIndex) {
+    // Idempotent path: if this row is already the sole selection, skip the
+    // provider churn and `notifyListeners()`. On a dynamic-height
+    // SfDataGrid, a redundant refresh causes Syncfusion to re-query row
+    // heights and can visibly shift the scroll offset — reported as the
+    // grid "jumping up" after clicking a tall row. We still update the
+    // shift-click anchor so range-select from here behaves as expected.
+    if (_selectedRowIds.length == 1 && _selectedRowIds.first == unitId) {
+      _lastClickedIndex = rowIndex;
+      return;
+    }
+
     _selectedRowIds = {unitId};
     _lastClickedIndex = rowIndex;
     _updateDataGridSelection();

@@ -14,7 +14,6 @@ SfDataGridThemeData buildTokenDataGridTheme(TwmtThemeTokens tokens) {
       borderWidth: 1.0,
     ),
     rowHoverColor: tokens.panel2,
-    rowHoverTextStyle: tokens.fontBody.copyWith(color: tokens.text),
     frozenPaneLineColor: tokens.border,
   );
 }

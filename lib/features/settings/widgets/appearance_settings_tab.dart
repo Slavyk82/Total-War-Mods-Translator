@@ -32,7 +32,7 @@ class AppearanceSettingsTab extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Settings > Appearance - applied live to the dark theme.',
+            'Settings > Appearance - applied live.',
             style: tokens.fontMono.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -68,8 +68,6 @@ class _PaletteChoices extends ConsumerWidget {
           child: _PaletteCard(
             name: TwmtThemeName.atelier,
             label: 'Atelier',
-            description:
-                'Warm greige with ambre accents. Instrument Sans + Serif italic. Editorial, long-session friendly.',
             tokens: atelierTokens,
             isActive: active == TwmtThemeName.atelier,
             onTap: () => ref
@@ -82,8 +80,6 @@ class _PaletteChoices extends ConsumerWidget {
           child: _PaletteCard(
             name: TwmtThemeName.forge,
             label: 'Forge',
-            description:
-                'Cold charcoal with cyan accent. IBM Plex Sans + Mono. Technical, high-contrast.',
             tokens: forgeTokens,
             isActive: active == TwmtThemeName.forge,
             onTap: () => ref
@@ -100,7 +96,6 @@ class _PaletteCard extends StatelessWidget {
   const _PaletteCard({
     required this.name,
     required this.label,
-    required this.description,
     required this.tokens,
     required this.isActive,
     required this.onTap,
@@ -108,7 +103,6 @@ class _PaletteCard extends StatelessWidget {
 
   final TwmtThemeName name;
   final String label;
-  final String description;
   final TwmtThemeTokens tokens;
   final bool isActive;
   final VoidCallback onTap;
@@ -137,24 +131,12 @@ class _PaletteCard extends StatelessWidget {
               _PalettePreview(tokens: tokens),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: active.fontBody.copyWith(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                          color: active.text,
-                        )),
-                    const SizedBox(height: 4),
-                    Text(description,
-                        style: active.fontBody.copyWith(
-                          fontSize: 12,
-                          color: active.textDim,
-                          height: 1.45,
-                        )),
-                  ],
-                ),
+                child: Text(label,
+                    style: active.fontBody.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: active.text,
+                    )),
               ),
             ],
           ),

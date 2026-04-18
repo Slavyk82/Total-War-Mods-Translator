@@ -136,8 +136,6 @@ class _TranslationEditorScreenState
                   languageId: widget.languageId,
                   onSave: (unitId, text) =>
                     _getActions().handleCellEdit(unitId, text),
-                  onApplySuggestion: (unitId, text) =>
-                    _getActions().handleCellEdit(unitId, text),
                 ),
               ],
             ),
