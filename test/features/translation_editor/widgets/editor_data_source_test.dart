@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_data_source.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
@@ -23,12 +24,46 @@ TranslationRow _row(String id) => TranslationRow(
     );
 
 void main() {
+  test('rows expose exactly [checkbox, key, sourceText, translatedText]', () {
+    final source = EditorDataSource(
+      onCellEdit: (_, _) {},
+      onCheckboxTap: (_) {},
+      isRowSelected: (_) => false,
+    );
+
+    final unit = TranslationUnit(
+      id: 'u1',
+      projectId: 'p',
+      key: 'k1',
+      sourceText: 'Hello',
+      sourceLocFile: 'file.loc',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    final version = TranslationVersion(
+      id: 'v1',
+      unitId: 'u1',
+      projectLanguageId: 'pl',
+      translatedText: 'Bonjour',
+      status: TranslationVersionStatus.translated,
+      translationSource: TranslationSource.llm,
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    source.updateDataSource([TranslationRow(unit: unit, version: version)]);
+
+    final names = source.rows.single
+        .getCells()
+        .map((c) => c.columnName)
+        .toList();
+    expect(names, ['checkbox', 'key', 'sourceText', 'translatedText']);
+  });
+
   late EditorDataSource ds;
 
   setUp(() {
     ds = EditorDataSource(
       onCellEdit: (_, _) {},
-      onCellTap: (_) {},
       onCheckboxTap: (_) {},
       isRowSelected: (_) => false,
     );

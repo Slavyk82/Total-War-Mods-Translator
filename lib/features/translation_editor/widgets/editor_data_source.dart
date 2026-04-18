@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
-import 'package:twmt/models/domain/translation_version.dart';
 import '../providers/editor_providers.dart';
 import 'cell_renderers/checkbox_cell_renderer.dart';
-import 'cell_renderers/status_cell_renderer.dart';
 import 'cell_renderers/text_cell_renderer.dart';
-import 'cell_renderers/tm_source_cell_renderer.dart';
 
 /// DataSource for Syncfusion DataGrid
 ///
@@ -13,11 +10,19 @@ import 'cell_renderers/tm_source_cell_renderer.dart';
 class EditorDataSource extends DataGridSource {
   List<TranslationRow> _rows = [];
   final Function(String unitId, String newText) onCellEdit;
-  final Function(String unitId) onCellTap;
   Function(String unitId) onCheckboxTap;
   bool Function(String unitId) isRowSelected;
   /// Callback for secondary tap (right-click) on a cell to show context menu
   Function(TranslationRow row, Offset globalPosition)? onCellSecondaryTap;
+
+  Color? _selectedRowColor;
+
+  /// Token-aware background colour for selected rows. Plumbed in from the
+  /// datagrid when it builds, so the data source stays theme-agnostic.
+  // ignore: use_setters_to_change_properties
+  void setSelectedRowColor(Color color) {
+    _selectedRowColor = color;
+  }
 
   // Performance: Cache for DataGridRow objects to avoid rebuilding unchanged rows
   final Map<int, DataGridRow> _rowCache = {};
@@ -31,7 +36,6 @@ class EditorDataSource extends DataGridSource {
 
   EditorDataSource({
     required this.onCellEdit,
-    required this.onCellTap,
     required this.onCheckboxTap,
     required this.isRowSelected,
     this.onCellSecondaryTap,
@@ -80,90 +84,38 @@ class EditorDataSource extends DataGridSource {
     final index = entry.key;
     final row = entry.value;
 
-    // Performance: Use cached row if available
     return _rowCache.putIfAbsent(index, () {
       return DataGridRow(
         cells: [
-          DataGridCell<String>(
-            columnName: 'checkbox',
-            value: row.id,
-          ),
-          DataGridCell<TranslationVersionStatus>(
-            columnName: 'status',
-            value: row.status,
-          ),
-          DataGridCell<String?>(
-            columnName: 'locFile',
-            value: row.sourceLocFile,
-          ),
-          DataGridCell<String>(
-            columnName: 'key',
-            value: row.key,
-          ),
-          DataGridCell<String>(
-            columnName: 'sourceText',
-            value: row.sourceText,
-          ),
+          DataGridCell<String>(columnName: 'checkbox', value: row.id),
+          DataGridCell<String>(columnName: 'key', value: row.key),
+          DataGridCell<String>(columnName: 'sourceText', value: row.sourceText),
           DataGridCell<String?>(
             columnName: 'translatedText',
             value: row.translatedText,
-          ),
-          DataGridCell<String>(
-            columnName: 'tmSource',
-            value: _getTmSourceText(row),
-          ),
-          DataGridCell<String>(
-            columnName: 'actions',
-            value: row.id,
           ),
         ],
       );
     });
   }).toList();
 
-  // Performance: Static method to avoid closure allocation
-  static String _getTmSourceText(TranslationRow row) {
-    if (row.isManuallyEdited) return 'Manual';
-
-    // Use explicit translation source field
-    switch (row.translationSource) {
-      case TranslationSource.tmExact:
-        return 'Exact Match';
-      case TranslationSource.tmFuzzy:
-        return 'Fuzzy Match';
-      case TranslationSource.llm:
-        return 'LLM';
-      case TranslationSource.manual:
-        return 'Manual';
-      case TranslationSource.unknown:
-        return 'None';
-    }
-  }
-
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {
-    final checkboxCell = row.getCells()[0];
-    final statusCell = row.getCells()[1];
-    final locFileCell = row.getCells()[2];
-    final keyCell = row.getCells()[3];
-    final sourceTextCell = row.getCells()[4];
-    final translatedTextCell = row.getCells()[5];
+    final cells = row.getCells();
+    final unitId = cells[0].value as String;
+    final keyValue = cells[1].value as String;
+    final sourceTextValue = cells[2].value as String;
+    final translatedTextValue = cells[3].value as String?;
 
-    final unitId = checkboxCell.value as String;
     final isSelected = isRowSelected(unitId);
-
-    // Find the full TranslationRow for context menu + TM badge. O(1) via the
-    // id index rebuilt in updateDataSource.
     final translationRow = rowById(unitId);
 
-    // Secondary tap callback for context menu
     void handleSecondaryTap(Offset position) {
       onCellSecondaryTap?.call(translationRow, position);
     }
 
-    // Performance: Wrap cells in RepaintBoundary except multiline text cells
-    // which need to expand freely
     return DataGridRowAdapter(
+      color: isSelected ? _selectedRowColor : null,
       cells: [
         RepaintBoundary(
           child: CheckboxCellRenderer(
@@ -171,42 +123,23 @@ class EditorDataSource extends DataGridSource {
             onTap: () => onCheckboxTap(unitId),
           ),
         ),
-        RepaintBoundary(child: StatusCellRenderer(status: statusCell.value)),
-        RepaintBoundary(child: TextCellRenderer(
-          text: _extractLocFileName(locFileCell.value),
-          isKey: true,
-          onSecondaryTap: handleSecondaryTap,
-        )),
-        RepaintBoundary(child: TextCellRenderer(
-          text: keyCell.value,
-          isKey: true,
-          onSecondaryTap: handleSecondaryTap,
-        )),
-        // Don't wrap multiline text cells in RepaintBoundary to allow proper height expansion
+        RepaintBoundary(
+          child: TextCellRenderer(
+            text: keyValue,
+            isKey: true,
+            onSecondaryTap: handleSecondaryTap,
+          ),
+        ),
         TextCellRenderer(
-          text: sourceTextCell.value,
+          text: sourceTextValue,
           onSecondaryTap: handleSecondaryTap,
         ),
         TextCellRenderer(
-          text: translatedTextCell.value,
-          isEditable: true,
+          text: translatedTextValue,
           onSecondaryTap: handleSecondaryTap,
         ),
-        RepaintBoundary(child: TmSourceCellRenderer(
-          source: translationRow.translationSource,
-          manuallyEdited: translationRow.isManuallyEdited,
-          onSecondaryTap: handleSecondaryTap,
-        )),
       ],
     );
-  }
-
-  /// Extract just the filename from the full .loc file path
-  static String? _extractLocFileName(String? path) {
-    if (path == null || path.isEmpty) return null;
-    final lastSeparator = path.lastIndexOf('/');
-    if (lastSeparator == -1) return path;
-    return path.substring(lastSeparator + 1);
   }
 
   @override

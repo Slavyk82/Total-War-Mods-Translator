@@ -71,7 +71,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     // Create data source first (will be updated with selection handler reference)
     _dataSource = EditorDataSource(
       onCellEdit: widget.onCellEdit,
-      onCellTap: (unitId) {},
       onCheckboxTap: (unitId) {}, // Placeholder, will be replaced
       isRowSelected: (unitId) => _selectedRowIds.contains(unitId),
       onCellSecondaryTap: _handleCellSecondaryTapFromRenderer,
@@ -248,6 +247,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       _dataSource.updateDataSource(rows);
     }
 
+    _dataSource.setSelectedRowColor(context.tokens.accentBg);
+
     return MouseRegion(
           cursor: SystemMouseCursors.basic,
           child: SfDataGridTheme(
@@ -301,25 +302,6 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     ),
                   ),
                   GridColumn(
-                    columnName: 'status',
-                    width: 60,
-                    allowSorting: false,
-                    label: Container(
-                      padding: const EdgeInsets.all(8.0),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        FluentIcons.status_24_regular,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                  GridColumn(
-                    columnName: 'locFile',
-                    width: 150,
-                    allowSorting: false,
-                    label: _buildColumnHeader('LOC FILE'),
-                  ),
-                  GridColumn(
                     columnName: 'key',
                     width: 150,
                     allowSorting: false,
@@ -334,15 +316,8 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                   GridColumn(
                     columnName: 'translatedText',
                     columnWidthMode: ColumnWidthMode.fill,
-                    allowEditing: true,
                     allowSorting: false,
                     label: _buildColumnHeader('TARGET'),
-                  ),
-                  GridColumn(
-                    columnName: 'tmSource',
-                    width: 120,
-                    allowSorting: false,
-                    label: _buildColumnHeader('TM'),
                   ),
                 ],
             ),
