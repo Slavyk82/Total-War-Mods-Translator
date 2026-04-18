@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/features/steam_publish/utils/workshop_url_parser.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/services/platform/game_launcher_opener.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -338,75 +339,106 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: SizedBox(
-              height: 28,
-              child: TextField(
-                controller: _steamIdController,
-                enabled: !_isSavingSteamId,
-                style: tokens.fontMono.copyWith(
-                  fontSize: 12,
-                  color: tokens.text,
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 28,
+                  child: TextField(
+                    controller: _steamIdController,
+                    enabled: !_isSavingSteamId,
+                    style: tokens.fontMono.copyWith(
+                      fontSize: 12,
+                      color: tokens.text,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Paste Workshop URL or ID...',
+                      hintStyle: tokens.fontMono.copyWith(
+                        fontSize: 12,
+                        color: tokens.textFaint,
+                      ),
+                      isDense: true,
+                      filled: true,
+                      fillColor: tokens.panel2,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(tokens.radiusSm),
+                        borderSide: BorderSide(color: tokens.accent),
+                      ),
+                    ),
+                    onSubmitted: (_) => _saveSteamId(),
+                  ),
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Workshop id...',
-                  hintStyle: tokens.fontMono.copyWith(
-                    fontSize: 12,
-                    color: tokens.textFaint,
-                  ),
-                  isDense: true,
-                  filled: true,
-                  fillColor: tokens.panel2,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.radiusSm),
-                    borderSide: BorderSide(color: tokens.border),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.radiusSm),
-                    borderSide: BorderSide(color: tokens.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.radiusSm),
-                    borderSide: BorderSide(color: tokens.accent),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onSubmitted: (_) => _saveSteamId(),
               ),
+              const SizedBox(width: 6),
+              _iconButton(
+                icon: FluentIcons.play_24_regular,
+                tooltip: 'Open the in-game launcher',
+                onTap: _openLauncher,
+              ),
+              const SizedBox(width: 4),
+              _iconButton(
+                icon: _isSavingSteamId ? null : FluentIcons.save_24_regular,
+                tooltip: 'Save Workshop id',
+                onTap: _isSavingSteamId ? null : _saveSteamId,
+                busy: _isSavingSteamId,
+                accent: true,
+              ),
+              if (_isEditingSteamId) ...[
+                const SizedBox(width: 4),
+                _iconButton(
+                  icon: FluentIcons.dismiss_24_regular,
+                  tooltip: 'Cancel',
+                  onTap: () {
+                    _steamIdController.clear();
+                    setState(() => _isEditingSteamId = false);
+                  },
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '1. Publish from the launcher · 2. Copy the mod URL here',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tokens.fontMono.copyWith(
+              fontSize: 10,
+              color: tokens.textFaint,
             ),
           ),
-          const SizedBox(width: 6),
-          _iconButton(
-            icon: _isSavingSteamId ? null : FluentIcons.save_24_regular,
-            tooltip: 'Save Workshop id',
-            onTap: _isSavingSteamId ? null : _saveSteamId,
-            busy: _isSavingSteamId,
-            accent: true,
-          ),
-          if (_isEditingSteamId) ...[
-            const SizedBox(width: 4),
-            _iconButton(
-              icon: FluentIcons.dismiss_24_regular,
-              tooltip: 'Cancel',
-              onTap: () {
-                _steamIdController.clear();
-                setState(() => _isEditingSteamId = false);
-              },
-            ),
-          ],
         ],
       ),
     );
   }
 
   Future<void> _saveSteamId() async {
-    final steamId = _steamIdController.text.trim();
-    if (steamId.isEmpty) return;
+    final raw = _steamIdController.text.trim();
+    if (raw.isEmpty) return;
+
+    // Accept both bare numeric ids and full Workshop URLs; the parser does
+    // the extraction and returns null when neither shape matches.
+    final steamId = parseWorkshopId(raw);
+    if (steamId == null) {
+      FluentToast.warning(
+        context,
+        "Couldn't read a Workshop ID from that value.",
+      );
+      return;
+    }
 
     setState(() => _isSavingSteamId = true);
 
@@ -444,6 +476,21 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       if (mounted) {
         setState(() => _isSavingSteamId = false);
       }
+    }
+  }
+
+  /// Launches the in-game Workshop publisher for Total War: WARHAMMER III.
+  ///
+  /// The app id is hard-coded to match parity with the workshop publish screen
+  /// (single-game scope). If Steam cannot handle the `steam://run/...` URI the
+  /// user is informed via a warning toast rather than silently failing.
+  Future<void> _openLauncher() async {
+    final ok = await openGameLauncher('1142710'); // TW:WH3
+    if (!ok && mounted) {
+      FluentToast.warning(
+        context,
+        'Could not open the Steam client. Is Steam installed?',
+      );
     }
   }
 
