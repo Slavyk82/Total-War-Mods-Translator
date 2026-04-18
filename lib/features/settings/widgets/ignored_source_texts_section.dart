@@ -164,7 +164,7 @@ class _ResetConfirmDialog extends StatelessWidget {
         style: tokens.fontDisplay.copyWith(
           fontSize: 18,
           color: tokens.text,
-          fontStyle: tokens.fontDisplayItalic ? FontStyle.italic : null,
+          fontStyle: tokens.fontDisplayStyle,
         ),
       ),
       content: Text(

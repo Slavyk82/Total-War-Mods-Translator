@@ -27,6 +27,8 @@ final TwmtThemeTokens atelierTokens = TwmtThemeTokens(
   warnBg: const Color(0xFF3A2E1E),
   err: const Color(0xFFC47A6E),
   errBg: const Color(0xFF3A2624),
+  info: const Color(0xFF8AB3D4),
+  infoBg: const Color(0xFF1E2530),
   llm: const Color(0xFFB09EDC),
   llmBg: const Color(0xFF2E263A),
   rowSelected: const Color(0xFF221B13),

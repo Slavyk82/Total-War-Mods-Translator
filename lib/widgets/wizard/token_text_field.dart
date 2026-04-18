@@ -6,6 +6,10 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Panel2 fill, border outline, accent focus, font-body 13px text,
 /// text-faint placeholder. Extracted from Workshop Publish private classes
 /// so Game Translation / New Project dialogs share the same input style.
+///
+/// Plan 5f · Task 1: extended with [obscureText], [autofocus], [maxLength]
+/// and [prefixIcon] so masked/API-key and icon-prefixed inputs across
+/// Settings and dialogs share the same token styling.
 class TokenTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hint;
@@ -13,6 +17,10 @@ class TokenTextField extends StatelessWidget {
   final int maxLines;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
+  final bool obscureText;
+  final bool autofocus;
+  final int? maxLength;
+  final Widget? prefixIcon;
 
   const TokenTextField({
     super.key,
@@ -22,6 +30,10 @@ class TokenTextField extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.focusNode,
+    this.obscureText = false,
+    this.autofocus = false,
+    this.maxLength,
+    this.prefixIcon,
   });
 
   @override
@@ -31,9 +43,13 @@ class TokenTextField extends StatelessWidget {
       controller: controller,
       enabled: enabled,
       onChanged: onChanged,
-      maxLines: maxLines,
-      minLines: maxLines > 1 ? 2 : 1,
+      // obscureText requires maxLines == 1 (Flutter asserts this).
+      maxLines: obscureText ? 1 : maxLines,
+      minLines: (!obscureText && maxLines > 1) ? 2 : 1,
       focusNode: focusNode,
+      obscureText: obscureText,
+      autofocus: autofocus,
+      maxLength: maxLength,
       style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
       decoration: InputDecoration(
         isDense: true,
@@ -44,6 +60,9 @@ class TokenTextField extends StatelessWidget {
           fontSize: 13,
           color: tokens.textFaint,
         ),
+        prefixIcon: prefixIcon,
+        // Suppress the default counter below the field when maxLength is set.
+        counterText: maxLength != null ? '' : null,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         border: OutlineInputBorder(

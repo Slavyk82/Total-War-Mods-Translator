@@ -66,9 +66,7 @@ class _Monogram extends StatelessWidget {
           style: tokens.fontDisplay.copyWith(
             fontSize: 26,
             color: tokens.accent,
-            fontStyle: tokens.fontDisplayItalic
-                ? FontStyle.italic
-                : FontStyle.normal,
+            fontStyle: tokens.fontDisplayStyle,
             fontWeight: FontWeight.w500,
             letterSpacing: tokens.fontDisplayItalic ? 0 : 1.4,
           ),

@@ -172,9 +172,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.text,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
           ],
@@ -202,9 +200,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),

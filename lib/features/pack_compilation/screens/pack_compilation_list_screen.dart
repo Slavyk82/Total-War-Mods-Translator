@@ -167,9 +167,7 @@ class _EmptyState extends StatelessWidget {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.textMid,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),

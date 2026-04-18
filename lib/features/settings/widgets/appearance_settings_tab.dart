@@ -27,9 +27,7 @@ class AppearanceSettingsTab extends ConsumerWidget {
             style: tokens.fontDisplay.copyWith(
               fontSize: 22,
               color: tokens.accent,
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
             ),
           ),
           const SizedBox(height: 4),

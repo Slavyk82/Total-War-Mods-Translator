@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets/fluent_toast.dart';
+import '../widgets/fluent/fluent_toast.dart';
 
 /// Toast notification service for displaying Fluent Design toast messages
 ///
@@ -18,7 +18,7 @@ class ToastNotificationService {
     _showToast(
       context,
       message: message,
-      type: ToastType.success,
+      type: FluentToastType.success,
       duration: duration,
     );
   }
@@ -32,7 +32,7 @@ class ToastNotificationService {
     _showToast(
       context,
       message: message,
-      type: ToastType.error,
+      type: FluentToastType.error,
       duration: duration,
     );
   }
@@ -46,7 +46,7 @@ class ToastNotificationService {
     _showToast(
       context,
       message: message,
-      type: ToastType.warning,
+      type: FluentToastType.warning,
       duration: duration,
     );
   }
@@ -60,7 +60,7 @@ class ToastNotificationService {
     _showToast(
       context,
       message: message,
-      type: ToastType.info,
+      type: FluentToastType.info,
       duration: duration,
     );
   }
@@ -69,7 +69,7 @@ class ToastNotificationService {
   static void _showToast(
     BuildContext context, {
     required String message,
-    required ToastType type,
+    required FluentToastType type,
     required Duration duration,
   }) {
     // Remove any existing toast first
@@ -82,7 +82,7 @@ class ToastNotificationService {
     final overlay = Overlay.of(context);
 
     _currentToast = OverlayEntry(
-      builder: (context) => FluentToast(
+      builder: (context) => FluentToastWidget(
         message: message,
         type: type,
         duration: duration,

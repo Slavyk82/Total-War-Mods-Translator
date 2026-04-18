@@ -53,9 +53,7 @@ class HelpTocSidebar extends StatelessWidget {
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: tokens.accent,
-                      fontStyle: tokens.fontDisplayItalic
-                          ? FontStyle.italic
-                          : FontStyle.normal,
+                      fontStyle: tokens.fontDisplayStyle,
                       letterSpacing: 0.3,
                     ),
                     overflow: TextOverflow.ellipsis,

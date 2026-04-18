@@ -25,8 +25,7 @@ class SettingsSectionHeader extends StatelessWidget {
           style: tokens.fontDisplay.copyWith(
             fontSize: 20,
             color: tokens.text,
-            fontStyle:
-                tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+            fontStyle: tokens.fontDisplayStyle,
           ),
         ),
         if (subtitle != null) ...[

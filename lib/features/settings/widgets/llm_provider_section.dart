@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -84,40 +85,11 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
+                  child: TokenTextField(
                     controller: widget.apiKeyController,
+                    hint: 'Enter API key...',
+                    enabled: true,
                     obscureText: true,
-                    style: tokens.fontBody
-                        .copyWith(fontSize: 13, color: tokens.text),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      filled: true,
-                      fillColor: tokens.panel2,
-                      hintText: 'Enter API key...',
-                      hintStyle: tokens.fontBody.copyWith(
-                        fontSize: 13,
-                        color: tokens.textFaint,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius:
-                            BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.accent),
-                      ),
-                    ),
                     onChanged: (_) => widget.onSaveApiKey(),
                   ),
                 ),

@@ -37,9 +37,7 @@ class SettingsScreen extends StatelessWidget {
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 24,
                       color: tokens.text,
-                      fontStyle: tokens.fontDisplayItalic
-                          ? FontStyle.italic
-                          : FontStyle.normal,
+                      fontStyle: tokens.fontDisplayStyle,
                     ),
                   ),
                 ],

@@ -104,8 +104,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
             style: tokens.fontDisplay.copyWith(
               fontSize: 16,
               color: tokens.err,
-              fontStyle:
-                  tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
             ),
           ),
           const SizedBox(height: 8),
@@ -222,8 +221,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
             style: tokens.fontDisplay.copyWith(
               fontSize: 16,
               color: tokens.text,
-              fontStyle:
-                  tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
             ),
           ),
           const SizedBox(height: 8),

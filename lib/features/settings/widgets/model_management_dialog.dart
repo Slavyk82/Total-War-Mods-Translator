@@ -7,6 +7,10 @@ import '../../../models/domain/llm_provider_model.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
+import 'llm/llm_dialog_header.dart';
+import 'llm/llm_model_card.dart';
+import 'llm/llm_model_empty_state.dart';
+import 'llm/llm_models_legend.dart';
 
 /// Dialog for managing LLM models for a specific provider.
 ///
@@ -18,6 +22,8 @@ import '../../../widgets/common/fluent_spinner.dart';
 ///
 /// Retokenised (Plan 5e · Task 7): structure preserved; all `Theme.of(context)`
 /// calls replaced by tokens; raw `Colors.*` removed in favour of tokens.
+/// Plan 5f · Task 8: header/legend/model card extracted into dedicated
+/// primitives under `widgets/llm/`.
 class ModelManagementDialog extends ConsumerStatefulWidget {
   final String providerCode;
   final String providerName;
@@ -123,55 +129,16 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Row(
-                children: [
-                  Icon(
-                    FluentIcons.apps_list_24_regular,
-                    size: 22,
-                    color: tokens.accent,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Manage ${widget.providerName} Models',
-                          style: tokens.fontDisplay.copyWith(
-                            fontSize: 18,
-                            color: tokens.text,
-                            fontStyle: tokens.fontDisplayItalic
-                                ? FontStyle.italic
-                                : FontStyle.normal,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Select which models are available for translations',
-                          style: tokens.fontBody.copyWith(
-                            fontSize: 13,
-                            color: tokens.textDim,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      FluentIcons.dismiss_24_regular,
-                      color: tokens.textMid,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+              LlmDialogHeader(
+                providerName: widget.providerName,
+                onClose: () => Navigator.of(context).pop(),
               ),
               const SizedBox(height: 24),
               Divider(height: 1, color: tokens.border),
               const SizedBox(height: 16),
 
               // Legend
-              _buildLegend(tokens),
+              const LlmModelsLegend(),
               const SizedBox(height: 16),
 
               // Models list
@@ -180,67 +147,20 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                   loading: () => const Center(
                     child: FluentSpinner(),
                   ),
-                  error: (error, stack) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          FluentIcons.error_circle_24_regular,
-                          size: 48,
-                          color: tokens.err,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Error loading models',
-                          style: tokens.fontBody.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: tokens.text,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          error.toString(),
-                          style: tokens.fontBody.copyWith(
-                            fontSize: 12,
-                            color: tokens.textDim,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                  error: (error, stack) => LlmModelEmptyState(
+                    icon: FluentIcons.error_circle_24_regular,
+                    iconColor: tokens.err,
+                    title: 'Error loading models',
+                    subtitle: error.toString(),
                   ),
                   data: (models) {
                     if (models.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              FluentIcons.question_circle_24_regular,
-                              size: 48,
-                              color: tokens.textFaint,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No models found',
-                              style: tokens.fontBody.copyWith(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: tokens.text,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Click "Fetch Models" to load available models',
-                              style: tokens.fontBody.copyWith(
-                                fontSize: 12,
-                                color: tokens.textDim,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                      return LlmModelEmptyState(
+                        icon: FluentIcons.question_circle_24_regular,
+                        iconColor: tokens.textFaint,
+                        title: 'No models found',
+                        subtitle:
+                            'Click "Fetch Models" to load available models',
                       );
                     }
 
@@ -263,8 +183,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...availableModels
-                              .map((model) => _buildModelItem(tokens, model)),
+                          ...availableModels.map((model) => _modelCard(model)),
                         ],
 
                         // Archived models (if any)
@@ -279,8 +198,7 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ...archivedModels
-                              .map((model) => _buildModelItem(tokens, model)),
+                          ...archivedModels.map((model) => _modelCard(model)),
                         ],
                       ],
                     );
@@ -308,187 +226,15 @@ class _ModelManagementDialogState extends ConsumerState<ModelManagementDialog> {
     );
   }
 
-  Widget _buildLegend(TwmtThemeTokens tokens) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: tokens.panel2,
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        border: Border.all(color: tokens.border),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.info_24_regular,
-            size: 16,
-            color: tokens.accent,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Check models to make them available for translations. Click the star to set a model as global default (only one default across all providers).',
-              style: tokens.fontBody.copyWith(
-                fontSize: 12,
-                color: tokens.textDim,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModelItem(TwmtThemeTokens tokens, LlmProviderModel model) {
+  /// Wraps [LlmModelCard] with the dialog's mutation callbacks.
+  Widget _modelCard(LlmProviderModel model) {
     final isProcessingThis = _isProcessing && _processingModelId == model.id;
-    final canInteract = !_isProcessing && !model.isArchived;
-
-    return MouseRegion(
-      cursor: canInteract ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: model.isEnabled && !model.isArchived
-              ? tokens.accentBg
-              : tokens.panel2,
-          border: Border.all(
-            color: model.isEnabled && !model.isArchived
-                ? tokens.accent.withValues(alpha: 0.5)
-                : tokens.border,
-          ),
-          borderRadius: BorderRadius.circular(tokens.radiusMd),
-        ),
-        child: Row(
-          children: [
-            // Checkbox
-            if (model.isArchived)
-              Icon(
-                FluentIcons.archive_24_regular,
-                size: 20,
-                color: tokens.textFaint,
-              )
-            else if (isProcessingThis)
-              const FluentSpinner(size: 20, strokeWidth: 2)
-            else
-              GestureDetector(
-                onTap: canInteract ? () => _toggleModelEnabled(model) : null,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: model.isEnabled ? tokens.accent : Colors.transparent,
-                    border: Border.all(
-                      color:
-                          model.isEnabled ? tokens.accent : tokens.border,
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(tokens.radiusSm),
-                  ),
-                  child: model.isEnabled
-                      ? Icon(
-                          FluentIcons.checkmark_24_regular,
-                          size: 14,
-                          color: tokens.accentFg,
-                        )
-                      : null,
-                ),
-              ),
-
-            const SizedBox(width: 12),
-
-            // Model name
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    model.friendlyName,
-                    style: tokens.fontBody.copyWith(
-                      fontSize: 13,
-                      fontWeight: model.isDefault
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                      color: model.isArchived
-                          ? tokens.textFaint
-                          : tokens.text,
-                    ),
-                  ),
-                  if (model.modelId != model.friendlyName) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      model.modelId,
-                      style: tokens.fontMono.copyWith(
-                        fontSize: 11.5,
-                        color: tokens.textDim,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Default star button
-            if (!model.isArchived) ...[
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: canInteract && !model.isDefault
-                    ? () => _setAsDefault(model)
-                    : null,
-                child: MouseRegion(
-                  cursor: canInteract && !model.isDefault
-                      ? SystemMouseCursors.click
-                      : SystemMouseCursors.basic,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: model.isDefault
-                          ? tokens.accent.withValues(alpha: 0.1)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(tokens.radiusSm),
-                    ),
-                    child: Icon(
-                      model.isDefault
-                          ? FluentIcons.star_24_filled
-                          : FluentIcons.star_24_regular,
-                      size: 20,
-                      color:
-                          model.isDefault ? tokens.accent : tokens.textFaint,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-
-            // Status badges
-            if (model.isDefault || model.isArchived) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: model.isDefault
-                      ? tokens.accent.withValues(alpha: 0.1)
-                      : tokens.textFaint.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(tokens.radiusSm),
-                ),
-                child: Text(
-                  model.isDefault ? 'Default' : 'Archived',
-                  style: tokens.fontMono.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
-                    color: model.isDefault ? tokens.accent : tokens.textFaint,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    return LlmModelCard(
+      model: model,
+      isProcessingThis: isProcessingThis,
+      isProcessing: _isProcessing,
+      onToggleEnabled: () => _toggleModelEnabled(model),
+      onSetAsDefault: () => _setAsDefault(model),
     );
   }
 }

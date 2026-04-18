@@ -240,9 +240,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
             ),
           ),
           const SizedBox(height: 6),
@@ -306,9 +304,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
-                fontStyle: tokens.fontDisplayItalic
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+                fontStyle: tokens.fontDisplayStyle,
               ),
             ),
             const SizedBox(height: 8),

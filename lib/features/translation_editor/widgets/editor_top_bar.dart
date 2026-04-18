@@ -227,9 +227,7 @@ class _Crumb extends StatelessWidget {
           Text(
             projectName,
             style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayItalic
-                  ? FontStyle.italic
-                  : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
               fontSize: 18,
               color: tokens.text,
             ),

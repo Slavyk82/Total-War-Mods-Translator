@@ -95,7 +95,7 @@ class _SectionHeader extends StatelessWidget {
             label,
             overflow: TextOverflow.ellipsis,
             style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayItalic ? FontStyle.italic : FontStyle.normal,
+              fontStyle: tokens.fontDisplayStyle,
               fontSize: 13,
               color: tokens.accent,
             ),
