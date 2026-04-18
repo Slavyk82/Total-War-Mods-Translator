@@ -16,6 +16,7 @@ import 'package:twmt/widgets/wizard/form_section.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 import 'package:twmt/widgets/wizard/summary_box.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
+import 'package:twmt/widgets/workflow/next_step_cta.dart';
 import '../providers/compilation_conflict_providers.dart';
 import '../providers/pack_compilation_providers.dart';
 import '../widgets/compilation_bbcode_section.dart';
@@ -260,6 +261,9 @@ class _PackCompilationEditorScreenState
                   key: const ValueKey('editing'),
                   state: state,
                   currentGameAsync: currentGameAsync,
+                  hasSuccess: state.successMessage != null &&
+                      state.errorMessage == null &&
+                      !state.isCompiling,
                 ),
         ),
       ),
@@ -345,10 +349,15 @@ class _EditingView extends ConsumerWidget {
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
 
+  /// Whether the last compile succeeded. When true, the view prepends a
+  /// success banner + a Next-step CTA routing to Steam Workshop.
+  final bool hasSuccess;
+
   const _EditingView({
     super.key,
     required this.state,
     required this.currentGameAsync,
+    this.hasSuccess = false,
   });
 
   @override
@@ -360,6 +369,18 @@ class _EditingView extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Post-compile success banner + CTA. Visible only when the last
+        // generatePack run reported a success message and no error.
+        if (hasSuccess) ...[
+          _CompileSuccessBanner(message: state.successMessage!),
+          const SizedBox(height: 12),
+          NextStepCta(
+            label: 'Publish on Steam Workshop',
+            icon: FluentIcons.cloud_arrow_up_24_regular,
+            onTap: () => context.goSteamPublish(),
+          ),
+          const SizedBox(height: 16),
+        ],
         // Primary project selection list. Sized region so the internal
         // Expanded/ListView render correctly inside the wizard column.
         SizedBox(
@@ -399,6 +420,48 @@ class _EditingView extends ConsumerWidget {
           const CompilationBBCodeSection(),
         ],
       ],
+    );
+  }
+}
+
+/// Thin ok-colored banner shown after a successful compilation, summarizing
+/// the generated pack path. Sits just above the Next-step CTA.
+class _CompileSuccessBanner extends StatelessWidget {
+  final String message;
+  const _CompileSuccessBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: tokens.okBg,
+        border: Border.all(color: tokens.ok),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.checkmark_circle_24_regular,
+            size: 16,
+            color: tokens.ok,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.ok,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
