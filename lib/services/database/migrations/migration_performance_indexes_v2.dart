@@ -42,11 +42,6 @@ class PerformanceIndexesV2Migration extends Migration {
       '''CREATE INDEX IF NOT EXISTS idx_translation_versions_status
          ON translation_versions(project_language_id, status)''',
 
-      // Index for translation memory source hash lookups
-      // Used in: TM matching during translation
-      '''CREATE INDEX IF NOT EXISTS idx_tm_source_hash
-         ON translation_memory(source_hash)''',
-
       // Composite index for glossary entry lookups
       // Used in: Glossary term matching during translation
       '''CREATE INDEX IF NOT EXISTS idx_glossary_entries_source_term

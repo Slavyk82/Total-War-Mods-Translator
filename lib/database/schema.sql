@@ -533,7 +533,6 @@ CREATE INDEX IF NOT EXISTS idx_batch_units_batch ON translation_batch_units(batc
 CREATE INDEX IF NOT EXISTS idx_batch_units_unit ON translation_batch_units(unit_id);
 
 -- Translation Memory
-CREATE INDEX IF NOT EXISTS idx_tm_hash_lang ON translation_memory(source_hash, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_source_lang ON translation_memory(source_language_id, target_language_id);
 CREATE INDEX IF NOT EXISTS idx_tm_last_used ON translation_memory(last_used_at DESC);
 -- Index for target language filtering (getWithFilters, searchFts5)

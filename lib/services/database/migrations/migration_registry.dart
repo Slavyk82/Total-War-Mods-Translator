@@ -1,6 +1,7 @@
 import 'migration_base.dart';
 import 'migration_performance_indexes.dart';
 import 'migration_performance_indexes_v2.dart';
+import 'migration_drop_redundant_tm_indexes.dart';
 import 'migration_mod_update_cache.dart';
 import 'migration_translation_source.dart';
 import 'migration_compilation_tables.dart';
@@ -34,6 +35,7 @@ class MigrationRegistry {
     final migrations = <Migration>[
       PerformanceIndexesMigration(),
       PerformanceIndexesV2Migration(),
+      DropRedundantTmIndexesMigration(), // NEW — runs right after v2
       ModUpdateCacheMigration(),
       TranslationSourceMigration(),
       CompilationTablesMigration(),
