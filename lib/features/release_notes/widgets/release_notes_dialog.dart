@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../../models/domain/github_release.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/release_notes_providers.dart';
 
-/// Dialog shown after app update with release notes from GitHub.
+/// Token-themed popup shown after app update, displaying release notes.
 class ReleaseNotesDialog extends ConsumerWidget {
   final GitHubRelease release;
 
@@ -19,143 +21,76 @@ class ReleaseNotesDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 700,
-          maxHeight: 600,
-        ),
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(context, ref, theme),
-            const Divider(height: 1),
-
-            // Content - Scrollable markdown
-            Expanded(
-              child: _buildContent(theme),
-            ),
-
-            // Footer
-            const Divider(height: 1),
-            _buildFooter(context, ref, theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, WidgetRef ref, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              FluentIcons.rocket_24_regular,
-              color: theme.colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'What\'s New',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Version badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF107C10).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'v${release.version}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: const Color(0xFF107C10),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  release.name.isNotEmpty
-                      ? release.name
-                      : 'Release ${release.version}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          FluentIconButton(
-            icon: const Icon(FluentIcons.dismiss_24_regular),
-            onPressed: () => _dismissDialog(context, ref),
-            tooltip: 'Close',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent(ThemeData theme) {
+    final tokens = context.tokens;
     final content = release.body.isNotEmpty
         ? release.body
         : 'No release notes available for this version.';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: MarkdownBody(
-          data: content,
-          selectable: true,
-          shrinkWrap: true,
-          onTapLink: (text, href, title) => _handleLinkTap(href),
-          styleSheet: _buildMarkdownStyleSheet(theme),
+    return TokenDialog(
+      icon: FluentIcons.rocket_24_regular,
+      title: "What's New",
+      subtitle: release.name.isNotEmpty
+          ? release.name
+          : 'Release ${release.version}',
+      width: 720,
+      body: SizedBox(
+        height: 480,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: tokens.ok.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
+                ),
+                child: Text(
+                  'v${release.version}',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 11.5,
+                    color: tokens.ok,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Divider(height: 1, color: tokens.border),
+            const SizedBox(height: 10),
+            Expanded(
+              child: SingleChildScrollView(
+                child: MarkdownBody(
+                  data: content,
+                  selectable: true,
+                  shrinkWrap: true,
+                  onTapLink: (_, href, _) => _handleLinkTap(href),
+                  styleSheet: buildTokenMarkdownStyleSheet(tokens),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildFooter(BuildContext context, WidgetRef ref, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          // View on GitHub link
-          _ViewOnGitHubButton(url: release.htmlUrl),
-          const Spacer(),
-          // Primary close button
-          _PrimaryButton(
-            label: 'Got it',
-            icon: FluentIcons.checkmark_24_regular,
-            onTap: () => _dismissDialog(context, ref),
-          ),
-        ],
-      ),
+      leadingActions: [
+        SmallTextButton(
+          label: 'View on GitHub',
+          icon: FluentIcons.open_24_regular,
+          onTap: () => _handleLinkTap(release.htmlUrl),
+        ),
+      ],
+      actions: [
+        SmallTextButton(
+          label: 'Got it',
+          icon: FluentIcons.checkmark_24_regular,
+          filled: true,
+          onTap: () => _dismissDialog(context, ref),
+        ),
+      ],
     );
   }
 
@@ -171,200 +106,70 @@ class ReleaseNotesDialog extends ConsumerWidget {
       await launchUrl(uri);
     }
   }
-
-  MarkdownStyleSheet _buildMarkdownStyleSheet(ThemeData theme) {
-    final baseStyle = theme.textTheme.bodyMedium ?? const TextStyle();
-
-    return MarkdownStyleSheet(
-      p: baseStyle.copyWith(height: 1.6),
-      h1: theme.textTheme.headlineLarge?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.primary,
-      ),
-      h2: theme.textTheme.headlineMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: theme.colorScheme.onSurface,
-      ),
-      h3: theme.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      h4: theme.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      h5: theme.textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      h6: theme.textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.w600,
-      ),
-      a: baseStyle.copyWith(
-        color: theme.colorScheme.primary,
-        decoration: TextDecoration.underline,
-      ),
-      code: TextStyle(
-        fontFamily: 'Consolas',
-        fontSize: 13,
-        color: theme.colorScheme.onSurfaceVariant,
-        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-      ),
-      codeblockDecoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
-      ),
-      codeblockPadding: const EdgeInsets.all(16),
-      blockquote: baseStyle.copyWith(
-        color: theme.colorScheme.onSurfaceVariant,
-        fontStyle: FontStyle.italic,
-      ),
-      blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: theme.colorScheme.primary, width: 4),
-        ),
-      ),
-      blockquotePadding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-      tableHead: baseStyle.copyWith(fontWeight: FontWeight.bold),
-      tableBody: baseStyle,
-      tableBorder: TableBorder.all(color: theme.dividerColor, width: 1),
-      tableHeadAlign: TextAlign.left,
-      tableCellsPadding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      listBullet: baseStyle,
-      listIndent: 24,
-      horizontalRuleDecoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.dividerColor, width: 1)),
-      ),
-    );
-  }
 }
 
-/// Button to view release on GitHub.
-class _ViewOnGitHubButton extends StatefulWidget {
-  final String url;
+/// Build a markdown stylesheet wired to token colors/fonts.
+MarkdownStyleSheet buildTokenMarkdownStyleSheet(TwmtThemeTokens tokens) {
+  final baseStyle = tokens.fontBody.copyWith(
+    fontSize: 13,
+    color: tokens.text,
+  );
 
-  const _ViewOnGitHubButton({required this.url});
-
-  @override
-  State<_ViewOnGitHubButton> createState() => _ViewOnGitHubButtonState();
-}
-
-class _ViewOnGitHubButtonState extends State<_ViewOnGitHubButton> {
-  bool _isHovered = false;
-
-  Future<void> _openUrl() async {
-    final uri = Uri.tryParse(widget.url);
-    if (uri != null && await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: _openUrl,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.surfaceContainerHigh
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.open_24_regular,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'View on GitHub',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Primary action button following Fluent Design.
-class _PrimaryButton extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _PrimaryButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  State<_PrimaryButton> createState() => _PrimaryButtonState();
-}
-
-class _PrimaryButtonState extends State<_PrimaryButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
-        onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: _isPressed
-                ? theme.colorScheme.primary.withValues(alpha: 0.8)
-                : _isHovered
-                    ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                    : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.icon,
-                size: 20,
-                color: theme.colorScheme.onPrimary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  return MarkdownStyleSheet(
+    p: baseStyle.copyWith(height: 1.6),
+    h1: tokens.fontDisplay.copyWith(
+      fontSize: 22,
+      color: tokens.accent,
+      fontWeight: FontWeight.bold,
+    ),
+    h2: tokens.fontDisplay.copyWith(
+      fontSize: 19,
+      color: tokens.text,
+      fontWeight: FontWeight.bold,
+    ),
+    h3: tokens.fontDisplay.copyWith(
+      fontSize: 16,
+      color: tokens.text,
+      fontWeight: FontWeight.w600,
+    ),
+    h4: baseStyle.copyWith(fontSize: 15, fontWeight: FontWeight.w600),
+    h5: baseStyle.copyWith(fontSize: 14, fontWeight: FontWeight.w600),
+    h6: baseStyle.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+    a: baseStyle.copyWith(
+      color: tokens.accent,
+      decoration: TextDecoration.underline,
+    ),
+    code: tokens.fontMono.copyWith(
+      fontSize: 12.5,
+      color: tokens.text,
+      backgroundColor: tokens.panel2,
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: tokens.panel2,
+      borderRadius: BorderRadius.circular(tokens.radiusSm),
+      border: Border.all(color: tokens.border),
+    ),
+    codeblockPadding: const EdgeInsets.all(12),
+    blockquote: baseStyle.copyWith(
+      color: tokens.textDim,
+      fontStyle: FontStyle.italic,
+    ),
+    blockquoteDecoration: BoxDecoration(
+      border: Border(left: BorderSide(color: tokens.accent, width: 3)),
+    ),
+    blockquotePadding: const EdgeInsets.only(left: 12, top: 6, bottom: 6),
+    tableHead: baseStyle.copyWith(fontWeight: FontWeight.bold),
+    tableBody: baseStyle,
+    tableBorder: TableBorder.all(color: tokens.border, width: 1),
+    tableHeadAlign: TextAlign.left,
+    tableCellsPadding: const EdgeInsets.symmetric(
+      horizontal: 12,
+      vertical: 8,
+    ),
+    listBullet: baseStyle,
+    listIndent: 24,
+    horizontalRuleDecoration: BoxDecoration(
+      border: Border(top: BorderSide(color: tokens.border, width: 1)),
+    ),
+  );
 }

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../../features/settings/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 
-/// Dialog to configure default templates for Workshop title and description.
-///
-/// Templates support `$modName` which is replaced by the project display name
-/// at publish time.
+/// Token-themed popup configuring default templates for Workshop title and
+/// description. Templates support `$modName` which is replaced by the project
+/// display name at publish time.
 class WorkshopPublishSettingsDialog extends ConsumerStatefulWidget {
   const WorkshopPublishSettingsDialog({super.key});
 
@@ -83,96 +85,130 @@ class _WorkshopPublishSettingsDialogState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return Dialog.fullscreen(
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          title: Row(
-            children: [
-              Icon(FluentIcons.settings_24_regular,
-                  size: 22, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text('Workshop Templates'),
-            ],
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: FilledButton(
-                onPressed: _loading ? null : _save,
-                child: const Text('Save'),
+    return TokenDialog(
+      icon: FluentIcons.settings_24_regular,
+      title: 'Workshop Templates',
+      width: 640,
+      body: _loading
+          ? SizedBox(
+              height: 200,
+              child: Center(
+                child: CircularProgressIndicator(color: tokens.accent),
               ),
-            ),
-          ],
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Use \$modName as a placeholder for the project name.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Title template',
-                        border: OutlineInputBorder(),
-                        hintText: '\$modName - French translation',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _descriptionController,
-                        decoration: const InputDecoration(
-                          labelText: 'Description template',
-                          border: OutlineInputBorder(),
-                          hintText: 'French translation for \$modName',
-                        ),
-                        maxLines: null,
-                        expands: true,
-                        textAlignVertical: TextAlignVertical.top,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<WorkshopVisibility?>(
-                      initialValue: _defaultVisibility,
-                      decoration: const InputDecoration(
-                        labelText: 'Default visibility',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: [
-                        const DropdownMenuItem<WorkshopVisibility?>(
-                          value: null,
-                          child: Text('No default'),
-                        ),
-                        ...WorkshopVisibility.values.map((v) {
-                          return DropdownMenuItem<WorkshopVisibility?>(
-                            value: v,
-                            child: Text(v.label),
-                          );
-                        }),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _defaultVisibility = value);
-                      },
-                    ),
-                  ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Use \$modName as a placeholder for the project name.',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12,
+                    color: tokens.textDim,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _titleController,
+                  style: tokens.fontBody
+                      .copyWith(fontSize: 13, color: tokens.text),
+                  decoration: _decoration(
+                    tokens,
+                    label: 'Title template',
+                    hint: '\$modName - French translation',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 220,
+                  child: TextField(
+                    controller: _descriptionController,
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                    decoration: _decoration(
+                      tokens,
+                      label: 'Description template',
+                      hint: 'French translation for \$modName',
+                    ),
+                    maxLines: null,
+                    expands: true,
+                    textAlignVertical: TextAlignVertical.top,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<WorkshopVisibility?>(
+                  initialValue: _defaultVisibility,
+                  style: tokens.fontBody
+                      .copyWith(fontSize: 13, color: tokens.text),
+                  dropdownColor: tokens.panel,
+                  decoration: _decoration(
+                    tokens,
+                    label: 'Default visibility',
+                  ),
+                  items: [
+                    const DropdownMenuItem<WorkshopVisibility?>(
+                      value: null,
+                      child: Text('No default'),
+                    ),
+                    ...WorkshopVisibility.values.map((v) {
+                      return DropdownMenuItem<WorkshopVisibility?>(
+                        value: v,
+                        child: Text(v.label),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) =>
+                      setState(() => _defaultVisibility = value),
+                ),
+              ],
+            ),
+      actions: [
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () => Navigator.of(context).pop(false),
+        ),
+        SmallTextButton(
+          label: 'Save',
+          icon: FluentIcons.save_24_regular,
+          filled: true,
+          onTap: _loading ? null : _save,
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _decoration(
+    TwmtThemeTokens tokens, {
+    required String label,
+    String? hint,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+      floatingLabelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
+      hintText: hint,
+      hintStyle:
+          tokens.fontBody.copyWith(fontSize: 13, color: tokens.textFaint),
+      filled: true,
+      fillColor: tokens.panel2,
+      isDense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.accent),
       ),
     );
   }

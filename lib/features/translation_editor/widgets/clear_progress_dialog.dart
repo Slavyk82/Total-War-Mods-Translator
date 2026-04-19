@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 
-/// Dialog showing progress of clear translations operation
+/// Token-themed progress popup for the "clear translations" operation.
 class ClearProgressDialog extends StatelessWidget {
   final int processed;
   final int total;
@@ -16,54 +18,58 @@ class ClearProgressDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final progress = total > 0 ? processed / total : 0.0;
     final percentage = (progress * 100).toStringAsFixed(0);
 
-    return AlertDialog(
-      title: Row(
+    return TokenDialog(
+      icon: FluentIcons.delete_24_regular,
+      iconColor: tokens.err,
+      title: 'Clearing Translations',
+      width: 440,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(FluentIcons.delete_24_regular, size: 24),
-          const SizedBox(width: 12),
-          const Text('Clearing Translations'),
-        ],
-      ),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              phase,
-              style: Theme.of(context).textTheme.bodyMedium,
+          Text(
+            phase,
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
             ),
-            const SizedBox(height: 16),
-            LinearProgressIndicator(
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+            child: LinearProgressIndicator(
               value: progress,
               minHeight: 8,
-              borderRadius: BorderRadius.circular(4),
+              backgroundColor: tokens.panel2,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
             ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$processed / $total',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '$processed / $total',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textDim,
                 ),
-                Text(
-                  '$percentage%',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
+              ),
+              Text(
+                '$percentage%',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.text,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

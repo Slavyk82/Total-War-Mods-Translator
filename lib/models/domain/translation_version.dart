@@ -15,7 +15,21 @@ enum TranslationVersionStatus {
   @JsonValue('translated')
   translated,
   @JsonValue('needs_review')
-  needsReview,
+  needsReview;
+
+  /// Canonical string stored in the SQLite `translation_versions.status`
+  /// column. Mirrors the `@JsonValue` annotations so raw SQL writes/reads
+  /// stay in sync with the JSON-serialised path.
+  String get toDbValue {
+    switch (this) {
+      case TranslationVersionStatus.pending:
+        return 'pending';
+      case TranslationVersionStatus.translated:
+        return 'translated';
+      case TranslationVersionStatus.needsReview:
+        return 'needs_review';
+    }
+  }
 }
 
 /// Source of a translation

@@ -1,28 +1,30 @@
-import 'dart:async';
-
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
-import 'package:twmt/widgets/wizard/token_text_field.dart';
 
+import 'editor_toolbar_batch_settings.dart';
 import 'editor_toolbar_mod_rule.dart';
 import 'editor_toolbar_model_selector.dart';
 import 'editor_toolbar_skip_tm.dart';
 
 /// Left sidebar of the translation editor (240 px).
 ///
-/// Replaces the ex-`EditorFilterPanel`. Filters moved to the top
-/// `FilterToolbar` (STATUS + TM SOURCE pill groups). This panel now hosts
-/// every control previously in `EditorActionBar`, organised into 4 labelled
-/// sections: §SEARCH · §CONTEXT · §ACTIONS · §SETTINGS.
-class EditorActionSidebar extends ConsumerStatefulWidget {
+/// Hosts the controls previously in `EditorActionBar`, organised into 4
+/// labelled sections by intent: §AI CONTEXT (model + prompt configuration) ·
+/// §TRANSLATE · §REVIEW · §PACK. The search field lives in the top
+/// `FilterToolbar`; filters are the STATUS pill group.
+///
+/// §Translate exposes a single smart button: when the grid has rows selected
+/// it reads "Translate selection" and routes to [onTranslateSelected];
+/// otherwise it reads "Translate all" and routes to [onTranslateAll]. The
+/// `Ctrl+T` screen-scope shortcut mirrors this routing — selection-aware by
+/// design — so the displayed hint is constant.
+class EditorActionSidebar extends ConsumerWidget {
   final String projectId;
   final String languageId;
-  final FocusNode searchFocusNode;
-  final VoidCallback onTranslationSettings;
   final VoidCallback onTranslateAll;
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
@@ -34,8 +36,6 @@ class EditorActionSidebar extends ConsumerStatefulWidget {
     super.key,
     required this.projectId,
     required this.languageId,
-    required this.searchFocusNode,
-    required this.onTranslationSettings,
     required this.onTranslateAll,
     required this.onTranslateSelected,
     required this.onValidate,
@@ -45,30 +45,7 @@ class EditorActionSidebar extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<EditorActionSidebar> createState() =>
-      _EditorActionSidebarState();
-}
-
-class _EditorActionSidebarState extends ConsumerState<EditorActionSidebar> {
-  final TextEditingController _searchController = TextEditingController();
-  Timer? _debounce;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _onSearchChanged(String value) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 200), () {
-      ref.read(editorFilterProvider.notifier).setSearchQuery(value);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tokens = context.tokens;
     return Container(
       width: 240,
@@ -81,83 +58,66 @@ class _EditorActionSidebarState extends ConsumerState<EditorActionSidebar> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SectionHeader(label: 'Search', tokens: tokens),
+            _SectionHeader(label: 'AI Context', tokens: tokens),
             const SizedBox(height: 10),
-            TokenTextField(
-              controller: _searchController,
-              focusNode: widget.searchFocusNode,
-              hint: 'Search · filter · run',
-              enabled: true,
-              onChanged: _onSearchChanged,
-            ),
-            const SizedBox(height: 20),
-            _SectionHeader(label: 'Context', tokens: tokens),
-            const SizedBox(height: 10),
-            const EditorToolbarModelSelector(compact: true),
-            const SizedBox(height: 10),
-            const EditorToolbarSkipTm(compact: true),
-            const SizedBox(height: 10),
-            EditorToolbarModRule(
-              compact: true,
-              projectId: widget.projectId,
-            ),
-            const SizedBox(height: 20),
-            _SectionHeader(label: 'Actions', tokens: tokens),
-            const SizedBox(height: 10),
-            _SidebarActionButton(
-              icon: FluentIcons.translate_24_regular,
-              label: 'Translate all',
-              primary: true,
-              onTap: widget.onTranslateAll,
-            ),
+            const EditorToolbarModelSelector(),
             const SizedBox(height: 8),
+            const EditorToolbarSkipTm(),
+            const SizedBox(height: 8),
+            EditorToolbarModRule(projectId: projectId),
+            const SizedBox(height: 10),
+            const EditorToolbarBatchSettings(),
+            const SizedBox(height: 20),
+            _SectionHeader(label: 'Translate', tokens: tokens),
+            const SizedBox(height: 10),
             Consumer(
               builder: (context, ref, _) {
                 final selection = ref.watch(editorSelectionProvider);
+                final hasSelection = selection.hasSelection;
+                final label =
+                    hasSelection ? 'Translate selection' : 'Translate all';
+                // Ctrl+T is selection-aware at the screen scope, so the hint
+                // stays constant regardless of the current grid state.
                 return _SidebarActionButton(
-                  icon: FluentIcons.translate_24_filled,
-                  label: 'Selection',
-                  onTap: selection.hasSelection
-                      ? widget.onTranslateSelected
-                      : null,
+                  icon: FluentIcons.translate_24_regular,
+                  label: label,
+                  primary: true,
+                  shortcutHint: 'Ctrl+T',
+                  onTap: hasSelection ? onTranslateSelected : onTranslateAll,
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            _SectionHeader(label: 'Review', tokens: tokens),
+            const SizedBox(height: 10),
             _SidebarActionButton(
               icon: FluentIcons.checkmark_circle_24_regular,
               label: 'Validate selected',
-              onTap: widget.onValidate,
+              onTap: onValidate,
             ),
             const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
+            Center(
               child: SmallTextButton(
                 label: 'Rescan all',
-                onTap: widget.onRescanValidation,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _SidebarActionButton(
-              icon: FluentIcons.box_24_regular,
-              label: 'Generate pack',
-              onTap: widget.onExport,
-            ),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SmallTextButton(
-                label: 'Import pack',
-                onTap: widget.onImportPack,
+                icon: FluentIcons.arrow_sync_24_regular,
+                onTap: onRescanValidation,
               ),
             ),
             const SizedBox(height: 20),
-            _SectionHeader(label: 'Settings', tokens: tokens),
+            _SectionHeader(label: 'Pack', tokens: tokens),
             const SizedBox(height: 10),
             _SidebarActionButton(
-              icon: FluentIcons.settings_24_regular,
-              label: 'Translation settings',
-              onTap: widget.onTranslationSettings,
+              icon: FluentIcons.box_24_regular,
+              label: 'Generate pack',
+              onTap: onExport,
+            ),
+            const SizedBox(height: 6),
+            Center(
+              child: SmallTextButton(
+                label: 'Import pack',
+                icon: FluentIcons.arrow_import_24_regular,
+                onTap: onImportPack,
+              ),
             ),
           ],
         ),
@@ -209,11 +169,17 @@ class _SidebarActionButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool primary;
 
+  /// Optional trailing keyboard-shortcut hint (e.g. `Ctrl+T`). When provided,
+  /// the button layout switches from centre-hug to a left-anchored label with
+  /// the hint pinned right so users can discover the binding at a glance.
+  final String? shortcutHint;
+
   const _SidebarActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.primary = false,
+    this.shortcutHint,
   });
 
   @override
@@ -229,6 +195,17 @@ class _SidebarActionButton extends StatelessWidget {
     final borderColor = primary
         ? tokens.accent
         : tokens.border;
+    final hasHint = shortcutHint != null;
+    final labelText = Text(
+      label,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: tokens.fontBody.copyWith(
+        fontSize: 12.5,
+        color: fg,
+        fontWeight: FontWeight.w500,
+      ),
+    );
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
@@ -242,24 +219,64 @@ class _SidebarActionButton extends StatelessWidget {
             border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(tokens.radiusSm),
           ),
-          alignment: Alignment.centerLeft,
+          alignment: Alignment.center,
+          // A single hug-and-centre layout whether or not a hint is attached:
+          // icon + label + (optional) kbd badge sit in one tight cluster.
+          // This keeps the badge visually identical across states — long
+          // labels ellipsize via [Flexible] rather than stretching a gap.
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 14, color: fg),
               const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: tokens.fontBody.copyWith(
-                    fontSize: 12.5,
-                    color: fg,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
+              Flexible(child: labelText),
+              if (hasHint) ...[
+                const SizedBox(width: 6),
+                _KbdBadge(text: shortcutHint!, primary: primary),
+              ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Inline keyboard-shortcut chip rendered inside action buttons.
+///
+/// Matches the button's variant: on [primary] buttons we tint a translucent
+/// accent-fg pill; on outlined buttons we drop the chip onto the panel surface
+/// with a dim foreground. Text is rendered in a monospace-like face at 10px
+/// so it reads as "kbd" rather than regular copy.
+class _KbdBadge extends StatelessWidget {
+  final String text;
+  final bool primary;
+
+  const _KbdBadge({required this.text, this.primary = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final fg = primary ? tokens.accentFg : tokens.textDim;
+    final bg = primary
+        ? tokens.accentFg.withValues(alpha: 0.16)
+        : tokens.panel;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(3),
+        border: Border.all(color: fg.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: fg,
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.w500,
+          height: 1.2,
         ),
       ),
     );

@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/translation_unit.dart';
 import '../../../services/translation/models/translation_context.dart';
 import '../../../services/translation/prompt_preview_service.dart';
 import '../../../providers/shared/service_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for previewing the LLM prompt that will be sent for a translation unit
-///
-/// Displays the complete prompt including system instructions, context,
-/// glossary terms, and the actual translation request.
+/// Token-themed popup previewing the LLM prompt for a translation unit.
 class PromptPreviewDialog extends ConsumerStatefulWidget {
   final TranslationUnit unit;
   final TranslationContext context;
@@ -23,7 +23,8 @@ class PromptPreviewDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<PromptPreviewDialog> createState() => _PromptPreviewDialogState();
+  ConsumerState<PromptPreviewDialog> createState() =>
+      _PromptPreviewDialogState();
 }
 
 class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
@@ -91,150 +92,90 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: 900,
-        height: 700,
-        padding: const EdgeInsets.all(24),
+    final tokens = context.tokens;
+
+    return TokenDialog(
+      icon: FluentIcons.code_24_regular,
+      title: 'Prompt Preview',
+      subtitle: 'View the exact prompt that will be sent to the LLM',
+      width: 900,
+      body: SizedBox(
+        height: 580,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            _buildUnitInfo(),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _buildContent(),
-            ),
-            const SizedBox(height: 16),
-            _buildFooter(),
+            if (_preview != null) ...[
+              Align(
+                alignment: Alignment.centerRight,
+                child: _MetadataBadge(
+                  icon: FluentIcons.document_24_regular,
+                  label: '~${_preview!.estimatedTokens} tokens',
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+            _buildUnitInfo(tokens),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: tokens.border),
+            const SizedBox(height: 12),
+            Expanded(child: _buildContent(tokens)),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        const Icon(
-          FluentIcons.code_24_regular,
-          size: 24,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Prompt Preview',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'View the exact prompt that will be sent to the LLM',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-              ),
-            ],
+      actions: [
+        if (_preview != null)
+          SmallTextButton(
+            label: 'Copy Full Prompt',
+            icon: FluentIcons.copy_24_regular,
+            onTap: () =>
+                _copyToClipboard(_preview!.fullPrompt, 'Full prompt'),
           ),
-        ),
-        if (_preview != null) ...[
-          _buildMetadataBadge(
-            icon: FluentIcons.document_24_regular,
-            label: '~${_preview!.estimatedTokens} tokens',
-          ),
-          const SizedBox(width: 16),
-        ],
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.all(8),
-              child: const Icon(
-                FluentIcons.dismiss_24_regular,
-                size: 20,
-              ),
-            ),
-          ),
+        SmallTextButton(
+          label: 'Close',
+          filled: true,
+          onTap: () => Navigator.of(context).pop(),
         ),
       ],
     );
   }
 
-  Widget _buildMetadataBadge({required IconData icon, required String label}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: Colors.grey),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.grey,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUnitInfo() {
+  Widget _buildUnitInfo(TwmtThemeTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: Colors.blue.withValues(alpha: 0.2),
-          width: 1,
-        ),
+        color: tokens.infoBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.info.withValues(alpha: 0.25)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
+          Icon(
             FluentIcons.document_text_24_regular,
             size: 16,
-            color: Colors.blue,
+            color: tokens.info,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Key: ${widget.unit.key}',
-                  style: const TextStyle(
+                  style: tokens.fontBody.copyWith(
                     fontSize: 12,
+                    color: tokens.text,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   widget.unit.sourceText.length > 100
                       ? '${widget.unit.sourceText.substring(0, 100)}...'
                       : widget.unit.sourceText,
-                  style: TextStyle(
+                  style: tokens.fontBody.copyWith(
                     fontSize: 12,
-                    color: Colors.grey.shade700,
+                    color: tokens.textDim,
                   ),
                 ),
               ],
@@ -245,10 +186,10 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(TwmtThemeTokens tokens) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: CircularProgressIndicator(color: tokens.accent),
       );
     }
 
@@ -257,20 +198,27 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               FluentIcons.error_circle_24_regular,
               size: 48,
-              color: Colors.red,
+              color: tokens.err,
             ),
             const SizedBox(height: 16),
             Text(
               'Error building prompt preview',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -279,38 +227,60 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     }
 
     if (_preview == null) {
-      return const Center(
-        child: Text('No preview available'),
+      return Center(
+        child: Text(
+          'No preview available',
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
+          ),
+        ),
       );
     }
 
     return Column(
       children: [
-        TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'System Prompt'),
-            Tab(text: 'User Message'),
-            Tab(text: 'API Payload'),
-          ],
+        Theme(
+          data: Theme.of(context).copyWith(
+            tabBarTheme: TabBarThemeData(
+              labelColor: tokens.accent,
+              unselectedLabelColor: tokens.textDim,
+              dividerColor: tokens.border,
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(color: tokens.accent, width: 2),
+              ),
+              overlayColor: WidgetStatePropertyAll(tokens.accentBg),
+            ),
+          ),
+          child: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'System Prompt'),
+              Tab(text: 'User Message'),
+              Tab(text: 'API Payload'),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
               _buildPromptSection(
+                tokens: tokens,
                 title: 'System Prompt',
                 content: _preview!.systemMessage,
                 description:
                     'Instructions, context, and glossary sent as the system message',
               ),
               _buildPromptSection(
+                tokens: tokens,
                 title: 'User Message',
                 content: _preview!.userMessage,
-                description: 'The actual translation request with source text',
+                description:
+                    'The actual translation request with source text',
               ),
-              _buildApiPayloadSection(),
+              _buildApiPayloadSection(tokens),
             ],
           ),
         ),
@@ -318,129 +288,47 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     );
   }
 
-  Widget _buildApiPayloadSection() {
+  Widget _buildApiPayloadSection(TwmtThemeTokens tokens) {
     final payloads = _preview!.providerPayloads;
-    if (payloads.isEmpty) {
-      return _buildPromptSection(
-        title: 'API Payload',
-        content: _preview!.formattedPayload,
-        description: 'Complete JSON payload',
-        isJson: true,
-      );
-    }
-
-    final currentPayload = payloads.first;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'Complete JSON payload as it would be sent to the provider',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => _copyToClipboard(currentPayload.payload, 'API Payload'),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(FluentIcons.copy_24_regular, size: 14),
-                      SizedBox(width: 6),
-                      Text('Copy', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: SingleChildScrollView(
-              child: SelectableText(
-                currentPayload.payload,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'Consolas',
-                  color: Colors.green.shade300,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    final content =
+        payloads.isEmpty ? _preview!.formattedPayload : payloads.first.payload;
+    return _buildPromptSection(
+      tokens: tokens,
+      title: 'API Payload',
+      content: content,
+      description:
+          'Complete JSON payload as it would be sent to the provider',
+      isJson: true,
     );
   }
 
   Widget _buildPromptSection({
+    required TwmtThemeTokens tokens,
     required String title,
     required String content,
     required String description,
     bool isJson = false,
   }) {
+    final bgColor = isJson ? const Color(0xFF1E1E1E) : tokens.panel2;
+    final textColor = isJson ? const Color(0xFF9CDCFE) : tokens.text;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
               child: Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-              ),
-            ),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: () => _copyToClipboard(content, title),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(FluentIcons.copy_24_regular, size: 14),
-                      SizedBox(width: 6),
-                      Text('Copy', style: TextStyle(fontSize: 12)),
-                    ],
-                  ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textDim,
                 ),
               ),
+            ),
+            SmallTextButton(
+              label: 'Copy',
+              icon: FluentIcons.copy_24_regular,
+              onTap: () => _copyToClipboard(content, title),
             ),
           ],
         ),
@@ -448,24 +336,18 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
         Expanded(
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isJson
-                  ? Colors.grey.shade900
-                  : Colors.grey.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.2),
-                width: 1,
-              ),
+              color: bgColor,
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(color: tokens.border),
             ),
             child: SingleChildScrollView(
               child: SelectableText(
                 content,
-                style: TextStyle(
+                style: tokens.fontMono.copyWith(
                   fontSize: 12,
-                  fontFamily: 'Consolas',
-                  color: isJson ? Colors.green.shade300 : null,
+                  color: textColor,
                   height: 1.5,
                 ),
               ),
@@ -480,75 +362,38 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     Clipboard.setData(ClipboardData(text: content));
     FluentToast.success(context, '$title copied to clipboard');
   }
+}
 
-  Widget _buildFooter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        if (_preview != null)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => _copyToClipboard(_preview!.fullPrompt, 'Full prompt'),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: Colors.grey.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(FluentIcons.copy_24_regular, size: 16),
-                    SizedBox(width: 8),
-                    Text(
-                      'Copy Full Prompt',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+class _MetadataBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetadataBadge({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: tokens.textDim),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: tokens.fontBody.copyWith(
+              fontSize: 11.5,
+              color: tokens.textDim,
             ),
           ),
-        const SizedBox(width: 12),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
-

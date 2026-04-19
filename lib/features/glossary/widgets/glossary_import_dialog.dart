@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/glossary_providers.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for importing glossary from file
+/// Token-themed popup for importing a glossary from a CSV file.
 class GlossaryImportDialog extends ConsumerStatefulWidget {
   final String glossaryId;
 
@@ -26,195 +29,244 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final importState = ref.watch(glossaryImportStateProvider);
 
-    return AlertDialog(
-      title: const Text('Import Glossary (CSV)'),
-      content: SizedBox(
-        width: 600,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // File picker
-              Text(
-                'File',
-                style: Theme.of(context).textTheme.titleSmall,
+    return TokenDialog(
+      icon: FluentIcons.arrow_import_24_regular,
+      title: 'Import Glossary (CSV)',
+      width: 620,
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sectionLabel(tokens, 'File'),
+            const SizedBox(height: 6),
+            _buildFilePicker(tokens),
+            const SizedBox(height: 14),
+            _sectionLabel(tokens, 'Target Language'),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String>(
+              initialValue: _targetLanguage,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.text,
               ),
-              const SizedBox(height: 8),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _pickFile,
-                  child: Container(
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          FluentIcons.folder_open_24_regular,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _selectedFilePath ?? 'Click to select file...',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Language settings
-              Text(
-                'Target Language',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                initialValue: _targetLanguage,
-                decoration: const InputDecoration(
-                  labelText: 'Target Language',
-                  border: OutlineInputBorder(),
-                ),
-                items: _languageCodes.map((lang) {
-                  return DropdownMenuItem(
-                    value: lang,
-                    child: Text(lang.toUpperCase()),
+              dropdownColor: tokens.panel,
+              decoration: _inputDecoration(tokens, 'Target Language'),
+              items: _languageCodes.map((lang) {
+                return DropdownMenuItem(
+                  value: lang,
+                  child: Text(lang.toUpperCase()),
+                );
+              }).toList(),
+              onChanged: (value) =>
+                  setState(() => _targetLanguage = value ?? 'fr'),
+            ),
+            const SizedBox(height: 14),
+            _sectionLabel(tokens, 'Options'),
+            const SizedBox(height: 6),
+            _OptionToggle(
+              value: _skipDuplicates,
+              onChanged: (v) => setState(() => _skipDuplicates = v),
+              title: 'Skip duplicate entries',
+              subtitle: 'Existing entries will not be overwritten',
+            ),
+            const SizedBox(height: 14),
+            importState.when(
+              data: (result) {
+                if (result != null) {
+                  return _buildSummaryBanner(
+                    tokens,
+                    icon: FluentIcons.checkmark_circle_24_regular,
+                    title: 'Import Summary',
+                    message: result.summary,
                   );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _targetLanguage = value ?? 'fr';
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Import options
-              Text(
-                'Options',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: 8),
-              CheckboxListTile(
-                title: const Text('Skip duplicate entries'),
-                subtitle: const Text(
-                  'Existing entries will not be overwritten',
-                ),
-                value: _skipDuplicates,
-                onChanged: (value) {
-                  setState(() {
-                    _skipDuplicates = value ?? true;
-                  });
-                },
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              const SizedBox(height: 16),
-
-              // Progress and results
-              importState.when(
-                data: (result) {
-                  if (result != null) {
-                    return _buildImportSummary(result);
-                  }
-                  return const SizedBox.shrink();
-                },
-                loading: () => Column(
-                  children: [
-                    const FluentProgressBar(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Importing...',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                }
+                return const SizedBox.shrink();
+              },
+              loading: () => Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    child: LinearProgressIndicator(
+                      minHeight: 8,
+                      backgroundColor: tokens.panel2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(tokens.accent),
                     ),
-                  ],
-                ),
-                error: (error, stack) => Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(4.0),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        FluentIcons.error_circle_24_regular,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Error: $error',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 10),
+                  Text(
+                    'Importing...',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12.5,
+                      color: tokens.textDim,
+                    ),
                   ),
+                ],
+              ),
+              error: (error, _) => _buildErrorBanner(tokens, '$error'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        SmallTextButton(
+          label: 'Close',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        SmallTextButton(
+          label: importState.isLoading ? 'Importing...' : 'Import',
+          icon: FluentIcons.arrow_import_24_regular,
+          filled: true,
+          onTap: importState.isLoading ? null : _import,
+        ),
+      ],
+    );
+  }
+
+  Widget _sectionLabel(TwmtThemeTokens tokens, String text) {
+    return Text(
+      text,
+      style: tokens.fontBody.copyWith(
+        fontSize: 13,
+        color: tokens.text,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  Widget _buildFilePicker(TwmtThemeTokens tokens) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _pickFile,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: tokens.panel2,
+            border: Border.all(color: tokens.border),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+          ),
+          child: Row(
+            children: [
+              Icon(FluentIcons.folder_open_24_regular, color: tokens.accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _selectedFilePath ?? 'Click to select file...',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: _selectedFilePath == null
+                        ? tokens.textFaint
+                        : tokens.text,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
         ),
       ),
-      actions: [
-        FluentTextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-        FluentButton(
-          onPressed: importState.isLoading ? null : _import,
-          icon: const Icon(FluentIcons.arrow_import_24_regular),
-          child: const Text('Import'),
-        ),
-      ],
     );
   }
 
-  Widget _buildImportSummary(ImportResult result) {
+  InputDecoration _inputDecoration(TwmtThemeTokens tokens, String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+      floatingLabelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
+      filled: true,
+      fillColor: tokens.panel2,
+      isDense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.accent),
+      ),
+    );
+  }
+
+  Widget _buildSummaryBanner(
+    TwmtThemeTokens tokens, {
+    required IconData icon,
+    required String title,
+    required String message,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(4.0),
+        color: tokens.okBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                FluentIcons.checkmark_circle_24_regular,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(width: 12),
+              Icon(icon, color: tokens.ok, size: 18),
+              const SizedBox(width: 10),
               Text(
-                'Import Summary',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
+                title,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.ok,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            result.summary,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
+            message,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12.5,
+              color: tokens.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(TwmtThemeTokens tokens, String error) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.error_circle_24_regular,
+            color: tokens.err,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Error: $error',
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
+              ),
+            ),
           ),
         ],
       ),
@@ -262,4 +314,66 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
     'ja',
     'ko',
   ];
+}
+
+class _OptionToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String title;
+  final String subtitle;
+
+  const _OptionToggle({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                value
+                    ? FluentIcons.checkbox_checked_24_filled
+                    : FluentIcons.checkbox_unchecked_24_regular,
+                size: 18,
+                color: value ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.text,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

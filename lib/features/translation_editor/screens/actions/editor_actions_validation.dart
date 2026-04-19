@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import '../../../../models/domain/translation_version.dart';
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
@@ -148,12 +151,26 @@ mixin EditorActionsValidation on EditorActionsBase {
   /// updating the status (translated / needsReview) and storing
   /// the validation issues JSON in the database.
   Future<void> handleRescanValidation() async {
+    BuildContext? progressDialogContext;
     try {
       final projectLanguageId = await getProjectLanguageId();
       final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final validationService = ref.read(shared_svc.validationServiceProvider);
       final logger = ref.read(loggingServiceProvider);
+
+      // Repair any rows that were previously written with the Dart
+      // identifier `'needsReview'` instead of the schema value
+      // `'needs_review'`. Silently fixes legacy data from a prior bug so the
+      // stats query (which matches on the canonical value) sees them again.
+      final repairResult = await versionRepo.normalizeStatusEncoding();
+      if (repairResult.isOk) {
+        final repaired = repairResult.unwrap();
+        if (repaired > 0) {
+          logger.info('Repaired legacy status values',
+              {'rowsAffected': repaired});
+        }
+      }
 
       // Get all versions for this project language
       final versionsResult =
@@ -191,29 +208,43 @@ mixin EditorActionsValidation on EditorActionsBase {
         'Scanning 0/${translatedVersions.length}...',
       );
 
-      showDialog(
+      showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => PopScope(
-          canPop: false,
-          child: AlertDialog(
-            title: const Row(
+        builder: (dialogContext) {
+          progressDialogContext = dialogContext;
+          final tokens = dialogContext.tokens;
+          return TokenDialog(
+            icon: FluentIcons.shield_checkmark_24_regular,
+            title: 'Validation Rescan',
+            width: 460,
+            body: Row(
               children: [
                 SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: tokens.accent,
+                  ),
                 ),
-                SizedBox(width: 12),
-                Text('Validation Rescan'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ValueListenableBuilder<String>(
+                    valueListenable: progressNotifier,
+                    builder: (_, message, _) => Text(
+                      message,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.textDim,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
-            content: ValueListenableBuilder<String>(
-              valueListenable: progressNotifier,
-              builder: (_, message, _) => Text(message),
-            ),
-          ),
-        ),
+          );
+        },
       );
 
       // Load all units in batch
@@ -278,7 +309,7 @@ mixin EditorActionsValidation on EditorActionsBase {
         if (statusChanged || issuesChanged) {
           pendingUpdates.add((
             versionId: version.id,
-            status: newStatus.name,
+            status: newStatus.toDbValue,
             validationIssues: newValidationIssues,
           ));
 
@@ -309,10 +340,13 @@ mixin EditorActionsValidation on EditorActionsBase {
       );
 
       // Close progress dialog and show results
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
+      final dialogCtx = progressDialogContext;
+      if (dialogCtx != null && dialogCtx.mounted) {
+        Navigator.of(dialogCtx).pop();
+      }
       progressNotifier.dispose();
 
+      if (!context.mounted) return;
       refreshProviders();
 
       if (!context.mounted) return;
@@ -331,8 +365,9 @@ mixin EditorActionsValidation on EditorActionsBase {
         stackTrace,
       );
       // Try to close progress dialog if still open
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      final dialogCtx = progressDialogContext;
+      if (dialogCtx != null && dialogCtx.mounted) {
+        Navigator.of(dialogCtx).pop();
       }
       if (!context.mounted) return;
       EditorDialogs.showErrorDialog(

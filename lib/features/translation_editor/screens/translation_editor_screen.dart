@@ -11,6 +11,7 @@ import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/workflow/next_step_cta.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
@@ -25,9 +26,9 @@ import 'translation_editor_actions.dart';
 ///
 /// Three-panel body (action sidebar · DataGrid · inspector) sandwiched between
 /// a stacked header (`DetailScreenToolbar` + `FilterToolbar`) and
-/// `EditorStatusBar`. The top-bar `EditorActionBar` was retired — all its
-/// controls (search · model · skip-tm · rules · action buttons · settings)
-/// now live in `EditorActionSidebar`. Filters became pills in `FilterToolbar`.
+/// `EditorStatusBar`. The `FilterToolbar` carries the project title, the
+/// search field (key/source/target) and the STATUS filter pill group.
+/// `EditorActionSidebar` hosts context controls and primary actions.
 class TranslationEditorScreen extends ConsumerStatefulWidget {
   const TranslationEditorScreen({
     super.key,
@@ -69,6 +70,37 @@ class _TranslationEditorScreenState
     await projectRepo.clearModUpdateImpact(widget.projectId);
   }
 
+  /// Ctrl+A handler: toggle selection over every row currently visible in
+  /// the DataGrid (after filters + search apply).
+  ///
+  /// - No selection → select every filtered row.
+  /// - Partial selection → expand to every filtered row.
+  /// - Every filtered row already selected → clear — giving Ctrl+A a familiar
+  ///   toggle feel.
+  ///
+  /// The focus-aware guard in [_SelectAllRowsAction.consumesKey] lets native
+  /// Ctrl+A "select all text" keep working when a TextField (search, inline
+  /// editor) is focused.
+  void _selectAllFilteredRows() {
+    final rowsAsync = ref.read(
+      filteredTranslationRowsProvider(widget.projectId, widget.languageId),
+    );
+    final rows = rowsAsync.asData?.value ?? const <TranslationRow>[];
+    if (rows.isEmpty) return;
+
+    final filteredIds = rows.map((r) => r.id).toList();
+    final selection = ref.read(editorSelectionProvider);
+    final allFilteredSelected = filteredIds
+        .every((id) => selection.selectedUnitIds.contains(id));
+
+    final notifier = ref.read(editorSelectionProvider.notifier);
+    if (allFilteredSelected) {
+      notifier.clearSelection();
+    } else {
+      notifier.selectAll(filteredIds);
+    }
+  }
+
   TranslationEditorActions _getActions() {
     return TranslationEditorActions(
       ref: ref,
@@ -97,12 +129,14 @@ class _TranslationEditorScreenState
     final shortcuts = <ShortcutActivator, Intent>{
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyF):
           const _FocusSearchIntent(),
+      // Ctrl+T mirrors the sidebar's smart button: translate the current grid
+      // selection when one exists, otherwise translate every row.
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyT):
-          const _TranslateAllIntent(),
-      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift,
-          LogicalKeyboardKey.keyT): const _TranslateSelectedIntent(),
+          const _TranslateIntent(),
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.shift,
           LogicalKeyboardKey.keyV): const _ValidateIntent(),
+      LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
+          const _SelectAllRowsIntent(),
     };
 
     final actions = <Type, Action<Intent>>{
@@ -112,15 +146,15 @@ class _TranslationEditorScreenState
           return null;
         },
       ),
-      _TranslateAllIntent: CallbackAction<_TranslateAllIntent>(
+      _TranslateIntent: CallbackAction<_TranslateIntent>(
         onInvoke: (_) {
-          _getActions().handleTranslateAll();
-          return null;
-        },
-      ),
-      _TranslateSelectedIntent: CallbackAction<_TranslateSelectedIntent>(
-        onInvoke: (_) {
-          _getActions().handleTranslateSelected();
+          final hasSelection =
+              ref.read(editorSelectionProvider).hasSelection;
+          if (hasSelection) {
+            _getActions().handleTranslateSelected();
+          } else {
+            _getActions().handleTranslateAll();
+          }
           return null;
         },
       ),
@@ -130,15 +164,24 @@ class _TranslationEditorScreenState
           return null;
         },
       ),
+      _SelectAllRowsIntent: _SelectAllRowsAction(_selectAllFilteredRows),
     };
 
     return Shortcuts(
       shortcuts: shortcuts,
       child: Actions(
         actions: actions,
-        child: Material(
-          color: context.tokens.bg,
-          child: Column(
+        // Autofocus anchor so the Shortcuts map is live the moment the screen
+        // mounts. Without it, `Shortcuts` only fires after the user clicks a
+        // focusable child (e.g. a grid row), which made Ctrl+A silently
+        // no-op on first landing. `skipTraversal: true` keeps this node out
+        // of Tab focus traversal.
+        child: Focus(
+          autofocus: true,
+          skipTraversal: true,
+          child: Material(
+            color: context.tokens.bg,
+            child: Column(
             children: [
               DetailScreenToolbar(
                 crumbs: [
@@ -171,9 +214,21 @@ class _TranslationEditorScreenState
                   icon: FluentIcons.folder_24_regular,
                   title: projectName,
                 ),
+                trailing: [
+                  ListSearchField(
+                    value: filter.searchQuery,
+                    focusNode: _searchFocus,
+                    hintText: 'Search key · source · target',
+                    onChanged: (value) => ref
+                        .read(editorFilterProvider.notifier)
+                        .setSearchQuery(value),
+                    onClear: () => ref
+                        .read(editorFilterProvider.notifier)
+                        .setSearchQuery(''),
+                  ),
+                ],
                 pillGroups: [
                   _buildStatusGroup(filter, stats),
-                  _buildTmSourceGroup(filter),
                 ],
               ),
               Expanded(
@@ -183,9 +238,6 @@ class _TranslationEditorScreenState
                     EditorActionSidebar(
                       projectId: widget.projectId,
                       languageId: widget.languageId,
-                      searchFocusNode: _searchFocus,
-                      onTranslationSettings: () =>
-                          _getActions().handleTranslationSettings(),
                       onTranslateAll: () => _getActions().handleTranslateAll(),
                       onTranslateSelected: () =>
                           _getActions().handleTranslateSelected(),
@@ -219,6 +271,7 @@ class _TranslationEditorScreenState
                 languageId: widget.languageId,
               ),
             ],
+          ),
           ),
         ),
       ),
@@ -265,53 +318,51 @@ class _TranslationEditorScreenState
     );
   }
 
-  FilterPillGroup _buildTmSourceGroup(EditorFilterState filter) {
-    FilterPill pill(String label, TmSourceType type) {
-      final active = filter.tmSourceFilters.contains(type);
-      return FilterPill(
-        label: label,
-        selected: active,
-        onToggle: () {
-          final updated = Set<TmSourceType>.from(filter.tmSourceFilters);
-          if (active) {
-            updated.remove(type);
-          } else {
-            updated.add(type);
-          }
-          ref.read(editorFilterProvider.notifier).setTmSourceFilters(updated);
-        },
-      );
-    }
-
-    return FilterPillGroup(
-      label: 'TM SOURCE',
-      clearLabel: 'Clear',
-      onClear: () => ref
-          .read(editorFilterProvider.notifier)
-          .setTmSourceFilters(const {}),
-      pills: [
-        pill('Exact match', TmSourceType.exactMatch),
-        pill('Fuzzy match', TmSourceType.fuzzyMatch),
-        pill('LLM', TmSourceType.llm),
-        pill('Manual', TmSourceType.manual),
-        pill('None', TmSourceType.none),
-      ],
-    );
-  }
 }
 
 class _FocusSearchIntent extends Intent {
   const _FocusSearchIntent();
 }
 
-class _TranslateAllIntent extends Intent {
-  const _TranslateAllIntent();
-}
-
-class _TranslateSelectedIntent extends Intent {
-  const _TranslateSelectedIntent();
+/// Ctrl+T intent. Routes to `handleTranslateSelected` when the grid has any
+/// rows selected, otherwise falls through to `handleTranslateAll` — matching
+/// the sidebar's smart Translate button.
+class _TranslateIntent extends Intent {
+  const _TranslateIntent();
 }
 
 class _ValidateIntent extends Intent {
   const _ValidateIntent();
+}
+
+class _SelectAllRowsIntent extends Intent {
+  const _SelectAllRowsIntent();
+}
+
+/// Action for [_SelectAllRowsIntent] that declines the key event when focus
+/// sits inside an [EditableText]. Returning `false` from [consumesKey] makes
+/// the enclosing `Shortcuts` widget report `KeyEventResult.ignored`, so the
+/// native Ctrl+A "select all text" behaviour keeps working while the user is
+/// typing in the search field or an inline cell editor.
+class _SelectAllRowsAction extends Action<_SelectAllRowsIntent> {
+  _SelectAllRowsAction(this._onInvoke);
+
+  final VoidCallback _onInvoke;
+
+  static bool _focusIsInTextInput() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+    if (ctx.widget is EditableText) return true;
+    return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  @override
+  bool consumesKey(_SelectAllRowsIntent intent) => !_focusIsInTextInput();
+
+  @override
+  Object? invoke(_SelectAllRowsIntent intent) {
+    if (_focusIsInTextInput()) return null;
+    _onInvoke();
+    return null;
+  }
 }

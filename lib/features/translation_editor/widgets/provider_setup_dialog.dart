@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
-/// Dialog shown when no LLM provider is configured
+/// Dialog shown when no LLM provider is configured.
 ///
-/// Prompts user to configure a provider before translating
-/// Uses Fluent Design patterns (no Material ripple effects)
+/// Prompts the user to configure a provider before translating, themed via
+/// [TokenDialog] so it matches the rest of the app's popups.
 class ProviderSetupDialog extends StatelessWidget {
   const ProviderSetupDialog({
     super.key,
@@ -15,107 +18,96 @@ class ProviderSetupDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Container(
-        width: 450,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 16),
-            _buildContent(context),
-            const SizedBox(height: 24),
-            _buildProviderList(context),
-            const SizedBox(height: 24),
-            _buildActions(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.warning_24_regular,
-          size: 24,
-          color: Colors.orange,
-        ),
-        const SizedBox(width: 12),
-        Text(
-          'No Translation Provider Configured',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
+    final tokens = context.tokens;
+    return TokenDialog(
+      icon: FluentIcons.warning_24_regular,
+      iconColor: tokens.warn,
+      title: 'No Translation Provider Configured',
+      width: 480,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'To use automatic translation, you need to configure at least '
+            'one LLM provider. Please go to Settings and set up one of the '
+            'following providers:',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
+            ),
           ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: tokens.panel2,
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(color: tokens.border),
+            ),
+            child: Column(
+              children: const [
+                _ProviderItem(
+                  icon: FluentIcons.brain_circuit_24_regular,
+                  name: 'Anthropic Claude',
+                  description:
+                      'High-quality translations with context awareness',
+                ),
+                SizedBox(height: 12),
+                _ProviderItem(
+                  icon: FluentIcons.bot_24_regular,
+                  name: 'OpenAI GPT',
+                  description:
+                      'Versatile language model with good translations',
+                ),
+                SizedBox(height: 12),
+                _ProviderItem(
+                  icon: FluentIcons.translate_24_regular,
+                  name: 'DeepL',
+                  description: 'Specialized translation service',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        SmallTextButton(
+          label: 'Go to Settings',
+          icon: FluentIcons.settings_24_regular,
+          filled: true,
+          onTap: () {
+            Navigator.of(context).pop();
+            onGoToSettings();
+          },
         ),
       ],
     );
   }
+}
 
-  Widget _buildContent(BuildContext context) {
-    return Text(
-      'To use automatic translation, you need to configure at least one LLM provider. '
-      'Please go to Settings and set up one of the following providers:',
-      style: Theme.of(context).textTheme.bodyMedium,
-    );
-  }
+class _ProviderItem extends StatelessWidget {
+  final IconData icon;
+  final String name;
+  final String description;
 
-  Widget _buildProviderList(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.grey.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        children: [
-          _buildProviderItem(
-            context: context,
-            icon: FluentIcons.brain_circuit_24_regular,
-            name: 'Anthropic Claude',
-            description: 'High-quality translations with context awareness',
-          ),
-          const SizedBox(height: 12),
-          _buildProviderItem(
-            context: context,
-            icon: FluentIcons.bot_24_regular,
-            name: 'OpenAI GPT',
-            description: 'Versatile language model with good translations',
-          ),
-          const SizedBox(height: 12),
-          _buildProviderItem(
-            context: context,
-            icon: FluentIcons.translate_24_regular,
-            name: 'DeepL',
-            description: 'Specialized translation service',
-          ),
-        ],
-      ),
-    );
-  }
+  const _ProviderItem({
+    required this.icon,
+    required this.name,
+    required this.description,
+  });
 
-  Widget _buildProviderItem({
-    required BuildContext context,
-    required IconData icon,
-    required String name,
-    required String description,
-  }) {
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Theme.of(context).primaryColor,
-        ),
+        Icon(icon, size: 20, color: tokens.accent),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -123,87 +115,24 @@ class ProviderSetupDialog extends StatelessWidget {
             children: [
               Text(
                 name,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textDim,
                 ),
               ),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        _buildActionButton(
-          label: 'Cancel',
-          onPressed: () => Navigator.of(context).pop(),
-          isPrimary: false,
-        ),
-        const SizedBox(width: 12),
-        _buildActionButton(
-          label: 'Go to Settings',
-          icon: FluentIcons.settings_24_regular,
-          onPressed: () {
-            Navigator.of(context).pop();
-            onGoToSettings();
-          },
-          isPrimary: true,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    IconData? icon,
-    required VoidCallback onPressed,
-    required bool isPrimary,
-  }) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          decoration: BoxDecoration(
-            color: isPrimary
-              ? const Color(0xFF0078D4)
-              : Colors.grey.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isPrimary ? Colors.white : Colors.black87,
-                ),
-                const SizedBox(width: 8),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: isPrimary ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

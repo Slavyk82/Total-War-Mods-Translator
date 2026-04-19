@@ -3,22 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../config/app_constants.dart';
 import '../../../models/history/diff_models.dart';
 import '../../../providers/history/history_providers.dart';
 import '../../../providers/shared/service_providers.dart';
-import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for comparing two translation versions side by side
-///
-/// Shows:
-/// - Metadata for each version (timestamp, changed by)
-/// - Side-by-side text with diff highlighting
-/// - Statistics (chars/words added/removed)
-/// - Actions (copy, restore)
+/// Token-themed side-by-side popup comparing two translation versions.
 class VersionComparisonDialog extends ConsumerStatefulWidget {
-  final String historyId1; // Older version (left)
-  final String historyId2; // Newer version (right)
+  final String historyId1;
+  final String historyId2;
   final String versionId;
 
   const VersionComparisonDialog({
@@ -48,15 +45,12 @@ class _VersionComparisonDialogState
   void _setupScrollSync() {
     _leftScrollController.addListener(() {
       if (_syncScrolling && _leftScrollController.hasClients) {
-        _rightScrollController
-            .jumpTo(_leftScrollController.offset);
+        _rightScrollController.jumpTo(_leftScrollController.offset);
       }
     });
-
     _rightScrollController.addListener(() {
       if (_syncScrolling && _rightScrollController.hasClients) {
-        _leftScrollController
-            .jumpTo(_rightScrollController.offset);
+        _leftScrollController.jumpTo(_rightScrollController.offset);
       }
     });
   }
@@ -70,163 +64,107 @@ class _VersionComparisonDialogState
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final media = MediaQuery.of(context);
     final comparisonAsync = ref.watch(
       versionComparisonProvider(widget.historyId1, widget.historyId2),
     );
 
-    return Dialog(
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.8,
-        height: MediaQuery.of(context).size.height * 0.8,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            _buildHeader(context),
-
-            // Content
-            Expanded(
-              child: comparisonAsync.when(
-                data: (comparison) => _buildComparison(context, comparison),
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, stack) => _buildError(context, error),
-              ),
-            ),
-          ],
+    return TokenDialog(
+      icon: FluentIcons.document_text_link_24_regular,
+      title: 'Compare Versions',
+      width: media.size.width * 0.8,
+      body: SizedBox(
+        height: media.size.height * 0.72,
+        child: comparisonAsync.when(
+          data: (comparison) => _buildComparison(tokens, comparison),
+          loading: () => Center(
+            child: CircularProgressIndicator(color: tokens.accent),
+          ),
+          error: (error, _) => _buildError(tokens, error),
         ),
       ),
+      actions: [
+        SmallTextButton(
+          label: 'Close',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          topRight: Radius.circular(8),
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.document_text_link_24_regular,
-            size: 20,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Compare Versions',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          const Spacer(),
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Icon(
-                FluentIcons.dismiss_24_regular,
-                size: 20,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildComparison(BuildContext context, VersionComparison comparison) {
+  Widget _buildComparison(
+    TwmtThemeTokens tokens,
+    VersionComparison comparison,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Side-by-side comparison
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left side (older version)
-              Expanded(
-                child: _buildVersionPanel(
-                  context,
-                  comparison.version1,
-                  'Old Version',
-                  comparison.diff,
-                  true,
-                  _leftScrollController,
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: tokens.border),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildVersionPanel(
+                      tokens,
+                      comparison.version1,
+                      'Old Version',
+                      comparison.diff,
+                      true,
+                      _leftScrollController,
+                    ),
+                  ),
+                  Container(width: 1, color: tokens.border),
+                  Expanded(
+                    child: _buildVersionPanel(
+                      tokens,
+                      comparison.version2,
+                      'New Version',
+                      comparison.diff,
+                      false,
+                      _rightScrollController,
+                    ),
+                  ),
+                ],
               ),
-
-              // Divider
-              Container(
-                width: 1,
-                color: Theme.of(context).dividerColor,
-              ),
-
-              // Right side (newer version)
-              Expanded(
-                child: _buildVersionPanel(
-                  context,
-                  comparison.version2,
-                  'New Version',
-                  comparison.diff,
-                  false,
-                  _rightScrollController,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-
-        // Statistics
-        _buildStatistics(context, comparison.stats),
-
-        // Actions
-        _buildActions(context, comparison),
+        const SizedBox(height: 12),
+        _buildStatistics(tokens, comparison.stats),
+        const SizedBox(height: 12),
+        _buildActionRow(tokens, comparison),
       ],
     );
   }
 
   Widget _buildVersionPanel(
-    BuildContext context,
+    TwmtThemeTokens tokens,
     dynamic version,
     String title,
     List<DiffSegment> diff,
     bool isOld,
     ScrollController scrollController,
   ) {
-    final timestamp = DateTime.fromMillisecondsSinceEpoch(
-      version.createdAt * 1000,
-    );
+    final timestamp =
+        DateTime.fromMillisecondsSinceEpoch(version.createdAt * 1000);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Panel header
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            color: tokens.panel2,
             border: Border(
-              bottom: BorderSide(
-                color: Theme.of(context).dividerColor,
-                width: 1,
-              ),
+              bottom: BorderSide(color: tokens.border),
             ),
           ),
           child: Column(
@@ -234,9 +172,11 @@ class _VersionComparisonDialogState
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               Row(
@@ -246,37 +186,35 @@ class _VersionComparisonDialogState
                         ? FluentIcons.person_24_regular
                         : FluentIcons.bot_24_regular,
                     size: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    color: tokens.textDim,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     version.changedByDisplay,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12,
+                      color: tokens.textDim,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     timeago.format(timestamp),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12,
+                      color: tokens.textDim,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
         ),
-
-        // Text content with highlighting
         Expanded(
           child: SingleChildScrollView(
             controller: scrollController,
             padding: const EdgeInsets.all(16),
             child: SelectableText.rich(
-              _buildDiffTextSpan(context, diff, isOld),
+              _buildDiffTextSpan(tokens, diff, isOld),
             ),
           ),
         ),
@@ -285,7 +223,7 @@ class _VersionComparisonDialogState
   }
 
   TextSpan _buildDiffTextSpan(
-    BuildContext context,
+    TwmtThemeTokens tokens,
     List<DiffSegment> diff,
     bool isOld,
   ) {
@@ -296,20 +234,16 @@ class _VersionComparisonDialogState
       TextDecoration? decoration;
 
       if (isOld) {
-        // Old version: highlight removed text
         if (segment.type == DiffType.removed) {
-          backgroundColor = Colors.red.withValues(alpha: 0.3);
+          backgroundColor = tokens.err.withValues(alpha: 0.25);
           decoration = TextDecoration.lineThrough;
         } else if (segment.type == DiffType.added) {
-          // Skip added text in old version
           continue;
         }
       } else {
-        // New version: highlight added text
         if (segment.type == DiffType.added) {
-          backgroundColor = Colors.green.withValues(alpha: 0.3);
+          backgroundColor = tokens.ok.withValues(alpha: 0.25);
         } else if (segment.type == DiffType.removed) {
-          // Skip removed text in new version
           continue;
         }
       }
@@ -317,10 +251,11 @@ class _VersionComparisonDialogState
       spans.add(
         TextSpan(
           text: segment.text,
-          style: TextStyle(
+          style: tokens.fontMono.copyWith(
+            fontSize: 13,
+            color: tokens.text,
             backgroundColor: backgroundColor,
             decoration: decoration,
-            fontFamily: 'monospace',
           ),
         ),
       );
@@ -329,26 +264,24 @@ class _VersionComparisonDialogState
     return TextSpan(children: spans);
   }
 
-  Widget _buildStatistics(BuildContext context, DiffStats stats) {
+  Widget _buildStatistics(TwmtThemeTokens tokens, DiffStats stats) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
-        ),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Changes',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -356,35 +289,15 @@ class _VersionComparisonDialogState
             runSpacing: 8,
             children: [
               _buildStatItem(
-                context,
-                'Characters Added',
-                stats.charsAdded.toString(),
-                Colors.green,
-              ),
+                  tokens, 'Characters Added', stats.charsAdded, tokens.ok),
               _buildStatItem(
-                context,
-                'Characters Removed',
-                stats.charsRemoved.toString(),
-                Colors.red,
-              ),
+                  tokens, 'Characters Removed', stats.charsRemoved, tokens.err),
               _buildStatItem(
-                context,
-                'Words Added',
-                stats.wordsAdded.toString(),
-                Colors.green,
-              ),
+                  tokens, 'Words Added', stats.wordsAdded, tokens.ok),
               _buildStatItem(
-                context,
-                'Words Removed',
-                stats.wordsRemoved.toString(),
-                Colors.red,
-              ),
+                  tokens, 'Words Removed', stats.wordsRemoved, tokens.err),
               _buildStatItem(
-                context,
-                'Total Changes',
-                stats.charsChanged.toString(),
-                Colors.blue,
-              ),
+                  tokens, 'Total Changes', stats.charsChanged, tokens.info),
             ],
           ),
         ],
@@ -393,9 +306,9 @@ class _VersionComparisonDialogState
   }
 
   Widget _buildStatItem(
-    BuildContext context,
+    TwmtThemeTokens tokens,
     String label,
-    String value,
+    int value,
     Color color,
   ) {
     return Row(
@@ -404,124 +317,57 @@ class _VersionComparisonDialogState
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
         Text(
           '$label: ',
-          style: Theme.of(context).textTheme.bodySmall,
+          style: tokens.fontBody.copyWith(
+            fontSize: 12,
+            color: tokens.textDim,
+          ),
         ),
         Text(
-          value,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          '$value',
+          style: tokens.fontBody.copyWith(
+            fontSize: 12,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildActions(BuildContext context, VersionComparison comparison) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor,
-            width: 1,
-          ),
+  Widget _buildActionRow(
+    TwmtThemeTokens tokens,
+    VersionComparison comparison,
+  ) {
+    return Row(
+      children: [
+        SmallTextButton(
+          label: 'Copy Old',
+          icon: FluentIcons.copy_24_regular,
+          onTap: () => _copyToClipboard(comparison.version1.translatedText),
         ),
-      ),
-      child: Row(
-        children: [
-          _buildActionButton(
-            context,
-            'Copy Old',
-            FluentIcons.copy_24_regular,
-            () => _copyToClipboard(comparison.version1.translatedText),
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            context,
-            'Copy New',
-            FluentIcons.copy_24_regular,
-            () => _copyToClipboard(comparison.version2.translatedText),
-          ),
-          const Spacer(),
-          _buildActionButton(
-            context,
-            'Restore Old',
-            FluentIcons.arrow_undo_24_regular,
-            () => _restoreVersion(context, comparison.version1),
-            isPrimary: true,
-          ),
-          const SizedBox(width: 8),
-          _buildActionButton(
-            context,
-            'Close',
-            FluentIcons.dismiss_24_regular,
-            () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
+        const SizedBox(width: 8),
+        SmallTextButton(
+          label: 'Copy New',
+          icon: FluentIcons.copy_24_regular,
+          onTap: () => _copyToClipboard(comparison.version2.translatedText),
+        ),
+        const Spacer(),
+        SmallTextButton(
+          label: 'Restore Old',
+          icon: FluentIcons.arrow_undo_24_regular,
+          filled: true,
+          onTap: () => _restoreVersion(context, comparison.version1),
+        ),
+      ],
     );
   }
 
-  Widget _buildActionButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    VoidCallback onPressed, {
-    bool isPrimary = false,
-  }) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isPrimary
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: isPrimary
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.outline,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: isPrimary
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: isPrimary
-                          ? Theme.of(context).colorScheme.onPrimary
-                          : Theme.of(context).colorScheme.onSurface,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildError(BuildContext context, Object error) {
+  Widget _buildError(TwmtThemeTokens tokens, Object error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -529,19 +375,24 @@ class _VersionComparisonDialogState
           Icon(
             FluentIcons.error_circle_24_regular,
             size: 48,
-            color: Theme.of(context).colorScheme.error,
+            color: tokens.err,
           ),
           const SizedBox(height: 16),
           Text(
             'Failed to compare versions',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 14,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             error.toString(),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -557,28 +408,16 @@ class _VersionComparisonDialogState
   }
 
   Future<void> _restoreVersion(BuildContext context, dynamic version) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restore Version'),
-        content: Text(
-          'Are you sure you want to restore this version?\n\n'
+    final confirmed = await TokenDialog.showConfirm(
+      context,
+      icon: FluentIcons.arrow_undo_24_regular,
+      title: 'Restore Version',
+      message: 'Are you sure you want to restore this version?\n\n'
           'Preview:\n"${version.getTranslatedTextPreview(100)}"',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Restore',
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed && mounted) {
       final service = ref.read(historyServiceProvider);
       final result = await service.revertToVersion(
         versionId: widget.versionId,

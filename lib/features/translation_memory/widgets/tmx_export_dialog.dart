@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/tm_providers.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for exporting TM entries to TMX files
+/// Token-themed popup for exporting TM entries to a TMX file.
 class TmxExportDialog extends ConsumerStatefulWidget {
   const TmxExportDialog({super.key});
 
@@ -22,354 +24,260 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final exportState = ref.watch(tmExportStateProvider);
-    final filterState = ref.watch(tmFilterStateProvider);
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            FluentIcons.arrow_export_24_regular,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 8),
-          const Text('Export Translation Memory (TMX)'),
-        ],
-      ),
-      content: SizedBox(
-        width: 600,
+    return TokenDialog(
+      icon: FluentIcons.arrow_export_24_regular,
+      title: 'Export Translation Memory (TMX)',
+      width: 620,
+      body: SizedBox(
+        height: 520,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Filters section
-              _buildFiltersSection(context, filterState),
-
-              const SizedBox(height: 24),
-
-              // Export scope
-              _buildExportScopeSection(context),
-
-              const SizedBox(height: 24),
-
-              // Output path
-              _buildOutputPathPicker(context),
-
-              const SizedBox(height: 24),
-
-              // Format options
-              _buildFormatOptionsSection(context),
-
-              const SizedBox(height: 24),
-
-              // Progress or result
+              _sectionTitle(tokens, 'Filters'),
+              const SizedBox(height: 10),
+              _buildTargetLanguageDropdown(tokens),
+              const SizedBox(height: 18),
+              _sectionTitle(tokens, 'What to export'),
+              const SizedBox(height: 8),
+              _ScopeRadio(
+                value: ExportScope.all,
+                groupValue: _exportScope,
+                label: 'All entries (matching filters)',
+                onChanged: (v) => setState(() => _exportScope = v),
+              ),
+              _ScopeRadio(
+                value: ExportScope.frequentlyUsed,
+                groupValue: _exportScope,
+                label: 'Frequently used only (>5 times)',
+                onChanged: (v) => setState(() => _exportScope = v),
+              ),
+              const SizedBox(height: 18),
+              _sectionTitle(tokens, 'Output File'),
+              const SizedBox(height: 8),
+              _buildOutputPathPicker(tokens),
+              const SizedBox(height: 18),
+              _sectionTitle(tokens, 'Format Options'),
+              const SizedBox(height: 10),
+              _OptionToggle(
+                value: _includeMetadata,
+                onChanged: (v) => setState(() => _includeMetadata = v),
+                title: 'Include metadata',
+                subtitle: 'Add quality scores, usage counts, etc.',
+              ),
+              const SizedBox(height: 6),
+              _OptionToggle(
+                value: _includeStats,
+                onChanged: (v) => setState(() => _includeStats = v),
+                title: 'Include statistics',
+                subtitle: 'Add export summary and stats to file header',
+              ),
+              const SizedBox(height: 18),
               exportState.when(
                 data: (result) {
                   if (result != null) {
-                    return _buildExportResult(context, result);
+                    return _buildResult(tokens, result);
                   }
                   return const SizedBox.shrink();
                 },
-                loading: () => _buildProgress(context),
-                error: (error, stack) => _buildError(context, error.toString()),
+                loading: () => _buildProgress(tokens),
+                error: (error, _) => _buildError(tokens, error.toString()),
               ),
             ],
           ),
         ),
       ),
       actions: [
-        // Cancel button
-        FluentTextButton(
-          onPressed: exportState.isLoading
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: exportState.isLoading
               ? null
               : () {
                   ref.read(tmExportStateProvider.notifier).reset();
                   Navigator.of(context).pop();
                 },
-          child: const Text('Cancel'),
         ),
-
-        // Export button
-        FluentButton(
-          onPressed: _outputPath == null || exportState.isLoading
+        SmallTextButton(
+          label: 'Export',
+          icon: FluentIcons.arrow_export_24_regular,
+          filled: true,
+          onTap: _outputPath == null || exportState.isLoading
               ? null
-              : () => _startExport(),
-          icon: const Icon(FluentIcons.arrow_export_24_regular),
-          child: const Text('Export'),
+              : _startExport,
         ),
       ],
     );
   }
 
-  Widget _buildFiltersSection(BuildContext context, TmFilters filterState) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Filters',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 12),
-        _buildDropdown(
-          context,
-          label: 'Target Language',
-          value: _targetLanguage,
-          hint: 'All',
-          items: const ['EN', 'FR', 'DE', 'ZH', 'ES'],
-          onChanged: (value) {
-            setState(() {
-              _targetLanguage = value;
-            });
-          },
-        ),
-      ],
+  Widget _sectionTitle(TwmtThemeTokens tokens, String title) {
+    return Text(
+      title,
+      style: tokens.fontBody.copyWith(
+        fontSize: 13,
+        color: tokens.text,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 
-  Widget _buildExportScopeSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'What to export',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+  Widget _buildTargetLanguageDropdown(TwmtThemeTokens tokens) {
+    const items = ['EN', 'FR', 'DE', 'ZH', 'ES'];
+    return DropdownButtonFormField<String>(
+      initialValue: _targetLanguage,
+      style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
+      dropdownColor: tokens.panel,
+      decoration: InputDecoration(
+        labelText: 'Target Language',
+        labelStyle: tokens.fontBody.copyWith(
+          fontSize: 12,
+          color: tokens.textDim,
         ),
-        const SizedBox(height: 8),
-        Column(
-          children: [
-            // ignore: deprecated_member_use
-            RadioListTile<ExportScope>(
-              value: ExportScope.all,
-              // ignore: deprecated_member_use
-              groupValue: _exportScope,
-              // ignore: deprecated_member_use
-              onChanged: (value) {
-                setState(() {
-                  _exportScope = value!;
-                });
-              },
-              title: const Text('All entries (matching filters)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-            // ignore: deprecated_member_use
-            RadioListTile<ExportScope>(
-              value: ExportScope.frequentlyUsed,
-              // ignore: deprecated_member_use
-              groupValue: _exportScope,
-              // ignore: deprecated_member_use
-              onChanged: (value) {
-                setState(() {
-                  _exportScope = value!;
-                });
-              },
-              title: const Text('Frequently used only (>5 times)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ],
+        filled: true,
+        fillColor: tokens.panel2,
+        hintText: 'All',
+        hintStyle: tokens.fontBody.copyWith(
+          fontSize: 13,
+          color: tokens.textFaint,
+        ),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderSide: BorderSide(color: tokens.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderSide: BorderSide(color: tokens.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          borderSide: BorderSide(color: tokens.accent),
+        ),
+      ),
+      items: [
+        const DropdownMenuItem<String>(value: null, child: Text('All')),
+        ...items.map(
+          (e) => DropdownMenuItem<String>(value: e, child: Text(e)),
         ),
       ],
+      onChanged: (value) => setState(() => _targetLanguage = value),
     );
   }
 
-  Widget _buildOutputPathPicker(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Output File',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: _pickOutputPath,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).dividerColor,
+  Widget _buildOutputPathPicker(TwmtThemeTokens tokens) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: _pickOutputPath,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: tokens.panel2,
+            border: Border.all(color: tokens.border),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+          ),
+          child: Row(
+            children: [
+              Icon(FluentIcons.save_24_regular, color: tokens.accent),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _outputPath ?? 'Click to select save location',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color:
+                        _outputPath != null ? tokens.text : tokens.textFaint,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    FluentIcons.save_24_regular,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _outputPath ?? 'Click to select save location',
-                      style: TextStyle(
-                        color: _outputPath != null
-                            ? Theme.of(context).textTheme.bodyMedium?.color
-                            : Theme.of(context).textTheme.bodySmall?.color,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Icon(
-                    FluentIcons.folder_open_24_regular,
-                    color: Theme.of(context).colorScheme.secondary,
-                  ),
-                ],
+              Icon(
+                FluentIcons.folder_open_24_regular,
+                size: 18,
+                color: tokens.textDim,
               ),
-            ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildFormatOptionsSection(BuildContext context) {
+  Widget _buildProgress(TwmtThemeTokens tokens) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Format Options',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 8),
-        CheckboxListTile(
-          value: _includeMetadata,
-          onChanged: (value) {
-            setState(() {
-              _includeMetadata = value ?? true;
-            });
-          },
-          title: const Text('Include metadata'),
-          subtitle: const Text('Add quality scores, usage counts, etc.'),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-        ),
-        CheckboxListTile(
-          value: _includeStats,
-          onChanged: (value) {
-            setState(() {
-              _includeStats = value ?? true;
-            });
-          },
-          title: const Text('Include statistics'),
-          subtitle: const Text('Add export summary and stats to file header'),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdown(
-    BuildContext context, {
-    required String label,
-    required String? value,
-    required String hint,
-    required List<String> items,
-    required void Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-        ),
-        const SizedBox(height: 4),
-        DropdownButtonFormField<String>(
-          initialValue: value,
-          hint: Text(hint),
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
-          ),
-          items: [
-            DropdownMenuItem<String>(
-              value: null,
-              child: Text(hint),
-            ),
-            ...items.map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item),
-                )),
-          ],
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgress(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Exporting...',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
-        const FluentProgressBar(),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          child: LinearProgressIndicator(
+            minHeight: 8,
+            backgroundColor: tokens.panel2,
+            valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildExportResult(BuildContext context, TmExportResult result) {
+  Widget _buildResult(TwmtThemeTokens tokens, TmExportResult result) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.3),
-        ),
+        color: tokens.okBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 FluentIcons.checkmark_circle_24_filled,
-                color: Colors.green,
+                color: tokens.ok,
+                size: 18,
               ),
               const SizedBox(width: 8),
               Text(
                 'Export Complete',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.ok,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             'Exported ${result.entriesExported} entries',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             result.filePath,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -378,28 +286,28 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
     );
   }
 
-  Widget _buildError(BuildContext context, String error) {
+  Widget _buildError(TwmtThemeTokens tokens, String error) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-        ),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: Theme.of(context).colorScheme.error,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               error,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
               ),
             ),
           ),
@@ -430,6 +338,116 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
           outputPath: _outputPath!,
           targetLanguageCode: _targetLanguage,
         );
+  }
+}
+
+class _ScopeRadio extends StatelessWidget {
+  final ExportScope value;
+  final ExportScope groupValue;
+  final String label;
+  final ValueChanged<ExportScope> onChanged;
+
+  const _ScopeRadio({
+    required this.value,
+    required this.groupValue,
+    required this.label,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final selected = value == groupValue;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? FluentIcons.radio_button_24_filled
+                    : FluentIcons.radio_button_24_regular,
+                size: 18,
+                color: selected ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String title;
+  final String subtitle;
+
+  const _OptionToggle({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                value
+                    ? FluentIcons.checkbox_checked_24_filled
+                    : FluentIcons.checkbox_unchecked_24_regular,
+                size: 18,
+                color: value ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.text,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

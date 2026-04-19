@@ -41,6 +41,7 @@ mixin EditorActionsBase {
   void refreshProviders() {
     if (!mounted) return;
     ref.invalidate(translationRowsProvider(projectId, languageId));
+    ref.invalidate(editorStatsProvider(projectId, languageId));
     ref.invalidate(projectDetailsProvider(projectId));
     ref.invalidate(projectsWithDetailsProvider);
     // Increment version to trigger refresh of pack compilation stats

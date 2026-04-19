@@ -182,6 +182,15 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep the grid's checkbox column in lockstep with external mutations of
+    // `editorSelectionProvider` (e.g. Ctrl+A fired from the screen-scope
+    // Shortcuts map). `syncFromProvider` is a no-op when the provider and the
+    // grid already agree, so taps routed through `GridSelectionHandler` —
+    // which write to the provider themselves — don't cause a feedback loop.
+    ref.listen(editorSelectionProvider, (prev, next) {
+      _selectionHandler.syncFromProvider(next.selectedUnitIds);
+    });
+
     // Watch filtered translation rows provider (applies sidebar filters)
     final rowsAsync = ref.watch(
       filteredTranslationRowsProvider(widget.projectId, widget.languageId),

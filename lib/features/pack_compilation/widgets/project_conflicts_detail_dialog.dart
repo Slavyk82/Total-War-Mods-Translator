@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../models/compilation_conflict.dart';
 import '../providers/compilation_conflict_providers.dart';
 
-/// Dialog showing detailed conflicts for a specific project.
+/// Token-themed popup showing detailed conflicts for a specific project.
 class ProjectConflictsDetailDialog extends ConsumerWidget {
   const ProjectConflictsDetailDialog({
     super.key,
@@ -18,157 +21,105 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final analysisAsync = ref.watch(compilationConflictAnalysisProvider);
 
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 900,
-          maxHeight: 600,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+    return TokenDialog(
+      icon: FluentIcons.warning_24_regular,
+      iconColor: tokens.warn,
+      title: 'Conflicts for Project',
+      subtitle: projectName,
+      width: 900,
+      body: SizedBox(
+        height: 480,
+        child: analysisAsync.when(
+          data: (analysis) {
+            if (analysis == null) {
+              return Center(
+                child: Text(
+                  'No analysis data',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.textDim,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    FluentIcons.warning_24_regular,
-                    color: Colors.orange,
+              );
+            }
+
+            final conflicts = analysis.conflicts.where((conflict) {
+              if (conflict.canAutoResolve) return false;
+              return conflict.firstEntry.projectId == projectId ||
+                  conflict.secondEntry.projectId == projectId;
+            }).toList();
+
+            if (conflicts.isEmpty) {
+              return Center(
+                child: Text(
+                  'No conflicts found',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.textDim,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Conflicts for Project',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          projectName,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(FluentIcons.dismiss_24_regular),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+                ),
+              );
+            }
+
+            return _buildConflictTable(tokens, conflicts);
+          },
+          loading: () => Center(
+            child: CircularProgressIndicator(color: tokens.accent),
+          ),
+          error: (error, _) => Center(
+            child: Text(
+              'Error: $error',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.err,
               ),
             ),
-            // Content
-            Flexible(
-              child: analysisAsync.when(
-                data: (analysis) {
-                  if (analysis == null) {
-                    return const Center(
-                      child: Text('No analysis data'),
-                    );
-                  }
-
-                  // Get conflicts involving this project (excluding auto-resolvable)
-                  final conflicts = analysis.conflicts.where((conflict) {
-                    if (conflict.canAutoResolve) return false;
-                    return conflict.firstEntry.projectId == projectId ||
-                        conflict.secondEntry.projectId == projectId;
-                  }).toList();
-
-                  if (conflicts.isEmpty) {
-                    return const Center(
-                      child: Text('No conflicts found'),
-                    );
-                  }
-
-                  return _buildConflictTable(context, theme, conflicts);
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, _) => Center(
-                  child: Text('Error: $error'),
-                ),
-              ),
-            ),
-            // Footer
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: theme.dividerColor),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  FilledButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
+      actions: [
+        SmallTextButton(
+          label: 'Close',
+          filled: true,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
   Widget _buildConflictTable(
-    BuildContext context,
-    ThemeData theme,
+    TwmtThemeTokens tokens,
     List<CompilationConflict> conflicts,
   ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
       child: Table(
         border: TableBorder.all(
-          color: theme.dividerColor,
-          borderRadius: BorderRadius.circular(8),
+          color: tokens.border,
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
         ),
         columnWidths: const {
-          0: FlexColumnWidth(1.5), // Key
-          1: FlexColumnWidth(2), // This project's source
-          2: FlexColumnWidth(2), // Conflicting project's source
+          0: FlexColumnWidth(1.5),
+          1: FlexColumnWidth(2),
+          2: FlexColumnWidth(2),
         },
         children: [
-          // Header row
           TableRow(
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(8),
+              color: tokens.panel2,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(tokens.radiusSm),
               ),
             ),
             children: [
-              _buildHeaderCell(theme, 'Conflicting Key'),
-              _buildHeaderCell(theme, 'Source Text (This Project)'),
-              _buildHeaderCell(theme, 'Source Text (Conflicting)'),
+              _buildHeaderCell(tokens, 'Conflicting Key'),
+              _buildHeaderCell(tokens, 'Source Text (This Project)'),
+              _buildHeaderCell(tokens, 'Source Text (Conflicting)'),
             ],
           ),
-          // Data rows
           ...conflicts.map((conflict) {
-            // Determine which entry belongs to this project
             final isFirst = conflict.firstEntry.projectId == projectId;
             final thisEntry =
                 isFirst ? conflict.firstEntry : conflict.secondEntry;
@@ -177,18 +128,18 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
 
             return TableRow(
               children: [
-                _buildKeyCell(theme, conflict.key),
+                _buildKeyCell(tokens, conflict.key),
                 _buildSourceTextCell(
-                  theme,
+                  tokens,
                   thisEntry.projectName,
                   thisEntry.sourceText,
-                  theme.colorScheme.primary,
+                  tokens.accent,
                 ),
                 _buildSourceTextCell(
-                  theme,
+                  tokens,
                   otherEntry.projectName,
                   otherEntry.sourceText,
-                  theme.colorScheme.error,
+                  tokens.err,
                 ),
               ],
             );
@@ -198,13 +149,15 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeaderCell(ThemeData theme, String text) {
+  Widget _buildHeaderCell(TwmtThemeTokens tokens, String text) {
     return TableCell(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Text(
           text,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: tokens.fontBody.copyWith(
+            fontSize: 12.5,
+            color: tokens.text,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -212,15 +165,16 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildKeyCell(ThemeData theme, String key) {
+  Widget _buildKeyCell(TwmtThemeTokens tokens, String key) {
     return TableCell(
       verticalAlignment: TableCellVerticalAlignment.top,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: SelectableText(
           key,
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontFamily: 'monospace',
+          style: tokens.fontMono.copyWith(
+            fontSize: 12,
+            color: tokens.text,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -229,7 +183,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
   }
 
   Widget _buildSourceTextCell(
-    ThemeData theme,
+    TwmtThemeTokens tokens,
     String modName,
     String sourceText,
     Color accentColor,
@@ -241,17 +195,22 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Mod name badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+                border: Border.all(
+                  color: accentColor.withValues(alpha: 0.3),
+                ),
               ),
               child: Text(
                 modName,
-                style: theme.textTheme.labelSmall?.copyWith(
+                style: tokens.fontBody.copyWith(
+                  fontSize: 11.5,
                   color: accentColor,
                   fontWeight: FontWeight.w600,
                 ),
@@ -260,17 +219,19 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            // Source text
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(4),
+                color: tokens.panel2,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
               ),
               child: SelectableText(
                 sourceText,
-                style: theme.textTheme.bodySmall,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.text,
+                ),
               ),
             ),
           ],

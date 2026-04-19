@@ -15,6 +15,7 @@ class TokenTextField extends StatelessWidget {
   final String hint;
   final bool enabled;
   final int maxLines;
+  final int? minLines;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
   final bool obscureText;
@@ -28,6 +29,7 @@ class TokenTextField extends StatelessWidget {
     required this.hint,
     required this.enabled,
     this.maxLines = 1,
+    this.minLines,
     this.onChanged,
     this.focusNode,
     this.obscureText = false,
@@ -45,7 +47,9 @@ class TokenTextField extends StatelessWidget {
       onChanged: onChanged,
       // obscureText requires maxLines == 1 (Flutter asserts this).
       maxLines: obscureText ? 1 : maxLines,
-      minLines: (!obscureText && maxLines > 1) ? 2 : 1,
+      minLines: obscureText
+          ? 1
+          : (minLines ?? (maxLines > 1 ? 2 : 1)),
       focusNode: focusNode,
       obscureText: obscureText,
       autofocus: autofocus,

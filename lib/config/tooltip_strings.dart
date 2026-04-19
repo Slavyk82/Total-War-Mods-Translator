@@ -76,10 +76,18 @@ class TooltipStrings {
 
   static const String editorModelSelector =
       'Select the AI model to use for translation';
-  static const String editorSkipTm =
-      'Skip Translation Memory lookup and send all units directly to the AI model';
-  static const String editorSettings =
-      'Configure batch size and parallel request settings';
+  static const String editorUseTm =
+      'When checked, consult Translation Memory before querying the AI model. '
+      'Uncheck to bypass TM and always send units directly to the model.';
+  static const String editorBatchAuto =
+      'Calculate the batch size automatically from the selected model\'s '
+      'token budget. Turn off to pin a fixed Units / batch value.';
+  static const String editorBatchUnits =
+      'Maximum translation units per LLM request (1–1000). Lower values '
+      'reduce timeouts at the cost of more tokens consumed.';
+  static const String editorBatchParallel =
+      'Number of simultaneous LLM requests (1–20). Higher is faster but '
+      'increases API load; 3–5 is typical.';
   static const String editorModRule =
       'Create or edit mod-specific translation instructions';
   static const String editorModRuleEdit =

@@ -814,6 +814,25 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
+  /// Normalize any status values that were mistakenly stored in Dart
+  /// camelCase form (e.g. `'needsReview'`) back to the canonical snake_case
+  /// form declared in the schema (`'needs_review'`). Returns the number of
+  /// rows repaired. Safe to call repeatedly — a no-op when nothing is stale.
+  Future<Result<int, TWMTDatabaseException>> normalizeStatusEncoding() async {
+    return executeQuery(() async {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final rowsAffected = await database.rawUpdate(
+        '''
+        UPDATE $tableName
+        SET status = 'needs_review', updated_at = ?
+        WHERE status = 'needsReview'
+        ''',
+        [now],
+      );
+      return rowsAffected;
+    });
+  }
+
   /// Recreate triggers after batch operations.
   Future<void> _recreateTriggers(Transaction txn) async {
     await txn.execute('''

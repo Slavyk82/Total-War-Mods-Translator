@@ -178,11 +178,19 @@ void main() {
     });
 
     group('Actions', () {
-      testWidgets('should support translation settings action', (tester) async {
+      testWidgets('renders inline batch settings in the sidebar', (tester) async {
+        // The former Translation Settings popup has been inlined — the
+        // sidebar now hosts the Auto toggle + Units/batch + Parallel batches
+        // controls directly. We smoke-test the presence of the panel; its
+        // behaviour is covered by the sidebar widget test.
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(TranslationEditorScreen), findsOneWidget);
+        expect(
+          find.byWidgetPredicate((w) =>
+              w.runtimeType.toString() == 'EditorToolbarBatchSettings'),
+          findsOneWidget,
+        );
       });
 
       testWidgets('should support translate all action', (tester) async {
@@ -282,17 +290,17 @@ void main() {
 
     group('Shortcuts', () {
       testWidgets(
-          'screen registers Ctrl+F and hands editor-search FocusNode to sidebar',
+          'screen registers Ctrl+F to focus the toolbar search field',
           (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        // Ctrl+F must be in the screen-scope Shortcuts map so the sidebar's
-        // search field can be focused via the shortcut. We test the wire
-        // structurally (map contains the binding) + that the sidebar received
-        // the editor-search FocusNode — end-to-end key routing is covered by
-        // the manual smoke test since the Flutter test framework's key event
-        // injection requires focus to already sit inside the Shortcuts subtree.
+        // Ctrl+F must be in the screen-scope Shortcuts map so the
+        // FilterToolbar search field can be focused via the shortcut. We test
+        // the wire structurally (map contains the binding) — end-to-end key
+        // routing is covered by the manual smoke test since the Flutter test
+        // framework's key event injection requires focus to already sit
+        // inside the Shortcuts subtree.
         final screenShortcuts = find.byWidgetPredicate(
           (w) =>
               w is Shortcuts &&
@@ -308,15 +316,34 @@ void main() {
           findsOneWidget,
           reason: 'Ctrl+F must be declared in the screen Shortcuts map',
         );
+      });
 
-        final sidebar = tester.widget<EditorActionSidebar>(
-          find.byType(EditorActionSidebar),
+      testWidgets(
+          'screen registers Ctrl+A to toggle selection of the filtered rows',
+          (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // Structural assertion: Ctrl+A must be wired in the screen-scope
+        // Shortcuts map. The action selects every filtered row when the
+        // selection is partial/empty and clears it when all are already
+        // selected. Focus-aware `consumesKey` lets TextFields keep the
+        // native Ctrl+A behaviour — behavioural coverage is a manual smoke
+        // test since key routing needs focus inside the Shortcuts subtree.
+        final screenShortcuts = find.byWidgetPredicate(
+          (w) =>
+              w is Shortcuts &&
+              w.shortcuts.keys.any(
+                (k) =>
+                    k is LogicalKeySet &&
+                    k.keys.contains(LogicalKeyboardKey.keyA) &&
+                    k.keys.contains(LogicalKeyboardKey.control),
+              ),
         );
         expect(
-          sidebar.searchFocusNode.debugLabel,
-          equals('editor-search'),
-          reason:
-              'Sidebar must receive the screen-owned editor-search FocusNode',
+          screenShortcuts,
+          findsOneWidget,
+          reason: 'Ctrl+A must be declared in the screen Shortcuts map',
         );
       });
     });

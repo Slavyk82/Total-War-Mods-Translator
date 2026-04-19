@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../services/pack_import_service.dart';
 
-/// Dialog for importing translations from a .pack file
+/// Token-themed popup for importing translations from a `.pack` file.
 class PackImportDialog extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
@@ -35,7 +38,6 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   Set<String> _selectedKeys = {};
   _PackImportDataSource? _dataSource;
 
-  // Progress tracking
   int _importCurrent = 0;
   int _importTotal = 0;
   String _importMessage = '';
@@ -73,16 +75,16 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
       languageId: widget.languageId,
     );
 
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
       if (result.isOk) {
         _preview = result.unwrap();
-        // Select all matching entries by default
         _selectedKeys = _preview!.matchingEntries.map((e) => e.key).toSet();
-        // Create data source for the grid
         _dataSource = _PackImportDataSource(
           entries: _preview!.matchingEntries,
           selectedKeys: _selectedKeys,
+          tokens: context.tokens,
           onSelectionChanged: (key, selected) {
             setState(() {
               if (selected) {
@@ -132,22 +134,23 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
       isCancelled: () => _isCancelled,
     );
 
+    if (!mounted) return;
     setState(() {
       _isImporting = false;
     });
 
     if (result.isOk) {
       final importResult = result.unwrap();
-      if (mounted) {
-        // Capture navigator context before closing dialog
-        final navigatorContext = Navigator.of(context).context;
-        // If cancelled, don't close automatically
-        if (_isCancelled) {
+      final navigatorContext = Navigator.of(context).context;
+      if (_isCancelled) {
+        if (navigatorContext.mounted) {
           _showResultToast(navigatorContext, importResult);
-          widget.onImportComplete?.call();
-        } else {
-          Navigator.of(context).pop();
-          widget.onImportComplete?.call();
+        }
+        widget.onImportComplete?.call();
+      } else {
+        Navigator.of(context).pop();
+        widget.onImportComplete?.call();
+        if (navigatorContext.mounted) {
           _showResultToast(navigatorContext, importResult);
         }
       }
@@ -167,7 +170,9 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
 
   void _showResultToast(BuildContext toastContext, PackImportResult result) {
     final message = StringBuffer();
-    message.write('Import complete: ${result.importedCount} translation(s) imported');
+    message.write(
+      'Import complete: ${result.importedCount} translation(s) imported',
+    );
     if (result.skippedCount > 0) {
       message.write(', ${result.skippedCount} skipped');
     }
@@ -195,155 +200,102 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final allSelected = _preview != null &&
         _selectedKeys.length == _preview!.matchingEntries.length;
 
-    return Dialog(
-      child: Container(
-        width: 900,
-        height: 700,
-        padding: const EdgeInsets.all(24),
+    return TokenDialog(
+      icon: FluentIcons.arrow_import_24_regular,
+      title: 'Import translations from a .pack file',
+      width: 900,
+      body: SizedBox(
+        height: 600,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
-            Row(
-              children: [
-                const Icon(FluentIcons.arrow_import_24_regular, size: 28),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Import translations from a .pack file',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                FluentIconButton(
-                  icon: const Icon(FluentIcons.dismiss_24_regular),
-                  onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'Close',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // File selection
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      _selectedFilePath ?? 'No file selected',
-                      style: TextStyle(
-                        color: _selectedFilePath == null
-                            ? Theme.of(context).hintColor
-                            : null,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _isLoading || _isImporting ? null : _selectFile,
-                  icon: const Icon(FluentIcons.folder_open_24_regular, size: 18),
-                  label: const Text('Browse'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Error message
+            _buildFileSelector(tokens),
+            const SizedBox(height: 14),
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  borderRadius: BorderRadius.circular(4),
+                  color: tokens.errBg,
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  border: Border.all(
+                    color: tokens.err.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       FluentIcons.warning_24_regular,
-                      color: Theme.of(context).colorScheme.error,
+                      size: 18,
+                      color: tokens.err,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 12.5,
+                          color: tokens.err,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-            // Loading indicator
             if (_isLoading)
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Analyzing pack file...'),
+                      CircularProgressIndicator(color: tokens.accent),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Analyzing pack file...',
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 13,
+                          color: tokens.textDim,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-
-            // Preview content
             if (!_isLoading && _preview != null) ...[
-              // Summary
-              _buildSummary(),
-              const SizedBox(height: 16),
-
-              // Options
+              _buildSummary(tokens),
+              const SizedBox(height: 14),
               Row(
                 children: [
-                  Checkbox(
+                  _TokenCheckbox(
                     value: _overwriteExisting,
-                    onChanged: (value) {
-                      setState(() {
-                        _overwriteExisting = value ?? true;
-                      });
-                    },
+                    onChanged: (v) =>
+                        setState(() => _overwriteExisting = v ?? true),
                   ),
-                  const Text('Overwrite existing translations'),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: _toggleSelectAll,
-                    icon: Icon(
-                      allSelected
-                          ? FluentIcons.checkbox_unchecked_24_regular
-                          : FluentIcons.checkbox_checked_24_regular,
-                      size: 18,
+                  const SizedBox(width: 8),
+                  Text(
+                    'Overwrite existing translations',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 13,
+                      color: tokens.text,
                     ),
-                    label: Text(allSelected ? 'Deselect all' : 'Select all'),
+                  ),
+                  const Spacer(),
+                  SmallTextButton(
+                    label: allSelected ? 'Deselect all' : 'Select all',
+                    icon: allSelected
+                        ? FluentIcons.checkbox_unchecked_24_regular
+                        : FluentIcons.checkbox_checked_24_regular,
+                    onTap: _toggleSelectAll,
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-
-              // Entries grid using Syncfusion DataGrid
-              Expanded(child: _buildEntriesGrid()),
+              const SizedBox(height: 12),
+              Expanded(child: _buildEntriesGrid(tokens)),
             ],
-
-            // No file selected placeholder
             if (!_isLoading && _preview == null && _errorMessage == null)
               Expanded(
                 child: Center(
@@ -352,166 +304,207 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                     children: [
                       Icon(
                         FluentIcons.document_add_24_regular,
-                        size: 64,
-                        color: Colors.grey.shade400,
+                        size: 56,
+                        color: tokens.textFaint,
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
+                      const SizedBox(height: 14),
+                      Text(
                         'Select a .pack file containing translations',
-                        style: TextStyle(color: Colors.grey),
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 13,
+                          color: tokens.textDim,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-
-            const SizedBox(height: 16),
-
-            // Progress indicator during import
             if (_isImporting) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _importMessage,
-                            style: const TextStyle(fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: _importTotal > 0 ? _importCurrent / _importTotal : 0,
-                        minHeight: 8,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '$_importCurrent / $_importTotal entries processed',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              _buildProgress(tokens),
             ],
-
-            // Actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _isImporting
-                      ? (_isCancelled ? null : _cancelImport)
-                      : () => Navigator.of(context).pop(),
-                  child: Text(_isImporting
-                      ? (_isCancelled ? 'Cancelling...' : 'Cancel Import')
-                      : 'Cancel'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _preview != null &&
-                          _selectedKeys.isNotEmpty &&
-                          !_isImporting
-                      ? _executeImport
-                      : null,
-                  icon: _isImporting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(FluentIcons.arrow_import_24_regular, size: 18),
-                  label: Text(_isImporting
-                      ? 'Importing...'
-                      : 'Import (${_selectedKeys.length})'),
-                ),
-              ],
-            ),
           ],
         ),
+      ),
+      actions: [
+        SmallTextButton(
+          label: _isImporting
+              ? (_isCancelled ? 'Cancelling...' : 'Cancel Import')
+              : 'Cancel',
+          onTap: _isImporting
+              ? (_isCancelled ? null : _cancelImport)
+              : () => Navigator.of(context).pop(),
+        ),
+        SmallTextButton(
+          label: _isImporting
+              ? 'Importing...'
+              : 'Import (${_selectedKeys.length})',
+          icon: FluentIcons.arrow_import_24_regular,
+          filled: true,
+          onTap: _preview != null &&
+                  _selectedKeys.isNotEmpty &&
+                  !_isImporting
+              ? _executeImport
+              : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFileSelector(TwmtThemeTokens tokens) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: tokens.panel2,
+              border: Border.all(color: tokens.border),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+            ),
+            child: Text(
+              _selectedFilePath ?? 'No file selected',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: _selectedFilePath == null
+                    ? tokens.textFaint
+                    : tokens.text,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SmallTextButton(
+          label: 'Browse',
+          icon: FluentIcons.folder_open_24_regular,
+          onTap: _isLoading || _isImporting ? null : _selectFile,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgress(TwmtThemeTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: tokens.accent,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _importMessage,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: tokens.text,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+            child: LinearProgressIndicator(
+              value: _importTotal > 0 ? _importCurrent / _importTotal : 0,
+              minHeight: 8,
+              backgroundColor: tokens.panel,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$_importCurrent / $_importTotal entries processed',
+            style: tokens.fontBody.copyWith(
+              fontSize: 11.5,
+              color: tokens.textDim,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSummary() {
+  Widget _buildSummary(TwmtThemeTokens tokens) {
     final preview = _preview!;
     final conflictCount = preview.entriesWithConflicts.length;
     final newCount = preview.entriesWithoutConflicts.length;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Analysis Summary',
-            style: TextStyle(
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.text,
               fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               _buildStatCard(
+                tokens,
                 'Total in pack',
                 preview.totalEntriesInPack.toString(),
                 FluentIcons.document_24_regular,
-                Colors.blue,
+                tokens.info,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildStatCard(
+                tokens,
                 'Matches',
                 preview.matchingCount.toString(),
                 FluentIcons.checkmark_circle_24_regular,
-                Colors.green,
+                tokens.ok,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildStatCard(
+                tokens,
                 'New',
                 newCount.toString(),
                 FluentIcons.add_circle_24_regular,
-                Colors.teal,
+                tokens.accent,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildStatCard(
+                tokens,
                 'Conflicts',
                 conflictCount.toString(),
                 FluentIcons.warning_24_regular,
-                Colors.orange,
+                tokens.warn,
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 10),
               _buildStatCard(
+                tokens,
                 'Not found',
                 preview.unmatchedCount.toString(),
                 FluentIcons.dismiss_circle_24_regular,
-                Colors.grey,
+                tokens.textFaint,
               ),
             ],
           ),
@@ -521,6 +514,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   }
 
   Widget _buildStatCard(
+    TwmtThemeTokens tokens,
     String label,
     String value,
     IconData icon,
@@ -528,10 +522,10 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   ) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
@@ -539,12 +533,12 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color, size: 20),
+                Icon(icon, color: color, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   value,
-                  style: TextStyle(
-                    fontSize: 20,
+                  style: tokens.fontDisplay.copyWith(
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -554,9 +548,9 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
+              style: tokens.fontBody.copyWith(
                 fontSize: 11,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: tokens.textDim,
               ),
               textAlign: TextAlign.center,
             ),
@@ -566,7 +560,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
     );
   }
 
-  Widget _buildEntriesGrid() {
+  Widget _buildEntriesGrid(TwmtThemeTokens tokens) {
     final preview = _preview!;
     if (preview.matchingEntries.isEmpty) {
       return Center(
@@ -576,12 +570,15 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
             Icon(
               FluentIcons.document_dismiss_24_regular,
               size: 48,
-              color: Colors.grey.shade400,
+              color: tokens.textFaint,
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'No matching translations found',
-              style: TextStyle(color: Colors.grey),
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
+              ),
             ),
           ],
         ),
@@ -590,11 +587,11 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
 
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).dividerColor),
-        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: tokens.border),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
         child: SfDataGrid(
           source: _dataSource!,
           columnWidthMode: ColumnWidthMode.fill,
@@ -617,9 +614,13 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               label: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.centerLeft,
-                child: const Text(
+                child: Text(
                   'Key',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -629,9 +630,13 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               label: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.centerLeft,
-                child: const Text(
+                child: Text(
                   'Value to import',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -640,9 +645,13 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               width: 90,
               label: Container(
                 alignment: Alignment.center,
-                child: const Text(
+                child: Text(
                   'Status',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: tokens.text,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -653,15 +662,41 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   }
 }
 
-/// DataSource for the pack import grid
+class _TokenCheckbox extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+
+  const _TokenCheckbox({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Icon(
+          value
+              ? FluentIcons.checkbox_checked_24_filled
+              : FluentIcons.checkbox_unchecked_24_regular,
+          size: 18,
+          color: value ? tokens.accent : tokens.textFaint,
+        ),
+      ),
+    );
+  }
+}
+
 class _PackImportDataSource extends DataGridSource {
   final List<PackImportEntry> entries;
   Set<String> selectedKeys;
+  final TwmtThemeTokens tokens;
   final void Function(String key, bool selected) onSelectionChanged;
 
   _PackImportDataSource({
     required this.entries,
     required this.selectedKeys,
+    required this.tokens,
     required this.onSelectionChanged,
   }) {
     _buildRows();
@@ -675,7 +710,10 @@ class _PackImportDataSource extends DataGridSource {
         DataGridCell<String>(columnName: 'selected', value: entry.key),
         DataGridCell<String>(columnName: 'key', value: entry.key),
         DataGridCell<String>(columnName: 'value', value: entry.importedValue),
-        DataGridCell<bool>(columnName: 'status', value: entry.hasExistingTranslation),
+        DataGridCell<bool>(
+          columnName: 'status',
+          value: entry.hasExistingTranslation,
+        ),
       ]);
     }).toList();
   }
@@ -696,33 +734,26 @@ class _PackImportDataSource extends DataGridSource {
     final isSelected = selectedKeys.contains(key);
 
     return DataGridRowAdapter(
-      color: isSelected
-          ? Colors.blue.withValues(alpha: 0.1)
-          : null,
+      color: isSelected ? tokens.rowSelected : null,
       cells: [
-        // Checkbox
         Center(
-          child: Checkbox(
+          child: _TokenCheckbox(
             value: isSelected,
-            onChanged: (value) {
-              onSelectionChanged(key, value ?? false);
-            },
+            onChanged: (v) => onSelectionChanged(key, v ?? false),
           ),
         ),
-        // Key
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.centerLeft,
           child: Text(
             key,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontFamily: 'monospace',
+            style: tokens.fontMono.copyWith(
               fontSize: 12,
+              color: tokens.text,
             ),
           ),
         ),
-        // Value
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.centerLeft,
@@ -733,53 +764,35 @@ class _PackImportDataSource extends DataGridSource {
               value.replaceAll('\n', ' '),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
-              style: const TextStyle(fontSize: 12),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.text,
+              ),
             ),
           ),
         ),
-        // Status
         Center(
-          child: hasConflict
-              ? Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.orange.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: const Text(
-                    'Conflict',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.orange,
-                    ),
-                  ),
-                )
-              : Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: Colors.green.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: const Text(
-                    'New',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.green,
-                    ),
-                  ),
-                ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: hasConflict
+                  ? tokens.warn.withValues(alpha: 0.1)
+                  : tokens.ok.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(
+                color: (hasConflict ? tokens.warn : tokens.ok)
+                    .withValues(alpha: 0.5),
+              ),
+            ),
+            child: Text(
+              hasConflict ? 'Conflict' : 'New',
+              style: tokens.fontBody.copyWith(
+                fontSize: 11,
+                color: hasConflict ? tokens.warn : tokens.ok,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ),
       ],
     );

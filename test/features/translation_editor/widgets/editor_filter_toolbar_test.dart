@@ -83,23 +83,18 @@ void main() {
     );
   }
 
-  testWidgets('renders FilterToolbar with STATUS and TM SOURCE groups',
+  testWidgets('renders FilterToolbar with STATUS group only',
       (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
 
     expect(find.byType(FilterToolbar), findsOneWidget);
     expect(find.text('STATUS'), findsOneWidget);
-    expect(find.text('TM SOURCE'), findsOneWidget);
+    expect(find.text('TM SOURCE'), findsNothing);
 
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('Translated'), findsOneWidget);
     expect(find.text('Needs review'), findsOneWidget);
-    expect(find.text('Exact match'), findsOneWidget);
-    expect(find.text('Fuzzy match'), findsOneWidget);
-    expect(find.text('LLM'), findsOneWidget);
-    expect(find.text('Manual'), findsOneWidget);
-    expect(find.text('None'), findsOneWidget);
   });
 
   testWidgets('tapping Pending pill toggles editorFilterProvider.statusFilters',

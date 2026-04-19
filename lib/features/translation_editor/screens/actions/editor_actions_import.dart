@@ -3,7 +3,6 @@ import 'package:twmt/services/file/localization_parser_impl.dart';
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
-import '../../providers/editor_providers.dart';
 import '../../services/pack_import_service.dart';
 import '../../widgets/pack_import_dialog.dart';
 import 'editor_actions_base.dart';
@@ -29,12 +28,7 @@ mixin EditorActionsImport on EditorActionsBase {
         projectId: projectId,
         languageId: languageId,
         importService: importService,
-        onImportComplete: () {
-          // Refresh all providers after import (translation rows, stats, project details, etc.)
-          refreshProviders();
-          // Also invalidate editor stats which is not in refreshProviders
-          ref.invalidate(editorStatsProvider(projectId, languageId));
-        },
+        onImportComplete: refreshProviders,
       ),
     );
   }

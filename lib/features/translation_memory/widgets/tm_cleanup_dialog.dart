@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/tm_providers.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for cleaning up low-quality TM entries
+/// Token-themed popup for cleaning up low-quality / stale TM entries.
 class TmCleanupDialog extends ConsumerStatefulWidget {
   const TmCleanupDialog({super.key});
 
@@ -13,142 +15,171 @@ class TmCleanupDialog extends ConsumerStatefulWidget {
 }
 
 class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
-  int _unusedDays = 365; // Default to 365 days for unused entry cleanup
+  int _unusedDays = 365;
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final cleanupState = ref.watch(tmCleanupStateProvider);
 
-    return AlertDialog(
-      title: Row(
+    return TokenDialog(
+      icon: FluentIcons.broom_24_regular,
+      title: 'Cleanup Translation Memory',
+      width: 520,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            FluentIcons.broom_24_regular,
-            color: Theme.of(context).colorScheme.primary,
+          Text(
+            'Remove unused entries to optimize your translation memory.',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
+            ),
           ),
-          const SizedBox(width: 8),
-          const Text('Cleanup Translation Memory'),
-        ],
-      ),
-      content: SizedBox(
-        width: 500,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Remove unused entries to optimize your translation memory.',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Unused days
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Delete if unused for (days)',
-                  style: Theme.of(context).textTheme.titleSmall,
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Delete if unused for (days)',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                  fontWeight: FontWeight.w600,
                 ),
-                Text(
-                  _unusedDays == 0 ? 'Disabled' : '$_unusedDays',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: _unusedDays == 0
-                            ? Theme.of(context).colorScheme.secondary
-                            : Theme.of(context).colorScheme.primary,
-                      ),
+              ),
+              Text(
+                _unusedDays == 0 ? 'Disabled' : '$_unusedDays',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: _unusedDays == 0 ? tokens.textFaint : tokens.accent,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: tokens.accent,
+              inactiveTrackColor: tokens.panel2,
+              thumbColor: tokens.accent,
+              overlayColor: tokens.accentBg,
             ),
-            Slider(
+            child: Slider(
               value: _unusedDays.toDouble(),
               min: 0,
               max: 730,
-              divisions: 73, // 0, 10, 20, ... 730
-              onChanged: (value) {
-                setState(() {
-                  _unusedDays = value.toInt();
-                });
-              },
+              divisions: 73,
+              onChanged: (value) =>
+                  setState(() => _unusedDays = value.toInt()),
             ),
-            if (_unusedDays == 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Age filter disabled - no entries will be deleted',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                ),
-              ),
-
-            const SizedBox(height: 24),
-
-            // Result
-            cleanupState.when(
-              data: (deletedCount) {
-                if (deletedCount != null) {
-                  return Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          FluentIcons.checkmark_circle_24_filled,
-                          color: Colors.green,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Deleted $deletedCount entries',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-              loading: () => const FluentProgressBar(),
-              error: (error, stack) => Text(
-                error.toString(),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
+          ),
+          if (_unusedDays == 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Age filter disabled - no entries will be deleted',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textFaint,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
             ),
-          ],
-        ),
+          const SizedBox(height: 20),
+          cleanupState.when(
+            data: (deletedCount) {
+              if (deletedCount != null) {
+                return _ResultBanner(
+                  color: tokens.ok,
+                  bgColor: tokens.okBg,
+                  icon: FluentIcons.checkmark_circle_24_filled,
+                  message: 'Deleted $deletedCount entries',
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => LinearProgressIndicator(
+              color: tokens.accent,
+              backgroundColor: tokens.panel2,
+            ),
+            error: (error, stack) => Text(
+              error.toString(),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
+              ),
+            ),
+          ),
+        ],
       ),
       actions: [
-        FluentTextButton(
-          onPressed: cleanupState.isLoading
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: cleanupState.isLoading
               ? null
               : () {
                   ref.read(tmCleanupStateProvider.notifier).reset();
                   Navigator.of(context).pop();
                 },
-          child: const Text('Cancel'),
         ),
-        FluentButton(
-          onPressed: cleanupState.isLoading
+        SmallTextButton(
+          label: 'Cleanup',
+          icon: FluentIcons.broom_24_regular,
+          filled: true,
+          onTap: cleanupState.isLoading
               ? null
               : () async {
-                  await ref.read(tmCleanupStateProvider.notifier).cleanup(
-                        unusedDays: _unusedDays,
-                      );
+                  await ref
+                      .read(tmCleanupStateProvider.notifier)
+                      .cleanup(unusedDays: _unusedDays);
                 },
-          icon: const Icon(FluentIcons.broom_24_regular),
-          child: const Text('Cleanup'),
         ),
       ],
+    );
+  }
+}
+
+class _ResultBanner extends StatelessWidget {
+  final Color color;
+  final Color bgColor;
+  final IconData icon;
+  final String message;
+
+  const _ResultBanner({
+    required this.color,
+    required this.bgColor,
+    required this.icon,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/glossary_providers.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for exporting glossary to file
+/// Token-themed popup for exporting a glossary to a CSV file.
 class GlossaryExportDialog extends ConsumerStatefulWidget {
   final String glossaryId;
 
@@ -24,123 +27,124 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final exportState = ref.watch(glossaryExportStateProvider);
 
-    return AlertDialog(
-      title: const Text('Export Glossary (CSV)'),
-      content: SizedBox(
-        width: 600,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // File path picker
-              Text(
-                'Output File',
-                style: Theme.of(context).textTheme.titleSmall,
+    return TokenDialog(
+      icon: FluentIcons.arrow_export_24_regular,
+      title: 'Export Glossary (CSV)',
+      width: 620,
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Output File',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: 8),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: _pickFile,
-                  child: Container(
-                    padding: const EdgeInsets.all(16.0),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      borderRadius: BorderRadius.circular(4.0),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          FluentIcons.save_24_regular,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            _selectedFilePath ?? 'Click to select output file...',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Progress and results
-              exportState.when(
-                data: (result) {
-                  if (result != null) {
-                    return _buildExportSummary(result);
-                  }
-                  return const SizedBox.shrink();
-                },
-                loading: () => Column(
-                  children: [
-                    const FluentProgressBar(),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Exporting...',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-                error: (error, stack) => Container(
-                  padding: const EdgeInsets.all(16.0),
+            ),
+            const SizedBox(height: 6),
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: _pickFile,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(4.0),
+                    color: tokens.panel2,
+                    border: Border.all(color: tokens.border),
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        FluentIcons.error_circle_24_regular,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                      Icon(FluentIcons.save_24_regular, color: tokens.accent),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Error: $error',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onErrorContainer,
+                          _selectedFilePath ??
+                              'Click to select output file...',
+                          style: tokens.fontBody.copyWith(
+                            fontSize: 13,
+                            color: _selectedFilePath == null
+                                ? tokens.textFaint
+                                : tokens.text,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            exportState.when(
+              data: (result) {
+                if (result != null) {
+                  return _buildSummaryBanner(
+                    tokens,
+                    title: 'Export Summary',
+                    message: result.summary,
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+              loading: () => Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    child: LinearProgressIndicator(
+                      minHeight: 8,
+                      backgroundColor: tokens.panel2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(tokens.accent),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Exporting...',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12.5,
+                      color: tokens.textDim,
+                    ),
+                  ),
+                ],
+              ),
+              error: (error, _) => _buildErrorBanner(tokens, '$error'),
+            ),
+          ],
         ),
       ),
       actions: [
-        FluentTextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+        SmallTextButton(
+          label: 'Close',
+          onTap: () => Navigator.of(context).pop(),
         ),
-        FluentButton(
-          onPressed: exportState.isLoading ? null : _export,
-          icon: const Icon(FluentIcons.arrow_export_24_regular),
-          child: const Text('Export'),
+        SmallTextButton(
+          label: exportState.isLoading ? 'Exporting...' : 'Export',
+          icon: FluentIcons.arrow_export_24_regular,
+          filled: true,
+          onTap: exportState.isLoading ? null : _export,
         ),
       ],
     );
   }
 
-  Widget _buildExportSummary(ExportResult result) {
+  Widget _buildSummaryBanner(
+    TwmtThemeTokens tokens, {
+    required String title,
+    required String message,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(4.0),
+        color: tokens.okBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -149,23 +153,57 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
             children: [
               Icon(
                 FluentIcons.checkmark_circle_24_regular,
-                color: Theme.of(context).colorScheme.primary,
+                color: tokens.ok,
+                size: 18,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
-                'Export Summary',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
+                title,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.ok,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            result.summary,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
+            message,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12.5,
+              color: tokens.text,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(TwmtThemeTokens tokens, String error) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.error_circle_24_regular,
+            color: tokens.err,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Error: $error',
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
+              ),
+            ),
           ),
         ],
       ),

@@ -2,111 +2,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
-/// Dialog showing progress of mod updates
+/// Token-themed popup showing mod-update progress.
 class ModUpdateDialog extends ConsumerWidget {
   const ModUpdateDialog({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
     final updateQueue = ref.watch(modUpdateQueueProvider);
     final allComplete = ref.read(modUpdateQueueProvider.notifier).allComplete;
+    final total = updateQueue.length;
 
-    return Dialog(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: 700,
-          maxHeight: 600,
-        ),
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(context, updateQueue.length, allComplete),
-            const Divider(height: 1),
-
-            // Content
-            Expanded(
-              child: updateQueue.isEmpty
-                  ? _buildEmptyState(context)
-                  : _buildUpdateList(context, updateQueue.values.toList()),
-            ),
-
-            // Footer
-            const Divider(height: 1),
-            _buildFooter(context, ref, allComplete),
-          ],
-        ),
+    return TokenDialog(
+      icon: allComplete
+          ? FluentIcons.checkmark_circle_24_regular
+          : FluentIcons.arrow_download_24_regular,
+      iconColor: allComplete ? tokens.ok : tokens.accent,
+      title: allComplete ? 'Updates Complete' : 'Updating Mods',
+      subtitle: allComplete
+          ? 'All updates have been processed'
+          : 'Updating $total ${total == 1 ? 'mod' : 'mods'}...',
+      width: 720,
+      body: SizedBox(
+        height: 420,
+        child: updateQueue.isEmpty
+            ? _buildEmptyState(tokens)
+            : ListView.separated(
+                itemCount: updateQueue.values.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (_, index) {
+                  return _UpdateItem(
+                    updateInfo: updateQueue.values.toList()[index],
+                  );
+                },
+              ),
       ),
+      actions: _buildActions(context, ref, allComplete, tokens),
     );
   }
 
-  Widget _buildHeader(BuildContext context, int totalUpdates, bool allComplete) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: allComplete
-                  ? const Color(0xFF107C10).withValues(alpha: 0.1)
-                  : theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              allComplete
-                  ? FluentIcons.checkmark_circle_24_regular
-                  : FluentIcons.arrow_download_24_regular,
-              color: allComplete
-                  ? const Color(0xFF107C10)
-                  : theme.colorScheme.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  allComplete ? 'Updates Complete' : 'Updating Mods',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  allComplete
-                      ? 'All updates have been processed'
-                      : 'Updating $totalUpdates ${totalUpdates == 1 ? 'mod' : 'mods'}...',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUpdateList(BuildContext context, List<ModUpdateInfo> updates) {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      itemCount: updates.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        return _UpdateItem(updateInfo: updates[index]);
-      },
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildEmptyState(TwmtThemeTokens tokens) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -114,20 +53,23 @@ class ModUpdateDialog extends ConsumerWidget {
           Icon(
             FluentIcons.archive_24_regular,
             size: 48,
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            color: tokens.textFaint,
           ),
           const SizedBox(height: 16),
           Text(
             'No Updates',
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: theme.textTheme.bodyMedium?.color,
+            style: tokens.fontBody.copyWith(
+              fontSize: 14,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'No mods in update queue',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
             ),
           ),
         ],
@@ -135,58 +77,25 @@ class ModUpdateDialog extends ConsumerWidget {
     );
   }
 
-  Widget _buildFooter(BuildContext context, WidgetRef ref, bool allComplete) {
-    final theme = Theme.of(context);
-    final completedCount = ref.read(modUpdateQueueProvider.notifier).completedCount;
-    final failedCount = ref.read(modUpdateQueueProvider.notifier).failedCount;
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (!allComplete)
-            // Progress summary
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Progress: $completedCount completed, $failedCount failed',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodySmall?.color,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          if (!allComplete) const SizedBox(height: 16),
-
-          // Action buttons
-          Row(
-            children: [
-              if (!allComplete)
-                Expanded(
-                  child: _SecondaryButton(
-                    label: 'Cancel',
-                    onTap: () {
-                      ref.read(modUpdateQueueProvider.notifier).cancelAll();
-                    },
-                  ),
-                ),
-              if (!allComplete) const SizedBox(width: 12),
-              Expanded(
-                child: _PrimaryButton(
-                  label: allComplete ? 'Close' : 'Hide',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
+  List<Widget> _buildActions(
+    BuildContext context,
+    WidgetRef ref,
+    bool allComplete,
+    TwmtThemeTokens tokens,
+  ) {
+    return [
+      if (!allComplete)
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () =>
+              ref.read(modUpdateQueueProvider.notifier).cancelAll(),
+        ),
+      SmallTextButton(
+        label: allComplete ? 'Close' : 'Hide',
+        filled: true,
+        onTap: () => Navigator.of(context).pop(),
       ),
-    );
+    ];
   }
 }
 
@@ -197,33 +106,32 @@ class _UpdateItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant,
-        ),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with mod name and status
           Row(
             children: [
               Icon(
                 FluentIcons.cube_24_regular,
-                color: theme.colorScheme.primary,
-                size: 20,
+                color: tokens.accent,
+                size: 18,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   updateInfo.projectName,
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -231,61 +139,57 @@ class _UpdateItem extends ConsumerWidget {
               _StatusBadge(status: updateInfo.status),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Status message
+          const SizedBox(height: 10),
           Text(
             _getStatusMessage(updateInfo.status),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodySmall?.color,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12.5,
+              color: tokens.textDim,
             ),
           ),
-
-          // Progress bar (only for in-progress updates)
           if (updateInfo.isInProgress) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
               child: LinearProgressIndicator(
                 value: updateInfo.progress,
                 minHeight: 6,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  theme.colorScheme.primary,
-                ),
+                backgroundColor: tokens.panel,
+                valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               '${(updateInfo.progress * 100).toInt()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color,
+              style: tokens.fontBody.copyWith(
+                fontSize: 11,
+                color: tokens.textDim,
               ),
             ),
           ],
-
-          // Error message
           if (updateInfo.isFailed && updateInfo.errorMessage != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFFD13438).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+                color: tokens.errBg,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+                border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     FluentIcons.error_circle_24_regular,
-                    color: Color(0xFFD13438),
+                    color: tokens.err,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       updateInfo.errorMessage!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFFD13438),
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 12,
+                        color: tokens.err,
                       ),
                     ),
                   ),
@@ -293,37 +197,38 @@ class _UpdateItem extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 8),
-            _RetryButton(
-              onTap: () {
-                ref
-                    .read(modUpdateQueueProvider.notifier)
-                    .retry(updateInfo.projectId);
-              },
+            SmallTextButton(
+              label: 'Retry',
+              icon: FluentIcons.arrow_clockwise_24_regular,
+              onTap: () => ref
+                  .read(modUpdateQueueProvider.notifier)
+                  .retry(updateInfo.projectId),
             ),
           ],
-
-          // Success message
           if (updateInfo.isCompleted && updateInfo.newVersion != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF107C10).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(4),
+                color: tokens.okBg,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
+                border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     FluentIcons.checkmark_circle_24_regular,
-                    color: Color(0xFF107C10),
+                    color: tokens.ok,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Updated to version ${updateInfo.newVersion!.versionString}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF107C10),
+                      'Updated to version '
+                      '${updateInfo.newVersion!.versionString}',
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 12,
+                        color: tokens.ok,
                       ),
                     ),
                   ),
@@ -363,43 +268,37 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    Color backgroundColor;
-    Color textColor;
-    IconData icon;
-    String label;
+    late final Color color;
+    late final IconData icon;
+    late final String label;
 
     switch (status) {
       case ModUpdateStatus.pending:
-        backgroundColor = theme.colorScheme.surfaceContainerHighest;
-        textColor = theme.textTheme.bodyMedium?.color ?? Colors.black;
+        color = tokens.textDim;
         icon = FluentIcons.clock_24_regular;
         label = 'PENDING';
         break;
       case ModUpdateStatus.downloading:
       case ModUpdateStatus.detectingChanges:
       case ModUpdateStatus.updatingDatabase:
-        backgroundColor = theme.colorScheme.primaryContainer;
-        textColor = theme.colorScheme.primary;
+        color = tokens.accent;
         icon = FluentIcons.arrow_download_24_regular;
         label = 'IN PROGRESS';
         break;
       case ModUpdateStatus.completed:
-        backgroundColor = const Color(0xFF107C10).withValues(alpha: 0.1);
-        textColor = const Color(0xFF107C10);
+        color = tokens.ok;
         icon = FluentIcons.checkmark_circle_24_regular;
         label = 'COMPLETED';
         break;
       case ModUpdateStatus.failed:
-        backgroundColor = const Color(0xFFD13438).withValues(alpha: 0.1);
-        textColor = const Color(0xFFD13438);
+        color = tokens.err;
         icon = FluentIcons.error_circle_24_regular;
         label = 'FAILED';
         break;
       case ModUpdateStatus.cancelled:
-        backgroundColor = theme.colorScheme.surfaceContainerHighest;
-        textColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
+        color = tokens.textFaint;
         icon = FluentIcons.dismiss_circle_24_regular;
         label = 'CANCELLED';
         break;
@@ -408,188 +307,23 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: textColor),
+          Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: textColor,
+            style: tokens.fontBody.copyWith(
+              fontSize: 10.5,
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PrimaryButton extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _PrimaryButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  State<_PrimaryButton> createState() => _PrimaryButtonState();
-}
-
-class _PrimaryButtonState extends State<_PrimaryButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
-        onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _isPressed
-                ? theme.colorScheme.primary.withValues(alpha: 0.8)
-                : _isHovered
-                    ? theme.colorScheme.primary.withValues(alpha: 0.9)
-                    : theme.colorScheme.primary,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(
-            widget.label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onPrimary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SecondaryButton extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _SecondaryButton({
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  State<_SecondaryButton> createState() => _SecondaryButtonState();
-}
-
-class _SecondaryButtonState extends State<_SecondaryButton> {
-  bool _isHovered = false;
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: (_) => setState(() => _isPressed = true),
-        onTapUp: (_) => setState(() => _isPressed = false),
-        onTapCancel: () => setState(() => _isPressed = false),
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: _isPressed
-                ? theme.colorScheme.surfaceContainerHighest
-                : _isHovered
-                    ? theme.colorScheme.surfaceContainerHigh
-                    : theme.colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Text(
-            widget.label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RetryButton extends StatefulWidget {
-  final VoidCallback onTap;
-
-  const _RetryButton({required this.onTap});
-
-  @override
-  State<_RetryButton> createState() => _RetryButtonState();
-}
-
-class _RetryButtonState extends State<_RetryButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.primaryContainer
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                FluentIcons.arrow_clockwise_24_regular,
-                size: 16,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'Retry',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

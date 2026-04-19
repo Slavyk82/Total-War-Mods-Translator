@@ -178,6 +178,29 @@ class GridSelectionHandler {
     onSelectionChanged(_selectedRowIds, _lastClickedIndex);
   }
 
+  /// Mirror an external [editorSelectionProvider] mutation (e.g. a Ctrl+A
+  /// fired from the screen-scope Shortcuts map) into the grid's local state.
+  ///
+  /// Unlike [selectAll]/[clearSelection]/etc., this path must NOT write back
+  /// to the provider — it's reacting to a change that already happened there,
+  /// and any re-emission would loop through the `ref.listen` that calls it.
+  void syncFromProvider(Set<String> providerIds) {
+    // Fast-path: identical membership → nothing to do.
+    if (providerIds.length == _selectedRowIds.length &&
+        _selectedRowIds.containsAll(providerIds)) {
+      return;
+    }
+    _selectedRowIds = Set<String>.from(providerIds);
+    if (_selectedRowIds.isEmpty) {
+      _lastClickedIndex = null;
+      controller.selectedRows = [];
+    } else {
+      _updateDataGridSelection();
+    }
+    dataSource.refreshDisplay();
+    onSelectionChanged(_selectedRowIds, _lastClickedIndex);
+  }
+
   /// Clear selection
   void clearSelection() {
     _selectedRowIds.clear();

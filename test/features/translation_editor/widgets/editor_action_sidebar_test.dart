@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/translation_editor/providers/editor_filter_notifier.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
 import 'package:twmt/theme/app_theme.dart';
 
@@ -14,8 +14,6 @@ void main() {
   });
 
   Widget build({
-    FocusNode? focusNode,
-    VoidCallback? onTranslationSettings,
     VoidCallback? onTranslateAll,
     VoidCallback? onTranslateSelected,
     VoidCallback? onValidate,
@@ -28,8 +26,6 @@ void main() {
         body: EditorActionSidebar(
           projectId: 'p',
           languageId: 'fr',
-          searchFocusNode: focusNode ?? FocusNode(),
-          onTranslationSettings: onTranslationSettings ?? () {},
           onTranslateAll: onTranslateAll ?? () {},
           onTranslateSelected: onTranslateSelected ?? () {},
           onValidate: onValidate ?? () {},
@@ -42,62 +38,23 @@ void main() {
     );
   }
 
-  testWidgets('renders §SEARCH header and search field', (tester) async {
-    await tester.pumpWidget(build());
-    await tester.pumpAndSettle();
-
-    expect(find.text('Search'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
-  });
-
-  testWidgets('typing in search field debounces to editorFilterProvider',
+  testWidgets('does not render a search field in the header row',
       (tester) async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    // Hold a live subscription: `editorFilterProvider` is auto-dispose,
-    // so without it each `container.read` rebuilds fresh initial state
-    // and forgets the widget's mutation.
-    final sub = container.listen(editorFilterProvider, (_, _) {});
-    addTearDown(sub.close);
-
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        theme: AppTheme.atelierDarkTheme,
-        home: Scaffold(
-          body: EditorActionSidebar(
-            projectId: 'p',
-            languageId: 'fr',
-            searchFocusNode: FocusNode(),
-            onTranslationSettings: () {},
-            onTranslateAll: () {},
-            onTranslateSelected: () {},
-            onValidate: () {},
-            onRescanValidation: () {},
-            onExport: () {},
-            onImportPack: () {},
-          ),
-        ),
-      ),
-    ));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byType(TextField), 'hello');
-    // Wait past the 200ms debounce, then let the async body complete.
-    await tester.pump(const Duration(milliseconds: 250));
-    await tester.pump();
-
-    expect(
-      container.read(editorFilterProvider).searchQuery,
-      equals('hello'),
-    );
-  });
-
-  testWidgets('renders §CONTEXT header with model · skip-tm · rules', (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
 
-    expect(find.text('Context'), findsOneWidget);
+    // The §SEARCH section was removed; search lives in the top FilterToolbar.
+    // The sidebar now hosts number fields for batch settings — we assert the
+    // search label is absent rather than blanket-matching `TextField`.
+    expect(find.text('Search'), findsNothing);
+  });
+
+  testWidgets('renders §AI CONTEXT header with model · skip-tm · rules',
+      (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    expect(find.text('AI Context'), findsOneWidget);
     // Three context widgets present (model selector may render empty if no
     // models are available in test fakes, so we assert by widget type).
     expect(
@@ -112,28 +69,75 @@ void main() {
     );
   });
 
-  testWidgets('tapping Translate all invokes onTranslateAll', (tester) async {
+  testWidgets('renders the 4 intent-based section headers', (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+
+    // AI Context (model + prompt config), Translate, Review, Pack.
+    expect(find.text('AI Context'), findsOneWidget);
+    expect(find.text('Translate'), findsOneWidget);
+    expect(find.text('Review'), findsOneWidget);
+    expect(find.text('Pack'), findsOneWidget);
+    // The old generic 'Actions' header and 'Settings' footer section were
+    // replaced by intent-scoped groups; Translation settings now lives in
+    // §AI Context alongside the other translation configuration controls.
+    expect(find.text('Actions'), findsNothing);
+    expect(find.text('Settings'), findsNothing);
+    // Older bare 'Context' label must not leak through either.
+    expect(find.text('Context'), findsNothing);
+  });
+
+  testWidgets(
+      'tapping the Translate button invokes onTranslateAll when no selection',
+      (tester) async {
     var tapped = false;
     await tester.pumpWidget(build(onTranslateAll: () => tapped = true));
     await tester.pumpAndSettle();
 
+    // With no selection, the unified button reads "Translate all" and
+    // routes to onTranslateAll. The Ctrl+T hint is displayed inline.
+    expect(find.text('Translate all'), findsOneWidget);
+    expect(find.text('Ctrl+T'), findsOneWidget);
     await tester.tap(find.text('Translate all'));
     await tester.pumpAndSettle();
 
     expect(tapped, isTrue);
   });
 
-  testWidgets('tapping Selection is a no-op when no selection', (tester) async {
-    var tapped = false;
-    await tester.pumpWidget(build(onTranslateSelected: () => tapped = true));
+  testWidgets(
+      'Translate button label, hint and handler reflect the grid selection',
+      (tester) async {
+    var allTapped = false;
+    var selectedTapped = false;
+    await tester.pumpWidget(build(
+      onTranslateAll: () => allTapped = true,
+      onTranslateSelected: () => selectedTapped = true,
+    ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Selection'));
+    // Seed a 3-row selection through the real provider.
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EditorActionSidebar)),
+      listen: false,
+    );
+    container
+        .read(editorSelectionProvider.notifier)
+        .selectAll(['a', 'b', 'c']);
     await tester.pumpAndSettle();
 
-    // With no selection, the Selection button's onTap is null, so tapping
-    // it must not invoke the callback.
-    expect(tapped, isFalse);
+    // Label flips to the selection form; the Ctrl+T hint stays put because
+    // the screen-scope shortcut is itself selection-aware.
+    expect(find.text('Translate all'), findsNothing);
+    expect(find.text('Translate selection'), findsOneWidget);
+    expect(find.text('Ctrl+T'), findsOneWidget);
+    // The now-removed dedicated "Selection" secondary button must not return.
+    expect(find.text('Selection'), findsNothing);
+
+    // Tapping routes to onTranslateSelected, not onTranslateAll.
+    await tester.tap(find.text('Translate selection'));
+    await tester.pumpAndSettle();
+    expect(selectedTapped, isTrue);
+    expect(allTapped, isFalse);
   });
 
   testWidgets('tapping Validate selected invokes onValidate', (tester) async {
@@ -180,16 +184,25 @@ void main() {
     expect(tapped, isTrue);
   });
 
-  testWidgets('tapping Translation settings invokes onTranslationSettings',
+  testWidgets('renders the inline batch settings panel in §Context',
       (tester) async {
-    var tapped = false;
-    await tester.pumpWidget(build(onTranslationSettings: () => tapped = true));
+    await tester.pumpWidget(build());
     await tester.pumpAndSettle();
 
-    expect(find.text('Settings'), findsOneWidget);
-    await tester.tap(find.text('Translation settings'));
-    await tester.pumpAndSettle();
-
-    expect(tapped, isTrue);
+    // The Translation Settings popup was removed; all 3 batch controls
+    // (Auto toggle + Units / batch + Parallel batches) now live inline in
+    // §Context.
+    expect(
+      find.byWidgetPredicate((w) =>
+          w.runtimeType.toString() == 'EditorToolbarBatchSettings'),
+      findsOneWidget,
+    );
+    expect(find.text('Auto batch size'), findsOneWidget);
+    expect(find.text('Units / batch'), findsOneWidget);
+    expect(find.text('Parallel batches'), findsOneWidget);
+    expect(find.byType(Switch), findsOneWidget);
+    // The old action button that opened the popup must be gone.
+    expect(find.text('Translation settings'), findsNothing);
   });
+
 }

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
-/// Dialog for entering a Steam Guard authentication code.
+/// Token-themed popup for entering a Steam Guard authentication code.
 class SteamGuardDialog extends StatefulWidget {
   const SteamGuardDialog({super.key});
 
-  /// Show the Steam Guard dialog and return the code or null if cancelled.
   static Future<String?> show(BuildContext context) {
     return showDialog<String>(
       context: context,
@@ -37,82 +39,119 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(FluentIcons.shield_keyhole_24_regular,
-              color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Steam Guard'),
-        ],
-      ),
-      content: SizedBox(
-        width: 360,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter the 5-character code from your Steam Mobile app.\n'
-                'Open the Steam app → Steam Guard → use the rotating code shown on screen.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
+    return TokenDialog(
+      icon: FluentIcons.shield_keyhole_24_regular,
+      title: 'Steam Guard',
+      width: 420,
+      body: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Enter the 5-character code from your Steam Mobile app.\n'
+              'Open the Steam app → Steam Guard → use the rotating code shown on screen.',
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Note: approving the push notification is not enough — steamcmd requires the code.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  fontStyle: FontStyle.italic,
-                ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Note: approving the push notification is not enough — steamcmd requires the code.',
+              style: tokens.fontBody.copyWith(
+                fontSize: 11.5,
+                color: tokens.textFaint,
+                fontStyle: FontStyle.italic,
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  labelText: 'Steam Guard Code',
-                  prefixIcon: Icon(FluentIcons.key_24_regular),
-                  border: OutlineInputBorder(),
-                  hintText: 'XXXXX',
-                ),
-                autofocus: true,
-                textCapitalization: TextCapitalization.characters,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                  LengthLimitingTextInputFormatter(5),
-                ],
-                textInputAction: TextInputAction.done,
-                onFieldSubmitted: (_) => _submit(),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Code is required';
-                  }
-                  if (value.trim().length < 5) {
-                    return 'Code must be 5 characters';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _controller,
+              style: tokens.fontBody
+                  .copyWith(fontSize: 13, color: tokens.text),
+              decoration: _decoration(tokens),
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                LengthLimitingTextInputFormatter(5),
+              ],
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _submit(),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Code is required';
+                }
+                if (value.trim().length < 5) {
+                  return 'Code must be 5 characters';
+                }
+                return null;
+              },
+            ),
+          ],
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () => Navigator.of(context).pop(null),
         ),
-        FilledButton.icon(
-          onPressed: _submit,
-          icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
-          label: const Text('Verify'),
+        SmallTextButton(
+          label: 'Verify',
+          icon: FluentIcons.checkmark_24_regular,
+          filled: true,
+          onTap: _submit,
         ),
       ],
+    );
+  }
+
+  InputDecoration _decoration(TwmtThemeTokens tokens) {
+    return InputDecoration(
+      labelText: 'Steam Guard Code',
+      labelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+      floatingLabelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
+      hintText: 'XXXXX',
+      hintStyle:
+          tokens.fontBody.copyWith(fontSize: 13, color: tokens.textFaint),
+      prefixIcon: Icon(
+        FluentIcons.key_24_regular,
+        color: tokens.textDim,
+        size: 18,
+      ),
+      filled: true,
+      fillColor: tokens.panel2,
+      isDense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.accent),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.err),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.err),
+      ),
+      errorStyle:
+          tokens.fontBody.copyWith(fontSize: 11.5, color: tokens.err),
     );
   }
 }

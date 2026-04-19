@@ -249,7 +249,7 @@ class ValidationRulesConfig {
 
   const ValidationRulesConfig({
     this.checkCompleteness = true,
-    this.checkLength = true,
+    this.checkLength = false,
     this.checkVariables = true,
     this.checkMarkup = true,
     this.checkEncoding = true,

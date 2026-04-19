@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:uuid/uuid.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/translation_version.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 import '../providers/projects_screen_providers.dart';
 import '../providers/project_detail_providers.dart';
 
-/// Dialog for adding target languages to a project.
-///
-/// Allows selecting one or more languages from the available languages list.
-/// Languages already in the project are filtered out.
+/// Token-themed popup for adding target languages to a project.
 class AddLanguageDialog extends ConsumerStatefulWidget {
   final String projectId;
   final List<String> existingLanguageIds;
@@ -34,66 +34,51 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final languagesAsync = ref.watch(allLanguagesProvider);
 
-    return AlertDialog(
-      backgroundColor: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      title: Row(
-        children: [
-          Icon(
-            FluentIcons.add_circle_24_regular,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          const Text('Add Target Languages'),
-        ],
-      ),
-      content: SizedBox(
-        width: 500,
-        height: 400,
+    return TokenDialog(
+      icon: FluentIcons.add_circle_24_regular,
+      title: 'Add Target Languages',
+      width: 540,
+      body: SizedBox(
+        height: 420,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Error message
             if (_errorMessage != null) ...[
-              _buildErrorBanner(theme),
-              const SizedBox(height: 16),
+              _buildErrorBanner(tokens),
+              const SizedBox(height: 14),
             ],
-
-            // Instructions
             Text(
               'Select languages to add to this project',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Languages list
+            const SizedBox(height: 12),
             Expanded(
               child: languagesAsync.when(
-                data: (languages) => _buildLanguagesList(languages, theme),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => _buildErrorState(theme, err),
+                data: (languages) => _buildLanguagesList(languages, tokens),
+                loading: () => Center(
+                  child: CircularProgressIndicator(color: tokens.accent),
+                ),
+                error: (err, _) => _buildErrorState(tokens, err),
               ),
             ),
           ],
         ),
       ),
       actions: [
-        FluentDialogButton(
-          icon: FluentIcons.dismiss_24_regular,
+        SmallTextButton(
           label: 'Cancel',
           onTap: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
-        const SizedBox(width: 8),
-        FluentDialogButton(
+        SmallTextButton(
+          label: _isLoading ? 'Adding...' : 'Add Languages',
           icon: FluentIcons.checkmark_24_regular,
-          label: 'Add Languages',
-          isPrimary: true,
-          isLoading: _isLoading,
+          filled: true,
           onTap: _selectedLanguageIds.isEmpty || _isLoading
               ? null
               : () => _addLanguages(context),
@@ -102,8 +87,10 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
     );
   }
 
-  Widget _buildLanguagesList(List<Language> allLanguages, ThemeData theme) {
-    // Filter out languages already in the project and inactive languages
+  Widget _buildLanguagesList(
+    List<Language> allLanguages,
+    TwmtThemeTokens tokens,
+  ) {
     final availableLanguages = allLanguages
         .where((lang) =>
             lang.isActive && !widget.existingLanguageIds.contains(lang.id))
@@ -117,13 +104,14 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
             Icon(
               FluentIcons.checkmark_circle_24_regular,
               size: 48,
-              color: theme.colorScheme.primary.withValues(alpha: 0.3),
+              color: tokens.textFaint,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               'All languages already added',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.textDim,
               ),
             ),
           ],
@@ -131,112 +119,51 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       itemCount: availableLanguages.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, index) {
         final language = availableLanguages[index];
         final isSelected = _selectedLanguageIds.contains(language.id);
-        return _buildLanguageCheckbox(language, isSelected, theme);
+        return _LanguageOption(
+          language: language,
+          selected: isSelected,
+          onChanged: (value) {
+            setState(() {
+              if (value) {
+                _selectedLanguageIds.add(language.id);
+              } else {
+                _selectedLanguageIds.remove(language.id);
+              }
+            });
+          },
+        );
       },
     );
   }
 
-  Widget _buildLanguageCheckbox(
-    Language language,
-    bool isSelected,
-    ThemeData theme,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            setState(() {
-              if (isSelected) {
-                _selectedLanguageIds.remove(language.id);
-              } else {
-                _selectedLanguageIds.add(language.id);
-              }
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: isSelected
-                    ? theme.colorScheme.primary.withValues(alpha: 0.3)
-                    : theme.colorScheme.outline.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                FluentCheckbox(
-                  value: isSelected,
-                  onChanged: (value) {
-                    setState(() {
-                      if (value) {
-                        _selectedLanguageIds.add(language.id);
-                      } else {
-                        _selectedLanguageIds.remove(language.id);
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        language.displayName,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Code: ${language.code.toUpperCase()}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color
-                              ?.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorBanner(ThemeData theme) {
+  Widget _buildErrorBanner(TwmtThemeTokens tokens) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: theme.colorScheme.error,
-            size: 20,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
               ),
             ),
           ),
@@ -245,7 +172,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
     );
   }
 
-  Widget _buildErrorState(ThemeData theme, Object error) {
+  Widget _buildErrorState(TwmtThemeTokens tokens, Object error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -253,20 +180,23 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
           Icon(
             FluentIcons.error_circle_24_regular,
             size: 48,
-            color: theme.colorScheme.error,
+            color: tokens.err,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             'Error loading languages',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.error,
+            style: tokens.fontBody.copyWith(
+              fontSize: 14,
+              color: tokens.err,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             error.toString(),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
             ),
             textAlign: TextAlign.center,
           ),
@@ -284,25 +214,24 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
     try {
       final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
       final translationUnitRepo = ref.read(translationUnitRepositoryProvider);
-      final translationVersionRepo = ref.read(translationVersionRepositoryProvider);
+      final translationVersionRepo =
+          ref.read(translationVersionRepositoryProvider);
       const uuid = Uuid();
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-      // Get all translation units for this project
-      final unitsResult = await translationUnitRepo.getByProject(widget.projectId);
+      final unitsResult =
+          await translationUnitRepo.getByProject(widget.projectId);
 
       if (unitsResult.isErr) {
-        throw Exception('Failed to load translation units: ${unitsResult.error}');
+        throw Exception(
+            'Failed to load translation units: ${unitsResult.error}');
       }
 
       final translationUnits = unitsResult.unwrap();
 
-      // Convert Set to List to avoid concurrent modification
       final languageIdsList = _selectedLanguageIds.toList();
 
-      // Add each selected language to the project
       for (final languageId in languageIdsList) {
-        // Create project_language entry
         final projectLanguageId = uuid.v4();
         final projectLanguage = ProjectLanguage(
           id: projectLanguageId,
@@ -319,8 +248,6 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
           throw Exception('Failed to add language: ${result.error}');
         }
 
-        // Create translation_versions entries for all existing translation_units
-        // Use batch insert for better performance
         final versionsToInsert = <TranslationVersion>[];
         for (final unit in translationUnits) {
           versionsToInsert.add(TranslationVersion(
@@ -335,28 +262,27 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
           ));
         }
 
-        // Insert all versions for this language in one batch
-        final versionResult = await translationVersionRepo.insertBatch(versionsToInsert);
+        final versionResult =
+            await translationVersionRepo.insertBatch(versionsToInsert);
 
         if (versionResult.isErr) {
-          throw Exception('Failed to create translation versions: ${versionResult.error}');
+          throw Exception(
+              'Failed to create translation versions: ${versionResult.error}');
         }
       }
 
       if (!context.mounted) return;
 
-      // Refresh project details and projects list
       ref.invalidate(projectDetailsProvider(widget.projectId));
-      // Increment stats version to force refresh of all dependent providers
       ref.read(translationStatsVersionProvider.notifier).increment();
 
-      // Show success message
       FluentToast.success(
         context,
-        'Added ${languageIdsList.length} language${languageIdsList.length > 1 ? 's' : ''} with ${translationUnits.length} translation units each',
+        'Added ${languageIdsList.length} language'
+        '${languageIdsList.length > 1 ? 's' : ''} with '
+        '${translationUnits.length} translation units each',
       );
 
-      // Close dialog
       Navigator.of(context).pop(true);
     } catch (e) {
       setState(() {
@@ -364,5 +290,73 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
         _isLoading = false;
       });
     }
+  }
+}
+
+class _LanguageOption extends StatelessWidget {
+  final Language language;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  const _LanguageOption({
+    required this.language,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!selected),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected ? tokens.accentBg : tokens.panel2,
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+            border: Border.all(
+              color: selected ? tokens.accent : tokens.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? FluentIcons.checkbox_checked_24_filled
+                    : FluentIcons.checkbox_unchecked_24_regular,
+                size: 18,
+                color: selected ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      language.displayName,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Code: ${language.code.toUpperCase()}',
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

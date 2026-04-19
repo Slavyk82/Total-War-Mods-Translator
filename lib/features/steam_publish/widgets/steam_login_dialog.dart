@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../settings/providers/settings_providers.dart';
 
@@ -9,7 +12,7 @@ const _secureStorage = FlutterSecureStorage(
   wOptions: WindowsOptions(useBackwardCompatibility: false),
 );
 
-/// Dialog for entering Steam credentials (username + password).
+/// Token-themed popup for entering Steam credentials.
 class SteamLoginDialog extends StatefulWidget {
   const SteamLoginDialog({super.key});
 
@@ -19,13 +22,17 @@ class SteamLoginDialog extends StatefulWidget {
         await _secureStorage.read(key: SettingsKeys.steamUsername);
     final password =
         await _secureStorage.read(key: SettingsKeys.steamPassword);
-    if (username != null && username.isNotEmpty && password != null && password.isNotEmpty) {
+    if (username != null &&
+        username.isNotEmpty &&
+        password != null &&
+        password.isNotEmpty) {
       return (username, password, null);
     }
     return null;
   }
 
-  /// Show the login dialog and return (username, password, steamGuardCode?) or null if cancelled.
+  /// Show the login dialog and return (username, password, steamGuardCode?) or
+  /// null if cancelled.
   static Future<(String, String, String?)?> show(BuildContext context) {
     return showDialog<(String, String, String?)>(
       context: context,
@@ -108,159 +115,247 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(FluentIcons.person_24_regular, color: theme.colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Steam Login'),
-        ],
-      ),
-      content: SizedBox(
-        width: 400,
-        child: _loading
-            ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Enter your Steam credentials to publish to the Workshop.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.7),
-                      ),
+    return TokenDialog(
+      icon: FluentIcons.person_24_regular,
+      title: 'Steam Login',
+      width: 460,
+      body: _loading
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CircularProgressIndicator(color: tokens.accent),
+              ),
+            )
+          : Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Enter your Steam credentials to publish to the Workshop.',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 13,
+                      color: tokens.textDim,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username',
-                        prefixIcon: Icon(FluentIcons.person_24_regular),
-                        border: OutlineInputBorder(),
-                      ),
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Username is required';
-                        }
-                        return null;
-                      },
+                  ),
+                  const SizedBox(height: 14),
+                  TextFormField(
+                    controller: _usernameController,
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                    decoration: _decoration(
+                      tokens,
+                      label: 'Username',
+                      prefixIcon: FluentIcons.person_24_regular,
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon:
-                            const Icon(FluentIcons.lock_closed_24_regular),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Username is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _passwordController,
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                    decoration: _decoration(
+                      tokens,
+                      label: 'Password',
+                      prefixIcon: FluentIcons.lock_closed_24_regular,
+                    ).copyWith(
+                      suffixIcon: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          onTap: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                          child: Icon(
                             _obscurePassword
                                 ? FluentIcons.eye_24_regular
                                 : FluentIcons.eye_off_24_regular,
+                            color: tokens.textDim,
+                            size: 18,
                           ),
-                          onPressed: () {
-                            setState(
-                                () => _obscurePassword = !_obscurePassword);
-                          },
                         ),
                       ),
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Password is required';
-                        }
-                        return null;
-                      },
                     ),
-                    const SizedBox(height: 16),
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Password is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Steam Guard (optional)',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 13,
+                      color: tokens.text,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'If you have Steam Mobile Authenticator, open the Steam '
+                    'app on your phone → Steam Guard → enter the 5-character '
+                    'code.',
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 11.5,
+                      color: tokens.textDim,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _steamGuardController,
+                    style: tokens.fontBody
+                        .copyWith(fontSize: 13, color: tokens.text),
+                    decoration: _decoration(
+                      tokens,
+                      label: 'Steam Guard Code',
+                      prefixIcon: FluentIcons.shield_keyhole_24_regular,
+                      hint: 'XXXXX',
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z0-9]')),
+                      LengthLimitingTextInputFormatter(5),
+                    ],
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                  ),
+                  const SizedBox(height: 10),
+                  _RememberToggle(
+                    value: _rememberCredentials,
+                    onChanged: (v) =>
+                        setState(() => _rememberCredentials = v),
+                  ),
+                ],
+              ),
+            ),
+      actions: [
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () => Navigator.of(context).pop(null),
+        ),
+        SmallTextButton(
+          label: 'Login',
+          icon: FluentIcons.arrow_right_24_regular,
+          filled: true,
+          onTap: _loading ? null : _submit,
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _decoration(
+    TwmtThemeTokens tokens, {
+    required String label,
+    required IconData prefixIcon,
+    String? hint,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
+      floatingLabelStyle:
+          tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
+      hintText: hint,
+      hintStyle:
+          tokens.fontBody.copyWith(fontSize: 13, color: tokens.textFaint),
+      prefixIcon: Icon(prefixIcon, color: tokens.textDim, size: 18),
+      filled: true,
+      fillColor: tokens.panel2,
+      isDense: true,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.accent),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.err),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        borderSide: BorderSide(color: tokens.err),
+      ),
+      errorStyle:
+          tokens.fontBody.copyWith(fontSize: 11.5, color: tokens.err),
+    );
+  }
+}
+
+class _RememberToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _RememberToggle({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                value
+                    ? FluentIcons.checkbox_checked_24_filled
+                    : FluentIcons.checkbox_unchecked_24_regular,
+                size: 18,
+                color: value ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      'Steam Guard (optional)',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      'Remember my credentials',
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.text,
                       ),
                     ),
-                    const SizedBox(height: 4),
                     Text(
-                      'If you have Steam Mobile Authenticator, open the Steam app '
-                      'on your phone → Steam Guard → enter the 5-character code.',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.6),
+                      'Stored securely on this device',
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _steamGuardController,
-                      decoration: const InputDecoration(
-                        labelText: 'Steam Guard Code',
-                        prefixIcon: Icon(FluentIcons.shield_keyhole_24_regular),
-                        border: OutlineInputBorder(),
-                        hintText: 'XXXXX',
-                      ),
-                      textCapitalization: TextCapitalization.characters,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                            RegExp(r'[a-zA-Z0-9]')),
-                        LengthLimitingTextInputFormatter(5),
-                      ],
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _submit(),
-                    ),
-                    const SizedBox(height: 8),
-                    CheckboxListTile(
-                      value: _rememberCredentials,
-                      onChanged: (value) {
-                        setState(
-                            () => _rememberCredentials = value ?? false);
-                      },
-                      title: Text(
-                        'Remember my credentials',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      subtitle: Text(
-                        'Stored securely on this device',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface
-                              .withValues(alpha: 0.5),
-                        ),
-                      ),
-                      secondary: Icon(
-                        FluentIcons.shield_keyhole_24_regular,
-                        color: theme.colorScheme.onSurface
-                            .withValues(alpha: 0.5),
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
                     ),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: _loading ? null : _submit,
-          icon: const Icon(FluentIcons.arrow_right_24_regular, size: 18),
-          label: const Text('Login'),
-        ),
-      ],
     );
   }
 }

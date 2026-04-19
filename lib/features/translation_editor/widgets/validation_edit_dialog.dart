@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/wizard/labeled_field.dart';
+import 'package:twmt/widgets/wizard/token_text_field.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 
-/// Dialog for editing a translation manually during validation review.
+/// Token-themed popup for editing a translation flagged by validation.
 class ValidationEditDialog extends StatefulWidget {
   final ValidationIssue issue;
 
@@ -30,114 +34,82 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return Dialog(
-      child: Container(
-        width: 800,
-        constraints: const BoxConstraints(maxHeight: 600),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            _buildHeader(theme),
-
-            const SizedBox(height: 20),
-
-            // Issue description
-            _buildIssueDescription(theme),
-
-            const SizedBox(height: 16),
-
-            // Source text (read-only)
-            _buildSourceTextSection(theme),
-
-            const SizedBox(height: 16),
-
-            // Translation text (editable)
-            _buildTranslationSection(theme),
-
-            const SizedBox(height: 24),
-
-            // Actions
-            _buildActions(theme),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.edit_24_regular,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Edit Translation',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                widget.issue.unitKey,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Icon(
-              FluentIcons.dismiss_24_regular,
-              color: theme.colorScheme.onSurfaceVariant,
+    return TokenDialog(
+      icon: FluentIcons.edit_24_regular,
+      title: 'Edit Translation',
+      subtitle: widget.issue.unitKey,
+      width: 800,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildIssueBanner(tokens),
+          const SizedBox(height: 16),
+          _buildSourceTextSection(tokens),
+          const SizedBox(height: 16),
+          LabeledField(
+            label: 'Translation',
+            child: TokenTextField(
+              controller: _controller,
+              hint: 'Enter corrected translation...',
+              enabled: true,
+              minLines: 4,
+              maxLines: 8,
+              autofocus: true,
             ),
           ),
+        ],
+      ),
+      actions: [
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        SmallTextButton(
+          label: 'Save',
+          icon: FluentIcons.checkmark_24_regular,
+          filled: true,
+          onTap: () {
+            final text = _controller.text.trim();
+            if (text.isNotEmpty) {
+              Navigator.of(context).pop(text);
+            }
+          },
         ),
       ],
     );
   }
 
-  Widget _buildIssueDescription(ThemeData theme) {
+  Widget _buildIssueBanner(TwmtThemeTokens tokens) {
     final isError = widget.issue.severity == ValidationSeverity.error;
-    final color = isError ? Colors.red : Colors.orange;
-
+    final color = isError ? tokens.err : tokens.warn;
+    final bgColor = isError ? tokens.errBg : tokens.warnBg;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             isError
                 ? FluentIcons.error_circle_24_regular
                 : FluentIcons.warning_24_regular,
-            size: 20,
-            color: isError ? Colors.red[700] : Colors.orange[700],
+            size: 18,
+            color: color,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               '${widget.issue.issueType}: ${widget.issue.description}',
-              style: TextStyle(
-                fontSize: 13,
-                color: isError ? Colors.red[700] : Colors.orange[700],
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: color,
               ),
             ),
           ),
@@ -146,106 +118,40 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
     );
   }
 
-  Widget _buildSourceTextSection(ThemeData theme) {
-    final scrollController = ScrollController();
-
+  Widget _buildSourceTextSection(TwmtThemeTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Source Text',
-          style: theme.textTheme.bodySmall?.copyWith(
+          style: tokens.fontBody.copyWith(
+            fontSize: 12,
+            color: tokens.textDim,
             fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Container(
           width: double.infinity,
           constraints: const BoxConstraints(maxHeight: 150),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: theme.dividerColor),
+            color: tokens.panel2,
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+            border: Border.all(color: tokens.border),
           ),
           child: Scrollbar(
-            controller: scrollController,
             thumbVisibility: true,
             child: SingleChildScrollView(
-              controller: scrollController,
               padding: const EdgeInsets.all(12),
               child: SelectableText(
                 widget.issue.sourceText,
-                style: theme.textTheme.bodyMedium,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTranslationSection(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Translation',
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 200),
-          child: TextField(
-            controller: _controller,
-            maxLines: null,
-            minLines: 4,
-            decoration: InputDecoration(
-              hintText: 'Enter corrected translation...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: theme.dividerColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: theme.dividerColor),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.primary,
-                  width: 2,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
                 ),
               ),
-              contentPadding: const EdgeInsets.all(12),
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActions(ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        FluentTextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        const SizedBox(width: 12),
-        FluentButton(
-          onPressed: () {
-            final text = _controller.text.trim();
-            if (text.isNotEmpty) {
-              Navigator.of(context).pop(text);
-            }
-          },
-          icon: const Icon(FluentIcons.checkmark_24_regular),
-          child: const Text('Save'),
         ),
       ],
     );

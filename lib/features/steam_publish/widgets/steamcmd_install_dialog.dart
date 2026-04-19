@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../../../providers/shared/service_providers.dart';
-import '../../../widgets/fluent/fluent_progress_indicator.dart';
 
 enum _InstallPhase { confirm, downloading, success, error }
 
-/// Dialog proposing to download and install SteamCMD when it's not found.
+/// Token-themed popup that proposes to download and install SteamCMD when
+/// it's not found locally.
 class SteamCmdInstallDialog extends ConsumerStatefulWidget {
   const SteamCmdInstallDialog({super.key});
 
@@ -59,109 +62,61 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
 
-    return Dialog(
-      child: Container(
-        width: 480,
-        constraints: const BoxConstraints(maxHeight: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(theme),
-            const Divider(height: 1),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: _buildContent(theme),
-              ),
-            ),
-            const Divider(height: 1),
-            _buildFooter(theme),
-          ],
-        ),
-      ),
+    return TokenDialog(
+      icon: FluentIcons.arrow_download_24_regular,
+      title: 'SteamCMD Required',
+      subtitle: 'Valve command-line tool for Workshop uploads',
+      width: 520,
+      body: _buildContent(tokens),
+      actions: _buildActions(tokens),
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.arrow_download_24_regular,
-            size: 28,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SteamCMD Required',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Valve command-line tool for Workshop uploads',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent(ThemeData theme) {
+  Widget _buildContent(TwmtThemeTokens tokens) {
     return switch (_phase) {
-      _InstallPhase.confirm => _buildConfirm(theme),
-      _InstallPhase.downloading => _buildDownloading(theme),
-      _InstallPhase.success => _buildSuccess(theme),
-      _InstallPhase.error => _buildError(theme),
+      _InstallPhase.confirm => _buildConfirm(tokens),
+      _InstallPhase.downloading => _buildDownloading(tokens),
+      _InstallPhase.success => _buildSuccess(tokens),
+      _InstallPhase.error => _buildError(tokens),
     };
   }
 
-  Widget _buildConfirm(ThemeData theme) {
+  Widget _buildConfirm(TwmtThemeTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'SteamCMD was not found on your system. '
           'It is required to publish mods to the Steam Workshop.',
-          style: theme.textTheme.bodyMedium,
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
+          ),
         ),
         const SizedBox(height: 12),
         Text(
           'Would you like to download and install it automatically? '
           'The download is approximately 3 MB from Valve servers.',
-          style: theme.textTheme.bodyMedium,
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.textDim,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDownloading(ThemeData theme) {
+  Widget _buildDownloading(TwmtThemeTokens tokens) {
     final progressPercent = (_progress * 100).toStringAsFixed(0);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,32 +126,38 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
             children: [
               Text(
                 'Downloading SteamCMD...',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$progressPercent%',
-                style: theme.textTheme.titleMedium?.copyWith(
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.accent,
                   fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.primary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          FluentProgressBar(
-            value: _progress,
-            height: 8,
-            color: theme.colorScheme.primary,
-            backgroundColor:
-                theme.colorScheme.onSurface.withValues(alpha: 0.1),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+            child: LinearProgressIndicator(
+              value: _progress,
+              minHeight: 8,
+              backgroundColor: tokens.panel,
+              valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Downloading from Valve CDN...',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            style: tokens.fontBody.copyWith(
+              fontSize: 11.5,
+              color: tokens.textDim,
             ),
           ),
         ],
@@ -204,77 +165,123 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
     );
   }
 
-  Widget _buildSuccess(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(FluentIcons.checkmark_circle_24_filled,
-              size: 24, color: Colors.green.shade700),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SteamCMD installed successfully',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'You can now publish to the Steam Workshop.',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.green.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  Widget _buildSuccess(TwmtThemeTokens tokens) {
+    return _StatusBanner(
+      icon: FluentIcons.checkmark_circle_24_filled,
+      color: tokens.ok,
+      bgColor: tokens.okBg,
+      title: 'SteamCMD installed successfully',
+      subtitle: 'You can now publish to the Steam Workshop.',
     );
   }
 
-  Widget _buildError(ThemeData theme) {
+  Widget _buildError(TwmtThemeTokens tokens) {
+    return _StatusBanner(
+      icon: FluentIcons.error_circle_24_filled,
+      color: tokens.err,
+      bgColor: tokens.errBg,
+      title: 'Installation failed',
+      subtitle: _errorMessage,
+    );
+  }
+
+  List<Widget> _buildActions(TwmtThemeTokens tokens) {
+    switch (_phase) {
+      case _InstallPhase.confirm:
+        return [
+          SmallTextButton(
+            label: 'Cancel',
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+          SmallTextButton(
+            label: 'Install',
+            icon: FluentIcons.arrow_download_24_regular,
+            filled: true,
+            onTap: _startInstall,
+          ),
+        ];
+      case _InstallPhase.downloading:
+        return [
+          SmallTextButton(
+            label: 'Cancel',
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+        ];
+      case _InstallPhase.success:
+        return [
+          SmallTextButton(
+            label: 'Continue',
+            icon: FluentIcons.checkmark_24_regular,
+            filled: true,
+            onTap: () => Navigator.of(context).pop(true),
+          ),
+        ];
+      case _InstallPhase.error:
+        return [
+          SmallTextButton(
+            label: 'Close',
+            onTap: () => Navigator.of(context).pop(false),
+          ),
+          SmallTextButton(
+            label: 'Retry',
+            icon: FluentIcons.arrow_sync_24_regular,
+            filled: true,
+            onTap: _startInstall,
+          ),
+        ];
+    }
+  }
+}
+
+class _StatusBanner extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+  final String title;
+  final String? subtitle;
+
+  const _StatusBanner({
+    required this.icon,
+    required this.color,
+    required this.bgColor,
+    required this.title,
+    this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: theme.colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.error.withValues(alpha: 0.3),
-        ),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(FluentIcons.error_circle_24_filled,
-              size: 24, color: theme.colorScheme.error),
-          const SizedBox(width: 12),
+          Icon(icon, size: 22, color: color),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Installation failed',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: theme.colorScheme.error,
+                  title,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: color,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (_errorMessage != null) ...[
+                if (subtitle != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    _errorMessage!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
+                    subtitle!,
+                    style: tokens.fontBody.copyWith(
+                      fontSize: 12,
+                      color: color,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -283,58 +290,6 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooter(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (_phase == _InstallPhase.confirm) ...[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _startInstall,
-              icon: const Icon(FluentIcons.arrow_download_24_regular,
-                  size: 18),
-              label: const Text('Install'),
-            ),
-          ],
-          if (_phase == _InstallPhase.downloading)
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              style: TextButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-              ),
-              child: const Text('Cancel'),
-            ),
-          if (_phase == _InstallPhase.success)
-            FilledButton.icon(
-              onPressed: () => Navigator.of(context).pop(true),
-              icon:
-                  const Icon(FluentIcons.checkmark_24_regular, size: 18),
-              label: const Text('Continue'),
-            ),
-          if (_phase == _InstallPhase.error) ...[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Close'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _startInstall,
-              icon: const Icon(FluentIcons.arrow_sync_24_regular,
-                  size: 18),
-              label: const Text('Retry'),
-            ),
-          ],
         ],
       ),
     );

@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/tm_providers.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Dialog for importing TMX files
+/// Token-themed popup for importing translation-memory TMX files.
 class TmxImportDialog extends ConsumerStatefulWidget {
   const TmxImportDialog({super.key});
 
@@ -23,88 +25,71 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final importState = ref.watch(tmImportStateProvider);
 
-    return AlertDialog(
-      title: Row(
+    return TokenDialog(
+      icon: FluentIcons.arrow_import_24_regular,
+      title: 'Import Translation Memory (TMX)',
+      width: 620,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            FluentIcons.arrow_import_24_regular,
-            color: Theme.of(context).colorScheme.primary,
+          _buildFilePicker(tokens),
+          if (_selectedFilePath != null) ...[
+            const SizedBox(height: 18),
+            _buildFilePreview(tokens),
+          ],
+          const SizedBox(height: 18),
+          _buildOptions(tokens),
+          const SizedBox(height: 18),
+          importState.when(
+            data: (result) {
+              if (result != null) {
+                return _buildImportResult(tokens, result);
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => _buildProgress(tokens),
+            error: (error, stack) =>
+                _buildError(tokens, error.toString()),
           ),
-          const SizedBox(width: 8),
-          const Text('Import Translation Memory (TMX)'),
         ],
       ),
-      content: SizedBox(
-        width: 600,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // File picker
-            _buildFilePicker(context),
-
-            const SizedBox(height: 24),
-
-            // File preview
-            if (_selectedFilePath != null) ...[
-              _buildFilePreview(context),
-              const SizedBox(height: 24),
-            ],
-
-            // Options
-            _buildOptions(context),
-
-            const SizedBox(height: 24),
-
-            // Progress or result
-            importState.when(
-              data: (result) {
-                if (result != null) {
-                  return _buildImportResult(context, result);
-                }
-                return const SizedBox.shrink();
-              },
-              loading: () => _buildProgress(context),
-              error: (error, stack) => _buildError(context, error.toString()),
-            ),
-          ],
-        ),
-      ),
       actions: [
-        // Cancel button
-        FluentTextButton(
-          onPressed: importState.isLoading
+        SmallTextButton(
+          label: 'Cancel',
+          onTap: importState.isLoading
               ? null
               : () {
                   ref.read(tmImportStateProvider.notifier).reset();
                   Navigator.of(context).pop();
                 },
-          child: const Text('Cancel'),
         ),
-
-        // Import button
-        FluentButton(
-          onPressed: _selectedFilePath == null || importState.isLoading
+        SmallTextButton(
+          label: 'Import',
+          icon: FluentIcons.arrow_import_24_regular,
+          filled: true,
+          onTap: _selectedFilePath == null || importState.isLoading
               ? null
-              : () => _startImport(),
-          icon: const Icon(FluentIcons.arrow_import_24_regular),
-          child: const Text('Import'),
+              : _startImport,
         ),
       ],
     );
   }
 
-  Widget _buildFilePicker(BuildContext context) {
+  Widget _buildFilePicker(TwmtThemeTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Select TMX File',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
         MouseRegion(
@@ -112,27 +97,27 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
           child: GestureDetector(
             onTap: _pickFile,
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: Theme.of(context).dividerColor,
-                ),
-                borderRadius: BorderRadius.circular(8),
+                color: tokens.panel2,
+                border: Border.all(color: tokens.border),
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
               ),
               child: Row(
                 children: [
                   Icon(
                     FluentIcons.document_24_regular,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: tokens.accent,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       _selectedFilePath ?? 'Click to select a .tmx file',
-                      style: TextStyle(
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
                         color: _selectedFilePath != null
-                            ? Theme.of(context).textTheme.bodyMedium?.color
-                            : Theme.of(context).textTheme.bodySmall?.color,
+                            ? tokens.text
+                            : tokens.textFaint,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -140,7 +125,8 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
                   ),
                   Icon(
                     FluentIcons.folder_open_24_regular,
-                    color: Theme.of(context).colorScheme.secondary,
+                    size: 18,
+                    color: tokens.textDim,
                   ),
                 ],
               ),
@@ -151,26 +137,29 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
     );
   }
 
-  Widget _buildFilePreview(BuildContext context) {
+  Widget _buildFilePreview(TwmtThemeTokens tokens) {
     final file = File(_selectedFilePath!);
     final sizeInBytes = file.lengthSync();
     final sizeInKB = (sizeInBytes / 1024).toStringAsFixed(1);
     final fileName = file.path.split(Platform.pathSeparator).last;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        color: tokens.panel2,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Selected File',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -178,13 +167,16 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
               Icon(
                 FluentIcons.document_24_filled,
                 size: 16,
-                color: Theme.of(context).colorScheme.primary,
+                color: tokens.accent,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   fileName,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.text,
+                  ),
                 ),
               ),
             ],
@@ -192,170 +184,176 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
           const SizedBox(height: 4),
           Text(
             'Size: $sizeInKB KB',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOptions(BuildContext context) {
+  Widget _buildOptions(TwmtThemeTokens tokens) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Import Options',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 8),
-        CheckboxListTile(
+        const SizedBox(height: 10),
+        _OptionToggle(
           value: _overwriteExisting,
-          onChanged: (value) {
-            setState(() {
-              _overwriteExisting = value ?? false;
-            });
-          },
-          title: const Text('Overwrite existing entries'),
-          subtitle: const Text(
-            'Replace existing entries with imported ones',
-          ),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
+          onChanged: (v) => setState(() => _overwriteExisting = v),
+          title: 'Overwrite existing entries',
+          subtitle: 'Replace existing entries with imported ones',
         ),
-        CheckboxListTile(
+        const SizedBox(height: 6),
+        _OptionToggle(
           value: _validateEntries,
-          onChanged: (value) {
-            setState(() {
-              _validateEntries = value ?? true;
-            });
-          },
-          title: const Text('Validate entries'),
-          subtitle: const Text(
-            'Check for errors before importing',
-          ),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
+          onChanged: (v) => setState(() => _validateEntries = v),
+          title: 'Validate entries',
+          subtitle: 'Check for errors before importing',
         ),
       ],
     );
   }
 
-  Widget _buildProgress(BuildContext context) {
-    final progress = _totalEntries > 0 ? _processedEntries / _totalEntries : 0.0;
+  Widget _buildProgress(TwmtThemeTokens tokens) {
+    final progress =
+        _totalEntries > 0 ? _processedEntries / _totalEntries : null;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
           'Importing...',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: tokens.fontBody.copyWith(
+            fontSize: 13,
+            color: tokens.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         const SizedBox(height: 8),
-        FluentProgressBar(value: _totalEntries > 0 ? progress : null),
-        const SizedBox(height: 8),
-        if (_totalEntries > 0)
+        ClipRRect(
+          borderRadius: BorderRadius.circular(tokens.radiusSm),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: tokens.panel2,
+            valueColor: AlwaysStoppedAnimation<Color>(tokens.accent),
+          ),
+        ),
+        if (_totalEntries > 0) ...[
+          const SizedBox(height: 6),
           Text(
             'Processed $_processedEntries of $_totalEntries entries',
-            style: Theme.of(context).textTheme.bodySmall,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
           ),
+        ],
       ],
     );
   }
 
-  Widget _buildImportResult(BuildContext context, TmImportResult result) {
+  Widget _buildImportResult(TwmtThemeTokens tokens, TmImportResult result) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Colors.green.withValues(alpha: 0.3),
-        ),
+        color: tokens.okBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 FluentIcons.checkmark_circle_24_filled,
-                color: Colors.green,
+                color: tokens.ok,
+                size: 18,
               ),
               const SizedBox(width: 8),
               Text(
                 'Import Complete',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green,
-                    ),
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.ok,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildResultRow('Total entries', result.totalEntries.toString()),
-          _buildResultRow('Imported', result.importedEntries.toString()),
+          const SizedBox(height: 10),
+          _resultRow(tokens, 'Total entries', result.totalEntries.toString()),
+          _resultRow(tokens, 'Imported', result.importedEntries.toString()),
           if (result.skippedEntries > 0)
-            _buildResultRow(
-              'Skipped (duplicates)',
-              result.skippedEntries.toString(),
-            ),
+            _resultRow(tokens, 'Skipped (duplicates)',
+                result.skippedEntries.toString()),
           if (result.failedEntries > 0)
-            _buildResultRow(
-              'Failed (validation errors)',
-              result.failedEntries.toString(),
-            ),
+            _resultRow(tokens, 'Failed (validation errors)',
+                result.failedEntries.toString()),
         ],
       ),
     );
   }
 
-  Widget _buildResultRow(String label, String value) {
+  Widget _resultRow(TwmtThemeTokens tokens, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4.0),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildError(BuildContext context, String error) {
+  Widget _buildError(TwmtThemeTokens tokens, String error) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-        ),
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: Theme.of(context).colorScheme.error,
+            color: tokens.err,
+            size: 18,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               error,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
               ),
             ),
           ),
@@ -391,5 +389,67 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
             });
           },
         );
+  }
+}
+
+class _OptionToggle extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String title;
+  final String subtitle;
+
+  const _OptionToggle({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                value
+                    ? FluentIcons.checkbox_checked_24_filled
+                    : FluentIcons.checkbox_unchecked_24_regular,
+                size: 18,
+                color: value ? tokens.accent : tokens.textFaint,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.text,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 11.5,
+                        color: tokens.textDim,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

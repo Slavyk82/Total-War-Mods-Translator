@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/translation_version.dart';
 import '../../../models/domain/translation_version_history.dart';
 import '../../../providers/shared/service_providers.dart';
 
-/// Dialog for viewing translation version history
-///
-/// Displays all historical changes to a translation version in reverse
-/// chronological order with timestamps, changed text, and who made the change.
+/// Token-themed popup showing the historical edits of a translation version.
 class TranslationHistoryDialog extends ConsumerStatefulWidget {
   final String versionId;
   final String unitKey;
@@ -77,79 +77,37 @@ class _TranslationHistoryDialogState
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Container(
-        width: 700,
-        height: 600,
-        padding: const EdgeInsets.all(24),
+    final tokens = context.tokens;
+    return TokenDialog(
+      icon: FluentIcons.history_24_regular,
+      title: 'Translation History',
+      subtitle: 'Key: ${widget.unitKey}',
+      width: 720,
+      body: SizedBox(
+        height: 480,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _buildContent(),
-            ),
-            const SizedBox(height: 16),
-            _buildFooter(),
+            Divider(height: 1, color: tokens.border),
+            const SizedBox(height: 12),
+            Expanded(child: _buildContent(tokens)),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        const Icon(
-          FluentIcons.history_24_regular,
-          size: 24,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Translation History',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Key: ${widget.unitKey}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.all(8),
-              child: const Icon(
-                FluentIcons.dismiss_24_regular,
-                size: 20,
-              ),
-            ),
-          ),
+      actions: [
+        SmallTextButton(
+          label: 'Close',
+          filled: true,
+          onTap: () => Navigator.of(context).pop(),
         ),
       ],
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(TwmtThemeTokens tokens) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
+      return Center(
+        child: CircularProgressIndicator(color: tokens.accent),
       );
     }
 
@@ -158,20 +116,27 @@ class _TranslationHistoryDialogState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               FluentIcons.error_circle_24_regular,
               size: 48,
-              color: Colors.red,
+              color: tokens.err,
             ),
             const SizedBox(height: 16),
             Text(
               'Error loading history',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -184,22 +149,27 @@ class _TranslationHistoryDialogState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               FluentIcons.history_24_regular,
               size: 48,
-              color: Colors.grey,
+              color: tokens.textFaint,
             ),
             const SizedBox(height: 16),
             Text(
               'No history available',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: tokens.fontBody.copyWith(
+                fontSize: 14,
+                color: tokens.text,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'This translation has no recorded history yet.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey,
-                  ),
+              style: tokens.fontBody.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
+              ),
             ),
           ],
         ),
@@ -208,114 +178,117 @@ class _TranslationHistoryDialogState
 
     return ListView.separated(
       itemCount: _history!.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
+      separatorBuilder: (context, index) => Divider(
+        height: 1,
+        color: tokens.border,
+      ),
       itemBuilder: (context, index) {
-        final entry = _history![index];
-        return _buildHistoryEntry(entry);
+        return _buildHistoryEntry(tokens, _history![index]);
       },
     );
   }
 
-  Widget _buildHistoryEntry(TranslationVersionHistory entry) {
+  Widget _buildHistoryEntry(
+    TwmtThemeTokens tokens,
+    TranslationVersionHistory entry,
+  ) {
     final dateFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
     final dateStr = dateFormat.format(entry.createdAtAsDateTime);
+    final statusColor = _statusColor(tokens, entry.status);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.basic,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _statusIcon(entry.status),
+                size: 16,
+                color: statusColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                entry.statusDisplay,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Icon(
+                FluentIcons.person_24_regular,
+                size: 14,
+                color: tokens.textFaint,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                entry.changedByDisplay,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textDim,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                FluentIcons.clock_24_regular,
+                size: 14,
+                color: tokens.textFaint,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                dateStr,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 12,
+                  color: tokens.textDim,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: tokens.panel2,
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+              border: Border.all(color: tokens.border),
+            ),
+            child: Text(
+              entry.translatedText,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.text,
+              ),
+            ),
+          ),
+          if (entry.hasChangeReason) ...[
+            const SizedBox(height: 6),
             Row(
               children: [
                 Icon(
-                  _getStatusIcon(entry.status),
-                  size: 16,
-                  color: _getStatusColor(entry.status),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  entry.statusDisplay,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Icon(
-                  FluentIcons.person_24_regular,
+                  FluentIcons.info_24_regular,
                   size: 14,
-                  color: Colors.grey,
+                  color: tokens.textFaint,
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  entry.changedByDisplay,
-                  style: const TextStyle(
+                  'Reason: ${entry.changeReason}',
+                  style: tokens.fontBody.copyWith(
                     fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                ),
-                const Spacer(),
-                const Icon(
-                  FluentIcons.clock_24_regular,
-                  size: 14,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  dateStr,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                    color: tokens.textDim,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                entry.translatedText,
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-            if (entry.hasChangeReason) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(
-                    FluentIcons.info_24_regular,
-                    size: 14,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Reason: ${entry.changeReason}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
-        ),
+        ],
       ),
     );
   }
 
-  IconData _getStatusIcon(TranslationVersionStatus status) {
+  IconData _statusIcon(TranslationVersionStatus status) {
     switch (status) {
       case TranslationVersionStatus.pending:
         return FluentIcons.circle_24_regular;
@@ -326,47 +299,14 @@ class _TranslationHistoryDialogState
     }
   }
 
-  Color _getStatusColor(TranslationVersionStatus status) {
+  Color _statusColor(TwmtThemeTokens tokens, TranslationVersionStatus status) {
     switch (status) {
       case TranslationVersionStatus.pending:
-        return Colors.grey;
+        return tokens.textFaint;
       case TranslationVersionStatus.translated:
-        return Colors.green;
+        return tokens.ok;
       case TranslationVersionStatus.needsReview:
-        return Colors.orange;
+        return tokens.warn;
     }
-  }
-
-  Widget _buildFooter() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'Close',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

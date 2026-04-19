@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../services/projects/i_project_initialization_service.dart';
-import '../../../widgets/fluent/fluent_widgets.dart';
 
-/// Simplified project initialization dialog showing only extraction and import logs.
-///
-/// This dialog displays real-time progress and logs during:
-/// - Pack file extraction (.pack to .loc files)
-/// - Translation units import to database
+/// Token-themed popup showing real-time progress during project initialization
+/// (pack extraction + translation-unit import).
 class ProjectInitializationDialog extends StatefulWidget {
   final String projectName;
   final Stream<InitializationLogMessage> logStream;
@@ -49,10 +48,7 @@ class _ProjectInitializationDialogState
   void _listenToLogs() {
     widget.logStream.listen((logMessage) {
       if (mounted) {
-        setState(() {
-          _logs.add(logMessage);
-        });
-        // Auto-scroll to bottom
+        setState(() => _logs.add(logMessage));
         Future.delayed(const Duration(milliseconds: 50), () {
           if (mounted && _scrollController.hasClients) {
             _scrollController.jumpTo(
@@ -85,53 +81,35 @@ class _ProjectInitializationDialogState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
+
+    final icon = _isInitializing
+        ? FluentIcons.arrow_sync_24_regular
+        : (_errorMessage != null
+            ? FluentIcons.error_circle_24_regular
+            : FluentIcons.checkmark_circle_24_regular);
+    final iconColor = _errorMessage != null
+        ? tokens.err
+        : (_isInitializing ? tokens.accent : tokens.ok);
+    final title = _isInitializing
+        ? 'Initializing Project'
+        : (_errorMessage != null
+            ? 'Initialization Failed'
+            : 'Initialization Complete');
 
     return PopScope(
       canPop: !_isInitializing,
-      child: AlertDialog(
-        backgroundColor: theme.colorScheme.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Row(
-          children: [
-            Icon(
-              _isInitializing
-                  ? FluentIcons.arrow_sync_24_regular
-                  : (_errorMessage != null
-                      ? FluentIcons.error_circle_24_regular
-                      : FluentIcons.checkmark_circle_24_regular),
-              color: _errorMessage != null
-                  ? theme.colorScheme.error
-                  : theme.colorScheme.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _isInitializing
-                    ? 'Initializing Project'
-                    : (_errorMessage != null
-                        ? 'Initialization Failed'
-                        : 'Initialization Complete'),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 600,
-          height: 400,
+      child: TokenDialog(
+        icon: icon,
+        iconColor: iconColor,
+        title: title,
+        subtitle: widget.projectName,
+        width: 640,
+        body: SizedBox(
+          height: 420,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Project name
-              Text(
-                widget.projectName,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Status message
               if (_isInitializing)
                 Row(
                   children: [
@@ -140,112 +118,58 @@ class _ProjectInitializationDialogState
                       height: 16,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: theme.colorScheme.primary,
+                        color: tokens.accent,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Text(
                       'Extracting and importing localization files...',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 13,
+                        color: tokens.textDim,
                       ),
                     ),
                   ],
                 )
               else if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.errorContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        FluentIcons.error_circle_24_regular,
-                        color: theme.colorScheme.error,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onErrorContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+                _buildErrorBanner(tokens)
               else
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        FluentIcons.checkmark_circle_24_regular,
-                        color: theme.colorScheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Successfully imported $_unitsImported translation units',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-
-              // Logs section
+                _buildSuccessBanner(tokens),
+              const SizedBox(height: 14),
+              Divider(height: 1, color: tokens.border),
+              const SizedBox(height: 10),
               Text(
                 'Logs',
-                style: theme.textTheme.titleSmall?.copyWith(
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 8),
-
-              // Logs list
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                    ),
+                    color: tokens.panel2,
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    border: Border.all(color: tokens.border),
                   ),
                   child: _logs.isEmpty
                       ? Center(
                           child: Text(
                             'No logs yet...',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.5),
+                            style: tokens.fontBody.copyWith(
+                              fontSize: 12,
+                              color: tokens.textFaint,
                             ),
                           ),
                         )
                       : ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(10),
                           itemCount: _logs.length,
                           itemBuilder: (context, index) {
-                            final log = _logs[index];
-                            return _buildLogEntry(log, theme);
+                            return _buildLogEntry(tokens, _logs[index]);
                           },
                         ),
                 ),
@@ -253,29 +177,100 @@ class _ProjectInitializationDialogState
             ],
           ),
         ),
-        actions: [
-          if (!_isInitializing)
-            FluentDialogButton(
-              icon: FluentIcons.checkmark_24_regular,
-              label: 'Close',
-              isPrimary: true,
-              onTap: () => Navigator.of(context).pop(_errorMessage == null),
+        actions: _isInitializing
+            ? const []
+            : [
+                SmallTextButton(
+                  label: 'Close',
+                  icon: FluentIcons.checkmark_24_regular,
+                  filled: true,
+                  onTap: () =>
+                      Navigator.of(context).pop(_errorMessage == null),
+                ),
+              ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(TwmtThemeTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tokens.errBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.err.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.error_circle_24_regular,
+            color: tokens.err,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _errorMessage!,
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.err,
+              ),
             ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildLogEntry(InitializationLogMessage log, ThemeData theme) {
-    Color? logColor;
-    IconData? logIcon;
+  Widget _buildSuccessBanner(TwmtThemeTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tokens.okBg,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.ok.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            FluentIcons.checkmark_circle_24_regular,
+            color: tokens.ok,
+            size: 18,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Successfully imported $_unitsImported translation units',
+              style: tokens.fontBody.copyWith(
+                fontSize: 12.5,
+                color: tokens.ok,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (log.level == InitializationLogLevel.warning) {
-      logColor = Colors.orange;
-      logIcon = FluentIcons.warning_24_regular;
-    } else if (log.level == InitializationLogLevel.error) {
-      logColor = theme.colorScheme.error;
-      logIcon = FluentIcons.error_circle_24_regular;
+  Widget _buildLogEntry(
+    TwmtThemeTokens tokens,
+    InitializationLogMessage log,
+  ) {
+    Color color;
+    IconData? icon;
+
+    switch (log.level) {
+      case InitializationLogLevel.warning:
+        color = tokens.warn;
+        icon = FluentIcons.warning_24_regular;
+        break;
+      case InitializationLogLevel.error:
+        color = tokens.err;
+        icon = FluentIcons.error_circle_24_regular;
+        break;
+      default:
+        color = tokens.textDim;
+        icon = null;
     }
 
     return Padding(
@@ -283,24 +278,16 @@ class _ProjectInitializationDialogState
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (logIcon != null) ...[
-            Icon(
-              logIcon,
-              size: 14,
-              color: logColor,
-            ),
-            const SizedBox(width: 8),
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: color),
+            const SizedBox(width: 6),
           ],
           Expanded(
             child: Text(
               log.message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: log.level == InitializationLogLevel.error
-                    ? theme.colorScheme.error
-                    : (log.level == InitializationLogLevel.warning
-                        ? Colors.orange
-                        : theme.colorScheme.onSurface.withValues(alpha: 0.8)),
+              style: tokens.fontBody.copyWith(
                 fontSize: 12,
+                color: color,
                 height: 1.3,
               ),
             ),

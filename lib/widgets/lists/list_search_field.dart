@@ -25,6 +25,10 @@ class ListSearchField extends StatefulWidget {
   /// Overall field width.
   final double width;
 
+  /// Optional external focus node. When provided, external controllers (e.g.
+  /// keyboard shortcuts) can request focus on the field.
+  final FocusNode? focusNode;
+
   const ListSearchField({
     super.key,
     required this.value,
@@ -32,6 +36,7 @@ class ListSearchField extends StatefulWidget {
     this.hintText = 'Search...',
     this.onClear,
     this.width = 260,
+    this.focusNode,
   });
 
   @override
@@ -72,6 +77,7 @@ class _ListSearchFieldState extends State<ListSearchField> {
       height: 32,
       child: TextField(
         controller: _controller,
+        focusNode: widget.focusNode,
         style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
         onChanged: widget.onChanged,
         decoration: InputDecoration(
