@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
@@ -276,6 +277,47 @@ void main() {
         // Three separators between four segments.
         expect(find.text('›'), findsNWidgets(3));
         expect(find.byTooltip('Back'), findsOneWidget);
+      });
+    });
+
+    group('Shortcuts', () {
+      testWidgets(
+          'screen registers Ctrl+F and hands editor-search FocusNode to sidebar',
+          (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // Ctrl+F must be in the screen-scope Shortcuts map so the sidebar's
+        // search field can be focused via the shortcut. We test the wire
+        // structurally (map contains the binding) + that the sidebar received
+        // the editor-search FocusNode — end-to-end key routing is covered by
+        // the manual smoke test since the Flutter test framework's key event
+        // injection requires focus to already sit inside the Shortcuts subtree.
+        final screenShortcuts = find.byWidgetPredicate(
+          (w) =>
+              w is Shortcuts &&
+              w.shortcuts.keys.any(
+                (k) =>
+                    k is LogicalKeySet &&
+                    k.keys.contains(LogicalKeyboardKey.keyF) &&
+                    k.keys.contains(LogicalKeyboardKey.control),
+              ),
+        );
+        expect(
+          screenShortcuts,
+          findsOneWidget,
+          reason: 'Ctrl+F must be declared in the screen Shortcuts map',
+        );
+
+        final sidebar = tester.widget<EditorActionSidebar>(
+          find.byType(EditorActionSidebar),
+        );
+        expect(
+          sidebar.searchFocusNode.debugLabel,
+          equals('editor-search'),
+          reason:
+              'Sidebar must receive the screen-owned editor-search FocusNode',
+        );
       });
     });
   });
