@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_action_bar.dart';
+import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -29,9 +31,9 @@ void main() {
   group('TranslationEditorScreen', () {
     const testProjectId = 'test-project-123';
     const testLanguageId = 'test-language-456';
-    // Reference desktop size from spec §8.7. The EditorActionBar's middle action
-    // group is wrapped in a horizontal SingleChildScrollView, so this viewport
-    // (and even the 1280px min-width) renders without layout overflow.
+    // Reference desktop size from spec §8.7. The filter toolbar row 2 is a
+    // horizontal SingleChildScrollView, so narrow viewports (down to the
+    // 1280px min-width) render without layout overflow.
     const wideScreenSize = Size(1920, 1080);
 
     /// Creates test widget with mocked providers for translation editor
@@ -100,11 +102,13 @@ void main() {
         expect(screen.languageId, equals(testLanguageId));
       });
 
-      testWidgets('should render EditorActionBar', (tester) async {
+      testWidgets('should render EditorActionSidebar and FilterToolbar',
+          (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(EditorActionBar), findsOneWidget);
+        expect(find.byType(EditorActionSidebar), findsOneWidget);
+        expect(find.byType(FilterToolbar), findsOneWidget);
       });
     });
 
@@ -143,11 +147,15 @@ void main() {
     });
 
     group('Toolbar', () {
-      testWidgets('should render EditorActionBar component', (tester) async {
+      testWidgets('should render FilterToolbar with project name', (tester) async {
         await tester.pumpWidget(createTestWidget());
         await tester.pumpAndSettle();
 
-        expect(find.byType(EditorActionBar), findsOneWidget);
+        expect(find.byType(FilterToolbar), findsOneWidget);
+        // The project name shows up in the leading of the filter toolbar.
+        // Note: DetailScreenToolbar's crumb also contains 'Test Project',
+        // so findsWidgets is the correct matcher here.
+        expect(find.text('Test Project'), findsWidgets);
       });
     });
 
@@ -260,11 +268,56 @@ void main() {
         expect(find.byType(DetailScreenToolbar), findsOneWidget);
         expect(find.text('Work'), findsOneWidget);
         expect(find.text('Projects'), findsOneWidget);
-        expect(find.text('Test Project'), findsOneWidget);
+        // 'Test Project' appears in both the DetailScreenToolbar crumb and
+        // the FilterToolbar leading title — findsWidgets accepts both.
+        expect(find.text('Test Project'), findsWidgets);
+        // 'Spanish' appears only in the crumb (final segment); the editor's
+        // FilterToolbar leading omits the count label per design spec §3.1.
         expect(find.text('Spanish'), findsOneWidget);
         // Three separators between four segments.
         expect(find.text('›'), findsNWidgets(3));
         expect(find.byTooltip('Back'), findsOneWidget);
+      });
+    });
+
+    group('Shortcuts', () {
+      testWidgets(
+          'screen registers Ctrl+F and hands editor-search FocusNode to sidebar',
+          (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+
+        // Ctrl+F must be in the screen-scope Shortcuts map so the sidebar's
+        // search field can be focused via the shortcut. We test the wire
+        // structurally (map contains the binding) + that the sidebar received
+        // the editor-search FocusNode — end-to-end key routing is covered by
+        // the manual smoke test since the Flutter test framework's key event
+        // injection requires focus to already sit inside the Shortcuts subtree.
+        final screenShortcuts = find.byWidgetPredicate(
+          (w) =>
+              w is Shortcuts &&
+              w.shortcuts.keys.any(
+                (k) =>
+                    k is LogicalKeySet &&
+                    k.keys.contains(LogicalKeyboardKey.keyF) &&
+                    k.keys.contains(LogicalKeyboardKey.control),
+              ),
+        );
+        expect(
+          screenShortcuts,
+          findsOneWidget,
+          reason: 'Ctrl+F must be declared in the screen Shortcuts map',
+        );
+
+        final sidebar = tester.widget<EditorActionSidebar>(
+          find.byType(EditorActionSidebar),
+        );
+        expect(
+          sidebar.searchFocusNode.debugLabel,
+          equals('editor-search'),
+          reason:
+              'Sidebar must receive the screen-owned editor-search FocusNode',
+        );
       });
     });
   });
