@@ -9,6 +9,9 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
+import '../../../../services/translation/models/translation_exceptions.dart'
+    as v_exc;
+import '../../utils/validation_issues_parser.dart';
 import '../../widgets/editor_dialogs.dart';
 import '../validation_review_screen.dart';
 import 'editor_actions_base.dart';
@@ -79,19 +82,21 @@ mixin EditorActionsValidation on EditorActionsBase {
         final unit = unitsMap[version.unitId];
         if (unit == null) continue;
 
-        // Parse validation issues from the stored JSON
-        final issues = _parseValidationIssues(version.validationIssues);
+        // Decode validation_issues. Structured payloads (schema v1) carry
+        // the rule code; legacy rows surface as a single `type: 'legacy'`
+        // entry pending the startup rescan.
+        final parsed = parseValidationIssues(version.validationIssues);
 
-        for (final issue in issues) {
+        for (final p in parsed) {
           allIssues.add(batch.ValidationIssue(
             unitKey: unit.key,
             unitId: unit.id,
             versionId: version.id,
-            severity: issue.severity == 'error'
+            severity: p.severity == v_exc.ValidationSeverity.error
                 ? batch.ValidationSeverity.error
                 : batch.ValidationSeverity.warning,
-            issueType: issue.type,
-            description: issue.description,
+            issueType: p.type,
+            description: p.description,
             sourceText: unit.sourceText,
             translatedText: version.translatedText ?? '',
           ));
@@ -386,56 +391,6 @@ mixin EditorActionsValidation on EditorActionsBase {
     }
   }
 
-  /// Parse validation issues from stored JSON string
-  List<_StoredValidationIssue> _parseValidationIssues(String? issuesJson) {
-    if (issuesJson == null || issuesJson.isEmpty) {
-      return [];
-    }
-
-    try {
-      // The issues are stored as a list of maps in string format
-      // Example: [{type: ..., severity: ..., description: ...}, ...]
-      final issues = <_StoredValidationIssue>[];
-
-      // Extract key info using regex
-      // Match patterns like {type: missing_tags, severity: error, description: ...}
-      final pattern = RegExp(
-          r'\{[^}]*type:\s*([^,}]+)[^}]*severity:\s*([^,}]+)[^}]*description:\s*([^,}]+)');
-      final matches = pattern.allMatches(issuesJson);
-
-      for (final match in matches) {
-        issues.add(_StoredValidationIssue(
-          type: match.group(1)?.trim() ?? 'unknown',
-          severity: match.group(2)?.trim().toLowerCase() ?? 'warning',
-          description: match.group(3)?.trim() ?? '',
-        ));
-      }
-
-      // Fallback: if no matches, create a generic issue
-      if (issues.isEmpty && issuesJson.isNotEmpty) {
-        issues.add(_StoredValidationIssue(
-          type: 'validation_issue',
-          severity: 'warning',
-          description: 'Translation needs review',
-        ));
-      }
-
-      return issues;
-    } catch (e) {
-      ref.read(loggingServiceProvider).warning(
-        'Failed to parse validation issues',
-        {'json': issuesJson, 'error': e.toString()},
-      );
-      return [
-        _StoredValidationIssue(
-          type: 'validation_issue',
-          severity: 'warning',
-          description: 'Translation needs review',
-        ),
-      ];
-    }
-  }
-
   /// Batch accept multiple translations in a single transaction
   Future<void> _handleBulkAcceptTranslation(
       List<batch.ValidationIssue> issues) async {
@@ -638,15 +593,3 @@ mixin EditorActionsValidation on EditorActionsBase {
   }
 }
 
-/// Represents a stored validation issue parsed from the database
-class _StoredValidationIssue {
-  final String type;
-  final String severity;
-  final String description;
-
-  _StoredValidationIssue({
-    required this.type,
-    required this.severity,
-    required this.description,
-  });
-}
