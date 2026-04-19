@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart' hide ValidationException;
+import 'package:twmt/models/common/validation_issue_entry.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
+import 'package:twmt/services/translation/models/validation_rule.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
@@ -270,8 +272,18 @@ void main() {
           )).thenAnswer((_) async =>
           Ok<common.ValidationResult, ValidationException>(
               common.ValidationResult.failure(
-            errors: const ['Missing variable {0}'],
-            warnings: const ['Significantly shorter than source'],
+            issues: const [
+              ValidationIssueEntry(
+                rule: ValidationRule.variables,
+                severity: ValidationSeverity.error,
+                message: 'Missing variable {0}',
+              ),
+              ValidationIssueEntry(
+                rule: ValidationRule.truncation,
+                severity: ValidationSeverity.warning,
+                message: 'Significantly shorter than source',
+              ),
+            ],
           )));
 
       await handler.validateAndSave(

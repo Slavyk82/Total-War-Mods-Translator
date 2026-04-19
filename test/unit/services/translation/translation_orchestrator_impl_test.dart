@@ -357,8 +357,6 @@ void main() {
           maxLength: any(named: 'maxLength'),
         )).thenAnswer((_) async => Ok(const common.ValidationResult(
           isValid: true,
-          errors: [],
-          warnings: [],
         )));
 
     // History: always succeed (return type uses TWMTDatabaseException).

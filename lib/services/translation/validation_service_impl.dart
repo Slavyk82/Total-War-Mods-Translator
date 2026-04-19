@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/common/validation_issue_entry.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -33,8 +34,7 @@ class ValidationServiceImpl implements IValidationService {
     int? maxLength,
   }) async {
     try {
-      final errors = <String>[];
-      final warnings = <String>[];
+      final issues = <ValidationIssueEntry>[];
 
       // Run all enabled validation checks
       if (_config.checkCompleteness) {
@@ -43,7 +43,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, _config.strictMode);
+          _appendIssue(issues, result, _config.strictMode);
         }
       }
 
@@ -55,7 +55,7 @@ class ValidationServiceImpl implements IValidationService {
           maxLength: maxLength,
         );
         if (result != null) {
-          _addError(errors, warnings, result, _config.strictMode);
+          _appendIssue(issues, result, _config.strictMode);
         }
       }
 
@@ -66,7 +66,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, false); // Always error
+          _appendIssue(issues, result, false); // Always error
         }
       }
 
@@ -77,7 +77,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, false); // Always error
+          _appendIssue(issues, result, false); // Always error
         }
       }
 
@@ -87,7 +87,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, false); // Always error
+          _appendIssue(issues, result, false); // Always error
         }
       }
 
@@ -99,7 +99,7 @@ class ValidationServiceImpl implements IValidationService {
           glossaryTerms: glossaryTerms,
         );
         if (result != null) {
-          _addError(errors, warnings, result, _config.strictMode);
+          _appendIssue(issues, result, _config.strictMode);
         }
       }
 
@@ -109,7 +109,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, false); // Always error
+          _appendIssue(issues, result, false); // Always error
         }
       }
 
@@ -120,7 +120,7 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         if (result != null) {
-          _addError(errors, warnings, result, _config.strictMode);
+          _appendIssue(issues, result, _config.strictMode);
         }
       }
 
@@ -131,17 +131,16 @@ class ValidationServiceImpl implements IValidationService {
           key: key,
         );
         for (final mistake in mistakes) {
-          _addError(errors, warnings, mistake, _config.strictMode);
+          _appendIssue(issues, mistake, _config.strictMode);
         }
       }
 
-      final validationResult = common.ValidationResult(
-        isValid: errors.isEmpty,
-        errors: errors,
-        warnings: warnings,
-      );
-
-      return Ok(validationResult);
+      final hasErrors =
+          issues.any((i) => i.severity == ValidationSeverity.error);
+      return Ok(common.ValidationResult(
+        isValid: !hasErrors,
+        issues: issues,
+      ));
     } catch (e, stackTrace) {
       return Err(
         ValidationException(
@@ -174,8 +173,13 @@ class ValidationServiceImpl implements IValidationService {
         if (sourceText == null) {
           results[key] = common.ValidationResult(
             isValid: false,
-            errors: ['Source text not found for key: $key'],
-            warnings: [],
+            issues: [
+              ValidationIssueEntry(
+                rule: ValidationRule.completeness,
+                severity: ValidationSeverity.error,
+                message: 'Source text not found for key: $key',
+              ),
+            ],
           );
           continue;
         }
@@ -193,8 +197,13 @@ class ValidationServiceImpl implements IValidationService {
         } else {
           results[key] = common.ValidationResult(
             isValid: false,
-            errors: [result.error.message],
-            warnings: [],
+            issues: [
+              ValidationIssueEntry(
+                rule: ValidationRule.completeness,
+                severity: ValidationSeverity.error,
+                message: result.error.message,
+              ),
+            ],
           );
         }
       }
@@ -654,19 +663,21 @@ class ValidationServiceImpl implements IValidationService {
     _config = config;
   }
 
-  /// Add error or warning based on severity and strict mode
-  void _addError(
-    List<String> errors,
-    List<String> warnings,
+  /// Append a structured issue, promoting warnings to errors under strict mode.
+  void _appendIssue(
+    List<ValidationIssueEntry> acc,
     ValidationError error,
     bool treatWarningsAsErrors,
   ) {
-    if (error.severity == ValidationSeverity.error ||
-        (treatWarningsAsErrors &&
-            error.severity == ValidationSeverity.warning)) {
-      errors.add(error.message);
-    } else {
-      warnings.add(error.message);
-    }
+    final effective = (treatWarningsAsErrors &&
+            error.severity == ValidationSeverity.warning)
+        ? ValidationSeverity.error
+        : error.severity;
+    acc.add(ValidationIssueEntry(
+      rule: error.rule,
+      severity: effective,
+      message: error.message,
+    ));
   }
+
 }

@@ -1,140 +1,95 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'validation_issue_entry.dart';
 
 part 'validation_result.g.dart';
 
 /// Result of a validation operation.
 ///
-/// Contains validation status, errors, and warnings.
-///
-/// Example:
-/// ```dart
-/// ValidationResult validate(String email) {
-///   final errors = <String>[];
-///   final warnings = <String>[];
-///
-///   if (email.isEmpty) {
-///     errors.add('Email is required');
-///   } else if (!email.contains('@')) {
-///     errors.add('Invalid email format');
-///   }
-///
-///   if (email.endsWith('.test')) {
-///     warnings.add('Test email detected');
-///   }
-///
-///   return ValidationResult(
-///     isValid: errors.isEmpty,
-///     errors: errors,
-///     warnings: warnings,
-///   );
-/// }
-/// ```
-@JsonSerializable()
+/// Canonical state is [issues]: the structured list of validation findings.
+/// [errors] / [warnings] / [allMessages] are kept as derived views for
+/// consumers that only care about message strings.
+@JsonSerializable(explicitToJson: true)
 class ValidationResult {
   final bool isValid;
-  final List<String> errors;
-  final List<String> warnings;
+  final List<ValidationIssueEntry> issues;
 
   const ValidationResult({
     required this.isValid,
-    this.errors = const [],
-    this.warnings = const [],
+    this.issues = const [],
   });
 
-  /// Check if validation failed
+  /// Error messages derived from [issues].
+  List<String> get errors => issues
+      .where((i) => i.severity == ValidationSeverity.error)
+      .map((i) => i.message)
+      .toList(growable: false);
+
+  /// Warning messages derived from [issues].
+  List<String> get warnings => issues
+      .where((i) => i.severity == ValidationSeverity.warning)
+      .map((i) => i.message)
+      .toList(growable: false);
+
+  /// All messages (errors followed by warnings in [issues] order).
+  List<String> get allMessages =>
+      issues.map((i) => i.message).toList(growable: false);
+
   bool get isInvalid => !isValid;
-
-  /// Check if there are any errors
   bool get hasErrors => errors.isNotEmpty;
-
-  /// Check if there are any warnings
   bool get hasWarnings => warnings.isNotEmpty;
-
-  /// Get the first error message, or null if no errors
   String? get firstError => errors.isEmpty ? null : errors.first;
 
-  /// Get all messages (errors + warnings)
-  List<String> get allMessages => [...errors, ...warnings];
-
-  /// Combine with another validation result
   ValidationResult combine(ValidationResult other) {
     return ValidationResult(
       isValid: isValid && other.isValid,
-      errors: [...errors, ...other.errors],
-      warnings: [...warnings, ...other.warnings],
+      issues: [...issues, ...other.issues],
     );
   }
 
-  /// Create a successful validation result
-  factory ValidationResult.success({List<String> warnings = const []}) {
-    return ValidationResult(
-      isValid: true,
-      errors: const [],
-      warnings: warnings,
-    );
+  factory ValidationResult.success(
+      {List<ValidationIssueEntry> issues = const []}) {
+    return ValidationResult(isValid: true, issues: issues);
   }
 
-  /// Create a failed validation result
   factory ValidationResult.failure({
-    required List<String> errors,
-    List<String> warnings = const [],
+    required List<ValidationIssueEntry> issues,
   }) {
-    return ValidationResult(
-      isValid: false,
-      errors: errors,
-      warnings: warnings,
-    );
+    return ValidationResult(isValid: false, issues: issues);
   }
 
-  /// Create from a single error message
-  factory ValidationResult.error(String error) {
-    return ValidationResult(
-      isValid: false,
-      errors: [error],
-      warnings: const [],
-    );
-  }
-
-  /// Creates a copy with optional new values
   ValidationResult copyWith({
     bool? isValid,
-    List<String>? errors,
-    List<String>? warnings,
+    List<ValidationIssueEntry>? issues,
   }) {
     return ValidationResult(
       isValid: isValid ?? this.isValid,
-      errors: errors ?? this.errors,
-      warnings: warnings ?? this.warnings,
+      issues: issues ?? this.issues,
     );
   }
 
   factory ValidationResult.fromJson(Map<String, dynamic> json) =>
       _$ValidationResultFromJson(json);
-
   Map<String, dynamic> toJson() => _$ValidationResultToJson(this);
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! ValidationResult) return false;
-    if (errors.length != other.errors.length) return false;
-    if (warnings.length != other.warnings.length) return false;
-    for (int i = 0; i < errors.length; i++) {
-      if (errors[i] != other.errors[i]) return false;
+    if (isValid != other.isValid) return false;
+    if (issues.length != other.issues.length) return false;
+    for (var i = 0; i < issues.length; i++) {
+      if (issues[i] != other.issues[i]) return false;
     }
-    for (int i = 0; i < warnings.length; i++) {
-      if (warnings[i] != other.warnings[i]) return false;
-    }
-    return isValid == other.isValid;
+    return true;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(isValid, errors.length, warnings.length);
+  int get hashCode => Object.hash(isValid, issues.length);
 
   @override
   String toString() =>
-      'ValidationResult(isValid: $isValid, errors: ${errors.length}, warnings: ${warnings.length})';
+      'ValidationResult(isValid: $isValid, issues: ${issues.length})';
 }
 
 /// Field-specific validation result.
