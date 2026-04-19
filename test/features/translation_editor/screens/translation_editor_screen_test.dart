@@ -270,9 +270,9 @@ void main() {
         // 'Test Project' appears in both the DetailScreenToolbar crumb and
         // the FilterToolbar leading title — findsWidgets accepts both.
         expect(find.text('Test Project'), findsWidgets);
-        // 'Spanish' appears in both the crumb (final segment) and the
-        // FilterToolbar leading count label.
-        expect(find.text('Spanish'), findsWidgets);
+        // 'Spanish' appears only in the crumb (final segment); the editor's
+        // FilterToolbar leading omits the count label per design spec §3.1.
+        expect(find.text('Spanish'), findsOneWidget);
         // Three separators between four segments.
         expect(find.text('›'), findsNWidgets(3));
         expect(find.byTooltip('Back'), findsOneWidget);

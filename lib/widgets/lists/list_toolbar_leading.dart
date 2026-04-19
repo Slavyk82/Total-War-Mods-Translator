@@ -15,7 +15,11 @@ class ListToolbarLeading extends StatelessWidget {
   final String title;
 
   /// Count/summary label rendered with [TwmtThemeTokens.fontMono] at 12px.
-  final String countLabel;
+  ///
+  /// When null, the count slot (and its preceding spacer) is omitted — used
+  /// by screens that surface unit counts elsewhere (e.g. the editor status
+  /// bar).
+  final String? countLabel;
 
   /// Optional trailing widgets appended after the count with a 16px gap.
   final List<Widget> trailing;
@@ -24,13 +28,14 @@ class ListToolbarLeading extends StatelessWidget {
     super.key,
     required this.icon,
     required this.title,
-    required this.countLabel,
+    this.countLabel,
     this.trailing = const [],
   });
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final label = countLabel;
     return Row(
       children: [
         Icon(icon, size: 20, color: tokens.textMid),
@@ -43,14 +48,16 @@ class ListToolbarLeading extends StatelessWidget {
             fontStyle: tokens.fontDisplayStyle,
           ),
         ),
-        const SizedBox(width: 12),
-        Text(
-          countLabel,
-          style: tokens.fontMono.copyWith(
-            fontSize: 12,
-            color: tokens.textDim,
+        if (label != null) ...[
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: tokens.fontMono.copyWith(
+              fontSize: 12,
+              color: tokens.textDim,
+            ),
           ),
-        ),
+        ],
         if (trailing.isNotEmpty) ...[
           const SizedBox(width: 16),
           ...trailing,

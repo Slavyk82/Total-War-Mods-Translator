@@ -170,7 +170,6 @@ class _TranslationEditorScreenState
                 leading: ListToolbarLeading(
                   icon: FluentIcons.folder_24_regular,
                   title: projectName,
-                  countLabel: languageName,
                 ),
                 pillGroups: [
                   _buildStatusGroup(filter, stats),
