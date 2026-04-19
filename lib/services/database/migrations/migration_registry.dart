@@ -21,6 +21,7 @@ import 'migration_published_steam_id.dart';
 import 'migration_published_at.dart';
 import 'migration_compilation_publish_fields.dart';
 import 'migration_validation_issues_json.dart';
+import 'migration_validation_schema_version.dart';
 import 'migration_activity_events.dart';
 import 'migration_projects_filter_indexes.dart';
 
@@ -55,6 +56,7 @@ class MigrationRegistry {
       PublishedSteamIdMigration(),
       PublishedAtMigration(),
       CompilationPublishFieldsMigration(),
+      ValidationSchemaVersionMigration(),
       ValidationIssuesJsonMigration(),
       ActivityEventsMigration(),
       ProjectsFilterIndexesMigration(), // Priority 120 — must run after column-adding migrations
