@@ -56,7 +56,6 @@ class ValidationRescanService {
   static const int pageSize = 10000;
   static const int commitBatchSize = 10000;
   static const int calibrationSamples = 20;
-  static const int _etaWindow = 50;
 
   final TranslationVersionRepository _versionRepo;
   final TranslationUnitRepository _unitRepo;
@@ -134,9 +133,13 @@ class ValidationRescanService {
     }
 
     var done = 0;
-    final times = <int>[]; // elapsed ms per commit, trailing window
-    final sw = Stopwatch();
     String? afterId;
+    // Anchor ETA on wall-time since the scan started, not per-batch
+    // stopwatches. Per-batch averaging exaggerates the cost of the first
+    // batch (SQLite WAL / FTS warm-up) and inflates the ETA; wall-time
+    // amortises it naturally and converges on the real rate as the scan
+    // progresses.
+    final runStart = DateTime.now();
 
     while (true) {
       final page = (await _versionRepo.getLegacyValidationPage(
@@ -155,10 +158,6 @@ class ValidationRescanService {
         String? validationIssues,
         int schemaVersion,
       })>[];
-
-      sw
-        ..reset()
-        ..start();
 
       for (final v in page) {
         final u = unitsMap[v.unitId];
@@ -193,32 +192,23 @@ class ValidationRescanService {
 
         if (pending.length >= commitBatchSize) {
           await _commit(pending);
-          sw.stop();
-          times.add(sw.elapsedMilliseconds);
-          if (times.length > _etaWindow) times.removeAt(0);
           done += pending.length;
           pending.clear();
           yield RescanProgress(
             done: done,
             total: total,
-            eta: _eta(times, total - done),
+            eta: _etaFromWallTime(runStart, done, total),
           );
-          sw
-            ..reset()
-            ..start();
         }
       }
 
       if (pending.isNotEmpty) {
         await _commit(pending);
-        sw.stop();
-        times.add(sw.elapsedMilliseconds);
-        if (times.length > _etaWindow) times.removeAt(0);
         done += pending.length;
         yield RescanProgress(
           done: done,
           total: total,
-          eta: _eta(times, total - done),
+          eta: _etaFromWallTime(runStart, done, total),
         );
       }
     }
@@ -250,11 +240,13 @@ class ValidationRescanService {
     return {for (final u in res.unwrap()) u.id: u};
   }
 
-  Duration? _eta(List<int> windowMs, int remaining) {
-    if (windowMs.isEmpty || remaining <= 0) return Duration.zero;
-    final avgMsPerBatch =
-        windowMs.reduce((a, b) => a + b) / windowMs.length;
-    final avgMsPerUnit = avgMsPerBatch / commitBatchSize;
-    return Duration(milliseconds: (avgMsPerUnit * remaining).round());
+  Duration? _etaFromWallTime(DateTime runStart, int done, int total) {
+    final remaining = total - done;
+    if (remaining <= 0) return Duration.zero;
+    if (done <= 0) return null;
+    final elapsedMs = DateTime.now().difference(runStart).inMilliseconds;
+    if (elapsedMs <= 0) return null;
+    final msPerUnit = elapsedMs / done;
+    return Duration(milliseconds: (msPerUnit * remaining).round());
   }
 }
