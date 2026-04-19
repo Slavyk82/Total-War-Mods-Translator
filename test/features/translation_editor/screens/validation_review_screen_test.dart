@@ -544,16 +544,17 @@ void main() {
     });
 
     group('Selection Independence', () {
-      testWidgets('checkbox click does not update the inspector',
+      testWidgets('clicking a row single-selects it and updates the inspector',
           (tester) async {
-        // Note: This test asserts the routing invariant that drives current-row
-        // selection — tapping a key cell moves the inspector, and subsequent
-        // taps on another key cell correctly switch it back. Directly
-        // simulating a Syncfusion checkbox-column tap from a widget test is
-        // brittle; the checkbox-tap isolation lives in `_handleCellTap`'s
-        // guarded branch (checkbox column does NOT call `_selectCurrentRow`).
+        // Under the unified selection model, a non-checkbox cell tap clears
+        // the bulk selection and single-selects the row, and the inspector
+        // reflects the single selection. Subsequent taps on another key cell
+        // switch the inspector over. Directly simulating a Syncfusion
+        // checkbox-column tap from a widget test is brittle; the cell-tap
+        // routing lives in `onCellTap` (checkbox column routes to
+        // `_handleCheckboxTap`, other cells route to `_singleSelectRow`).
         // The assertions below verify the observable invariant: the inspector
-        // tracks row selection deterministically.
+        // tracks single-selection deterministically.
         final issues = [
           ValidationIssue(
             versionId: 'v1',
@@ -617,6 +618,66 @@ void main() {
       });
     });
 
+    group('Shortcuts', () {
+      testWidgets('Ctrl+A toggles select-all for filtered issues',
+          (tester) async {
+        final issues = [
+          ValidationIssue(
+            versionId: 'v1',
+            unitId: 'u1',
+            unitKey: 'k1',
+            sourceText: 'source one',
+            translatedText: 't1',
+            description: 'd1',
+            issueType: 'placeholder',
+            severity: ValidationSeverity.error,
+          ),
+          ValidationIssue(
+            versionId: 'v2',
+            unitId: 'u2',
+            unitKey: 'k2',
+            sourceText: 'source two',
+            translatedText: 't2',
+            description: 'd2',
+            issueType: 'placeholder',
+            severity: ValidationSeverity.warning,
+          ),
+        ];
+
+        await tester.pumpWidget(createThemedTestableWidget(
+          ValidationReviewScreen(
+            issues: issues,
+            totalValidated: 2,
+            passedCount: 0,
+            onRejectTranslation: (_) async {},
+            onAcceptTranslation: (_) async {},
+          ),
+          theme: AppTheme.atelierDarkTheme,
+        ));
+        await tester.pumpAndSettle();
+
+        // Initially nothing is selected -> inspector shows empty state.
+        expect(find.textContaining('Select an issue'), findsOneWidget);
+
+        // Ctrl+A selects all visible issues.
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+
+        // Two issues selected -> inspector shows the multi-select header.
+        expect(find.textContaining('2 issues selected'), findsOneWidget);
+
+        // Second Ctrl+A clears the selection -> back to the empty state.
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('Select an issue'), findsOneWidget);
+      });
+    });
+
     group('Filter Pruning', () {
       testWidgets('filter hiding the current row clears the inspector',
           (tester) async {
@@ -667,10 +728,11 @@ void main() {
         );
 
         // Tap the "Errors" filter pill in the toolbar. This hides v2 (warning)
-        // from _filteredIssues and should null out _currentVersionId via
-        // _pruneStaleCurrentIfFiltered (regression coverage for commit e988179).
-        // The word "Errors" appears in the header too, so scope the tap to the
-        // toolbar's filter pill.
+        // from _filteredIssues. Under the unified selection model, the filter
+        // change also wipes `_selectedVersionIds` wholesale (pre-existing UX
+        // preserved in `_setFilter`), so the inspector returns to the empty
+        // placeholder. The word "Errors" appears in the header too, so scope
+        // the tap to the toolbar's filter pill.
         await tester.tap(find.descendant(
           of: find.byType(ValidationReviewToolbar),
           matching: find.text('Errors'),

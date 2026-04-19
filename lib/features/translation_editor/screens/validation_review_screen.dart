@@ -5,6 +5,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 import '../widgets/validation_review_data_source.dart';
@@ -21,13 +22,13 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
   final Future<void> Function(ValidationIssue issue) onRejectTranslation;
   final Future<void> Function(ValidationIssue issue) onAcceptTranslation;
   final Future<void> Function(List<ValidationIssue> issues)?
-      onBulkAcceptTranslation;
+  onBulkAcceptTranslation;
   final Future<void> Function(List<ValidationIssue> issues)?
-      onBulkRejectTranslation;
+  onBulkRejectTranslation;
   final Future<void> Function(ValidationIssue issue, String newText)?
-      onEditTranslation;
+  onEditTranslation;
   final Future<void> Function(String filePath, List<ValidationIssue> issues)?
-      onExportReport;
+  onExportReport;
   final VoidCallback? onClose;
 
   const ValidationReviewScreen({
@@ -56,8 +57,9 @@ class _ValidationReviewScreenState
   final Set<String> _selectedVersionIds = {};
   final Set<String> _processedVersionIds = {};
   final Set<String> _processingVersionIds = {};
-  String? _currentVersionId;
-  final FocusNode _gridFocusNode = FocusNode(debugLabel: 'ValidationReviewGrid');
+  final FocusNode _gridFocusNode = FocusNode(
+    debugLabel: 'ValidationReviewGrid',
+  );
   ValidationSeverityFilter _severityFilter = ValidationSeverityFilter.all;
   String _searchQuery = '';
 
@@ -134,9 +136,16 @@ class _ValidationReviewScreenState
     _updateDataSource();
   }
 
-  void _selectCurrentRow(String versionId) {
-    if (_currentVersionId == versionId) return;
-    setState(() => _currentVersionId = versionId);
+  /// Replaces the bulk selection with a single row. Called by non-checkbox
+  /// cell taps and by arrow-key navigation. The editor uses the same pattern:
+  /// clicking a row clears the multi-selection and single-selects it.
+  void _singleSelectRow(String versionId) {
+    setState(() {
+      _selectedVersionIds
+        ..clear()
+        ..add(versionId);
+    });
+    _updateDataSource();
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -156,14 +165,18 @@ class _ValidationReviewScreenState
     final issues = _filteredIssues;
     if (issues.isEmpty) return KeyEventResult.ignored;
 
-    final currentIndex =
-        issues.indexWhere((i) => i.versionId == _currentVersionId);
+    // Arrow keys only nudge a *single* selection. Multi/zero selections
+    // fall through to let the user click or Ctrl+A first.
+    if (_selectedVersionIds.length != 1) return KeyEventResult.ignored;
+
+    final currentId = _selectedVersionIds.first;
+    final currentIndex = issues.indexWhere((i) => i.versionId == currentId);
     if (currentIndex < 0) return KeyEventResult.ignored;
 
     final newIndex = (currentIndex + delta).clamp(0, issues.length - 1);
     if (newIndex == currentIndex) return KeyEventResult.handled;
 
-    _selectCurrentRow(issues[newIndex].versionId);
+    _singleSelectRow(issues[newIndex].versionId);
     return KeyEventResult.handled;
   }
 
@@ -340,109 +353,167 @@ class _ValidationReviewScreenState
   void _setFilter(ValidationSeverityFilter filter) {
     setState(() {
       _severityFilter = filter;
+      // Changing the severity filter wholesale is treated like "pick a fresh
+      // review queue" — drop the bulk selection so the next batch Accept/Reject
+      // operates on the new visible set, not on stale ids that happen to still
+      // match.
       _selectedVersionIds.clear();
-      _pruneStaleCurrentIfFiltered();
     });
     _updateDataSource();
   }
 
-  /// Clears `_currentVersionId` when it refers to a row that is no longer
-  /// visible under the active filters, so the inspector and keyboard
-  /// navigation stay consistent with what is shown.
-  void _pruneStaleCurrentIfFiltered() {
-    if (_currentVersionId == null) return;
-    final stillVisible = _filteredIssues.any(
-      (i) => i.versionId == _currentVersionId,
-    );
-    if (!stillVisible) _currentVersionId = null;
+  /// Removes ids from `_selectedVersionIds` that are no longer in the
+  /// filtered set, so the inspector and keyboard navigation stay consistent
+  /// with what is shown. Called from search-change (filter-change already
+  /// wipes the selection wholesale).
+  void _pruneSelectionToFilteredSet() {
+    final visible = _filteredIssues.map((i) => i.versionId).toSet();
+    _selectedVersionIds.removeWhere((id) => !visible.contains(id));
+  }
+
+  /// Ctrl+A handler: toggle bulk selection (`_selectedVersionIds`) over every
+  /// issue currently visible in the DataGrid (after severity + search filters).
+  ///
+  /// - No selection -> select every filtered issue.
+  /// - Partial selection -> expand to every filtered issue.
+  /// - Every filtered issue already selected -> clear - giving Ctrl+A a
+  ///   familiar toggle feel.
+  void _toggleSelectAllFilteredIssues() {
+    final ids = _filteredIssues.map((i) => i.versionId).toList();
+    if (ids.isEmpty) return;
+
+    final allSelected = ids.every((id) => _selectedVersionIds.contains(id));
+
+    setState(() {
+      _selectedVersionIds.clear();
+      if (!allSelected) {
+        _selectedVersionIds.addAll(ids);
+      }
+    });
+    _updateDataSource();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final errorCount =
-        _activeIssues.where((i) => i.severity == ValidationSeverity.error).length;
-    final warningCount =
-        _activeIssues.where((i) => i.severity == ValidationSeverity.warning).length;
+    final errorCount = _activeIssues
+        .where((i) => i.severity == ValidationSeverity.error)
+        .length;
+    final warningCount = _activeIssues
+        .where((i) => i.severity == ValidationSeverity.warning)
+        .length;
     final currentPassedCount = widget.passedCount + _processedVersionIds.length;
 
-    final currentIssueIndex = _currentVersionId == null
+    final selectedCount = _selectedVersionIds.length;
+    final String? singleSelectedId = selectedCount == 1
+        ? _selectedVersionIds.first
+        : null;
+    final singleSelectedIndex = singleSelectedId == null
         ? -1
-        : _filteredIssues.indexWhere((i) => i.versionId == _currentVersionId);
-    final currentIssue =
-        currentIssueIndex >= 0 ? _filteredIssues[currentIssueIndex] : null;
-    final isCurrentProcessing = _currentVersionId != null &&
-        _processingVersionIds.contains(_currentVersionId);
+        : _filteredIssues.indexWhere((i) => i.versionId == singleSelectedId);
+    final singleSelectedIssue = singleSelectedIndex >= 0
+        ? _filteredIssues[singleSelectedIndex]
+        : null;
+    final isSingleSelectedProcessing =
+        singleSelectedId != null &&
+        _processingVersionIds.contains(singleSelectedId);
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: Column(
-        children: [
-          // Header
-          ValidationReviewHeader(
-            totalValidated: widget.totalValidated,
-            activeIssuesCount: _activeIssues.length,
-            errorCount: errorCount,
-            warningCount: warningCount,
-            passedCount: currentPassedCount,
-            reviewedCount: _processedVersionIds.length,
-            onExport: _exportReport,
-            onClose: widget.onClose,
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
+            const _SelectAllIssuesIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _SelectAllIssuesIntent: _SelectAllIssuesAction(
+            _toggleSelectAllFilteredIssues,
           ),
-
-          // Toolbar
-          ValidationReviewToolbar(
-            severityFilter: _severityFilter,
-            selectedCount: _selectedVersionIds.length,
-            onFilterChanged: _setFilter,
-            onSearchChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-                _pruneStaleCurrentIfFiltered();
-              });
-              _updateDataSource();
-            },
-            onSelectAll: _selectAll,
-            onDeselectAll: _deselectAll,
-            onBulkAccept: _handleBulkAccept,
-            onBulkReject: _handleBulkReject,
-          ),
-
-          // DataGrid
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        },
+        // Autofocus anchor so the Shortcuts map is live the moment the screen
+        // mounts. Without it, `Shortcuts` only fires after the user clicks a
+        // focusable child. `skipTraversal: true` keeps this node out of Tab
+        // focus traversal.
+        child: Focus(
+          autofocus: true,
+          skipTraversal: true,
+          child: Scaffold(
+            backgroundColor: theme.colorScheme.surface,
+            body: Column(
               children: [
-                Expanded(
-                  child: _filteredIssues.isEmpty
-                      ? _buildEmptyState(theme)
-                      : _buildDataGrid(theme),
+                // Header
+                ValidationReviewHeader(
+                  totalValidated: widget.totalValidated,
+                  activeIssuesCount: _activeIssues.length,
+                  errorCount: errorCount,
+                  warningCount: warningCount,
+                  passedCount: currentPassedCount,
+                  reviewedCount: _processedVersionIds.length,
+                  onExport: _exportReport,
+                  onClose: widget.onClose,
                 ),
-                ValidationReviewInspectorPanel(
-                  currentIssue: currentIssue,
-                  currentIndex:
-                      currentIssue == null ? null : currentIssueIndex + 1,
-                  total: _filteredIssues.length,
-                  isProcessing: isCurrentProcessing,
-                  onEdit: currentIssue == null
-                      ? () {}
-                      : () => _handleEdit(currentIssue),
-                  onAccept: currentIssue == null
-                      ? () {}
-                      : () => _handleAccept(currentIssue),
-                  onReject: currentIssue == null
-                      ? () {}
-                      : () => _handleReject(currentIssue),
+
+                // Toolbar
+                ValidationReviewToolbar(
+                  severityFilter: _severityFilter,
+                  selectedCount: _selectedVersionIds.length,
+                  onFilterChanged: _setFilter,
+                  onSearchChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                      _pruneSelectionToFilteredSet();
+                    });
+                    _updateDataSource();
+                  },
+                  onSelectAll: _selectAll,
+                  onDeselectAll: _deselectAll,
+                  onBulkAccept: _handleBulkAccept,
+                  onBulkReject: _handleBulkReject,
+                ),
+
+                // DataGrid
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _filteredIssues.isEmpty
+                            ? _buildEmptyState(theme)
+                            : _buildDataGrid(theme),
+                      ),
+                      ValidationReviewInspectorPanel(
+                        currentIssue: singleSelectedIssue,
+                        currentIndex: singleSelectedIssue == null
+                            ? null
+                            : singleSelectedIndex + 1,
+                        total: _filteredIssues.length,
+                        isProcessing: isSingleSelectedProcessing,
+                        selectedCount: selectedCount,
+                        onEdit: singleSelectedIssue == null
+                            ? () {}
+                            : () => _handleEdit(singleSelectedIssue),
+                        onAccept: singleSelectedIssue == null
+                            ? () {}
+                            : () => _handleAccept(singleSelectedIssue),
+                        onReject: singleSelectedIssue == null
+                            ? () {}
+                            : () => _handleReject(singleSelectedIssue),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildDataGrid(ThemeData theme) {
+    // Token-aware selected-row tint, plumbed in every build like the editor
+    // grid (see editor_datagrid.dart `setSelectedRowColor`).
+    _dataSource.setSelectedRowColor(context.tokens.accentBg);
+
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Container(
@@ -474,24 +545,14 @@ class _ValidationReviewScreenState
                   label: _buildCheckboxHeaderCell(theme),
                 ),
                 GridColumn(
-                  columnName: 'severity',
-                  width: 100,
-                  label: _buildHeaderCell(theme, 'Severity'),
-                ),
-                GridColumn(
-                  columnName: 'issueType',
-                  width: 140,
-                  label: _buildHeaderCell(theme, 'Issue Type'),
-                ),
-                GridColumn(
                   columnName: 'key',
                   width: 200,
                   label: _buildHeaderCell(theme, 'Key'),
                 ),
                 GridColumn(
                   columnName: 'description',
-                  width: 250,
-                  label: _buildHeaderCell(theme, 'Description'),
+                  minimumWidth: 200,
+                  label: _buildHeaderCell(theme, 'Issue'),
                 ),
                 GridColumn(
                   columnName: 'sourceText',
@@ -514,7 +575,7 @@ class _ValidationReviewScreenState
                   _handleCheckboxTap(issue.versionId);
                   return;
                 }
-                _selectCurrentRow(issue.versionId);
+                _singleSelectRow(issue.versionId);
                 _gridFocusNode.requestFocus();
               },
             ),
@@ -540,9 +601,11 @@ class _ValidationReviewScreenState
   }
 
   Widget _buildCheckboxHeaderCell(ThemeData theme) {
-    final allSelected = _filteredIssues.isNotEmpty &&
+    final allSelected =
+        _filteredIssues.isNotEmpty &&
         _selectedVersionIds.length == _filteredIssues.length;
-    final someSelected = _selectedVersionIds.isNotEmpty &&
+    final someSelected =
+        _selectedVersionIds.isNotEmpty &&
         _selectedVersionIds.length < _filteredIssues.length;
 
     return Container(
@@ -581,12 +644,12 @@ class _ValidationReviewScreenState
                     color: Colors.white,
                   )
                 : someSelected
-                    ? const Icon(
-                        FluentIcons.subtract_12_filled,
-                        size: 14,
-                        color: Colors.white,
-                      )
-                    : null,
+                ? const Icon(
+                    FluentIcons.subtract_12_filled,
+                    size: 14,
+                    color: Colors.white,
+                  )
+                : null,
           ),
         ),
       ),
@@ -638,5 +701,37 @@ class _ValidationReviewScreenState
         ],
       ),
     );
+  }
+}
+
+class _SelectAllIssuesIntent extends Intent {
+  const _SelectAllIssuesIntent();
+}
+
+/// Action for [_SelectAllIssuesIntent] that declines the key event when focus
+/// sits inside an [EditableText]. Returning `false` from [consumesKey] makes
+/// the enclosing `Shortcuts` widget report `KeyEventResult.ignored`, so the
+/// native Ctrl+A "select all text" behaviour keeps working while the user is
+/// typing in the toolbar search field.
+class _SelectAllIssuesAction extends Action<_SelectAllIssuesIntent> {
+  _SelectAllIssuesAction(this._onInvoke);
+
+  final VoidCallback _onInvoke;
+
+  static bool _focusIsInTextInput() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null) return false;
+    if (ctx.widget is EditableText) return true;
+    return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  @override
+  bool consumesKey(_SelectAllIssuesIntent intent) => !_focusIsInTextInput();
+
+  @override
+  Object? invoke(_SelectAllIssuesIntent intent) {
+    if (_focusIsInTextInput()) return null;
+    _onInvoke();
+    return null;
   }
 }

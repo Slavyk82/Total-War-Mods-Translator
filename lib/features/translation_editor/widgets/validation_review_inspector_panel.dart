@@ -10,9 +10,12 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Width is user-resizable via the drag handle on the left edge, backed by
 /// [validationInspectorWidthProvider] and clamped to `[minWidth, maxWidth]`.
 ///
-/// Three render branches:
+/// Four render branches, resolved in order:
+/// - `selectedCount > 1` -> multi-select header (count + bulk hint).
 /// - `currentIssue == null` -> empty placeholder.
-/// - `isProcessing` -> centred spinner.
+/// - `isProcessing` (single-select only) -> centred spinner. Bulk operations
+///   from the toolbar do not drive this branch — they leave the multi-select
+///   header in place.
 /// - otherwise -> full body (key chip + severity + source/translation blocks +
 ///   Edit/Accept/Reject action row).
 class ValidationReviewInspectorPanel extends ConsumerWidget {
@@ -20,6 +23,7 @@ class ValidationReviewInspectorPanel extends ConsumerWidget {
   final int? currentIndex;
   final int total;
   final bool isProcessing;
+  final int selectedCount;
   final VoidCallback onEdit;
   final VoidCallback onAccept;
   final VoidCallback onReject;
@@ -30,6 +34,7 @@ class ValidationReviewInspectorPanel extends ConsumerWidget {
     required this.currentIndex,
     required this.total,
     required this.isProcessing,
+    required this.selectedCount,
     required this.onEdit,
     required this.onAccept,
     required this.onReject,
@@ -41,7 +46,9 @@ class ValidationReviewInspectorPanel extends ConsumerWidget {
     final width = ref.watch(validationInspectorWidthProvider);
 
     final Widget body;
-    if (currentIssue == null) {
+    if (selectedCount > 1) {
+      body = _MultiSelectHeader(count: selectedCount, tokens: tokens);
+    } else if (currentIssue == null) {
       body = _EmptyState(tokens: tokens);
     } else if (isProcessing) {
       body = const _ProcessingState();
@@ -498,4 +505,33 @@ class _ActionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Header shown when the user has selected multiple validation issues via
+/// checkboxes. Mirrors the editor's `_MultiSelectHeader` but adds a hint
+/// pointing the user at the toolbar's bulk Accept/Reject buttons.
+class _MultiSelectHeader extends StatelessWidget {
+  final int count;
+  final TwmtThemeTokens tokens;
+  const _MultiSelectHeader({required this.count, required this.tokens});
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$count issues selected',
+            style: tokens.fontDisplay.copyWith(
+              fontStyle: tokens.fontDisplayStyle,
+              fontSize: 16,
+              color: tokens.accent,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Use the toolbar buttons to accept or reject the selection in bulk.',
+            style: TextStyle(color: tokens.textMid, fontSize: 12),
+          ),
+        ],
+      );
 }

@@ -28,6 +28,7 @@ void main() {
           currentIndex: null,
           total: 0,
           isProcessing: false,
+          selectedCount: 0,
           onEdit: () {},
           onAccept: () {},
           onReject: () {},
@@ -60,6 +61,7 @@ void main() {
           currentIndex: 1,
           total: 5,
           isProcessing: false,
+          selectedCount: 1,
           onEdit: () {},
           onAccept: () {},
           onReject: () {},
@@ -96,6 +98,7 @@ void main() {
           currentIndex: 1,
           total: 1,
           isProcessing: true,
+          selectedCount: 1,
           onEdit: () {},
           onAccept: () {},
           onReject: () {},
@@ -106,5 +109,27 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('renders multi-select header when multiple issues selected',
+      (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      Scaffold(
+        body: ValidationReviewInspectorPanel(
+          currentIssue: null,
+          currentIndex: null,
+          total: 5,
+          isProcessing: false,
+          selectedCount: 3,
+          onEdit: () {},
+          onAccept: () {},
+          onReject: () {},
+        ),
+      ),
+      theme: AppTheme.atelierDarkTheme,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('3 issues selected'), findsOneWidget);
   });
 }
