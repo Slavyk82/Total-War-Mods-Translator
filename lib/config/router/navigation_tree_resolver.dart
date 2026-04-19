@@ -48,14 +48,28 @@ class NavigationTreeResolver {
   }
 
   /// Returns the default landing route for a URL [segment] that matches a
-  /// `NavGroup` label (lower-cased). Used by the breadcrumb to resolve clicks
-  /// on a group crumb like "Work" to its first item (`/work/home`).
+  /// `NavGroup` label (lower-cased) or maps to one via [_segmentLabels].
+  /// Used by the breadcrumb to resolve clicks on a group crumb like "Tools"
+  /// (URL segment `resources`) to its first item (`/resources/glossary`).
   ///
+  /// Groups with an empty label are skipped — they exist only as a visual
+  /// container for top-level uncategorised items and have no crumb segment.
   /// Returns null if the segment is not a group label.
   static String? defaultRouteForGroupSegment(String segment) {
     for (final group in navigationTree) {
+      if (group.label.isEmpty) continue;
       if (group.label.toLowerCase() == segment) {
         return group.items.first.route;
+      }
+    }
+    // Fall back to URL-segment → display-label mapping so renamed groups
+    // stay reachable via their URL segment (e.g. 'resources' → 'Tools').
+    final mappedLabel = _segmentLabels[segment];
+    if (mappedLabel != null && mappedLabel.isNotEmpty) {
+      for (final group in navigationTree) {
+        if (group.label == mappedLabel) {
+          return group.items.first.route;
+        }
       }
     }
     return null;
@@ -66,7 +80,7 @@ const Map<String, String> _segmentLabels = {
   // Group segments
   'sources': 'Sources',
   'work': 'Work',
-  'resources': 'Resources',
+  'resources': 'Tools',
   'publishing': 'Publishing',
   'system': 'System',
   // Item segments

@@ -99,14 +99,17 @@ void main() {
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
   });
 
-  testWidgets('renders all four group headers in order', (tester) async {
+  testWidgets('renders group headers in order (top group has no header)',
+      (tester) async {
     await tester.pumpWidget(_wrap('/work/home'));
     await tester.pumpAndSettle();
     _drainOverflowExceptions(tester);
 
-    for (final label in ['Workflow', 'Work', 'Resources', 'System']) {
+    for (final label in ['Workflow', 'Tools', 'System']) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
+    // The uncategorised top group must NOT render a 'Work' header.
+    expect(find.text('Work'), findsNothing);
   });
 
   testWidgets('renders every nav item', (tester) async {
@@ -132,13 +135,13 @@ void main() {
     // The active tile must expose a tracked semantic: we tag it with key
     // NavigationSidebar.activeItemKey.
     expect(find.byKey(NavigationSidebar.activeItemKey), findsOneWidget);
-    final text = tester.widget<Text>(
+    expect(
       find.descendant(
         of: find.byKey(NavigationSidebar.activeItemKey),
-        matching: find.byType(Text),
+        matching: find.text('Glossary'),
       ),
+      findsOneWidget,
     );
-    expect(text.data, 'Glossary');
   });
 
   testWidgets('highlights parent item for sub-route', (tester) async {
@@ -146,14 +149,16 @@ void main() {
     await tester.pumpAndSettle();
     _drainOverflowExceptions(tester);
 
+    // Translate is a Workflow step card which renders both a step-number
+    // badge and the label; we assert on the label text specifically.
     expect(find.byKey(NavigationSidebar.activeItemKey), findsOneWidget);
-    final text = tester.widget<Text>(
+    expect(
       find.descendant(
         of: find.byKey(NavigationSidebar.activeItemKey),
-        matching: find.byType(Text),
+        matching: find.text('Translate'),
       ),
+      findsOneWidget,
     );
-    expect(text.data, 'Translate');
   });
 
   testWidgets('tapping a nav item fires onNavigate with target route',

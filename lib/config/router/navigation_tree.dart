@@ -35,7 +35,24 @@ class NavItem {
 
 /// Single source of truth for the sidebar structure and breadcrumb label
 /// resolution. Mutating this list is a user-facing change — update spec first.
+///
+/// A group with an empty [NavGroup.label] renders its items without a header
+/// (used for the top-level uncategorised shortcuts).
 const List<NavGroup> navigationTree = [
+  NavGroup('', [
+    NavItem(
+      label: 'Home',
+      route: AppRoutes.home,
+      icon: FluentIcons.home_24_regular,
+      selectedIcon: FluentIcons.home_24_filled,
+    ),
+    NavItem(
+      label: 'Help',
+      route: AppRoutes.help,
+      icon: FluentIcons.question_circle_24_regular,
+      selectedIcon: FluentIcons.question_circle_24_filled,
+    ),
+  ]),
   NavGroup('Workflow', [
     NavItem(
       label: 'Detect',
@@ -50,27 +67,13 @@ const List<NavGroup> navigationTree = [
       selectedIcon: FluentIcons.folder_24_filled,
     ),
     NavItem(
-      label: 'Compile',
-      route: AppRoutes.packCompilation,
-      icon: FluentIcons.box_multiple_24_regular,
-      selectedIcon: FluentIcons.box_multiple_24_filled,
-    ),
-    NavItem(
       label: 'Publish',
       route: AppRoutes.steamPublish,
       icon: FluentIcons.cloud_arrow_up_24_regular,
       selectedIcon: FluentIcons.cloud_arrow_up_24_filled,
     ),
   ]),
-  NavGroup('Work', [
-    NavItem(
-      label: 'Home',
-      route: AppRoutes.home,
-      icon: FluentIcons.home_24_regular,
-      selectedIcon: FluentIcons.home_24_filled,
-    ),
-  ]),
-  NavGroup('Resources', [
+  NavGroup('Tools', [
     NavItem(
       label: 'Glossary',
       route: AppRoutes.glossary,
@@ -89,6 +92,12 @@ const List<NavGroup> navigationTree = [
       icon: FluentIcons.globe_24_regular,
       selectedIcon: FluentIcons.globe_24_filled,
     ),
+    NavItem(
+      label: 'Compile',
+      route: AppRoutes.packCompilation,
+      icon: FluentIcons.box_multiple_24_regular,
+      selectedIcon: FluentIcons.box_multiple_24_filled,
+    ),
   ]),
   NavGroup('System', [
     NavItem(
@@ -96,12 +105,6 @@ const List<NavGroup> navigationTree = [
       route: AppRoutes.settings,
       icon: FluentIcons.settings_24_regular,
       selectedIcon: FluentIcons.settings_24_filled,
-    ),
-    NavItem(
-      label: 'Help',
-      route: AppRoutes.help,
-      icon: FluentIcons.question_circle_24_regular,
-      selectedIcon: FluentIcons.question_circle_24_filled,
     ),
   ]),
 ];

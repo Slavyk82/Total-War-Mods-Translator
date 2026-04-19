@@ -51,13 +51,17 @@ class NavigationSidebar extends ConsumerWidget {
                 const SizedBox(height: 8),
                 for (var i = 0; i < navigationTree.length; i++) ...[
                   if (i > 0) const SizedBox(height: 12),
-                  _GroupHeader(label: navigationTree[i].label),
-                  for (final item in navigationTree[i].items)
-                    _NavItemTile(
-                      item: item,
-                      isActive: active.item?.route == item.route,
-                      onTap: () => _dispatch(context, item.route),
-                    ),
+                  if (navigationTree[i].label.isNotEmpty)
+                    _GroupHeader(label: navigationTree[i].label),
+                  if (navigationTree[i].label == 'Workflow')
+                    ..._buildWorkflowCards(context, navigationTree[i], active)
+                  else
+                    for (final item in navigationTree[i].items)
+                      _NavItemTile(
+                        item: item,
+                        isActive: active.item?.route == item.route,
+                        onTap: () => _dispatch(context, item.route),
+                      ),
                 ],
               ],
             ),
@@ -74,6 +78,29 @@ class NavigationSidebar extends ConsumerWidget {
     } else {
       context.go(route);
     }
+  }
+
+  /// Builds the Workflow group as a stack of numbered cards separated by
+  /// small down-chevrons so the pipeline direction is obvious at a glance.
+  List<Widget> _buildWorkflowCards(
+    BuildContext context,
+    NavGroup group,
+    NavigationActive active,
+  ) {
+    final widgets = <Widget>[];
+    for (var step = 0; step < group.items.length; step++) {
+      final item = group.items[step];
+      widgets.add(_WorkflowStepCard(
+        item: item,
+        step: step + 1,
+        isActive: active.item?.route == item.route,
+        onTap: () => _dispatch(context, item.route),
+      ));
+      if (step < group.items.length - 1) {
+        widgets.add(const _WorkflowStepArrow());
+      }
+    }
+    return widgets;
   }
 }
 
@@ -228,6 +255,137 @@ class _NavItemTileState extends State<_NavItemTile> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Card-style tile for the Workflow pipeline. Renders a step number,
+/// the item icon and label inside a bordered container so the pipeline
+/// reads as a sequence of cards rather than flat menu rows.
+class _WorkflowStepCard extends StatefulWidget {
+  const _WorkflowStepCard({
+    required this.item,
+    required this.step,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final NavItem item;
+  final int step;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  State<_WorkflowStepCard> createState() => _WorkflowStepCardState();
+}
+
+class _WorkflowStepCardState extends State<_WorkflowStepCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final active = widget.isActive;
+    final hovered = _hover;
+
+    final borderColor = active
+        ? tokens.accent
+        : (hovered ? tokens.accent.withValues(alpha: 0.5) : tokens.border);
+    final bg = active
+        ? tokens.accentBg
+        : (hovered ? tokens.panel2 : tokens.panel);
+    final fg = active ? tokens.accent : tokens.text;
+    final badgeBg = active ? tokens.accent : tokens.panel2;
+    final badgeFg = active ? tokens.accentFg : tokens.textDim;
+    final badgeBorder =
+        active ? tokens.accent : tokens.border;
+
+    return Padding(
+      key: active ? NavigationSidebar.activeItemKey : null,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(tokens.radiusMd),
+              border: Border.all(
+                color: borderColor,
+                width: active ? 1.5 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: badgeBorder, width: 1),
+                  ),
+                  child: Text(
+                    '${widget.step}',
+                    style: tokens.fontMono.copyWith(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: badgeFg,
+                      height: 1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  active ? widget.item.selectedIcon : widget.item.icon,
+                  size: 18,
+                  color: fg,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.item.label,
+                    style: TextStyle(
+                      color: fg,
+                      fontWeight:
+                          active ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small down-chevron painted between two [_WorkflowStepCard]s to make the
+/// pipeline direction explicit.
+class _WorkflowStepArrow extends StatelessWidget {
+  const _WorkflowStepArrow();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Center(
+        child: Icon(
+          FluentIcons.chevron_down_20_regular,
+          size: 14,
+          color: tokens.textDim,
         ),
       ),
     );

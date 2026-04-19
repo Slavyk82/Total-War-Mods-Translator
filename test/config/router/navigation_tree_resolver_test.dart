@@ -48,7 +48,7 @@ void main() {
     test('group segments resolve to group labels', () {
       expect(NavigationTreeResolver.labelForSegment('sources'), 'Sources');
       expect(NavigationTreeResolver.labelForSegment('work'), 'Work');
-      expect(NavigationTreeResolver.labelForSegment('resources'), 'Resources');
+      expect(NavigationTreeResolver.labelForSegment('resources'), 'Tools');
       expect(NavigationTreeResolver.labelForSegment('publishing'), 'Publishing');
       expect(NavigationTreeResolver.labelForSegment('system'), 'System');
     });
@@ -80,13 +80,14 @@ void main() {
   });
 
   group('NavigationTreeResolver.defaultRouteForGroupSegment', () {
-    test('returns first item route for each group', () {
+    test('returns first item route for each labelled group', () {
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('workflow'), AppRoutes.mods);
-      expect(NavigationTreeResolver.defaultRouteForGroupSegment('work'), AppRoutes.home);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('resources'), AppRoutes.glossary);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('system'), AppRoutes.settings);
     });
     test('returns null for non-group segments', () {
+      // 'work' is a URL segment but no sidebar group carries that label anymore.
+      expect(NavigationTreeResolver.defaultRouteForGroupSegment('work'), isNull);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('mods'), isNull);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('home'), isNull);
       expect(NavigationTreeResolver.defaultRouteForGroupSegment('unknown'), isNull);

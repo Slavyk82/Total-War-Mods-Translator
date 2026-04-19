@@ -236,7 +236,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
       children: [
         DetailScreenToolbar(
           crumbs: [
-            const CrumbSegment('Resources'),
+            const CrumbSegment('Tools'),
             const CrumbSegment('Glossary', route: AppRoutes.glossary),
             CrumbSegment(glossary.name),
           ],
