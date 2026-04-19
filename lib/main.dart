@@ -13,6 +13,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/features/bootstrap/widgets/validation_rescan_dialog.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
 import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
@@ -168,6 +169,15 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
           builder: (context) => const DataMigrationDialog(),
         );
       }
+    }
+
+    // After schema migrations, force a one-shot structured validation
+    // rescan. The dialog closes itself immediately when there is nothing
+    // to migrate, so fresh installs and already-migrated DBs pay zero cost.
+    if (!mounted) return;
+    final rescanContext = rootNavigatorKey.currentContext;
+    if (rescanContext != null && rescanContext.mounted) {
+      await ValidationRescanDialog.showAndRun(rescanContext, ref);
     }
 
     // After migrations, continue with other startup tasks
