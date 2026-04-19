@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/services/translation/models/validation_rule.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 
 /// DataSource for validation review DataGrid
@@ -150,6 +151,7 @@ class ValidationReviewDataSource extends DataGridSource {
   }
 
   Widget _buildIssueTypeCell(String issueType, ValidationSeverity severity) {
+    final label = _labelForIssueType(issueType);
     final isError = severity == ValidationSeverity.error;
     final color = isError ? Colors.red[700]! : Colors.orange[700]!;
 
@@ -164,7 +166,7 @@ class ValidationReviewDataSource extends DataGridSource {
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
-            issueType,
+            label,
             style: TextStyle(
               fontSize: 11,
               color: color,
@@ -175,6 +177,16 @@ class ValidationReviewDataSource extends DataGridSource {
         ),
       );
     });
+  }
+
+  /// Humanise the `issueType` rule code for the "Issue Type" column.
+  ///
+  /// Rows that pre-date structured persistence surface as `legacy`; the
+  /// label reflects that so the user can see they are pending a rescan.
+  String _labelForIssueType(String code) {
+    if (code == 'legacy') return 'Legacy';
+    final rule = ValidationRule.fromCodeName(code);
+    return rule?.label ?? code;
   }
 
   Widget _buildTextCell(
