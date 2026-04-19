@@ -299,19 +299,26 @@ void main() {
       expect(persistedVersions, hasLength(1));
       final version = persistedVersions.single;
       expect(version.status, TranslationVersionStatus.needsReview);
-      // validationIssues is persisted as a JSON-encoded array of messages.
-      // Decode it and assert the structural payload contains both the
-      // error and warning text, not a stringified Dart List.
+      // validationIssues is persisted as a JSON-encoded structured array
+      // of {rule, severity, message} objects (schema v1). Decode it and
+      // assert each entry carries the canonical fields.
       expect(version.validationIssues, isNotNull);
+      expect(version.validationSchemaVersion, 1);
       final raw = version.validationIssues!;
-      final parsed = jsonDecode(raw) as List;
+      final parsed = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+      expect(parsed.length, 2);
+      final messages = parsed.map((e) => e['message']).toList();
       expect(
-        parsed,
+        messages,
         containsAll(<String>[
           'Missing variable {0}',
           'Significantly shorter than source',
         ]),
       );
+      for (final entry in parsed) {
+        expect(entry, containsPair('rule', isA<String>()));
+        expect(entry, containsPair('severity', isA<String>()));
+      }
       // Even with issues the translation is written and history recorded.
       verify(() => historyService.recordChange(
             versionId: version.id,

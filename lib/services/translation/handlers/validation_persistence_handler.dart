@@ -129,7 +129,12 @@ class ValidationPersistenceHandler {
           status = TranslationVersionStatus.needsReview;
           // Persist as JSON array so readers can decode structurally
           // rather than parsing Dart's default List.toString() output.
-          validationIssuesJson = jsonEncode(result.allMessages);
+          // Structured format (schema v1): one {rule, severity, message}
+          // object per issue so downstream consumers can reason about the
+          // specific rule that flagged the translation.
+          validationIssuesJson = jsonEncode(
+            result.issues.map((i) => i.toJson()).toList(),
+          );
           _logger.debug('Translation has validation issues', {
             'batchId': batchId,
             'unitId': unit.id,
@@ -163,6 +168,7 @@ class ValidationPersistenceHandler {
           status: status,
           translationSource: translationSource,
           validationIssues: validationIssuesJson,
+          validationSchemaVersion: 1, // new structured format
           createdAt: now,
           updatedAt: now,
         );

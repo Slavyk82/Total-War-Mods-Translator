@@ -90,6 +90,16 @@ class TranslationVersion {
   @JsonKey(name: 'validation_issues')
   final String? validationIssues;
 
+  /// Schema version of [validationIssues].
+  ///
+  /// 0 = legacy `List<String>` or `List.toString()` format
+  /// 1 = structured `[{rule, severity, message}, ...]` introduced in 2026-04.
+  ///
+  /// New writes should use version 1; the startup rescan migrates version-0
+  /// rows to version 1.
+  @JsonKey(name: 'validation_schema_version', defaultValue: 0)
+  final int validationSchemaVersion;
+
   /// Unix timestamp when the version was created
   @JsonKey(name: 'created_at')
   final int createdAt;
@@ -107,6 +117,7 @@ class TranslationVersion {
     this.status = TranslationVersionStatus.pending,
     this.translationSource = TranslationSource.unknown,
     this.validationIssues,
+    this.validationSchemaVersion = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -155,6 +166,7 @@ class TranslationVersion {
     TranslationVersionStatus? status,
     TranslationSource? translationSource,
     String? validationIssues,
+    int? validationSchemaVersion,
     int? createdAt,
     int? updatedAt,
   }) {
@@ -167,6 +179,8 @@ class TranslationVersion {
       status: status ?? this.status,
       translationSource: translationSource ?? this.translationSource,
       validationIssues: validationIssues ?? this.validationIssues,
+      validationSchemaVersion:
+          validationSchemaVersion ?? this.validationSchemaVersion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
