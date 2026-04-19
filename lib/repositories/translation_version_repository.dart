@@ -715,7 +715,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   ///
   /// Returns the count of affected rows.
   Future<Result<int, TWMTDatabaseException>> updateValidationBatch(
-    List<({String versionId, String status, String? validationIssues})> updates,
+    List<({
+      String versionId,
+      String status,
+      String? validationIssues,
+      int schemaVersion,
+    })> updates,
   ) async {
     if (updates.isEmpty) {
       return const Ok(0);
@@ -740,10 +745,17 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
             UPDATE $tableName
             SET status = ?,
                 validation_issues = ?,
+                validation_schema_version = ?,
                 updated_at = ?
             WHERE id = ?
             ''',
-            [update.status, update.validationIssues, now, update.versionId],
+            [
+              update.status,
+              update.validationIssues,
+              update.schemaVersion,
+              now,
+              update.versionId,
+            ],
           );
           totalAffected += rowsAffected;
         }
@@ -811,6 +823,56 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       }
 
       return totalAffected;
+    });
+  }
+
+  /// Count translation_versions rows that still use the pre-structured
+  /// validation_issues format. Bounded to rows that have a translation so
+  /// the rescan only walks rows the validation service can act on.
+  Future<Result<int, TWMTDatabaseException>> countLegacyValidationRows() async {
+    return executeQuery(() async {
+      final rows = await database.rawQuery('''
+        SELECT COUNT(*) AS c FROM $tableName
+        WHERE validation_schema_version < 1
+          AND translated_text IS NOT NULL
+          AND TRIM(translated_text) <> ''
+      ''');
+      return (rows.first['c'] as int?) ?? 0;
+    });
+  }
+
+  /// Count rows already migrated to the structured format.
+  Future<Result<int, TWMTDatabaseException>> countMigratedValidationRows() async {
+    return executeQuery(() async {
+      final rows = await database.rawQuery('''
+        SELECT COUNT(*) AS c FROM $tableName
+        WHERE validation_schema_version >= 1
+      ''');
+      return (rows.first['c'] as int?) ?? 0;
+    });
+  }
+
+  /// Return the next page of legacy rows, ordered by id for deterministic
+  /// resume. Pass the last returned id as [afterId] to get the next page.
+  Future<Result<List<TranslationVersion>, TWMTDatabaseException>>
+      getLegacyValidationPage({
+    required int limit,
+    String? afterId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.rawQuery(
+        '''
+        SELECT * FROM $tableName
+        WHERE validation_schema_version < 1
+          AND translated_text IS NOT NULL
+          AND TRIM(translated_text) <> ''
+          ${afterId == null ? '' : 'AND id > ?'}
+        ORDER BY id ASC
+        LIMIT ?
+        ''',
+        [if (afterId != null) afterId, limit],
+      );
+      return maps.map(fromMap).toList();
     });
   }
 

@@ -263,8 +263,12 @@ mixin EditorActionsValidation on EditorActionsBase {
       var newIssues = 0;
       var cleared = 0;
       var unchanged = 0;
-      final pendingUpdates =
-          <({String versionId, String status, String? validationIssues})>[];
+      final pendingUpdates = <({
+        String versionId,
+        String status,
+        String? validationIssues,
+        int schemaVersion,
+      })>[];
 
       for (final version in translatedVersions) {
         scanned++;
@@ -311,6 +315,9 @@ mixin EditorActionsValidation on EditorActionsBase {
             versionId: version.id,
             status: newStatus.toDbValue,
             validationIssues: newValidationIssues,
+            // Legacy format still written here; Task 10 switches to structured
+            // JSON and bumps schemaVersion to 1.
+            schemaVersion: 0,
           ));
 
           if (newStatus == TranslationVersionStatus.needsReview) {
