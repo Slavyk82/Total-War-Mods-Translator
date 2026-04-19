@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -301,7 +302,9 @@ mixin EditorActionsValidation on EditorActionsBase {
           final result = validationResult.unwrap();
           if (result.hasErrors || result.hasWarnings) {
             newStatus = TranslationVersionStatus.needsReview;
-            newValidationIssues = result.allMessages.toString();
+            newValidationIssues = jsonEncode(
+              result.issues.map((i) => i.toJson()).toList(),
+            );
           }
         }
 
@@ -315,9 +318,7 @@ mixin EditorActionsValidation on EditorActionsBase {
             versionId: version.id,
             status: newStatus.toDbValue,
             validationIssues: newValidationIssues,
-            // Legacy format still written here; Task 10 switches to structured
-            // JSON and bumps schemaVersion to 1.
-            schemaVersion: 0,
+            schemaVersion: 1,
           ));
 
           if (newStatus == TranslationVersionStatus.needsReview) {
