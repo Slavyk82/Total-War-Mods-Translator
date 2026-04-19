@@ -41,7 +41,10 @@ class RescanState {
 }
 
 /// DI hook for the rescan service. Overridable from widget tests.
-@riverpod
+///
+/// `keepAlive: true` prevents auto-disposal between `ref.read()` and the
+/// time the dialog finally calls `ref.watch()` in its build method.
+@Riverpod(keepAlive: true)
 ValidationRescanService validationRescanService(Ref ref) {
   return ValidationRescanService(
     versionRepo: ref.read(translationVersionRepositoryProvider),
@@ -51,7 +54,12 @@ ValidationRescanService validationRescanService(Ref ref) {
   );
 }
 
-@riverpod
+/// `keepAlive: true` is required because `prepare()` is invoked via
+/// `ref.read(...notifier).prepare()` before any widget is watching the
+/// provider. Without it, the provider is auto-disposed during the async
+/// calibration pass inside `buildPlan()` and subsequent `state = ...`
+/// assignments throw "Ref disposed".
+@Riverpod(keepAlive: true)
 class ValidationRescanController extends _$ValidationRescanController {
   StreamSubscription<RescanProgress>? _sub;
 
