@@ -47,11 +47,6 @@ void main() {
               width: 160,
               label: const SizedBox.shrink(),
             ),
-            GridColumn(
-              columnName: 'actions',
-              width: 160,
-              label: const SizedBox.shrink(),
-            ),
           ],
         ),
       ),
@@ -74,7 +69,6 @@ void main() {
         ),
       ],
       isRowSelected: (_) => false,
-      isProcessing: (_) => false,
       onCheckboxTap: (_) {},
     );
 
@@ -100,7 +94,6 @@ void main() {
         ),
       ],
       isRowSelected: (_) => false,
-      isProcessing: (_) => false,
       onCheckboxTap: (_) {},
     );
 

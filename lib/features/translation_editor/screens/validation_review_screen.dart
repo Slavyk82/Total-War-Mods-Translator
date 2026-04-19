@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
 import '../widgets/validation_review_data_source.dart';
 import '../widgets/validation_review_header.dart';
+import '../widgets/validation_review_inspector_panel.dart';
 import '../widgets/validation_review_toolbar.dart';
 import '../widgets/validation_edit_dialog.dart';
 
@@ -54,6 +56,8 @@ class _ValidationReviewScreenState
   final Set<String> _selectedVersionIds = {};
   final Set<String> _processedVersionIds = {};
   final Set<String> _processingVersionIds = {};
+  String? _currentVersionId;
+  final FocusNode _gridFocusNode = FocusNode(debugLabel: 'ValidationReviewGrid');
   ValidationSeverityFilter _severityFilter = ValidationSeverityFilter.all;
   String _searchQuery = '';
 
@@ -102,19 +106,20 @@ class _ValidationReviewScreenState
     _dataSource = ValidationReviewDataSource(
       issues: _filteredIssues,
       isRowSelected: (versionId) => _selectedVersionIds.contains(versionId),
-      isProcessing: (versionId) => _processingVersionIds.contains(versionId),
       onCheckboxTap: _handleCheckboxTap,
     );
-    _dataSource.onAccept = _handleAccept;
-    _dataSource.onReject = _handleReject;
-    _dataSource.onEdit = _handleEdit;
+  }
+
+  @override
+  void dispose() {
+    _gridFocusNode.dispose();
+    super.dispose();
   }
 
   void _updateDataSource() {
     _dataSource.updateIssues(
       _filteredIssues,
       isRowSelected: (versionId) => _selectedVersionIds.contains(versionId),
-      isProcessing: (versionId) => _processingVersionIds.contains(versionId),
     );
   }
 
@@ -127,6 +132,39 @@ class _ValidationReviewScreenState
       }
     });
     _updateDataSource();
+  }
+
+  void _selectCurrentRow(String versionId) {
+    if (_currentVersionId == versionId) return;
+    setState(() => _currentVersionId = versionId);
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    final int delta;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      delta = 1;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      delta = -1;
+    } else {
+      return KeyEventResult.ignored;
+    }
+
+    final issues = _filteredIssues;
+    if (issues.isEmpty) return KeyEventResult.ignored;
+
+    final currentIndex =
+        issues.indexWhere((i) => i.versionId == _currentVersionId);
+    if (currentIndex < 0) return KeyEventResult.ignored;
+
+    final newIndex = (currentIndex + delta).clamp(0, issues.length - 1);
+    if (newIndex == currentIndex) return KeyEventResult.handled;
+
+    _selectCurrentRow(issues[newIndex].versionId);
+    return KeyEventResult.handled;
   }
 
   void _selectAll() {
@@ -303,8 +341,20 @@ class _ValidationReviewScreenState
     setState(() {
       _severityFilter = filter;
       _selectedVersionIds.clear();
+      _pruneStaleCurrentIfFiltered();
     });
     _updateDataSource();
+  }
+
+  /// Clears `_currentVersionId` when it refers to a row that is no longer
+  /// visible under the active filters, so the inspector and keyboard
+  /// navigation stay consistent with what is shown.
+  void _pruneStaleCurrentIfFiltered() {
+    if (_currentVersionId == null) return;
+    final stillVisible = _filteredIssues.any(
+      (i) => i.versionId == _currentVersionId,
+    );
+    if (!stillVisible) _currentVersionId = null;
   }
 
   @override
@@ -315,6 +365,14 @@ class _ValidationReviewScreenState
     final warningCount =
         _activeIssues.where((i) => i.severity == ValidationSeverity.warning).length;
     final currentPassedCount = widget.passedCount + _processedVersionIds.length;
+
+    final currentIssueIndex = _currentVersionId == null
+        ? -1
+        : _filteredIssues.indexWhere((i) => i.versionId == _currentVersionId);
+    final currentIssue =
+        currentIssueIndex >= 0 ? _filteredIssues[currentIssueIndex] : null;
+    final isCurrentProcessing = _currentVersionId != null &&
+        _processingVersionIds.contains(_currentVersionId);
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
@@ -338,7 +396,10 @@ class _ValidationReviewScreenState
             selectedCount: _selectedVersionIds.length,
             onFilterChanged: _setFilter,
             onSearchChanged: (value) {
-              setState(() => _searchQuery = value);
+              setState(() {
+                _searchQuery = value;
+                _pruneStaleCurrentIfFiltered();
+              });
               _updateDataSource();
             },
             onSelectAll: _selectAll,
@@ -349,9 +410,32 @@ class _ValidationReviewScreenState
 
           // DataGrid
           Expanded(
-            child: _filteredIssues.isEmpty
-                ? _buildEmptyState(theme)
-                : _buildDataGrid(theme),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _filteredIssues.isEmpty
+                      ? _buildEmptyState(theme)
+                      : _buildDataGrid(theme),
+                ),
+                ValidationReviewInspectorPanel(
+                  currentIssue: currentIssue,
+                  currentIndex:
+                      currentIssue == null ? null : currentIssueIndex + 1,
+                  total: _filteredIssues.length,
+                  isProcessing: isCurrentProcessing,
+                  onEdit: currentIssue == null
+                      ? () {}
+                      : () => _handleEdit(currentIssue),
+                  onAccept: currentIssue == null
+                      ? () {}
+                      : () => _handleAccept(currentIssue),
+                  onReject: currentIssue == null
+                      ? () {}
+                      : () => _handleReject(currentIssue),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -368,70 +452,72 @@ class _ValidationReviewScreenState
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: SfDataGrid(
-            source: _dataSource,
-            controller: _controller,
-            columnWidthMode: ColumnWidthMode.fill,
-            gridLinesVisibility: GridLinesVisibility.both,
-            headerGridLinesVisibility: GridLinesVisibility.both,
-            allowSorting: true,
-            allowColumnsResizing: true,
-            columnResizeMode: ColumnResizeMode.onResize,
-            rowHeight: 80,
-            headerRowHeight: 48,
-            columns: [
-              GridColumn(
-                columnName: 'checkbox',
-                width: 50,
-                allowSorting: false,
-                label: _buildCheckboxHeaderCell(theme),
-              ),
-              GridColumn(
-                columnName: 'severity',
-                width: 100,
-                label: _buildHeaderCell(theme, 'Severity'),
-              ),
-              GridColumn(
-                columnName: 'issueType',
-                width: 140,
-                label: _buildHeaderCell(theme, 'Issue Type'),
-              ),
-              GridColumn(
-                columnName: 'key',
-                width: 200,
-                label: _buildHeaderCell(theme, 'Key'),
-              ),
-              GridColumn(
-                columnName: 'description',
-                width: 250,
-                label: _buildHeaderCell(theme, 'Description'),
-              ),
-              GridColumn(
-                columnName: 'sourceText',
-                minimumWidth: 200,
-                label: _buildHeaderCell(theme, 'Source Text'),
-              ),
-              GridColumn(
-                columnName: 'translatedText',
-                minimumWidth: 200,
-                label: _buildHeaderCell(theme, 'Translation'),
-              ),
-              GridColumn(
-                columnName: 'actions',
-                width: 200,
-                allowSorting: false,
-                label: _buildHeaderCell(theme, 'Actions'),
-              ),
-            ],
-            onCellTap: (details) {
-              if (details.rowColumnIndex.rowIndex > 0 &&
-                  details.column.columnName == 'checkbox') {
+          child: Focus(
+            focusNode: _gridFocusNode,
+            onKeyEvent: _handleKeyEvent,
+            child: SfDataGrid(
+              source: _dataSource,
+              controller: _controller,
+              columnWidthMode: ColumnWidthMode.fill,
+              gridLinesVisibility: GridLinesVisibility.both,
+              headerGridLinesVisibility: GridLinesVisibility.both,
+              allowSorting: true,
+              allowColumnsResizing: true,
+              columnResizeMode: ColumnResizeMode.onResize,
+              rowHeight: 44,
+              headerRowHeight: 30,
+              columns: [
+                GridColumn(
+                  columnName: 'checkbox',
+                  width: 50,
+                  allowSorting: false,
+                  label: _buildCheckboxHeaderCell(theme),
+                ),
+                GridColumn(
+                  columnName: 'severity',
+                  width: 100,
+                  label: _buildHeaderCell(theme, 'Severity'),
+                ),
+                GridColumn(
+                  columnName: 'issueType',
+                  width: 140,
+                  label: _buildHeaderCell(theme, 'Issue Type'),
+                ),
+                GridColumn(
+                  columnName: 'key',
+                  width: 200,
+                  label: _buildHeaderCell(theme, 'Key'),
+                ),
+                GridColumn(
+                  columnName: 'description',
+                  width: 250,
+                  label: _buildHeaderCell(theme, 'Description'),
+                ),
+                GridColumn(
+                  columnName: 'sourceText',
+                  minimumWidth: 200,
+                  label: _buildHeaderCell(theme, 'Source Text'),
+                ),
+                GridColumn(
+                  columnName: 'translatedText',
+                  minimumWidth: 200,
+                  label: _buildHeaderCell(theme, 'Translation'),
+                ),
+              ],
+              onCellTap: (details) {
+                if (details.rowColumnIndex.rowIndex == 0) return; // header row
                 final rowIndex = details.rowColumnIndex.rowIndex - 1;
-                if (rowIndex < _filteredIssues.length) {
-                  _handleCheckboxTap(_filteredIssues[rowIndex].versionId);
+                if (rowIndex < 0 || rowIndex >= _filteredIssues.length) return;
+
+                final issue = _filteredIssues[rowIndex];
+                if (details.column.columnName == 'checkbox') {
+                  _handleCheckboxTap(issue.versionId);
+                  return;
                 }
-              }
-            },
+                _selectCurrentRow(issue.versionId);
+                _gridFocusNode.requestFocus();
+              },
+            ),
           ),
         ),
       ),

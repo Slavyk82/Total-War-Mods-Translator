@@ -8,31 +8,21 @@ import '../../../providers/batch/batch_operations_provider.dart';
 class ValidationReviewDataSource extends DataGridSource {
   List<ValidationIssue> _issues = [];
   bool Function(String versionId) _isRowSelected;
-  bool Function(String versionId) _isProcessing;
   final Function(String versionId) onCheckboxTap;
-
-  // Action callbacks set by the screen
-  Future<void> Function(ValidationIssue issue)? onAccept;
-  Future<void> Function(ValidationIssue issue)? onReject;
-  Future<void> Function(ValidationIssue issue)? onEdit;
 
   ValidationReviewDataSource({
     required List<ValidationIssue> issues,
     required bool Function(String versionId) isRowSelected,
-    required bool Function(String versionId) isProcessing,
     required this.onCheckboxTap,
   })  : _issues = issues,
-        _isRowSelected = isRowSelected,
-        _isProcessing = isProcessing;
+        _isRowSelected = isRowSelected;
 
   void updateIssues(
     List<ValidationIssue> issues, {
     required bool Function(String versionId) isRowSelected,
-    required bool Function(String versionId) isProcessing,
   }) {
     _issues = issues;
     _isRowSelected = isRowSelected;
-    _isProcessing = isProcessing;
     notifyListeners();
   }
 
@@ -58,7 +48,6 @@ class ValidationReviewDataSource extends DataGridSource {
             columnName: 'translatedText',
             value: issue.translatedText,
           ),
-          DataGridCell<ValidationIssue>(columnName: 'actions', value: issue),
         ]);
       }).toList();
 
@@ -71,10 +60,8 @@ class ValidationReviewDataSource extends DataGridSource {
     final description = row.getCells()[4].value as String;
     final sourceText = row.getCells()[5].value as String;
     final translatedText = row.getCells()[6].value as String;
-    final issue = row.getCells()[7].value as ValidationIssue;
 
     final isSelected = _isRowSelected(versionId);
-    final isProcessing = _isProcessing(versionId);
 
     return DataGridRowAdapter(
       color: isSelected ? Colors.blue.withValues(alpha: 0.08) : null,
@@ -86,7 +73,6 @@ class ValidationReviewDataSource extends DataGridSource {
         _buildTextCell(description),
         _buildTextCell(sourceText),
         _buildTextCell(translatedText, isHighlighted: true, severity: severity),
-        _buildActionsCell(issue, isProcessing),
       ],
     );
   }
@@ -210,7 +196,7 @@ class ValidationReviewDataSource extends DataGridSource {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         alignment: Alignment.centerLeft,
         color: backgroundColor,
-        child: SelectableText(
+        child: Text(
           text,
           style: TextStyle(
             fontSize: isKey ? 12 : 13,
@@ -218,95 +204,11 @@ class ValidationReviewDataSource extends DataGridSource {
             fontWeight: isKey ? FontWeight.w600 : FontWeight.normal,
             color: theme.colorScheme.onSurface,
           ),
-          maxLines: 3,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       );
     });
   }
 
-  Widget _buildActionsCell(ValidationIssue issue, bool isProcessing) {
-    return Builder(builder: (context) {
-      if (isProcessing) {
-        return const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        );
-      }
-
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildSmallActionButton(
-              context,
-              'Edit',
-              FluentIcons.edit_24_regular,
-              Colors.blue[700]!,
-              () {
-                if (onEdit != null) {
-                  onEdit!(issue);
-                }
-              },
-            ),
-            const SizedBox(width: 4),
-            _buildSmallActionButton(
-              context,
-              'Accept',
-              FluentIcons.checkmark_24_regular,
-              Colors.green[700]!,
-              () {
-                if (onAccept != null) {
-                  onAccept!(issue);
-                }
-              },
-            ),
-            const SizedBox(width: 4),
-            _buildSmallActionButton(
-              context,
-              'Reject',
-              FluentIcons.dismiss_24_regular,
-              Colors.red[700]!,
-              () {
-                if (onReject != null) {
-                  onReject!(issue);
-                }
-              },
-            ),
-          ],
-        ),
-      );
-    });
-  }
-
-  Widget _buildSmallActionButton(
-    BuildContext context,
-    String tooltip,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Tooltip(
-      message: tooltip,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: color.withValues(alpha: 0.5)),
-            ),
-            child: Icon(icon, size: 14, color: color),
-          ),
-        ),
-      ),
-    );
-  }
 }
