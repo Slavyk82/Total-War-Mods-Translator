@@ -76,7 +76,8 @@ void main() {
   tearDown(() => TestDatabase.close(db));
 
   group('ValidationRescanService.run', () {
-    test('processes every legacy row in 100-unit commits', () async {
+    test('processes every legacy row within commitBatchSize in one commit',
+        () async {
       await seed(legacy: 250, migrated: 0);
 
       final events = <RescanProgress>[];
@@ -84,8 +85,8 @@ void main() {
         events.add(p);
       }
 
-      // Commits happen at 100, 200, 250.
-      expect(events.map((e) => e.done).toList(), [100, 200, 250]);
+      // commitBatchSize = 10 000, so 250 rows fit in a single commit.
+      expect(events.map((e) => e.done).toList(), [250]);
       expect(
         (await versionRepo.countLegacyValidationRows()).unwrap(),
         0,

@@ -104,16 +104,18 @@ void main() {
   });
 
   test('interrupted rescan resumes cleanly on next run', () async {
-    await seedLegacy(250);
+    // Seed enough rows to exceed `commitBatchSize` so a mid-run stop
+    // leaves some legacy rows untouched.
+    await seedLegacy(ValidationRescanService.commitBatchSize + 500);
 
-    // Drain only the first progress event (covers ~1 commit batch = 100).
+    // Drain only the first progress event (one full commit batch).
     final firstEvent = await svc.run().first;
-    expect(firstEvent.done, 100);
+    expect(firstEvent.done, ValidationRescanService.commitBatchSize);
 
     // Some rows remain at schema_version = 0.
     final remainingAfterPartial =
         (await versionRepo.countLegacyValidationRows()).unwrap();
-    expect(remainingAfterPartial, 150);
+    expect(remainingAfterPartial, 500);
 
     // A fresh service instance picks up where we left off.
     final svc2 = ValidationRescanService(
@@ -130,7 +132,7 @@ void main() {
     );
     expect(
       (await versionRepo.countMigratedValidationRows()).unwrap(),
-      250,
+      ValidationRescanService.commitBatchSize + 500,
     );
   });
 

@@ -53,8 +53,8 @@ class RescanPlan {
 /// or process kills leave already-migrated rows at `validation_schema_version`
 /// = 1 and the remaining rows at 0, so a subsequent run resumes cleanly.
 class ValidationRescanService {
-  static const int pageSize = 500;
-  static const int commitBatchSize = 100;
+  static const int pageSize = 10000;
+  static const int commitBatchSize = 10000;
   static const int calibrationSamples = 20;
   static const int _etaWindow = 50;
 
