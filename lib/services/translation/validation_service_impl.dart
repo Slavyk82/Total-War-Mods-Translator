@@ -5,6 +5,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/services/translation/models/validation_rule.dart';
 import 'package:twmt/services/translation/utils/markup_tag_utils.dart';
 import 'package:twmt/services/translation/utils/text_parser_utils.dart';
 
@@ -218,6 +219,7 @@ class ValidationServiceImpl implements IValidationService {
   }) async {
     if (translatedText.trim().isEmpty) {
       return ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         message: 'Translation is empty',
         field: key,
@@ -236,6 +238,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check hard limit if provided
     if (maxLength != null && translatedText.length > maxLength) {
       return ValidationError(
+        rule: ValidationRule.length,
         severity: ValidationSeverity.error,
         message: 'Translation exceeds maximum length '
             '(${translatedText.length} > $maxLength)',
@@ -254,6 +257,7 @@ class ValidationServiceImpl implements IValidationService {
 
     if (ratio > maxRatio || ratio < (1 / maxRatio)) {
       return ValidationError(
+        rule: ValidationRule.length,
         severity: ValidationSeverity.warning,
         message: 'Translation length differs significantly from source '
             '(source: $sourceLength, translation: $translatedLength, '
@@ -297,6 +301,7 @@ class ValidationServiceImpl implements IValidationService {
       // Simple variables missing = error (e.g., {0}, %s must be preserved)
       if (missingSimpleVars.isNotEmpty) {
         return ValidationError(
+          rule: ValidationRule.variables,
           severity: ValidationSeverity.error,
           message:
               'Missing variables in translation: ${missingSimpleVars.join(', ')}',
@@ -308,6 +313,7 @@ class ValidationServiceImpl implements IValidationService {
       // These may contain display strings that should be translated
       if (missingTemplates.isNotEmpty) {
         return ValidationError(
+          rule: ValidationRule.variables,
           severity: ValidationSeverity.warning,
           message: 'Template expressions modified (may be intentional for '
               'display strings): ${missingTemplates.length} template(s)',
@@ -320,6 +326,7 @@ class ValidationServiceImpl implements IValidationService {
     final extraVars = translatedVars.where((v) => !sourceVars.contains(v));
     if (extraVars.isNotEmpty) {
       return ValidationError(
+        rule: ValidationRule.variables,
         severity: ValidationSeverity.error,
         message: 'Extra variables in translation: ${extraVars.join(', ')}',
         field: key,
@@ -342,6 +349,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check source tag balance first (data quality check)
     if (!MarkupTagUtils.areTagsBalanced(sourceTags)) {
       return ValidationError(
+        rule: ValidationRule.markup,
         severity: ValidationSeverity.warning,
         message:
             'Source text has unbalanced markup tags - may cause translation issues',
@@ -352,6 +360,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check if tags match
     if (sourceTags.length != translatedTags.length) {
       return ValidationError(
+        rule: ValidationRule.markup,
         severity: ValidationSeverity.error,
         message: 'Markup tag count mismatch '
             '(source: ${sourceTags.length}, translation: ${translatedTags.length})',
@@ -362,6 +371,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check tag balance in translation
     if (!MarkupTagUtils.areTagsBalanced(translatedTags)) {
       return ValidationError(
+        rule: ValidationRule.markup,
         severity: ValidationSeverity.error,
         message: 'Unbalanced markup tags in translation',
         field: key,
@@ -379,6 +389,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check for invalid UTF-8 characters
     if (translatedText.contains('\uFFFD')) {
       return ValidationError(
+        rule: ValidationRule.encoding,
         severity: ValidationSeverity.error,
         message: 'Invalid encoding: contains replacement character',
         field: key,
@@ -389,6 +400,7 @@ class ValidationServiceImpl implements IValidationService {
     final controlChars = RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]');
     if (controlChars.hasMatch(translatedText)) {
       return ValidationError(
+        rule: ValidationRule.encoding,
         severity: ValidationSeverity.warning,
         message: 'Contains invalid control characters',
         field: key,
@@ -422,6 +434,7 @@ class ValidationServiceImpl implements IValidationService {
 
     if (violations.isNotEmpty) {
       return ValidationError(
+        rule: ValidationRule.glossary,
         severity: ValidationSeverity.warning,
         message: 'Glossary terms not used: ${violations.join(', ')}',
         field: key,
@@ -442,6 +455,7 @@ class ValidationServiceImpl implements IValidationService {
       if (RegExp(r"'\s*(OR|AND)\s*'", caseSensitive: false)
           .hasMatch(translatedText)) {
         return ValidationError(
+          rule: ValidationRule.security,
           severity: ValidationSeverity.error,
           message: 'Potential SQL injection pattern detected',
           field: key,
@@ -453,6 +467,7 @@ class ValidationServiceImpl implements IValidationService {
     if (translatedText.contains('<script') ||
         translatedText.contains('javascript:')) {
       return ValidationError(
+        rule: ValidationRule.security,
         severity: ValidationSeverity.error,
         message: 'Potential script injection detected',
         field: key,
@@ -462,6 +477,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check for path traversal
     if (translatedText.contains('../') || translatedText.contains('..\\')) {
       return ValidationError(
+        rule: ValidationRule.security,
         severity: ValidationSeverity.warning,
         message: 'Potential path traversal pattern detected',
         field: key,
@@ -481,6 +497,7 @@ class ValidationServiceImpl implements IValidationService {
     if (translatedText.trimRight().endsWith('...') &&
         !sourceText.trimRight().endsWith('...')) {
       return ValidationError(
+        rule: ValidationRule.truncation,
         severity: ValidationSeverity.warning,
         message: 'Translation may be truncated (ends with ...)',
         field: key,
@@ -490,6 +507,7 @@ class ValidationServiceImpl implements IValidationService {
     // Check if significantly shorter than source
     if (translatedText.length < sourceText.length * 0.3) {
       return ValidationError(
+        rule: ValidationRule.truncation,
         severity: ValidationSeverity.warning,
         message: 'Translation is significantly shorter than source '
             '(may be truncated)',
@@ -512,6 +530,7 @@ class ValidationServiceImpl implements IValidationService {
     final repeatedWords = RegExp(r'\b(\w+)\s+\1\b', caseSensitive: false);
     if (repeatedWords.hasMatch(translatedText)) {
       mistakes.add(ValidationError(
+        rule: ValidationRule.repeatedWord,
         severity: ValidationSeverity.warning,
         message: 'Repeated word detected',
         field: key,
@@ -523,6 +542,7 @@ class ValidationServiceImpl implements IValidationService {
     if (endPunctuationPattern.hasMatch(sourceText.trimRight()) &&
         !endPunctuationPattern.hasMatch(translatedText.trimRight())) {
       mistakes.add(ValidationError(
+        rule: ValidationRule.endPunctuation,
         severity: ValidationSeverity.warning,
         message: 'Missing ending punctuation',
         field: key,
@@ -534,6 +554,7 @@ class ValidationServiceImpl implements IValidationService {
     final translatedNumbers = TextParserUtils.extractNumbers(translatedText);
     if (sourceNumbers.isNotEmpty && sourceNumbers != translatedNumbers) {
       mistakes.add(ValidationError(
+        rule: ValidationRule.numbers,
         severity: ValidationSeverity.warning,
         message: 'Numbers don\'t match source',
         field: key,

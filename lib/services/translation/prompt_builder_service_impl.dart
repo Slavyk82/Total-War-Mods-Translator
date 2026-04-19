@@ -9,6 +9,7 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 import 'package:twmt/services/translation/i_prompt_builder_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/services/translation/models/validation_rule.dart';
 
 /// Implementation of prompt builder service for LLM translation
 ///
@@ -460,6 +461,7 @@ OUTPUT FORMAT (JSON only, no other text):
     // Check system message
     if (prompt.systemMessage.trim().isEmpty) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         field: 'systemMessage',
         message: 'System message cannot be empty',
@@ -469,6 +471,7 @@ OUTPUT FORMAT (JSON only, no other text):
     // Check user message
     if (prompt.userMessage.trim().isEmpty) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         field: 'userMessage',
         message: 'User message cannot be empty',
@@ -478,6 +481,7 @@ OUTPUT FORMAT (JSON only, no other text):
     // Check unit count
     if (prompt.unitCount <= 0) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         field: 'unitCount',
         message: 'Must have at least one unit to translate',
@@ -490,6 +494,7 @@ OUTPUT FORMAT (JSON only, no other text):
 
     if (prompt.systemMessage.length > maxSystemLength) {
       errors.add(ValidationError(
+        rule: ValidationRule.length,
         severity: ValidationSeverity.error,
         field: 'systemMessage',
         message: 'System message exceeds maximum length '
@@ -499,6 +504,7 @@ OUTPUT FORMAT (JSON only, no other text):
 
     if (prompt.userMessage.length > maxUserLength) {
       errors.add(ValidationError(
+        rule: ValidationRule.length,
         severity: ValidationSeverity.error,
         field: 'userMessage',
         message: 'User message exceeds maximum length '

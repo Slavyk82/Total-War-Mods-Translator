@@ -15,6 +15,7 @@ import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/batch_estimate.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/services/translation/models/validation_rule.dart';
 
 /// Handles batch estimation, validation, and statistics calculations
 ///
@@ -198,6 +199,7 @@ class BatchEstimationHandler {
     // Validate batch ID
     if (batchId.trim().isEmpty) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         message: 'Batch ID cannot be empty',
         field: 'batchId',
@@ -207,6 +209,7 @@ class BatchEstimationHandler {
     // Validate context
     if (context.projectId.trim().isEmpty) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         message: 'Project ID cannot be empty',
         field: 'projectId',
@@ -215,6 +218,7 @@ class BatchEstimationHandler {
 
     if (context.targetLanguage.trim().isEmpty) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         message: 'Target language cannot be empty',
         field: 'targetLanguage',
@@ -225,6 +229,7 @@ class BatchEstimationHandler {
     final batchResult = await _batchRepository.getById(batchId);
     if (batchResult.isErr) {
       errors.add(ValidationError(
+        rule: ValidationRule.completeness,
         severity: ValidationSeverity.error,
         message: 'Batch does not exist in database',
         field: 'batchId',
