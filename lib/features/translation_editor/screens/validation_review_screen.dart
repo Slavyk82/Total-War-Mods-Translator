@@ -3,19 +3,35 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/crumb_segment.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/filter_pill.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/widgets/lists/small_icon_button.dart';
+import 'package:twmt/widgets/lists/token_data_grid_header.dart';
+import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../providers/batch/batch_operations_provider.dart';
+import '../providers/editor_providers.dart';
 import '../widgets/validation_review_data_source.dart';
-import '../widgets/validation_review_header.dart';
 import '../widgets/validation_review_inspector_panel.dart';
-import '../widgets/validation_review_toolbar.dart';
 import '../widgets/validation_edit_dialog.dart';
+
+/// Severity filter for the validation review screen. Matches the editor's
+/// filter pill pattern: no pill selected = all issues visible.
+enum ValidationSeverityFilter { all, errorsOnly, warningsOnly }
 
 /// Full-screen validation review with DataGrid for efficient handling of many issues.
 class ValidationReviewScreen extends ConsumerStatefulWidget {
+  final String projectId;
+  final String languageId;
   final List<ValidationIssue> issues;
   final int totalValidated;
   final int passedCount;
@@ -33,6 +49,8 @@ class ValidationReviewScreen extends ConsumerStatefulWidget {
 
   const ValidationReviewScreen({
     super.key,
+    required this.projectId,
+    required this.languageId,
     required this.issues,
     required this.totalValidated,
     required this.passedCount,
@@ -177,6 +195,14 @@ class _ValidationReviewScreenState
     if (newIndex == currentIndex) return KeyEventResult.handled;
 
     _singleSelectRow(issues[newIndex].versionId);
+    // Keep the newly selected row in view. `makeVisible` only nudges the
+    // viewport when the row is off-screen, avoiding the jumpy per-step snap
+    // (and focus-losing rebuild) that `DataGridScrollPosition.start` causes.
+    // Same rationale as `editor_datagrid.dart`.
+    _controller.scrollToRow(
+      newIndex.toDouble(),
+      position: DataGridScrollPosition.makeVisible,
+    );
     return KeyEventResult.handled;
   }
 
@@ -395,7 +421,7 @@ class _ValidationReviewScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.tokens;
     final errorCount = _activeIssues
         .where((i) => i.severity == ValidationSeverity.error)
         .length;
@@ -403,6 +429,11 @@ class _ValidationReviewScreenState
         .where((i) => i.severity == ValidationSeverity.warning)
         .length;
     final currentPassedCount = widget.passedCount + _processedVersionIds.length;
+
+    final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
+    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
+    final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
+    final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
     final selectedCount = _selectedVersionIds.length;
     final String? singleSelectedId = selectedCount == 1
@@ -417,6 +448,9 @@ class _ValidationReviewScreenState
     final isSingleSelectedProcessing =
         singleSelectedId != null &&
         _processingVersionIds.contains(singleSelectedId);
+
+    final activeIssueCount = _activeIssues.length;
+    final reviewedCount = _processedVersionIds.length;
 
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
@@ -436,49 +470,86 @@ class _ValidationReviewScreenState
         child: Focus(
           autofocus: true,
           skipTraversal: true,
-          child: Scaffold(
-            backgroundColor: theme.colorScheme.surface,
-            body: Column(
+          child: Material(
+            color: tokens.bg,
+            child: Column(
               children: [
-                // Header
-                ValidationReviewHeader(
-                  totalValidated: widget.totalValidated,
-                  activeIssuesCount: _activeIssues.length,
-                  errorCount: errorCount,
-                  warningCount: warningCount,
-                  passedCount: currentPassedCount,
-                  reviewedCount: _processedVersionIds.length,
-                  onExport: _exportReport,
-                  onClose: widget.onClose,
-                ),
-
-                // Toolbar
-                ValidationReviewToolbar(
-                  severityFilter: _severityFilter,
-                  selectedCount: _selectedVersionIds.length,
-                  onFilterChanged: _setFilter,
-                  onSearchChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                      _pruneSelectionToFilteredSet();
-                    });
-                    _updateDataSource();
+                DetailScreenToolbar(
+                  crumbs: [
+                    const CrumbSegment('Work'),
+                    const CrumbSegment('Projects', route: AppRoutes.projects),
+                    CrumbSegment(
+                      projectName,
+                      route: AppRoutes.projectDetail(widget.projectId),
+                    ),
+                    CrumbSegment(languageName),
+                    const CrumbSegment('Validation Review'),
+                  ],
+                  trailing: [
+                    if (widget.onExportReport != null)
+                      SmallIconButton(
+                        icon: FluentIcons.document_arrow_down_24_regular,
+                        tooltip: 'Export Report',
+                        size: 32,
+                        iconSize: 16,
+                        onTap: _exportReport,
+                      ),
+                  ],
+                  onBack: () {
+                    if (widget.onClose != null) {
+                      widget.onClose!();
+                    } else if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      Navigator.of(context).maybePop();
+                    }
                   },
-                  onSelectAll: _selectAll,
-                  onDeselectAll: _deselectAll,
-                  onBulkAccept: _handleBulkAccept,
-                  onBulkReject: _handleBulkReject,
                 ),
-
-                // DataGrid
+                FilterToolbar(
+                  leading: ListToolbarLeading(
+                    icon: FluentIcons.shield_checkmark_24_regular,
+                    title: 'Validation Review',
+                    countLabel: '$activeIssueCount issues',
+                  ),
+                  trailing: [
+                    if (selectedCount > 0)
+                      _BulkActionCluster(
+                        selectedCount: selectedCount,
+                        onAccept: _handleBulkAccept,
+                        onReject: _handleBulkReject,
+                        onDeselect: _deselectAll,
+                      ),
+                    ListSearchField(
+                      value: _searchQuery,
+                      hintText: 'Search key · source · target · issue',
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                          _pruneSelectionToFilteredSet();
+                        });
+                        _updateDataSource();
+                      },
+                      onClear: () {
+                        setState(() {
+                          _searchQuery = '';
+                          _pruneSelectionToFilteredSet();
+                        });
+                        _updateDataSource();
+                      },
+                    ),
+                  ],
+                  pillGroups: [
+                    _buildSeverityGroup(errorCount, warningCount),
+                  ],
+                ),
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(
                         child: _filteredIssues.isEmpty
-                            ? _buildEmptyState(theme)
-                            : _buildDataGrid(theme),
+                            ? _buildEmptyState()
+                            : _buildDataGrid(),
                       ),
                       ValidationReviewInspectorPanel(
                         currentIssue: singleSelectedIssue,
@@ -501,6 +572,12 @@ class _ValidationReviewScreenState
                     ],
                   ),
                 ),
+                _StatusBar(
+                  totalValidated: widget.totalValidated,
+                  passedCount: currentPassedCount,
+                  reviewedCount: reviewedCount,
+                  remainingCount: activeIssueCount,
+                ),
               ],
             ),
           ),
@@ -509,154 +586,149 @@ class _ValidationReviewScreenState
     );
   }
 
-  Widget _buildDataGrid(ThemeData theme) {
+  FilterPillGroup _buildSeverityGroup(int errorCount, int warningCount) {
+    FilterPill pill(
+      String label,
+      ValidationSeverityFilter filter,
+      int count,
+    ) {
+      final active = _severityFilter == filter;
+      return FilterPill(
+        label: label,
+        selected: active,
+        count: count,
+        onToggle: () {
+          // Toggle-to-clear: re-tapping the active pill returns to 'all',
+          // matching how the editor's status pills drop back to "no filter".
+          _setFilter(active ? ValidationSeverityFilter.all : filter);
+        },
+      );
+    }
+
+    return FilterPillGroup(
+      label: 'SEVERITY',
+      clearLabel: 'Clear',
+      onClear: () => _setFilter(ValidationSeverityFilter.all),
+      pills: [
+        pill('Errors', ValidationSeverityFilter.errorsOnly, errorCount),
+        pill('Warnings', ValidationSeverityFilter.warningsOnly, warningCount),
+      ],
+    );
+  }
+
+  Widget _buildDataGrid() {
     // Token-aware selected-row tint, plumbed in every build like the editor
     // grid (see editor_datagrid.dart `setSelectedRowColor`).
     _dataSource.setSelectedRowColor(context.tokens.accentBg);
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: theme.dividerColor),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Focus(
-            focusNode: _gridFocusNode,
-            onKeyEvent: _handleKeyEvent,
-            child: SfDataGrid(
-              source: _dataSource,
-              controller: _controller,
-              columnWidthMode: ColumnWidthMode.fill,
-              gridLinesVisibility: GridLinesVisibility.both,
-              headerGridLinesVisibility: GridLinesVisibility.both,
-              allowSorting: true,
-              allowColumnsResizing: true,
-              columnResizeMode: ColumnResizeMode.onResize,
-              rowHeight: 44,
-              headerRowHeight: 30,
-              columns: [
-                GridColumn(
-                  columnName: 'checkbox',
-                  width: 50,
-                  allowSorting: false,
-                  label: _buildCheckboxHeaderCell(theme),
-                ),
-                GridColumn(
-                  columnName: 'key',
-                  width: 200,
-                  label: _buildHeaderCell(theme, 'Key'),
-                ),
-                GridColumn(
-                  columnName: 'description',
-                  minimumWidth: 200,
-                  label: _buildHeaderCell(theme, 'Issue'),
-                ),
-                GridColumn(
-                  columnName: 'sourceText',
-                  minimumWidth: 200,
-                  label: _buildHeaderCell(theme, 'Source Text'),
-                ),
-                GridColumn(
-                  columnName: 'translatedText',
-                  minimumWidth: 200,
-                  label: _buildHeaderCell(theme, 'Translation'),
-                ),
-              ],
-              onCellTap: (details) {
-                if (details.rowColumnIndex.rowIndex == 0) return; // header row
-                final rowIndex = details.rowColumnIndex.rowIndex - 1;
-                if (rowIndex < 0 || rowIndex >= _filteredIssues.length) return;
+    return MouseRegion(
+      cursor: SystemMouseCursors.basic,
+      child: Focus(
+        focusNode: _gridFocusNode,
+        onKeyEvent: _handleKeyEvent,
+        child: SfDataGridTheme(
+          data: buildTokenDataGridTheme(context.tokens),
+          child: SfDataGrid(
+            source: _dataSource,
+            controller: _controller,
+            allowEditing: false,
+            allowSorting: false,
+            allowMultiColumnSorting: false,
+            selectionMode: SelectionMode.none,
+            navigationMode: GridNavigationMode.row,
+            columnWidthMode: ColumnWidthMode.fill,
+            gridLinesVisibility: GridLinesVisibility.horizontal,
+            headerGridLinesVisibility: GridLinesVisibility.horizontal,
+            rowHeight: 44,
+            headerRowHeight: 30,
+            columns: [
+              GridColumn(
+                columnName: 'checkbox',
+                width: 50,
+                allowSorting: false,
+                label: _buildCheckboxHeaderCell(),
+              ),
+              GridColumn(
+                columnName: 'key',
+                width: 150,
+                allowSorting: false,
+                label: const TokenDataGridHeader(text: 'KEY'),
+              ),
+              GridColumn(
+                columnName: 'description',
+                columnWidthMode: ColumnWidthMode.fill,
+                allowSorting: false,
+                label: const TokenDataGridHeader(text: 'ISSUE'),
+              ),
+              GridColumn(
+                columnName: 'sourceText',
+                columnWidthMode: ColumnWidthMode.fill,
+                allowSorting: false,
+                label: const TokenDataGridHeader(text: 'SOURCE'),
+              ),
+              GridColumn(
+                columnName: 'translatedText',
+                columnWidthMode: ColumnWidthMode.fill,
+                allowSorting: false,
+                label: const TokenDataGridHeader(text: 'TARGET'),
+              ),
+            ],
+            onCellTap: (details) {
+              if (details.rowColumnIndex.rowIndex == 0) return; // header row
+              final rowIndex = details.rowColumnIndex.rowIndex - 1;
+              if (rowIndex < 0 || rowIndex >= _filteredIssues.length) return;
 
-                final issue = _filteredIssues[rowIndex];
-                if (details.column.columnName == 'checkbox') {
-                  _handleCheckboxTap(issue.versionId);
-                  return;
-                }
-                _singleSelectRow(issue.versionId);
-                _gridFocusNode.requestFocus();
-              },
-            ),
+              final issue = _filteredIssues[rowIndex];
+              if (details.column.columnName == 'checkbox') {
+                _handleCheckboxTap(issue.versionId);
+                return;
+              }
+              _singleSelectRow(issue.versionId);
+              _gridFocusNode.requestFocus();
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildHeaderCell(ThemeData theme, String text) {
+  Widget _buildCheckboxHeaderCell() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      alignment: Alignment.centerLeft,
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Text(
-        text,
-        style: theme.textTheme.bodySmall?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: theme.colorScheme.onSurface,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCheckboxHeaderCell(ThemeData theme) {
-    final allSelected =
-        _filteredIssues.isNotEmpty &&
-        _selectedVersionIds.length == _filteredIssues.length;
-    final someSelected =
-        _selectedVersionIds.isNotEmpty &&
-        _selectedVersionIds.length < _filteredIssues.length;
-
-    return Container(
+      padding: const EdgeInsets.all(8.0),
       alignment: Alignment.center,
-      color: theme.colorScheme.surfaceContainerHighest,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
-          onTap: () {
-            if (allSelected) {
-              _deselectAll();
-            } else {
-              _selectAll();
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: allSelected || someSelected
-                  ? theme.colorScheme.primary
-                  : Colors.transparent,
-              border: Border.all(
-                color: allSelected || someSelected
-                    ? theme.colorScheme.primary
-                    : theme.dividerColor,
-                width: 2,
-              ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: allSelected
-                ? const Icon(
-                    FluentIcons.checkmark_12_filled,
-                    size: 14,
-                    color: Colors.white,
-                  )
-                : someSelected
-                ? const Icon(
-                    FluentIcons.subtract_12_filled,
-                    size: 14,
-                    color: Colors.white,
-                  )
-                : null,
+          onTap: _handleSelectAllCheckbox,
+          child: Checkbox(
+            value: _getSelectAllCheckboxState(),
+            tristate: true,
+            onChanged: (_) => _handleSelectAllCheckbox(),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState(ThemeData theme) {
+  /// Tri-state for the header checkbox: null = indeterminate (some selected),
+  /// true = every filtered row selected, false = none selected. Mirrors the
+  /// editor grid's `_getSelectAllCheckboxState`.
+  bool? _getSelectAllCheckboxState() {
+    if (_selectedVersionIds.isEmpty) return false;
+    if (_selectedVersionIds.length == _filteredIssues.length) return true;
+    return null;
+  }
+
+  void _handleSelectAllCheckbox() {
+    if (_getSelectAllCheckboxState() == true) {
+      _deselectAll();
+    } else {
+      _selectAll();
+    }
+  }
+
+  Widget _buildEmptyState() {
+    final tokens = context.tokens;
     final allReviewed = _processedVersionIds.length == widget.issues.length;
 
     return Center(
@@ -665,28 +737,31 @@ class _ValidationReviewScreenState
         children: [
           Icon(
             FluentIcons.checkmark_circle_24_regular,
-            size: 64,
-            color: Colors.green[700],
+            size: 56,
+            color: tokens.accent,
           ),
           const SizedBox(height: 16),
           Text(
             allReviewed
-                ? 'All issues have been reviewed!'
-                : 'No validation issues found!',
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: Colors.green[700],
+                ? 'All issues have been reviewed'
+                : 'No validation issues match the current filters',
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 16,
+              color: tokens.text,
+              fontStyle: tokens.fontDisplayStyle,
             ),
           ),
           if (_processedVersionIds.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               '${_processedVersionIds.length} issue(s) reviewed',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: tokens.fontMono.copyWith(
+                fontSize: 12,
+                color: tokens.textDim,
               ),
             ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           FluentButton(
             onPressed: () {
               if (widget.onClose != null) {
@@ -698,6 +773,128 @@ class _ValidationReviewScreenState
             icon: const Icon(FluentIcons.arrow_left_24_regular),
             child: const Text('Back to Editor'),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact bulk-action cluster shown in the `FilterToolbar` trailing slot
+/// when at least one issue is checked. Mirrors the tokenised action rail of
+/// the editor (panel2 fill, small mono label, accent/err foregrounds).
+class _BulkActionCluster extends StatelessWidget {
+  const _BulkActionCluster({
+    required this.selectedCount,
+    required this.onAccept,
+    required this.onReject,
+    required this.onDeselect,
+  });
+
+  final int selectedCount;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onDeselect;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$selectedCount selected',
+          style: tokens.fontMono.copyWith(
+            fontSize: 12,
+            color: tokens.textDim,
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(width: 10),
+        SmallIconButton(
+          icon: FluentIcons.checkmark_24_regular,
+          tooltip: 'Accept selected',
+          size: 32,
+          iconSize: 16,
+          foreground: tokens.accent,
+          onTap: onAccept,
+        ),
+        const SizedBox(width: 6),
+        SmallIconButton(
+          icon: FluentIcons.dismiss_24_regular,
+          tooltip: 'Reject selected',
+          size: 32,
+          iconSize: 16,
+          foreground: tokens.err,
+          onTap: onReject,
+        ),
+        const SizedBox(width: 6),
+        SmallIconButton(
+          icon: FluentIcons.dismiss_circle_24_regular,
+          tooltip: 'Deselect all',
+          size: 32,
+          iconSize: 16,
+          onTap: onDeselect,
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom status bar for the validation review screen. Mirrors
+/// [EditorStatusBar]: 28px tall, `panel` fill with a top border, mono-dim
+/// labels separated by mid-dot.
+class _StatusBar extends StatelessWidget {
+  const _StatusBar({
+    required this.totalValidated,
+    required this.passedCount,
+    required this.reviewedCount,
+    required this.remainingCount,
+  });
+
+  final int totalValidated;
+  final int passedCount;
+  final int reviewedCount;
+  final int remainingCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final monoStyle = tokens.fontMono.copyWith(
+      fontSize: 10.5,
+      color: tokens.textDim,
+      letterSpacing: 0.3,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final accentMonoStyle = monoStyle.copyWith(color: tokens.accent);
+    final separator = Text(
+      '·',
+      style: monoStyle.copyWith(color: tokens.textFaint),
+    );
+    const gap = SizedBox(width: 22);
+
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(top: BorderSide(color: tokens.border)),
+      ),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Text('$totalValidated validated', style: monoStyle),
+          gap,
+          separator,
+          gap,
+          Text('$passedCount passed', style: accentMonoStyle),
+          gap,
+          separator,
+          gap,
+          Text('$reviewedCount reviewed', style: monoStyle),
+          gap,
+          separator,
+          gap,
+          Text('$remainingCount remaining', style: monoStyle),
         ],
       ),
     );

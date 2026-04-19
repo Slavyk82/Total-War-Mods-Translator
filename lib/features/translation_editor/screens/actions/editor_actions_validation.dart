@@ -118,6 +118,8 @@ mixin EditorActionsValidation on EditorActionsBase {
         MaterialPageRoute(
           fullscreenDialog: true,
           builder: (routeContext) => ValidationReviewScreen(
+            projectId: projectId,
+            languageId: languageId,
             issues: allIssues,
             totalValidated: translatedCount,
             passedCount: passedCount,

@@ -6,6 +6,7 @@ import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/token_data_grid_header.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
@@ -324,7 +325,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
 
   // Performance: Build column header as const-friendly widget
   Widget _buildColumnHeader(String text) {
-    return _ColumnHeader(text: text);
+    return TokenDataGridHeader(text: text);
   }
 
   void _handleCellTap(DataGridCellTapDetails details) {
@@ -519,32 +520,3 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
   }
 }
 
-/// Tokenised column header used by the editor data grid.
-///
-/// Renders the column label in the theme's monospace face, all-caps, with the
-/// faint text colour and wide letter-spacing called out in the mockup. The
-/// caller is expected to pass an already-uppercased [text] (matching the
-/// labels in the mockup) so the constructor can stay `const`-friendly.
-class _ColumnHeader extends StatelessWidget {
-  final String text;
-
-  const _ColumnHeader({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text,
-        style: tokens.fontMono.copyWith(
-          fontSize: 10,
-          color: tokens.textFaint,
-          letterSpacing: 1.5,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-}

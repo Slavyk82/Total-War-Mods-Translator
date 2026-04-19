@@ -1,12 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/screens/validation_review_screen.dart';
 import 'package:twmt/features/translation_editor/widgets/validation_review_inspector_panel.dart';
-import 'package:twmt/features/translation_editor/widgets/validation_review_toolbar.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import '../../../helpers/test_helpers.dart';
+
+const _testProjectId = 'test-project-vr';
+const _testLanguageId = 'test-language-vr';
+
+List<Override> _screenOverrides() => [
+      currentProjectProvider(_testProjectId).overrideWith(
+        (ref) async => Project(
+          id: _testProjectId,
+          name: 'Test Project',
+          gameInstallationId: 'gi-1',
+          projectType: 'mod',
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      ),
+      currentLanguageProvider(_testLanguageId).overrideWith(
+        (ref) async => const Language(
+          id: _testLanguageId,
+          code: 'es',
+          name: 'Spanish',
+          nativeName: 'Espanol',
+        ),
+      ),
+    ];
+
+Widget _buildScreen({
+  required List<ValidationIssue> issues,
+  int totalValidated = 100,
+  int passedCount = 98,
+  Future<void> Function(ValidationIssue)? onAccept,
+  Future<void> Function(ValidationIssue)? onReject,
+  Future<void> Function(ValidationIssue, String)? onEdit,
+  Future<void> Function(String, List<ValidationIssue>)? onExport,
+  VoidCallback? onClose,
+  ThemeData? theme,
+}) {
+  return createThemedTestableWidget(
+    ValidationReviewScreen(
+      projectId: _testProjectId,
+      languageId: _testLanguageId,
+      issues: issues,
+      totalValidated: totalValidated,
+      passedCount: passedCount,
+      onRejectTranslation: onReject ?? (_) async {},
+      onAcceptTranslation: onAccept ?? (_) async {},
+      onEditTranslation: onEdit,
+      onExportReport: onExport,
+      onClose: onClose,
+    ),
+    theme: theme ?? AppTheme.atelierDarkTheme,
+    overrides: _screenOverrides(),
+  );
+}
 
 void main() {
   group('ValidationReviewScreen', () {
@@ -23,7 +81,6 @@ void main() {
       binding.platformDispatcher.views.first.resetDevicePixelRatio();
     });
 
-    // Create sample validation issues for testing
     List<ValidationIssue> createSampleIssues() {
       return [
         ValidationIssue(
@@ -41,7 +98,7 @@ void main() {
           unitId: 'unit2',
           unitKey: 'key2',
           sourceText: 'Test string',
-          translatedText: 'Chaîne de test',
+          translatedText: 'Chaine de test',
           description: 'Trailing whitespace',
           issueType: 'whitespace',
           severity: ValidationSeverity.warning,
@@ -50,27 +107,20 @@ void main() {
     }
 
     group('Widget Structure', () {
-      testWidgets('should render Scaffold as root widget', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+      testWidgets('should render Material as root widget', (tester) async {
+        await tester
+            .pumpWidget(_buildScreen(issues: createSampleIssues()));
         await tester.pump();
 
-        expect(find.byType(Scaffold), findsWidgets);
+        expect(find.byType(ValidationReviewScreen), findsOneWidget);
+        expect(find.byType(Material), findsWidgets);
       });
 
       testWidgets('should accept required parameters', (tester) async {
         final issues = createSampleIssues();
         final screen = ValidationReviewScreen(
+          projectId: _testProjectId,
+          languageId: _testLanguageId,
           issues: issues,
           totalValidated: 100,
           passedCount: 98,
@@ -80,286 +130,116 @@ void main() {
         expect(screen.issues, equals(issues));
         expect(screen.totalValidated, equals(100));
         expect(screen.passedCount, equals(98));
+        expect(screen.projectId, equals(_testProjectId));
+        expect(screen.languageId, equals(_testLanguageId));
       });
     });
 
     group('State Management', () {
       testWidgets('should be a ConsumerStatefulWidget', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+        await tester
+            .pumpWidget(_buildScreen(issues: createSampleIssues()));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
       });
     });
 
-    group('Header Section', () {
-      testWidgets('should render ValidationReviewHeader', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
+    group('Navigation', () {
+      testWidgets('renders DetailScreenToolbar with the Validation Review crumb',
+          (tester) async {
+        await tester
+            .pumpWidget(_buildScreen(issues: createSampleIssues()));
+        await tester.pumpAndSettle();
 
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
+        expect(find.byType(DetailScreenToolbar), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(DetailScreenToolbar),
+            matching: find.text('Validation Review'),
+          ),
+          findsOneWidget,
+        );
       });
     });
 
-    group('Toolbar Section', () {
-      testWidgets('should render ValidationReviewToolbar', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
+    group('Filter Toolbar', () {
+      testWidgets('renders FilterToolbar with the SEVERITY pill group',
+          (tester) async {
+        await tester
+            .pumpWidget(_buildScreen(issues: createSampleIssues()));
+        await tester.pumpAndSettle();
 
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
+        expect(find.byType(FilterToolbar), findsOneWidget);
+        expect(find.text('SEVERITY'), findsOneWidget);
+        expect(find.text('Errors'), findsOneWidget);
+        expect(find.text('Warnings'), findsOneWidget);
       });
     });
 
     group('DataGrid', () {
-      testWidgets('should render SfDataGrid for issues', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
+      testWidgets('should render issues in the grid', (tester) async {
+        await tester
+            .pumpWidget(_buildScreen(issues: createSampleIssues()));
+        await tester.pumpAndSettle();
 
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
+        expect(find.text('key1'), findsOneWidget);
+        expect(find.text('key2'), findsOneWidget);
       });
     });
 
     group('Empty State', () {
       testWidgets('should show empty state when no issues', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: const [],
-              totalValidated: 100,
-              passedCount: 100,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
+        await tester.pumpWidget(_buildScreen(
+          issues: const [],
+          totalValidated: 100,
+          passedCount: 100,
+        ));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('All issues have been reviewed'),
+          findsOneWidget,
         );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
-      });
-    });
-
-    group('Selection', () {
-      testWidgets('should support select all action', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
-      });
-
-      testWidgets('should support deselect all action', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
-      });
-    });
-
-    group('Filtering', () {
-      testWidgets('should support severity filter', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
-      });
-
-      testWidgets('should support search filter', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
       });
     });
 
     group('Accept/Reject Actions', () {
-      testWidgets('should call onAcceptTranslation callback', (tester) async {
-        // ignore: unused_local_variable
+      testWidgets('should accept onAcceptTranslation callback', (tester) async {
         var acceptCalled = false;
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {
-                acceptCalled = true;
-              },
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          onAccept: (_) async {
+            acceptCalled = true;
+          },
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
-        // Note: Actual accept button tap would require more setup
+        expect(acceptCalled, isFalse);
       });
 
-      testWidgets('should call onRejectTranslation callback', (tester) async {
-        // ignore: unused_local_variable
+      testWidgets('should accept onRejectTranslation callback', (tester) async {
         var rejectCalled = false;
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {
-                rejectCalled = true;
-              },
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          onReject: (_) async {
+            rejectCalled = true;
+          },
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
-        // Note: Actual reject button tap would require more setup
-      });
-    });
-
-    group('Bulk Operations', () {
-      testWidgets('should support bulk accept', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
-      });
-
-      testWidgets('should support bulk reject', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(ValidationReviewScreen), findsOneWidget);
+        expect(rejectCalled, isFalse);
       });
     });
 
     group('Edit Functionality', () {
-      testWidgets('should support optional onEditTranslation', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-              onEditTranslation: (issue, newText) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+      testWidgets('should accept optional onEditTranslation', (tester) async {
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          onEdit: (issue, newText) async {},
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
@@ -367,20 +247,11 @@ void main() {
     });
 
     group('Export Functionality', () {
-      testWidgets('should support optional onExportReport', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-              onExportReport: (path, issues) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+      testWidgets('should accept optional onExportReport', (tester) async {
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          onExport: (path, issues) async {},
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
@@ -388,20 +259,11 @@ void main() {
     });
 
     group('Close Functionality', () {
-      testWidgets('should support optional onClose callback', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-              onClose: () {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+      testWidgets('should accept optional onClose callback', (tester) async {
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          onClose: () {},
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
@@ -410,36 +272,20 @@ void main() {
 
     group('Theme Integration', () {
       testWidgets('should render correctly with atelier theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.atelierDarkTheme,
-          ),
-        );
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          theme: AppTheme.atelierDarkTheme,
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
       });
 
       testWidgets('should render correctly with forge theme', (tester) async {
-        await tester.pumpWidget(
-          createThemedTestableWidget(
-            ValidationReviewScreen(
-              issues: createSampleIssues(),
-              totalValidated: 100,
-              passedCount: 98,
-              onRejectTranslation: (issue) async {},
-              onAcceptTranslation: (issue) async {},
-            ),
-            theme: AppTheme.forgeDarkTheme,
-          ),
-        );
+        await tester.pumpWidget(_buildScreen(
+          issues: createSampleIssues(),
+          theme: AppTheme.forgeDarkTheme,
+        ));
         await tester.pump();
 
         expect(find.byType(ValidationReviewScreen), findsOneWidget);
@@ -472,24 +318,17 @@ void main() {
           ),
         ];
 
-        await tester.pumpWidget(createThemedTestableWidget(
-          ValidationReviewScreen(
-            issues: issues,
-            totalValidated: 2,
-            passedCount: 0,
-            onRejectTranslation: (_) async {},
-            onAcceptTranslation: (_) async {},
-          ),
-          theme: AppTheme.atelierDarkTheme,
+        await tester.pumpWidget(_buildScreen(
+          issues: issues,
+          totalValidated: 2,
+          passedCount: 0,
         ));
         await tester.pumpAndSettle();
 
-        // Click the first row's key cell to make it the current issue.
         await tester.tap(find.text('k1'));
         await tester.pumpAndSettle();
         expect(find.textContaining('source one'), findsWidgets);
 
-        // Down arrow should promote row 2 to current issue.
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
         await tester.pumpAndSettle();
         expect(find.textContaining('source two'), findsWidgets);
@@ -519,24 +358,17 @@ void main() {
           ),
         ];
 
-        await tester.pumpWidget(createThemedTestableWidget(
-          ValidationReviewScreen(
-            issues: issues,
-            totalValidated: 2,
-            passedCount: 0,
-            onRejectTranslation: (_) async {},
-            onAcceptTranslation: (_) async {},
-          ),
-          theme: AppTheme.atelierDarkTheme,
+        await tester.pumpWidget(_buildScreen(
+          issues: issues,
+          totalValidated: 2,
+          passedCount: 0,
         ));
         await tester.pumpAndSettle();
 
-        // Click the second row's key cell to make it the current issue.
         await tester.tap(find.text('k2'));
         await tester.pumpAndSettle();
         expect(find.textContaining('source two'), findsWidgets);
 
-        // Up arrow should promote row 1 to current issue.
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
         await tester.pumpAndSettle();
         expect(find.textContaining('source one'), findsWidgets);
@@ -548,13 +380,9 @@ void main() {
           (tester) async {
         // Under the unified selection model, a non-checkbox cell tap clears
         // the bulk selection and single-selects the row, and the inspector
-        // reflects the single selection. Subsequent taps on another key cell
-        // switch the inspector over. Directly simulating a Syncfusion
-        // checkbox-column tap from a widget test is brittle; the cell-tap
-        // routing lives in `onCellTap` (checkbox column routes to
-        // `_handleCheckboxTap`, other cells route to `_singleSelectRow`).
-        // The assertions below verify the observable invariant: the inspector
-        // tracks single-selection deterministically.
+        // reflects the single selection. The assertions below verify the
+        // observable invariant: the inspector tracks single-selection
+        // deterministically.
         final issues = [
           ValidationIssue(
             versionId: 'v1',
@@ -578,39 +406,27 @@ void main() {
           ),
         ];
 
-        await tester.pumpWidget(createThemedTestableWidget(
-          ValidationReviewScreen(
-            issues: issues,
-            totalValidated: 2,
-            passedCount: 0,
-            onRejectTranslation: (_) async {},
-            onAcceptTranslation: (_) async {},
-          ),
-          theme: AppTheme.atelierDarkTheme,
+        await tester.pumpWidget(_buildScreen(
+          issues: issues,
+          totalValidated: 2,
+          passedCount: 0,
         ));
         await tester.pumpAndSettle();
 
-        // Scope "inspector shows X" assertions to the inspector panel:
-        // the data grid also renders source-text column cells, so an
-        // unqualified `findsNothing` against a row's source text would
-        // match grid cells and give a false negative.
         Finder inInspector(String text) => find.descendant(
               of: find.byType(ValidationReviewInspectorPanel),
               matching: find.textContaining(text),
             );
 
-        // Tap row 1's key cell -> inspector shows v1 (alpha).
         await tester.tap(find.text('k1'));
         await tester.pumpAndSettle();
         expect(inInspector('alpha source text'), findsWidgets);
         expect(inInspector('beta source text'), findsNothing);
 
-        // Tap row 2's key cell -> inspector switches to v2 (beta).
         await tester.tap(find.text('k2'));
         await tester.pumpAndSettle();
         expect(inInspector('beta source text'), findsWidgets);
 
-        // Tap row 1 again -> inspector returns to v1 (alpha) and beta is gone.
         await tester.tap(find.text('k1'));
         await tester.pumpAndSettle();
         expect(inInspector('alpha source text'), findsWidgets);
@@ -644,31 +460,22 @@ void main() {
           ),
         ];
 
-        await tester.pumpWidget(createThemedTestableWidget(
-          ValidationReviewScreen(
-            issues: issues,
-            totalValidated: 2,
-            passedCount: 0,
-            onRejectTranslation: (_) async {},
-            onAcceptTranslation: (_) async {},
-          ),
-          theme: AppTheme.atelierDarkTheme,
+        await tester.pumpWidget(_buildScreen(
+          issues: issues,
+          totalValidated: 2,
+          passedCount: 0,
         ));
         await tester.pumpAndSettle();
 
-        // Initially nothing is selected -> inspector shows empty state.
         expect(find.textContaining('Select an issue'), findsOneWidget);
 
-        // Ctrl+A selects all visible issues.
         await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
         await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
         await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
         await tester.pumpAndSettle();
 
-        // Two issues selected -> inspector shows the multi-select header.
         expect(find.textContaining('2 issues selected'), findsOneWidget);
 
-        // Second Ctrl+A clears the selection -> back to the empty state.
         await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
         await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
         await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
@@ -704,19 +511,13 @@ void main() {
           ),
         ];
 
-        await tester.pumpWidget(createThemedTestableWidget(
-          ValidationReviewScreen(
-            issues: issues,
-            totalValidated: 2,
-            passedCount: 0,
-            onRejectTranslation: (_) async {},
-            onAcceptTranslation: (_) async {},
-          ),
-          theme: AppTheme.atelierDarkTheme,
+        await tester.pumpWidget(_buildScreen(
+          issues: issues,
+          totalValidated: 2,
+          passedCount: 0,
         ));
         await tester.pumpAndSettle();
 
-        // Tap the warning row so the inspector shows v2.
         await tester.tap(find.text('k2'));
         await tester.pumpAndSettle();
         expect(
@@ -727,19 +528,15 @@ void main() {
           findsWidgets,
         );
 
-        // Tap the "Errors" filter pill in the toolbar. This hides v2 (warning)
-        // from _filteredIssues. Under the unified selection model, the filter
-        // change also wipes `_selectedVersionIds` wholesale (pre-existing UX
-        // preserved in `_setFilter`), so the inspector returns to the empty
-        // placeholder. The word "Errors" appears in the header too, so scope
-        // the tap to the toolbar's filter pill.
+        // Tap the "Errors" SEVERITY pill in the FilterToolbar. Scope the
+        // search to the FilterToolbar so "Errors" matches the pill and not
+        // any inspector or status-bar text that might share the word.
         await tester.tap(find.descendant(
-          of: find.byType(ValidationReviewToolbar),
+          of: find.byType(FilterToolbar),
           matching: find.text('Errors'),
         ));
         await tester.pumpAndSettle();
 
-        // Inspector should be back to the empty placeholder.
         expect(find.textContaining('Select an issue'), findsOneWidget);
         expect(
           find.descendant(
