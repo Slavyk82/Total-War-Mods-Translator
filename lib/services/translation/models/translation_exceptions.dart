@@ -1,4 +1,5 @@
 import 'package:twmt/models/common/service_exception.dart';
+import 'package:twmt/services/translation/models/validation_rule.dart';
 
 /// Base exception for translation services
 class TranslationServiceException extends ServiceException {
@@ -68,12 +69,14 @@ class ValidationException extends TranslationServiceException {
 
 /// Represents a single validation error
 class ValidationError {
+  final ValidationRule rule;
   final String field;
   final String message;
   final String? value;
   final ValidationSeverity severity;
 
   const ValidationError({
+    required this.rule,
     required this.field,
     required this.message,
     this.value,
@@ -81,7 +84,8 @@ class ValidationError {
   });
 
   @override
-  String toString() => '$field: $message${value != null ? ' (value: $value)' : ''}';
+  String toString() =>
+      '[${rule.codeName}] $field: $message${value != null ? ' (value: $value)' : ''}';
 }
 
 /// Severity level of validation error
