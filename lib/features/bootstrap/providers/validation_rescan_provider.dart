@@ -66,13 +66,25 @@ class ValidationRescanController extends _$ValidationRescanController {
   /// the caller can close the dialog immediately.
   Future<void> prepare() async {
     final svc = ref.read(validationRescanServiceProvider);
+    final logger = ref.read(loggingServiceProvider);
     try {
       final plan = await svc.buildPlan();
+      if (plan == null) {
+        logger.info('ValidationRescan: no legacy rows, dialog will not show');
+      } else {
+        logger.info('ValidationRescan: plan ready', {
+          'total': plan.total,
+          'already': plan.already,
+          'isResume': plan.isResume,
+          'estimatedMs': plan.estimated.inMilliseconds,
+        });
+      }
       state = state.copyWith(
         plan: plan,
         isDone: plan == null,
       );
-    } catch (e) {
+    } catch (e, st) {
+      logger.error('ValidationRescan: buildPlan failed (dialog skipped)', e, st);
       state = state.copyWith(error: e, isDone: true);
     }
   }
