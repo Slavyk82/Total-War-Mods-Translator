@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 // `SmallTextButton` is still used for the §Pack "Import pack" secondary action;
@@ -79,12 +80,39 @@ class EditorActionSidebar extends ConsumerWidget {
                     hasSelection ? 'Translate selection' : 'Translate all';
                 // Ctrl+T is selection-aware at the screen scope, so the hint
                 // stays constant regardless of the current grid state.
-                return _SidebarActionButton(
+                final button = _SidebarActionButton(
                   icon: FluentIcons.translate_24_regular,
                   label: label,
                   primary: true,
                   shortcutHint: 'Ctrl+T',
                   onTap: hasSelection ? onTranslateSelected : onTranslateAll,
+                );
+
+                // Count hint renders only for the "Translate all" variant,
+                // and only once editorStats has resolved with a positive
+                // pending count — we never flash a placeholder.
+                if (hasSelection) return button;
+                final statsAsync =
+                    ref.watch(editorStatsProvider(projectId, languageId));
+                final pending = statsAsync.asData?.value.pendingCount ?? 0;
+                if (pending <= 0) return button;
+
+                final suffix = pending == 1 ? 'unit' : 'units';
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    button,
+                    const SizedBox(height: 4),
+                    Text(
+                      '$pending $suffix',
+                      textAlign: TextAlign.center,
+                      style: tokens.fontBody.copyWith(
+                        fontSize: 10.5,
+                        color: tokens.textDim,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 );
               },
             ),

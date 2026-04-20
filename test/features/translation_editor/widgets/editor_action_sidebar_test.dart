@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
+import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
 import 'package:twmt/theme/app_theme.dart';
 
@@ -19,7 +23,21 @@ void main() {
     VoidCallback? onValidate,
     VoidCallback? onExport,
     VoidCallback? onImportPack,
+    int? pendingCount,
+    bool statsLoading = false,
   }) {
+    final statsOverride = statsLoading
+        ? editorStatsProvider('p', 'fr')
+            .overrideWith((_) => Completer<EditorStats>().future)
+        : editorStatsProvider('p', 'fr').overrideWith(
+            (_) async => EditorStats(
+              totalUnits: pendingCount ?? 0,
+              pendingCount: pendingCount ?? 0,
+              translatedCount: 0,
+              needsReviewCount: 0,
+              completionPercentage: 0.0,
+            ),
+          );
     return createThemedTestableWidget(
       Scaffold(
         body: EditorActionSidebar(
@@ -33,6 +51,7 @@ void main() {
         ),
       ),
       theme: AppTheme.atelierDarkTheme,
+      overrides: [statsOverride],
     );
   }
 
@@ -199,4 +218,67 @@ void main() {
     expect(find.text('Translation settings'), findsNothing);
   });
 
+  testWidgets('shows "<n> units" subtitle under Translate all when count > 1',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 42));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Translate all'), findsOneWidget);
+    expect(find.text('42 units'), findsOneWidget);
+  });
+
+  testWidgets('subtitle uses singular form when exactly 1 unit is pending',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 unit'), findsOneWidget);
+    expect(find.text('1 units'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered when pendingCount is 0',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 0));
+    await tester.pumpAndSettle();
+
+    // Button still there, but no count hint under it. Asserting exact
+    // strings avoids false positives from unrelated sidebar copy that
+    // happens to include the substring "unit" (e.g. the batch settings
+    // label "Units / batch").
+    expect(find.text('Translate all'), findsOneWidget);
+    expect(find.text('0 units'), findsNothing);
+    expect(find.text('0 unit'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered when rows are selected',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 42));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EditorActionSidebar)),
+      listen: false,
+    );
+    container
+        .read(editorSelectionProvider.notifier)
+        .selectAll(['a', 'b', 'c']);
+    await tester.pumpAndSettle();
+
+    // Label flipped to "Translate selection"; the count hint belongs to the
+    // "Translate all" variant and must disappear alongside the label change.
+    expect(find.text('Translate selection'), findsOneWidget);
+    expect(find.text('42 units'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered while editorStats is loading',
+      (tester) async {
+    await tester.pumpWidget(build(statsLoading: true));
+    await tester.pump(); // 1 frame: provider still pending, no settle.
+
+    expect(find.text('Translate all'), findsOneWidget);
+    // We don't flash a placeholder while stats resolve. With the default
+    // (pendingCount: 0) a leaked subtitle would read "0 unit(s)".
+    expect(find.text('0 units'), findsNothing);
+    expect(find.text('0 unit'), findsNothing);
+  });
 }
