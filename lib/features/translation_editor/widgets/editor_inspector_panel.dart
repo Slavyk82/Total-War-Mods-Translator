@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_editor/providers/editor_inspector_width_notifier.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/features/translation_editor/utils/display_escape.dart';
 import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
@@ -193,7 +194,11 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     if (_boundUnitId != row.id) {
       _flushDirtyIfNeeded(rows);
       _boundUnitId = row.id;
-      _targetController.text = row.translatedText ?? '';
+      // Show escape sequences literally (e.g. real newlines as `\n`) so the
+      // user can see and keep the markup. [unescapeFromDisplay] in
+      // [_flushDirtyIfNeeded] / `_TargetBlock.onSave` reverses this at commit
+      // time.
+      _targetController.text = escapeForDisplay(row.translatedText ?? '');
     }
   }
 
@@ -206,7 +211,7 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     final prevIdx = rows.indexWhere((r) => r.id == previousId);
     if (prevIdx < 0) return;
     final previousPersisted = rows[prevIdx].translatedText ?? '';
-    final currentText = _targetController.text;
+    final currentText = unescapeFromDisplay(_targetController.text);
     if (currentText != previousPersisted) {
       widget.onSave(previousId, currentText);
     }
@@ -489,7 +494,7 @@ class _SourceBlock extends StatelessWidget {
               ),
               child: SingleChildScrollView(
                 child: Text(
-                  text,
+                  escapeForDisplay(text),
                   style: TextStyle(
                     fontSize: 13,
                     color: tokens.textMid,
@@ -528,8 +533,10 @@ class _TargetBlock extends StatelessWidget {
           Expanded(
             child: Focus(
               onFocusChange: (hasFocus) {
-                // Commit the edit when the field loses focus.
-                if (!hasFocus) onSave(controller.text);
+                // Commit the edit when the field loses focus. The controller
+                // holds the escape-for-display form; translate it back to
+                // raw text before persisting.
+                if (!hasFocus) onSave(unescapeFromDisplay(controller.text));
               },
               child: TextField(
                 key: const Key('editor-inspector-target-field'),

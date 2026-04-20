@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/features/translation_editor/utils/display_escape.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Text cell widget for DataGrid.
@@ -18,20 +19,11 @@ class TextCellRenderer extends StatelessWidget {
     this.isKey = false,
   });
 
-  /// Escape special characters to display them literally.
-  String _escapeForDisplay(String text) {
-    return text
-        .replaceAll('\r\n', '\\r\\n')
-        .replaceAll('\n', '\\n')
-        .replaceAll('\r', '\\r')
-        .replaceAll('\t', '\\t');
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final rawText = text ?? '';
-    final displayText = _escapeForDisplay(rawText);
+    final displayText = escapeForDisplay(rawText);
 
     final textStyle = TextStyle(
       fontSize: 13,
