@@ -10,6 +10,7 @@ import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
+import 'package:twmt/widgets/lists/bulk_action_cluster.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
@@ -21,6 +22,7 @@ import '../widgets/editor_action_sidebar.dart';
 import '../widgets/editor_datagrid.dart';
 import '../widgets/editor_inspector_panel.dart';
 import '../widgets/editor_status_bar.dart';
+import '../widgets/validation_edit_dialog.dart';
 import 'translation_editor_actions.dart';
 
 /// Translation editor screen.
@@ -132,6 +134,21 @@ class _TranslationEditorScreenState
         stats.totalUnits > 0 &&
         stats.completionPercentage >= 100.0;
 
+    // Pre-compute which currently visible (filter+search aware) rows are both
+    // selected and still flagged `needsReview` — the [BulkActionCluster] in
+    // the filter toolbar only renders when that set is non-empty so bulk
+    // Accept/Reject only target reviewable rows.
+    final rowsAsync = ref.watch(
+      filteredTranslationRowsProvider(widget.projectId, widget.languageId),
+    );
+    final visibleRows = rowsAsync.asData?.value ?? const <TranslationRow>[];
+    final selection = ref.watch(editorSelectionProvider);
+    final selectedNeedsReviewRows = visibleRows
+        .where((r) =>
+            selection.selectedUnitIds.contains(r.id) &&
+            r.status == TranslationVersionStatus.needsReview)
+        .toList();
+
     final shortcuts = <ShortcutActivator, Intent>{
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyF):
           const _FocusSearchIntent(),
@@ -221,6 +238,23 @@ class _TranslationEditorScreenState
                   title: projectName,
                 ),
                 trailing: [
+                  if (selectedNeedsReviewRows.isNotEmpty)
+                    BulkActionCluster(
+                      selectedCount: selectedNeedsReviewRows.length,
+                      onAccept: () async {
+                        await _getActions()
+                            .handleBulkAcceptTranslation(
+                                selectedNeedsReviewRows);
+                      },
+                      onReject: () async {
+                        await _getActions()
+                            .handleBulkRejectTranslation(
+                                selectedNeedsReviewRows);
+                      },
+                      onDeselect: () => ref
+                          .read(editorSelectionProvider.notifier)
+                          .clearSelection(),
+                    ),
                   ListSearchField(
                     value: filter.searchQuery,
                     focusNode: _searchFocus,
@@ -251,8 +285,6 @@ class _TranslationEditorScreenState
                       onTranslateSelected: () =>
                           _getActions().handleTranslateSelected(),
                       onValidate: () => _getActions().handleValidate(),
-                      onRescanValidation: () =>
-                          _getActions().handleRescanValidation(),
                       onExport: () => _getActions().handleExport(),
                       onImportPack: () => _getActions().handleImportPack(),
                     ),
@@ -271,6 +303,20 @@ class _TranslationEditorScreenState
                       languageId: widget.languageId,
                       onSave: (unitId, text) =>
                           _getActions().handleCellEdit(unitId, text),
+                      onAcceptIssue: (issue) =>
+                          _getActions().handleAcceptTranslation(issue),
+                      onRejectIssue: (issue) =>
+                          _getActions().handleRejectTranslation(issue),
+                      onEditIssue: (issue) async {
+                        final newText = await showDialog<String>(
+                          context: context,
+                          builder: (_) => ValidationEditDialog(issue: issue),
+                        );
+                        if (newText != null) {
+                          await _getActions()
+                              .handleEditTranslation(issue, newText);
+                        }
+                      },
                     ),
                   ],
                 ),

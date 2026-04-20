@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+// `SmallTextButton` is still used for the §Pack "Import pack" secondary action;
+// the §Review "Rescan all" button was folded into `handleValidate` in the
+// editor/review merge and no longer surfaces as a separate control.
 
 import 'editor_toolbar_batch_settings.dart';
 import 'editor_toolbar_mod_rule.dart';
@@ -28,7 +31,6 @@ class EditorActionSidebar extends ConsumerWidget {
   final VoidCallback onTranslateAll;
   final VoidCallback onTranslateSelected;
   final VoidCallback onValidate;
-  final VoidCallback onRescanValidation;
   final VoidCallback onExport;
   final VoidCallback onImportPack;
 
@@ -39,7 +41,6 @@ class EditorActionSidebar extends ConsumerWidget {
     required this.onTranslateAll,
     required this.onTranslateSelected,
     required this.onValidate,
-    required this.onRescanValidation,
     required this.onExport,
     required this.onImportPack,
   });
@@ -90,18 +91,13 @@ class EditorActionSidebar extends ConsumerWidget {
             const SizedBox(height: 20),
             _SectionHeader(label: 'Review', tokens: tokens),
             const SizedBox(height: 10),
+            // Single unified entry point: `handleValidate` now rescans all
+            // translated rows then filters the grid down to `needsReview`
+            // — the old "Rescan all" secondary button is gone.
             _SidebarActionButton(
               icon: FluentIcons.checkmark_circle_24_regular,
-              label: 'Validate selected',
+              label: 'Validate',
               onTap: onValidate,
-            ),
-            const SizedBox(height: 6),
-            Center(
-              child: SmallTextButton(
-                label: 'Rescan all',
-                icon: FluentIcons.arrow_sync_24_regular,
-                onTap: onRescanValidation,
-              ),
             ),
             const SizedBox(height: 20),
             _SectionHeader(label: 'Pack', tokens: tokens),
