@@ -247,3 +247,33 @@ Future<EditorStats> editorStats(
     completionPercentage: completionPercentage,
   );
 }
+
+/// Per-severity count over all `needsReview` versions for the project+language,
+/// independent of the currently-applied severity / status filters. Used by
+/// the SEVERITY pill group so the counts don't zero out the moment the user
+/// picks a pill.
+@riverpod
+Future<({int errors, int warnings})> visibleSeverityCounts(
+  Ref ref,
+  String projectId,
+  String languageId,
+) async {
+  final allRows =
+      await ref.watch(translationRowsProvider(projectId, languageId).future);
+  var errors = 0;
+  var warnings = 0;
+  for (final row in allRows) {
+    if (row.status != TranslationVersionStatus.needsReview) continue;
+    final parsed = parseValidationIssues(row.version.validationIssues);
+    var rowHasError = false;
+    var rowHasWarning = false;
+    for (final issue in parsed) {
+      final bucket = _bucketSeverity(issue.severity);
+      if (bucket == batch.ValidationSeverity.error) rowHasError = true;
+      if (bucket == batch.ValidationSeverity.warning) rowHasWarning = true;
+    }
+    if (rowHasError) errors++;
+    if (rowHasWarning) warnings++;
+  }
+  return (errors: errors, warnings: warnings);
+}

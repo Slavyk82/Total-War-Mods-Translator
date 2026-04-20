@@ -128,4 +128,68 @@ void main() {
       expect(filtered.length, 2);
     });
   });
+
+  group('visibleSeverityCounts', () {
+    test('counts versions by severity over needsReview rows regardless of the '
+        'severity filter itself', () async {
+      final rows = [
+        _row(
+          id: 'a',
+          status: TranslationVersionStatus.needsReview,
+          issuesJson:
+              _issues([(rule: 'variables', sev: 'error', msg: 'missing %s')]),
+        ),
+        _row(
+          id: 'b',
+          status: TranslationVersionStatus.needsReview,
+          issuesJson: _issues([
+            (rule: 'variables', sev: 'error', msg: 'x'),
+            (rule: 'length', sev: 'warning', msg: 'y'),
+          ]),
+        ),
+        _row(
+          id: 'c',
+          status: TranslationVersionStatus.needsReview,
+          issuesJson: _issues(
+              [(rule: 'length', sev: 'warning', msg: 'length ratio')]),
+        ),
+        _row(
+          id: 'd',
+          status: TranslationVersionStatus.translated,
+        ),
+        // `e` pins the per-version invariant: two error issues on the same row
+        // must still contribute only +1 to the error count.
+        _row(
+          id: 'e',
+          status: TranslationVersionStatus.needsReview,
+          issuesJson: _issues([
+            (rule: 'variables', sev: 'error', msg: 'e1'),
+            (rule: 'variables', sev: 'error', msg: 'e2'),
+          ]),
+        ),
+        // `f` re-asserts critical -> error bucketing for this provider.
+        _row(
+          id: 'f',
+          status: TranslationVersionStatus.needsReview,
+          issuesJson: _issues([(rule: 'x', sev: 'critical', msg: 'panic')]),
+        ),
+      ];
+
+      final container = ProviderContainer(overrides: [
+        translationRowsProvider('p', 'fr').overrideWith((_) async => rows),
+      ]);
+      addTearDown(container.dispose);
+
+      // A status filter that *excludes* needsReview must not zero out the
+      // counts — the counts are computed before the status filter.
+      container
+          .read(editorFilterProvider.notifier)
+          .setStatusFilters({TranslationVersionStatus.translated});
+
+      final counts = await container
+          .read(visibleSeverityCountsProvider('p', 'fr').future);
+      expect(counts.errors, 4);
+      expect(counts.warnings, 2);
+    });
+  });
 }
