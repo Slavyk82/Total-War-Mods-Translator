@@ -88,18 +88,6 @@ void main() {
       expect(err?.rule, ValidationRule.truncation);
     });
 
-    test('repeated word -> ValidationRule.repeatedWord', () async {
-      final mistakes = await svc.checkCommonMistakes(
-        sourceText: 'The cat sat.',
-        translatedText: 'Le le chat est assis.',
-        key: 'k',
-      );
-      expect(
-        mistakes.map((m) => m.rule),
-        contains(ValidationRule.repeatedWord),
-      );
-    });
-
     test('missing ending punctuation -> ValidationRule.endPunctuation',
         () async {
       final mistakes = await svc.checkCommonMistakes(

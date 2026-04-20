@@ -535,17 +535,6 @@ class ValidationServiceImpl implements IValidationService {
   }) async {
     final mistakes = <ValidationError>[];
 
-    // Check for repeated words
-    final repeatedWords = RegExp(r'\b(\w+)\s+\1\b', caseSensitive: false);
-    if (repeatedWords.hasMatch(translatedText)) {
-      mistakes.add(ValidationError(
-        rule: ValidationRule.repeatedWord,
-        severity: ValidationSeverity.warning,
-        message: 'Repeated word detected',
-        field: key,
-      ));
-    }
-
     // Check for missing ending punctuation
     final endPunctuationPattern = RegExp(r'[.!?]$');
     if (endPunctuationPattern.hasMatch(sourceText.trimRight()) &&

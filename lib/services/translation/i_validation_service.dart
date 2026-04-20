@@ -161,7 +161,6 @@ abstract class IValidationService {
   /// Check for common translation mistakes
   ///
   /// Detects:
-  /// - Repeated words (the the, of of)
   /// - Missing punctuation
   /// - Inconsistent capitalization
   /// - Numbers don't match source

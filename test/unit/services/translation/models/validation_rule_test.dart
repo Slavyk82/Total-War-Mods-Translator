@@ -13,7 +13,6 @@ void main() {
         ValidationRule.glossary: 'Glossary',
         ValidationRule.security: 'Security',
         ValidationRule.truncation: 'Truncation',
-        ValidationRule.repeatedWord: 'Repeated word',
         ValidationRule.endPunctuation: 'Punctuation',
         ValidationRule.numbers: 'Numbers',
       };
@@ -27,7 +26,7 @@ void main() {
 
     test('codeName is the enum name for JSON persistence', () {
       expect(ValidationRule.variables.codeName, 'variables');
-      expect(ValidationRule.repeatedWord.codeName, 'repeatedWord');
+      expect(ValidationRule.endPunctuation.codeName, 'endPunctuation');
     });
 
     test('fromCodeName round-trips every value', () {

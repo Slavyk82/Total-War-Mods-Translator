@@ -11,7 +11,6 @@ enum ValidationRule {
   glossary,
   security,
   truncation,
-  repeatedWord,
   endPunctuation,
   numbers;
 
@@ -50,8 +49,6 @@ extension ValidationRuleDisplay on ValidationRule {
         return 'Security';
       case ValidationRule.truncation:
         return 'Truncation';
-      case ValidationRule.repeatedWord:
-        return 'Repeated word';
       case ValidationRule.endPunctuation:
         return 'Punctuation';
       case ValidationRule.numbers:
