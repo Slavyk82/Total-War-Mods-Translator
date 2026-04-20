@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_issue_entry.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
@@ -544,19 +543,6 @@ class ValidationServiceImpl implements IValidationService {
         rule: ValidationRule.endPunctuation,
         severity: ValidationSeverity.warning,
         message: 'Missing ending punctuation',
-        field: key,
-      ));
-    }
-
-    // Check for number mismatches
-    final sourceNumbers = TextParserUtils.extractNumbers(sourceText);
-    final translatedNumbers = TextParserUtils.extractNumbers(translatedText);
-    if (sourceNumbers.isNotEmpty &&
-        !listEquals(sourceNumbers, translatedNumbers)) {
-      mistakes.add(ValidationError(
-        rule: ValidationRule.numbers,
-        severity: ValidationSeverity.warning,
-        message: 'Numbers don\'t match source',
         field: key,
       ));
     }

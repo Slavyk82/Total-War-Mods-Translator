@@ -14,7 +14,6 @@ void main() {
         ValidationRule.security: 'Security',
         ValidationRule.truncation: 'Truncation',
         ValidationRule.endPunctuation: 'Punctuation',
-        ValidationRule.numbers: 'Numbers',
       };
       for (final entry in expected.entries) {
         expect(entry.key.label, entry.value,

@@ -100,43 +100,5 @@ void main() {
         contains(ValidationRule.endPunctuation),
       );
     });
-
-    test('numbers mismatch -> ValidationRule.numbers', () async {
-      final mistakes = await svc.checkCommonMistakes(
-        sourceText: 'There are 3 cats',
-        translatedText: 'Il y a 4 chats',
-        key: 'k',
-      );
-      expect(
-        mistakes.map((m) => m.rule),
-        contains(ValidationRule.numbers),
-      );
-    });
-
-    test('identical numbers -> no ValidationRule.numbers', () async {
-      // Regression: List.== is identity equality in Dart, so naive
-      // `sourceNumbers != translatedNumbers` always flagged matching numbers.
-      final mistakes = await svc.checkCommonMistakes(
-        sourceText: 'Forest Health – Forest of Gloom\n(60-79)',
-        translatedText: 'Santé de la forêt – Forêt des Ténèbres\n(60-79)',
-        key: 'k',
-      );
-      expect(
-        mistakes.map((m) => m.rule),
-        isNot(contains(ValidationRule.numbers)),
-      );
-    });
-
-    test('same numbers in different order -> ValidationRule.numbers', () async {
-      final mistakes = await svc.checkCommonMistakes(
-        sourceText: 'Order: 1 then 2',
-        translatedText: 'Ordre: 2 puis 1',
-        key: 'k',
-      );
-      expect(
-        mistakes.map((m) => m.rule),
-        contains(ValidationRule.numbers),
-      );
-    });
   });
 }

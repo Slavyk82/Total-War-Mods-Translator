@@ -108,10 +108,4 @@ class TextParserUtils {
 
     return tags;
   }
-
-  /// Extract numbers from text
-  static List<String> extractNumbers(String text) {
-    final numberPattern = RegExp(r'\b\d+\b');
-    return numberPattern.allMatches(text).map((m) => m.group(0)!).toList();
-  }
 }

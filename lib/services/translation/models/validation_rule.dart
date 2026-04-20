@@ -11,8 +11,7 @@ enum ValidationRule {
   glossary,
   security,
   truncation,
-  endPunctuation,
-  numbers;
+  endPunctuation;
 
   /// Stable code name used for JSON persistence. Identical to the Dart
   /// enum name; declared explicitly so consumers do not accidentally rely
@@ -51,8 +50,6 @@ extension ValidationRuleDisplay on ValidationRule {
         return 'Truncation';
       case ValidationRule.endPunctuation:
         return 'Punctuation';
-      case ValidationRule.numbers:
-        return 'Numbers';
     }
   }
 }

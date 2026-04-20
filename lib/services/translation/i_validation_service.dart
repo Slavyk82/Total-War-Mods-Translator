@@ -163,7 +163,6 @@ abstract class IValidationService {
   /// Detects:
   /// - Missing punctuation
   /// - Inconsistent capitalization
-  /// - Numbers don't match source
   ///
   /// Returns warning for potential mistakes.
   Future<List<ValidationError>> checkCommonMistakes({
