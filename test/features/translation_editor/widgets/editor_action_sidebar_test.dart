@@ -218,4 +218,64 @@ void main() {
     expect(find.text('Translation settings'), findsNothing);
   });
 
+  testWidgets('shows "<n> units" subtitle under Translate all when count > 1',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 42));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Translate all'), findsOneWidget);
+    expect(find.text('42 units'), findsOneWidget);
+  });
+
+  testWidgets('subtitle uses singular form when exactly 1 unit is pending',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 unit'), findsOneWidget);
+    expect(find.text('1 units'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered when pendingCount is 0',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 0));
+    await tester.pumpAndSettle();
+
+    // Button still there, but no count hint under it.
+    expect(find.text('Translate all'), findsOneWidget);
+    expect(find.textContaining('units'), findsNothing);
+    expect(find.textContaining(' unit'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered when rows are selected',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 42));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EditorActionSidebar)),
+      listen: false,
+    );
+    container
+        .read(editorSelectionProvider.notifier)
+        .selectAll(['a', 'b', 'c']);
+    await tester.pumpAndSettle();
+
+    // Label flipped to "Translate selection"; the count hint belongs to the
+    // "Translate all" variant and must disappear alongside the label change.
+    expect(find.text('Translate selection'), findsOneWidget);
+    expect(find.text('42 units'), findsNothing);
+  });
+
+  testWidgets('no subtitle is rendered while editorStats is loading',
+      (tester) async {
+    await tester.pumpWidget(build(statsLoading: true));
+    await tester.pump(); // 1 frame: provider still pending, no settle.
+
+    expect(find.text('Translate all'), findsOneWidget);
+    // We don't flash a placeholder while stats resolve.
+    expect(find.textContaining('units'), findsNothing);
+    expect(find.textContaining(' unit'), findsNothing);
+  });
+
 }
