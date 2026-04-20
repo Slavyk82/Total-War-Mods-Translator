@@ -15,6 +15,11 @@ typedef OnInspectorSave = void Function(String unitId, String text);
 /// the inspector panel (Accept / Reject / Edit).
 typedef OnInspectorIssueAction = void Function(batch.ValidationIssue issue);
 
+/// Height of the stacked bulk-action buttons in the multi-select header —
+/// roughly double the intrinsic height of the issue-row buttons to make them
+/// the primary affordance when multiple units are selected.
+const double _bulkButtonHeight = 64;
+
 /// Right inspector panel of the translation editor.
 ///
 /// Width is user-resizable via the drag handle on the left edge, backed by
@@ -261,35 +266,38 @@ class _MultiSelectHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _InspectorActionButton(
-                  label: 'Accept',
-                  icon: FluentIcons.checkmark_24_regular,
-                  color: tokens.accent,
-                  onTap: onBulkAccept,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _InspectorActionButton(
-                  label: 'Retranslate',
-                  icon: FluentIcons.arrow_sync_24_regular,
-                  color: tokens.warn,
-                  onTap: onBulkRetranslate,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _InspectorActionButton(
-                  label: 'Deselect',
-                  icon: FluentIcons.dismiss_circle_24_regular,
-                  color: tokens.textMid,
-                  onTap: onBulkDeselect,
-                ),
-              ),
-            ],
+          // Bulk buttons stacked full-width so both icon and label always have
+          // room at any panel width. Each button is `_bulkButtonHeight` px tall
+          // (double the issue-row button height) for a comfortable bulk-click
+          // target.
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Accept',
+              icon: FluentIcons.checkmark_24_regular,
+              color: tokens.accent,
+              onTap: onBulkAccept,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Retranslate',
+              icon: FluentIcons.arrow_sync_24_regular,
+              color: tokens.warn,
+              onTap: onBulkRetranslate,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Deselect',
+              icon: FluentIcons.dismiss_circle_24_regular,
+              color: tokens.textMid,
+              onTap: onBulkDeselect,
+            ),
           ),
         ],
       );
