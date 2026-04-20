@@ -9,7 +9,6 @@ import 'package:twmt/features/translation_editor/providers/translation_settings_
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
-import 'package:twmt/widgets/lists/bulk_action_cluster.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
@@ -303,30 +302,20 @@ void main() {
     });
 
     group('Bulk actions', () {
-      testWidgets('bulk cluster hidden when no needsReview row is selected',
-          (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-        expect(find.byType(BulkActionCluster), findsNothing);
-      });
-
-      testWidgets('bulk cluster appears when a needsReview row is selected',
-          (tester) async {
-        final rows = [
-          TranslationRow(
+      TranslationRow needsReviewRow(String id) => TranslationRow(
             unit: TranslationUnit(
-              id: 'a',
+              id: id,
               projectId: testProjectId,
-              key: 'ka',
-              sourceText: 'sa',
+              key: 'k$id',
+              sourceText: 's$id',
               createdAt: 0,
               updatedAt: 0,
             ),
             version: TranslationVersion(
-              id: 'av',
-              unitId: 'a',
+              id: '${id}v',
+              unitId: id,
               projectLanguageId: 'pl',
-              translatedText: 'ta',
+              translatedText: 't$id',
               status: TranslationVersionStatus.needsReview,
               translationSource: TranslationSource.manual,
               validationIssues:
@@ -334,9 +323,23 @@ void main() {
               createdAt: 0,
               updatedAt: 0,
             ),
-          ),
-        ];
+          );
 
+      testWidgets('inspector bulk buttons hidden when nothing is selected',
+          (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+        // Multi-select header (and its Accept/Retranslate/Deselect buttons) is
+        // only rendered when selectedCount > 1.
+        expect(find.text('Accept'), findsNothing);
+        expect(find.text('Retranslate'), findsNothing);
+        expect(find.text('Deselect'), findsNothing);
+      });
+
+      testWidgets(
+          'inspector renders multi-select header with bulk buttons '
+          'when 2+ rows are selected', (tester) async {
+        final rows = [needsReviewRow('a'), needsReviewRow('b')];
         await tester.pumpWidget(createTestWidget(rows: rows));
         await tester.pumpAndSettle();
 
@@ -345,10 +348,39 @@ void main() {
         container
             .read(editorSelectionProvider.notifier)
             .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
         await tester.pumpAndSettle();
 
-        expect(find.byType(BulkActionCluster), findsOneWidget);
-        expect(find.text('1 selected'), findsOneWidget);
+        expect(find.text('2 units selected'), findsOneWidget);
+        expect(find.text('Accept'), findsOneWidget);
+        expect(find.text('Retranslate'), findsOneWidget);
+        expect(find.text('Deselect'), findsOneWidget);
+      });
+
+      testWidgets('Deselect clears the editor selection', (tester) async {
+        final rows = [needsReviewRow('a'), needsReviewRow('b')];
+        await tester.pumpWidget(createTestWidget(rows: rows));
+        await tester.pumpAndSettle();
+
+        final element = tester.element(find.byType(TranslationEditorScreen));
+        final container = ProviderScope.containerOf(element, listen: false);
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Deselect'));
+        await tester.pumpAndSettle();
+
+        expect(
+          container.read(editorSelectionProvider).selectedCount,
+          0,
+        );
       });
     });
 

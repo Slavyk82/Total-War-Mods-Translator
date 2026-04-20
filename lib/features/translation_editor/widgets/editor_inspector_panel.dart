@@ -24,7 +24,9 @@ typedef OnInspectorIssueAction = void Function(batch.ValidationIssue issue);
 /// - 0 -> empty placeholder.
 /// - 1 -> full inspector (key + Source + Target), responsive layout with
 ///   equal-sized source/target fields that scroll internally when needed.
-/// - N>1 -> multi-select header with batch hints.
+/// - N>1 -> multi-select header + bulk action row (Accept / Retranslate /
+///   Deselect). The caller wires each callback; a `null` callback renders a
+///   disabled button.
 class EditorInspectorPanel extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
@@ -32,6 +34,9 @@ class EditorInspectorPanel extends ConsumerStatefulWidget {
   final OnInspectorIssueAction? onAcceptIssue;
   final OnInspectorIssueAction? onRejectIssue;
   final OnInspectorIssueAction? onEditIssue;
+  final VoidCallback? onBulkAccept;
+  final VoidCallback? onBulkRetranslate;
+  final VoidCallback? onBulkDeselect;
 
   const EditorInspectorPanel({
     super.key,
@@ -41,6 +46,9 @@ class EditorInspectorPanel extends ConsumerStatefulWidget {
     this.onAcceptIssue,
     this.onRejectIssue,
     this.onEditIssue,
+    this.onBulkAccept,
+    this.onBulkRetranslate,
+    this.onBulkDeselect,
   });
 
   @override
@@ -91,6 +99,9 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     } else if (selection.selectedCount > 1) {
       body = _MultiSelectHeader(
         count: selection.selectedCount,
+        onBulkAccept: widget.onBulkAccept,
+        onBulkRetranslate: widget.onBulkRetranslate,
+        onBulkDeselect: widget.onBulkDeselect,
         tokens: tokens,
       );
     } else {
@@ -224,8 +235,18 @@ class _EmptyState extends StatelessWidget {
 
 class _MultiSelectHeader extends StatelessWidget {
   final int count;
+  final VoidCallback? onBulkAccept;
+  final VoidCallback? onBulkRetranslate;
+  final VoidCallback? onBulkDeselect;
   final TwmtThemeTokens tokens;
-  const _MultiSelectHeader({required this.count, required this.tokens});
+
+  const _MultiSelectHeader({
+    required this.count,
+    required this.onBulkAccept,
+    required this.onBulkRetranslate,
+    required this.onBulkDeselect,
+    required this.tokens,
+  });
 
   @override
   Widget build(BuildContext context) => Column(
@@ -238,6 +259,37 @@ class _MultiSelectHeader extends StatelessWidget {
               fontSize: 16,
               color: tokens.accent,
             ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Accept',
+                  icon: FluentIcons.checkmark_24_regular,
+                  color: tokens.accent,
+                  onTap: onBulkAccept,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Retranslate',
+                  icon: FluentIcons.arrow_sync_24_regular,
+                  color: tokens.warn,
+                  onTap: onBulkRetranslate,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Deselect',
+                  icon: FluentIcons.dismiss_circle_24_regular,
+                  color: tokens.textMid,
+                  onTap: onBulkDeselect,
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -655,7 +707,7 @@ class _ValidationIssuesSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _IssueActionButton(
+                child: _InspectorActionButton(
                   label: 'Accept',
                   icon: FluentIcons.checkmark_24_regular,
                   color: tokens.accent,
@@ -666,7 +718,7 @@ class _ValidationIssuesSection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _IssueActionButton(
+                child: _InspectorActionButton(
                   label: 'Reject',
                   icon: FluentIcons.dismiss_24_regular,
                   color: tokens.err,
@@ -677,7 +729,7 @@ class _ValidationIssuesSection extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: _IssueActionButton(
+                child: _InspectorActionButton(
                   label: 'Edit',
                   icon: FluentIcons.edit_24_regular,
                   color: tokens.accent,
@@ -722,13 +774,13 @@ class _IssueRow extends StatelessWidget {
   }
 }
 
-class _IssueActionButton extends StatelessWidget {
+class _InspectorActionButton extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
 
-  const _IssueActionButton({
+  const _InspectorActionButton({
     required this.label,
     required this.icon,
     required this.color,

@@ -19,9 +19,9 @@ import 'editor_actions_base.dart';
 /// former rescan flow: it re-runs the validation service over every
 /// translated row (reusing [_performRescan]) and then pivots the editor's
 /// status filter to `needsReview` so the grid itself becomes the review
-/// surface. Per-row Accept/Reject/Edit and bulk Accept/Reject helpers
-/// are exposed as public methods so the inspector panel and the
-/// [BulkActionCluster] in the filter toolbar can drive them directly.
+/// surface. Per-row Accept/Reject/Edit and bulk Accept/Reject helpers are
+/// exposed as public methods so the inspector panel can drive them — both
+/// the single-selection issue buttons and the multi-selection bulk row.
 mixin EditorActionsValidation on EditorActionsBase {
   /// Rescans all translations then focuses the grid on rows needing review.
   ///
@@ -302,11 +302,10 @@ mixin EditorActionsValidation on EditorActionsBase {
 
   /// Batch accept every row in [rows] in a single transaction.
   ///
-  /// Called by the [BulkActionCluster] in the editor's filter toolbar. The
-  /// cluster gives us full [TranslationRow] instances so we can pull the
-  /// `version.id` directly; the repository entry point only needs version
-  /// ids. Refreshes editor providers on success so the grid re-renders
-  /// without the accepted rows.
+  /// Called from the inspector's multi-select bulk row. The caller hands us
+  /// full [TranslationRow] instances so we can pull `version.id` directly;
+  /// the repository entry point only needs version ids. Refreshes editor
+  /// providers on success so the grid re-renders without the accepted rows.
   Future<void> handleBulkAcceptTranslation(List<TranslationRow> rows) async {
     final versionRepo =
         ref.read(shared_repo.translationVersionRepositoryProvider);

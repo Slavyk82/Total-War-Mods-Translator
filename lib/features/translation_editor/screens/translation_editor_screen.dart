@@ -10,7 +10,6 @@ import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
-import 'package:twmt/widgets/lists/bulk_action_cluster.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
@@ -134,19 +133,22 @@ class _TranslationEditorScreenState
         stats.totalUnits > 0 &&
         stats.completionPercentage >= 100.0;
 
-    // Pre-compute which currently visible (filter+search aware) rows are both
-    // selected and still flagged `needsReview` — the [BulkActionCluster] in
-    // the filter toolbar only renders when that set is non-empty so bulk
-    // Accept/Reject only target reviewable rows.
+    // Pre-compute selected rows for the inspector's multi-select bulk
+    // actions. Accept operates only on `needsReview` rows (accepting already-
+    // translated rows is a no-op, accepting a pending row would mark it
+    // translated with no text). Retranslate operates on every selected row —
+    // `rejectBatch` clears `translatedText` and resets `status = pending` for
+    // any row id, so applying it to already-empty rows is a safe no-op.
     final rowsAsync = ref.watch(
       filteredTranslationRowsProvider(widget.projectId, widget.languageId),
     );
     final visibleRows = rowsAsync.asData?.value ?? const <TranslationRow>[];
     final selection = ref.watch(editorSelectionProvider);
-    final selectedNeedsReviewRows = visibleRows
-        .where((r) =>
-            selection.selectedUnitIds.contains(r.id) &&
-            r.status == TranslationVersionStatus.needsReview)
+    final allSelectedRows = visibleRows
+        .where((r) => selection.selectedUnitIds.contains(r.id))
+        .toList();
+    final selectedNeedsReviewRows = allSelectedRows
+        .where((r) => r.status == TranslationVersionStatus.needsReview)
         .toList();
 
     final shortcuts = <ShortcutActivator, Intent>{
@@ -238,23 +240,6 @@ class _TranslationEditorScreenState
                   title: projectName,
                 ),
                 trailing: [
-                  if (selectedNeedsReviewRows.isNotEmpty)
-                    BulkActionCluster(
-                      selectedCount: selectedNeedsReviewRows.length,
-                      onAccept: () async {
-                        await _getActions()
-                            .handleBulkAcceptTranslation(
-                                selectedNeedsReviewRows);
-                      },
-                      onReject: () async {
-                        await _getActions()
-                            .handleBulkRejectTranslation(
-                                selectedNeedsReviewRows);
-                      },
-                      onDeselect: () => ref
-                          .read(editorSelectionProvider.notifier)
-                          .clearSelection(),
-                    ),
                   ListSearchField(
                     value: filter.searchQuery,
                     focusNode: _searchFocus,
@@ -317,6 +302,25 @@ class _TranslationEditorScreenState
                               .handleEditTranslation(issue, newText);
                         }
                       },
+                      onBulkAccept: selectedNeedsReviewRows.isEmpty
+                          ? null
+                          : () async {
+                              await _getActions()
+                                  .handleBulkAcceptTranslation(
+                                      selectedNeedsReviewRows);
+                            },
+                      onBulkRetranslate: allSelectedRows.isEmpty
+                          ? null
+                          : () async {
+                              await _getActions()
+                                  .handleBulkRejectTranslation(
+                                      allSelectedRows);
+                            },
+                      onBulkDeselect: selection.selectedCount == 0
+                          ? null
+                          : () => ref
+                              .read(editorSelectionProvider.notifier)
+                              .clearSelection(),
                     ),
                   ],
                 ),
