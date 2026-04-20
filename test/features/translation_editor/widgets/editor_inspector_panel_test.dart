@@ -300,4 +300,232 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+      'shows Validation Issues section with Accept/Reject/Edit for needsReview row',
+      (tester) async {
+    TranslationRow needsReviewRow() {
+      final unit = TranslationUnit(
+        id: '1',
+        projectId: 'p',
+        key: 'k',
+        sourceText: 'source',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      final version = TranslationVersion(
+        id: '1-v',
+        unitId: '1',
+        projectLanguageId: 'pl',
+        translatedText: 'dst',
+        status: TranslationVersionStatus.needsReview,
+        translationSource: TranslationSource.manual,
+        validationIssues:
+            '[{"rule":"variables","severity":"error","message":"missing %s"}]',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      return TranslationRow(unit: unit, version: version);
+    }
+
+    var accepted = false;
+    var rejected = false;
+    var edited = false;
+
+    final container = ProviderContainer(overrides: [
+      filteredTranslationRowsProvider('p', 'fr')
+          .overrideWith((_) async => [needsReviewRow()]),
+      currentProjectProvider('p').overrideWith(
+        (_) async => Project(
+          id: 'p',
+          name: 'p',
+          gameInstallationId: 'g',
+          projectType: 'mod',
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      ),
+      currentLanguageProvider('fr').overrideWith(
+        (_) async => const Language(
+            id: 'fr', code: 'fr', name: 'French', nativeName: 'Francais'),
+      ),
+    ]);
+    addTearDown(container.dispose);
+
+    // Single-select the needsReview row.
+    container.read(editorSelectionProvider.notifier).toggleSelection('1');
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.atelierDarkTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 1080,
+            child: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (_, _) {},
+              onAcceptIssue: (_) => accepted = true,
+              onRejectIssue: (_) => rejected = true,
+              onEditIssue: (_) => edited = true,
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('missing %s'), findsOneWidget);
+    await tester.tap(find.text('Accept'));
+    expect(accepted, isTrue);
+    await tester.tap(find.text('Reject'));
+    expect(rejected, isTrue);
+    await tester.tap(find.text('Edit'));
+    expect(edited, isTrue);
+  });
+
+  testWidgets('hides Validation Issues section for translated rows',
+      (tester) async {
+    TranslationRow translatedRow() {
+      final unit = TranslationUnit(
+        id: '2',
+        projectId: 'p',
+        key: 'k2',
+        sourceText: 's',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      final version = TranslationVersion(
+        id: '2-v',
+        unitId: '2',
+        projectLanguageId: 'pl',
+        translatedText: 't',
+        status: TranslationVersionStatus.translated,
+        translationSource: TranslationSource.manual,
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      return TranslationRow(unit: unit, version: version);
+    }
+
+    final container = ProviderContainer(overrides: [
+      filteredTranslationRowsProvider('p', 'fr')
+          .overrideWith((_) async => [translatedRow()]),
+      currentProjectProvider('p').overrideWith(
+        (_) async => Project(
+          id: 'p',
+          name: 'p',
+          gameInstallationId: 'g',
+          projectType: 'mod',
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      ),
+      currentLanguageProvider('fr').overrideWith(
+        (_) async => const Language(
+            id: 'fr', code: 'fr', name: 'French', nativeName: 'Francais'),
+      ),
+    ]);
+    addTearDown(container.dispose);
+    container.read(editorSelectionProvider.notifier).toggleSelection('2');
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.atelierDarkTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 1080,
+            child: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (_, _) {},
+              onAcceptIssue: (_) {},
+              onRejectIssue: (_) {},
+              onEditIssue: (_) {},
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('VALIDATION ISSUES'), findsNothing);
+  });
+
+  testWidgets(
+      'hides Validation Issues section when needsReview row has no issues JSON',
+      (tester) async {
+    TranslationRow row() {
+      final unit = TranslationUnit(
+        id: '3',
+        projectId: 'p',
+        key: 'k3',
+        sourceText: 's',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      final version = TranslationVersion(
+        id: '3-v',
+        unitId: '3',
+        projectLanguageId: 'pl',
+        translatedText: 't',
+        status: TranslationVersionStatus.needsReview,
+        translationSource: TranslationSource.manual,
+        // validationIssues left null — the defensive guard must hide the
+        // section even though the row status is needsReview.
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      return TranslationRow(unit: unit, version: version);
+    }
+
+    final container = ProviderContainer(overrides: [
+      filteredTranslationRowsProvider('p', 'fr')
+          .overrideWith((_) async => [row()]),
+      currentProjectProvider('p').overrideWith(
+        (_) async => Project(
+          id: 'p',
+          name: 'p',
+          gameInstallationId: 'g',
+          projectType: 'mod',
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      ),
+      currentLanguageProvider('fr').overrideWith(
+        (_) async => const Language(
+            id: 'fr', code: 'fr', name: 'French', nativeName: 'Francais'),
+      ),
+    ]);
+    addTearDown(container.dispose);
+    container.read(editorSelectionProvider.notifier).toggleSelection('3');
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: AppTheme.atelierDarkTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 1920,
+            height: 1080,
+            child: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (_, _) {},
+              onAcceptIssue: (_) {},
+              onRejectIssue: (_) {},
+              onEditIssue: (_) {},
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('VALIDATION ISSUES'), findsNothing);
+  });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:twmt/models/common/validation_issue_entry.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 
 /// Decoded validation issue ready for UI consumption.
@@ -70,4 +71,18 @@ List<ParsedValidationIssue> parseValidationIssues(String? raw) {
       description: raw,
     ),
   ];
+}
+
+/// Coarse severity bucket used by the editor filter state and the inspector
+/// when building a `batch.ValidationIssue`. The batch enum only has `error`
+/// and `warning`, so `critical` folds into `error` — both surface in the
+/// "Errors" pill.
+batch.ValidationSeverity bucketSeverity(ValidationSeverity severity) {
+  switch (severity) {
+    case ValidationSeverity.error:
+    case ValidationSeverity.critical:
+      return batch.ValidationSeverity.error;
+    case ValidationSeverity.warning:
+      return batch.ValidationSeverity.warning;
+  }
 }
