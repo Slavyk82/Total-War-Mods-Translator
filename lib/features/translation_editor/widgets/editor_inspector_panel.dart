@@ -272,8 +272,9 @@ class _MultiSelectHeader extends StatelessWidget {
         // Bulk buttons stacked full-width so both icon and label always have
         // room at any panel width. Each button is `_bulkButtonHeight` px tall
         // (double the issue-row button height) for a comfortable bulk-click
-        // target. Accept and Retranslate are review-only — they collapse out
-        // of the layout when no `needsReview` row is in the selection.
+        // target. Accept and Retranslate collapse out of the layout when
+        // their callback is null; the parent screen nulls them out for
+        // non-review selections.
         if (showAccept) ...[
           SizedBox(
             height: _bulkButtonHeight,
