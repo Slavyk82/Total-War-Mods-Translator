@@ -309,7 +309,10 @@ class _TranslationEditorScreenState
                                   .handleBulkAcceptTranslation(
                                       selectedNeedsReviewRows);
                             },
-                      onBulkRetranslate: allSelectedRows.isEmpty
+                      // Gated by the presence of any `needsReview` row but
+                      // rejects the full selection — the reject handler wipes
+                      // every selected translation once the user confirms.
+                      onBulkRetranslate: selectedNeedsReviewRows.isEmpty
                           ? null
                           : () async {
                               await _getActions()

@@ -325,6 +325,27 @@ void main() {
             ),
           );
 
+      TranslationRow translatedRow(String id) => TranslationRow(
+            unit: TranslationUnit(
+              id: id,
+              projectId: testProjectId,
+              key: 'k$id',
+              sourceText: 's$id',
+              createdAt: 0,
+              updatedAt: 0,
+            ),
+            version: TranslationVersion(
+              id: '${id}v',
+              unitId: id,
+              projectLanguageId: 'pl',
+              translatedText: 't$id',
+              status: TranslationVersionStatus.translated,
+              translationSource: TranslationSource.manual,
+              createdAt: 0,
+              updatedAt: 0,
+            ),
+          );
+
       testWidgets('inspector bulk buttons hidden when nothing is selected',
           (tester) async {
         await tester.pumpWidget(createTestWidget());
@@ -381,6 +402,54 @@ void main() {
           container.read(editorSelectionProvider).selectedCount,
           0,
         );
+      });
+
+      testWidgets(
+          'Accept and Retranslate are hidden when selection has no needsReview rows',
+          (tester) async {
+        final rows = [translatedRow('a'), translatedRow('b')];
+        await tester.pumpWidget(createTestWidget(rows: rows));
+        await tester.pumpAndSettle();
+
+        final element = tester.element(find.byType(TranslationEditorScreen));
+        final container = ProviderScope.containerOf(element, listen: false);
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
+        await tester.pumpAndSettle();
+
+        // Header still signals a multi-select, but the two review-only
+        // actions are not rendered — only the always-present Deselect.
+        expect(find.text('2 units selected'), findsOneWidget);
+        expect(find.text('Accept'), findsNothing);
+        expect(find.text('Retranslate'), findsNothing);
+        expect(find.text('Deselect'), findsOneWidget);
+      });
+
+      testWidgets(
+          'Accept and Retranslate reappear when at least one selected row is needsReview',
+          (tester) async {
+        final rows = [translatedRow('a'), needsReviewRow('b')];
+        await tester.pumpWidget(createTestWidget(rows: rows));
+        await tester.pumpAndSettle();
+
+        final element = tester.element(find.byType(TranslationEditorScreen));
+        final container = ProviderScope.containerOf(element, listen: false);
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 units selected'), findsOneWidget);
+        expect(find.text('Accept'), findsOneWidget);
+        expect(find.text('Retranslate'), findsOneWidget);
+        expect(find.text('Deselect'), findsOneWidget);
       });
     });
 

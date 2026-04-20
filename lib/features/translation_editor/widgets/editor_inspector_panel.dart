@@ -254,22 +254,28 @@ class _MultiSelectHeader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$count units selected',
-            style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayStyle,
-              fontSize: 16,
-              color: tokens.accent,
-            ),
+  Widget build(BuildContext context) {
+    final showAccept = onBulkAccept != null;
+    final showRetranslate = onBulkRetranslate != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$count units selected',
+          style: tokens.fontDisplay.copyWith(
+            fontStyle: tokens.fontDisplayStyle,
+            fontSize: 16,
+            color: tokens.accent,
           ),
-          const SizedBox(height: 16),
-          // Bulk buttons stacked full-width so both icon and label always have
-          // room at any panel width. Each button is `_bulkButtonHeight` px tall
-          // (double the issue-row button height) for a comfortable bulk-click
-          // target.
+        ),
+        const SizedBox(height: 16),
+        // Bulk buttons stacked full-width so both icon and label always have
+        // room at any panel width. Each button is `_bulkButtonHeight` px tall
+        // (double the issue-row button height) for a comfortable bulk-click
+        // target. Accept and Retranslate collapse out of the layout when
+        // their callback is null; the parent screen nulls them out for
+        // non-review selections.
+        if (showAccept) ...[
           SizedBox(
             height: _bulkButtonHeight,
             child: _InspectorActionButton(
@@ -280,6 +286,8 @@ class _MultiSelectHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+        ],
+        if (showRetranslate) ...[
           SizedBox(
             height: _bulkButtonHeight,
             child: _InspectorActionButton(
@@ -290,17 +298,19 @@ class _MultiSelectHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: _bulkButtonHeight,
-            child: _InspectorActionButton(
-              label: 'Deselect',
-              icon: FluentIcons.dismiss_circle_24_regular,
-              color: tokens.textMid,
-              onTap: onBulkDeselect,
-            ),
-          ),
         ],
-      );
+        SizedBox(
+          height: _bulkButtonHeight,
+          child: _InspectorActionButton(
+            label: 'Deselect',
+            icon: FluentIcons.dismiss_circle_24_regular,
+            color: tokens.textMid,
+            onTap: onBulkDeselect,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _SingleSelectionBody extends ConsumerWidget {
