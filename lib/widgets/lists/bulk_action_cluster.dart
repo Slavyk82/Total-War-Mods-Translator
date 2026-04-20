@@ -4,8 +4,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 
 /// Compact Accept/Reject/Deselect cluster rendered in the FilterToolbar
-/// trailing slot whenever at least one selected row has open validation
-/// issues. Matches the editor toolbar's tokenised mini-action rail.
+/// trailing slot when at least one selected row has `status == needsReview`.
+/// The caller decides visibility; this widget only renders.
 class BulkActionCluster extends StatelessWidget {
   const BulkActionCluster({
     super.key,
