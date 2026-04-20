@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
@@ -118,6 +119,11 @@ class _TranslationEditorScreenState
       editorStatsProvider(widget.projectId, widget.languageId),
     );
     final filter = ref.watch(editorFilterProvider);
+    final severityCountsAsync = ref.watch(
+      visibleSeverityCountsProvider(widget.projectId, widget.languageId),
+    );
+    final severityCounts =
+        severityCountsAsync.asData?.value ?? (errors: 0, warnings: 0);
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
     final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
@@ -229,6 +235,9 @@ class _TranslationEditorScreenState
                 ],
                 pillGroups: [
                   _buildStatusGroup(filter, stats),
+                  if (filter.statusFilters
+                      .contains(TranslationVersionStatus.needsReview))
+                    _buildSeverityGroup(filter, severityCounts),
                 ],
               ),
               Expanded(
@@ -314,6 +323,48 @@ class _TranslationEditorScreenState
             stats?.translatedCount),
         pill('Needs review', TranslationVersionStatus.needsReview,
             stats?.needsReviewCount),
+      ],
+    );
+  }
+
+  FilterPillGroup _buildSeverityGroup(
+    EditorFilterState filter,
+    ({int errors, int warnings}) counts,
+  ) {
+    FilterPill pill(
+      String label,
+      ValidationSeverity severity,
+      int count,
+    ) {
+      final active = filter.severityFilters.contains(severity);
+      return FilterPill(
+        label: label,
+        selected: active,
+        count: count,
+        onToggle: () {
+          final updated =
+              Set<ValidationSeverity>.from(filter.severityFilters);
+          if (active) {
+            updated.remove(severity);
+          } else {
+            updated.add(severity);
+          }
+          ref
+              .read(editorFilterProvider.notifier)
+              .setSeverityFilters(updated);
+        },
+      );
+    }
+
+    return FilterPillGroup(
+      label: 'SEVERITY',
+      clearLabel: 'Clear',
+      onClear: () => ref
+          .read(editorFilterProvider.notifier)
+          .setSeverityFilters(const {}),
+      pills: [
+        pill('Errors', ValidationSeverity.error, counts.errors),
+        pill('Warnings', ValidationSeverity.warning, counts.warnings),
       ],
     );
   }

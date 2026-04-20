@@ -128,6 +128,39 @@ void main() {
       contains(TranslationVersionStatus.pending),
     );
   });
+
+  testWidgets(
+      'hides SEVERITY pill group when needsReview is not in statusFilters',
+      (tester) async {
+    await tester.pumpWidget(build());
+    await tester.pumpAndSettle();
+    expect(find.text('SEVERITY'), findsNothing);
+  });
+
+  testWidgets(
+      'shows SEVERITY pill group with counts when needsReview is selected',
+      (tester) async {
+    await tester.pumpWidget(build(extraOverrides: [
+      visibleSeverityCountsProvider(projectId, languageId).overrideWith(
+        (_) async => (errors: 3, warnings: 7),
+      ),
+    ]));
+    await tester.pumpAndSettle();
+
+    // Flip the filter state via the running provider scope.
+    final element = tester.element(find.byType(TranslationEditorScreen));
+    final container = ProviderScope.containerOf(element, listen: false);
+    container
+        .read(editorFilterProvider.notifier)
+        .setStatusFilters({TranslationVersionStatus.needsReview});
+    await tester.pumpAndSettle();
+
+    expect(find.text('SEVERITY'), findsOneWidget);
+    expect(find.widgetWithText(FilterPill, 'Errors'), findsOneWidget);
+    expect(find.widgetWithText(FilterPill, 'Warnings'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget); // error count
+    expect(find.text('7'), findsOneWidget); // warning count
+  });
 }
 
 class _Settings extends TranslationSettingsNotifier {
