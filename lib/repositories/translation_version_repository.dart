@@ -271,6 +271,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
           AND tv.status IN ('pending', 'translating')
           AND tu.is_obsolete = 0
           AND $excludeSkipUnitsCondition
+        ORDER BY tu.key
         ''',
         [...ids, projectLanguageId],
       );

@@ -1,17 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
+import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
 
 import '../../helpers/test_database.dart';
 
 void main() {
   late Database db;
   late TranslationVersionRepository repo;
-
-  setUpAll(() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  });
 
   /// Seed a unit + its translation_version row in a single call.
   Future<void> seed({
@@ -46,6 +42,12 @@ void main() {
   setUp(() async {
     db = await TestDatabase.openMigrated();
     repo = TranslationVersionRepository();
+
+    // The `u-skip-text` row below exercises the user-skip branch via
+    // TranslationSkipFilter's hardcoded fallback set. If a future refactor
+    // wires `initialize(...)` into the bootstrap, that row silently stops
+    // covering the branch — fail loudly instead.
+    expect(TranslationSkipFilter.isInitialized, isFalse);
 
     // Rows that must be RETURNED by the two queries:
     await seed(
