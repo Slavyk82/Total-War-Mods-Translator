@@ -309,7 +309,7 @@ class _TranslationEditorScreenState
                                   .handleBulkAcceptTranslation(
                                       selectedNeedsReviewRows);
                             },
-                      onBulkRetranslate: allSelectedRows.isEmpty
+                      onBulkRetranslate: selectedNeedsReviewRows.isEmpty
                           ? null
                           : () async {
                               await _getActions()
