@@ -1,6 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
 import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'editor_row_models.dart';
@@ -156,8 +158,27 @@ Future<List<TranslationRow>> filteredTranslationRows(
       }
     }
 
+    // Severity filter (only meaningful when statusFilters contains needsReview;
+    // applied unconditionally because an empty set short-circuits).
+    if (!_matchesSeverity(row, filterState.severityFilters)) {
+      return false;
+    }
+
     return true;
   }).toList();
+}
+
+/// Returns true when the row has at least one parsed validation issue whose
+/// severity is in [severities]. An empty [severities] set is a no-op.
+bool _matchesSeverity(
+    TranslationRow row, Set<batch.ValidationSeverity> severities) {
+  if (severities.isEmpty) return true;
+  final parsed = parseValidationIssues(row.version.validationIssues);
+  if (parsed.isEmpty) return false;
+  for (final issue in parsed) {
+    if (severities.contains(bucketSeverity(issue.severity))) return true;
+  }
+  return false;
 }
 
 /// Provider for editor statistics
@@ -209,4 +230,34 @@ Future<EditorStats> editorStats(
     needsReviewCount: needsReviewCount,
     completionPercentage: completionPercentage,
   );
+}
+
+/// Per-severity count over all `needsReview` versions for the project+language,
+/// independent of the currently-applied severity / status filters. Used by
+/// the SEVERITY pill group so the counts don't zero out the moment the user
+/// picks a pill.
+@riverpod
+Future<({int errors, int warnings})> visibleSeverityCounts(
+  Ref ref,
+  String projectId,
+  String languageId,
+) async {
+  final allRows =
+      await ref.watch(translationRowsProvider(projectId, languageId).future);
+  var errors = 0;
+  var warnings = 0;
+  for (final row in allRows) {
+    if (row.status != TranslationVersionStatus.needsReview) continue;
+    final parsed = parseValidationIssues(row.version.validationIssues);
+    var rowHasError = false;
+    var rowHasWarning = false;
+    for (final issue in parsed) {
+      final bucket = bucketSeverity(issue.severity);
+      if (bucket == batch.ValidationSeverity.error) rowHasError = true;
+      if (bucket == batch.ValidationSeverity.warning) rowHasWarning = true;
+    }
+    if (rowHasError) errors++;
+    if (rowHasWarning) warnings++;
+  }
+  return (errors: errors, warnings: warnings);
 }

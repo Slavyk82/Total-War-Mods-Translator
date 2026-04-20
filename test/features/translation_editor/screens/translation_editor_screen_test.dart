@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
+import 'package:twmt/models/domain/translation_unit.dart';
+import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/language.dart';
@@ -36,8 +39,17 @@ void main() {
     // 1280px min-width) render without layout overflow.
     const wideScreenSize = Size(1920, 1080);
 
-    /// Creates test widget with mocked providers for translation editor
-    Widget createTestWidget({ThemeData? theme}) {
+    /// Creates test widget with mocked providers for translation editor.
+    ///
+    /// - [rows] seeds `translationRowsProvider` (defaults to empty).
+    /// - [extraOverrides] adds further overrides for providers not already
+    ///   defaulted above (Riverpod 3 forbids overriding the same provider
+    ///   twice in a single container).
+    Widget createTestWidget({
+      ThemeData? theme,
+      List<TranslationRow> rows = const <TranslationRow>[],
+      List<Override> extraOverrides = const [],
+    }) {
       return ProviderScope(
         overrides: [
           // Override project provider
@@ -60,14 +72,15 @@ void main() {
               nativeName: 'Espanol',
             ),
           ),
-          // Override translation rows provider - empty for tests
+          // Override translation rows provider with the caller-supplied list.
           translationRowsProvider(testProjectId, testLanguageId).overrideWith(
-            (ref) async => <TranslationRow>[],
+            (ref) async => rows,
           ),
           // Override translation settings
           translationSettingsProvider.overrideWith(
             () => _MockTranslationSettingsNotifier(),
           ),
+          ...extraOverrides,
         ],
         child: MaterialApp(
           // Default to a TWMT-themed surface so widgets that read
@@ -285,6 +298,89 @@ void main() {
         // Three separators between four segments.
         expect(find.text('›'), findsNWidgets(3));
         expect(find.byTooltip('Back'), findsOneWidget);
+      });
+    });
+
+    group('Bulk actions', () {
+      TranslationRow needsReviewRow(String id) => TranslationRow(
+            unit: TranslationUnit(
+              id: id,
+              projectId: testProjectId,
+              key: 'k$id',
+              sourceText: 's$id',
+              createdAt: 0,
+              updatedAt: 0,
+            ),
+            version: TranslationVersion(
+              id: '${id}v',
+              unitId: id,
+              projectLanguageId: 'pl',
+              translatedText: 't$id',
+              status: TranslationVersionStatus.needsReview,
+              translationSource: TranslationSource.manual,
+              validationIssues:
+                  '[{"rule":"variables","severity":"error","message":"x"}]',
+              createdAt: 0,
+              updatedAt: 0,
+            ),
+          );
+
+      testWidgets('inspector bulk buttons hidden when nothing is selected',
+          (tester) async {
+        await tester.pumpWidget(createTestWidget());
+        await tester.pumpAndSettle();
+        // Multi-select header (and its Accept/Retranslate/Deselect buttons) is
+        // only rendered when selectedCount > 1.
+        expect(find.text('Accept'), findsNothing);
+        expect(find.text('Retranslate'), findsNothing);
+        expect(find.text('Deselect'), findsNothing);
+      });
+
+      testWidgets(
+          'inspector renders multi-select header with bulk buttons '
+          'when 2+ rows are selected', (tester) async {
+        final rows = [needsReviewRow('a'), needsReviewRow('b')];
+        await tester.pumpWidget(createTestWidget(rows: rows));
+        await tester.pumpAndSettle();
+
+        final element = tester.element(find.byType(TranslationEditorScreen));
+        final container = ProviderScope.containerOf(element, listen: false);
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
+        await tester.pumpAndSettle();
+
+        expect(find.text('2 units selected'), findsOneWidget);
+        expect(find.text('Accept'), findsOneWidget);
+        expect(find.text('Retranslate'), findsOneWidget);
+        expect(find.text('Deselect'), findsOneWidget);
+      });
+
+      testWidgets('Deselect clears the editor selection', (tester) async {
+        final rows = [needsReviewRow('a'), needsReviewRow('b')];
+        await tester.pumpWidget(createTestWidget(rows: rows));
+        await tester.pumpAndSettle();
+
+        final element = tester.element(find.byType(TranslationEditorScreen));
+        final container = ProviderScope.containerOf(element, listen: false);
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('a');
+        container
+            .read(editorSelectionProvider.notifier)
+            .toggleSelection('b');
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Deselect'));
+        await tester.pumpAndSettle();
+
+        expect(
+          container.read(editorSelectionProvider).selectedCount,
+          0,
+        );
       });
     });
 

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -9,160 +8,73 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
-import '../../../../services/translation/models/translation_exceptions.dart'
-    as v_exc;
-import '../../utils/validation_issues_parser.dart';
+import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
-import '../validation_review_screen.dart';
 import 'editor_actions_base.dart';
 
-/// Mixin handling validation operations
+/// Mixin handling validation operations.
+///
+/// The user-facing entry point is [handleValidate], which now unifies the
+/// old "load needs-review issues → open review screen" path with the
+/// former rescan flow: it re-runs the validation service over every
+/// translated row (reusing [_performRescan]) and then pivots the editor's
+/// status filter to `needsReview` so the grid itself becomes the review
+/// surface. Per-row Accept/Reject/Edit and bulk Accept/Reject helpers are
+/// exposed as public methods so the inspector panel can drive them — both
+/// the single-selection issue buttons and the multi-selection bulk row.
 mixin EditorActionsValidation on EditorActionsBase {
+  /// Rescans all translations then focuses the grid on rows needing review.
+  ///
+  /// Runs the validation service over every translated entry
+  /// ([_performRescan]), updates statuses in a single transaction, then
+  /// sets the status filter to `{needsReview}` and clears the severity
+  /// filter so the SEVERITY pill group surfaces fresh counts. Shows the
+  /// legacy "No issues to review" info dialog only when the rescan found
+  /// nothing new and didn't clear anything either — the common zero-issue
+  /// happy path.
   Future<void> handleValidate() async {
-    try {
-      final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
-      final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
+    final outcome = await _performRescan();
+    if (outcome == null) return;
+    // Apply the review filter. The SEVERITY pill group will appear because
+    // the filter state now contains `needsReview`.
+    ref
+        .read(editorFilterProvider.notifier)
+        .setStatusFilters({TranslationVersionStatus.needsReview});
+    ref
+        .read(editorFilterProvider.notifier)
+        .setSeverityFilters(const {});
+    refreshProviders();
 
-      // Get all versions for this project language
-      final versionsResult =
-          await versionRepo.getByProjectLanguage(projectLanguageId);
-      if (versionsResult.isErr) {
-        throw Exception('Failed to load translations');
-      }
-
-      final allVersions = versionsResult.unwrap();
-
-      // Filter only versions with "needsReview" status
-      final needsReviewVersions = allVersions
-          .where((v) => v.status == TranslationVersionStatus.needsReview)
-          .toList();
-
-      // Count total translated for statistics
-      final translatedCount = allVersions
-          .where((v) =>
-              v.translatedText != null && v.translatedText!.isNotEmpty)
-          .length;
-
-      ref.read(loggingServiceProvider).info(
-        'Loading validation issues',
-        {
-          'totalVersions': allVersions.length,
-          'translated': translatedCount,
-          'needsReview': needsReviewVersions.length,
-        },
+    if (!context.mounted) return;
+    if (outcome.newIssues == 0 &&
+        outcome.unchanged > 0 &&
+        outcome.cleared == 0) {
+      EditorDialogs.showInfoDialog(
+        context,
+        'No issues to review',
+        'All translations have passed validation.',
       );
-
-      if (needsReviewVersions.isEmpty) {
-        if (!context.mounted) return;
-        EditorDialogs.showInfoDialog(
-          context,
-          'No issues to review',
-          'All translations have passed validation.',
-        );
-        return;
-      }
-
-      if (!context.mounted) return;
-
-      // Load all units in batch instead of one-by-one
-      final unitIds = needsReviewVersions.map((v) => v.unitId).toSet().toList();
-      final unitsResult = await unitRepo.getByIds(unitIds);
-      final unitsMap = <String, dynamic>{};
-      if (unitsResult.isOk) {
-        for (final unit in unitsResult.unwrap()) {
-          unitsMap[unit.id] = unit;
-        }
-      }
-
-      // Build validation issues from needsReview versions
-      final allIssues = <batch.ValidationIssue>[];
-
-      for (final version in needsReviewVersions) {
-        final unit = unitsMap[version.unitId];
-        if (unit == null) continue;
-
-        // Decode validation_issues. Structured payloads (schema v1) carry
-        // the rule code; legacy rows surface as a single `type: 'legacy'`
-        // entry pending the startup rescan.
-        final parsed = parseValidationIssues(version.validationIssues);
-
-        for (final p in parsed) {
-          allIssues.add(batch.ValidationIssue(
-            unitKey: unit.key,
-            unitId: unit.id,
-            versionId: version.id,
-            severity: p.severity == v_exc.ValidationSeverity.error
-                ? batch.ValidationSeverity.error
-                : batch.ValidationSeverity.warning,
-            issueType: p.type,
-            description: p.description,
-            sourceText: unit.sourceText,
-            translatedText: version.translatedText ?? '',
-          ));
-        }
-      }
-
-      final passedCount = translatedCount - needsReviewVersions.length;
-
-      ref.read(batch.batchValidationResultsProvider.notifier).setResults(
-        issues: allIssues,
-        totalValidated: translatedCount,
-        passedCount: passedCount,
-      );
-
-      if (!context.mounted) return;
-
-      // Navigate to full-screen validation review
-      await Navigator.of(context).push(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (routeContext) => ValidationReviewScreen(
-            projectId: projectId,
-            languageId: languageId,
-            issues: allIssues,
-            totalValidated: translatedCount,
-            passedCount: passedCount,
-            onExportReport: (filePath, issues) async {
-              await exportValidationReport(filePath, issues);
-            },
-            onRejectTranslation: (issue) => _handleRejectTranslation(issue),
-            onAcceptTranslation: (issue) => _handleAcceptTranslation(issue),
-            onBulkAcceptTranslation: (issues) =>
-                _handleBulkAcceptTranslation(issues),
-            onBulkRejectTranslation: (issues) =>
-                _handleBulkRejectTranslation(issues),
-            onEditTranslation: (issue, newText) =>
-                _handleEditTranslation(issue, newText),
-            onClose: () => Navigator.of(routeContext).pop(),
-          ),
-        ),
-      );
-
-      // Refresh providers after screen closes
-      refreshProviders();
-    } catch (e, stackTrace) {
-      ref.read(loggingServiceProvider).error(
-        'Failed to load validation issues',
-        e,
-        stackTrace,
-      );
-      if (!context.mounted) return;
-      EditorDialogs.showErrorDialog(
-          context, 'Failed to load validation issues', e.toString());
     }
   }
 
-  /// Rescan all translations and update validation statuses.
+  /// Re-runs the validation service on every translated entry and writes
+  /// back the resulting status + validation_issues JSON in a single
+  /// transaction.
   ///
-  /// Re-runs the validation service on every translated entry,
-  /// updating the status (translated / needsReview) and storing
-  /// the validation issues JSON in the database.
-  Future<void> handleRescanValidation() async {
+  /// Shows a progress dialog while scanning and returns a summary tuple
+  /// `(scanned, newIssues, cleared, unchanged)` for the caller to act on.
+  /// Returns `null` when there is nothing to scan (no translated entries)
+  /// — the caller should treat that as an early exit.
+  Future<({int scanned, int newIssues, int cleared, int unchanged})?>
+      _performRescan() async {
     BuildContext? progressDialogContext;
+    // Created up front so the `finally` block can always dispose it, even
+    // on early-exit paths (e.g. "Nothing to scan") or thrown errors.
+    final progressNotifier = ValueNotifier<String>('Scanning...');
     try {
       final projectLanguageId = await getProjectLanguageId();
-      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final versionRepo =
+          ref.read(shared_repo.translationVersionRepositoryProvider);
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final validationService = ref.read(shared_svc.validationServiceProvider);
       final logger = ref.read(loggingServiceProvider);
@@ -196,13 +108,13 @@ mixin EditorActionsValidation on EditorActionsBase {
           .toList();
 
       if (translatedVersions.isEmpty) {
-        if (!context.mounted) return;
+        if (!context.mounted) return null;
         EditorDialogs.showInfoDialog(
           context,
           'Nothing to scan',
           'No translated entries found.',
         );
-        return;
+        return null;
       }
 
       logger.info(
@@ -211,10 +123,9 @@ mixin EditorActionsValidation on EditorActionsBase {
       );
 
       // Show progress dialog
-      if (!context.mounted) return;
-      final progressNotifier = ValueNotifier<String>(
-        'Scanning 0/${translatedVersions.length}...',
-      );
+      if (!context.mounted) return null;
+      progressNotifier.value =
+          'Scanning 0/${translatedVersions.length}...';
 
       showDialog<void>(
         context: context,
@@ -354,24 +265,17 @@ mixin EditorActionsValidation on EditorActionsBase {
         },
       );
 
-      // Close progress dialog and show results
+      // Close progress dialog before returning the summary
       final dialogCtx = progressDialogContext;
       if (dialogCtx != null && dialogCtx.mounted) {
         Navigator.of(dialogCtx).pop();
       }
-      progressNotifier.dispose();
 
-      if (!context.mounted) return;
-      refreshProviders();
-
-      if (!context.mounted) return;
-      EditorDialogs.showInfoDialog(
-        context,
-        'Rescan Complete',
-        'Scanned $scanned translations:\n'
-            '  - $newIssues flagged as needs review\n'
-            '  - $cleared cleared (now valid)\n'
-            '  - $unchanged unchanged',
+      return (
+        scanned: scanned,
+        newIssues: newIssues,
+        cleared: cleared,
+        unchanged: unchanged,
       );
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
@@ -384,20 +288,28 @@ mixin EditorActionsValidation on EditorActionsBase {
       if (dialogCtx != null && dialogCtx.mounted) {
         Navigator.of(dialogCtx).pop();
       }
-      if (!context.mounted) return;
+      if (!context.mounted) return null;
       EditorDialogs.showErrorDialog(
         context,
         'Rescan Failed',
         e.toString(),
       );
+      return null;
+    } finally {
+      progressNotifier.dispose();
     }
   }
 
-  /// Batch accept multiple translations in a single transaction
-  Future<void> _handleBulkAcceptTranslation(
-      List<batch.ValidationIssue> issues) async {
-    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
-    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+  /// Batch accept every row in [rows] in a single transaction.
+  ///
+  /// Called from the inspector's multi-select bulk row. The caller hands us
+  /// full [TranslationRow] instances so we can pull `version.id` directly;
+  /// the repository entry point only needs version ids. Refreshes editor
+  /// providers on success so the grid re-renders without the accepted rows.
+  Future<void> handleBulkAcceptTranslation(List<TranslationRow> rows) async {
+    final versionRepo =
+        ref.read(shared_repo.translationVersionRepositoryProvider);
+    final versionIds = rows.map((r) => r.version.id).toSet().toList();
 
     final result = await versionRepo.acceptBatch(versionIds);
 
@@ -406,19 +318,24 @@ mixin EditorActionsValidation on EditorActionsBase {
         'Failed to batch accept translations',
         {'count': versionIds.length, 'error': result.error},
       );
-    } else {
-      ref.read(loggingServiceProvider).info(
-        'Batch accepted translations',
-        {'count': result.value},
-      );
+      return;
     }
+    ref.read(loggingServiceProvider).info(
+      'Batch accepted translations',
+      {'count': result.value},
+    );
+    refreshProviders();
   }
 
-  /// Batch reject multiple translations in a single transaction
-  Future<void> _handleBulkRejectTranslation(
-      List<batch.ValidationIssue> issues) async {
-    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
-    final versionIds = issues.map((i) => i.versionId).toSet().toList();
+  /// Batch reject every row in [rows] in a single transaction.
+  ///
+  /// Mirror of [handleBulkAcceptTranslation]: clears the translation on
+  /// each selected row and refreshes editor providers so the grid updates
+  /// immediately.
+  Future<void> handleBulkRejectTranslation(List<TranslationRow> rows) async {
+    final versionRepo =
+        ref.read(shared_repo.translationVersionRepositoryProvider);
+    final versionIds = rows.map((r) => r.version.id).toSet().toList();
 
     final result = await versionRepo.rejectBatch(versionIds);
 
@@ -427,17 +344,19 @@ mixin EditorActionsValidation on EditorActionsBase {
         'Failed to batch reject translations',
         {'count': versionIds.length, 'error': result.error},
       );
-    } else {
-      ref.read(loggingServiceProvider).info(
-        'Batch rejected translations',
-        {'count': result.value},
-      );
+      return;
     }
+    ref.read(loggingServiceProvider).info(
+      'Batch rejected translations',
+      {'count': result.value},
+    );
+    refreshProviders();
   }
 
-  /// Reject a translation by clearing it
-  Future<void> _handleRejectTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+  /// Reject a translation by clearing it (sets status back to `pending`).
+  Future<void> handleRejectTranslation(batch.ValidationIssue issue) async {
+    final versionRepo =
+        ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -462,11 +381,13 @@ mixin EditorActionsValidation on EditorActionsBase {
       'Translation rejected and cleared',
       {'unitKey': issue.unitKey, 'versionId': issue.versionId},
     );
+    refreshProviders();
   }
 
-  /// Accept a translation despite validation issues (clears the validation flag)
-  Future<void> _handleAcceptTranslation(batch.ValidationIssue issue) async {
-    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+  /// Accept a translation despite validation issues (clears the flag).
+  Future<void> handleAcceptTranslation(batch.ValidationIssue issue) async {
+    final versionRepo =
+        ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -490,14 +411,16 @@ mixin EditorActionsValidation on EditorActionsBase {
       'Translation accepted despite issues',
       {'unitKey': issue.unitKey, 'versionId': issue.versionId},
     );
+    refreshProviders();
   }
 
-  /// Edit a translation manually with corrected text
-  Future<void> _handleEditTranslation(
+  /// Replace the translation text, mark as manually edited and clear issues.
+  Future<void> handleEditTranslation(
     batch.ValidationIssue issue,
     String newText,
   ) async {
-    final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+    final versionRepo =
+        ref.read(shared_repo.translationVersionRepositoryProvider);
 
     final versionResult = await versionRepo.getById(issue.versionId);
     if (versionResult.isErr) {
@@ -523,75 +446,6 @@ mixin EditorActionsValidation on EditorActionsBase {
       'Translation manually corrected',
       {'unitKey': issue.unitKey, 'versionId': issue.versionId},
     );
-  }
-
-  Future<void> exportValidationReport(
-    String filePath,
-    List<batch.ValidationIssue> issues,
-  ) async {
-    try {
-      final buffer = StringBuffer();
-      buffer.writeln('Validation Report');
-      buffer.writeln('=' * 80);
-      buffer.writeln('Generated: ${DateTime.now()}');
-      buffer.writeln('Total Issues: ${issues.length}');
-      buffer.writeln();
-
-      final errors =
-          issues.where((i) => i.severity == batch.ValidationSeverity.error).toList();
-      final warnings =
-          issues.where((i) => i.severity == batch.ValidationSeverity.warning).toList();
-
-      if (errors.isNotEmpty) {
-        buffer.writeln('ERRORS (${errors.length})');
-        buffer.writeln('-' * 80);
-        for (final issue in errors) {
-          _writeIssueToBuffer(buffer, issue);
-        }
-      }
-
-      if (warnings.isNotEmpty) {
-        buffer.writeln('WARNINGS (${warnings.length})');
-        buffer.writeln('-' * 80);
-        for (final issue in warnings) {
-          _writeIssueToBuffer(buffer, issue);
-        }
-      }
-
-      await File(filePath).writeAsString(buffer.toString());
-
-      ref.read(loggingServiceProvider).info(
-        'Validation report exported',
-        {'filePath': filePath, 'issueCount': issues.length},
-      );
-    } catch (e, stackTrace) {
-      ref.read(loggingServiceProvider).error(
-        'Failed to export validation report',
-        e,
-        stackTrace,
-      );
-      if (!context.mounted) return;
-      EditorDialogs.showErrorDialog(
-        context,
-        'Export Failed',
-        'Failed to export validation report: ${e.toString()}',
-      );
-    }
-  }
-
-  void _writeIssueToBuffer(StringBuffer buffer, batch.ValidationIssue issue) {
-    buffer.writeln('Key: ${issue.unitKey}');
-    buffer.writeln('Type: ${issue.issueType}');
-    buffer.writeln('Description: ${issue.description}');
-    buffer.writeln();
-    buffer.writeln('Source:');
-    buffer.writeln(issue.sourceText);
-    buffer.writeln();
-    buffer.writeln('Translation:');
-    buffer.writeln(issue.translatedText);
-    buffer.writeln();
-    buffer.writeln('-' * 40);
-    buffer.writeln();
+    refreshProviders();
   }
 }
-

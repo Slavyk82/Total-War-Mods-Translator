@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
@@ -20,6 +21,7 @@ import '../widgets/editor_action_sidebar.dart';
 import '../widgets/editor_datagrid.dart';
 import '../widgets/editor_inspector_panel.dart';
 import '../widgets/editor_status_bar.dart';
+import '../widgets/validation_edit_dialog.dart';
 import 'translation_editor_actions.dart';
 
 /// Translation editor screen.
@@ -118,6 +120,11 @@ class _TranslationEditorScreenState
       editorStatsProvider(widget.projectId, widget.languageId),
     );
     final filter = ref.watch(editorFilterProvider);
+    final severityCountsAsync = ref.watch(
+      visibleSeverityCountsProvider(widget.projectId, widget.languageId),
+    );
+    final severityCounts =
+        severityCountsAsync.asData?.value ?? (errors: 0, warnings: 0);
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
     final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
@@ -125,6 +132,24 @@ class _TranslationEditorScreenState
     final isFullyTranslated = stats != null &&
         stats.totalUnits > 0 &&
         stats.completionPercentage >= 100.0;
+
+    // Pre-compute selected rows for the inspector's multi-select bulk
+    // actions. Accept operates only on `needsReview` rows (accepting already-
+    // translated rows is a no-op, accepting a pending row would mark it
+    // translated with no text). Retranslate operates on every selected row —
+    // `rejectBatch` clears `translatedText` and resets `status = pending` for
+    // any row id, so applying it to already-empty rows is a safe no-op.
+    final rowsAsync = ref.watch(
+      filteredTranslationRowsProvider(widget.projectId, widget.languageId),
+    );
+    final visibleRows = rowsAsync.asData?.value ?? const <TranslationRow>[];
+    final selection = ref.watch(editorSelectionProvider);
+    final allSelectedRows = visibleRows
+        .where((r) => selection.selectedUnitIds.contains(r.id))
+        .toList();
+    final selectedNeedsReviewRows = allSelectedRows
+        .where((r) => r.status == TranslationVersionStatus.needsReview)
+        .toList();
 
     final shortcuts = <ShortcutActivator, Intent>{
       LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyF):
@@ -229,6 +254,9 @@ class _TranslationEditorScreenState
                 ],
                 pillGroups: [
                   _buildStatusGroup(filter, stats),
+                  if (filter.statusFilters
+                      .contains(TranslationVersionStatus.needsReview))
+                    _buildSeverityGroup(filter, severityCounts),
                 ],
               ),
               Expanded(
@@ -242,8 +270,6 @@ class _TranslationEditorScreenState
                       onTranslateSelected: () =>
                           _getActions().handleTranslateSelected(),
                       onValidate: () => _getActions().handleValidate(),
-                      onRescanValidation: () =>
-                          _getActions().handleRescanValidation(),
                       onExport: () => _getActions().handleExport(),
                       onImportPack: () => _getActions().handleImportPack(),
                     ),
@@ -262,6 +288,39 @@ class _TranslationEditorScreenState
                       languageId: widget.languageId,
                       onSave: (unitId, text) =>
                           _getActions().handleCellEdit(unitId, text),
+                      onAcceptIssue: (issue) =>
+                          _getActions().handleAcceptTranslation(issue),
+                      onRejectIssue: (issue) =>
+                          _getActions().handleRejectTranslation(issue),
+                      onEditIssue: (issue) async {
+                        final newText = await showDialog<String>(
+                          context: context,
+                          builder: (_) => ValidationEditDialog(issue: issue),
+                        );
+                        if (newText != null) {
+                          await _getActions()
+                              .handleEditTranslation(issue, newText);
+                        }
+                      },
+                      onBulkAccept: selectedNeedsReviewRows.isEmpty
+                          ? null
+                          : () async {
+                              await _getActions()
+                                  .handleBulkAcceptTranslation(
+                                      selectedNeedsReviewRows);
+                            },
+                      onBulkRetranslate: allSelectedRows.isEmpty
+                          ? null
+                          : () async {
+                              await _getActions()
+                                  .handleBulkRejectTranslation(
+                                      allSelectedRows);
+                            },
+                      onBulkDeselect: selection.selectedCount == 0
+                          ? null
+                          : () => ref
+                              .read(editorSelectionProvider.notifier)
+                              .clearSelection(),
                     ),
                   ],
                 ),
@@ -314,6 +373,48 @@ class _TranslationEditorScreenState
             stats?.translatedCount),
         pill('Needs review', TranslationVersionStatus.needsReview,
             stats?.needsReviewCount),
+      ],
+    );
+  }
+
+  FilterPillGroup _buildSeverityGroup(
+    EditorFilterState filter,
+    ({int errors, int warnings}) counts,
+  ) {
+    FilterPill pill(
+      String label,
+      ValidationSeverity severity,
+      int count,
+    ) {
+      final active = filter.severityFilters.contains(severity);
+      return FilterPill(
+        label: label,
+        selected: active,
+        count: count,
+        onToggle: () {
+          final updated =
+              Set<ValidationSeverity>.from(filter.severityFilters);
+          if (active) {
+            updated.remove(severity);
+          } else {
+            updated.add(severity);
+          }
+          ref
+              .read(editorFilterProvider.notifier)
+              .setSeverityFilters(updated);
+        },
+      );
+    }
+
+    return FilterPillGroup(
+      label: 'SEVERITY',
+      clearLabel: 'Clear',
+      onClear: () => ref
+          .read(editorFilterProvider.notifier)
+          .setSeverityFilters(const {}),
+      pills: [
+        pill('Errors', ValidationSeverity.error, counts.errors),
+        pill('Warnings', ValidationSeverity.warning, counts.warnings),
       ],
     );
   }

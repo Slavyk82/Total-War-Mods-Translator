@@ -17,7 +17,6 @@ void main() {
     VoidCallback? onTranslateAll,
     VoidCallback? onTranslateSelected,
     VoidCallback? onValidate,
-    VoidCallback? onRescanValidation,
     VoidCallback? onExport,
     VoidCallback? onImportPack,
   }) {
@@ -29,7 +28,6 @@ void main() {
           onTranslateAll: onTranslateAll ?? () {},
           onTranslateSelected: onTranslateSelected ?? () {},
           onValidate: onValidate ?? () {},
-          onRescanValidation: onRescanValidation ?? () {},
           onExport: onExport ?? () {},
           onImportPack: onImportPack ?? () {},
         ),
@@ -140,23 +138,19 @@ void main() {
     expect(allTapped, isFalse);
   });
 
-  testWidgets('tapping Validate selected invokes onValidate', (tester) async {
+  testWidgets('tapping Validate invokes onValidate', (tester) async {
+    // The §Review section now exposes a single unified button: Validate
+    // rescans everything and then filters the grid to `needsReview`. The
+    // former secondary "Rescan all" button was folded into this handler,
+    // so it must no longer render.
     var tapped = false;
     await tester.pumpWidget(build(onValidate: () => tapped = true));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Validate selected'));
-    await tester.pumpAndSettle();
+    expect(find.text('Rescan all'), findsNothing);
+    expect(find.text('Validate selected'), findsNothing);
 
-    expect(tapped, isTrue);
-  });
-
-  testWidgets('tapping Rescan all invokes onRescanValidation', (tester) async {
-    var tapped = false;
-    await tester.pumpWidget(build(onRescanValidation: () => tapped = true));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Rescan all'));
+    await tester.tap(find.text('Validate'));
     await tester.pumpAndSettle();
 
     expect(tapped, isTrue);

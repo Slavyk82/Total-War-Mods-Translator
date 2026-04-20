@@ -3,10 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_editor/providers/editor_inspector_width_notifier.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
+import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Callback fired when the user commits a target text edit (on focus loss).
 typedef OnInspectorSave = void Function(String unitId, String text);
+
+/// Callback fired when the user takes an action on a validation issue from
+/// the inspector panel (Accept / Reject / Edit).
+typedef OnInspectorIssueAction = void Function(batch.ValidationIssue issue);
+
+/// Height of the stacked bulk-action buttons in the multi-select header —
+/// roughly double the intrinsic height of the issue-row buttons to make them
+/// the primary affordance when multiple units are selected.
+const double _bulkButtonHeight = 64;
 
 /// Right inspector panel of the translation editor.
 ///
@@ -17,17 +29,31 @@ typedef OnInspectorSave = void Function(String unitId, String text);
 /// - 0 -> empty placeholder.
 /// - 1 -> full inspector (key + Source + Target), responsive layout with
 ///   equal-sized source/target fields that scroll internally when needed.
-/// - N>1 -> multi-select header with batch hints.
+/// - N>1 -> multi-select header + bulk action row (Accept / Retranslate /
+///   Deselect). The caller wires each callback; a `null` callback renders a
+///   disabled button.
 class EditorInspectorPanel extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
   final OnInspectorSave onSave;
+  final OnInspectorIssueAction? onAcceptIssue;
+  final OnInspectorIssueAction? onRejectIssue;
+  final OnInspectorIssueAction? onEditIssue;
+  final VoidCallback? onBulkAccept;
+  final VoidCallback? onBulkRetranslate;
+  final VoidCallback? onBulkDeselect;
 
   const EditorInspectorPanel({
     super.key,
     required this.projectId,
     required this.languageId,
     required this.onSave,
+    this.onAcceptIssue,
+    this.onRejectIssue,
+    this.onEditIssue,
+    this.onBulkAccept,
+    this.onBulkRetranslate,
+    this.onBulkDeselect,
   });
 
   @override
@@ -78,6 +104,9 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     } else if (selection.selectedCount > 1) {
       body = _MultiSelectHeader(
         count: selection.selectedCount,
+        onBulkAccept: widget.onBulkAccept,
+        onBulkRetranslate: widget.onBulkRetranslate,
+        onBulkDeselect: widget.onBulkDeselect,
         tokens: tokens,
       );
     } else {
@@ -93,6 +122,9 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
           total: rows.length,
           controller: _targetController,
           onSave: (text) => widget.onSave(row.id, text),
+          onAcceptIssue: widget.onAcceptIssue,
+          onRejectIssue: widget.onRejectIssue,
+          onEditIssue: widget.onEditIssue,
           tokens: tokens,
           projectId: widget.projectId,
           languageId: widget.languageId,
@@ -208,8 +240,18 @@ class _EmptyState extends StatelessWidget {
 
 class _MultiSelectHeader extends StatelessWidget {
   final int count;
+  final VoidCallback? onBulkAccept;
+  final VoidCallback? onBulkRetranslate;
+  final VoidCallback? onBulkDeselect;
   final TwmtThemeTokens tokens;
-  const _MultiSelectHeader({required this.count, required this.tokens});
+
+  const _MultiSelectHeader({
+    required this.count,
+    required this.onBulkAccept,
+    required this.onBulkRetranslate,
+    required this.onBulkDeselect,
+    required this.tokens,
+  });
 
   @override
   Widget build(BuildContext context) => Column(
@@ -223,6 +265,40 @@ class _MultiSelectHeader extends StatelessWidget {
               color: tokens.accent,
             ),
           ),
+          const SizedBox(height: 16),
+          // Bulk buttons stacked full-width so both icon and label always have
+          // room at any panel width. Each button is `_bulkButtonHeight` px tall
+          // (double the issue-row button height) for a comfortable bulk-click
+          // target.
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Accept',
+              icon: FluentIcons.checkmark_24_regular,
+              color: tokens.accent,
+              onTap: onBulkAccept,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Retranslate',
+              icon: FluentIcons.arrow_sync_24_regular,
+              color: tokens.warn,
+              onTap: onBulkRetranslate,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: _bulkButtonHeight,
+            child: _InspectorActionButton(
+              label: 'Deselect',
+              icon: FluentIcons.dismiss_circle_24_regular,
+              color: tokens.textMid,
+              onTap: onBulkDeselect,
+            ),
+          ),
         ],
       );
 }
@@ -233,6 +309,9 @@ class _SingleSelectionBody extends ConsumerWidget {
   final int total;
   final TextEditingController controller;
   final void Function(String) onSave;
+  final OnInspectorIssueAction? onAcceptIssue;
+  final OnInspectorIssueAction? onRejectIssue;
+  final OnInspectorIssueAction? onEditIssue;
   final TwmtThemeTokens tokens;
   final String projectId;
   final String languageId;
@@ -243,6 +322,9 @@ class _SingleSelectionBody extends ConsumerWidget {
     required this.total,
     required this.controller,
     required this.onSave,
+    required this.onAcceptIssue,
+    required this.onRejectIssue,
+    required this.onEditIssue,
     required this.tokens,
     required this.projectId,
     required this.languageId,
@@ -255,11 +337,35 @@ class _SingleSelectionBody extends ConsumerWidget {
     final sourceCode = project?.sourceLanguageCode ?? 'en';
     final targetCode = language?.code ?? 'fr';
 
+    // Only expose the Validation Issues section when the row is explicitly
+    // flagged for review and still carries a persisted issue payload. A
+    // row that got fixed but still sits in needsReview without issues won't
+    // render the section (defensive: parseValidationIssues returns [] for
+    // null / blank).
+    final showValidationSection =
+        row.status == TranslationVersionStatus.needsReview &&
+            row.version.validationIssues != null;
+    final parsed = showValidationSection
+        ? parseValidationIssues(row.version.validationIssues)
+        : const <ParsedValidationIssue>[];
+    final hasIssues = parsed.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _Header(index: index, total: total, tokens: tokens),
         const SizedBox(height: 10),
+        if (hasIssues) ...[
+          _ValidationIssuesSection(
+            row: row,
+            issues: parsed,
+            onAccept: onAcceptIssue,
+            onReject: onRejectIssue,
+            onEdit: onEditIssue,
+            tokens: tokens,
+          ),
+          const SizedBox(height: 14),
+        ],
         _KeyChip(
           text: '${row.sourceLocFile ?? ''} / ${row.key}',
           tokens: tokens,
@@ -533,4 +639,197 @@ class _Label extends StatelessWidget {
           ),
         ],
       );
+}
+
+/// Validation issues block shown for `needsReview` rows.
+///
+/// Lists every parsed issue with an icon/color derived from severity, then
+/// a row of Accept / Reject / Edit action buttons. Each action fires with a
+/// [batch.ValidationIssue] built from the row — severity is bucketed via
+/// the shared `bucketSeverity` helper (critical folds into error, matching
+/// the filter pill logic used by `grid_data_providers`).
+class _ValidationIssuesSection extends StatelessWidget {
+  final TranslationRow row;
+  final List<ParsedValidationIssue> issues;
+  final OnInspectorIssueAction? onAccept;
+  final OnInspectorIssueAction? onReject;
+  final OnInspectorIssueAction? onEdit;
+  final TwmtThemeTokens tokens;
+
+  const _ValidationIssuesSection({
+    required this.row,
+    required this.issues,
+    required this.onAccept,
+    required this.onReject,
+    required this.onEdit,
+    required this.tokens,
+  });
+
+  batch.ValidationIssue _toBatch(ParsedValidationIssue p) {
+    // Fold `critical` into `error` via the shared `bucketSeverity` helper
+    // so the editor filter pills and the inspector agree on which severity
+    // surfaces where.
+    return batch.ValidationIssue(
+      unitKey: row.key,
+      unitId: row.unit.id,
+      versionId: row.version.id,
+      severity: bucketSeverity(p.severity),
+      issueType: p.type,
+      description: p.description,
+      sourceText: row.sourceText,
+      translatedText: row.translatedText ?? '',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // The bulk actions target the version, not individual issues — we pass
+    // the first parsed issue to the callback so the mixin has the
+    // version+unit ids it needs. The action is idempotent regardless of which
+    // issue we hand in.
+    final primary = issues.first;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tokens.panel2,
+        border: Border.all(color: tokens.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'VALIDATION ISSUES',
+            style: tokens.fontMono.copyWith(
+              fontSize: 9.5,
+              color: tokens.textFaint,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final issue in issues) ...[
+            _IssueRow(issue: issue, tokens: tokens),
+            const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Accept',
+                  icon: FluentIcons.checkmark_24_regular,
+                  color: tokens.accent,
+                  onTap: onAccept == null
+                      ? null
+                      : () => onAccept!(_toBatch(primary)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Reject',
+                  icon: FluentIcons.dismiss_24_regular,
+                  color: tokens.err,
+                  onTap: onReject == null
+                      ? null
+                      : () => onReject!(_toBatch(primary)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _InspectorActionButton(
+                  label: 'Edit',
+                  icon: FluentIcons.edit_24_regular,
+                  color: tokens.accent,
+                  onTap:
+                      onEdit == null ? null : () => onEdit!(_toBatch(primary)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IssueRow extends StatelessWidget {
+  final ParsedValidationIssue issue;
+  final TwmtThemeTokens tokens;
+  const _IssueRow({required this.issue, required this.tokens});
+
+  @override
+  Widget build(BuildContext context) {
+    final isError =
+        bucketSeverity(issue.severity) == batch.ValidationSeverity.error;
+    final color = isError ? tokens.err : tokens.warn;
+    final icon = isError
+        ? FluentIcons.error_circle_24_filled
+        : FluentIcons.warning_24_filled;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            issue.description,
+            style: TextStyle(fontSize: 12, color: tokens.textMid),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InspectorActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _InspectorActionButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: enabled ? 0.10 : 0.04),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

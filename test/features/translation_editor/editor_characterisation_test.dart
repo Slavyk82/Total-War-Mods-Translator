@@ -276,7 +276,7 @@ void main() {
 
       // Resolve selected version IDs from the current rows, then invoke
       // the same repository entry point used by the editor's bulk-accept
-      // action (`editor_actions_validation.dart::_handleBulkAcceptTranslation`).
+      // action (`editor_actions_validation.dart::handleBulkAcceptTranslation`).
       final selectedVersionIds = rows
           .where((r) => selection.isSelected(r.unit.id))
           .map((r) => r.version.id)
