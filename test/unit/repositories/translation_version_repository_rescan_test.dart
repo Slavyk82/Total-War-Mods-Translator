@@ -18,7 +18,7 @@ void main() {
     repo = TranslationVersionRepository();
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-    // Seed 180 legacy rows (schema_version = 0) and 70 migrated (= 1).
+    // Seed 180 legacy rows (schema_version = 0) and 70 migrated (= current).
     for (var i = 0; i < 180; i++) {
       await db.insert('translation_versions', {
         'id': 'legacy-${i.toString().padLeft(4, '0')}',
@@ -40,7 +40,7 @@ void main() {
         'translated_text': 'translation m$i',
         'status': 'translated',
         'validation_issues': null,
-        'validation_schema_version': 1,
+        'validation_schema_version': 2,
         'created_at': now,
         'updated_at': now,
       });
@@ -49,13 +49,14 @@ void main() {
 
   tearDown(() => TestDatabase.close(db));
 
-  test('countLegacyValidationRows returns only schema_version < 1 translated rows',
+  test('countLegacyValidationRows returns only below-current translated rows',
       () async {
     final r = await repo.countLegacyValidationRows();
     expect(r.unwrap(), 180);
   });
 
-  test('countMigratedValidationRows returns schema_version = 1', () async {
+  test('countMigratedValidationRows returns rows at the current version',
+      () async {
     final r = await repo.countMigratedValidationRows();
     expect(r.unwrap(), 70);
   });
@@ -81,7 +82,7 @@ void main() {
     );
   });
 
-  test('updateValidationBatch bumps validation_schema_version to 1',
+  test('updateValidationBatch bumps validation_schema_version to current',
       () async {
     final page = (await repo.getLegacyValidationPage(limit: 10)).unwrap();
     final updates = page
@@ -89,7 +90,7 @@ void main() {
               versionId: v.id,
               status: 'translated',
               validationIssues: '[]',
-              schemaVersion: 1,
+              schemaVersion: 2,
             ))
         .toList();
 

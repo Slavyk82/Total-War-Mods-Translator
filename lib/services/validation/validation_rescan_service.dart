@@ -7,6 +7,7 @@ import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
+import 'package:twmt/services/validation/validation_schema.dart';
 
 /// Snapshot of the rescan's current progress. Re-emitted roughly every
 /// commit (every 100 units processed).
@@ -49,9 +50,15 @@ class RescanPlan {
 ///
 /// Pages through [TranslationVersionRepository] in deterministic id order,
 /// re-runs validation on every legacy row, and commits the new structured
-/// JSON (schema v1) in 100-row batches. Resilient to interruption: crashes
-/// or process kills leave already-migrated rows at `validation_schema_version`
-/// = 1 and the remaining rows at 0, so a subsequent run resumes cleanly.
+/// JSON in 100-row batches. Resilient to interruption: crashes or process
+/// kills leave already-migrated rows at `validation_schema_version` =
+/// [currentSchemaVersion] and the remaining rows at a lower version, so a
+/// subsequent run resumes cleanly.
+///
+/// Bump [kCurrentValidationSchemaVersion] whenever the validation logic
+/// changes in a way that invalidates previously persisted
+/// `validation_issues`. All rows at a lower version become legacy again
+/// and the rescan dialog reopens on next boot to re-validate them.
 class ValidationRescanService {
   static const int pageSize = 10000;
   static const int commitBatchSize = 10000;
@@ -187,7 +194,7 @@ class ValidationRescanService {
           versionId: v.id,
           status: status,
           validationIssues: issuesJson,
-          schemaVersion: 1,
+          schemaVersion: kCurrentValidationSchemaVersion,
         ));
 
         if (pending.length >= commitBatchSize) {

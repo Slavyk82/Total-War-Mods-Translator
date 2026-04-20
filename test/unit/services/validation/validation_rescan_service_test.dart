@@ -55,7 +55,7 @@ void main() {
         'translated_text': 'Bonjour m$i',
         'status': 'translated',
         'validation_issues': null,
-        'validation_schema_version': 1,
+        'validation_schema_version': 2,
         'created_at': now,
         'updated_at': now,
       });
@@ -168,7 +168,7 @@ void main() {
         ['bad-v'],
       );
       final row = rows.single;
-      expect(row['validation_schema_version'], 1);
+      expect(row['validation_schema_version'], 2);
       final payload = row['validation_issues'] as String;
       final parsed = jsonDecode(payload) as List;
       expect(parsed, isNotEmpty);

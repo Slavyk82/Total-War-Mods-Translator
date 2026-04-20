@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/translation_version.dart';
+import '../services/validation/validation_schema.dart';
 import 'base_repository.dart';
 import 'mixins/translation_version_batch_mixin.dart';
 import 'mixins/translation_version_statistics_mixin.dart';
@@ -843,7 +844,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     return executeQuery(() async {
       final rows = await database.rawQuery('''
         SELECT COUNT(*) AS c FROM $tableName
-        WHERE validation_schema_version < 1
+        WHERE validation_schema_version < $kCurrentValidationSchemaVersion
           AND translated_text IS NOT NULL
           AND TRIM(translated_text) <> ''
       ''');
@@ -851,12 +852,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
-  /// Count rows already migrated to the structured format.
+  /// Count rows already migrated to the current structured format.
   Future<Result<int, TWMTDatabaseException>> countMigratedValidationRows() async {
     return executeQuery(() async {
       final rows = await database.rawQuery('''
         SELECT COUNT(*) AS c FROM $tableName
-        WHERE validation_schema_version >= 1
+        WHERE validation_schema_version >= $kCurrentValidationSchemaVersion
       ''');
       return (rows.first['c'] as int?) ?? 0;
     });
@@ -873,7 +874,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       final maps = await database.rawQuery(
         '''
         SELECT * FROM $tableName
-        WHERE validation_schema_version < 1
+        WHERE validation_schema_version < $kCurrentValidationSchemaVersion
           AND translated_text IS NOT NULL
           AND TRIM(translated_text) <> ''
           ${afterId == null ? '' : 'AND id > ?'}
