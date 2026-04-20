@@ -1,6 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
+import 'package:twmt/services/translation/models/translation_exceptions.dart'
+    as v_exc;
 import 'package:twmt/services/translation/utils/translation_skip_filter.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'editor_row_models.dart';
@@ -156,8 +160,41 @@ Future<List<TranslationRow>> filteredTranslationRows(
       }
     }
 
+    // Severity filter (only meaningful when statusFilters contains needsReview;
+    // applied unconditionally because an empty set short-circuits).
+    if (!_matchesSeverity(row, filterState.severityFilters)) {
+      return false;
+    }
+
     return true;
   }).toList();
+}
+
+/// Bucket a `v_exc.ValidationSeverity` into the coarser `batch.ValidationSeverity`
+/// used by the editor filter state and pill group. `critical` folds into `error`
+/// because the batch enum has no separate critical bucket — both surface in
+/// the "Errors" pill.
+batch.ValidationSeverity _bucketSeverity(v_exc.ValidationSeverity severity) {
+  switch (severity) {
+    case v_exc.ValidationSeverity.error:
+    case v_exc.ValidationSeverity.critical:
+      return batch.ValidationSeverity.error;
+    case v_exc.ValidationSeverity.warning:
+      return batch.ValidationSeverity.warning;
+  }
+}
+
+/// Returns true when the row has at least one parsed validation issue whose
+/// severity is in [severities]. An empty [severities] set is a no-op.
+bool _matchesSeverity(
+    TranslationRow row, Set<batch.ValidationSeverity> severities) {
+  if (severities.isEmpty) return true;
+  final parsed = parseValidationIssues(row.version.validationIssues);
+  if (parsed.isEmpty) return false;
+  for (final issue in parsed) {
+    if (severities.contains(_bucketSeverity(issue.severity))) return true;
+  }
+  return false;
 }
 
 /// Provider for editor statistics
