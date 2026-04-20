@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
+import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
 import 'package:twmt/theme/app_theme.dart';
 
@@ -19,7 +23,21 @@ void main() {
     VoidCallback? onValidate,
     VoidCallback? onExport,
     VoidCallback? onImportPack,
+    int? pendingCount,
+    bool statsLoading = false,
   }) {
+    final statsOverride = statsLoading
+        ? editorStatsProvider('p', 'fr')
+            .overrideWith((_) => Completer<EditorStats>().future)
+        : editorStatsProvider('p', 'fr').overrideWith(
+            (_) async => EditorStats(
+              totalUnits: (pendingCount ?? 0),
+              pendingCount: pendingCount ?? 0,
+              translatedCount: 0,
+              needsReviewCount: 0,
+              completionPercentage: 0.0,
+            ),
+          );
     return createThemedTestableWidget(
       Scaffold(
         body: EditorActionSidebar(
@@ -33,6 +51,7 @@ void main() {
         ),
       ),
       theme: AppTheme.atelierDarkTheme,
+      overrides: [statsOverride],
     );
   }
 
