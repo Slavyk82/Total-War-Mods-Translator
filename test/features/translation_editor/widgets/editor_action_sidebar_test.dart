@@ -31,7 +31,7 @@ void main() {
             .overrideWith((_) => Completer<EditorStats>().future)
         : editorStatsProvider('p', 'fr').overrideWith(
             (_) async => EditorStats(
-              totalUnits: (pendingCount ?? 0),
+              totalUnits: pendingCount ?? 0,
               pendingCount: pendingCount ?? 0,
               translatedCount: 0,
               needsReviewCount: 0,
@@ -241,10 +241,13 @@ void main() {
     await tester.pumpWidget(build(pendingCount: 0));
     await tester.pumpAndSettle();
 
-    // Button still there, but no count hint under it.
+    // Button still there, but no count hint under it. Asserting exact
+    // strings avoids false positives from unrelated sidebar copy that
+    // happens to include the substring "unit" (e.g. the batch settings
+    // label "Units / batch").
     expect(find.text('Translate all'), findsOneWidget);
-    expect(find.textContaining('units'), findsNothing);
-    expect(find.textContaining(' unit'), findsNothing);
+    expect(find.text('0 units'), findsNothing);
+    expect(find.text('0 unit'), findsNothing);
   });
 
   testWidgets('no subtitle is rendered when rows are selected',
@@ -273,9 +276,9 @@ void main() {
     await tester.pump(); // 1 frame: provider still pending, no settle.
 
     expect(find.text('Translate all'), findsOneWidget);
-    // We don't flash a placeholder while stats resolve.
-    expect(find.textContaining('units'), findsNothing);
-    expect(find.textContaining(' unit'), findsNothing);
+    // We don't flash a placeholder while stats resolve. With the default
+    // (pendingCount: 0) a leaked subtitle would read "0 unit(s)".
+    expect(find.text('0 units'), findsNothing);
+    expect(find.text('0 unit'), findsNothing);
   });
-
 }
