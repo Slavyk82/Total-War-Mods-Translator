@@ -215,9 +215,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
 
   /// Get all untranslated unit IDs for a specific project language.
   ///
-  /// Excludes units that should be skipped from translation:
-  /// - Obsolete units
-  /// - Units with [HIDDEN] prefix
+  /// Returns only units that are actionable for bulk translation: status
+  /// in (`pending`, `translating`), not obsolete, and whose source text
+  /// passes [excludeSkipUnitsCondition] (HIDDEN prefix, fully-bracketed
+  /// placeholders, and user-configurable skip texts). Matches the
+  /// predicate used by `getLanguageStatistics.pendingCount` so the UI
+  /// count and the batch count agree.
   Future<Result<List<String>, TWMTDatabaseException>> getUntranslatedIds({
     required String projectLanguageId,
   }) async {
@@ -228,9 +231,9 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         FROM translation_versions tv
         INNER JOIN translation_units tu ON tv.unit_id = tu.id
         WHERE tv.project_language_id = ?
-          AND (tv.translated_text IS NULL OR tv.translated_text = '')
+          AND tv.status IN ('pending', 'translating')
           AND tu.is_obsolete = 0
-          AND UPPER(TRIM(tu.source_text)) NOT LIKE '[HIDDEN]%'
+          AND $excludeSkipUnitsCondition
         ORDER BY tu.key
         ''',
         [projectLanguageId],
@@ -240,10 +243,13 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
-  /// Filter a list of IDs to only include untranslated ones.
+  /// Filter a list of IDs to only include actionable untranslated units.
   ///
-  /// Requires [projectLanguageId] to avoid returning duplicates when
-  /// the same unit has multiple translation versions (one per language).
+  /// Applies the same predicate as [getUntranslatedIds] (status
+  /// pending/translating, not obsolete, source text passes
+  /// [excludeSkipUnitsCondition]) but constrains the result to the
+  /// supplied [ids]. Requires [projectLanguageId] to scope the query to a
+  /// single project language.
   Future<Result<List<String>, TWMTDatabaseException>> filterUntranslatedIds({
     required List<String> ids,
     required String projectLanguageId,
@@ -257,16 +263,20 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
 
       final maps = await database.rawQuery(
         '''
-        SELECT unit_id
-        FROM translation_versions
-        WHERE unit_id IN ($placeholders)
-          AND project_language_id = ?
-          AND (translated_text IS NULL OR translated_text = '')
+        SELECT tu.id
+        FROM translation_versions tv
+        INNER JOIN translation_units tu ON tv.unit_id = tu.id
+        WHERE tu.id IN ($placeholders)
+          AND tv.project_language_id = ?
+          AND tv.status IN ('pending', 'translating')
+          AND tu.is_obsolete = 0
+          AND $excludeSkipUnitsCondition
+        ORDER BY tu.key
         ''',
         [...ids, projectLanguageId],
       );
 
-      return maps.map((map) => map['unit_id'] as String).toList();
+      return maps.map((map) => map['id'] as String).toList();
     });
   }
 
