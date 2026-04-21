@@ -285,6 +285,141 @@ void main() {
     expect(find.text('editor:p1:de-id'), findsOneWidget);
   });
 
+  testWidgets(
+      'Tapping a language row while in selection mode toggles selection instead of navigating',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // Router pairs the Projects screen with a sentinel editor route so any
+    // accidental navigation would render the 'editor:...' marker — the test
+    // asserts the marker never appears while selection mode is active.
+    final router = GoRouter(
+      initialLocation: AppRoutes.projects,
+      routes: [
+        GoRoute(
+          path: AppRoutes.projects,
+          builder: (_, _) => const ProjectsScreen(),
+        ),
+        GoRoute(
+          path: '${AppRoutes.projects}/:${AppRoutes.projectIdParam}/editor/:${AppRoutes.languageIdParam}',
+          builder: (_, state) => Scaffold(
+            body: Center(
+              child: Text(
+                'editor:'
+                '${state.pathParameters[AppRoutes.projectIdParam]}:'
+                '${state.pathParameters[AppRoutes.languageIdParam]}',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final p1 = _detailsWithLanguages('p1', 'Project Alpha', [
+      _rowLanguage(
+        projectId: 'p1',
+        languageId: 'fr-id',
+        languageCode: 'fr',
+        languageName: 'French',
+      ),
+      _rowLanguage(
+        projectId: 'p1',
+        languageId: 'de-id',
+        languageCode: 'de',
+        languageName: 'German',
+      ),
+    ]);
+
+    // Pin selection mode ON so the tap handler should route through the
+    // toggleProject branch rather than navigating to the editor. Use the
+    // same `_FixedBatchSelectionNotifier` pattern as the export-gating tests.
+    final selectionNotifier = _FixedBatchSelectionNotifier(
+      const BatchProjectSelectionState(isSelectionMode: true),
+    );
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        loggingServiceProvider.overrideWithValue(FakeLogger()),
+        paginatedProjectsProvider.overrideWith((_) async => [p1]),
+        allLanguagesProvider.overrideWith((_) async => const <Language>[]),
+        batchProjectSelectionProvider.overrideWith(() => selectionNotifier),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.atelierDarkTheme,
+        routerConfig: router,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Pre-condition: French row exists and we are still on the projects screen.
+    expect(find.text('French'), findsOneWidget);
+    expect(find.text('editor:p1:fr-id'), findsNothing);
+    expect(
+      selectionNotifier.state.selectedProjectIds.contains('p1'),
+      isFalse,
+    );
+
+    // Tap the French mini-row while selection mode is active.
+    await tester.tap(find.byKey(const Key('project-row-lang-p1-fr-id')));
+    await tester.pumpAndSettle();
+
+    // Navigation did NOT happen — the sentinel editor text is still absent.
+    expect(find.text('editor:p1:fr-id'), findsNothing);
+    // Instead, the project was added to the batch selection set.
+    expect(
+      selectionNotifier.state.selectedProjectIds.contains('p1'),
+      isTrue,
+    );
+  });
+
+  testWidgets('Project row with 3 languages does not overflow',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // Three stacked per-language mini-rows exceed the old fixed 56px row
+    // height and trigger a RenderFlex overflow. The C2 fix makes the row
+    // size to its content; tester.takeException() must be null post-pump.
+    final p1 = _detailsWithLanguages('p1', 'Project Alpha', [
+      _rowLanguage(
+        projectId: 'p1',
+        languageId: 'fr-id',
+        languageCode: 'fr',
+        languageName: 'French',
+      ),
+      _rowLanguage(
+        projectId: 'p1',
+        languageId: 'de-id',
+        languageCode: 'de',
+        languageName: 'German',
+      ),
+      _rowLanguage(
+        projectId: 'p1',
+        languageId: 'es-id',
+        languageCode: 'es',
+        languageName: 'Spanish',
+      ),
+    ]);
+
+    await tester.pumpWidget(createThemedTestableWidget(
+      const ProjectsScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        paginatedProjectsProvider.overrideWith((_) async => [p1]),
+        allLanguagesProvider.overrideWith((_) async => const <Language>[]),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    // No overflow (or other) exception fired during layout.
+    expect(tester.takeException(), isNull);
+    // All three language names are visible in the stacked languages cell.
+    expect(find.text('French'), findsOneWidget);
+    expect(find.text('German'), findsOneWidget);
+    expect(find.text('Spanish'), findsOneWidget);
+  });
+
   testWidgets('Tapping the row delete icon shows the confirmation dialog',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));

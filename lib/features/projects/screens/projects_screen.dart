@@ -211,8 +211,21 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                 },
                 onResync: () => _handleResync(context, projectId),
                 onDelete: () => _handleDeleteProject(context, details),
-                onOpenLanguage: (languageId) =>
-                    context.go(AppRoutes.translationEditor(projectId, languageId)),
+                onOpenLanguage: (languageId) {
+                  // When selection mode is active, tapping a language mini-row
+                  // should toggle the project's selection rather than navigate
+                  // — mirrors the main row `onTap` behaviour so the entire card
+                  // reacts as one selection target during batch operations.
+                  if (selectionState.isSelectionMode) {
+                    ref
+                        .read(batchProjectSelectionProvider.notifier)
+                        .toggleProject(projectId);
+                  } else {
+                    context.go(
+                      AppRoutes.translationEditor(projectId, languageId),
+                    );
+                  }
+                },
                 onLaunchSteam: (modId) => _launchSteamWorkshop(modId),
               );
             },
@@ -851,6 +864,10 @@ class _ProjectRow extends StatelessWidget {
       columns: _projectColumns,
       selected: selected,
       onTap: onTap,
+      // Null height → the row grows to fit the stacked per-language lines.
+      // A project with 3+ configured languages blows past the default 56px
+      // footprint; fixing the row height there causes a RenderFlex overflow.
+      height: null,
       trailingAction: IconButton(
         key: Key('project-row-delete-${project.id}'),
         icon: const Icon(FluentIcons.delete_24_regular, size: 16),

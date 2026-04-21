@@ -29,13 +29,18 @@ Widget _applyListRowColumn(ListRowColumn col, Widget child) => switch (col) {
 
 /// Grid-column row for §7.1 card lists. Fixed column widths prevent vertical
 /// misalignment between rows. Border-left accent 2px when [selected].
+///
+/// [height] defaults to 56px for the standard §7.1 row look. Passing `null`
+/// lets the row size to its content (intrinsic height), which is required
+/// for rows whose body stacks a variable number of lines (e.g. the projects
+/// screen where one mini-progress line is rendered per configured language).
 class ListRow extends StatelessWidget {
   final List<ListRowColumn> columns;
   final List<Widget> children;
   final bool selected;
   final VoidCallback? onTap;
   final Widget? trailingAction;
-  final double height;
+  final double? height;
 
   const ListRow({
     super.key,
@@ -52,6 +57,9 @@ class ListRow extends StatelessWidget {
     final tokens = context.tokens;
     final bg = selected ? tokens.rowSelected : tokens.panel2;
     final content = Container(
+      // Null height lets the row grow to fit its content — used by rows that
+      // stack multiple lines (see class doc). Fixed pixel heights keep the
+      // standard §7.1 archetype pinned at its canonical 56px.
       height: height,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
