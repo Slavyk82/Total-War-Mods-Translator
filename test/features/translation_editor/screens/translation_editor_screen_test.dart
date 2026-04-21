@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:twmt/features/projects/providers/project_detail_providers.dart';
 import 'package:twmt/features/translation_editor/screens/translation_editor_screen.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
+import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
@@ -79,6 +81,28 @@ void main() {
           // Override translation settings
           translationSettingsProvider.overrideWith(
             () => _MockTranslationSettingsNotifier(),
+          ),
+          // The editor toolbar now embeds `EditorLanguageSwitcher`, which
+          // reads `projectLanguagesProvider` to render the active-language
+          // chip. Seed it with a single entry so the chip resolves in tests.
+          projectLanguagesProvider(testProjectId).overrideWith(
+            (ref) async => [
+              ProjectLanguageDetails(
+                projectLanguage: ProjectLanguage(
+                  id: 'pl_$testLanguageId',
+                  projectId: testProjectId,
+                  languageId: testLanguageId,
+                  createdAt: 1,
+                  updatedAt: 1,
+                ),
+                language: const Language(
+                  id: testLanguageId,
+                  code: 'es',
+                  name: 'Spanish',
+                  nativeName: 'Espanol',
+                ),
+              ),
+            ],
           ),
           ...extraOverrides,
         ],
@@ -292,11 +316,11 @@ void main() {
         // 'Test Project' appears in both the DetailScreenToolbar crumb and
         // the FilterToolbar leading title — findsWidgets accepts both.
         expect(find.text('Test Project'), findsWidgets);
-        // 'Spanish' appears only in the crumb (final segment); the editor's
-        // FilterToolbar leading omits the count label per design spec §3.1.
+        // 'Spanish' now appears only in the EditorLanguageSwitcher chip; the
+        // crumb no longer repeats the language segment.
         expect(find.text('Spanish'), findsOneWidget);
-        // Three separators between four segments.
-        expect(find.text('›'), findsNWidgets(3));
+        // Two separators between three crumb segments.
+        expect(find.text('›'), findsNWidgets(2));
         expect(find.byTooltip('Back'), findsOneWidget);
       });
     });

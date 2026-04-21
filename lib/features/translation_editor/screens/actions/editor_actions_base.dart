@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/validation/models/validation_issue.dart' as validation;
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
-import '../../../projects/providers/project_detail_providers.dart'
-    show projectDetailsProvider;
 import '../../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
@@ -42,7 +40,6 @@ mixin EditorActionsBase {
     if (!mounted) return;
     ref.invalidate(translationRowsProvider(projectId, languageId));
     ref.invalidate(editorStatsProvider(projectId, languageId));
-    ref.invalidate(projectDetailsProvider(projectId));
     ref.invalidate(projectsWithDetailsProvider);
     // Increment version to trigger refresh of pack compilation stats
     ref.read(translationStatsVersionProvider.notifier).increment();

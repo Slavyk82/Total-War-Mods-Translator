@@ -11,6 +11,7 @@ import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/services/mods_project_service.dart';
 import 'package:twmt/features/mods/utils/mods_dialog_helper.dart';
+import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/features/projects/widgets/project_initialization_dialog.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -94,7 +95,6 @@ class ModsScreenController {
       return;
     }
 
-    final router = GoRouter.of(context);
     final projectRepo = _ref.read(projectRepositoryProvider);
     final projectsResult = await projectRepo.getAll();
 
@@ -105,13 +105,14 @@ class ModsScreenController {
       ).firstOrNull;
 
       if (existingProject != null) {
-        router.go(AppRoutes.projectDetail(existingProject.id));
+        if (!context.mounted) return;
+        await openProjectEditor(context, _ref, existingProject.id);
         return;
       }
     }
 
     if (context.mounted) {
-      await _createProjectFromMod(context, mod, router);
+      await _createProjectFromMod(context, mod);
     }
   }
 
@@ -155,7 +156,6 @@ class ModsScreenController {
   Future<void> _createProjectFromMod(
     BuildContext context,
     DetectedMod mod,
-    GoRouter router,
   ) async {
     final projectRepo = _ref.read(projectRepositoryProvider);
     final service = ModsProjectService.create(
@@ -164,6 +164,7 @@ class ModsScreenController {
       languageRepository: _ref.read(languageRepositoryProvider),
       projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
       settingsService: _ref.read(settingsServiceProvider),
+      logger: _ref.read(loggingServiceProvider),
     );
     String? projectId;
 
@@ -206,7 +207,7 @@ class ModsScreenController {
         // Update the mod's imported status locally without triggering a full rescan
         _ref.read(detectedModsProvider.notifier).updateModImported(mod.workshopId, projectId);
         if (context.mounted) {
-          router.go(AppRoutes.projectDetail(projectId));
+          await openProjectEditor(context, _ref, projectId);
         }
       } else {
         await service.deleteProject(projectId);
@@ -241,8 +242,8 @@ class ModsScreenController {
       languageRepository: _ref.read(languageRepositoryProvider),
       projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
       settingsService: _ref.read(settingsServiceProvider),
+      logger: _ref.read(loggingServiceProvider),
     );
-    final router = GoRouter.of(context);
     String? projectId;
 
     try {
@@ -284,7 +285,7 @@ class ModsScreenController {
       if (success == true) {
         _ref.invalidate(projectsWithDetailsProvider);
         if (context.mounted) {
-          router.go(AppRoutes.projectDetail(projectId));
+          await openProjectEditor(context, _ref, projectId);
         }
       } else {
         await service.deleteProject(projectId);

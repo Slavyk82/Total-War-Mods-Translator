@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/home/models/next_project_action.dart';
 import 'package:twmt/features/home/providers/home_providers.dart';
+import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/token_card.dart';
 
@@ -44,7 +43,7 @@ class RecentProjectsList extends ConsumerWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTap: () =>
-                        context.go(AppRoutes.projectDetail(p.project.id)),
+                        openProjectEditor(context, ref, p.project.id),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

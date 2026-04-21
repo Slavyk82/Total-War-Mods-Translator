@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
+import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
@@ -18,6 +20,7 @@ import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_screen_providers.dart';
+import 'package:twmt/features/projects/utils/open_project_editor.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
 ///
@@ -203,10 +206,27 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                         .read(batchProjectSelectionProvider.notifier)
                         .toggleProject(projectId);
                   } else {
-                    context.go(AppRoutes.projectDetail(projectId));
+                    openProjectEditor(context, ref, projectId);
                   }
                 },
                 onResync: () => _handleResync(context, projectId),
+                onDelete: () => _handleDeleteProject(context, details),
+                onOpenLanguage: (languageId) {
+                  // When selection mode is active, tapping a language mini-row
+                  // should toggle the project's selection rather than navigate
+                  // — mirrors the main row `onTap` behaviour so the entire card
+                  // reacts as one selection target during batch operations.
+                  if (selectionState.isSelectionMode) {
+                    ref
+                        .read(batchProjectSelectionProvider.notifier)
+                        .toggleProject(projectId);
+                  } else {
+                    context.go(
+                      AppRoutes.translationEditor(projectId, languageId),
+                    );
+                  }
+                },
+                onLaunchSteam: (modId) => _launchSteamWorkshop(modId),
               );
             },
           ),
@@ -338,6 +358,58 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         FluentToast.error(context, 'Resync failed: $e');
       }
     }
+  }
+
+  /// Open the Steam Workshop page for a given mod id in the user's browser.
+  Future<void> _launchSteamWorkshop(String modId) async {
+    final url = Uri.parse(
+        'https://steamcommunity.com/sharedfiles/filedetails/?id=$modId');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    }
+  }
+
+  /// Show a confirmation dialog, then delete the project and patch the list
+  /// state optimistically via [ProjectsWithDetailsNotifier.removeProject].
+  void _handleDeleteProject(
+      BuildContext context, ProjectWithDetails details) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Delete Project'),
+        content: Text(
+            'Are you sure you want to delete "${details.project.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              final result = await ref
+                  .read(shared_repo.projectRepositoryProvider)
+                  .delete(details.project.id);
+              if (!context.mounted) return;
+              if (result.isOk) {
+                ref
+                    .read(projectsWithDetailsProvider.notifier)
+                    .removeProject(details.project.id);
+                FluentToast.success(
+                    context, 'Project "${details.project.name}" deleted');
+              } else {
+                FluentToast.error(
+                    context, 'Failed to delete project: ${result.error}');
+              }
+            },
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _startBatchExport(
@@ -733,11 +805,14 @@ class _SelectionBar extends ConsumerWidget {
 const List<ListRowColumn> _projectColumns = [
   ListRowColumn.fixed(56), // cover
   ListRowColumn.flex(3), // name + meta
-  ListRowColumn.fixed(140), // target language
-  ListRowColumn.fixed(200), // progress
+  ListRowColumn.flex(2), // languages + per-language progress
   ListRowColumn.fixed(180), // last modified
   ListRowColumn.fixed(150), // status pill
 ];
+
+// Matches the IconButton footprint (16px icon + 12px padding) reserved on
+// the list header for the trailing delete action.
+const double _projectRowTrailingActionWidth = 40;
 
 class _ProjectsListHeader extends StatelessWidget {
   const _ProjectsListHeader();
@@ -746,7 +821,8 @@ class _ProjectsListHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListRowHeader(
       columns: _projectColumns,
-      labels: const ['', 'Project', 'Language', 'Progress', 'Modified', 'Status'],
+      labels: const ['', 'Project', 'Languages & progress', 'Modified', 'Status'],
+      trailingActionWidth: _projectRowTrailingActionWidth,
     );
   }
 }
@@ -757,6 +833,9 @@ class _ProjectRow extends StatelessWidget {
   final bool isResyncing;
   final VoidCallback onTap;
   final VoidCallback onResync;
+  final VoidCallback onDelete;
+  final ValueChanged<String> onOpenLanguage; // languageId
+  final ValueChanged<String> onLaunchSteam; // modSteamId
 
   const _ProjectRow({
     required this.details,
@@ -764,16 +843,15 @@ class _ProjectRow extends StatelessWidget {
     required this.isResyncing,
     required this.onTap,
     required this.onResync,
+    required this.onDelete,
+    required this.onOpenLanguage,
+    required this.onLaunchSteam,
   });
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final project = details.project;
-    final firstLanguage = details.languages.isNotEmpty
-        ? details.languages.first
-        : null;
-    final otherLanguages = details.languages.length - 1;
     final dateFormat = DateFormat('dd/MM/yyyy HH:mm');
     final lastModified = DateFormat('dd/MM/yyyy HH:mm')
         .format(DateTime.fromMillisecondsSinceEpoch(project.updatedAt * 1000));
@@ -786,6 +864,19 @@ class _ProjectRow extends StatelessWidget {
       columns: _projectColumns,
       selected: selected,
       onTap: onTap,
+      // Null height → the row grows to fit the stacked per-language lines.
+      // A project with 3+ configured languages blows past the default 56px
+      // footprint; fixing the row height there causes a RenderFlex overflow.
+      height: null,
+      trailingAction: IconButton(
+        key: Key('project-row-delete-${project.id}'),
+        icon: const Icon(FluentIcons.delete_24_regular, size: 16),
+        tooltip: 'Delete project',
+        onPressed: onDelete,
+        color: Theme.of(context).colorScheme.error,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+      ),
       children: [
         _CoverThumbnail(
           imageUrl: project.imageUrl,
@@ -812,18 +903,9 @@ class _ProjectRow extends StatelessWidget {
               Row(
                 children: [
                   if (project.modSteamId != null) ...[
-                    Icon(
-                      FluentIcons.cloud_24_regular,
-                      size: 12,
-                      color: tokens.textDim,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      project.modSteamId!,
-                      style: tokens.fontMono.copyWith(
-                        fontSize: 11,
-                        color: tokens.textDim,
-                      ),
+                    _SteamLinkPill(
+                      modSteamId: project.modSteamId!,
+                      onTap: () => onLaunchSteam(project.modSteamId!),
                     ),
                   ] else if (!project.isGameTranslation) ...[
                     Text(
@@ -868,41 +950,14 @@ class _ProjectRow extends StatelessWidget {
             ],
           ),
         ),
-        // Target language column
+        // Languages column — one clickable mini-progress-row per language.
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: firstLanguage == null
-              ? Text(
-                  '—',
-                  style: tokens.fontBody
-                      .copyWith(fontSize: 12, color: tokens.textFaint),
-                )
-              : Row(
-                  children: [
-                    Text(
-                      firstLanguage.language?.name ?? 'Unknown',
-                      style: tokens.fontBody.copyWith(
-                        fontSize: 12.5,
-                        color: tokens.textMid,
-                      ),
-                    ),
-                    if (otherLanguages > 0) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '+$otherLanguages',
-                        style: tokens.fontMono.copyWith(
-                          fontSize: 11,
-                          color: tokens.textDim,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-        ),
-        // Progress column
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: _ProgressBar(percent: details.overallProgress),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: _RowLanguagesCell(
+            projectId: project.id,
+            languages: details.languages,
+            onOpenLanguage: onOpenLanguage,
+          ),
         ),
         // Last modified
         Padding(
@@ -921,6 +976,155 @@ class _ProjectRow extends StatelessWidget {
           child: _StatusPill(details: details),
         ),
       ],
+    );
+  }
+}
+
+/// Clickable Steam Workshop pill used in the row's name+meta column.
+///
+/// Opens the Steam Workshop page for [modSteamId] in the user's browser via
+/// [onTap]. Renders as the previous inline icon+id pair but with a pointer
+/// cursor and a tooltip advertising the click target.
+class _SteamLinkPill extends StatelessWidget {
+  const _SteamLinkPill({required this.modSteamId, required this.onTap});
+  final String modSteamId;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: 'Open in Steam Workshop',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(FluentIcons.cloud_24_regular,
+                    size: 12, color: tokens.textDim),
+                const SizedBox(width: 4),
+                Text(
+                  modSteamId,
+                  style: tokens.fontMono.copyWith(
+                    fontSize: 11,
+                    color: tokens.textDim,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Stack of one clickable mini-progress line per configured language.
+///
+/// Replaces the previous "target language" + "overall progress" columns.
+/// Each line opens the editor directly on that language via [onOpenLanguage].
+class _RowLanguagesCell extends StatelessWidget {
+  const _RowLanguagesCell({
+    required this.projectId,
+    required this.languages,
+    required this.onOpenLanguage,
+  });
+
+  final String projectId;
+  final List<ProjectLanguageWithInfo> languages;
+  final ValueChanged<String> onOpenLanguage;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    if (languages.isEmpty) {
+      return Text('No target language',
+          style: tokens.fontBody
+              .copyWith(fontSize: 12, color: tokens.textFaint));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final l in languages)
+          _RowLanguageLine(
+            key: Key(
+                'project-row-lang-$projectId-${l.projectLanguage.languageId}'),
+            details: l,
+            onTap: () => onOpenLanguage(l.projectLanguage.languageId),
+          ),
+      ],
+    );
+  }
+}
+
+/// A single language/progress line rendered inside [_RowLanguagesCell].
+///
+/// Uses a plain [LinearProgressIndicator] (rather than the legacy
+/// `_ProgressBar`) to keep the row dense when multiple languages stack.
+class _RowLanguageLine extends StatelessWidget {
+  const _RowLanguageLine({super.key, required this.details, required this.onTap});
+  final ProjectLanguageWithInfo details;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final percent = details.progressPercent.clamp(0.0, 100.0);
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 90,
+                child: Text(
+                  details.language?.name ?? 'Unknown',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12,
+                    color: tokens.textMid,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: percent / 100,
+                    minHeight: 4,
+                    backgroundColor: tokens.border,
+                    valueColor: AlwaysStoppedAnimation(tokens.accent),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 38,
+                child: Text(
+                  '${percent.toInt()}%',
+                  textAlign: TextAlign.right,
+                  style: tokens.fontMono.copyWith(
+                    fontSize: 11,
+                    color: tokens.textDim,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -997,60 +1201,6 @@ class _CoverThumbnail extends StatelessWidget {
         alignment: Alignment.center,
         child: img,
       ),
-    );
-  }
-}
-
-class _ProgressBar extends StatelessWidget {
-  final double percent;
-  const _ProgressBar({required this.percent});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final clamped = percent.clamp(0.0, 100.0);
-    final Color color;
-    if (clamped >= 100) {
-      color = tokens.ok;
-    } else if (clamped >= 50) {
-      color = tokens.accent;
-    } else if (clamped > 0) {
-      color = tokens.warn;
-    } else {
-      color = tokens.textFaint;
-    }
-    return Row(
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: SizedBox(
-              height: 6,
-              child: Stack(
-                children: [
-                  Container(color: tokens.panel),
-                  FractionallySizedBox(
-                    widthFactor: clamped / 100,
-                    child: Container(color: color),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 36,
-          child: Text(
-            '${clamped.toInt()}%',
-            textAlign: TextAlign.right,
-            style: tokens.fontMono.copyWith(
-              fontSize: 11.5,
-              color: tokens.textMid,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

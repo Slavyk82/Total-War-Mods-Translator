@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../../config/router/app_router.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../projects/providers/projects_screen_providers.dart';
+import '../../projects/utils/open_project_editor.dart';
 import '../../projects/widgets/project_grid.dart';
 import '../providers/game_translation_providers.dart';
 import '../widgets/create_game_translation/create_game_translation_dialog.dart';
@@ -35,7 +34,7 @@ class GameTranslationScreen extends ConsumerWidget {
             // Projects grid
             Expanded(
               child: projectsAsync.when(
-                data: (projects) => _buildContent(context, theme, projects),
+                data: (projects) => _buildContent(context, ref, theme, projects),
                 loading: () => _buildLoading(theme),
                 error: (error, stack) => _buildError(theme, error),
               ),
@@ -67,6 +66,7 @@ class GameTranslationScreen extends ConsumerWidget {
 
   Widget _buildContent(
     BuildContext context,
+    WidgetRef ref,
     ThemeData theme,
     List<ProjectWithDetails> projects,
   ) {
@@ -76,7 +76,7 @@ class GameTranslationScreen extends ConsumerWidget {
 
     return ProjectGrid(
       projects: projects,
-      onProjectTap: (projectId) => _navigateToProject(context, projectId),
+      onProjectTap: (projectId) => _navigateToProject(context, ref, projectId),
     );
   }
 
@@ -203,7 +203,7 @@ class GameTranslationScreen extends ConsumerWidget {
     );
   }
 
-  void _navigateToProject(BuildContext context, String projectId) {
-    context.go(AppRoutes.projectDetail(projectId));
+  void _navigateToProject(BuildContext context, WidgetRef ref, String projectId) {
+    openProjectEditor(context, ref, projectId);
   }
 }

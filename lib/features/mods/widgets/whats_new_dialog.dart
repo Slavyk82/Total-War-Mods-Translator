@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:go_router/go_router.dart';
-import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -83,7 +82,7 @@ class _WhatsNewDialogState extends ConsumerState<WhatsNewDialog> {
 
   void _viewModDetails(Project project) {
     Navigator.of(context).pop();
-    context.go(AppRoutes.projectDetail(project.id));
+    openProjectEditor(context, ref, project.id);
   }
 
   void _updateAll() async {

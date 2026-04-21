@@ -9,25 +9,66 @@ import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/wizard_step_header.dart';
 
+import 'package:twmt/features/settings/providers/settings_providers.dart'
+    show SettingsKeys;
+
 import '../../../../widgets/fluent/fluent_widgets.dart';
 import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
 import '../../../../models/domain/detected_mod.dart';
+import '../../../../models/domain/language.dart';
+import '../../../../repositories/language_repository.dart';
+import '../../../../services/settings/settings_service.dart';
 import '../../providers/projects_screen_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
 import '../../../../services/projects/i_project_initialization_service.dart';
 import 'project_creation_state.dart';
 import 'step_basic_info.dart';
-import 'step_languages.dart';
 import 'step_settings.dart';
+
+/// Resolves the target language to use when auto-creating a project language.
+///
+/// Tries the user's default target language from settings first. If that
+/// language is missing or inactive, falls back to the first active language.
+/// Throws an [Exception] with a user-actionable message when no active
+/// language is available at all — the caller's `try/catch` surfaces the
+/// message in the dialog's error banner.
+///
+/// Exposed at the top level (rather than as a private dialog method) so it
+/// can be exercised by lightweight unit tests without pumping the full
+/// wizard widget tree.
+Future<Language> resolveDefaultTargetLanguage(
+  SettingsService settings,
+  LanguageRepository langRepo,
+) async {
+  final defaultCode = await settings.getString(
+    SettingsKeys.defaultTargetLanguage,
+    defaultValue: SettingsKeys.defaultTargetLanguageValue,
+  );
+  final byCode = await langRepo.getByCode(defaultCode);
+  if (byCode.isOk && byCode.unwrap().isActive) {
+    return byCode.unwrap();
+  }
+  final active = await langRepo.getActive();
+  if (active.isErr || active.unwrap().isEmpty) {
+    throw Exception(
+      'No active target language. Configure a default target language in '
+      'Settings > General, or activate at least one language.',
+    );
+  }
+  return active.unwrap().first;
+}
 
 /// Create project wizard dialog.
 ///
-/// Multi-step wizard coordinator for creating new translation projects:
+/// Two-step wizard coordinator for creating new translation projects:
 /// 1. Basic info (name, game, source file) - skipped if [detectedMod] provided
-/// 2. Target languages selection
-/// 3. Translation settings (batch size, parallel batches, custom prompt)
+/// 2. Translation settings (batch size, parallel batches, custom prompt)
+///
+/// The target language is resolved automatically at creation time from the
+/// user's default target language setting (with fallback to the first active
+/// language). See [_createProject].
 ///
 /// If [detectedMod] is provided, step 1 is auto-filled and skipped.
 ///
@@ -72,7 +113,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
   int get _minStep => widget.detectedMod != null ? 1 : 0;
 
   void _nextStep() {
-    if (_currentStep < 2) {
+    if (_currentStep < 1) {
       if (_validateCurrentStep()) {
         setState(() => _currentStep++);
       }
@@ -89,17 +130,9 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
 
   bool _validateCurrentStep() {
     if (_currentStep == 0) {
-      if (!_formKey.currentState!.validate()) {
-        return false;
-      }
+      if (!_formKey.currentState!.validate()) return false;
       if (_state.selectedGameId == null) {
         setState(() => _errorMessage = 'Please select a game installation');
-        return false;
-      }
-    } else if (_currentStep == 1) {
-      if (_state.selectedLanguageIds.isEmpty) {
-        setState(
-            () => _errorMessage = 'Please select at least one target language');
         return false;
       }
     }
@@ -169,6 +202,14 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         modImageUrl: _state.detectedMod?.imageUrl,
       );
 
+      // Resolve the default target language BEFORE inserting the project row.
+      // The resolver can throw (no active language) and we do not want a
+      // half-created project with no project_language row lingering in the
+      // database if that happens.
+      final settings = ref.read(settingsServiceProvider);
+      final langRepo = ref.read(languageRepositoryProvider);
+      final target = await resolveDefaultTargetLanguage(settings, langRepo);
+
       final project = Project(
         id: projectId,
         name: projectName,
@@ -198,19 +239,15 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         throw Exception(result.error);
       }
 
-      // Create project languages
-      for (final languageId in _state.selectedLanguageIds) {
-        final projectLanguage = ProjectLanguage(
-          id: uuid.v4(),
-          projectId: projectId,
-          languageId: languageId,
-          progressPercent: 0.0,
-          createdAt: now,
-          updatedAt: now,
-        );
-
-        await projectLangRepo.insert(projectLanguage);
-      }
+      final projectLanguage = ProjectLanguage(
+        id: uuid.v4(),
+        projectId: projectId,
+        languageId: target.id,
+        progressPercent: 0.0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await projectLangRepo.insert(projectLanguage);
 
       // Initialize project: extract and import .loc files if source file exists
       if (project.sourceFilePath != null &&
@@ -341,10 +378,9 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                           // Step header (Plan 5d §7 pattern)
                           WizardStepHeader(
                             stepNumber: _currentStep + 1,
-                            totalSteps: 3,
+                            totalSteps: 2,
                             title: const [
                               'Basic info',
-                              'Target languages',
                               'Translation settings',
                             ][_currentStep],
                           ),
@@ -408,8 +444,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
   Widget _buildStepContent() {
     return switch (_currentStep) {
       0 => StepBasicInfo(state: _state, formKey: _formKey),
-      1 => StepLanguages(state: _state),
-      2 => StepSettings(state: _state),
+      1 => StepSettings(state: _state),
       _ => const SizedBox.shrink(),
     };
   }
@@ -548,8 +583,8 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
           ),
           const SizedBox(width: 8),
           SmallTextButton(
-            label: _currentStep < 2 ? 'Next' : 'Create',
-            icon: _currentStep < 2
+            label: _currentStep < 1 ? 'Next' : 'Create',
+            icon: _currentStep < 1
                 ? FluentIcons.arrow_right_24_regular
                 : FluentIcons.play_24_regular,
             onTap: _isLoading ? null : _nextStep,

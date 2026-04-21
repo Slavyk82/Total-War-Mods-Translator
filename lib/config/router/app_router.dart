@@ -10,7 +10,6 @@ import '../../features/home/screens/home_screen.dart';
 import '../../features/mods/screens/mods_screen.dart';
 import '../../features/projects/screens/projects_screen.dart';
 import '../../features/projects/screens/batch_pack_export_screen.dart';
-import '../../features/projects/screens/project_detail_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
 import '../../features/glossary/screens/glossary_screen.dart';
 import '../../features/translation_memory/screens/translation_memory_screen.dart';
@@ -70,7 +69,6 @@ class AppRoutes {
   static const String help = '/system/help';
 
   // Detail / parameterised routes
-  static String projectDetail(String projectId) => '$projects/$projectId';
   static String translationEditor(String projectId, String languageId) =>
       '$projects/$projectId/editor/$languageId';
 
@@ -176,37 +174,22 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   );
                 },
               ),
-              // Project Detail
+              // Translation Editor
               GoRoute(
-                path: ':${AppRoutes.projectIdParam}',
-                name: 'projectDetail',
+                path: ':${AppRoutes.projectIdParam}/editor/:${AppRoutes.languageIdParam}',
+                name: 'translationEditor',
                 pageBuilder: (context, state) {
                   final projectId = state.pathParameters[AppRoutes.projectIdParam]!;
+                  final languageId = state.pathParameters[AppRoutes.languageIdParam]!;
 
                   return FluentPageTransitions.slideFromRightTransition(
-                    child: ProjectDetailScreen(projectId: projectId),
+                    child: TranslationEditorScreen(
+                      projectId: projectId,
+                      languageId: languageId,
+                    ),
                     state: state,
                   );
                 },
-                routes: [
-                  // Translation Editor
-                  GoRoute(
-                    path: 'editor/:${AppRoutes.languageIdParam}',
-                    name: 'translationEditor',
-                    pageBuilder: (context, state) {
-                      final projectId = state.pathParameters[AppRoutes.projectIdParam]!;
-                      final languageId = state.pathParameters[AppRoutes.languageIdParam]!;
-
-                      return FluentPageTransitions.slideFromRightTransition(
-                        child: TranslationEditorScreen(
-                          projectId: projectId,
-                          languageId: languageId,
-                        ),
-                        state: state,
-                      );
-                    },
-                  ),
-                ],
               ),
             ],
           ),
@@ -392,7 +375,6 @@ extension GoRouterExtensions on BuildContext {
   void goSettings() => go(AppRoutes.settings);
   void goHelp() => go(AppRoutes.help);
 
-  void goProjectDetail(String projectId) => go(AppRoutes.projectDetail(projectId));
   void goTranslationEditor(String projectId, String languageId) =>
       go(AppRoutes.translationEditor(projectId, languageId));
 }
