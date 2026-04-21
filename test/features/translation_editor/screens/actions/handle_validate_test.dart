@@ -7,6 +7,7 @@ import 'package:twmt/features/translation_editor/screens/translation_editor_acti
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart'
     hide ValidationException;
+import 'package:twmt/models/common/validation_issue_entry.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
@@ -20,7 +21,8 @@ import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/translation/i_validation_service.dart'
     show IValidationService;
 import 'package:twmt/services/translation/models/translation_exceptions.dart'
-    show ValidationException;
+    show ValidationException, ValidationSeverity;
+import 'package:twmt/services/translation/models/validation_rule.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../../helpers/fakes/fake_logger.dart';
@@ -135,9 +137,9 @@ void main() {
       (_) async => Ok<List<TranslationUnit>, TWMTDatabaseException>([unit]),
     );
 
-    // Validation returns a clean result so the row's status stays
-    // `translated`, nothing gets written, and the "No issues to review"
-    // info dialog is shown after the filter pivot.
+    // Default: validation returns a clean result so the row's status
+    // stays `translated`. Tests that need a failing result override this
+    // stub locally.
     when(
       () => validationService.validateTranslation(
         sourceText: any(named: 'sourceText'),
@@ -152,7 +154,7 @@ void main() {
   });
 
   testWidgets(
-    'handleValidate pivots status + severity filters after rescan',
+    'handleValidate leaves filters untouched when no row needs review',
     (tester) async {
       final harnessKey = GlobalKey<_ActionsHarnessState>();
       late ProviderContainer container;
@@ -241,8 +243,114 @@ void main() {
       final finalFilter = container.read(editorFilterProvider);
       expect(
         finalFilter.statusFilters,
+        isEmpty,
+        reason:
+            'handleValidate must not pivot the status filter when zero rows '
+            'need review — pivoting would hide every row in the grid',
+      );
+      expect(
+        finalFilter.severityFilters,
+        isEmpty,
+        reason: 'severity filter must remain untouched on the zero-issue path',
+      );
+    },
+  );
+
+  testWidgets(
+    'handleValidate pivots filters when at least one row needs review',
+    (tester) async {
+      // Override the default clean-result stub with one that surfaces a
+      // warning — the rescan should flip the row to `needsReview`.
+      when(
+        () => validationService.validateTranslation(
+          sourceText: any(named: 'sourceText'),
+          translatedText: any(named: 'translatedText'),
+          key: any(named: 'key'),
+        ),
+      ).thenAnswer(
+        (_) async => Ok<common.ValidationResult, ValidationException>(
+          common.ValidationResult.failure(
+            issues: const [
+              ValidationIssueEntry(
+                rule: ValidationRule.markup,
+                severity: ValidationSeverity.warning,
+                message: 'mocked warning',
+              ),
+            ],
+          ),
+        ),
+      );
+      when(() => versionRepo.updateValidationBatch(any())).thenAnswer(
+        (_) async => const Ok<int, TWMTDatabaseException>(1),
+      );
+
+      final harnessKey = GlobalKey<_ActionsHarnessState>();
+      late ProviderContainer container;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            loggingServiceProvider.overrideWithValue(FakeLogger()),
+            projectLanguageRepositoryProvider.overrideWithValue(
+              projectLanguageRepo,
+            ),
+            translationVersionRepositoryProvider.overrideWithValue(
+              versionRepo,
+            ),
+            translationUnitRepositoryProvider.overrideWithValue(unitRepo),
+            validationServiceProvider.overrideWithValue(validationService),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.atelierDarkTheme,
+            home: Scaffold(
+              body: Builder(
+                builder: (ctx) {
+                  container = ProviderScope.containerOf(ctx);
+                  return _ActionsHarness(
+                    key: harnessKey,
+                    projectId: projectId,
+                    languageId: languageId,
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final filterSubscription = container.listen(
+        editorFilterProvider,
+        (_, _) {},
+      );
+      addTearDown(filterSubscription.close);
+
+      final handleFuture = harnessKey.currentState!.handleValidate();
+      bool done = false;
+      handleFuture.then((_) => done = true, onError: (_, _) => done = true);
+      for (var i = 0; i < 32 && !done; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await handleFuture;
+      await tester.pump();
+
+      final swallowed = tester.takeException();
+      if (swallowed != null) {
+        expect(
+          swallowed.toString(),
+          contains('ValueNotifier'),
+          reason:
+              'Only the expected dispose-race assertion should be drained.',
+        );
+      }
+
+      final finalFilter = container.read(editorFilterProvider);
+      expect(
+        finalFilter.statusFilters,
         contains(TranslationVersionStatus.needsReview),
-        reason: 'handleValidate must focus the grid on needsReview rows',
+        reason:
+            'handleValidate must focus the grid on needsReview when at least '
+            'one row needs review',
       );
       expect(
         finalFilter.severityFilters,

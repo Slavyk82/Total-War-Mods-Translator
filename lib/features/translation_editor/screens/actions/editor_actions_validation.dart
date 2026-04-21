@@ -26,15 +26,28 @@ mixin EditorActionsValidation on EditorActionsBase {
   /// Rescans all translations then focuses the grid on rows needing review.
   ///
   /// Runs the validation service over every translated entry
-  /// ([_performRescan]), updates statuses in a single transaction, then
-  /// sets the status filter to `{needsReview}` and clears the severity
-  /// filter so the SEVERITY pill group surfaces fresh counts. Shows the
-  /// legacy "No issues to review" info dialog only when the rescan found
-  /// nothing new and didn't clear anything either — the common zero-issue
-  /// happy path.
+  /// ([_performRescan]), updates statuses in a single transaction, then —
+  /// only if the rescan left at least one row in `needsReview` — sets the
+  /// status filter to `{needsReview}` and clears the severity filter so
+  /// the SEVERITY pill group surfaces fresh counts. When zero rows need
+  /// review, the filter state is left untouched and the legacy "No issues
+  /// to review" info dialog surfaces instead — pivoting to an empty grid
+  /// would just hide the user's translations for no reason.
   Future<void> handleValidate() async {
     final outcome = await _performRescan();
     if (outcome == null) return;
+    refreshProviders();
+
+    if (outcome.needsReviewTotal == 0) {
+      if (!context.mounted) return;
+      EditorDialogs.showInfoDialog(
+        context,
+        'No issues to review',
+        'All translations have passed validation.',
+      );
+      return;
+    }
+
     // Apply the review filter. The SEVERITY pill group will appear because
     // the filter state now contains `needsReview`.
     ref
@@ -43,18 +56,6 @@ mixin EditorActionsValidation on EditorActionsBase {
     ref
         .read(editorFilterProvider.notifier)
         .setSeverityFilters(const {});
-    refreshProviders();
-
-    if (!context.mounted) return;
-    if (outcome.newIssues == 0 &&
-        outcome.unchanged > 0 &&
-        outcome.cleared == 0) {
-      EditorDialogs.showInfoDialog(
-        context,
-        'No issues to review',
-        'All translations have passed validation.',
-      );
-    }
   }
 
   /// Re-runs the validation service on every translated entry and writes
@@ -62,11 +63,21 @@ mixin EditorActionsValidation on EditorActionsBase {
   /// transaction.
   ///
   /// Shows a progress dialog while scanning and returns a summary tuple
-  /// `(scanned, newIssues, cleared, unchanged)` for the caller to act on.
-  /// Returns `null` when there is nothing to scan (no translated entries)
-  /// — the caller should treat that as an early exit.
-  Future<({int scanned, int newIssues, int cleared, int unchanged})?>
-      _performRescan() async {
+  /// `(scanned, newIssues, cleared, unchanged, needsReviewTotal)` for the
+  /// caller to act on. `needsReviewTotal` is the count of rows whose
+  /// post-rescan status is `needsReview` (whether they just flipped to
+  /// that state or were already there and stayed) — the caller uses it
+  /// to decide whether to pivot the grid filter. Returns `null` when
+  /// there is nothing to scan (no translated entries) — the caller
+  /// should treat that as an early exit.
+  Future<
+      ({
+        int scanned,
+        int newIssues,
+        int cleared,
+        int unchanged,
+        int needsReviewTotal,
+      })?> _performRescan() async {
     BuildContext? progressDialogContext;
     // Created up front so the `finally` block can always dispose it, even
     // on early-exit paths (e.g. "Nothing to scan") or thrown errors.
@@ -182,6 +193,7 @@ mixin EditorActionsValidation on EditorActionsBase {
       var newIssues = 0;
       var cleared = 0;
       var unchanged = 0;
+      var needsReviewTotal = 0;
       final pendingUpdates = <({
         String versionId,
         String status,
@@ -247,6 +259,10 @@ mixin EditorActionsValidation on EditorActionsBase {
         } else {
           unchanged++;
         }
+
+        if (newStatus == TranslationVersionStatus.needsReview) {
+          needsReviewTotal++;
+        }
       }
 
       // Batch write all updates in a single transaction
@@ -262,6 +278,7 @@ mixin EditorActionsValidation on EditorActionsBase {
           'newIssues': newIssues,
           'cleared': cleared,
           'unchanged': unchanged,
+          'needsReviewTotal': needsReviewTotal,
         },
       );
 
@@ -276,6 +293,7 @@ mixin EditorActionsValidation on EditorActionsBase {
         newIssues: newIssues,
         cleared: cleared,
         unchanged: unchanged,
+        needsReviewTotal: needsReviewTotal,
       );
     } catch (e, stackTrace) {
       ref.read(loggingServiceProvider).error(
