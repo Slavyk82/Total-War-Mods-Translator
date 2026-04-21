@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/translation/models/translation_context.dart';
-import '../../../projects/providers/project_detail_providers.dart';
 import '../../../settings/providers/settings_providers.dart';
 import '../../providers/editor_providers.dart';
 import '../../providers/translation_settings_provider.dart';
@@ -198,8 +197,8 @@ mixin EditorActionsBatch on EditorActionsBase {
       final orchestrator = ref.read(shared_svc.translationOrchestratorProvider);
 
       // Get project name for display
-      final projectDetails = await ref.read(projectDetailsProvider(projectId).future);
-      final projectName = projectDetails.project.name;
+      final project = await ref.read(currentProjectProvider(projectId).future);
+      final projectName = project.name;
 
       if (!context.mounted) return;
 

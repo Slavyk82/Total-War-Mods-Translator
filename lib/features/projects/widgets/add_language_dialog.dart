@@ -273,7 +273,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
 
       if (!context.mounted) return;
 
-      ref.invalidate(projectDetailsProvider(widget.projectId));
+      ref.invalidate(projectLanguagesProvider(widget.projectId));
       ref.read(translationStatsVersionProvider.notifier).increment();
 
       FluentToast.success(
