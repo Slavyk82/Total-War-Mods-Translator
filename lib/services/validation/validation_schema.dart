@@ -10,4 +10,8 @@
 ///   because of Dart's identity-based list equality and otherwise
 ///   produced low-signal warnings); v1 rows may carry stale
 ///   "Numbers don't match source" warnings and need to be rescanned.
-const int kCurrentValidationSchemaVersion = 2;
+/// - v3: markup rule no longer flags "Source text has unbalanced markup
+///   tags" when the translation preserves the exact same tag sequence
+///   (e.g. Creative Assembly's `[PH]` placeholder convention); v2 rows
+///   may carry stale warnings on those preserved-orphan cases.
+const int kCurrentValidationSchemaVersion = 3;

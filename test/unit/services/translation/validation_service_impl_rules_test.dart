@@ -53,6 +53,30 @@ void main() {
       expect(err?.rule, ValidationRule.markup);
     });
 
+    test(
+      'markup preserved-orphan tag (e.g. [PH]) -> no issue',
+      () async {
+        final err = await svc.checkMarkupPreservation(
+          sourceText: '[PH] Insert Unlock Text',
+          translatedText: '[PH] Insérer le texte de déverrouillage',
+          key: 'k',
+        );
+        expect(err, isNull);
+      },
+    );
+
+    test(
+      'markup orphan tag dropped in translation -> ValidationRule.markup',
+      () async {
+        final err = await svc.checkMarkupPreservation(
+          sourceText: '[PH] Insert Unlock Text',
+          translatedText: 'Insérer le texte de déverrouillage',
+          key: 'k',
+        );
+        expect(err?.rule, ValidationRule.markup);
+      },
+    );
+
     test('encoding replacement char -> ValidationRule.encoding', () async {
       final err = await svc.checkEncoding(
         translatedText: 'bad \uFFFD char',

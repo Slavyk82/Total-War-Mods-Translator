@@ -357,6 +357,14 @@ class ValidationServiceImpl implements IValidationService {
 
     // Check source tag balance first (data quality check)
     if (!MarkupTagUtils.areTagsBalanced(sourceTags)) {
+      // Skip the warning (and the later translation-imbalance error) when the
+      // translation preserves the exact same tag sequence. This avoids false
+      // positives on placeholder conventions that aren't real BBCode, e.g.
+      // Creative Assembly's `[PH]` stub marker: source and target both carry
+      // `[PH]` verbatim, so the translator has nothing to fix.
+      if (_tagListsEqual(sourceTags, translatedTags)) {
+        return null;
+      }
       return ValidationError(
         rule: ValidationRule.markup,
         severity: ValidationSeverity.warning,
@@ -388,6 +396,14 @@ class ValidationServiceImpl implements IValidationService {
     }
 
     return null;
+  }
+
+  static bool _tagListsEqual(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override

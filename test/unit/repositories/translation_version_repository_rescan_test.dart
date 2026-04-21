@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
+import 'package:twmt/services/validation/validation_schema.dart';
 
 import '../../helpers/test_database.dart';
 
@@ -40,7 +41,7 @@ void main() {
         'translated_text': 'translation m$i',
         'status': 'translated',
         'validation_issues': null,
-        'validation_schema_version': 2,
+        'validation_schema_version': kCurrentValidationSchemaVersion,
         'created_at': now,
         'updated_at': now,
       });
@@ -90,7 +91,7 @@ void main() {
               versionId: v.id,
               status: 'translated',
               validationIssues: '[]',
-              schemaVersion: 2,
+              schemaVersion: kCurrentValidationSchemaVersion,
             ))
         .toList();
 
