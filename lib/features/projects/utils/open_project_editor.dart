@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Riverpod 3's main barrel re-exports `ProviderListenableSelect` but not the
+// bare `ProviderListenable` type used in `resolveTargetLanguageId`'s signature,
+// so we pull it from `misc.dart` (the only public barrel that exposes it).
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
