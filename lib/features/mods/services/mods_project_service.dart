@@ -2,6 +2,7 @@ import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
 
 import 'package:twmt/models/domain/detected_mod.dart';
+import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
@@ -12,6 +13,7 @@ import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 
 /// Result of project creation
@@ -77,6 +79,7 @@ class ModsProjectService {
   final LanguageRepository _languageRepo;
   final ProjectLanguageRepository _projectLanguageRepo;
   final SettingsService _settingsService;
+  final ILoggingService _logger;
 
   ModsProjectService({
     required ProjectRepository projectRepository,
@@ -84,11 +87,13 @@ class ModsProjectService {
     required LanguageRepository languageRepository,
     required ProjectLanguageRepository projectLanguageRepository,
     required SettingsService settingsService,
+    required ILoggingService logger,
   })  : _projectRepo = projectRepository,
         _workshopModRepo = workshopModRepository,
         _languageRepo = languageRepository,
         _projectLanguageRepo = projectLanguageRepository,
-        _settingsService = settingsService;
+        _settingsService = settingsService,
+        _logger = logger;
 
   /// Factory constructor with explicit dependencies (callers resolve via DI)
   factory ModsProjectService.create({
@@ -97,6 +102,7 @@ class ModsProjectService {
     required LanguageRepository languageRepository,
     required ProjectLanguageRepository projectLanguageRepository,
     required SettingsService settingsService,
+    required ILoggingService logger,
   }) {
     return ModsProjectService(
       projectRepository: projectRepository,
@@ -104,6 +110,7 @@ class ModsProjectService {
       languageRepository: languageRepository,
       projectLanguageRepository: projectLanguageRepository,
       settingsService: settingsService,
+      logger: logger,
     );
   }
 
@@ -276,24 +283,49 @@ class ModsProjectService {
     await _projectRepo.delete(projectId);
   }
 
-  /// Add the user's default target language to a project
+  /// Add the user's default target language to a project.
+  ///
+  /// Falls back to the first active language if the configured default is
+  /// missing or inactive, so project creation never yields a project without
+  /// any target language (which would otherwise bounce the user back to the
+  /// projects list right after a successful mod import).
   Future<void> _addDefaultLanguage(String projectId, int now, Uuid uuid) async {
     final favoriteLanguageCode = await _settingsService.getString(
       SettingsKeys.defaultTargetLanguage,
       defaultValue: SettingsKeys.defaultTargetLanguageValue,
     );
 
-    final languageResult = await _languageRepo.getByCode(favoriteLanguageCode);
-    if (languageResult.isOk) {
-      final language = languageResult.unwrap();
-      final projectLanguage = ProjectLanguage(
-        id: uuid.v4(),
-        projectId: projectId,
-        languageId: language.id,
-        createdAt: now,
-        updatedAt: now,
-      );
-      await _projectLanguageRepo.insert(projectLanguage);
+    Language? target;
+    final byCode = await _languageRepo.getByCode(favoriteLanguageCode);
+    if (byCode.isOk && byCode.unwrap().isActive) {
+      target = byCode.unwrap();
+    } else {
+      // Fallback to the first active language so the project is never created
+      // without a target language (which would bounce the user to the projects
+      // list after mod import).
+      final active = await _languageRepo.getActive();
+      if (active.isOk && active.unwrap().isNotEmpty) {
+        target = active.unwrap().first;
+        _logger.warning(
+          'default_target_language "$favoriteLanguageCode" not usable, '
+          'falling back to "${target.code}" when provisioning project $projectId',
+        );
+      } else {
+        _logger.warning(
+          'No active language available while provisioning project $projectId; '
+          'skipping project_language creation',
+        );
+        return;
+      }
     }
+
+    final projectLanguage = ProjectLanguage(
+      id: uuid.v4(),
+      projectId: projectId,
+      languageId: target.id,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _projectLanguageRepo.insert(projectLanguage);
   }
 }

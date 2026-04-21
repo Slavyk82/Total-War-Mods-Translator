@@ -164,6 +164,7 @@ class ModsScreenController {
       languageRepository: _ref.read(languageRepositoryProvider),
       projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
       settingsService: _ref.read(settingsServiceProvider),
+      logger: _ref.read(loggingServiceProvider),
     );
     String? projectId;
 
@@ -241,6 +242,7 @@ class ModsScreenController {
       languageRepository: _ref.read(languageRepositoryProvider),
       projectLanguageRepository: _ref.read(projectLanguageRepositoryProvider),
       settingsService: _ref.read(settingsServiceProvider),
+      logger: _ref.read(loggingServiceProvider),
     );
     String? projectId;
 
