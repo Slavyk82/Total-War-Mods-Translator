@@ -10,11 +10,15 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/features/projects/providers/project_detail_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/screens/projects_screen.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
+import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
@@ -102,9 +106,9 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    // Build a minimal router pairing the Projects screen with a dummy detail
-    // screen so we can observe that `context.go(AppRoutes.projectDetail(...))`
-    // triggered by the row tap actually pushes the expected URL.
+    // Build a minimal router pairing the Projects screen with a dummy editor
+    // screen so we can observe that the row tap's `openProjectEditor` call
+    // resolves the target language and pushes the expected editor URL.
     final router = GoRouter(
       initialLocation: AppRoutes.projects,
       routes: [
@@ -113,11 +117,13 @@ void main() {
           builder: (_, _) => const ProjectsScreen(),
         ),
         GoRoute(
-          path: '${AppRoutes.projects}/:projectId',
+          path: '${AppRoutes.projects}/:${AppRoutes.projectIdParam}/editor/:${AppRoutes.languageIdParam}',
           builder: (_, state) => Scaffold(
             body: Center(
               child: Text(
-                'detail:${state.pathParameters[AppRoutes.projectIdParam]}',
+                'editor:'
+                '${state.pathParameters[AppRoutes.projectIdParam]}:'
+                '${state.pathParameters[AppRoutes.languageIdParam]}',
               ),
             ),
           ),
@@ -129,6 +135,13 @@ void main() {
       overrides: [
         loggingServiceProvider.overrideWithValue(FakeLogger()),
         ..._populatedOverrides(),
+        // Stub the target project's languages so `openProjectEditor` can
+        // resolve a landing languageId without hitting the real repository.
+        projectLanguagesProvider('p1')
+            .overrideWith((_) async => [_projectLanguageDetails('fr-id', 'fr', 'French')]),
+        // Fake settings service returning 'fr' as the default target language
+        // — matches the stub above so resolution picks `fr-id`.
+        settingsServiceProvider.overrideWithValue(_FakeSettingsService('fr')),
       ],
       child: MaterialApp.router(
         theme: AppTheme.atelierDarkTheme,
@@ -137,17 +150,18 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Sanity: on the Projects screen, detail marker is absent.
+    // Sanity: on the Projects screen, the editor marker is absent.
     expect(find.text('Project Alpha'), findsOneWidget);
-    expect(find.text('detail:p1'), findsNothing);
+    expect(find.text('editor:p1:fr-id'), findsNothing);
 
     // Tap the first row (Project Alpha) and let the router settle.
     await tester.tap(find.text('Project Alpha'));
     await tester.pumpAndSettle();
 
-    // The dummy detail route received the expected project id, proving the
-    // row's onTap called `context.go(AppRoutes.projectDetail('p1'))`.
-    expect(find.text('detail:p1'), findsOneWidget);
+    // The dummy editor route received the expected project id + resolved
+    // languageId, proving the row's onTap called `openProjectEditor(...)`
+    // which in turn pushed `AppRoutes.translationEditor('p1', 'fr-id')`.
+    expect(find.text('editor:p1:fr-id'), findsOneWidget);
   });
 
   testWidgets(
@@ -288,6 +302,49 @@ class _SpyProjectsFilterNotifier extends ProjectsFilterNotifier {
     recordedFilters.add(filter);
     state = state.copyWith(quickFilter: filter);
   }
+}
+
+/// Fake [SettingsService] that returns a fixed code for
+/// `SettingsKeys.defaultTargetLanguage`. Matches the pattern used in
+/// `test/features/projects/utils/open_project_editor_test.dart`.
+class _FakeSettingsService implements SettingsService {
+  _FakeSettingsService(this._defaultCode);
+  final String _defaultCode;
+
+  @override
+  Future<String> getString(String key, {String defaultValue = ''}) async {
+    if (key == SettingsKeys.defaultTargetLanguage) return _defaultCode;
+    return defaultValue;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
+/// Build a minimal [ProjectLanguageDetails] for the row-tap navigation test.
+/// The `languageId` is what `openProjectEditor` ultimately passes to the
+/// translation editor route.
+ProjectLanguageDetails _projectLanguageDetails(
+  String languageId,
+  String code,
+  String name,
+) {
+  return ProjectLanguageDetails(
+    projectLanguage: ProjectLanguage(
+      id: 'pl_$languageId',
+      projectId: 'p1',
+      languageId: languageId,
+      progressPercent: 0.0,
+      createdAt: 1,
+      updatedAt: 1,
+    ),
+    language: Language(
+      id: languageId,
+      code: code,
+      name: name,
+      nativeName: name,
+    ),
+  );
 }
 
 /// Notifier that pins [batchProjectSelectionProvider] to a caller-supplied
