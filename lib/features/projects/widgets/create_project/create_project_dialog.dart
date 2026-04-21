@@ -18,12 +18,47 @@ import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
 import '../../../../models/domain/detected_mod.dart';
 import '../../../../models/domain/language.dart';
+import '../../../../repositories/language_repository.dart';
+import '../../../../services/settings/settings_service.dart';
 import '../../providers/projects_screen_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
 import '../../../../services/projects/i_project_initialization_service.dart';
 import 'project_creation_state.dart';
 import 'step_basic_info.dart';
 import 'step_settings.dart';
+
+/// Resolves the target language to use when auto-creating a project language.
+///
+/// Tries the user's default target language from settings first. If that
+/// language is missing or inactive, falls back to the first active language.
+/// Throws an [Exception] with a user-actionable message when no active
+/// language is available at all — the caller's `try/catch` surfaces the
+/// message in the dialog's error banner.
+///
+/// Exposed at the top level (rather than as a private dialog method) so it
+/// can be exercised by lightweight unit tests without pumping the full
+/// wizard widget tree.
+Future<Language> resolveDefaultTargetLanguage(
+  SettingsService settings,
+  LanguageRepository langRepo,
+) async {
+  final defaultCode = await settings.getString(
+    SettingsKeys.defaultTargetLanguage,
+    defaultValue: SettingsKeys.defaultTargetLanguageValue,
+  );
+  final byCode = await langRepo.getByCode(defaultCode);
+  if (byCode.isOk && byCode.unwrap().isActive) {
+    return byCode.unwrap();
+  }
+  final active = await langRepo.getActive();
+  if (active.isErr || active.unwrap().isEmpty) {
+    throw Exception(
+      'No active target language. Configure a default target language in '
+      'Settings > General, or activate at least one language.',
+    );
+  }
+  return active.unwrap().first;
+}
 
 /// Create project wizard dialog.
 ///
@@ -167,6 +202,14 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         modImageUrl: _state.detectedMod?.imageUrl,
       );
 
+      // Resolve the default target language BEFORE inserting the project row.
+      // The resolver can throw (no active language) and we do not want a
+      // half-created project with no project_language row lingering in the
+      // database if that happens.
+      final settings = ref.read(settingsServiceProvider);
+      final langRepo = ref.read(languageRepositoryProvider);
+      final target = await resolveDefaultTargetLanguage(settings, langRepo);
+
       final project = Project(
         id: projectId,
         name: projectName,
@@ -194,26 +237,6 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
 
       if (result.isErr) {
         throw Exception(result.error);
-      }
-
-      // Resolve default target language and create a single project language.
-      final settings = ref.read(settingsServiceProvider);
-      final defaultCode = await settings.getString(
-        SettingsKeys.defaultTargetLanguage,
-        defaultValue: SettingsKeys.defaultTargetLanguageValue,
-      );
-      final langRepo = ref.read(languageRepositoryProvider);
-
-      Language? target;
-      final byCode = await langRepo.getByCode(defaultCode);
-      if (byCode.isOk && byCode.unwrap().isActive) {
-        target = byCode.unwrap();
-      } else {
-        final active = await langRepo.getActive();
-        if (active.isErr || active.unwrap().isEmpty) {
-          throw Exception('No active language available to create project');
-        }
-        target = active.unwrap().first;
       }
 
       final projectLanguage = ProjectLanguage(
