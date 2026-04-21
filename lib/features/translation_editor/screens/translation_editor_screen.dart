@@ -20,6 +20,7 @@ import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_action_sidebar.dart';
 import '../widgets/editor_datagrid.dart';
 import '../widgets/editor_inspector_panel.dart';
+import '../widgets/editor_language_switcher.dart';
 import '../widgets/editor_status_bar.dart';
 import '../widgets/validation_edit_dialog.dart';
 import 'translation_editor_actions.dart';
@@ -115,7 +116,6 @@ class _TranslationEditorScreenState
   @override
   Widget build(BuildContext context) {
     final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
-    final languageAsync = ref.watch(currentLanguageProvider(widget.languageId));
     final statsAsync = ref.watch(
       editorStatsProvider(widget.projectId, widget.languageId),
     );
@@ -126,7 +126,6 @@ class _TranslationEditorScreenState
     final severityCounts =
         severityCountsAsync.asData?.value ?? (errors: 0, warnings: 0);
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
-    final languageName = languageAsync.whenOrNull(data: (l) => l.name) ?? '';
 
     final stats = statsAsync.asData?.value;
     final isFullyTranslated = stats != null &&
@@ -212,11 +211,7 @@ class _TranslationEditorScreenState
                 crumbs: [
                   const CrumbSegment('Work'),
                   const CrumbSegment('Projects', route: AppRoutes.projects),
-                  CrumbSegment(
-                    projectName,
-                    route: AppRoutes.projectDetail(widget.projectId),
-                  ),
-                  CrumbSegment(languageName),
+                  CrumbSegment(projectName),
                 ],
                 trailing: [
                   if (isFullyTranslated)
@@ -238,6 +233,12 @@ class _TranslationEditorScreenState
                 leading: ListToolbarLeading(
                   icon: FluentIcons.folder_24_regular,
                   title: projectName,
+                  trailing: [
+                    EditorLanguageSwitcher(
+                      projectId: widget.projectId,
+                      currentLanguageId: widget.languageId,
+                    ),
+                  ],
                 ),
                 trailing: [
                   ListSearchField(
