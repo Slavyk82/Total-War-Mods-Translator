@@ -3,10 +3,10 @@
 // Before Task 3 (Plan 5a), if the user's `default_target_language` setting
 // pointed to a code that did not exist in the `languages` table (or was
 // inactive), the service silently created a project without any target
-// language. The navigator was forwiving about it because it always landed
-// on `ProjectDetailScreen` regardless. After Task 3 the editor route now
-// rejects projects with no target language and bounces the user back to the
-// list, which made the latent bug user-visible.
+// language. The navigator was forgiving about it because it always landed
+// on the old project detail screen regardless. After Task 3 the editor route
+// now rejects projects with no target language and bounces the user back to
+// the list, which made the latent bug user-visible.
 //
 // The fix adds a fallback: try the configured code first, otherwise pick the
 // first active language from `LanguageRepository.getActive()`, and if no

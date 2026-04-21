@@ -60,9 +60,6 @@ void main() {
     test('projects is /work/projects', () {
       expect(AppRoutes.projects, '/work/projects');
     });
-    test('projectDetail composes /work/projects/<id>', () {
-      expect(AppRoutes.projectDetail('abc'), '/work/projects/abc');
-    });
     test('translationEditor composes /work/projects/<id>/editor/<lang>', () {
       expect(
         AppRoutes.translationEditor('abc', 'fr-FR'),
