@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../config/router/app_router.dart';
 import 'package:twmt/config/tooltip_strings.dart';
@@ -18,6 +17,7 @@ import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_screen_providers.dart';
+import 'package:twmt/features/projects/utils/open_project_editor.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
 ///
@@ -203,7 +203,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                         .read(batchProjectSelectionProvider.notifier)
                         .toggleProject(projectId);
                   } else {
-                    context.go(AppRoutes.projectDetail(projectId));
+                    openProjectEditor(context, ref, projectId);
                   }
                 },
                 onResync: () => _handleResync(context, projectId),
