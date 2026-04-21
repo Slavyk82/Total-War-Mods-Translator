@@ -123,7 +123,11 @@ class EditorLanguageSwitcher extends ConsumerWidget {
       return;
     }
 
+    // Riverpod 3 contract: `invalidate` + immediate `.future` read waits for a
+    // fresh build; `openProjectEditor` below will not see the stale list.
     ref.invalidate(projectLanguagesProvider(projectId));
+    // `refreshProject` currently swallows repository errors internally. Update
+    // this call site if that contract ever changes.
     unawaited(ref
         .read(projectsWithDetailsProvider.notifier)
         .refreshProject(projectId));
