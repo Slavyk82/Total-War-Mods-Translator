@@ -239,10 +239,4 @@ class TooltipStrings {
   static const String settingsToggleModel =
       'Enable or disable this model for use';
 
-  // ========== PROJECT DETAIL ==========
-
-  static const String projectDetailOpenSteam =
-      'Open this mod on Steam Workshop';
-  static const String projectDetailDeleteProject =
-      'Permanently delete this project and all translations';
 }
