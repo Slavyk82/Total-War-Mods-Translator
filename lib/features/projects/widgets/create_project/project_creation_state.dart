@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../../models/domain/detected_mod.dart';
 import '../../../../models/domain/workshop_mod.dart';
 
-/// Shared state for the project creation wizard.
+/// Shared state for the project creation wizard (2-step version).
 ///
-/// Manages all form fields and state across the 3-step wizard:
-/// 1. Basic info (name, game, source file)
-/// 2. Target languages selection
-/// 3. Translation settings
+/// Step 1: Basic info (name, game, source file)
+/// Step 2: Translation settings (batch size, parallel batches, custom prompt)
+///
+/// The target language is resolved automatically at creation time — see
+/// `CreateProjectDialog._createProject`.
 class ProjectCreationState {
   // Step 1: Basic info
   final TextEditingController nameController = TextEditingController();
@@ -17,19 +18,14 @@ class ProjectCreationState {
   String? selectedGameId;
   WorkshopMod? workshopMod;
 
-  // Step 2: Languages
-  final Set<String> selectedLanguageIds = {};
-
-  // Step 3: Settings
+  // Step 2: Settings
   final TextEditingController batchSizeController = TextEditingController(text: '25');
   final TextEditingController parallelBatchesController = TextEditingController(text: '3');
   final TextEditingController customPromptController = TextEditingController();
 
-  // Detected mod context (if provided)
   final DetectedMod? detectedMod;
 
   ProjectCreationState({this.detectedMod}) {
-    // Pre-fill fields if a mod is provided
     if (detectedMod != null) {
       nameController.text = detectedMod!.name;
       sourceFileController.text = detectedMod!.packFilePath;
