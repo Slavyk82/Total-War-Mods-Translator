@@ -5,11 +5,16 @@ part 'theme_name_provider.g.dart';
 
 /// Identifies which TWMT palette/typography couple is active.
 ///
-/// Only affects the dark theme for now — light theme is deferred to a
-/// later plan (see spec §11, scope).
+/// Dark themes (atelier, forge, slate, warpstone, shogun) share a dark
+/// builder; [vellum] is the only light theme and is wired through a
+/// separate [Brightness.light] code path in [AppTheme].
 enum TwmtThemeName {
   atelier,
-  forge;
+  forge,
+  slate,
+  vellum,
+  warpstone,
+  shogun;
 
   static TwmtThemeName? fromString(String? value) {
     switch (value) {
@@ -17,6 +22,14 @@ enum TwmtThemeName {
         return TwmtThemeName.atelier;
       case 'forge':
         return TwmtThemeName.forge;
+      case 'slate':
+        return TwmtThemeName.slate;
+      case 'vellum':
+        return TwmtThemeName.vellum;
+      case 'warpstone':
+        return TwmtThemeName.warpstone;
+      case 'shogun':
+        return TwmtThemeName.shogun;
       default:
         return null;
     }
@@ -52,13 +65,12 @@ class ThemeNameNotifier extends _$ThemeNameNotifier {
     await prefs.setString(_prefsKey, name.storageKey);
   }
 
-  /// Cycle through the available palettes: atelier -> forge -> atelier.
+  /// Cycle forward through the available palettes in declaration order,
+  /// wrapping back to the first value after the last one.
   Future<void> cycleTheme() async {
     final current = await future;
-    final next = switch (current) {
-      TwmtThemeName.atelier => TwmtThemeName.forge,
-      TwmtThemeName.forge => TwmtThemeName.atelier,
-    };
+    const values = TwmtThemeName.values;
+    final next = values[(current.index + 1) % values.length];
     await setThemeName(next);
   }
 }
