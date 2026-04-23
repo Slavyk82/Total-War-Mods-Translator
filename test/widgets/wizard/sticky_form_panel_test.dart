@@ -39,4 +39,22 @@ void main() {
     )));
     expect(find.byType(SummaryBox), findsNothing);
   });
+
+  testWidgets('renders extras below actions when provided', (t) async {
+    await t.pumpWidget(wrap(StickyFormPanel(
+      sections: const [FormSection(label: 'S', children: [Text('field')])],
+      actions: const [Text('Action-1')],
+      extras: const Text('extras-content'),
+    )));
+    final actionRect = t.getRect(find.text('Action-1'));
+    final extrasRect = t.getRect(find.text('extras-content'));
+    expect(actionRect.top, lessThan(extrasRect.top));
+  });
+
+  testWidgets('omits extras when null', (t) async {
+    await t.pumpWidget(wrap(const StickyFormPanel(
+      sections: [FormSection(label: 'S', children: [Text('field')])],
+    )));
+    expect(find.text('extras-content'), findsNothing);
+  });
 }
