@@ -31,8 +31,45 @@ class ContextMenuBuilder {
     // against the menu surface in both Atelier and Forge.
     final disabledColor = tokens.textFaint;
 
+    PopupMenuItem<String> buildItem({
+      required String value,
+      required IconData icon,
+      required String label,
+      bool enabled = true,
+      Color? iconColor,
+      Color? labelColor,
+    }) {
+      final effectiveIcon = enabled ? (iconColor ?? tokens.text) : disabledColor;
+      final effectiveLabel = enabled ? (labelColor ?? tokens.text) : disabledColor;
+      return PopupMenuItem<String>(
+        value: value,
+        enabled: enabled,
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: effectiveIcon),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: effectiveLabel,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     showMenu<String>(
       context: context,
+      color: tokens.panel2,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withValues(alpha: 0.3),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        side: BorderSide(color: tokens.border),
+      ),
       position: RelativeRect.fromLTRB(
         position.dx,
         position.dy,
@@ -40,123 +77,61 @@ class ContextMenuBuilder {
         position.dy + 1,
       ),
       items: <PopupMenuEntry<String>>[
-        const PopupMenuItem(
+        buildItem(
           value: 'select_all',
-          child: Row(
-            children: [
-              Icon(FluentIcons.select_all_on_24_regular, size: 16),
-              SizedBox(width: 8),
-              Text('Select All'),
-            ],
-          ),
+          icon: FluentIcons.select_all_on_24_regular,
+          label: 'Select All',
         ),
         if (onForceRetranslate != null)
-          PopupMenuItem(
+          buildItem(
             value: 'force_retranslate',
+            icon: FluentIcons.arrow_sync_24_regular,
+            label: selectionCount > 1
+                ? 'Force Retranslate ($selectionCount)'
+                : 'Force Retranslate',
             enabled: hasSelection,
-            child: Row(
-              children: [
-                Icon(
-                  FluentIcons.arrow_sync_24_regular,
-                  size: 16,
-                  color: hasSelection ? null : disabledColor,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  selectionCount > 1
-                      ? 'Force Retranslate ($selectionCount)'
-                      : 'Force Retranslate',
-                  style: TextStyle(color: hasSelection ? null : disabledColor),
-                ),
-              ],
-            ),
           ),
         if (onMarkAsTranslated != null)
-          PopupMenuItem(
+          buildItem(
             value: 'mark_as_translated',
+            icon: FluentIcons.checkmark_circle_24_regular,
+            label: selectionCount > 1
+                ? 'Mark as Translated ($selectionCount)'
+                : 'Mark as Translated',
             enabled: hasSelection,
-            child: Row(
-              children: [
-                Icon(
-                  FluentIcons.checkmark_circle_24_regular,
-                  size: 16,
-                  color: hasSelection ? tokens.ok : disabledColor,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  selectionCount > 1
-                      ? 'Mark as Translated ($selectionCount)'
-                      : 'Mark as Translated',
-                  style: TextStyle(
-                    color: hasSelection ? tokens.ok : disabledColor,
-                  ),
-                ),
-              ],
-            ),
+            iconColor: tokens.ok,
+            labelColor: tokens.ok,
           ),
-        PopupMenuItem(
+        buildItem(
           value: 'clear',
+          icon: FluentIcons.delete_24_regular,
+          label: selectionCount > 1
+              ? 'Clear Translation ($selectionCount)'
+              : 'Clear Translation',
           enabled: hasSelection,
-          child: Row(
-            children: [
-              Icon(
-                FluentIcons.delete_24_regular,
-                size: 16,
-                color: hasSelection ? null : disabledColor,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                selectionCount > 1
-                    ? 'Clear Translation ($selectionCount)'
-                    : 'Clear Translation',
-                style: TextStyle(color: hasSelection ? null : disabledColor),
-              ),
-            ],
-          ),
         ),
-        const PopupMenuDivider(),
+        PopupMenuDivider(height: 8, color: tokens.border),
         if (isSingleSelection)
-          const PopupMenuItem(
+          buildItem(
             value: 'history',
-            child: Row(
-              children: [
-                Icon(FluentIcons.history_24_regular, size: 16),
-                SizedBox(width: 8),
-                Text('View History'),
-              ],
-            ),
+            icon: FluentIcons.history_24_regular,
+            label: 'View History',
           ),
         if (isSingleSelection && onViewPrompt != null)
-          const PopupMenuItem(
+          buildItem(
             value: 'view_prompt',
-            child: Row(
-              children: [
-                Icon(FluentIcons.code_24_regular, size: 16),
-                SizedBox(width: 8),
-                Text('View Prompt'),
-              ],
-            ),
+            icon: FluentIcons.code_24_regular,
+            label: 'View Prompt',
           ),
-        if (isSingleSelection) const PopupMenuDivider(),
-        PopupMenuItem(
+        if (isSingleSelection)
+          PopupMenuDivider(height: 8, color: tokens.border),
+        buildItem(
           value: 'delete',
+          icon: FluentIcons.delete_24_regular,
+          label: selectionCount > 1 ? 'Delete ($selectionCount)' : 'Delete',
           enabled: hasSelection,
-          child: Row(
-            children: [
-              Icon(
-                FluentIcons.delete_24_regular,
-                size: 16,
-                color: hasSelection ? tokens.err : disabledColor,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                selectionCount > 1 ? 'Delete ($selectionCount)' : 'Delete',
-                style: TextStyle(
-                  color: hasSelection ? tokens.err : disabledColor,
-                ),
-              ),
-            ],
-          ),
+          iconColor: tokens.err,
+          labelColor: tokens.err,
         ),
       ],
     ).then((value) async {
