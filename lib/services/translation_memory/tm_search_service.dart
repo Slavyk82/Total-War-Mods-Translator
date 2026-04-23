@@ -69,6 +69,40 @@ class TmSearchService {
     }
   }
 
+  /// Count TM entries matching optional filters.
+  ///
+  /// [targetLanguageCode]: Optional target language filter
+  Future<Result<int, TmServiceException>> countEntries({
+    String? targetLanguageCode,
+  }) async {
+    try {
+      final targetLanguageId = normalizeLanguageId(targetLanguageCode);
+
+      final result = await _repository.countWithFilters(
+        targetLanguageId: targetLanguageId,
+      );
+
+      if (result.isErr) {
+        return Err(
+          TmServiceException(
+            'Failed to count entries: ${result.error}',
+            error: result.error,
+          ),
+        );
+      }
+
+      return Ok(result.value);
+    } catch (e, stackTrace) {
+      return Err(
+        TmServiceException(
+          'Unexpected error counting entries: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
   /// Search TM entries by text
   ///
   /// Uses FTS5 full-text search for fast results with fallback to in-memory.

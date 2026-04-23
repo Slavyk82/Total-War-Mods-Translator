@@ -106,15 +106,10 @@ Future<int> tmEntriesCount(
 }) async {
   final service = ref.watch(translationMemoryServiceProvider);
 
-  // Get all entries (we'll optimize this later with a count query)
-  final result = await service.getEntries(
-    targetLanguageCode: targetLang,
-    limit: 100000, // Large limit to get all
-    offset: 0,
-  );
+  final result = await service.countEntries(targetLanguageCode: targetLang);
 
   return result.when(
-    ok: (entries) => entries.length,
+    ok: (count) => count,
     err: (error) => 0,
   );
 }

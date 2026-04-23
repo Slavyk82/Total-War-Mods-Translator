@@ -315,6 +315,32 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
     });
   }
 
+  /// Count entries matching optional filters.
+  ///
+  /// [targetLanguageId] - Optional target language filter
+  ///
+  /// Uses SELECT COUNT(*) so the whole table never has to be loaded.
+  Future<Result<int, TWMTDatabaseException>> countWithFilters({
+    String? targetLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final whereArgs = <dynamic>[];
+      final whereClause = targetLanguageId != null
+          ? 'WHERE target_language_id = ?'
+          : '';
+      if (targetLanguageId != null) {
+        whereArgs.add(targetLanguageId);
+      }
+
+      final result = await database.rawQuery(
+        'SELECT COUNT(*) as count FROM $tableName $whereClause',
+        whereArgs.isEmpty ? null : whereArgs,
+      );
+
+      return (result.first['count'] as int?) ?? 0;
+    });
+  }
+
   /// Get entries with pagination and optional filtering.
   ///
   /// [targetLanguageId] - Optional target language filter

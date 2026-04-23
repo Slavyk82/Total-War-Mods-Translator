@@ -173,6 +173,12 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       );
 
   @override
+  Future<Result<int, TmServiceException>> countEntries({
+    String? targetLanguageCode,
+  }) =>
+      _searchService.countEntries(targetLanguageCode: targetLanguageCode);
+
+  @override
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
       searchEntries({
     required String searchText,

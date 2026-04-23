@@ -61,6 +61,12 @@ class _FakeTmService implements ITranslationMemoryService {
       Ok(_entries);
 
   @override
+  Future<Result<int, TmServiceException>> countEntries({
+    String? targetLanguageCode,
+  }) async =>
+      Ok(_entries.length);
+
+  @override
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>>
       searchEntries({
     required String searchText,

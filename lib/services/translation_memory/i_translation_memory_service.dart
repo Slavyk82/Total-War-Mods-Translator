@@ -227,6 +227,15 @@ abstract class ITranslationMemoryService {
     String orderBy = 'usage_count DESC',
   });
 
+  /// Count TM entries matching optional filters.
+  ///
+  /// [targetLanguageCode]: Optional target language filter
+  ///
+  /// Returns the total number of entries (SELECT COUNT(*), not a page).
+  Future<Result<int, TmServiceException>> countEntries({
+    String? targetLanguageCode,
+  });
+
   /// Search TM entries by text
   ///
   /// Uses FTS5 full-text search for fast results.
