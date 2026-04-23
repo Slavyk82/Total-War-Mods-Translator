@@ -4,10 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import 'package:twmt/widgets/lists/small_text_button.dart';
-// `SmallTextButton` is still used for the §Pack "Import pack" secondary action;
-// the §Review "Rescan all" button was folded into `handleValidate` in the
-// editor/review merge and no longer surfaces as a separate control.
+import 'package:twmt/widgets/workflow/pipeline_timeline.dart';
 
 import 'editor_toolbar_batch_settings.dart';
 import 'editor_toolbar_mod_rule.dart';
@@ -16,16 +13,18 @@ import 'editor_toolbar_skip_tm.dart';
 
 /// Left sidebar of the translation editor (240 px).
 ///
-/// Hosts the controls previously in `EditorActionBar`, organised into 4
-/// labelled sections by intent: §AI CONTEXT (model + prompt configuration) ·
-/// §TRANSLATE · §REVIEW · §PACK. The search field lives in the top
-/// `FilterToolbar`; filters are the STATUS pill group.
+/// Hosts the controls previously in `EditorActionBar`, organised into 3
+/// labelled sections by intent: §AI CONTEXT (model + prompt configuration),
+/// §OTHER (Import pack) and §WORKFLOW (Translate → Review → Generate pack
+/// as a numbered pipeline, mirroring the main navigation sidebar's Workflow
+/// group). The search field lives in the top `FilterToolbar`; filters are
+/// the STATUS pill group.
 ///
-/// §Translate exposes a single smart button: when the grid has rows selected
-/// it reads "Translate selection" and routes to [onTranslateSelected];
-/// otherwise it reads "Translate all" and routes to [onTranslateAll]. The
-/// `Ctrl+T` screen-scope shortcut mirrors this routing — selection-aware by
-/// design — so the displayed hint is constant.
+/// §Workflow step 1 exposes a single smart button: when the grid has rows
+/// selected it reads "Translate selection" and routes to
+/// [onTranslateSelected]; otherwise it reads "Translate all" and routes to
+/// [onTranslateAll]. The `Ctrl+T` screen-scope shortcut mirrors this
+/// routing — selection-aware by design.
 class EditorActionSidebar extends ConsumerWidget {
   final String projectId;
   final String languageId;
@@ -70,77 +69,93 @@ class EditorActionSidebar extends ConsumerWidget {
             const SizedBox(height: 10),
             const EditorToolbarBatchSettings(),
             const SizedBox(height: 20),
-            _SectionHeader(label: 'Translate', tokens: tokens),
+            _SectionHeader(label: 'Other', tokens: tokens),
             const SizedBox(height: 10),
-            Consumer(
-              builder: (context, ref, _) {
-                final selection = ref.watch(editorSelectionProvider);
-                final hasSelection = selection.hasSelection;
-                final label =
-                    hasSelection ? 'Translate selection' : 'Translate all';
-                // Ctrl+T is selection-aware at the screen scope, so the hint
-                // stays constant regardless of the current grid state.
-                final button = _SidebarActionButton(
-                  icon: FluentIcons.translate_24_regular,
-                  label: label,
-                  primary: true,
-                  shortcutHint: 'Ctrl+T',
-                  onTap: hasSelection ? onTranslateSelected : onTranslateAll,
-                );
+            _SidebarActionButton(
+              icon: FluentIcons.arrow_import_24_regular,
+              label: 'Import external pack',
+              onTap: onImportPack,
+            ),
+            const SizedBox(height: 20),
+            _SectionHeader(label: 'Workflow', tokens: tokens),
+            const SizedBox(height: 10),
+            // Workflow pipeline — same layout pattern as the main navigation
+            // sidebar's Workflow group: a single vertical timeline rail
+            // threads three numbered waypoints (Translate · Validate ·
+            // Generate pack), rendered as one continuous stroke.
+            pipelineRow(
+              rail: const TimelineRail(
+                step: 1,
+                primary: true,
+                lineAbove: false,
+              ),
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final selection = ref.watch(editorSelectionProvider);
+                  final hasSelection = selection.hasSelection;
+                  final label =
+                      hasSelection ? 'Translate selection' : 'Translate all';
+                  final button = _SidebarActionButton(
+                    icon: FluentIcons.translate_24_regular,
+                    label: label,
+                    primary: true,
+                    onTap:
+                        hasSelection ? onTranslateSelected : onTranslateAll,
+                  );
 
-                // Count hint renders only for the "Translate all" variant,
-                // and only once editorStats has resolved with a positive
-                // pending count — we never flash a placeholder.
-                if (hasSelection) return button;
-                final statsAsync =
-                    ref.watch(editorStatsProvider(projectId, languageId));
-                final pending = statsAsync.asData?.value.pendingCount ?? 0;
-                if (pending <= 0) return button;
+                  // Count hint renders only for the "Translate all" variant,
+                  // and only once editorStats has resolved with a positive
+                  // pending count — we never flash a placeholder.
+                  if (hasSelection) return button;
+                  final statsAsync =
+                      ref.watch(editorStatsProvider(projectId, languageId));
+                  final pending = statsAsync.asData?.value.pendingCount ?? 0;
+                  if (pending <= 0) return button;
 
-                final suffix = pending == 1 ? 'unit' : 'units';
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    button,
-                    const SizedBox(height: 4),
-                    Text(
-                      '$pending $suffix',
-                      textAlign: TextAlign.center,
-                      style: tokens.fontBody.copyWith(
-                        fontSize: 10.5,
-                        color: tokens.textDim,
-                        fontWeight: FontWeight.w400,
+                  final suffix = pending == 1 ? 'unit' : 'units';
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      button,
+                      const SizedBox(height: 4),
+                      Text(
+                        '$pending $suffix',
+                        textAlign: TextAlign.center,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 10.5,
+                          color: tokens.textDim,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
-            const SizedBox(height: 20),
-            _SectionHeader(label: 'Review', tokens: tokens),
-            const SizedBox(height: 10),
-            // Single unified entry point: `handleValidate` now rescans all
-            // translated rows then filters the grid down to `needsReview`
-            // — the old "Rescan all" secondary button is gone.
-            _SidebarActionButton(
-              icon: FluentIcons.checkmark_circle_24_regular,
-              label: 'Validate',
-              onTap: onValidate,
+            pipelineRow(
+              rail: const TimelineRail(),
+              child: const SizedBox(height: 12),
             ),
-            const SizedBox(height: 20),
-            _SectionHeader(label: 'Pack', tokens: tokens),
-            const SizedBox(height: 10),
-            _SidebarActionButton(
-              icon: FluentIcons.box_24_regular,
-              label: 'Generate pack',
-              onTap: onExport,
+            // Single unified entry point: `handleValidate` rescans all
+            // translated rows then filters the grid down to `needsReview`.
+            pipelineRow(
+              rail: const TimelineRail(step: 2),
+              child: _SidebarActionButton(
+                icon: FluentIcons.checkmark_circle_24_regular,
+                label: 'Review',
+                onTap: onValidate,
+              ),
             ),
-            const SizedBox(height: 6),
-            Center(
-              child: SmallTextButton(
-                label: 'Import pack',
-                icon: FluentIcons.arrow_import_24_regular,
-                onTap: onImportPack,
+            pipelineRow(
+              rail: const TimelineRail(),
+              child: const SizedBox(height: 12),
+            ),
+            pipelineRow(
+              rail: const TimelineRail(step: 3, lineBelow: false),
+              child: _SidebarActionButton(
+                icon: FluentIcons.box_24_regular,
+                label: 'Generate pack',
+                onTap: onExport,
               ),
             ),
           ],
@@ -157,32 +172,14 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: tokens.fontDisplay.copyWith(
-              fontStyle: tokens.fontDisplayStyle,
-              fontSize: 13,
-              color: tokens.accent,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [tokens.border, Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-      ],
+    return Text(
+      label,
+      overflow: TextOverflow.ellipsis,
+      style: tokens.fontDisplay.copyWith(
+        fontStyle: tokens.fontDisplayStyle,
+        fontSize: 13,
+        color: tokens.accent,
+      ),
     );
   }
 }

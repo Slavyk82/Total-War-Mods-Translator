@@ -86,15 +86,21 @@ void main() {
     );
   });
 
-  testWidgets('renders the 4 intent-based section headers', (tester) async {
+  testWidgets('renders the 3 intent-based section headers', (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
 
-    // AI Context (model + prompt config), Translate, Review, Pack.
+    // AI Context (model + prompt config) + Other (Import pack) + Workflow
+    // (Translate · Review · Generate pack as a single numbered pipeline,
+    // mirroring the main navigation sidebar's Workflow group).
     expect(find.text('AI Context'), findsOneWidget);
-    expect(find.text('Translate'), findsOneWidget);
-    expect(find.text('Review'), findsOneWidget);
-    expect(find.text('Pack'), findsOneWidget);
+    expect(find.text('Other'), findsOneWidget);
+    expect(find.text('Workflow'), findsOneWidget);
+    // The former per-step headers (Translate / Review / Pack) have been
+    // folded into the single Workflow group. 'Review' now appears as the
+    // step-2 button label, so it is expected to be present once; the former
+    // 'Pack' header is gone entirely.
+    expect(find.text('Pack'), findsNothing);
     // The old generic 'Actions' header and 'Settings' footer section were
     // replaced by intent-scoped groups; Translation settings now lives in
     // §AI Context alongside the other translation configuration controls.
@@ -112,9 +118,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // With no selection, the unified button reads "Translate all" and
-    // routes to onTranslateAll. The Ctrl+T hint is displayed inline.
+    // routes to onTranslateAll.
     expect(find.text('Translate all'), findsOneWidget);
-    expect(find.text('Ctrl+T'), findsOneWidget);
+    expect(find.text('Ctrl+T'), findsNothing);
     await tester.tap(find.text('Translate all'));
     await tester.pumpAndSettle();
 
@@ -142,11 +148,10 @@ void main() {
         .selectAll(['a', 'b', 'c']);
     await tester.pumpAndSettle();
 
-    // Label flips to the selection form; the Ctrl+T hint stays put because
-    // the screen-scope shortcut is itself selection-aware.
+    // Label flips to the selection form.
     expect(find.text('Translate all'), findsNothing);
     expect(find.text('Translate selection'), findsOneWidget);
-    expect(find.text('Ctrl+T'), findsOneWidget);
+    expect(find.text('Ctrl+T'), findsNothing);
     // The now-removed dedicated "Selection" secondary button must not return.
     expect(find.text('Selection'), findsNothing);
 
@@ -157,8 +162,8 @@ void main() {
     expect(allTapped, isFalse);
   });
 
-  testWidgets('tapping Validate invokes onValidate', (tester) async {
-    // The §Review section now exposes a single unified button: Validate
+  testWidgets('tapping Review invokes onValidate', (tester) async {
+    // The Workflow step 2 exposes a single unified Review button: it
     // rescans everything and then filters the grid to `needsReview`. The
     // former secondary "Rescan all" button was folded into this handler,
     // so it must no longer render.
@@ -169,7 +174,7 @@ void main() {
     expect(find.text('Rescan all'), findsNothing);
     expect(find.text('Validate selected'), findsNothing);
 
-    await tester.tap(find.text('Validate'));
+    await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
 
     expect(tapped, isTrue);
@@ -191,7 +196,7 @@ void main() {
     await tester.pumpWidget(build(onImportPack: () => tapped = true));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Import pack'));
+    await tester.tap(find.text('Import external pack'));
     await tester.pumpAndSettle();
 
     expect(tapped, isTrue);
