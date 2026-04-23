@@ -131,6 +131,51 @@ class ShowHiddenMods extends _$ShowHiddenMods {
   }
 }
 
+/// Column the mods list is currently sorted on.
+enum ModsSortField { name, subscribers, updated }
+
+/// Immutable sort state — which column and which direction.
+class ModsSortState {
+  final ModsSortField field;
+  final bool ascending;
+  const ModsSortState({required this.field, required this.ascending});
+
+  ModsSortState copyWith({ModsSortField? field, bool? ascending}) =>
+      ModsSortState(
+        field: field ?? this.field,
+        ascending: ascending ?? this.ascending,
+      );
+}
+
+/// Sort state for the mods list. Resets to "name ascending" each time
+/// the Mods screen is opened (see `ModsScreen.initState`).
+@riverpod
+class ModsSort extends _$ModsSort {
+  @override
+  ModsSortState build() =>
+      const ModsSortState(field: ModsSortField.name, ascending: true);
+
+  /// Click on a header cell:
+  /// - same field as active → flip direction
+  /// - different field → switch and pick a sensible default direction
+  ///   (name: ASC for A→Z, numeric/date columns: DESC for newest/most-popular first)
+  void toggle(ModsSortField field) {
+    if (state.field == field) {
+      state = state.copyWith(ascending: !state.ascending);
+    } else {
+      state = ModsSortState(
+        field: field,
+        ascending: field == ModsSortField.name,
+      );
+    }
+  }
+
+  /// Restore the canonical default (name ascending).
+  void reset() {
+    state = const ModsSortState(field: ModsSortField.name, ascending: true);
+  }
+}
+
 /// Filtered mods based on search query, filter, and hidden state
 /// Uses cached data for instant filtering without waiting for async resolution
 @riverpod
@@ -187,7 +232,34 @@ List<DetectedMod> filteredMods(Ref ref) {
     }).toList();
   }
 
-  return result;
+  // Apply sort. Stable, mutable copy so the upstream cache stays untouched.
+  final sort = ref.watch(modsSortProvider);
+  final sorted = [...result];
+  int byName(DetectedMod a, DetectedMod b) =>
+      a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  sorted.sort((a, b) {
+    int cmp;
+    switch (sort.field) {
+      case ModsSortField.name:
+        cmp = byName(a, b);
+        break;
+      case ModsSortField.subscribers:
+        final sa = a.metadata?.modSubscribers ?? 0;
+        final sb = b.metadata?.modSubscribers ?? 0;
+        cmp = sa.compareTo(sb);
+        if (cmp == 0) cmp = byName(a, b);
+        break;
+      case ModsSortField.updated:
+        final ua = a.timeUpdated ?? 0;
+        final ub = b.timeUpdated ?? 0;
+        cmp = ua.compareTo(ub);
+        if (cmp == 0) cmp = byName(a, b);
+        break;
+    }
+    return sort.ascending ? cmp : -cmp;
+  });
+
+  return sorted;
 }
 
 /// Provider to check if mods are still loading (for UI feedback)

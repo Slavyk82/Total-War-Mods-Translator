@@ -9,7 +9,6 @@ import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
-import 'package:twmt/widgets/lists/toggle_chip.dart';
 
 /// Toolbar for the Mods screen.
 ///
@@ -78,16 +77,6 @@ class ModsToolbar extends StatelessWidget {
         onChanged: onSearchChanged,
         onClear: () => onSearchChanged(''),
       ),
-      ToggleChip(
-        label: 'Hidden',
-        icon: showHidden
-            ? FluentIcons.eye_24_filled
-            : FluentIcons.eye_off_24_regular,
-        selected: showHidden,
-        count: hiddenCount > 0 ? hiddenCount : null,
-        tooltip: TooltipStrings.modsHiddenToggle,
-        onToggle: () => onShowHiddenChanged(!showHidden),
-      ),
       if (onImportLocalPack != null)
         SmallTextButton(
           label: 'Import pack',
@@ -134,6 +123,13 @@ class ModsToolbar extends StatelessWidget {
                 ? ModsFilter.all
                 : ModsFilter.needsUpdate,
           ),
+        ),
+        FilterPill(
+          label: 'Hidden',
+          selected: showHidden,
+          count: hiddenCount > 0 ? hiddenCount : null,
+          tooltip: TooltipStrings.modsHiddenToggle,
+          onToggle: () => onShowHiddenChanged(!showHidden),
         ),
       ],
     );

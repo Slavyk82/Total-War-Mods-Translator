@@ -5,6 +5,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
@@ -19,7 +20,7 @@ import 'package:twmt/widgets/lists/status_pill.dart';
 /// used by Projects. Columns: thumbnail, title+id, subscribers, last-updated,
 /// status (imported/updated), changes, hide-toggle.
 const List<ListRowColumn> modsColumns = [
-  ListRowColumn.fixed(56),  // thumbnail
+  ListRowColumn.fixed(80),  // thumbnail
   ListRowColumn.flex(3),    // title + workshop id mono
   ListRowColumn.fixed(100), // subscribers
   ListRowColumn.fixed(140), // last update (relative)
@@ -89,6 +90,9 @@ class ModsList extends StatelessWidget {
               return ListRow(
                 columns: modsColumns,
                 onTap: () => onRowTap(mod.workshopId),
+                // Null height → row grows to fit the 80px thumbnail. The
+                // default 56px would crop the cover vertically.
+                height: null,
                 children: [
                   _Thumbnail(imageUrl: mod.imageUrl),
                   _TitleBlock(mod: mod),
@@ -132,14 +136,132 @@ class ModsList extends StatelessWidget {
 // Header
 // =============================================================================
 
-class _ModsListHeader extends StatelessWidget {
+class _ModsListHeader extends ConsumerWidget {
   const _ModsListHeader();
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final sort = ref.watch(modsSortProvider);
+    final notifier = ref.read(modsSortProvider.notifier);
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      child: Row(
+        children: [
+          // thumbnail spacer (column 0)
+          const SizedBox(width: 80),
+          Expanded(
+            flex: 3,
+            child: _SortableHeaderCell(
+              label: 'Mod',
+              field: ModsSortField.name,
+              sort: sort,
+              onTap: () => notifier.toggle(ModsSortField.name),
+            ),
+          ),
+          SizedBox(
+            width: 100,
+            child: _SortableHeaderCell(
+              label: 'Subs',
+              field: ModsSortField.subscribers,
+              sort: sort,
+              onTap: () => notifier.toggle(ModsSortField.subscribers),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: _SortableHeaderCell(
+              label: 'Updated',
+              field: ModsSortField.updated,
+              sort: sort,
+              onTap: () => notifier.toggle(ModsSortField.updated),
+            ),
+          ),
+          SizedBox(width: 160, child: _PlainHeaderText('Status')),
+          SizedBox(width: 200, child: _PlainHeaderText('Changes')),
+          // hide toggle column (no label)
+          const SizedBox(width: 56),
+        ],
+      ),
+    );
+  }
+}
+
+/// Static header cell for non-sortable columns. Mirrors the look of
+/// [ListRowHeader] (mono 11px caps, textDim).
+class _PlainHeaderText extends StatelessWidget {
+  final String label;
+  const _PlainHeaderText(this.label);
+
+  @override
   Widget build(BuildContext context) {
-    return ListRowHeader(
-      columns: modsColumns,
-      labels: const ['', 'Mod', 'Subs', 'Updated', 'Status', 'Changes', ''],
+    final tokens = context.tokens;
+    return Text(
+      label.toUpperCase(),
+      style: tokens.fontMono.copyWith(
+        fontSize: 11,
+        color: tokens.textDim,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+/// Clickable header cell with a sort indicator arrow when active.
+class _SortableHeaderCell extends StatelessWidget {
+  final String label;
+  final ModsSortField field;
+  final ModsSortState sort;
+  final VoidCallback onTap;
+
+  const _SortableHeaderCell({
+    required this.label,
+    required this.field,
+    required this.sort,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final isActive = sort.field == field;
+    final color = isActive ? tokens.accent : tokens.textDim;
+    final icon = isActive
+        ? (sort.ascending
+            ? FluentIcons.arrow_up_16_filled
+            : FluentIcons.arrow_down_16_filled)
+        : null;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label.toUpperCase(),
+              style: tokens.fontMono.copyWith(
+                fontSize: 11,
+                color: color,
+                letterSpacing: 0.8,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            if (icon != null) ...[
+              const SizedBox(width: 4),
+              Icon(icon, size: 12, color: color),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -158,7 +280,7 @@ class _Thumbnail extends StatelessWidget {
 
     Widget fallback() => Icon(
           FluentIcons.image_off_24_regular,
-          size: 20,
+          size: 44,
           color: tokens.textFaint,
         );
 
@@ -171,8 +293,8 @@ class _Thumbnail extends StatelessWidget {
       if (isRemote) {
         inner = CachedNetworkImage(
           imageUrl: url,
-          width: 40,
-          height: 40,
+          width: 80,
+          height: 80,
           fit: BoxFit.cover,
           placeholder: (_, _) => SizedBox(
             width: 16,
@@ -187,10 +309,10 @@ class _Thumbnail extends StatelessWidget {
       } else {
         inner = Image.file(
           File(url),
-          width: 40,
-          height: 40,
-          cacheWidth: 80,
-          cacheHeight: 80,
+          width: 80,
+          height: 80,
+          cacheWidth: 160,
+          cacheHeight: 160,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) => fallback(),
         );
@@ -198,8 +320,8 @@ class _Thumbnail extends StatelessWidget {
     }
     return Center(
       child: Container(
-        width: 40,
-        height: 40,
+        width: 80,
+        height: 80,
         decoration: BoxDecoration(
           color: tokens.panel,
           borderRadius: BorderRadius.circular(tokens.radiusSm),
@@ -541,7 +663,7 @@ class _HasChangesBadge extends StatelessWidget {
   }
 }
 
-class _HideCell extends StatelessWidget {
+class _HideCell extends StatefulWidget {
   final DetectedMod mod;
   final bool showingHidden;
   final void Function(String workshopId, bool hide)? onToggleHidden;
@@ -553,42 +675,49 @@ class _HideCell extends StatelessWidget {
   });
 
   @override
+  State<_HideCell> createState() => _HideCellState();
+}
+
+class _HideCellState extends State<_HideCell> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final isChecked = mod.isHidden;
+    final isHidden = widget.mod.isHidden;
+    // The icon advertises the action that will run on click:
+    // - hidden mod → "show" (eye)
+    // - visible mod → "hide" (eye_off)
+    final icon = isHidden
+        ? FluentIcons.eye_24_regular
+        : FluentIcons.eye_off_24_regular;
+    final tooltip = isHidden
+        ? 'Show this mod in the main list'
+        : 'Hide this mod from the main list';
+    final fg = _hovered ? tokens.accent : tokens.textDim;
+
     return Center(
       child: Tooltip(
-        message: showingHidden
-            ? 'Uncheck to show this mod in the main list'
-            : 'Check to hide this mod from the main list',
+        message: tooltip,
         waitDuration: const Duration(milliseconds: 400),
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (onToggleHidden != null) {
-                onToggleHidden!(mod.workshopId, !mod.isHidden);
-              }
+              widget.onToggleHidden?.call(widget.mod.workshopId, !isHidden);
             },
             child: Container(
-              width: 22,
-              height: 22,
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isChecked ? tokens.accent : tokens.panel,
-                borderRadius: BorderRadius.circular(tokens.radiusXs),
-                border: Border.all(
-                  color: isChecked ? tokens.accent : tokens.border,
-                  width: 1.5,
-                ),
+                color: _hovered ? tokens.accentBg : Colors.transparent,
+                borderRadius: BorderRadius.circular(tokens.radiusSm),
               ),
-              child: isChecked
-                  ? Icon(
-                      FluentIcons.checkmark_16_filled,
-                      size: 14,
-                      color: tokens.accentFg,
-                    )
-                  : null,
+              child: Icon(icon, size: 18, color: fg),
             ),
           ),
         ),

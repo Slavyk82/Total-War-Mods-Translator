@@ -28,6 +28,13 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
   void initState() {
     super.initState();
     _controller = ModsScreenController(ref);
+    // Always reopen the screen with the canonical sort (Mod ascending), so
+    // a user landing here finds the same A→Z list every time.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(modsSortProvider.notifier).reset();
+      }
+    });
   }
 
   @override
