@@ -13,10 +13,10 @@ import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/dynamic_zone_panel.dart';
 import 'package:twmt/widgets/wizard/form_section.dart';
+import 'package:twmt/widgets/wizard/right_sticky_panel.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 import 'package:twmt/widgets/wizard/summary_box.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
-import 'package:twmt/widgets/workflow/next_step_cta.dart';
 import '../providers/compilation_conflict_providers.dart';
 import '../providers/pack_compilation_providers.dart';
 import '../widgets/compilation_bbcode_section.dart';
@@ -166,6 +166,10 @@ class _PackCompilationEditorScreenState
     final languages = languagesAsync.asData?.value ?? const <Language>[];
     final gameInstallation = currentGameAsync.asData?.value;
 
+    final showConflicts = !state.isCompiling &&
+        state.selectedProjectIds.length >= 2 &&
+        state.selectedLanguageId != null;
+
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
         crumbs: [
@@ -247,6 +251,7 @@ class _PackCompilationEditorScreenState
             onTap: _buildCompileCallback(state, notifier, gameInstallation),
           ),
         ],
+        extras: state.isCompiling ? null : const CompilationBBCodeSection(),
       ),
       dynamicZone: DynamicZonePanel(
         child: AnimatedSwitcher(
@@ -267,6 +272,21 @@ class _PackCompilationEditorScreenState
                 ),
         ),
       ),
+      rightPanel: showConflicts
+          ? RightStickyPanel(
+              children: [
+                SizedBox(
+                  height: 560,
+                  child: ConflictingProjectsPanel(
+                    selectedProjectIds: state.selectedProjectIds,
+                    onToggleProject: (id) => ref
+                        .read(compilationEditorProvider.notifier)
+                        .toggleProject(id),
+                  ),
+                ),
+              ],
+            )
+          : null,
     );
   }
 
@@ -350,7 +370,7 @@ class _EditingView extends ConsumerWidget {
   final AsyncValue<GameInstallation?> currentGameAsync;
 
   /// Whether the last compile succeeded. When true, the view prepends a
-  /// success banner + a Next-step CTA routing to Steam Workshop.
+  /// success banner.
   final bool hasSuccess;
 
   const _EditingView({
@@ -362,36 +382,17 @@ class _EditingView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final showConflicts = state.selectedProjectIds.length >= 2 &&
-        state.selectedLanguageId != null;
-    final hasSelection = state.selectedProjectIds.isNotEmpty;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Post-compile success banner + CTA. Visible only when the last
-        // generatePack run reported a success message and no error.
         if (hasSuccess) ...[
           _CompileSuccessBanner(message: state.successMessage!),
-          const SizedBox(height: 12),
-          NextStepCta(
-            label: 'Publish on Steam Workshop',
-            icon: FluentIcons.cloud_arrow_up_24_regular,
-            onTap: () => context.goSteamPublish(),
-          ),
           const SizedBox(height: 16),
         ],
-        // Primary project selection list. Sized region so the internal
-        // Expanded/ListView render correctly inside the wizard column.
-        SizedBox(
-          height: 420,
+        Expanded(
           child: CompilationProjectSelectionSection(
             state: state,
             currentGameAsync: currentGameAsync,
-            // Selection handlers only mutate the editor notifier. The parent
-            // screen's ref.listen on (selectedProjectIds, selectedLanguageId)
-            // drives conflict analysis + resolutions clearing centrally, so
-            // the prior Future.delayed race workaround is no longer needed.
             onToggle: (id) =>
                 ref.read(compilationEditorProvider.notifier).toggleProject(id),
             onSelectAll: (ids) => ref
@@ -402,23 +403,6 @@ class _EditingView extends ConsumerWidget {
                 .deselectAllProjects(),
           ),
         ),
-        if (showConflicts) ...[
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 240,
-            child: ConflictingProjectsPanel(
-              selectedProjectIds: state.selectedProjectIds,
-              // Parent screen's ref.listen handles conflict re-analysis.
-              onToggleProject: (id) => ref
-                  .read(compilationEditorProvider.notifier)
-                  .toggleProject(id),
-            ),
-          ),
-        ],
-        if (hasSelection) ...[
-          const SizedBox(height: 16),
-          const CompilationBBCodeSection(),
-        ],
       ],
     );
   }
