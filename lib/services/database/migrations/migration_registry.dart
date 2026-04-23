@@ -24,6 +24,7 @@ import 'migration_validation_issues_json.dart';
 import 'migration_validation_schema_version.dart';
 import 'migration_activity_events.dart';
 import 'migration_projects_filter_indexes.dart';
+import 'migration_glossary_game_code_partial.dart';
 
 /// Registry of all database migrations.
 ///
@@ -60,6 +61,7 @@ class MigrationRegistry {
       ValidationIssuesJsonMigration(),
       ActivityEventsMigration(),
       ProjectsFilterIndexesMigration(), // Priority 120 — must run after column-adding migrations
+      GlossaryGameCodePartialMigration(), // Priority 130 — game-specific glossary refactor
     ];
 
     // Sort by priority (lower numbers first)
