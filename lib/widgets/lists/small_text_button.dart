@@ -65,12 +65,20 @@ class SmallTextButton extends StatelessWidget {
                 Icon(icon, size: 14, color: fgColor),
                 const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: tokens.fontBody.copyWith(
-                  fontSize: 12.5,
-                  color: fgColor,
-                  fontWeight: FontWeight.w500,
+              // `Flexible` keeps the button at its intrinsic width in
+              // unbounded parents (existing callers), but lets the label
+              // shrink + ellipsize when constrained — required so long
+              // labels in narrow hosts (e.g. the 240 px editor sidebar)
+              // don't overflow their Row.
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: fgColor,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
