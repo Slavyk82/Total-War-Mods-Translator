@@ -47,4 +47,31 @@ void main() {
     final tokens = AppTheme.atelierDarkTheme.extension<TwmtThemeTokens>()!;
     expect(t.widget<Text>(find.text('1')).style?.color, tokens.ok);
   });
+
+  testWidgets('long value does not overflow in a narrow host', (t) async {
+    await t.pumpWidget(MaterialApp(
+      theme: AppTheme.atelierDarkTheme,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 303,
+            child: const SummaryBox(
+              label: 'Will generate',
+              lines: [
+                SummaryLine(
+                  key: 'Filename',
+                  value:
+                      'very_long_pack_name_that_definitely_exceeds_available_width.pack',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+    await t.pump();
+    expect(t.takeException(), isNull,
+        reason: 'SummaryBox must not overflow when the value is longer than '
+            'the available width');
+  });
 }

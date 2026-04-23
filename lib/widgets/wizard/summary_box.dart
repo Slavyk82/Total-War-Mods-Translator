@@ -78,18 +78,24 @@ class SummaryBox extends StatelessWidget {
                     Expanded(
                       child: Text(
                         line.key,
+                        overflow: TextOverflow.ellipsis,
                         style: tokens.fontBody.copyWith(
                           fontSize: 12,
                           color: tokens.textMid,
                         ),
                       ),
                     ),
-                    Text(
-                      line.value,
-                      style: tokens.fontMono.copyWith(
-                        fontSize: 12,
-                        color: _semanticColor(tokens, line.semantics ?? semantics),
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        line.value,
+                        textAlign: TextAlign.end,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.fontMono.copyWith(
+                          fontSize: 12,
+                          color: _semanticColor(tokens, line.semantics ?? semantics),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
