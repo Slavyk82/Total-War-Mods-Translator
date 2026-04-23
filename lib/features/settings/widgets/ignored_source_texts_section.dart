@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/config/tooltip_strings.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
@@ -152,43 +153,19 @@ class _ResetConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return AlertDialog(
-      backgroundColor: tokens.panel,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        side: BorderSide(color: tokens.border),
-      ),
-      title: Text(
-        'Reset to Defaults',
-        style: tokens.fontDisplay.copyWith(
-          fontSize: 18,
-          color: tokens.text,
-          fontStyle: tokens.fontDisplayStyle,
-        ),
-      ),
-      content: Text(
-        'This will delete all current ignored texts and restore the default values:\n\n'
-        '• placeholder\n'
-        '• dummy\n\n'
-        'Note: Texts fully enclosed in brackets like [placeholder] are always filtered automatically.\n\n'
-        'Are you sure you want to continue?',
-        style: tokens.fontBody.copyWith(
-          fontSize: 13,
-          color: tokens.textMid,
-        ),
-      ),
-      actions: [
-        SmallTextButton(
-          label: 'Cancel',
-          onTap: () => Navigator.pop(context, false),
-        ),
-        SmallTextButton(
-          label: 'Reset',
-          icon: FluentIcons.arrow_reset_24_regular,
-          onTap: () => Navigator.pop(context, true),
-        ),
-      ],
+    return const TokenConfirmDialog(
+      icon: FluentIcons.arrow_reset_24_regular,
+      title: 'Reset to Defaults',
+      message:
+          'This will delete all current ignored texts and restore the default '
+          'values:\n\n'
+          '• placeholder\n'
+          '• dummy\n\n'
+          'Note: Texts fully enclosed in brackets like [placeholder] are always '
+          'filtered automatically.\n\n'
+          'Are you sure you want to continue?',
+      confirmLabel: 'Reset',
+      confirmIcon: FluentIcons.arrow_reset_24_regular,
     );
   }
 }

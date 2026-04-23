@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
@@ -103,42 +104,29 @@ class _PackCompilationListScreenState
     );
   }
 
-  void _confirmDelete(CompilationWithDetails d) {
-    showDialog<void>(
+  Future<void> _confirmDelete(CompilationWithDetails d) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete compilation'),
-        content:
-            Text('Delete "${d.compilation.name}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final repo = ref.read(compilationRepositoryProvider);
-              final r = await repo.delete(d.compilation.id);
-              if (!mounted) return;
-              if (r.isOk) {
-                ref.invalidate(compilationsWithDetailsProvider);
-                FluentToast.success(
-                  context,
-                  'Deleted "${d.compilation.name}"',
-                );
-              } else {
-                FluentToast.error(context, 'Delete failed: ${r.error}');
-              }
-            },
-            child: Text(
-              'Delete',
-              style: TextStyle(color: context.tokens.err),
-            ),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Compilation',
+        message: 'Delete "${d.compilation.name}"?',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
+    if (confirmed != true || !mounted) return;
+
+    final repo = ref.read(compilationRepositoryProvider);
+    final r = await repo.delete(d.compilation.id);
+    if (!mounted) return;
+    if (r.isOk) {
+      ref.invalidate(compilationsWithDetailsProvider);
+      FluentToast.success(context, 'Deleted "${d.compilation.name}"');
+    } else {
+      FluentToast.error(context, 'Delete failed: ${r.error}');
+    }
   }
 }
 

@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
@@ -170,22 +171,14 @@ class _WorkshopPublishScreenState
     if (!state.isActive) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Publication in progress'),
-        content: const Text(
-          'A publication is currently in progress. Are you sure you want to '
-          'leave? The upload will be cancelled.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Stay'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Leave'),
-          ),
-        ],
+      builder: (_) => const TokenConfirmDialog(
+        title: 'Publication in Progress',
+        message:
+            'A publication is currently in progress. Are you sure you want to '
+            'leave? The upload will be cancelled.',
+        cancelLabel: 'Stay',
+        confirmLabel: 'Leave',
+        destructive: true,
       ),
     );
     return result ?? false;

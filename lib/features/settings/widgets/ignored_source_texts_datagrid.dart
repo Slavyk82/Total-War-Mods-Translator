@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/ignored_source_text.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
@@ -238,25 +239,13 @@ class _IgnoredSourceTextsDataGridState
   Future<void> _deleteText(IgnoredSourceText text) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Ignored Text'),
-        content: Text(
-          'Are you sure you want to delete "${text.sourceText}"? '
-          'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: context.tokens.err,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Ignored Text',
+        message: 'Are you sure you want to delete "${text.sourceText}"?',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
 

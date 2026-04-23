@@ -9,6 +9,7 @@ import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/utils/string_initials.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_cover.dart';
@@ -395,26 +396,17 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
   }
 
   Future<void> _confirmDeleteGlossary(Glossary glossary) async {
-    final tokens = context.tokens;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Glossary'),
-        content: Text(
-          'Are you sure you want to delete "${glossary.name}"? '
-          'This will permanently delete all ${glossary.entryCount} entries.',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            foregroundColor: tokens.err,
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Glossary',
+        message:
+            'Are you sure you want to delete "${glossary.name}"? This will '
+            'permanently delete all ${glossary.entryCount} entries.',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
 

@@ -8,6 +8,7 @@ import '../../../models/domain/translation_version.dart';
 import '../../../providers/history/history_providers.dart';
 import '../../../providers/shared/service_providers.dart';
 import 'version_comparison_dialog.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 /// Timeline panel showing history of changes for a translation version
@@ -517,23 +518,14 @@ class HistoryTimelinePanel extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restore Version'),
-        content: Text(
-          'Are you sure you want to restore this version?\n\n'
-          'This will replace the current translation with:\n'
-          '"${entry.getTranslatedTextPreview(100)}"',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Restore'),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        icon: FluentIcons.history_24_regular,
+        title: 'Restore Version',
+        message: 'Are you sure you want to restore this version?\n\n'
+            'This will replace the current translation with:\n'
+            '"${entry.getTranslatedTextPreview(100)}"',
+        confirmLabel: 'Restore',
+        confirmIcon: FluentIcons.arrow_reset_24_regular,
       ),
     );
 

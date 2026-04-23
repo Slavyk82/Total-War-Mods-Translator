@@ -8,6 +8,7 @@ import 'glossary_entry_editor.dart';
 import 'glossary_datagrid_cells.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 
 /// DataGrid for displaying and managing glossary entries
 class GlossaryDataGrid extends ConsumerStatefulWidget {
@@ -219,22 +220,13 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
   Future<void> _deleteEntry(GlossaryEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Entry'),
-        content: Text(
-          'Are you sure you want to delete the entry "${entry.sourceTerm} → ${entry.targetTerm}"?',
-        ),
-        actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            foregroundColor: Theme.of(context).colorScheme.error,
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Entry',
+        message:
+            'Are you sure you want to delete the entry "${entry.sourceTerm} → ${entry.targetTerm}"?',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
 

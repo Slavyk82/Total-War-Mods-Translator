@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import '../../../widgets/dialogs/token_confirm_dialog.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../providers/projects_screen_providers.dart';
@@ -63,21 +64,14 @@ class _BatchPackExportScreenState
     if (!state.isExporting) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export in progress'),
-        content: const Text(
-          'A batch export is currently in progress. Are you sure you want to leave? The export will be cancelled.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Stay'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Leave'),
-          ),
-        ],
+      builder: (_) => const TokenConfirmDialog(
+        title: 'Export in Progress',
+        message:
+            'A batch export is currently in progress. Are you sure you want '
+            'to leave? The export will be cancelled.',
+        cancelLabel: 'Stay',
+        confirmLabel: 'Leave',
+        destructive: true,
       ),
     );
     return result ?? false;

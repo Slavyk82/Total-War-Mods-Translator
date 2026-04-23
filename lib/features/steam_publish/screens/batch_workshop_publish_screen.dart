@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -100,22 +101,14 @@ class _BatchWorkshopPublishScreenState
     if (!state.isPublishing) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Publication in progress'),
-        content: const Text(
-          'A batch publication is currently in progress. Are you sure you '
-          'want to leave? The remaining uploads will be cancelled.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Stay'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Leave'),
-          ),
-        ],
+      builder: (_) => const TokenConfirmDialog(
+        title: 'Publication in Progress',
+        message:
+            'A batch publication is currently in progress. Are you sure you '
+            'want to leave? The remaining uploads will be cancelled.',
+        cancelLabel: 'Stay',
+        confirmLabel: 'Leave',
+        destructive: true,
       ),
     );
     return result ?? false;
@@ -133,22 +126,14 @@ class _BatchWorkshopPublishScreenState
   Future<void> _confirmCancel() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel batch publish?'),
-        content: const Text(
-          'Remaining uploads will be aborted. Already-uploaded items are not '
-          'rolled back.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Keep going'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Stop'),
-          ),
-        ],
+      builder: (_) => const TokenConfirmDialog(
+        title: 'Cancel Batch Publish?',
+        message:
+            'Remaining uploads will be aborted. Already-uploaded items are '
+            'not rolled back.',
+        cancelLabel: 'Keep going',
+        confirmLabel: 'Stop',
+        destructive: true,
       ),
     );
     if (ok == true && mounted) {
