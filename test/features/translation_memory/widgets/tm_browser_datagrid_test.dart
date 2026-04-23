@@ -8,10 +8,13 @@
 // the widget, capture `SfDataGrid.source`, force the parent to rebuild,
 // and assert the source is identical across frames.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'
+    show ProviderContainer, UncontrolledProviderScope;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
+import 'package:twmt/features/translation_memory/providers/tm_providers.dart';
 import 'package:twmt/features/translation_memory/widgets/tm_browser_datagrid.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
@@ -47,8 +50,11 @@ TranslationMemoryEntry _entry(String id, String src, String tgt) =>
 /// doesn't invalidate the provider, so [_TmDataSource.updateEntries] should
 /// short-circuit via its [identical] guard.
 class _FakeTmService implements ITranslationMemoryService {
-  _FakeTmService(this._entries);
+  _FakeTmService(List<TranslationMemoryEntry> entries)
+      : _entries = List.of(entries);
 
+  /// Live backing store. Each call to [getEntries] returns a FRESH copy so
+  /// Riverpod sees a new list reference after [deleteEntry] mutates this.
   final List<TranslationMemoryEntry> _entries;
 
   @override
@@ -58,7 +64,7 @@ class _FakeTmService implements ITranslationMemoryService {
     int offset = 0,
     String orderBy = 'usage_count DESC',
   }) async =>
-      Ok(_entries);
+      Ok(List.of(_entries));
 
   @override
   Future<Result<int, TmServiceException>> countEntries({
@@ -74,7 +80,7 @@ class _FakeTmService implements ITranslationMemoryService {
     String? targetLanguageCode,
     int limit = 50,
   }) async =>
-      Ok(_entries);
+      Ok(List.of(_entries));
 
   @override
   Future<Result<TmStatistics, TmServiceException>> getStatistics({
@@ -160,8 +166,10 @@ class _FakeTmService implements ITranslationMemoryService {
   @override
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
-  }) async =>
-      const Ok(null);
+  }) async {
+    _entries.removeWhere((e) => e.id == entryId);
+    return const Ok(null);
+  }
 
   @override
   Future<Result<int, TmServiceException>> cleanupUnusedEntries({
@@ -281,5 +289,159 @@ void main() {
     expect(identical(firstSource, laterSource), isTrue,
         reason:
             '_TmDataSource should be reused when the entries list is unchanged');
+  });
+
+  testWidgets(
+      'TmBrowserDataGrid refreshes rendered rows after a TM entry is deleted '
+      '(invalidate-driven rebuild must reach SfDataGrid._effectiveRows)',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final service = _FakeTmService([
+      _entry('tm1', 'Hello', 'Bonjour'),
+      _entry('tm2', 'World', 'Monde'),
+    ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        clockProvider.overrideWithValue(
+          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+              .add(const Duration(days: 1)),
+        ),
+        translationMemoryServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: const Scaffold(body: TmBrowserDataGrid()),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    // Both rows are visible initially.
+    expect(find.text('Hello'), findsOneWidget);
+    expect(find.text('World'), findsOneWidget);
+
+    // Simulate what `TmDeleteState.deleteEntry` does after a successful
+    // database delete: mutate the backing store, then invalidate the entries
+    // provider so the widget re-fetches.
+    await container.read(tmDeleteStateProvider.notifier).deleteEntry('tm1');
+    await t.pumpAndSettle();
+
+    // The deleted row must disappear from the displayed grid.
+    expect(find.text('Hello'), findsNothing,
+        reason: 'Deleted TM entry must be removed from the grid immediately');
+    expect(find.text('World'), findsOneWidget);
+  });
+
+  testWidgets(
+      'TmBrowserDataGrid refreshes rendered rows after delete when a search '
+      'filter is active (search provider branch)',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final service = _FakeTmService([
+      _entry('tm1', 'Hello', 'Bonjour'),
+      _entry('tm2', 'World', 'Monde'),
+    ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        clockProvider.overrideWithValue(
+          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+              .add(const Duration(days: 1)),
+        ),
+        translationMemoryServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: const Scaffold(body: TmBrowserDataGrid()),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    // Activate a search filter that still matches both rows. This pushes the
+    // widget onto the `tmSearchResultsProvider` branch.
+    container.read(tmFilterStateProvider.notifier).setSearchText('o');
+    await t.pumpAndSettle();
+
+    expect(find.text('Hello'), findsOneWidget);
+    expect(find.text('World'), findsOneWidget);
+
+    await container.read(tmDeleteStateProvider.notifier).deleteEntry('tm1');
+    await t.pumpAndSettle();
+
+    expect(find.text('Hello'), findsNothing,
+        reason: 'Deleted TM entry must vanish even with a search filter on');
+    expect(find.text('World'), findsOneWidget);
+  });
+
+  testWidgets(
+      'Deleting via the trash icon + confirm dialog removes the row from '
+      'the grid immediately (full UI flow)',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final service = _FakeTmService([
+      _entry('tm1', 'Hello', 'Bonjour'),
+      _entry('tm2', 'World', 'Monde'),
+    ]);
+
+    await t.pumpWidget(createThemedTestableWidget(
+      const TmBrowserDataGrid(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        clockProvider.overrideWithValue(
+          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+              .add(const Duration(days: 1)),
+        ),
+        translationMemoryServiceProvider.overrideWithValue(service),
+      ],
+    ));
+    await t.pumpAndSettle();
+
+    expect(find.text('Hello'), findsOneWidget);
+    expect(find.text('World'), findsOneWidget);
+
+    // Tap the trash icon in the first row's actions cell.
+    final deleteIcons = find.byTooltip('Delete entry');
+    expect(deleteIcons, findsAtLeast(1));
+    await t.tap(deleteIcons.first);
+    await t.pumpAndSettle();
+
+    // Confirm the deletion. The confirm button label in TokenConfirmDialog
+    // matches the action's text; tap the (single) visible "Delete" text.
+    expect(find.text('Delete'), findsOneWidget);
+    await t.tap(find.text('Delete'));
+    // Pump only a bounded number of frames (the success toast schedules a
+    // 4 s dismiss timer we do not want to wait for).
+    for (var i = 0; i < 10; i++) {
+      await t.pump(const Duration(milliseconds: 50));
+    }
+
+    // The first row must be gone from the grid.
+    expect(find.text('Hello'), findsNothing,
+        reason: 'Deleted TM entry must vanish from the grid immediately');
+    expect(find.text('World'), findsOneWidget);
+
+    // Drain the toast timer to satisfy the framework's "no dangling timers"
+    // invariant.
+    await t.pump(const Duration(seconds: 5));
   });
 }
