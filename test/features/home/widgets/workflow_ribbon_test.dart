@@ -26,7 +26,7 @@ void main() {
     binding.platformDispatcher.views.first.resetDevicePixelRatio();
   });
 
-  testWidgets('renders 4 workflow cards', (tester) async {
+  testWidgets('renders 3 workflow cards', (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       const WorkflowRibbon(),
       theme: AppTheme.atelierDarkTheme,
@@ -35,21 +35,20 @@ void main() {
         modsWithUpdatesCountProvider.overrideWith((ref) async => 5),
         activeProjectsCountProvider.overrideWith((ref) async => 24),
         projectsToReviewCountProvider.overrideWith((ref) async => 2),
-        projectsReadyToCompileCountProvider.overrideWith((ref) async => 3),
         packsAwaitingPublishCountProvider.overrideWith((ref) async => 1),
       ],
     ));
     await tester.pumpAndSettle();
-    expect(find.byType(WorkflowCard), findsNWidgets(4));
+    expect(find.byType(WorkflowCard), findsNWidgets(3));
     expect(find.text('Detect'), findsOneWidget);
     expect(find.text('Translate'), findsOneWidget);
-    // `Compile` and `Publish` appear both as the card title and as the CTA
-    // label when those steps are `current`, so match at least once.
-    expect(find.text('Compile'), findsAtLeastNWidgets(1));
+    expect(find.text('Compile'), findsNothing);
+    // `Publish` appears both as the card title and as the CTA label when the
+    // step is `current`, so match at least once.
     expect(find.text('Publish'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('step 1 is done when mods > 0, step 2 is current',
+  testWidgets('all 3 cards render in current state with step numbers',
       (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       const WorkflowRibbon(),
@@ -59,13 +58,15 @@ void main() {
         modsWithUpdatesCountProvider.overrideWith((ref) async => 0),
         activeProjectsCountProvider.overrideWith((ref) async => 24),
         projectsToReviewCountProvider.overrideWith((ref) async => 0),
-        projectsReadyToCompileCountProvider.overrideWith((ref) async => 0),
         packsAwaitingPublishCountProvider.overrideWith((ref) async => 0),
       ],
     ));
     await tester.pumpAndSettle();
-    // Card 1 has state done (check mark rendered)
-    expect(find.text('✓'), findsOneWidget);
-    expect(find.text('2'), findsOneWidget); // step 2 number
+    // No checkmark: the `done` visual state is no longer used.
+    expect(find.text('✓'), findsNothing);
+    // Every card now shows its step number in the badge.
+    expect(find.text('1'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
   });
 }

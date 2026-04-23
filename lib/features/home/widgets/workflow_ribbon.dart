@@ -7,12 +7,12 @@ import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/workflow_card.dart';
 
-/// Four-step workflow ribbon on the Home dashboard.
+/// Three-step workflow ribbon on the Home dashboard.
 ///
-/// Renders the Detect / Translate / Compile / Publish pipeline as a row of
-/// four [WorkflowCard]s separated by arrow icons. Each card derives its state
-/// (done / current / next) from primitive Riverpod counters, and tapping a
-/// card navigates to the associated feature route.
+/// Renders the Detect / Translate / Publish pipeline as a row of three
+/// [WorkflowCard]s separated by arrow icons. All cards use the
+/// [WorkflowCardState.current] visual style; only the textual labels and
+/// metrics reflect the underlying Riverpod counters.
 class WorkflowRibbon extends ConsumerWidget {
   const WorkflowRibbon({super.key});
 
@@ -23,28 +23,8 @@ class WorkflowRibbon extends ConsumerWidget {
     final modUpdates = ref.watch(modsWithUpdatesCountProvider).value ?? 0;
     final projects = ref.watch(activeProjectsCountProvider).value ?? 0;
     final toReview = ref.watch(projectsToReviewCountProvider).value ?? 0;
-    final ready = ref.watch(projectsReadyToCompileCountProvider).value ?? 0;
     final awaitingPub =
         ref.watch(packsAwaitingPublishCountProvider).value ?? 0;
-
-    WorkflowCardState stateFor(int step) {
-      if (step == 1) {
-        return mods > 0 ? WorkflowCardState.done : WorkflowCardState.current;
-      }
-      if (step == 2) {
-        if (projects == 0) return WorkflowCardState.next;
-        return projects > 0 && ready < projects
-            ? WorkflowCardState.current
-            : WorkflowCardState.done;
-      }
-      if (step == 3) {
-        if (ready == 0) return WorkflowCardState.next;
-        return WorkflowCardState.current;
-      }
-      return awaitingPub == 0
-          ? WorkflowCardState.next
-          : WorkflowCardState.current;
-    }
 
     Widget arrow() => SizedBox(
           width: 20,
@@ -61,7 +41,7 @@ class WorkflowRibbon extends ConsumerWidget {
           subtitle: '${mods > 0 ? 'mods discovered' : 'no mods yet'}'
               '${modUpdates > 0 ? ' · $modUpdates with updates' : ''}',
           cta: 'View mods',
-          state: stateFor(1),
+          state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.mods),
         ),
       ),
@@ -75,7 +55,7 @@ class WorkflowRibbon extends ConsumerWidget {
           subtitle:
               'active projects${toReview > 0 ? ' · $toReview to review' : ''}',
           cta: 'Open projects',
-          state: stateFor(2),
+          state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.projects),
         ),
       ),
@@ -83,25 +63,12 @@ class WorkflowRibbon extends ConsumerWidget {
       Expanded(
         child: WorkflowCard(
           stepNumber: 3,
-          title: 'Compile',
-          stateLabel: ready > 0 ? '$ready ready' : 'Waiting',
-          metric: '$ready',
-          subtitle: 'packs to generate when ready',
-          cta: 'Compile',
-          state: stateFor(3),
-          onTap: () => context.go(AppRoutes.packCompilation),
-        ),
-      ),
-      arrow(),
-      Expanded(
-        child: WorkflowCard(
-          stepNumber: 4,
           title: 'Publish',
           stateLabel: awaitingPub > 0 ? '$awaitingPub waiting' : 'Waiting',
           metric: '$awaitingPub',
           subtitle: 'compiled packs ready for Workshop',
           cta: 'Publish',
-          state: stateFor(4),
+          state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.steamPublish),
         ),
       ),
