@@ -11,7 +11,9 @@ import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/features/projects/widgets/add_language_dialog.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 
 /// Language switcher chip + popover used by the translation editor.
 ///
@@ -91,24 +93,71 @@ class EditorLanguageSwitcher extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Language'),
-        content: Text(
-            'Remove "${details.language.name}" from this project? '
-            '${details.translatedUnits} translations will be deleted. '
-            'This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+      builder: (ctx) {
+        final tokens = ctx.tokens;
+        return TokenDialog(
+          icon: FluentIcons.warning_24_regular,
+          iconColor: tokens.err,
+          title: 'Delete Language',
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Remove "${details.language.name}" from this project? '
+                '${details.translatedUnits} translations will be deleted.',
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.textDim,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: tokens.warnBg,
+                  borderRadius: BorderRadius.circular(tokens.radiusSm),
+                  border:
+                      Border.all(color: tokens.warn.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      FluentIcons.info_24_regular,
+                      size: 16,
+                      color: tokens.warn,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This action cannot be undone.',
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 12,
+                          color: tokens.warn,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Delete',
-                style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
-          ),
-        ],
-      ),
+          actions: [
+            SmallTextButton(
+              label: 'Cancel',
+              onTap: () => Navigator.of(ctx).pop(false),
+            ),
+            SmallTextButton(
+              label: 'Delete',
+              icon: FluentIcons.delete_24_regular,
+              filled: true,
+              onTap: () => Navigator.of(ctx).pop(true),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true) return;
     if (!context.mounted) return;
@@ -142,7 +191,7 @@ class EditorLanguageSwitcher extends ConsumerWidget {
     WidgetRef ref,
     List<ProjectLanguageDetails> current,
   ) async {
-    final added = await showDialog<bool>(
+    final addedLanguageIds = await showDialog<List<String>>(
       context: context,
       builder: (_) => AddLanguageDialog(
         projectId: projectId,
@@ -150,9 +199,14 @@ class EditorLanguageSwitcher extends ConsumerWidget {
             current.map((l) => l.projectLanguage.languageId).toList(),
       ),
     );
-    if (added == true && context.mounted) {
-      ref.invalidate(projectLanguagesProvider(projectId));
+    if (addedLanguageIds == null ||
+        addedLanguageIds.isEmpty ||
+        !context.mounted) {
+      return;
     }
+    // Switch immediately to the first newly added language so the editor
+    // reflects the user's intent to start translating it.
+    context.go(AppRoutes.translationEditor(projectId, addedLanguageIds.first));
   }
 }
 

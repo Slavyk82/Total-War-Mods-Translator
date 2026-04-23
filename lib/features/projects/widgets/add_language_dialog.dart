@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -274,6 +276,9 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
       if (!context.mounted) return;
 
       ref.invalidate(projectLanguagesProvider(widget.projectId));
+      unawaited(ref
+          .read(projectsWithDetailsProvider.notifier)
+          .refreshProject(widget.projectId));
       ref.read(translationStatsVersionProvider.notifier).increment();
 
       FluentToast.success(
@@ -283,7 +288,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
         '${translationUnits.length} translation units each',
       );
 
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(languageIdsList);
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to add languages: $e';
