@@ -50,10 +50,10 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
                 ),
               ),
               Text(
-                _unusedDays == 0 ? 'Disabled' : '$_unusedDays',
+                _unusedDays == 0 ? 'Delete all' : '$_unusedDays',
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
-                  color: _unusedDays == 0 ? tokens.textFaint : tokens.accent,
+                  color: _unusedDays == 0 ? tokens.err : tokens.accent,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -79,11 +79,11 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Age filter disabled - no entries will be deleted',
+                'All entries will be deleted - this cannot be undone',
                 style: tokens.fontBody.copyWith(
                   fontSize: 12,
-                  color: tokens.textFaint,
-                  fontStyle: FontStyle.italic,
+                  color: tokens.err,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

@@ -66,41 +66,45 @@ class TmStatisticsService {
         );
       }
 
-      // Calculate cutoff for debugging
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
-      final cutoffDate =
-          DateTime.fromMillisecondsSinceEpoch(cutoffTimestamp * 1000);
+      // unusedDays == 0 means "delete every entry" (full TM wipe).
+      final isFullWipe = unusedDays == 0;
 
-      _logger.info(
-        'Starting TM cleanup',
-        {
-          'unusedDays': unusedDays,
-          'cutoffDate': cutoffDate.toIso8601String(),
-          'cutoffTimestamp': cutoffTimestamp,
-        },
-      );
+      if (isFullWipe) {
+        _logger.info('Starting TM full wipe', {'unusedDays': 0});
+      } else {
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
+        final cutoffDate =
+            DateTime.fromMillisecondsSinceEpoch(cutoffTimestamp * 1000);
 
-      // First, count candidates for diagnostic purposes
-      final countResult = await _repository.countCleanupCandidates(
-        unusedDays: unusedDays,
-      );
-
-      if (countResult.isOk) {
-        final counts = countResult.value;
         _logger.info(
-          'TM cleanup candidates analysis',
+          'Starting TM cleanup',
           {
-            'willBeDeleted': counts['willBeDeleted'],
-            'unusedOnly': counts['unusedOnly'],
+            'unusedDays': unusedDays,
+            'cutoffDate': cutoffDate.toIso8601String(),
+            'cutoffTimestamp': cutoffTimestamp,
           },
         );
+
+        final countResult = await _repository.countCleanupCandidates(
+          unusedDays: unusedDays,
+        );
+
+        if (countResult.isOk) {
+          final counts = countResult.value;
+          _logger.info(
+            'TM cleanup candidates analysis',
+            {
+              'willBeDeleted': counts['willBeDeleted'],
+              'unusedOnly': counts['unusedOnly'],
+            },
+          );
+        }
       }
 
-      // Delete unused entries
-      final deleteResult = await _repository.deleteByAge(
-        unusedDays: unusedDays,
-      );
+      final deleteResult = isFullWipe
+          ? await _repository.deleteAllEntries()
+          : await _repository.deleteByAge(unusedDays: unusedDays);
 
       if (deleteResult.isErr) {
         return Err(

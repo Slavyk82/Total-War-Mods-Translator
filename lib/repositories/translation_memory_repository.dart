@@ -232,6 +232,24 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
     });
   }
 
+  /// Delete every entry in the table (full TM wipe).
+  ///
+  /// Returns the number of deleted rows and the sum of their `usage_count`
+  /// so lifetime reuse stats can be archived before the rows vanish.
+  Future<Result<({int deletedCount, int deletedUsageSum}),
+      TWMTDatabaseException>> deleteAllEntries() async {
+    return executeQuery(() async {
+      final sumRow = await database.rawQuery(
+        'SELECT COALESCE(SUM(usage_count), 0) AS usage_sum FROM $tableName',
+      );
+      final usageSum = (sumRow.first['usage_sum'] as int?) ?? 0;
+
+      final rowsAffected = await database.delete(tableName);
+
+      return (deletedCount: rowsAffected, deletedUsageSum: usageSum);
+    });
+  }
+
   /// Count entries that would be deleted by cleanup criteria.
   ///
   /// Used for diagnostics/preview before actual deletion.
