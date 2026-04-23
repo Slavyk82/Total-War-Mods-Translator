@@ -2,11 +2,21 @@ import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/translation_memory/tm_cache.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
+
+/// Lifetime reuse count of entries deleted by past cleanups. Added on top of
+/// the current live usage sum so cleanup doesn't rewrite history.
+const _kArchivedReuseCountKey = 'tm_archived_reuse_count';
+
+/// Lifetime count of entries deleted by past cleanups. Used as an extra
+/// denominator term for reuse rate so cleanup doesn't inflate the ratio.
+const _kArchivedEntriesCountKey = 'tm_archived_entries_count';
 
 /// Translation Memory statistics and maintenance service
 ///
@@ -19,16 +29,22 @@ class TmStatisticsService {
   final LanguageRepository _languageRepository;
   final TmCache _cache;
   final ILoggingService _logger;
+  final SettingsService? _settings;
 
   const TmStatisticsService({
     required TranslationMemoryRepository repository,
     required LanguageRepository languageRepository,
     required TmCache cache,
     required ILoggingService logger,
+    SettingsService? settings,
   })  : _repository = repository,
         _languageRepository = languageRepository,
         _cache = cache,
-        _logger = logger;
+        _logger = logger,
+        _settings = settings;
+
+  SettingsService get _settingsOrLocator =>
+      _settings ?? ServiceLocator.get<SettingsService>();
 
   /// Clean up unused TM entries
   ///
@@ -95,12 +111,33 @@ class TmStatisticsService {
         );
       }
 
-      final deletedCount = deleteResult.value;
+      final deletedCount = deleteResult.value.deletedCount;
+      final deletedUsageSum = deleteResult.value.deletedUsageSum;
 
       _logger.info(
         'TM cleanup completed',
-        {'deletedEntries': deletedCount},
+        {
+          'deletedEntries': deletedCount,
+          'deletedUsageSum': deletedUsageSum,
+        },
       );
+
+      // Preserve historical reuse metrics: cleanup deletes rows but the
+      // translation work they represent already happened, so we archive
+      // their usage_count and row count into persistent lifetime counters.
+      if (deletedCount > 0) {
+        final settings = _settingsOrLocator;
+        final priorReuse = await settings.getInt(_kArchivedReuseCountKey);
+        final priorEntries = await settings.getInt(_kArchivedEntriesCountKey);
+        await settings.setInt(
+          _kArchivedReuseCountKey,
+          priorReuse + deletedUsageSum,
+        );
+        await settings.setInt(
+          _kArchivedEntriesCountKey,
+          priorEntries + deletedCount,
+        );
+      }
 
       // Clear cache after cleanup to ensure fresh data
       if (deletedCount > 0) {
@@ -170,20 +207,36 @@ class TmStatisticsService {
         languagePairResult.value,
       );
 
+      // Archive counters are global (cleanup is not per-language), so only
+      // fold them in for the unfiltered view. A per-language filter shows
+      // the live numbers for that language.
+      int archivedReuse = 0;
+      int archivedEntries = 0;
+      if (targetLanguageId == null) {
+        final settings = _settingsOrLocator;
+        archivedReuse = await settings.getInt(_kArchivedReuseCountKey);
+        archivedEntries = await settings.getInt(_kArchivedEntriesCountKey);
+      }
+
+      final effectiveUsage = totalUsage + archivedReuse;
+      final effectiveEntriesForRate = totalEntries + archivedEntries;
+
       // Calculate estimated token reuse
       // Assumption: Average entry saves ~50 tokens per reuse
       const avgTokensPerEntry = 50;
-      final tokensSaved = totalUsage * avgTokensPerEntry;
+      final tokensSaved = effectiveUsage * avgTokensPerEntry;
 
       // Calculate reuse rate
       // Note: This is a simplified calculation
       // In production, you'd compare TM hits vs total translation requests
-      final reuseRate = totalEntries > 0 ? totalUsage / totalEntries : 0.0;
+      final reuseRate = effectiveEntriesForRate > 0
+          ? effectiveUsage / effectiveEntriesForRate
+          : 0.0;
 
       final stats = TmStatistics(
         totalEntries: totalEntries,
         entriesByLanguagePair: entriesByLanguagePair,
-        totalReuseCount: totalUsage,
+        totalReuseCount: effectiveUsage,
         tokensSaved: tokensSaved,
         averageFuzzyScore: 0.0, // Would require separate tracking
         reuseRate: reuseRate.clamp(0.0, 1.0),

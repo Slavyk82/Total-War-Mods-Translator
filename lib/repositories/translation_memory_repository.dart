@@ -194,17 +194,31 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
   ///
   /// [unusedDays] - Minimum days since last use
   ///
-  /// Returns [Ok] with count of deleted entries, [Err] with exception on failure.
-  Future<Result<int, TWMTDatabaseException>> deleteByAge({
+  /// Returns [Ok] with a record containing the number of deleted entries and
+  /// the sum of their `usage_count` (so lifetime reuse stats can be archived
+  /// before the rows vanish).
+  Future<Result<({int deletedCount, int deletedUsageSum}),
+      TWMTDatabaseException>> deleteByAge({
     required int unusedDays,
   }) async {
     return executeQuery(() async {
       if (unusedDays <= 0) {
-        return 0;
+        return (deletedCount: 0, deletedUsageSum: 0);
       }
 
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final cutoffTimestamp = now - (unusedDays * 24 * 60 * 60);
+
+      // Capture the usage sum of rows about to be deleted so we can forward
+      // it to the lifetime archive counters maintained by the service layer.
+      final sumRow = await database.rawQuery(
+        '''
+        SELECT COALESCE(SUM(usage_count), 0) AS usage_sum FROM $tableName
+        WHERE COALESCE(last_used_at, 0) < ?
+        ''',
+        [cutoffTimestamp],
+      );
+      final usageSum = (sumRow.first['usage_sum'] as int?) ?? 0;
 
       final rowsAffected = await database.rawDelete(
         '''
@@ -214,7 +228,7 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
         [cutoffTimestamp],
       );
 
-      return rowsAffected;
+      return (deletedCount: rowsAffected, deletedUsageSum: usageSum);
     });
   }
 

@@ -114,29 +114,40 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
           ),
         ],
       ),
-      actions: [
-        SmallTextButton(
-          label: 'Cancel',
-          onTap: cleanupState.isLoading
-              ? null
-              : () {
+      actions: cleanupState.asData?.value != null
+          ? [
+              SmallTextButton(
+                label: 'OK',
+                filled: true,
+                onTap: () {
                   ref.read(tmCleanupStateProvider.notifier).reset();
                   Navigator.of(context).pop();
                 },
-        ),
-        SmallTextButton(
-          label: 'Cleanup',
-          icon: FluentIcons.broom_24_regular,
-          filled: true,
-          onTap: cleanupState.isLoading
-              ? null
-              : () async {
-                  await ref
-                      .read(tmCleanupStateProvider.notifier)
-                      .cleanup(unusedDays: _unusedDays);
-                },
-        ),
-      ],
+              ),
+            ]
+          : [
+              SmallTextButton(
+                label: 'Cancel',
+                onTap: cleanupState.isLoading
+                    ? null
+                    : () {
+                        ref.read(tmCleanupStateProvider.notifier).reset();
+                        Navigator.of(context).pop();
+                      },
+              ),
+              SmallTextButton(
+                label: 'Cleanup',
+                icon: FluentIcons.broom_24_regular,
+                filled: true,
+                onTap: cleanupState.isLoading
+                    ? null
+                    : () async {
+                        await ref
+                            .read(tmCleanupStateProvider.notifier)
+                            .cleanup(unusedDays: _unusedDays);
+                      },
+              ),
+            ],
     );
   }
 }

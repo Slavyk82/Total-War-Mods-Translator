@@ -356,8 +356,11 @@ class TmCleanupState extends _$TmCleanupState {
       if (ref.mounted) {
         state = AsyncValue.data(deletedCount);
 
-        // Refresh TM entries after cleanup
+        // Refresh TM entries after cleanup. Reset the page so the user
+        // does not land on a page number that no longer exists.
+        ref.read(tmPageStateProvider.notifier).reset();
         ref.invalidate(tmEntriesProvider);
+        ref.invalidate(tmEntriesCountProvider);
         ref.invalidate(tmStatisticsProvider);
       }
     } catch (e, st) {
