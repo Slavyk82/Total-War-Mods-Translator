@@ -451,9 +451,14 @@ class TmDeleteState extends _$TmDeleteState {
       if (ref.mounted) {
         state = AsyncValue.data(success);
 
-        // Refresh TM entries after deletion
+        // Refresh TM entries after deletion. The grid swaps between
+        // [tmEntriesProvider] and [tmSearchResultsProvider] depending on
+        // whether a search filter is active, so both must be invalidated —
+        // otherwise a deleted row stays visible while a search is in effect.
         if (success) {
           ref.invalidate(tmEntriesProvider);
+          ref.invalidate(tmSearchResultsProvider);
+          ref.invalidate(tmEntriesCountProvider);
           ref.invalidate(tmStatisticsProvider);
         }
       }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
@@ -546,12 +545,6 @@ class _ActionsCell extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SmallIconButton(
-            icon: FluentIcons.copy_24_regular,
-            tooltip: 'Copy',
-            onTap: () => _copyEntry(entry),
-          ),
-          const SizedBox(width: 6),
-          SmallIconButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: 'Delete entry',
             foreground: tokens.err,
@@ -562,12 +555,6 @@ class _ActionsCell extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  void _copyEntry(TranslationMemoryEntry entry) {
-    Clipboard.setData(ClipboardData(
-      text: 'Source: ${entry.sourceText}\nTarget: ${entry.translatedText}',
-    ));
   }
 }
 

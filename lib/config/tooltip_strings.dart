@@ -198,8 +198,6 @@ class TooltipStrings {
       'Export translation memory entries to a TMX file';
   static const String tmCleanup =
       'Remove unused entries to reduce database size';
-  static const String tmCopyEntry =
-      'Copy source and target text to clipboard';
   static const String tmDeleteEntry =
       'Remove this entry from Translation Memory';
 
