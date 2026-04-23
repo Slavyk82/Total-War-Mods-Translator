@@ -14,7 +14,6 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
-import 'package:twmt/widgets/workflow/next_step_cta.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_action_sidebar.dart';
@@ -128,9 +127,6 @@ class _TranslationEditorScreenState
     final projectName = projectAsync.whenOrNull(data: (p) => p.name) ?? '';
 
     final stats = statsAsync.asData?.value;
-    final isFullyTranslated = stats != null &&
-        stats.totalUnits > 0 &&
-        stats.completionPercentage >= 100.0;
 
     // Pre-compute selected rows for the inspector's multi-select bulk
     // actions. Accept operates only on `needsReview` rows (accepting already-
@@ -212,14 +208,6 @@ class _TranslationEditorScreenState
                   const CrumbSegment('Work'),
                   const CrumbSegment('Projects', route: AppRoutes.projects),
                   CrumbSegment(projectName),
-                ],
-                trailing: [
-                  if (isFullyTranslated)
-                    NextStepCta(
-                      label: 'Compile this pack',
-                      icon: FluentIcons.box_multiple_24_regular,
-                      onTap: () => context.goPackCompilation(),
-                    ),
                 ],
                 onBack: () {
                   if (context.canPop()) {
