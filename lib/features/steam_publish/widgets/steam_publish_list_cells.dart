@@ -25,7 +25,7 @@ import '../providers/steam_publish_providers.dart';
 /// 6. inline action
 const List<ListRowColumn> steamPublishColumns = [
   ListRowColumn.fixed(40), // checkbox
-  ListRowColumn.fixed(56), // cover
+  ListRowColumn.fixed(80), // cover
   ListRowColumn.flex(3), // title + filename
   ListRowColumn.fixed(160), // publish state
   ListRowColumn.fixed(140), // last published
@@ -101,7 +101,7 @@ class SteamCoverCell extends StatelessWidget {
           item.isCompilation
               ? FluentIcons.stack_24_regular
               : FluentIcons.box_24_regular,
-          size: 20,
+          size: 44,
           color: tokens.textFaint,
         );
 
@@ -122,15 +122,14 @@ class SteamCoverCell extends StatelessWidget {
     if (imagePath != null) {
       // `Image.file` decodes off the main isolate and hands bytes to the engine
       // cache. `cacheWidth`/`cacheHeight` cap the decoded bitmap to the render
-      // size (2× for HiDPI), cutting ARGB memory from hundreds of KB down to
-      // 16 KB per cell. `filterQuality.medium` keeps the cover crisp.
+      // size (2× for HiDPI). `filterQuality.medium` keeps the cover crisp.
       inner = Image.file(
         File(imagePath),
         fit: BoxFit.cover,
-        width: 40,
-        height: 40,
-        cacheWidth: 80,
-        cacheHeight: 80,
+        width: 80,
+        height: 80,
+        cacheWidth: 160,
+        cacheHeight: 160,
         filterQuality: FilterQuality.medium,
         errorBuilder: (_, _, _) => fallback(),
       );
@@ -138,8 +137,8 @@ class SteamCoverCell extends StatelessWidget {
 
     return Center(
       child: Container(
-        width: 40,
-        height: 40,
+        width: 80,
+        height: 80,
         decoration: BoxDecoration(
           color: tokens.panel,
           borderRadius: BorderRadius.circular(tokens.radiusSm),

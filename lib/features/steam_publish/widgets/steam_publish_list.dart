@@ -37,6 +37,9 @@ class SteamPublishList extends ConsumerWidget {
                 columns: steamPublishColumns,
                 selected: selected,
                 onTap: () => _toggleSelection(ref, item.itemId),
+                // Null height → row grows to fit the 80×80 cover thumbnail,
+                // matching the Projects list footprint.
+                height: null,
                 children: [
                   SteamSelectionCheckbox(
                     selected: selected,
