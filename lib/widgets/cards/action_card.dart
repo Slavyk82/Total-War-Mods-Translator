@@ -51,6 +51,7 @@ class ActionCard extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Stack(
+          fit: StackFit.passthrough,
           children: [
             TokenCard(
               backgroundColor: accentActive ? tokens.accentBg : null,

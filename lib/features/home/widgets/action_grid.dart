@@ -34,7 +34,7 @@ class ActionGrid extends ConsumerWidget {
               context.go('${AppRoutes.projects}?filter=needs-review'),
         ),
       ),
-      const SizedBox(width: 14),
+      const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
           label: 'Ready to compile',
@@ -45,7 +45,7 @@ class ActionGrid extends ConsumerWidget {
               context.go('${AppRoutes.projects}?filter=ready-to-compile'),
         ),
       ),
-      const SizedBox(width: 14),
+      const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
           label: 'Mod updates',
@@ -54,7 +54,7 @@ class ActionGrid extends ConsumerWidget {
           onTap: () => context.go('${AppRoutes.mods}?filter=updates'),
         ),
       ),
-      const SizedBox(width: 14),
+      const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
           label: 'Ready to publish',
