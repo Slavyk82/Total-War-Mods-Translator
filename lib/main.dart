@@ -103,12 +103,16 @@ class MyApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
 
     // Fall back to Atelier while the saved theme name is loading — avoids
-    // a flash on first frames. Light-mode support was dropped; the app is
-    // dark-only and cycles between custom palettes.
+    // a flash on first frames. All palettes except Vellum are dark; the
+    // builder in AppTheme handles the brightness switch.
     final themeName = themeNameAsync.value ?? TwmtThemeName.atelier;
     final ThemeData theme = switch (themeName) {
       TwmtThemeName.atelier => AppTheme.atelierDarkTheme,
       TwmtThemeName.forge => AppTheme.forgeDarkTheme,
+      TwmtThemeName.slate => AppTheme.slateDarkTheme,
+      TwmtThemeName.vellum => AppTheme.vellumLightTheme,
+      TwmtThemeName.warpstone => AppTheme.warpstoneDarkTheme,
+      TwmtThemeName.shogun => AppTheme.shogunDarkTheme,
     };
 
     return MaterialApp.router(
