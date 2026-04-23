@@ -37,4 +37,30 @@ void main() {
     final rightRect = t.getRect(find.text('right'));
     expect(leftRect.left, lessThan(rightRect.left));
   });
+
+  testWidgets('renders optional right panel to the right of dynamic zone',
+      (t) async {
+    await t.pumpWidget(wrap(const WizardScreenLayout(
+      toolbar: Text('t'),
+      formPanel: StickyFormPanel(
+        sections: [FormSection(label: 'S', children: [Text('left')])],
+      ),
+      dynamicZone: DynamicZonePanel(child: Text('center')),
+      rightPanel: SizedBox(width: 380, child: Text('rightSide')),
+    )));
+    final centerRect = t.getRect(find.text('center'));
+    final rightRect = t.getRect(find.text('rightSide'));
+    expect(centerRect.left, lessThan(rightRect.left));
+  });
+
+  testWidgets('omits right panel when null', (t) async {
+    await t.pumpWidget(wrap(const WizardScreenLayout(
+      toolbar: Text('t'),
+      formPanel: StickyFormPanel(
+        sections: [FormSection(label: 'S', children: [Text('left')])],
+      ),
+      dynamicZone: DynamicZonePanel(child: Text('center')),
+    )));
+    expect(find.text('center'), findsOneWidget);
+  });
 }

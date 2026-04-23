@@ -4,18 +4,19 @@ import 'package:twmt/widgets/wizard/dynamic_zone_panel.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 
 /// Composition §7.5 wizard screen chrome: toolbar + sticky form + dynamic
-/// zone. Places the form panel and dynamic zone side-by-side below the
-/// toolbar, with a vertical hairline between them.
+/// zone, with an optional right-side advisory panel.
 class WizardScreenLayout extends StatelessWidget {
   final Widget toolbar;
   final StickyFormPanel formPanel;
   final DynamicZonePanel dynamicZone;
+  final Widget? rightPanel;
 
   const WizardScreenLayout({
     super.key,
     required this.toolbar,
     required this.formPanel,
     required this.dynamicZone,
+    this.rightPanel,
   });
 
   @override
@@ -33,6 +34,7 @@ class WizardScreenLayout extends StatelessWidget {
               children: [
                 formPanel,
                 Expanded(child: dynamicZone),
+                if (rightPanel != null) rightPanel!,
               ],
             ),
           ),
