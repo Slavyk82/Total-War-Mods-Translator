@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// A terminal-like widget that displays scan progress logs
 class ScanTerminalWidget extends StatefulWidget {
@@ -56,30 +57,21 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Theme-aware colors
-    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F5);
-    final headerColor = isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8E8E8);
-    final titleColor = isDark ? Colors.white : Colors.black87;
-    final iconColor = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black54;
+    final tokens = context.tokens;
 
     return Center(
       child: Container(
         width: 600,
         constraints: const BoxConstraints(maxHeight: 400),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
+          color: tokens.panel,
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
+          border: Border.all(color: tokens.border),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.15),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -91,8 +83,11 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: headerColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(7)),
+                color: tokens.panel2,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(tokens.radiusMd - 1),
+                ),
+                border: Border(bottom: BorderSide(color: tokens.border)),
               ),
               child: Row(
                 children: [
@@ -101,23 +96,23 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: theme.colorScheme.primary,
+                      color: tokens.accent,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
                     widget.title,
-                    style: TextStyle(
-                      color: titleColor,
+                    style: tokens.fontDisplay.copyWith(
+                      color: tokens.text,
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const Spacer(),
                   Icon(
                     FluentIcons.window_console_20_regular,
                     size: 18,
-                    color: iconColor,
+                    color: tokens.textDim,
                   ),
                 ],
               ),
@@ -130,10 +125,9 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
                     ? Center(
                         child: Text(
                           'Initializing...',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          style: tokens.fontMono.copyWith(
+                            color: tokens.textFaint,
                             fontSize: 12,
-                            fontFamily: 'Consolas',
                           ),
                         ),
                       )
@@ -143,7 +137,7 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
                         shrinkWrap: true,
                         itemCount: _logs.length,
                         itemBuilder: (context, index) {
-                          return _buildLogLine(_logs[index], isDark);
+                          return _buildLogLine(_logs[index], tokens);
                         },
                       ),
               ),
@@ -154,56 +148,45 @@ class _ScanTerminalWidgetState extends State<ScanTerminalWidget> {
     );
   }
 
-  Widget _buildLogLine(ScanLogMessage log, bool isDark) {
+  Widget _buildLogLine(ScanLogMessage log, TwmtThemeTokens tokens) {
     Color textColor;
     String prefix;
 
     switch (log.level) {
       case ScanLogLevel.error:
-        textColor = isDark ? const Color(0xFFF14C4C) : const Color(0xFFD32F2F);
+        textColor = tokens.err;
         prefix = '✕';
         break;
       case ScanLogLevel.warning:
-        textColor = isDark ? const Color(0xFFCCA700) : const Color(0xFFB8860B);
+        textColor = tokens.warn;
         prefix = '⚠';
         break;
       case ScanLogLevel.debug:
-        textColor = isDark ? const Color(0xFF808080) : const Color(0xFF9E9E9E);
+        textColor = tokens.textFaint;
         prefix = '·';
         break;
       case ScanLogLevel.info:
-        textColor = isDark ? const Color(0xFFCCCCCC) : const Color(0xFF424242);
+        textColor = tokens.textMid;
         prefix = '›';
     }
+
+    final lineStyle = tokens.fontMono.copyWith(
+      color: textColor,
+      fontSize: 12,
+      height: 1.4,
+    );
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$prefix ',
-            style: TextStyle(
-              color: textColor,
-              fontSize: 12,
-              fontFamily: 'Consolas',
-              height: 1.4,
-            ),
-          ),
+          Text('$prefix ', style: lineStyle),
           Expanded(
-            child: Text(
-              log.message,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 12,
-                fontFamily: 'Consolas',
-                height: 1.4,
-              ),
-            ),
+            child: Text(log.message, style: lineStyle),
           ),
         ],
       ),
     );
   }
 }
-
