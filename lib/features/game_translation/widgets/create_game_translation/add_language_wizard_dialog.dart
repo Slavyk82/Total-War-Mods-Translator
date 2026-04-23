@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
@@ -83,97 +84,70 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
-    return AlertDialog(
-      backgroundColor: tokens.panel,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusMd),
-        side: BorderSide(color: tokens.border),
-      ),
-      title: Row(
+    return TokenDialog(
+      icon: FluentIcons.add_circle_24_regular,
+      title: 'Add Custom Language',
+      width: 480,
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            FluentIcons.add_circle_24_regular,
-            size: 22,
-            color: tokens.accent,
-          ),
-          const SizedBox(width: 10),
           Text(
-            'Add Custom Language',
-            style: tokens.fontDisplay.copyWith(
-              fontSize: 17,
-              color: tokens.text,
-              fontStyle: tokens.fontDisplayStyle,
-              fontWeight: FontWeight.w500,
+            'Add a custom language that will be available for translation projects.',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
             ),
           ),
+          const SizedBox(height: 18),
+          LabeledField(
+            label: 'LANGUAGE CODE',
+            child: TokenTextField(
+              controller: _codeController,
+              hint: 'e.g. pl, ko, ja',
+              enabled: true,
+              onChanged: (_) {
+                if (_codeError != null) {
+                  setState(() => _codeError = null);
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _codeError ?? 'ISO 639-1 code (2-3 characters)',
+            style: tokens.fontBody.copyWith(
+              fontSize: 11,
+              color: _codeError != null ? tokens.err : tokens.textDim,
+            ),
+          ),
+          const SizedBox(height: 14),
+          LabeledField(
+            label: 'LANGUAGE NAME',
+            child: TokenTextField(
+              controller: _nameController,
+              hint: 'e.g. Polish, Korean, Japanese',
+              enabled: true,
+              onChanged: (_) {
+                if (_nameError != null) {
+                  setState(() => _nameError = null);
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _nameError ?? 'Display name for this language',
+            style: tokens.fontBody.copyWith(
+              fontSize: 11,
+              color: _nameError != null ? tokens.err : tokens.textDim,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildDefaultLanguageOption(tokens),
+          const SizedBox(height: 10),
+          _buildInfoSection(tokens),
         ],
-      ),
-      content: SizedBox(
-        width: 450,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Add a custom language that will be available for translation projects.',
-              style: tokens.fontBody.copyWith(
-                fontSize: 13,
-                color: tokens.textDim,
-              ),
-            ),
-            const SizedBox(height: 18),
-            // Language code field
-            LabeledField(
-              label: 'LANGUAGE CODE',
-              child: TokenTextField(
-                controller: _codeController,
-                hint: 'e.g. pl, ko, ja',
-                enabled: true,
-                onChanged: (_) {
-                  if (_codeError != null) {
-                    setState(() => _codeError = null);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _codeError ?? 'ISO 639-1 code (2-3 characters)',
-              style: tokens.fontBody.copyWith(
-                fontSize: 11,
-                color: _codeError != null ? tokens.err : tokens.textDim,
-              ),
-            ),
-            const SizedBox(height: 14),
-            // Language name field
-            LabeledField(
-              label: 'LANGUAGE NAME',
-              child: TokenTextField(
-                controller: _nameController,
-                hint: 'e.g. Polish, Korean, Japanese',
-                enabled: true,
-                onChanged: (_) {
-                  if (_nameError != null) {
-                    setState(() => _nameError = null);
-                  }
-                },
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _nameError ?? 'Display name for this language',
-              style: tokens.fontBody.copyWith(
-                fontSize: 11,
-                color: _nameError != null ? tokens.err : tokens.textDim,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Set as default checkbox
-            _buildDefaultLanguageOption(tokens),
-            const SizedBox(height: 10),
-            _buildInfoSection(tokens),
-          ],
-        ),
       ),
       actions: [
         SmallTextButton(
@@ -183,6 +157,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
         SmallTextButton(
           label: 'Add',
           icon: FluentIcons.add_24_regular,
+          filled: true,
           onTap: _save,
         ),
       ],
