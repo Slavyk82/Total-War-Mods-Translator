@@ -45,6 +45,8 @@ class TooltipStrings {
 
   static const String projectsFilterNeedsUpdate =
       'Show projects requiring attention due to mod source changes';
+  static const String projectsFilterNeedsReview =
+      'Show projects with at least one unit flagged for review';
   static const String projectsFilterIncomplete =
       'Show projects not yet 100% translated in all configured languages';
   static const String projectsFilterHasComplete =

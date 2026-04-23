@@ -59,6 +59,8 @@ enum ProjectQuickFilter {
   none,
   /// Projects that need a translation update (mod source changed)
   needsUpdate,
+  /// Projects with at least one unit flagged as `needs_review`
+  needsReview,
   /// Projects not yet 100% translated in ALL configured languages
   incomplete,
   /// Projects 100% translated in at least one language
@@ -69,6 +71,31 @@ enum ProjectQuickFilter {
   notExported,
   /// Projects modified since their last export
   exportOutdated,
+}
+
+/// Map a URL filter token (e.g. `needs-review`) to a [ProjectQuickFilter].
+///
+/// Used by the Home dashboard action cards that navigate to
+/// `/work/projects?filter=<token>`. Returns null for unknown or missing tokens.
+ProjectQuickFilter? projectQuickFilterFromUrlToken(String? token) {
+  switch (token) {
+    case 'needs-review':
+      return ProjectQuickFilter.needsReview;
+    case 'needs-update':
+      return ProjectQuickFilter.needsUpdate;
+    case 'incomplete':
+      return ProjectQuickFilter.incomplete;
+    case 'ready-to-compile':
+      return ProjectQuickFilter.hasCompleteLanguage;
+    case 'exported':
+      return ProjectQuickFilter.exported;
+    case 'not-exported':
+      return ProjectQuickFilter.notExported;
+    case 'export-outdated':
+      return ProjectQuickFilter.exportOutdated;
+    default:
+      return null;
+  }
 }
 
 /// Filter state for projects screen
@@ -161,6 +188,13 @@ class ProjectWithDetails {
   bool get hasAtLeastOneCompleteLanguage {
     if (languages.isEmpty) return false;
     return languages.any((lang) => lang.isComplete);
+  }
+
+  /// Whether any configured language has at least one unit flagged
+  /// as `needs_review` (mapped onto [ProjectLanguageWithInfo.needsReviewUnits]).
+  bool get hasNeedsReviewUnits {
+    if (languages.isEmpty) return false;
+    return languages.any((lang) => lang.needsReviewUnits > 0);
   }
 
   /// Check if the project has been exported at least once
@@ -580,6 +614,9 @@ final filteredProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref) 
         break;
       case ProjectQuickFilter.needsUpdate:
         if (!projectWithDetails.hasUpdates) return false;
+      case ProjectQuickFilter.needsReview:
+        // Show projects that still have units flagged for review
+        if (!projectWithDetails.hasNeedsReviewUnits) return false;
       case ProjectQuickFilter.incomplete:
         // Show projects that are NOT 100% translated in ALL languages
         if (projectWithDetails.isFullyTranslated) return false;

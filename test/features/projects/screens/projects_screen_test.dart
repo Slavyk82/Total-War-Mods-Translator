@@ -25,6 +25,7 @@ import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
@@ -441,7 +442,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // AlertDialog with the expected confirmation copy is visible.
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byType(TokenConfirmDialog), findsOneWidget);
     expect(find.text('Delete Project'), findsOneWidget);
     expect(
       find.textContaining('Are you sure you want to delete "Project Alpha"'),
@@ -451,7 +452,7 @@ void main() {
     // Cancel closes the dialog and leaves the project row intact.
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(TokenConfirmDialog), findsNothing);
     expect(find.text('Project Alpha'), findsOneWidget);
   });
 
@@ -494,7 +495,7 @@ void main() {
     // `projectsWithDetailsProvider` notifier is not observable via the override).
     expect(fakeRepo.deletedIds, ['p1']);
     // The confirmation dialog has been dismissed.
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(TokenConfirmDialog), findsNothing);
   });
 
   testWidgets(

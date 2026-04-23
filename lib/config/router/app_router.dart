@@ -8,6 +8,8 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 // Screens
 import '../../features/home/screens/home_screen.dart';
 import '../../features/mods/screens/mods_screen.dart';
+import '../../features/projects/providers/projects_screen_providers.dart'
+    show projectQuickFilterFromUrlToken;
 import '../../features/projects/screens/projects_screen.dart';
 import '../../features/projects/screens/batch_pack_export_screen.dart';
 import '../../features/translation_editor/screens/translation_editor_screen.dart';
@@ -157,8 +159,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.projects,
             name: 'projects',
             pageBuilder: (context, state) {
+              // Optional `?filter=<token>` query param — mapped onto a quick
+              // filter applied by ProjectsScreen on mount (e.g. the Home
+              // dashboard's "To review" action card uses `filter=needs-review`).
+              final filter = projectQuickFilterFromUrlToken(
+                state.uri.queryParameters['filter'],
+              );
               return FluentPageTransitions.fadeTransition(
-                child: const ProjectsScreen(),
+                child: ProjectsScreen(initialFilter: filter),
                 state: state,
               );
             },

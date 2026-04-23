@@ -11,6 +11,7 @@ import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
@@ -28,7 +29,11 @@ import 'package:twmt/features/projects/utils/open_project_editor.dart';
 /// Existing feature set is preserved: search, sort, quick filters,
 /// batch-selection mode with language picker + pack export.
 class ProjectsScreen extends ConsumerStatefulWidget {
-  const ProjectsScreen({super.key});
+  /// Optional quick-filter to activate on mount — used when the Home
+  /// dashboard navigates here with a `?filter=...` query param.
+  final ProjectQuickFilter? initialFilter;
+
+  const ProjectsScreen({super.key, this.initialFilter});
 
   @override
   ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
@@ -38,12 +43,36 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   @override
   void initState() {
     super.initState();
-    // Reset filters when navigating to this screen
+    // Reset filters when navigating to this screen, then apply the optional
+    // initial quick-filter forwarded from the route's `?filter=...` param.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(projectsFilterProvider.notifier).resetAll();
+      final notifier = ref.read(projectsFilterProvider.notifier);
+      notifier.resetAll();
+      final initial = widget.initialFilter;
+      if (initial != null && initial != ProjectQuickFilter.none) {
+        notifier.setQuickFilter(initial);
+      }
       // Also reset selection mode when entering the screen
       ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProjectsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // GoRouter reuses the same page (and state) across `?filter=…` changes
+    // because its pageKey is derived from the matched location without query
+    // params. Re-apply the incoming filter so navigating from the Home "To
+    // review" card always lands on the right filter, even when the Projects
+    // screen is already on screen.
+    if (oldWidget.initialFilter != widget.initialFilter) {
+      final initial = widget.initialFilter;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final notifier = ref.read(projectsFilterProvider.notifier);
+        notifier.setQuickFilter(initial ?? ProjectQuickFilter.none);
+      });
+    }
   }
 
   @override
@@ -141,6 +170,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           'Needs Update',
           ProjectQuickFilter.needsUpdate,
           TooltipStrings.projectsFilterNeedsUpdate,
+        ),
+        pill(
+          'Needs Review',
+          ProjectQuickFilter.needsReview,
+          TooltipStrings.projectsFilterNeedsReview,
         ),
         pill(
           'Incomplete',
@@ -371,45 +405,35 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   /// Show a confirmation dialog, then delete the project and patch the list
   /// state optimistically via [ProjectsWithDetailsNotifier.removeProject].
-  void _handleDeleteProject(
-      BuildContext context, ProjectWithDetails details) {
-    showDialog(
+  Future<void> _handleDeleteProject(
+      BuildContext context, ProjectWithDetails details) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Delete Project'),
-        content: Text(
-            'Are you sure you want to delete "${details.project.name}"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(dialogCtx).pop();
-              final result = await ref
-                  .read(shared_repo.projectRepositoryProvider)
-                  .delete(details.project.id);
-              if (!context.mounted) return;
-              if (result.isOk) {
-                ref
-                    .read(projectsWithDetailsProvider.notifier)
-                    .removeProject(details.project.id);
-                FluentToast.success(
-                    context, 'Project "${details.project.name}" deleted');
-              } else {
-                FluentToast.error(
-                    context, 'Failed to delete project: ${result.error}');
-              }
-            },
-            child: Text(
-              'Delete',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Project',
+        message: 'Are you sure you want to delete "${details.project.name}"?',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
+    if (confirmed != true || !context.mounted) return;
+
+    final result = await ref
+        .read(shared_repo.projectRepositoryProvider)
+        .delete(details.project.id);
+    if (!context.mounted) return;
+    if (result.isOk) {
+      ref
+          .read(projectsWithDetailsProvider.notifier)
+          .removeProject(details.project.id);
+      FluentToast.success(
+          context, 'Project "${details.project.name}" deleted');
+    } else {
+      FluentToast.error(
+          context, 'Failed to delete project: ${result.error}');
+    }
   }
 
   void _startBatchExport(
@@ -803,16 +827,17 @@ class _SelectionBar extends ConsumerWidget {
 // =============================================================================
 
 const List<ListRowColumn> _projectColumns = [
-  ListRowColumn.fixed(56), // cover
+  ListRowColumn.fixed(80), // cover
   ListRowColumn.flex(3), // name + meta
   ListRowColumn.flex(2), // languages + per-language progress
   ListRowColumn.fixed(180), // last modified
   ListRowColumn.fixed(150), // status pill
 ];
 
-// Matches the IconButton footprint (16px icon + 12px padding) reserved on
-// the list header for the trailing delete action.
-const double _projectRowTrailingActionWidth = 40;
+// Matches the IconButton footprint (16px icon + 12px padding) plus the
+// right-side gap kept between the delete button and the list's scrollbar
+// so the icon does not sit right next to the scroll track (miss-click risk).
+const double _projectRowTrailingActionWidth = 52;
 
 class _ProjectsListHeader extends StatelessWidget {
   const _ProjectsListHeader();
@@ -868,14 +893,17 @@ class _ProjectRow extends StatelessWidget {
       // A project with 3+ configured languages blows past the default 56px
       // footprint; fixing the row height there causes a RenderFlex overflow.
       height: null,
-      trailingAction: IconButton(
-        key: Key('project-row-delete-${project.id}'),
-        icon: const Icon(FluentIcons.delete_24_regular, size: 16),
-        tooltip: 'Delete project',
-        onPressed: onDelete,
-        color: Theme.of(context).colorScheme.error,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+      trailingAction: Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: IconButton(
+          key: Key('project-row-delete-${project.id}'),
+          icon: const Icon(FluentIcons.delete_24_regular, size: 16),
+          tooltip: 'Delete project',
+          onPressed: onDelete,
+          color: Theme.of(context).colorScheme.error,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        ),
       ),
       children: [
         _CoverThumbnail(
@@ -1160,7 +1188,7 @@ class _CoverThumbnail extends StatelessWidget {
     final tokens = context.tokens;
     Widget fallback() => Icon(
           _iconFor(gameCode),
-          size: 22,
+          size: 44,
           color: tokens.textMid,
         );
 
@@ -1169,20 +1197,20 @@ class _CoverThumbnail extends StatelessWidget {
       img = Image.asset(
         'assets/twmt_icon.png',
         fit: BoxFit.cover,
-        width: 40,
-        height: 40,
-        cacheWidth: 80,
-        cacheHeight: 80,
+        width: 80,
+        height: 80,
+        cacheWidth: 160,
+        cacheHeight: 160,
         errorBuilder: (_, _, _) => fallback(),
       );
     } else if (imageUrl != null && imageUrl!.isNotEmpty) {
       img = Image.file(
         File(imageUrl!),
         fit: BoxFit.cover,
-        width: 40,
-        height: 40,
-        cacheWidth: 80,
-        cacheHeight: 80,
+        width: 80,
+        height: 80,
+        cacheWidth: 160,
+        cacheHeight: 160,
         errorBuilder: (_, _, _) => fallback(),
       );
     } else {
@@ -1190,8 +1218,8 @@ class _CoverThumbnail extends StatelessWidget {
     }
     return Center(
       child: Container(
-        width: 40,
-        height: 40,
+        width: 80,
+        height: 80,
         decoration: BoxDecoration(
           color: tokens.panel,
           borderRadius: BorderRadius.circular(tokens.radiusSm),
