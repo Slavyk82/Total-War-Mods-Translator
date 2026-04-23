@@ -8,7 +8,10 @@ import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
@@ -241,41 +244,40 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
   void _showDetailsDialog(BuildContext context, TranslationMemoryEntry entry) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Translation Memory Entry Details'),
-        content: SizedBox(
-          width: 600,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow(context, 'Source Text', entry.sourceText),
-                const Divider(),
-                _buildDetailRow(context, 'Target Text', entry.translatedText),
-                const Divider(),
-                _buildDetailRow(
-                    context, 'Usage Count', entry.usageCount.toString()),
-                const Divider(),
-                _buildDetailRow(
-                  context,
-                  'Last Used',
-                  _formatTimestamp(entry.lastUsedAt),
-                ),
-                const Divider(),
-                _buildDetailRow(
-                  context,
-                  'Created',
-                  _formatTimestamp(entry.createdAt),
-                ),
-              ],
-            ),
+      builder: (ctx) => TokenDialog(
+        icon: FluentIcons.info_24_regular,
+        title: 'Translation Memory Entry Details',
+        width: 640,
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow(ctx, 'Source Text', entry.sourceText),
+              const Divider(),
+              _buildDetailRow(ctx, 'Target Text', entry.translatedText),
+              const Divider(),
+              _buildDetailRow(
+                  ctx, 'Usage Count', entry.usageCount.toString()),
+              const Divider(),
+              _buildDetailRow(
+                ctx,
+                'Last Used',
+                _formatTimestamp(entry.lastUsedAt),
+              ),
+              const Divider(),
+              _buildDetailRow(
+                ctx,
+                'Created',
+                _formatTimestamp(entry.createdAt),
+              ),
+            ],
           ),
         ),
         actions: [
-          FluentTextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+          SmallTextButton(
+            label: 'Close',
+            onTap: () => Navigator.of(ctx).pop(),
           ),
         ],
       ),
@@ -316,25 +318,16 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
   }
 
   Future<void> _handleDeleteEntry(TranslationMemoryEntry entry) async {
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete TM Entry'),
-        content: const Text(
-          'Are you sure you want to delete this translation memory entry? '
-          'This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
+      builder: (_) => const TokenConfirmDialog(
+        title: 'Delete TM Entry',
+        message:
+            'Are you sure you want to delete this translation memory entry?',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
       ),
     );
 
