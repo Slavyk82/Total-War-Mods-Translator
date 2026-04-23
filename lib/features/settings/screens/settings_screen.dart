@@ -5,9 +5,8 @@ import 'package:twmt/widgets/settings/settings_tab_bar.dart';
 import '../widgets/general_settings_tab.dart';
 import '../widgets/folders_settings_tab.dart';
 import '../widgets/llm_providers_tab.dart';
-import '../widgets/appearance_settings_tab.dart';
 
-/// Settings screen with a tabbed interface for General / Folders / LLM Providers / Appearance.
+/// Settings screen with a tabbed interface for General / Folders / LLM Providers.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -18,7 +17,7 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: tokens.bg,
       body: DefaultTabController(
-        length: 4,
+        length: 3,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -63,10 +62,6 @@ class SettingsScreen extends StatelessWidget {
                   icon: FluentIcons.brain_circuit_24_regular,
                   label: 'LLM Providers',
                 ),
-                SettingsTabItem(
-                  icon: FluentIcons.color_24_regular,
-                  label: 'Appearance',
-                ),
               ]),
             ),
             const Expanded(
@@ -75,7 +70,6 @@ class SettingsScreen extends StatelessWidget {
                   GeneralSettingsTab(),
                   FoldersSettingsTab(),
                   LlmProvidersTab(),
-                  AppearanceSettingsTab(),
                 ],
               ),
             ),
