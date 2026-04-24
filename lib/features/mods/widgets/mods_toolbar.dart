@@ -220,28 +220,41 @@ class _RefreshButton extends StatelessWidget {
         child: GestureDetector(
           onTap: isRefreshing ? null : onTap,
           child: Container(
-            height: 32,
-            width: 32,
-            alignment: Alignment.center,
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: tokens.panel2,
               border: Border.all(color: tokens.border),
               borderRadius: BorderRadius.circular(tokens.radiusSm),
             ),
-            child: isRefreshing
-                ? SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: tokens.accent,
-                    ),
-                  )
-                : Icon(
-                    FluentIcons.arrow_sync_24_regular,
-                    size: 16,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                isRefreshing
+                    ? SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: tokens.accent,
+                        ),
+                      )
+                    : Icon(
+                        FluentIcons.arrow_sync_24_regular,
+                        size: 14,
+                        color: tokens.textMid,
+                      ),
+                const SizedBox(width: 6),
+                Text(
+                  isRefreshing ? 'Rescanning...' : 'Rescan',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
                     color: tokens.textMid,
+                    fontWeight: FontWeight.w500,
                   ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

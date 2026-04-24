@@ -375,6 +375,19 @@ Future<int> projectsWithPendingChangesCount(Ref ref) async {
   return pendingCount;
 }
 
+/// Tracks whether the mods screen has already forced its once-per-session
+/// rescan. Stays alive for the whole app session so re-navigating to the
+/// Mods screen does not retrigger a scan; resets only on app restart.
+@Riverpod(keepAlive: true)
+class ModsInitialRescanDone extends _$ModsInitialRescanDone {
+  @override
+  bool build() => false;
+
+  void markDone() {
+    state = true;
+  }
+}
+
 /// Refresh trigger for mods list
 @riverpod
 class ModsRefreshTrigger extends _$ModsRefreshTrigger {

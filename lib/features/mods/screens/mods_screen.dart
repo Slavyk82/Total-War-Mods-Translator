@@ -31,8 +31,14 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     // Always reopen the screen with the canonical sort (Mod ascending), so
     // a user landing here finds the same A→Z list every time.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ref.read(modsSortProvider.notifier).reset();
+      if (!mounted) return;
+      ref.read(modsSortProvider.notifier).reset();
+      // First time the Mods screen is opened in this app session, force a
+      // rescan so mod updates published since the last run are picked up.
+      final alreadyRescanned = ref.read(modsInitialRescanDoneProvider);
+      if (!alreadyRescanned) {
+        ref.read(modsInitialRescanDoneProvider.notifier).markDone();
+        _controller.handleRefresh();
       }
     });
   }
