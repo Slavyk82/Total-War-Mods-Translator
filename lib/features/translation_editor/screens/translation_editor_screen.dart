@@ -301,14 +301,17 @@ class _TranslationEditorScreenState
                                   .handleBulkAcceptTranslation(
                                       selectedNeedsReviewRows);
                             },
-                      // Gated by the presence of any `needsReview` row but
-                      // rejects the full selection — the reject handler wipes
-                      // every selected translation once the user confirms.
+                      // Gated by the presence of any `needsReview` row.
+                      // Clears every selected translation AND immediately
+                      // re-runs the LLM with TM lookup disabled — the
+                      // suspect text was already in TM (for entries pre-
+                      // dating the needs_review write skip) so an exact
+                      // match would just hand it back.
                       onBulkRetranslate: selectedNeedsReviewRows.isEmpty
                           ? null
                           : () async {
                               await _getActions()
-                                  .handleBulkRejectTranslation(
+                                  .handleBulkRetranslateNeedsReview(
                                       allSelectedRows);
                             },
                       onBulkDeselect: selection.selectedCount == 0
