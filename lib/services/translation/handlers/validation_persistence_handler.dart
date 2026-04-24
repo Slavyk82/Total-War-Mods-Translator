@@ -189,9 +189,14 @@ class ValidationPersistenceHandler {
         } else {
           successCount++;
 
-          // Collect for batch TM update (instead of individual calls)
-          // Only add to TM batch if it was a direct LLM translation (not cached)
-          if (!cachedUnitIds.contains(unit.id)) {
+          // Collect for batch TM update (instead of individual calls).
+          // Only add to TM batch if it was a direct LLM translation (not
+          // cached) AND it passed validation cleanly. Translations flagged
+          // as needsReview are suspect — writing them to TM would let the
+          // same flawed translation come back instantly on the next exact
+          // match, defeating the point of flagging it.
+          if (!cachedUnitIds.contains(unit.id) &&
+              status != TranslationVersionStatus.needsReview) {
             tmBatchEntries.add((sourceText: unit.sourceText, targetText: llmTranslation));
           }
 
