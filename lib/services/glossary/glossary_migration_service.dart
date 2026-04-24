@@ -250,16 +250,21 @@ class GlossaryMigrationService {
   }
 
   Future<List<UniversalGlossaryInfo>> _queryUniversals() async {
+    // A scalar subquery is used for the entry count because mixing a
+    // LEFT JOIN on `glossary_entries` with an INNER JOIN on `languages`
+    // and an aggregate under `GROUP BY g.id` can yield a zero count on
+    // real user databases (observed with stale installations). The
+    // scalar subquery removes the ambiguity and keeps the count local
+    // to each glossary row.
     final rows = await DatabaseService.database.rawQuery('''
       SELECT g.id, g.name, g.description,
              g.target_language_id AS target_language_id,
              l.code AS target_language_code,
-             COALESCE(COUNT(ge.id), 0) AS entry_count
+             (SELECT COUNT(*) FROM glossary_entries ge
+              WHERE ge.glossary_id = g.id) AS entry_count
       FROM glossaries g
-      LEFT JOIN glossary_entries ge ON ge.glossary_id = g.id
       INNER JOIN languages l ON l.id = g.target_language_id
       WHERE g.game_code IS NULL
-      GROUP BY g.id
       ORDER BY g.name ASC
     ''');
     return rows
@@ -296,12 +301,11 @@ class GlossaryMigrationService {
       final memberRows = await DatabaseService.database.rawQuery('''
         SELECT g.id, g.name, g.created_at,
                l.code AS target_language_code,
-               COALESCE(COUNT(ge.id), 0) AS entry_count
+               (SELECT COUNT(*) FROM glossary_entries ge
+                WHERE ge.glossary_id = g.id) AS entry_count
         FROM glossaries g
         INNER JOIN languages l ON l.id = g.target_language_id
-        LEFT JOIN glossary_entries ge ON ge.glossary_id = g.id
         WHERE g.game_code = ? AND g.target_language_id = ?
-        GROUP BY g.id
         ORDER BY g.created_at ASC, g.id ASC
       ''', [gameCode, targetLanguageId]);
 
