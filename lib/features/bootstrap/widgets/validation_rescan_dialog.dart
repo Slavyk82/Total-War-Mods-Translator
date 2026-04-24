@@ -30,24 +30,28 @@ String formatCount(int n) {
   return buf.toString();
 }
 
-/// Blocking dialog that runs the one-shot validation rescan at startup.
+/// Blocking dialog that owns every piece of validation-data bootstrap work.
 ///
-/// The dialog:
-/// 1. Asks the controller to `prepare()` (calibration + counts).
-/// 2. If no legacy rows, closes itself immediately so boot continues.
-/// 3. Otherwise shows the first-run or resume wording with a Start button.
-/// 4. On start, switches to a determinate progress view with live ETA.
-/// 5. Closes itself when the scan completes, firing a success toast.
+/// Order inside the dialog:
+/// 1. Normalize legacy `validation_issues` JSON payloads (fast, silent-ish
+///    progress bar).
+/// 2. Calibrate the rescan and build a [RescanPlan].
+/// 3. If nothing to rescan, close immediately so boot continues.
+/// 4. Otherwise show the first-run or resume wording with a Start button.
+/// 5. On start, switch to a determinate progress view with live ETA.
+/// 6. Close on completion, firing a success toast.
 class ValidationRescanDialog extends ConsumerStatefulWidget {
   const ValidationRescanDialog({super.key});
 
-  /// Prepare the plan; if there is work to do, block on the dialog until
-  /// the rescan completes. Returns normally when nothing to do.
+  /// Open the dialog only if there is work to do. The dialog itself drives
+  /// preparation internally, so the host doesn't freeze the UI while legacy
+  /// payloads are rewritten.
   static Future<void> showAndRun(
       BuildContext context, WidgetRef ref) async {
-    await ref.read(validationRescanControllerProvider.notifier).prepare();
-    final plan = ref.read(validationRescanControllerProvider).plan;
-    if (plan == null) return;
+    final hasWork = await ref
+        .read(validationRescanControllerProvider.notifier)
+        .hasPendingWork();
+    if (!hasWork) return;
     if (!context.mounted) return;
     await showDialog<void>(
       context: context,
@@ -64,6 +68,20 @@ class ValidationRescanDialog extends ConsumerStatefulWidget {
 class _ValidationRescanDialogState
     extends ConsumerState<ValidationRescanDialog> {
   bool _toastFired = false;
+  bool _prepareTriggered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Drive preparation from inside the dialog so the modal is already on
+    // screen while the JSON normalization (potentially slow) runs.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_prepareTriggered) {
+        _prepareTriggered = true;
+        ref.read(validationRescanControllerProvider.notifier).prepare();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,32 +89,24 @@ class _ValidationRescanDialogState
     final state = ref.watch(validationRescanControllerProvider);
     final plan = state.plan;
 
-    // Nothing to do — close and exit.
-    if (plan == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).pop();
-      });
-      return const SizedBox.shrink();
-    }
-
     // Completion: close and fire a success toast once.
     if (state.isDone && !_toastFired) {
       _toastFired = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(context).pop();
-        FluentToast.success(
-          context,
-          'Validation data update complete.',
-        );
+        // Only show a toast when an actual rescan finished. Pure-
+        // normalization runs (no plan) complete silently.
+        if (plan != null) {
+          FluentToast.success(
+            context,
+            'Validation data update complete.',
+          );
+        }
       });
     }
 
-    final title = state.progress != null || state.isRunning
-        ? 'Updating validation data'
-        : (plan.isResume
-            ? 'Resuming validation update'
-            : 'Validation data update required');
+    final title = _titleFor(state);
 
     return PopScope(
       canPop: false,
@@ -104,10 +114,89 @@ class _ValidationRescanDialogState
         icon: FluentIcons.shield_checkmark_24_regular,
         title: title,
         width: 520,
-        body: state.progress != null
-            ? _progressBody(tokens, state.progress!)
-            : _planBody(tokens, plan),
+        body: _body(tokens, state),
       ),
+    );
+  }
+
+  String _titleFor(RescanState state) {
+    if (state.isNormalizing) return 'Preparing validation data';
+    if (state.progress != null || state.isRunning) {
+      return 'Updating validation data';
+    }
+    final plan = state.plan;
+    if (plan != null) {
+      return plan.isResume
+          ? 'Resuming validation update'
+          : 'Validation data update required';
+    }
+    return 'Preparing validation data';
+  }
+
+  Widget _body(TwmtThemeTokens tokens, RescanState state) {
+    if (state.isNormalizing) {
+      return _normalizingBody(tokens, state);
+    }
+    // Once Start has been pressed, stay on the progress lane even before
+    // the first progress event arrives. Otherwise the title flips to
+    // "Updating validation data" while the body still offers another
+    // "Start rescan" button — a confusing transient the user reported.
+    if (state.isRunning || state.progress != null) {
+      return _progressBody(tokens, state.progress);
+    }
+    final plan = state.plan;
+    if (plan != null) {
+      return _planBody(tokens, plan);
+    }
+    // Plan not yet computed (between normalization end and calibration).
+    return _preparingBody(tokens);
+  }
+
+  Widget _normalizingBody(TwmtThemeTokens tokens, RescanState state) {
+    final total = state.normalizeTotal;
+    final processed = state.normalizeProcessed;
+    final value = total == 0 ? null : (processed / total).clamp(0.0, 1.0);
+    final label = total == 0
+        ? 'Scanning validation entries...'
+        : 'Normalized ${formatCount(processed)} of ${formatCount(total)}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label, style: tokens.fontBody),
+        const SizedBox(height: 12),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(value: value),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Upgrading legacy validation records to the new format.',
+          style: tokens.fontBody.copyWith(
+            fontSize: 11,
+            color: tokens.textDim,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _preparingBody(TwmtThemeTokens tokens) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Preparing...',
+          style: tokens.fontBody,
+        ),
+        const SizedBox(height: 12),
+        const ClipRRect(
+          borderRadius: BorderRadius.all(Radius.circular(4)),
+          child: LinearProgressIndicator(),
+        ),
+      ],
     );
   }
 
@@ -150,23 +239,32 @@ class _ValidationRescanDialogState
     );
   }
 
-  Widget _progressBody(TwmtThemeTokens tokens, RescanProgress progress) {
-    final value = progress.total == 0
-        ? 1.0
-        : (progress.done / progress.total).clamp(0.0, 1.0);
-    final etaText = progress.eta == null
-        ? ''
-        : ' — ETA ${formatDuration(progress.eta!)}';
+  Widget _progressBody(TwmtThemeTokens tokens, RescanProgress? progress) {
+    // The rescan service only emits progress once a commit batch lands
+    // (every ~10k rows), so the first event can be seconds away. Show an
+    // indeterminate bar in the meantime rather than leaving the dialog
+    // looking like it's still awaiting user input.
+    final double? value;
+    final String headline;
+    if (progress == null) {
+      value = null;
+      headline = 'Starting rescan...';
+    } else {
+      value = progress.total == 0
+          ? 1.0
+          : (progress.done / progress.total).clamp(0.0, 1.0);
+      final etaText = progress.eta == null
+          ? ''
+          : ' — ETA ${formatDuration(progress.eta!)}';
+      headline = 'Rescanned ${formatCount(progress.done)} of '
+          '${formatCount(progress.total)}$etaText';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Rescanned ${formatCount(progress.done)} of '
-          '${formatCount(progress.total)}$etaText',
-          style: tokens.fontBody,
-        ),
+        Text(headline, style: tokens.fontBody),
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
