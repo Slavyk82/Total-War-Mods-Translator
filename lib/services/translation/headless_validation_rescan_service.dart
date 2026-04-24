@@ -36,7 +36,7 @@ typedef RescanResult = ({
 ///   6. Batch-write all changed rows.
 ///   7. Return the five-counter summary.
 Future<RescanResult> runHeadlessValidationRescan({
-  required ProviderContainer ref,
+  required Ref ref,
   required String projectLanguageId,
 }) async {
   final versionRepo = ref.read(translationVersionRepositoryProvider);

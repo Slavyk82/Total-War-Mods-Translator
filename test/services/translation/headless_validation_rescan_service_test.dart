@@ -24,15 +24,21 @@ void main() {
     when(() => repo.normalizeStatusEncoding())
         .thenAnswer((_) async => const Ok(0));
 
+    // Wrap the call in a FutureProvider so it receives a Ref — the
+    // idiomatic way to test a Ref-taking function from a ProviderContainer.
+    final resultProvider = FutureProvider<RescanResult>((ref) {
+      return runHeadlessValidationRescan(
+        ref: ref,
+        projectLanguageId: 'pl-1',
+      );
+    });
+
     final container = ProviderContainer(overrides: [
       translationVersionRepositoryProvider.overrideWithValue(repo),
     ]);
     addTearDown(container.dispose);
 
-    final result = await runHeadlessValidationRescan(
-      ref: container,
-      projectLanguageId: 'pl-1',
-    );
+    final result = await container.read(resultProvider.future);
 
     expect(result.scanned, 0);
     expect(result.needsReviewTotal, 0);
