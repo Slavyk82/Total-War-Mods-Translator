@@ -67,8 +67,12 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Text(
                       'Select Projects',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: tokens.fontDisplay.copyWith(
+                        fontSize: 18,
+                        color: tokens.text,
+                        fontStyle: tokens.fontDisplayItalic
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -76,13 +80,14 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: tokens.accentBg,
+                        color: tokens.accent,
                         borderRadius: BorderRadius.circular(tokens.radiusPill),
                       ),
                       child: Text(
                         '${state.selectedProjectIds.length} selected',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: tokens.accent,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 12,
+                          color: tokens.accentFg,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -145,10 +150,10 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                             return ListRow(
                               selected: isSelected,
                               onTap: () => onToggle(projectInfo.id),
+                              height: null,
                               columns: const [
                                 ListRowColumn.fixed(80),
                                 ListRowColumn.flex(3),
-                                ListRowColumn.fixed(48),
                               ],
                               children: [
                                 ProjectCoverThumbnail(
@@ -167,7 +172,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                                     children: [
                                       Text(
                                         projectInfo.displayName,
-                                        style: TextStyle(
+                                        style: tokens.fontBody.copyWith(
                                           color: tokens.text,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -177,8 +182,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                                       const SizedBox(height: 2),
                                       Text(
                                         '${projectInfo.translatedUnits}/'
-                                        '${projectInfo.totalUnits} translated'
-                                        ' · '
+                                        '${projectInfo.totalUnits} · '
                                         '${projectInfo.progressPercent.toStringAsFixed(0)}%',
                                         style: tokens.fontMono.copyWith(
                                           fontSize: 12,
@@ -189,10 +193,6 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                                       ),
                                     ],
                                   ),
-                                ),
-                                Checkbox(
-                                  value: isSelected,
-                                  onChanged: (_) => onToggle(projectInfo.id),
                                 ),
                               ],
                             );
