@@ -1,3 +1,4 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
@@ -6,6 +7,7 @@ import 'package:twmt/features/projects/providers/bulk_target_language_provider.d
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_operation_progress_dialog.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 
 enum _BulkButtonVariant { primary, regular, danger }
 
@@ -33,6 +35,21 @@ class BulkActionButtons extends ConsumerWidget {
       disabledTooltip = 'No visible projects match';
     }
 
+    // Aggregate units the two highlighted buttons will touch across all
+    // matching projects — mirrors the editor sidebar's count hint.
+    var pendingUnits = 0;
+    var needsReviewUnits = 0;
+    if (canAct && scope != null) {
+      for (final p in scope.matching) {
+        final l = p.languages.firstWhere(
+          (l) => l.language?.code == targetLang,
+          orElse: () => throw StateError('unreachable'),
+        );
+        pendingUnits += (l.totalUnits - l.translatedUnits);
+        needsReviewUnits += l.needsReviewUnits;
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Column(
@@ -44,6 +61,7 @@ class BulkActionButtons extends ConsumerWidget {
             enabled: canAct,
             tooltip: disabledTooltip,
             variant: _BulkButtonVariant.primary,
+            unitCount: pendingUnits,
             onPressed: () => _start(context, ref, BulkOperationType.translate),
           ),
           const SizedBox(height: 8),
@@ -61,6 +79,7 @@ class BulkActionButtons extends ConsumerWidget {
             enabled: canAct,
             tooltip: disabledTooltip,
             variant: _BulkButtonVariant.danger,
+            unitCount: needsReviewUnits,
             onPressed: () => _confirmThenStart(context, ref),
           ),
           const SizedBox(height: 8),
@@ -112,26 +131,16 @@ class BulkActionButtons extends ConsumerWidget {
 
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Force validate reviews?'),
-        content: Text(
-          'This will mark $units units across ${matching.length} projects '
-          'as validated for $targetLang, clearing all review flags. '
-          'This cannot be undone from here. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Force validate'),
-          ),
-        ],
+      builder: (_) => TokenConfirmDialog(
+        icon: FluentIcons.shield_checkmark_24_regular,
+        title: 'Force validate reviews?',
+        message:
+            'This will mark $units units across ${matching.length} projects '
+            'as validated for $targetLang, clearing all review flags.',
+        warningMessage: 'This cannot be undone from here.',
+        confirmLabel: 'Force validate',
+        confirmIcon: FluentIcons.shield_checkmark_24_regular,
+        destructive: true,
       ),
     );
     if (ok == true && context.mounted) {
@@ -148,6 +157,7 @@ class _BulkButton extends StatelessWidget {
     required this.onPressed,
     this.tooltip,
     this.variant = _BulkButtonVariant.regular,
+    this.unitCount,
   });
 
   final IconData icon;
@@ -156,6 +166,11 @@ class _BulkButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String? tooltip;
   final _BulkButtonVariant variant;
+
+  /// Optional number of units the action will touch. When non-null and > 0,
+  /// rendered as a small dim line below the button — same visual treatment
+  /// as the translation editor's Translate / Review sidebar buttons.
+  final int? unitCount;
 
   @override
   Widget build(BuildContext context) {
@@ -217,9 +232,29 @@ class _BulkButton extends StatelessWidget {
       ),
     );
 
+    final showCount = unitCount != null && unitCount! > 0;
+    final wrapped = showCount
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              button,
+              const SizedBox(height: 4),
+              Text(
+                '${unitCount!} ${unitCount == 1 ? 'unit' : 'units'}',
+                textAlign: TextAlign.center,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 10.5,
+                  color: tokens.textDim,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          )
+        : button;
+
     if (!enabled && tooltip != null) {
-      return Tooltip(message: tooltip!, child: button);
+      return Tooltip(message: tooltip!, child: wrapped);
     }
-    return button;
+    return wrapped;
   }
 }

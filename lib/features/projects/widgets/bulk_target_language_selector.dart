@@ -60,14 +60,24 @@ class BulkTargetLanguageSelector extends ConsumerWidget {
       );
     }
 
+    // If only one language exists across visible projects and no matching
+    // selection is active, auto-select it so the user can act immediately.
+    final effective = current != null && visibleCodes.contains(current)
+        ? current
+        : null;
+    if (effective == null && filtered.length == 1) {
+      final onlyCode = filtered.first.code;
+      Future.microtask(() {
+        ref.read(bulkTargetLanguageProvider.notifier).setLanguage(onlyCode);
+      });
+    }
+
     return Padding(
       padding: padding,
       child: DropdownMenu<String>(
         width: 296,
         label: const Text('Target language'),
-        initialSelection: current != null && visibleCodes.contains(current)
-            ? current
-            : null,
+        initialSelection: effective,
         dropdownMenuEntries: [
           for (final l in filtered)
             DropdownMenuEntry<String>(

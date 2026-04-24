@@ -284,6 +284,20 @@ class ProjectsFilterNotifier extends Notifier<ProjectsFilterState> {
     );
   }
 
+  /// Click on a sortable column header: same field flips direction, a new
+  /// field switches and picks a sensible default (ASC for name, DESC for
+  /// dates and progress).
+  void toggleSort(ProjectSortOption sortBy) {
+    if (state.sortBy == sortBy) {
+      state = state.copyWith(sortAscending: !state.sortAscending);
+    } else {
+      state = state.copyWith(
+        sortBy: sortBy,
+        sortAscending: sortBy == ProjectSortOption.name,
+      );
+    }
+  }
+
   void updateViewMode(ProjectViewMode viewMode) {
     state = state.copyWith(viewMode: viewMode);
   }

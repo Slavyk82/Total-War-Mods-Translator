@@ -125,7 +125,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   List<Widget> _buildTrailingActions() {
     return [
       const Expanded(child: _SearchField()),
-      const _SortButton(),
       const _BulkMenuToggleButton(),
     ];
   }
@@ -427,85 +426,6 @@ class _SearchField extends ConsumerWidget {
   }
 }
 
-class _SortButton extends ConsumerWidget {
-  const _SortButton();
-
-  IconData _iconFor(ProjectSortOption option) {
-    switch (option) {
-      case ProjectSortOption.name:
-        return FluentIcons.text_sort_ascending_24_regular;
-      case ProjectSortOption.dateModified:
-        return FluentIcons.calendar_24_regular;
-      case ProjectSortOption.dateExported:
-        return FluentIcons.arrow_export_24_regular;
-      case ProjectSortOption.progress:
-        return FluentIcons.chart_multiple_24_regular;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final sortBy =
-        ref.watch(projectsFilterProvider.select((s) => s.sortBy));
-    return PopupMenuButton<ProjectSortOption>(
-      tooltip: 'Sort projects',
-      offset: const Offset(0, 36),
-      color: tokens.panel,
-      itemBuilder: (context) => ProjectSortOption.values
-          .map(
-            (option) => PopupMenuItem(
-              value: option,
-              child: Row(
-                children: [
-                  Icon(_iconFor(option), size: 16, color: tokens.textMid),
-                  const SizedBox(width: 10),
-                  Text(
-                    option.displayName,
-                    style:
-                        tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-      onSelected: (option) =>
-          ref.read(projectsFilterProvider.notifier).updateSort(option),
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: tokens.panel2,
-          border: Border.all(color: tokens.border),
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_iconFor(sortBy), size: 16, color: tokens.textMid),
-            const SizedBox(width: 6),
-            Text(
-              sortBy.displayName,
-              style: tokens.fontBody.copyWith(
-                fontSize: 12.5,
-                color: tokens.textMid,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              FluentIcons.chevron_down_24_regular,
-              size: 14,
-              color: tokens.textDim,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _BulkMenuToggleButton extends ConsumerWidget {
   const _BulkMenuToggleButton();
 
@@ -575,15 +495,135 @@ const List<ListRowColumn> _projectColumns = [
 // so the icon does not sit right next to the scroll track (miss-click risk).
 const double _projectRowTrailingActionWidth = 52;
 
-class _ProjectsListHeader extends StatelessWidget {
+/// Interactive header for the projects list: click a sortable cell to cycle
+/// the column's sort state (same column → flip direction, other column →
+/// switch and pick a sensible default). Mirrors `ListRowHeader`'s chrome but
+/// renders sortable cells with an arrow indicator.
+class _ProjectsListHeader extends ConsumerWidget {
   const _ProjectsListHeader();
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final filter = ref.watch(projectsFilterProvider);
+    final notifier = ref.read(projectsFilterProvider.notifier);
+
+    Widget cell(
+      String label,
+      ProjectSortOption field,
+    ) =>
+        _SortableHeaderCell(
+          label: label,
+          field: field,
+          activeField: filter.sortBy,
+          ascending: filter.sortAscending,
+          onTap: () => notifier.toggleSort(field),
+        );
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 80),
+          Expanded(
+            flex: 3,
+            child: cell('Project', ProjectSortOption.name),
+          ),
+          Expanded(
+            flex: 2,
+            child: cell('Languages & progress', ProjectSortOption.progress),
+          ),
+          SizedBox(
+            width: 180,
+            child: cell('Modified', ProjectSortOption.dateModified),
+          ),
+          SizedBox(
+            width: 150,
+            child: _StaticHeaderLabel(label: 'Status'),
+          ),
+          const SizedBox(width: _projectRowTrailingActionWidth),
+        ],
+      ),
+    );
+  }
+}
+
+class _StaticHeaderLabel extends StatelessWidget {
+  const _StaticHeaderLabel({required this.label});
+  final String label;
+
+  @override
   Widget build(BuildContext context) {
-    return ListRowHeader(
-      columns: _projectColumns,
-      labels: const ['', 'Project', 'Languages & progress', 'Modified', 'Status'],
-      trailingActionWidth: _projectRowTrailingActionWidth,
+    final tokens = context.tokens;
+    return Text(
+      label.toUpperCase(),
+      style: tokens.fontMono.copyWith(
+        fontSize: 11,
+        color: tokens.textDim,
+        letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+class _SortableHeaderCell extends StatelessWidget {
+  const _SortableHeaderCell({
+    required this.label,
+    required this.field,
+    required this.activeField,
+    required this.ascending,
+    required this.onTap,
+  });
+
+  final String label;
+  final ProjectSortOption field;
+  final ProjectSortOption activeField;
+  final bool ascending;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final isActive = activeField == field;
+    final color = isActive ? tokens.accent : tokens.textDim;
+    final arrow = isActive
+        ? (ascending
+            ? FluentIcons.arrow_up_16_filled
+            : FluentIcons.arrow_down_16_filled)
+        : null;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label.toUpperCase(),
+                overflow: TextOverflow.ellipsis,
+                style: tokens.fontMono.copyWith(
+                  fontSize: 11,
+                  color: color,
+                  letterSpacing: 0.8,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+            if (arrow != null) ...[
+              const SizedBox(width: 4),
+              Icon(arrow, size: 12, color: color),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

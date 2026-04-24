@@ -3,6 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twmt/features/projects/widgets/bulk_action_buttons.dart';
+import 'package:twmt/theme/app_theme.dart';
+
+Widget _wrap(Widget child) => ProviderScope(
+      child: MaterialApp(
+        theme: AppTheme.atelierDarkTheme,
+        home: Scaffold(body: child),
+      ),
+    );
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -28,9 +36,7 @@ void main() {
   );
 
   testWidgets('force validate button is present', (tester) async {
-    await tester.pumpWidget(const ProviderScope(
-      child: MaterialApp(home: Scaffold(body: BulkActionButtons())),
-    ));
+    await tester.pumpWidget(_wrap(const BulkActionButtons()));
     await tester.pumpAndSettle();
     expect(find.text('Force validate reviews'), findsOneWidget);
     expect(find.byIcon(Icons.verified), findsOneWidget);
