@@ -70,3 +70,14 @@ class DuplicateGlossaryMember {
     required this.createdAt,
   });
 }
+
+/// User-supplied decisions for the one-shot migration.
+///
+/// [conversions] maps a universal glossary id to the `game_code` it should be
+/// reassigned to, or `null` to delete the glossary. Universals not present in
+/// this map are deleted by [GlossaryMigrationService.applyMigration].
+class MigrationPlan {
+  final Map<String, String?> conversions;
+
+  const MigrationPlan({required this.conversions});
+}
