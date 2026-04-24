@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/models/history/history_change_entry.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/history/i_history_service.dart';
@@ -43,9 +44,9 @@ class TmLookupHandler {
         _transactionManager = transactionManager,
         _logger = logger;
 
-  /// Maximum concurrent TM lookups for READ operations (queries)
-  /// These are safe to parallelize as they don't modify data
-  static const int _maxConcurrentLookups = 15;
+  /// Maximum concurrent TM lookups for READ operations (queries).
+  /// These are safe to parallelize as they don't modify data.
+  static const int _maxConcurrentLookups = 50;
 
   /// Perform TM exact and fuzzy match lookup for batch units
   ///
@@ -77,70 +78,62 @@ class TmLookupHandler {
     // Accumulate usage counts across all chunks for a single batch increment at the end
     final allEntryUsageCounts = <String, int>{};
 
-    // Process exact matches in parallel chunks
-    // IMPORTANT: Reads are done in parallel, but ALL writes are batched into single transaction
-    final exactMatchedUnitIds = <String>{};
-
+    // === EXACT LOOKUP PHASE (collect only) ===
+    final allExactMatches = <_PendingTmMatch>[];
     for (var i = 0; i < units.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
       final chunk = units.skip(i).take(_maxConcurrentLookups).toList();
       final progressPct = ((i / units.length) * 100).round();
-
-      // Update progress detail
       progress = progress.copyWith(
-        phaseDetail: 'Exact TM lookup: $progressPct% ($i/${units.length} units, ${exactMatchedUnitIds.length} matches)...',
+        phaseDetail:
+            'Exact TM lookup: $progressPct% ($i/${units.length} units, ${allExactMatches.length} matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
 
-      // Yield to UI thread periodically to prevent freezing
       if (i % 100 == 0) {
         await Future<void>.delayed(Duration.zero);
       }
 
-      // Phase 1: Parallel READ operations (TM lookups)
       final lookupResults = await Future.wait(
         chunk.map((unit) => _findExactMatch(unit, context)),
       );
-
-      // Phase 2: Collect matches that need to be applied
-      final matchesToApply = <_PendingTmMatch>[];
       for (var j = 0; j < chunk.length; j++) {
         final result = lookupResults[j];
         if (result != null) {
-          matchesToApply.add(_PendingTmMatch(unit: chunk[j], match: result));
+          allExactMatches.add(_PendingTmMatch(unit: chunk[j], match: result));
         }
       }
 
-      // Phase 3: Single WRITE transaction for all matches in this chunk
-      if (matchesToApply.isNotEmpty) {
-        progress = progress.copyWith(
-          phaseDetail: 'Applying ${matchesToApply.length} exact TM matches...',
-          timestamp: DateTime.now(),
-        );
-        onProgressUpdate(batchId, progress);
-
-        final chunkUsageCounts = await _applyTmMatchesBatch(matchesToApply, context);
-        // Accumulate usage counts for final batch increment
-        for (final entry in chunkUsageCounts.entries) {
-          allEntryUsageCounts.update(entry.key, (v) => v + entry.value, ifAbsent: () => entry.value);
-        }
-        for (final pending in matchesToApply) {
-          exactMatchedUnitIds.add(pending.unit.id);
-          skippedCount++;
-          processedCount++;
-        }
-      }
-
-      // Log progress periodically
       if (i % 500 == 0 && i > 0) {
         _logger.debug('TM exact lookup progress', {
           'batchId': batchId,
           'processed': i,
           'total': units.length,
-          'matches': skippedCount,
+          'matches': allExactMatches.length,
         });
+      }
+    }
+
+    // === EXACT APPLY PHASE (single bulk write) ===
+    final exactMatchedUnitIds = <String>{};
+    if (allExactMatches.isNotEmpty) {
+      progress = progress.copyWith(
+        phaseDetail: 'Applying ${allExactMatches.length} exact TM matches...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
+
+      final applyCounts = await _applyTmMatchesBatch(allExactMatches, context);
+      for (final pending in allExactMatches) {
+        exactMatchedUnitIds.add(pending.unit.id);
+      }
+      skippedCount += allExactMatches.length;
+      processedCount += allExactMatches.length;
+      for (final entry in applyCounts.entries) {
+        allEntryUsageCounts.update(entry.key, (v) => v + entry.value,
+            ifAbsent: () => entry.value);
       }
     }
 
@@ -186,75 +179,59 @@ class TmLookupHandler {
       'alreadyTranslated': alreadyTranslatedIds.length,
     });
 
-    var fuzzyMatchCount = 0;
-    final fuzzyMatchedUnitIds = <String>{};
-
-    // Process fuzzy matches in parallel chunks
-    // IMPORTANT: Reads are done in parallel, but ALL writes are batched into single transaction
+    // === FUZZY LOOKUP PHASE (collect only) ===
+    final allFuzzyMatches = <_PendingTmMatch>[];
     for (var i = 0; i < unitsForFuzzyFiltered.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
-      final chunk = unitsForFuzzyFiltered.skip(i).take(_maxConcurrentLookups).toList();
-      final progressPct = ((i / unitsForFuzzyFiltered.length) * 100).round();
-
-      // Update progress detail
+      final chunk =
+          unitsForFuzzyFiltered.skip(i).take(_maxConcurrentLookups).toList();
+      final progressPct =
+          ((i / unitsForFuzzyFiltered.length) * 100).round();
       progress = progress.copyWith(
-        phaseDetail: 'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzyFiltered.length} units, $fuzzyMatchCount matches)...',
+        phaseDetail:
+            'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzyFiltered.length} units, ${allFuzzyMatches.length} matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
 
-      // Yield to UI thread periodically to prevent freezing
-      // This allows the event loop to process UI updates
       if (i % 100 == 0) {
         await Future<void>.delayed(Duration.zero);
       }
 
-      // Phase 1: Parallel READ operations (TM lookups + check if already translated)
-      // These now use isolate-based similarity calculation
       final lookupResults = await Future.wait(
         chunk.map((unit) => _findFuzzyMatch(unit, context)),
       );
-
-      // Phase 2: Collect matches that need to be applied (>=95% auto-accept)
-      final matchesToApply = <_PendingTmMatch>[];
       for (var j = 0; j < chunk.length; j++) {
         final result = lookupResults[j];
         if (result != null &&
             result.similarityScore >= AppConstants.autoAcceptTmThreshold) {
-          matchesToApply.add(_PendingTmMatch(unit: chunk[j], match: result));
+          allFuzzyMatches.add(_PendingTmMatch(unit: chunk[j], match: result));
         }
       }
+    }
 
-      // Phase 3: Single WRITE transaction for all matches in this chunk
-      if (matchesToApply.isNotEmpty) {
-        progress = progress.copyWith(
-          phaseDetail: 'Auto-accepting ${matchesToApply.length} high-confidence fuzzy matches (≥95%)...',
-          timestamp: DateTime.now(),
-        );
-        onProgressUpdate(batchId, progress);
+    // === FUZZY APPLY PHASE (single bulk write) ===
+    final fuzzyMatchedUnitIds = <String>{};
+    var fuzzyMatchCount = 0;
+    if (allFuzzyMatches.isNotEmpty) {
+      progress = progress.copyWith(
+        phaseDetail:
+            'Auto-accepting ${allFuzzyMatches.length} high-confidence fuzzy matches (≥95%)...',
+        timestamp: DateTime.now(),
+      );
+      onProgressUpdate(batchId, progress);
 
-        final chunkUsageCounts = await _applyTmMatchesBatch(matchesToApply, context);
-        // Accumulate usage counts for final batch increment
-        for (final entry in chunkUsageCounts.entries) {
-          allEntryUsageCounts.update(entry.key, (v) => v + entry.value, ifAbsent: () => entry.value);
-        }
-        for (final pending in matchesToApply) {
-          fuzzyMatchedUnitIds.add(pending.unit.id);
-        }
-        skippedCount += matchesToApply.length;
-        processedCount += matchesToApply.length;
-        fuzzyMatchCount += matchesToApply.length;
+      final applyCounts = await _applyTmMatchesBatch(allFuzzyMatches, context);
+      for (final pending in allFuzzyMatches) {
+        fuzzyMatchedUnitIds.add(pending.unit.id);
       }
-
-      // Log progress periodically
-      if (i % 500 == 0 && i > 0) {
-        _logger.debug('TM fuzzy lookup progress', {
-          'batchId': batchId,
-          'processed': i,
-          'total': unitsForFuzzyFiltered.length,
-          'matches': fuzzyMatchCount,
-        });
+      fuzzyMatchCount = allFuzzyMatches.length;
+      skippedCount += allFuzzyMatches.length;
+      processedCount += allFuzzyMatches.length;
+      for (final entry in applyCounts.entries) {
+        allEntryUsageCounts.update(entry.key, (v) => v + entry.value,
+            ifAbsent: () => entry.value);
       }
     }
 
@@ -343,82 +320,72 @@ class TmLookupHandler {
     return null;
   }
 
-  /// Apply multiple TM matches in a SINGLE transaction
-  /// This prevents FTS5 corruption from concurrent writes
-  /// Uses upsert to handle cases where translation already exists
-  /// Returns a map of entry IDs to usage counts for deferred batch increment
+  /// Apply a collected set of TM matches in a single optimized bulk write.
+  /// Returns a map of entry IDs → applied count, for deferred usage increment.
   Future<Map<String, int>> _applyTmMatchesBatch(
     List<_PendingTmMatch> matches,
     TranslationContext context,
   ) async {
     if (matches.isEmpty) return {};
 
-    // Store created versions for history recording
-    final createdVersions = <(TranslationVersion, _PendingTmMatch)>[];
+    final now = DateTime.now().millisecondsSinceEpoch;
 
-    final transactionResult =
-        await _transactionManager.executeTransaction((txn) async {
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      for (final pending in matches) {
-        // Determine translation source based on TM match type
-        final translationSource = pending.match.matchType == TmMatchType.exact
-            ? TranslationSource.tmExact
-            : TranslationSource.tmFuzzy;
-
-        // Normalize: \\n → \n
-        final normalizedText = TranslationTextUtils.normalizeTranslation(pending.match.targetText);
-
-        final version = TranslationVersion(
-          id: _generateId(),
-          unitId: pending.unit.id,
-          projectLanguageId: context.projectLanguageId,
-          translatedText: normalizedText,
-          status: TranslationVersionStatus.translated,
-          translationSource: translationSource,
-          createdAt: now,
-          updatedAt: now,
-        );
-
-        // Use upsert to handle existing translations (e.g., when re-translating)
-        await _versionRepository.upsertWithTransaction(txn, version);
-        createdVersions.add((version, pending));
-      }
-      return true;
-    });
-
-    if (transactionResult.isErr) {
-      throw transactionResult.unwrapErr();
+    // Build TranslationVersion entities aligned by index with `matches`.
+    final versions = <TranslationVersion>[];
+    for (final pending in matches) {
+      final translationSource = pending.match.matchType == TmMatchType.exact
+          ? TranslationSource.tmExact
+          : TranslationSource.tmFuzzy;
+      final normalizedText =
+          TranslationTextUtils.normalizeTranslation(pending.match.targetText);
+      versions.add(TranslationVersion(
+        id: _generateId(),
+        unitId: pending.unit.id,
+        projectLanguageId: context.projectLanguageId,
+        translatedText: normalizedText,
+        status: TranslationVersionStatus.translated,
+        translationSource: translationSource,
+        createdAt: now,
+        updatedAt: now,
+      ));
     }
 
-    // Record history for each TM match (outside transaction)
-    for (final (version, pending) in createdVersions) {
-      final matchType = pending.match.matchType == TmMatchType.exact
-          ? 'exact'
-          : 'fuzzy';
+    // Single bulk write.
+    final upsertResult =
+        await _versionRepository.upsertBatchOptimized(entities: versions);
+    if (upsertResult.isErr) {
+      throw upsertResult.unwrapErr();
+    }
+    final effectiveIds = upsertResult.unwrap().effectiveVersionIds;
+
+    // Build history entries keyed off the REAL persisted ids.
+    final historyEntries = <HistoryChangeEntry>[];
+    for (var i = 0; i < matches.length; i++) {
+      final pending = matches[i];
+      final matchType =
+          pending.match.matchType == TmMatchType.exact ? 'exact' : 'fuzzy';
       final similarity = (pending.match.similarityScore * 100).round();
-
-      try {
-        await _historyService.recordChange(
-          versionId: version.id,
-          translatedText: version.translatedText ?? '',
-          status: TranslationVersionStatus.translated.name,
-          changedBy: 'tm_$matchType',
-          changeReason: 'TM $matchType match ($similarity% similarity)',
-        );
-      } catch (e) {
-        _logger.warning('Failed to record TM history (non-critical)', {
-          'unitId': pending.unit.id,
-          'versionId': version.id,
-          'error': e,
-        });
-      }
+      historyEntries.add(HistoryChangeEntry(
+        versionId: effectiveIds[i],
+        translatedText: versions[i].translatedText ?? '',
+        status: TranslationVersionStatus.translated.name,
+        changedBy: 'tm_$matchType',
+        changeReason: 'TM $matchType match ($similarity% similarity)',
+      ));
+    }
+    final historyResult =
+        await _historyService.recordChangesBatch(historyEntries);
+    if (historyResult.isErr) {
+      // Non-critical: keep current behaviour, just log.
+      _logger.warning('Failed to batch-record TM history (non-critical)', {
+        'count': historyEntries.length,
+        'error': historyResult.unwrapErr(),
+      });
     }
 
-    // Collect unique entry IDs with their usage count (same entry can match multiple units)
-    // Return for deferred batch increment at the end of the full lookup
+    // Accumulate usage counts per TM entry.
     final entryUsageCounts = <String, int>{};
-    for (final (_, pending) in createdVersions) {
+    for (final pending in matches) {
       entryUsageCounts.update(
         pending.match.entryId,
         (count) => count + 1,

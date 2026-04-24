@@ -5,6 +5,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/models/history/history_change_entry.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/services/concurrency/transaction_manager.dart';
 import 'package:twmt/services/history/i_history_service.dart';
@@ -142,6 +143,8 @@ void main() {
     registerFallbackValue(_FakeTransaction());
     registerFallbackValue(<String, int>{});
     registerFallbackValue(<String>[]);
+    registerFallbackValue(<TranslationVersion>[]);
+    registerFallbackValue(<HistoryChangeEntry>[]);
     registerFallbackValue(StackTrace.empty);
   });
 
@@ -185,31 +188,24 @@ void main() {
           projectLanguageId: any(named: 'projectLanguageId'),
         )).thenAnswer((_) async => Ok(<String>{}));
 
-    // Capture every persisted version. The handler ignores the return value
-    // beyond awaiting; Future<void> is sufficient.
-    when(() => versionRepository.upsertWithTransaction(any(), any()))
-        .thenAnswer((inv) async {
-      persistedVersions.add(inv.positionalArguments[1] as TranslationVersion);
+    // Capture every persisted version. The handler calls upsertBatchOptimized
+    // once per phase and we collect all entities from those calls.
+    when(() => versionRepository.upsertBatchOptimized(
+          entities: any(named: 'entities'),
+          onProgress: any(named: 'onProgress'),
+        )).thenAnswer((inv) async {
+      final entities =
+          inv.namedArguments[#entities] as List<TranslationVersion>;
+      persistedVersions.addAll(entities);
+      return Ok((
+        inserted: entities.length,
+        updated: 0,
+        effectiveVersionIds: entities.map((e) => e.id).toList(),
+      ));
     });
 
-    // Stub executeTransaction to invoke the callback with a fake Transaction
-    // and wrap its result in Ok. This drives the handler's WRITE path so
-    // upsertWithTransaction is actually exercised.
-    when(() => transactionManager.executeTransaction<bool>(any()))
-        .thenAnswer((inv) async {
-      final action =
-          inv.positionalArguments[0] as Future<bool> Function(Transaction);
-      final result = await action(_FakeTransaction());
-      return Ok(result);
-    });
-
-    when(() => historyService.recordChange(
-          versionId: any(named: 'versionId'),
-          translatedText: any(named: 'translatedText'),
-          status: any(named: 'status'),
-          changedBy: any(named: 'changedBy'),
-          changeReason: any(named: 'changeReason'),
-        )).thenAnswer((_) async => const Ok<void, TWMTDatabaseException>(null));
+    when(() => historyService.recordChangesBatch(any()))
+        .thenAnswer((_) async => const Ok<void, TWMTDatabaseException>(null));
 
     handler = TmLookupHandler(
       tmService: tmService,
@@ -408,14 +404,8 @@ void main() {
 
       expect(matchedIds, isEmpty);
       expect(persistedVersions, isEmpty);
-      // No write transaction means no history entry either.
-      verifyNever(() => historyService.recordChange(
-            versionId: any(named: 'versionId'),
-            translatedText: any(named: 'translatedText'),
-            status: any(named: 'status'),
-            changedBy: any(named: 'changedBy'),
-            changeReason: any(named: 'changeReason'),
-          ));
+      // No write means no batch history call either.
+      verifyNever(() => historyService.recordChangesBatch(any()));
     });
 
     test('records history with changedBy=tm_exact for an exact match and '
@@ -458,21 +448,21 @@ void main() {
         onProgressUpdate: noopProgressUpdate,
       );
 
-      // One history entry per accepted match, tagged with the right source.
-      verify(() => historyService.recordChange(
-            versionId: any(named: 'versionId'),
-            translatedText: 'Source exacte',
-            status: any(named: 'status'),
-            changedBy: 'tm_exact',
-            changeReason: any(named: 'changeReason'),
-          )).called(1);
-      verify(() => historyService.recordChange(
-            versionId: any(named: 'versionId'),
-            translatedText: 'Source floue',
-            status: any(named: 'status'),
-            changedBy: 'tm_fuzzy',
-            changeReason: any(named: 'changeReason'),
-          )).called(1);
+      // One batched call per phase (exact phase, fuzzy phase), each with one entry.
+      // Collect all captured entry lists across both calls.
+      final allCaptured = verify(
+        () => historyService.recordChangesBatch(captureAny()),
+      ).captured.cast<List<HistoryChangeEntry>>();
+      final allEntries = allCaptured.expand((list) => list).toList();
+      expect(allEntries, hasLength(2));
+      expect(
+        allEntries.where((e) => e.changedBy == 'tm_exact').map((e) => e.translatedText).toList(),
+        equals(['Source exacte']),
+      );
+      expect(
+        allEntries.where((e) => e.changedBy == 'tm_fuzzy').map((e) => e.translatedText).toList(),
+        equals(['Source floue']),
+      );
     });
 
     test('cancellation: a throwing checkPauseOrCancel propagates out of '
