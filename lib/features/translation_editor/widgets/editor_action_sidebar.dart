@@ -145,10 +145,38 @@ class EditorActionSidebar extends ConsumerWidget {
             // translated rows then filters the grid down to `needsReview`.
             pipelineRow(
               rail: const TimelineRail(step: 2),
-              child: _SidebarActionButton(
-                icon: FluentIcons.checkmark_circle_24_regular,
-                label: 'Review',
-                onTap: onValidate,
+              child: Consumer(
+                builder: (context, ref, _) {
+                  final button = _SidebarActionButton(
+                    icon: FluentIcons.checkmark_circle_24_regular,
+                    label: 'Review',
+                    onTap: onValidate,
+                  );
+
+                  final statsAsync =
+                      ref.watch(editorStatsProvider(projectId, languageId));
+                  final needsReview =
+                      statsAsync.asData?.value.needsReviewCount ?? 0;
+                  if (needsReview <= 0) return button;
+
+                  final suffix = needsReview == 1 ? 'unit' : 'units';
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      button,
+                      const SizedBox(height: 4),
+                      Text(
+                        '$needsReview $suffix',
+                        textAlign: TextAlign.center,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 10.5,
+                          color: tokens.textDim,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
             pipelineRow(
