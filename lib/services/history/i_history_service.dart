@@ -2,6 +2,7 @@ import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/translation_version_history.dart';
 import '../../models/history/diff_models.dart';
+import '../../models/history/history_change_entry.dart';
 
 /// Service for managing translation version history and comparisons
 ///
@@ -27,6 +28,17 @@ abstract class IHistoryService {
     required String changedBy,
     String? changeReason,
   });
+
+  /// Record many history entries in a single transaction.
+  ///
+  /// Used by high-volume write flows (e.g. TM batch apply) to avoid per-row
+  /// DB round trips. Each entry becomes one row in `translation_version_history`.
+  ///
+  /// History recording is best-effort: a failure here MUST NOT be treated as
+  /// a failure of the underlying edit. Callers should log and move on.
+  Future<Result<void, TWMTDatabaseException>> recordChangesBatch(
+    List<HistoryChangeEntry> entries,
+  );
 
   /// Get complete history for a translation version
   ///
