@@ -54,15 +54,13 @@ class GlossaryServiceImpl implements IGlossaryService {
   Future<Result<Glossary, GlossaryException>> createGlossary({
     required String name,
     String? description,
-    required bool isGlobal,
-    String? gameInstallationId,
+    required String gameCode,
     required String targetLanguageId,
   }) async {
     try {
       _logger.debug('Creating glossary', {
         'name': name,
-        'isGlobal': isGlobal,
-        'gameInstallationId': gameInstallationId,
+        'gameCode': gameCode,
         'targetLanguageId': targetLanguageId,
       });
 
@@ -71,15 +69,6 @@ class GlossaryServiceImpl implements IGlossaryService {
         _logger.debug('Validation failed: name is empty');
         return Err(
           InvalidGlossaryDataException(['Name cannot be empty']),
-        );
-      }
-
-      if (!isGlobal && gameInstallationId == null) {
-        _logger.debug('Validation failed: game-specific requires gameInstallationId');
-        return Err(
-          InvalidGlossaryDataException(
-            ['Game-specific glossary requires gameInstallationId'],
-          ),
         );
       }
 
@@ -96,8 +85,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         id: _uuid.v4(),
         name: name.trim(),
         description: description?.trim(),
-        isGlobal: isGlobal,
-        gameInstallationId: gameInstallationId,
+        gameCode: gameCode,
         targetLanguageId: targetLanguageId,
         entryCount: 0,
         createdAt: now,
@@ -136,18 +124,37 @@ class GlossaryServiceImpl implements IGlossaryService {
 
   @override
   Future<Result<List<Glossary>, GlossaryException>> getAllGlossaries({
-    String? gameInstallationId,
-    bool includeUniversal = true,
+    String? gameCode,
   }) async {
     try {
       final glossaries = await _repository.getAllGlossaries(
-        gameInstallationId: gameInstallationId,
-        includeUniversal: includeUniversal,
+        gameCode: gameCode,
       );
       return Ok(glossaries);
     } catch (e) {
       return Err(
         GlossaryDatabaseException('Failed to get glossaries', e),
+      );
+    }
+  }
+
+  @override
+  Future<Result<Glossary?, GlossaryException>> getGlossaryByGameAndLanguage({
+    required String gameCode,
+    required String targetLanguageId,
+  }) async {
+    try {
+      final glossary = await _repository.getGlossaryByGameAndLanguage(
+        gameCode: gameCode,
+        targetLanguageId: targetLanguageId,
+      );
+      return Ok(glossary);
+    } catch (e) {
+      return Err(
+        GlossaryDatabaseException(
+          'Failed to get glossary for game and language',
+          e,
+        ),
       );
     }
   }
@@ -418,14 +425,14 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? gameInstallationId,
+    String? gameCode,
   }) =>
       _matchingService.findMatchingTerms(
         sourceText: sourceText,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        gameInstallationId: gameInstallationId,
+        gameCode: gameCode,
       );
 
   @override
@@ -435,7 +442,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? gameInstallationId,
+    String? gameCode,
   }) =>
       _matchingService.applySubstitutions(
         sourceText: sourceText,
@@ -443,7 +450,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        gameInstallationId: gameInstallationId,
+        gameCode: gameCode,
       );
 
   // ============================================================================
@@ -521,7 +528,7 @@ class GlossaryServiceImpl implements IGlossaryService {
     required String sourceLanguageCode,
     required String targetLanguageCode,
     List<String>? glossaryIds,
-    String? gameInstallationId,
+    String? gameCode,
   }) async {
     try {
       final matchResult = await findMatchingTerms(
@@ -529,7 +536,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
         glossaryIds: glossaryIds,
-        gameInstallationId: gameInstallationId,
+        gameCode: gameCode,
       );
 
       if (matchResult.isErr) {

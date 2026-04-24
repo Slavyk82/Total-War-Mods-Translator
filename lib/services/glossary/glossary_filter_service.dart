@@ -15,24 +15,21 @@ class GlossaryFilterService {
   /// Filter glossary entries to only those relevant for the given source texts
   ///
   /// [sourceTexts] - List of source texts to be translated
-  /// [gameInstallationId] - Game installation ID for game-specific glossaries
+  /// [gameCode] - Game code to scope glossaries
   /// [targetLanguageId] - Target language ID to filter glossaries
   /// [targetLanguageCode] - Target language code for entries
   ///
   /// Returns list of glossary terms with variants, grouped by source term
   Future<List<GlossaryTermWithVariants>> filterRelevantTerms({
     required List<String> sourceTexts,
-    required String gameInstallationId,
+    required String gameCode,
     required String targetLanguageId,
     required String targetLanguageCode,
   }) async {
     if (sourceTexts.isEmpty) return [];
 
-    // Get all applicable glossaries
-    final glossaries = await _repository.getAllGlossaries(
-      gameInstallationId: gameInstallationId,
-      includeUniversal: true,
-    );
+    // Get all applicable glossaries for the game
+    final glossaries = await _repository.getAllGlossaries(gameCode: gameCode);
 
     // Filter by target language
     final applicableGlossaries = glossaries
@@ -81,14 +78,11 @@ class GlossaryFilterService {
   ///
   /// Use this when you need the full glossary (e.g., for post-processing validation)
   Future<List<GlossaryTermWithVariants>> loadAllTerms({
-    required String gameInstallationId,
+    required String gameCode,
     required String targetLanguageId,
     required String targetLanguageCode,
   }) async {
-    final glossaries = await _repository.getAllGlossaries(
-      gameInstallationId: gameInstallationId,
-      includeUniversal: true,
-    );
+    final glossaries = await _repository.getAllGlossaries(gameCode: gameCode);
 
     final applicableGlossaries = glossaries
         .where((g) => g.targetLanguageId == targetLanguageId)

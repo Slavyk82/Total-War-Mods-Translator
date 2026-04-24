@@ -43,13 +43,15 @@ void main() {
   Glossary createTestGlossary({
     String id = 'glossary-1',
     String name = 'Test Glossary',
+    String gameCode = 'wh3',
+    String targetLanguageId = 'fr',
   }) {
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     return Glossary(
       id: id,
       name: name,
-      isGlobal: true,
-      targetLanguageId: 'fr',
+      gameCode: gameCode,
+      targetLanguageId: targetLanguageId,
       createdAt: now,
       updatedAt: now,
     );
@@ -69,8 +71,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -104,8 +105,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -163,8 +163,7 @@ void main() {
       test('should handle database exception gracefully', () async {
         // Arrange
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenThrow(Exception('Database error'));
 
         // Act
@@ -196,8 +195,7 @@ void main() {
         ];
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -234,8 +232,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -264,8 +261,7 @@ void main() {
         final glossary = createTestGlossary();
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -289,8 +285,7 @@ void main() {
       test('should handle database exception gracefully', () async {
         // Arrange
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenThrow(Exception('Database error'));
 
         // Act
@@ -320,8 +315,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -354,8 +348,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -391,8 +384,7 @@ void main() {
         );
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(
@@ -419,8 +411,7 @@ void main() {
       test('should handle database exception gracefully', () async {
         // Arrange
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenThrow(Exception('Database error'));
 
         // Act
@@ -442,8 +433,7 @@ void main() {
         final glossary = createTestGlossary();
 
         when(() => mockRepository.getAllGlossaries(
-              gameInstallationId: any(named: 'gameInstallationId'),
-              includeUniversal: true,
+              gameCode: any(named: 'gameCode'),
             )).thenAnswer((_) async => [glossary]);
 
         when(() => mockRepository.getEntriesByGlossary(

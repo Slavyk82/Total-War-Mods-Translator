@@ -187,13 +187,24 @@ class TranslationBatchHelper {
       final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
       final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
       final glossaryRepo = ref.read(shared_repo.glossaryRepositoryProvider);
+      final gameInstallationRepo =
+          ref.read(shared_repo.gameInstallationRepositoryProvider);
       final logging = ref.read(loggingServiceProvider);
 
-      // Get project to determine game installation ID for glossary lookup
-      String? gameInstallationId;
+      // Get project to determine game code for glossary lookup
+      String? gameCode;
       final projectResult = await projectRepo.getById(projectId);
       if (projectResult.isOk) {
-        gameInstallationId = projectResult.unwrap().gameInstallationId;
+        final project = projectResult.unwrap();
+        final gameInstallationResult =
+            await gameInstallationRepo.getById(project.gameInstallationId);
+        if (gameInstallationResult.isOk) {
+          gameCode = gameInstallationResult.unwrap().gameCode;
+        } else {
+          logging.warning(
+            'Failed to resolve gameCode from gameInstallationId for translation context: ${gameInstallationResult.unwrapErr()}',
+          );
+        }
       }
 
       // Source language is always English for this application
@@ -230,25 +241,24 @@ class TranslationBatchHelper {
       // Load glossary entries with variant support for this game and target language
       // The full glossary is loaded here; filtering happens per-batch in PromptBuilderService
       final glossaryFilterService = GlossaryFilterService(glossaryRepo);
-      List<GlossaryTermWithVariants> glossaryEntries = gameInstallationId != null
+      List<GlossaryTermWithVariants> glossaryEntries = gameCode != null
           ? await glossaryFilterService.loadAllTerms(
-              gameInstallationId: gameInstallationId,
+              gameCode: gameCode,
               targetLanguageId: languageId ?? '',
               targetLanguageCode: targetLanguage,
             )
           : <GlossaryTermWithVariants>[];
 
-      // Get primary glossary ID for DeepL sync
-      // DeepL only supports one glossary per request, so we use the first game-specific glossary
+      // Get primary glossary ID for DeepL sync.
+      // DeepL only supports one glossary per request, so we pick the first
+      // glossary scoped to this game.
       String? glossaryId;
-      if (gameInstallationId != null) {
+      if (gameCode != null) {
         final glossaries = await glossaryRepo.getAllGlossaries(
-          gameInstallationId: gameInstallationId,
-          includeUniversal: true,
+          gameCode: gameCode,
         );
-        // TODO(task-9): rewrite with gameCode filter now that Glossary is game-scoped
-        // and the universal/game-specific distinction is gone. For now, pick the
-        // first glossary returned by the repo.
+        // TODO(future): scope by (gameCode, targetLanguageId) once callers
+        // consistently thread targetLanguageId through here.
         glossaryId = glossaries.firstOrNull?.id;
       }
 
