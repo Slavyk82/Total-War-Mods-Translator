@@ -1,68 +1,12 @@
 import '../database/database_service.dart';
-import '../service_locator.dart';
-import '../shared/i_logging_service.dart';
+import 'models/pending_glossary_migration.dart';
 
-class PendingGlossaryMigration {
-  final List<UniversalGlossaryInfo> universals;
-  final List<DuplicateGlossaryGroup> duplicates;
-  const PendingGlossaryMigration({
-    required this.universals,
-    required this.duplicates,
-  });
-  bool get isEmpty => universals.isEmpty && duplicates.isEmpty;
-}
-
-class UniversalGlossaryInfo {
-  final String id;
-  final String name;
-  final String? description;
-  final String targetLanguageId;
-  final String targetLanguageCode;
-  final int entryCount;
-  const UniversalGlossaryInfo({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.targetLanguageId,
-    required this.targetLanguageCode,
-    required this.entryCount,
-  });
-}
-
-class DuplicateGlossaryGroup {
-  final String gameCode;
-  final String targetLanguageId;
-  final String targetLanguageCode;
-  final List<DuplicateGlossaryMember> members;
-  const DuplicateGlossaryGroup({
-    required this.gameCode,
-    required this.targetLanguageId,
-    required this.targetLanguageCode,
-    required this.members,
-  });
-}
-
-class DuplicateGlossaryMember {
-  final String id;
-  final String name;
-  final int entryCount;
-  final int createdAt;
-  const DuplicateGlossaryMember({
-    required this.id,
-    required this.name,
-    required this.entryCount,
-    required this.createdAt,
-  });
-}
+export 'models/pending_glossary_migration.dart';
 
 /// Detects and applies the one-shot migration from universal/duplicate
 /// glossaries to strictly game-scoped glossaries.
 class GlossaryMigrationService {
-  // ignore: unused_field
-  final ILoggingService _logger;
-
-  GlossaryMigrationService({ILoggingService? logger})
-      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+  GlossaryMigrationService();
 
   /// Returns non-null iff any universals exist or any (game_code, target_language_id)
   /// has more than one glossary.
