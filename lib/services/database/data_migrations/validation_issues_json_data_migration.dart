@@ -162,6 +162,30 @@ class ValidationIssuesJsonDataMigration {
     });
   }
 
+  /// Top-level entry point: performs the rewrite transaction, then attempts
+  /// an FTS5 rebuild (best-effort — contentless FTS5 rebuild is not always
+  /// supported; stale FTS is tolerable since the field is advisory), and
+  /// finally writes the marker. The marker is the last write: if any step
+  /// above throws, the marker is not written and the next startup re-runs
+  /// the migration.
+  Future<void> run({
+    required void Function(int processed, int total) onProgress,
+  }) async {
+    await execute(onProgress: onProgress);
+    try {
+      await DatabaseService.database.execute(
+        "INSERT INTO translation_versions_fts(translation_versions_fts) VALUES('rebuild')",
+      );
+    } catch (e) {
+      _logger.warning(
+        'validation_issues: FTS rebuild skipped (non-fatal)',
+        {'error': e.toString()},
+      );
+    }
+    await _writeMarker();
+    _logger.info('validation_issues: migration finished');
+  }
+
   /// DDL for the 3 triggers the rewrite drops. Copied verbatim from
   /// `schema.sql` (lines 729-737, 791-803, 877-882) minus `IF NOT EXISTS`,
   /// which would silently suppress recreation failures.

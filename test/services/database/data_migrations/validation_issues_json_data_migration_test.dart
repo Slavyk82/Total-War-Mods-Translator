@@ -295,4 +295,26 @@ void main() {
       // Already-JSON rows take the skip branch — no rewriting happens.
     });
   });
+
+  group('ValidationIssuesJsonDataMigration.run — end-to-end', () {
+    test('marker is written after successful run', () async {
+      await ValidationIssuesJsonDataMigration().run(
+        onProgress: (_, __) {},
+      );
+      final markers = await db.rawQuery(
+          "SELECT 1 FROM _migration_markers WHERE id = 'validation_issues_json'");
+      expect(markers, isNotEmpty);
+    });
+
+    test('marker still written when FTS rebuild fails', () async {
+      // No FTS table exists — the rebuild command raises. Assert run
+      // completes and writes the marker anyway.
+      await ValidationIssuesJsonDataMigration().run(
+        onProgress: (_, __) {},
+      );
+      final markers = await db.rawQuery(
+          "SELECT 1 FROM _migration_markers WHERE id = 'validation_issues_json'");
+      expect(markers, isNotEmpty);
+    });
+  });
 }
