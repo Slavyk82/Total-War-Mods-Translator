@@ -46,6 +46,14 @@ class EditorSelection extends _$EditorSelection {
     state = EditorSelectionState(selectedUnitIds: unitIds.toSet());
   }
 
+  /// Atomically replace the selection with `ids`. Used when the caller has
+  /// already computed the exact selection it wants — avoids the
+  /// `selectRange`/`toggleSelection` dance and keeps the provider state in
+  /// lockstep with the handler's local view.
+  void replaceSelection(Set<String> ids) {
+    state = EditorSelectionState(selectedUnitIds: Set<String>.from(ids));
+  }
+
   void clearSelection() {
     state = const EditorSelectionState();
   }
