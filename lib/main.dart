@@ -14,9 +14,11 @@ import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/features/bootstrap/widgets/validation_rescan_dialog.dart';
+import 'package:twmt/features/glossary/screens/glossary_migration_screen.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
 import 'package:twmt/features/release_notes/providers/release_notes_providers.dart';
 import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
 
 void main() async {
@@ -172,6 +174,34 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
           barrierColor: Colors.black87,
           builder: (context) => const DataMigrationDialog(),
         );
+      }
+    }
+
+    // After schema migrations, check whether the glossary schema still
+    // has universal or duplicate entries that require user decisions.
+    // If so, block bootstrap behind a full-screen modal until resolved.
+    if (!mounted) return;
+    final migrationService = ref.read(glossaryMigrationServiceProvider);
+    final pending = await migrationService.detectPendingMigration();
+    if (pending != null && mounted) {
+      final glossaryContext = rootNavigatorKey.currentContext;
+      if (glossaryContext != null && glossaryContext.mounted) {
+        final completer = Completer<void>();
+        unawaited(
+          Navigator.of(glossaryContext).push(
+            MaterialPageRoute<void>(
+              fullscreenDialog: true,
+              builder: (_) => GlossaryMigrationScreen(
+                pending: pending,
+                onDone: () {
+                  Navigator.of(glossaryContext).pop();
+                  if (!completer.isCompleted) completer.complete();
+                },
+              ),
+            ),
+          ),
+        );
+        await completer.future;
       }
     }
 

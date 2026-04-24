@@ -141,6 +141,24 @@ class ProjectRepository extends BaseRepository<Project> {
     return setModUpdateImpact(projectId, false);
   }
 
+  /// Returns whether at least one project exists for the given game code.
+  ///
+  /// Joins `projects` → `game_installations` on `game_installation_id` and
+  /// checks for at least one row matching [gameCode]. Used by the glossary
+  /// screen to decide whether to render the "no projects" empty state.
+  Future<Result<bool, TWMTDatabaseException>> hasProjectsForGameCode(
+      String gameCode) async {
+    return executeQuery(() async {
+      final rows = await database.rawQuery('''
+        SELECT 1 FROM $tableName p
+        INNER JOIN game_installations gi ON gi.id = p.game_installation_id
+        WHERE gi.game_code = ?
+        LIMIT 1
+      ''', [gameCode]);
+      return rows.isNotEmpty;
+    });
+  }
+
   /// Count projects with mod update impact flag set for a game installation.
   Future<Result<int, TWMTDatabaseException>> countWithModUpdateImpact(
       String gameInstallationId) async {

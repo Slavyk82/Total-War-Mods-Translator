@@ -25,8 +25,7 @@ void main() {
       String? id,
       String? name,
       String? description,
-      bool? isGlobal,
-      String? gameInstallationId,
+      String? gameCode,
       String? targetLanguageId,
       int? createdAt,
       int? updatedAt,
@@ -36,10 +35,8 @@ void main() {
         id: id ?? 'glossary-id',
         name: name ?? 'Test Glossary',
         description: description,
-        isGlobal: isGlobal ?? true,
-        gameInstallationId: gameInstallationId,
-        // schema requires target_language_id NOT NULL; domain model still
-        // keeps it nullable. Tests must provide a value explicitly.
+        gameCode: gameCode ?? 'wh3',
+        // schema requires target_language_id NOT NULL.
         targetLanguageId: targetLanguageId ?? 'lang_en',
         createdAt: createdAt ?? now,
         updatedAt: updatedAt ?? now,
@@ -86,18 +83,6 @@ void main() {
           expect(result, isNotNull);
           expect(result!.name, equals('Test Glossary'));
         });
-
-        test('should fail when inserting duplicate name', () async {
-          final glossary1 = createTestGlossary(id: 'g1');
-          final glossary2 = createTestGlossary(id: 'g2');
-
-          await repository.insertGlossary(glossary1);
-
-          expect(
-            () => repository.insertGlossary(glossary2),
-            throwsA(isA<Exception>()),
-          );
-        });
       });
 
       group('getGlossaryById', () {
@@ -142,10 +127,42 @@ void main() {
         });
       });
 
+      group('getGlossaryByGameAndLanguage', () {
+        test('returns the glossary for an existing pair', () async {
+          final glossary = createTestGlossary(
+            id: 'g1',
+            name: 'WH3 French',
+            gameCode: 'wh3',
+            targetLanguageId: 'lang_fr',
+          );
+          await repository.insertGlossary(glossary);
+
+          final result = await repository.getGlossaryByGameAndLanguage(
+            gameCode: 'wh3',
+            targetLanguageId: 'lang_fr',
+          );
+
+          expect(result, isNotNull);
+          expect(result!.id, equals('g1'));
+        });
+
+        test('returns null when no glossary matches', () async {
+          final result = await repository.getGlossaryByGameAndLanguage(
+            gameCode: 'wh3',
+            targetLanguageId: 'lang_fr',
+          );
+
+          expect(result, isNull);
+        });
+      });
+
       group('getAllGlossaries', () {
-        test('should return all glossaries', () async {
-          final g1 = createTestGlossary(id: 'g1', name: 'Glossary 1', isGlobal: true);
-          final g2 = createTestGlossary(id: 'g2', name: 'Glossary 2', isGlobal: false, gameInstallationId: 'game-1');
+        test('should return all glossaries when no filter is provided',
+            () async {
+          final g1 = createTestGlossary(
+              id: 'g1', name: 'Glossary 1', gameCode: 'wh3');
+          final g2 = createTestGlossary(
+              id: 'g2', name: 'Glossary 2', gameCode: 'wh2');
 
           await repository.insertGlossary(g1);
           await repository.insertGlossary(g2);
@@ -155,49 +172,37 @@ void main() {
           expect(result.length, equals(2));
         });
 
-        test('should filter by game installation', () async {
-          final universal = createTestGlossary(id: 'g1', name: 'Universal', isGlobal: true);
-          final gameSpecific = createTestGlossary(
-            id: 'g2',
-            name: 'Game Specific',
-            isGlobal: false,
-            gameInstallationId: 'game-1',
+        test('should filter by game code', () async {
+          final wh3First = createTestGlossary(
+            id: 'g1',
+            name: 'WH3 First',
+            gameCode: 'wh3',
+            targetLanguageId: 'lang_fr',
           );
-          final otherGame = createTestGlossary(
+          final wh3Second = createTestGlossary(
+            id: 'g2',
+            name: 'WH3 Second',
+            gameCode: 'wh3',
+            targetLanguageId: 'lang_de',
+          );
+          final wh2Only = createTestGlossary(
             id: 'g3',
-            name: 'Other Game',
-            isGlobal: false,
-            gameInstallationId: 'game-2',
+            name: 'WH2 Only',
+            gameCode: 'wh2',
+            targetLanguageId: 'lang_fr',
           );
 
-          await repository.insertGlossary(universal);
-          await repository.insertGlossary(gameSpecific);
-          await repository.insertGlossary(otherGame);
+          await repository.insertGlossary(wh3First);
+          await repository.insertGlossary(wh3Second);
+          await repository.insertGlossary(wh2Only);
 
-          final result = await repository.getAllGlossaries(gameInstallationId: 'game-1');
+          final result = await repository.getAllGlossaries(gameCode: 'wh3');
 
-          expect(result.length, equals(2)); // Universal + game-1 specific
-        });
-
-        test('should exclude universal when requested', () async {
-          final universal = createTestGlossary(id: 'g1', name: 'Universal', isGlobal: true);
-          final gameSpecific = createTestGlossary(
-            id: 'g2',
-            name: 'Game Specific',
-            isGlobal: false,
-            gameInstallationId: 'game-1',
+          expect(result.length, equals(2));
+          expect(
+            result.map((g) => g.id).toSet(),
+            equals({'g1', 'g2'}),
           );
-
-          await repository.insertGlossary(universal);
-          await repository.insertGlossary(gameSpecific);
-
-          final result = await repository.getAllGlossaries(
-            gameInstallationId: 'game-1',
-            includeUniversal: false,
-          );
-
-          expect(result.length, equals(1));
-          expect(result.first.name, equals('Game Specific'));
         });
       });
 
@@ -402,8 +407,10 @@ void main() {
         });
 
         test('should filter by glossary IDs', () async {
-          // Create second glossary
-          final g2 = createTestGlossary(id: 'glossary-2', name: 'Glossary 2');
+          // Create second glossary on a different game_code to avoid clashing
+          // with the UNIQUE(game_code, target_language_id) index.
+          final g2 = createTestGlossary(
+              id: 'glossary-2', name: 'Glossary 2', gameCode: 'wh2');
           await repository.insertGlossary(g2);
 
           final entry1 = createTestEntry(id: 'e1', glossaryId: 'glossary-id', sourceTerm: 'Test');
@@ -488,15 +495,35 @@ void main() {
 
     group('getByProjectAndLanguage', () {
       test(
-          'returns global + game-installation-scoped entries filtered by language',
+          'returns entries scoped by the project\'s game_code, filtered by language',
           () async {
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
-        // project-a lives under game-1; project-b under game-2.
+        // Two game installations with distinct game codes.
+        await db.insert('game_installations', {
+          'id': 'gi-wh3',
+          'game_code': 'wh3',
+          'game_name': 'Warhammer 3',
+          'is_auto_detected': 0,
+          'is_valid': 1,
+          'created_at': now,
+          'updated_at': now,
+        });
+        await db.insert('game_installations', {
+          'id': 'gi-wh2',
+          'game_code': 'wh2',
+          'game_name': 'Warhammer 2',
+          'is_auto_detected': 0,
+          'is_valid': 1,
+          'created_at': now,
+          'updated_at': now,
+        });
+
+        // project-a lives under wh3; project-b under wh2.
         await db.insert('projects', {
           'id': 'project-a',
           'name': 'Project A',
-          'game_installation_id': 'game-1',
+          'game_installation_id': 'gi-wh3',
           'batch_size': 25,
           'parallel_batches': 3,
           'created_at': now,
@@ -505,57 +532,43 @@ void main() {
         await db.insert('projects', {
           'id': 'project-b',
           'name': 'Project B',
-          'game_installation_id': 'game-2',
+          'game_installation_id': 'gi-wh2',
           'batch_size': 25,
           'parallel_batches': 3,
           'created_at': now,
           'updated_at': now,
         });
 
-        // Three glossaries: global, game-1, game-2.
-        final globalGlossary = createTestGlossary(
-          id: 'g-global',
-          name: 'Global',
-          isGlobal: true,
+        // Two glossaries: one for wh3, one for wh2.
+        final wh3Glossary = createTestGlossary(
+          id: 'g-wh3',
+          name: 'WH3',
+          gameCode: 'wh3',
         );
-        final game1Glossary = createTestGlossary(
-          id: 'g-game1',
-          name: 'Game 1',
-          isGlobal: false,
-          gameInstallationId: 'game-1',
+        final wh2Glossary = createTestGlossary(
+          id: 'g-wh2',
+          name: 'WH2',
+          gameCode: 'wh2',
         );
-        final game2Glossary = createTestGlossary(
-          id: 'g-game2',
-          name: 'Game 2',
-          isGlobal: false,
-          gameInstallationId: 'game-2',
-        );
-        await repository.insertGlossary(globalGlossary);
-        await repository.insertGlossary(game1Glossary);
-        await repository.insertGlossary(game2Glossary);
+        await repository.insertGlossary(wh3Glossary);
+        await repository.insertGlossary(wh2Glossary);
 
-        // Entries: one FR in each glossary, one DE in game-1.
+        // Entries: one FR + one DE in wh3, one FR in wh2.
         await repository.insertEntry(createTestEntry(
-          id: 'e-global-fr',
-          glossaryId: 'g-global',
-          targetLanguageCode: 'fr',
-          sourceTerm: 'Hello',
-        ));
-        await repository.insertEntry(createTestEntry(
-          id: 'e-game1-fr',
-          glossaryId: 'g-game1',
+          id: 'e-wh3-fr',
+          glossaryId: 'g-wh3',
           targetLanguageCode: 'fr',
           sourceTerm: 'World',
         ));
         await repository.insertEntry(createTestEntry(
-          id: 'e-game1-de',
-          glossaryId: 'g-game1',
+          id: 'e-wh3-de',
+          glossaryId: 'g-wh3',
           targetLanguageCode: 'de',
           sourceTerm: 'German',
         ));
         await repository.insertEntry(createTestEntry(
-          id: 'e-game2-fr',
-          glossaryId: 'g-game2',
+          id: 'e-wh2-fr',
+          glossaryId: 'g-wh2',
           targetLanguageCode: 'fr',
           sourceTerm: 'Other',
         ));
@@ -568,27 +581,39 @@ void main() {
         expect(result.isOk, isTrue);
         final entries = result.value;
         final ids = entries.map((e) => e.id).toSet();
-        // Includes global + game-1 FR entries; excludes game-1 DE entry
-        // (wrong language) and game-2 FR entry (wrong game installation).
-        expect(ids, equals({'e-global-fr', 'e-game1-fr'}));
+        // Only the wh3 FR entry: the wh3 DE entry is wrong language and the
+        // wh2 FR entry is the wrong game code.
+        expect(ids, equals({'e-wh3-fr'}));
       });
 
       test('matches language code case-insensitively', () async {
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await db.insert('game_installations', {
+          'id': 'gi-wh3',
+          'game_code': 'wh3',
+          'game_name': 'Warhammer 3',
+          'is_auto_detected': 0,
+          'is_valid': 1,
+          'created_at': now,
+          'updated_at': now,
+        });
         await db.insert('projects', {
           'id': 'project-a',
           'name': 'Project A',
-          'game_installation_id': 'game-1',
+          'game_installation_id': 'gi-wh3',
           'batch_size': 25,
           'parallel_batches': 3,
           'created_at': now,
           'updated_at': now,
         });
-        await repository.insertGlossary(
-            createTestGlossary(id: 'g-global', name: 'Global', isGlobal: true));
+        await repository.insertGlossary(createTestGlossary(
+          id: 'g-wh3',
+          name: 'WH3',
+          gameCode: 'wh3',
+        ));
         await repository.insertEntry(createTestEntry(
           id: 'e1',
-          glossaryId: 'g-global',
+          glossaryId: 'g-wh3',
           targetLanguageCode: 'FR',
         ));
 
@@ -604,10 +629,19 @@ void main() {
       test('returns empty list when project has no matching glossary',
           () async {
         final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        await db.insert('game_installations', {
+          'id': 'gi-wh3',
+          'game_code': 'wh3',
+          'game_name': 'Warhammer 3',
+          'is_auto_detected': 0,
+          'is_valid': 1,
+          'created_at': now,
+          'updated_at': now,
+        });
         await db.insert('projects', {
           'id': 'project-a',
           'name': 'Project A',
-          'game_installation_id': 'game-1',
+          'game_installation_id': 'gi-wh3',
           'batch_size': 25,
           'parallel_batches': 3,
           'created_at': now,
@@ -784,13 +818,13 @@ void main() {
 
         final entry = createTestEntry(
           sourceTerm: 'Emperor',
-          targetTerm: '\u7687\u5e1d', // Chinese characters
+          targetTerm: '皇帝', // Chinese characters
         );
 
         await repository.insertEntry(entry);
 
         final result = await repository.getEntryById(entry.id);
-        expect(result!.targetTerm, equals('\u7687\u5e1d'));
+        expect(result!.targetTerm, equals('皇帝'));
       });
     });
   });

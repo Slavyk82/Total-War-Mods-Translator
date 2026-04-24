@@ -11,6 +11,8 @@ import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../services/glossary/glossary_auto_provisioning_service.dart';
+import '../../../services/service_locator.dart';
 import '../providers/projects_screen_providers.dart';
 import '../providers/project_detail_providers.dart';
 
@@ -272,6 +274,15 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
               'Failed to create translation versions: ${versionResult.error}');
         }
       }
+
+      // Best-effort: provision an empty glossary per (gameCode, languageId)
+      // so the new language automatically has a glossary available. The
+      // helper is internally error-swallowed and never blocks this flow.
+      await ServiceLocator.get<GlossaryAutoProvisioningService>()
+          .provisionForProject(
+        projectId: widget.projectId,
+        targetLanguageIds: languageIdsList,
+      );
 
       if (!context.mounted) return;
 

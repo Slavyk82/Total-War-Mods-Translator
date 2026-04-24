@@ -22,7 +22,9 @@ import '../../../../repositories/language_repository.dart';
 import '../../../../services/settings/settings_service.dart';
 import '../../providers/projects_screen_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
+import '../../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../../services/projects/i_project_initialization_service.dart';
+import '../../../../services/service_locator.dart';
 import 'project_creation_state.dart';
 import 'step_basic_info.dart';
 import 'step_settings.dart';
@@ -248,6 +250,14 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         updatedAt: now,
       );
       await projectLangRepo.insert(projectLanguage);
+
+      // Best-effort: provision an empty glossary for the new project's target
+      // language. Internally error-swallowed — never blocks project creation.
+      await ServiceLocator.get<GlossaryAutoProvisioningService>()
+          .provisionForProject(
+        projectId: projectId,
+        targetLanguageIds: [target.id],
+      );
 
       // Initialize project: extract and import .loc files if source file exists
       if (project.sourceFilePath != null &&

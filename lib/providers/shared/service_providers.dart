@@ -16,6 +16,8 @@ import '../../services/file/i_file_service.dart';
 import '../../services/file/i_loc_file_service.dart';
 import '../../services/file/i_pack_image_generator_service.dart';
 import '../../services/game/game_localization_service.dart';
+import '../../services/glossary/glossary_auto_provisioning_service.dart';
+import '../../services/glossary/glossary_migration_service.dart';
 import '../../services/glossary/i_glossary_service.dart';
 import '../../services/history/i_history_service.dart';
 import '../../services/llm/llm_custom_rules_service.dart';
@@ -79,6 +81,14 @@ GameLocalizationService gameLocalizationService(Ref ref) =>
 @Riverpod(keepAlive: true)
 IGlossaryService glossaryService(Ref ref) =>
     ServiceLocator.get<IGlossaryService>();
+
+@Riverpod(keepAlive: true)
+GlossaryMigrationService glossaryMigrationService(Ref ref) =>
+    ServiceLocator.get<GlossaryMigrationService>();
+
+@Riverpod(keepAlive: true)
+GlossaryAutoProvisioningService glossaryAutoProvisioningService(Ref ref) =>
+    ServiceLocator.get<GlossaryAutoProvisioningService>();
 
 @Riverpod(keepAlive: true)
 IHistoryService historyService(Ref ref) =>

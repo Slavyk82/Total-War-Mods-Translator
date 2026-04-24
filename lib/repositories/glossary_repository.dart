@@ -117,10 +117,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
   /// Get glossary entries applicable to a project for a given target language.
   ///
-  /// Returns entries from every glossary that is either global
-  /// (`is_global = 1`) or attached to the project's `game_installation_id`,
-  /// restricted to entries whose `target_language_code` matches
-  /// [targetLanguageCode] (case-insensitive).
+  /// Joins through `game_installations` so that entries are scoped by the
+  /// project's `game_code`. Only entries whose `target_language_code` matches
+  /// [targetLanguageCode] (case-insensitive) are returned.
   Future<Result<List<GlossaryEntry>, TWMTDatabaseException>>
       getByProjectAndLanguage({
     required String projectId,
@@ -131,16 +130,12 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
         SELECT ge.*
         FROM $tableName ge
         INNER JOIN $glossaryTableName g ON g.id = ge.glossary_id
+        INNER JOIN projects p ON p.id = ?
+        INNER JOIN game_installations gi ON gi.id = p.game_installation_id
         WHERE LOWER(ge.target_language_code) = LOWER(?)
-          AND (
-            g.is_global = 1
-            OR g.game_installation_id = (
-              SELECT game_installation_id FROM projects WHERE id = ?
-            )
-          )
+          AND g.game_code = gi.game_code
         ORDER BY ge.source_term ASC
-      ''', [targetLanguageCode, projectId]);
-
+      ''', [projectId, targetLanguageCode]);
       return maps.map((map) => fromMap(map)).toList();
     });
   }
@@ -179,30 +174,28 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     return maps.isEmpty ? null : Glossary.fromJson(maps.first);
   }
 
-  /// Get all glossaries
-  ///
-  /// [gameInstallationId] - If specified, returns universal + game-specific glossaries
-  /// [includeUniversal] - Include universal glossaries (is_global = 1) in result
-  Future<List<Glossary>> getAllGlossaries({
-    String? gameInstallationId,
-    bool includeUniversal = true,
+  /// Get the glossary for a given (gameCode, targetLanguageId) pair, if any.
+  Future<Glossary?> getGlossaryByGameAndLanguage({
+    required String gameCode,
+    required String targetLanguageId,
   }) async {
-    String whereClause = '';
-    List<dynamic> whereArgs = [];
+    final maps = await database.rawQuery('''
+      SELECT
+        g.*,
+        COALESCE(COUNT(ge.id), 0) as entryCount
+      FROM $glossaryTableName g
+      LEFT JOIN $tableName ge ON g.id = ge.glossary_id
+      WHERE g.game_code = ? AND g.target_language_id = ?
+      GROUP BY g.id
+      LIMIT 1
+    ''', [gameCode, targetLanguageId]);
+    return maps.isEmpty ? null : Glossary.fromJson(maps.first);
+  }
 
-    if (gameInstallationId != null) {
-      if (includeUniversal) {
-        whereClause = ' WHERE g.is_global = 1 OR g.game_installation_id = ?';
-        whereArgs = [gameInstallationId];
-      } else {
-        whereClause = ' WHERE g.game_installation_id = ?';
-        whereArgs = [gameInstallationId];
-      }
-    } else if (!includeUniversal) {
-      whereClause = ' WHERE g.is_global = 0';
-    }
-
-    // Query with LEFT JOIN to count entries
+  /// Get all glossaries, optionally filtered by game code.
+  Future<List<Glossary>> getAllGlossaries({String? gameCode}) async {
+    final whereClause = gameCode != null ? ' WHERE g.game_code = ?' : '';
+    final whereArgs = gameCode != null ? [gameCode] : const <Object?>[];
     final maps = await database.rawQuery('''
       SELECT
         g.*,
@@ -213,7 +206,6 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
       GROUP BY g.id
       ORDER BY g.name ASC
     ''', whereArgs);
-
     return maps.map((map) => Glossary.fromJson(map)).toList();
   }
 

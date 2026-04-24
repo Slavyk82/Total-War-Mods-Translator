@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
+import '../models/domain/language.dart';
 import '../models/domain/project_language.dart';
 import '../services/projects/project_language_deletion_service.dart';
 import 'base_repository.dart';
@@ -173,6 +174,31 @@ class ProjectLanguageRepository extends BaseRepository<ProjectLanguage> {
       }
 
       return fromMap(maps.first);
+    });
+  }
+
+  /// Get the distinct set of languages used by any project of the given game.
+  ///
+  /// Joins `project_languages` with `projects` and `game_installations` to
+  /// collect every language currently attached to a project that belongs to
+  /// a game installation whose `game_code` matches [gameCode].
+  ///
+  /// Returns [Ok] with the list of languages ordered by name,
+  /// [Err] with exception if the query fails.
+  Future<Result<List<Language>, TWMTDatabaseException>>
+      distinctLanguagesForGameCode(String gameCode) async {
+    return executeQuery(() async {
+      final rows = await database.rawQuery('''
+        SELECT DISTINCT l.*
+        FROM project_languages pl
+        INNER JOIN projects p ON p.id = pl.project_id
+        INNER JOIN game_installations gi ON gi.id = p.game_installation_id
+        INNER JOIN languages l ON l.id = pl.language_id
+        WHERE gi.game_code = ?
+        ORDER BY l.name
+      ''', [gameCode]);
+
+      return rows.map((row) => Language.fromJson(row)).toList();
     });
   }
 }
