@@ -18,11 +18,19 @@ import 'pack_language_dialog.dart';
 
 /// State-machine action cell rendered in column 6 of the Steam Publish list.
 ///
-/// Three rendering modes:
+/// Rendering modes:
 ///
-/// - No pack → "Generate pack" (project) or "Open compilation" (compilation).
-/// - Pack + no Workshop id → inline Steam-id input + save.
-/// - Pack + Workshop id → "Update" + "Open in Steam" + edit-id buttons.
+/// - A₀ — No pack, no Workshop id → "Generate pack" + edit-id pencil.
+/// - A₁ — No pack, has Workshop id → "Generate pack" + "Open in Steam" +
+///   edit-id pencil.
+/// - B — Pack + no Workshop id → inline Steam-id input + save.
+/// - C — Pack + Workshop id → "Update" + "Open in Steam" + edit-id pencil.
+///
+/// Tapping any edit-id pencil (or being in B where `hasPublishedId` is false
+/// before any save) switches `_isEditingSteamId` on and renders the shared
+/// inline input regardless of pack presence. Cancel restores the pre-edit
+/// rendering; save persists the parsed id via the relevant repository and
+/// invalidates [publishableItemsProvider] so the cell recomputes.
 class SteamActionCell extends ConsumerStatefulWidget {
   final PublishableItem item;
 
