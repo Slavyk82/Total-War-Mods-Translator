@@ -107,12 +107,11 @@ class SteamPublishToolbar extends StatelessWidget {
         size: 32,
         iconSize: 16,
       ),
-      SmallIconButton(
+      SmallTextButton(
+        label: 'Workshop Templates',
         icon: FluentIcons.settings_24_regular,
-        tooltip: 'Publish settings',
+        tooltip: 'Configure Workshop publish templates and defaults',
         onTap: onOpenSettings,
-        size: 32,
-        iconSize: 16,
       ),
     ];
   }

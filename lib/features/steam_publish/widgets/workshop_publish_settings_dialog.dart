@@ -54,8 +54,9 @@ class _WorkshopPublishSettingsDialogState
     _titleController.text = title;
     _descriptionController.text = description;
     _defaultVisibility = WorkshopVisibility.values
-        .where((v) => v.name == visibilityName)
-        .firstOrNull;
+            .where((v) => v.name == visibilityName)
+            .firstOrNull ??
+        WorkshopVisibility.public_;
     setState(() => _loading = false);
   }
 
