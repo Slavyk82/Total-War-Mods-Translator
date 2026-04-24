@@ -29,7 +29,7 @@ import 'translation_editor_actions.dart';
 /// Three-panel body (action sidebar · DataGrid · inspector) sandwiched between
 /// a stacked header (`DetailScreenToolbar` + `FilterToolbar`) and
 /// `EditorStatusBar`. The `FilterToolbar` carries the project title, the
-/// search field (key/source/target) and the STATUS filter pill group.
+/// search field (key/source/target) and the STATE filter pill group.
 /// `EditorActionSidebar` hosts context controls and primary actions.
 class TranslationEditorScreen extends ConsumerStatefulWidget {
   const TranslationEditorScreen({

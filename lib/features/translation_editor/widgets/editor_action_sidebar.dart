@@ -18,7 +18,7 @@ import 'editor_toolbar_skip_tm.dart';
 /// §OTHER (Import pack) and §WORKFLOW (Translate → Review → Generate pack
 /// as a numbered pipeline, mirroring the main navigation sidebar's Workflow
 /// group). The search field lives in the top `FilterToolbar`; filters are
-/// the STATUS pill group.
+/// the STATE pill group.
 ///
 /// §Workflow step 1 exposes a single smart button: when the grid has rows
 /// selected it reads "Translate selection" and routes to
