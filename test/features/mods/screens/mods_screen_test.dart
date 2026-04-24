@@ -5,19 +5,25 @@
 // FilterToolbar + ListRow archetype. These tests exercise the new chrome,
 // row archetype and filter-pill interactions.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/screens/mods_screen.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
 
+import '../../../helpers/fakes/fake_logger.dart';
 import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
@@ -187,6 +193,74 @@ void main() {
 
     expect(find.text('Failed to load mods'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
+  });
+
+  testWidgets(
+      'Tapping pending-projects banner deep-links to Projects with needs-update filter',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // Wire a minimal router that pairs the real Mods screen with a dummy
+    // Projects screen so we can observe the URL the banner tap navigates to.
+    // The dummy Projects route echoes the `filter` query parameter so the
+    // assertion can verify both the path and the filter token in one marker.
+    final router = GoRouter(
+      initialLocation: AppRoutes.mods,
+      routes: [
+        GoRoute(
+          path: AppRoutes.mods,
+          builder: (_, _) => const ModsScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.projects,
+          builder: (_, state) => Scaffold(
+            body: Center(
+              child: Text(
+                'projects:filter=${state.uri.queryParameters['filter']}',
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final mods = _populatedMods();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        loggingServiceProvider.overrideWithValue(FakeLogger()),
+        scanLogStreamProvider.overrideWithValue(
+          const Stream<ScanLogMessage>.empty(),
+        ),
+        filteredModsProvider.overrideWith((_) => mods),
+        modsIsLoadingProvider.overrideWith((_) => false),
+        modsErrorProvider.overrideWith((_) => null),
+        totalModsCountProvider.overrideWith((_) async => mods.length),
+        notImportedModsCountProvider.overrideWith(
+          (_) async => mods.where((m) => !m.isAlreadyImported).length,
+        ),
+        needsUpdateModsCountProvider.overrideWith((_) async => 0),
+        hiddenModsCountProvider.overrideWith((_) async => 0),
+        // Force the banner to render by advertising a pending count.
+        projectsWithPendingChangesCountProvider.overrideWith((_) async => 1),
+      ],
+      child: MaterialApp.router(
+        theme: AppTheme.atelierDarkTheme,
+        routerConfig: router,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Banner is present (count == 1 → label has no plural "s"). Several other
+    // StatusPills render per mod row, so match on the banner's unique label.
+    final banner = find.widgetWithText(StatusPill, '1 project pending');
+    expect(banner, findsOneWidget);
+
+    await tester.tap(banner);
+    await tester.pumpAndSettle();
+
+    // Dummy Projects screen now shown, echoing the filter token from the URL.
+    expect(find.text('projects:filter=needs-update'), findsOneWidget);
   });
 }
 

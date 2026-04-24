@@ -28,10 +28,15 @@ class ModsScreenController {
 
   ModsScreenController(this._ref);
 
-  /// Navigate to projects screen with update filter applied
+  /// Navigate to projects screen with the "needs update" quick filter applied.
+  ///
+  /// Uses the `?filter=` deep-link pattern (shared with Home dashboard cards)
+  /// because `ProjectsScreen.initState` calls `resetAll()` on mount and only
+  /// restores the filter carried by `widget.initialFilter`, which the router
+  /// populates from the URL. Setting the filter via the provider before
+  /// navigation would be overwritten by that reset.
   void navigateToProjectsWithFilter(BuildContext context) {
-    _ref.read(projectsFilterProvider.notifier).setQuickFilter(ProjectQuickFilter.needsUpdate);
-    GoRouter.of(context).go(AppRoutes.projects);
+    GoRouter.of(context).go('${AppRoutes.projects}?filter=needs-update');
   }
 
   /// Refresh the mods list by rescanning
