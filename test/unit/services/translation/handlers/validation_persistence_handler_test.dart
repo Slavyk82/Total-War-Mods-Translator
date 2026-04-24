@@ -446,6 +446,191 @@ void main() {
     });
 
     test(
+        'translation flagged needs_review (validation errors) is NOT added '
+        'to the TM batch — bad LLM output must not pollute future exact-match '
+        'lookups', () async {
+      final units = [_fakeUnit('a', 'Hello {0}')];
+      final translations = {'unit-a': 'Bonjour'};
+
+      when(() => validation.validateTranslation(
+            sourceText: any(named: 'sourceText'),
+            translatedText: any(named: 'translatedText'),
+            key: any(named: 'key'),
+            glossaryTerms: any(named: 'glossaryTerms'),
+          )).thenAnswer((_) async =>
+          Ok<common.ValidationResult, ValidationException>(
+              common.ValidationResult.failure(
+            issues: const [
+              ValidationIssueEntry(
+                rule: ValidationRule.variables,
+                severity: ValidationSeverity.error,
+                message: 'Missing variable {0}',
+              ),
+            ],
+          )));
+
+      await handler.validateAndSave(
+        translations: translations,
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      // The version is still persisted (with status=needsReview) so the user
+      // can review/fix it, but the TM is left untouched.
+      expect(persistedVersions, hasLength(1));
+      expect(
+        persistedVersions.single.status,
+        TranslationVersionStatus.needsReview,
+      );
+      verifyNever(() => tmService.addTranslationsBatch(
+            translations: any(named: 'translations'),
+            sourceLanguageCode: any(named: 'sourceLanguageCode'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          ));
+    });
+
+    test(
+        'translation flagged needs_review (warnings only) is NOT added to the '
+        'TM batch', () async {
+      final units = [_fakeUnit('a', 'Hello')];
+      final translations = {'unit-a': 'Bonjour qui est trop long'};
+
+      when(() => validation.validateTranslation(
+            sourceText: any(named: 'sourceText'),
+            translatedText: any(named: 'translatedText'),
+            key: any(named: 'key'),
+            glossaryTerms: any(named: 'glossaryTerms'),
+          )).thenAnswer((_) async =>
+          Ok<common.ValidationResult, ValidationException>(
+              const common.ValidationResult(
+            isValid: true,
+            issues: [
+              ValidationIssueEntry(
+                rule: ValidationRule.truncation,
+                severity: ValidationSeverity.warning,
+                message: 'Significantly longer than source',
+              ),
+            ],
+          )));
+
+      await handler.validateAndSave(
+        translations: translations,
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      verifyNever(() => tmService.addTranslationsBatch(
+            translations: any(named: 'translations'),
+            sourceLanguageCode: any(named: 'sourceLanguageCode'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          ));
+    });
+
+    test(
+        'translation flagged needs_review (validation process failed) is NOT '
+        'added to the TM batch', () async {
+      final units = [_fakeUnit('a', 'Hello')];
+      final translations = {'unit-a': 'Bonjour'};
+
+      when(() => validation.validateTranslation(
+            sourceText: any(named: 'sourceText'),
+            translatedText: any(named: 'translatedText'),
+            key: any(named: 'key'),
+            glossaryTerms: any(named: 'glossaryTerms'),
+          )).thenAnswer((_) async =>
+          Err<common.ValidationResult, ValidationException>(
+              ValidationException('validator crashed', const [])));
+
+      await handler.validateAndSave(
+        translations: translations,
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      verifyNever(() => tmService.addTranslationsBatch(
+            translations: any(named: 'translations'),
+            sourceLanguageCode: any(named: 'sourceLanguageCode'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          ));
+    });
+
+    test(
+        'mixed batch: only clean translations are written to TM; flagged ones '
+        'are silently skipped from the TM update', () async {
+      final units = [
+        _fakeUnit('good', 'Source good'),
+        _fakeUnit('bad', 'Source bad {0}'),
+      ];
+      final translations = {
+        'unit-good': 'bonne traduction',
+        'unit-bad': 'mauvaise',
+      };
+
+      when(() => validation.validateTranslation(
+            sourceText: 'Source good',
+            translatedText: any(named: 'translatedText'),
+            key: any(named: 'key'),
+            glossaryTerms: any(named: 'glossaryTerms'),
+          )).thenAnswer((_) async =>
+          Ok<common.ValidationResult, ValidationException>(
+              common.ValidationResult.success()));
+
+      when(() => validation.validateTranslation(
+            sourceText: 'Source bad {0}',
+            translatedText: any(named: 'translatedText'),
+            key: any(named: 'key'),
+            glossaryTerms: any(named: 'glossaryTerms'),
+          )).thenAnswer((_) async =>
+          Ok<common.ValidationResult, ValidationException>(
+              common.ValidationResult.failure(
+            issues: const [
+              ValidationIssueEntry(
+                rule: ValidationRule.variables,
+                severity: ValidationSeverity.error,
+                message: 'Missing variable {0}',
+              ),
+            ],
+          )));
+
+      await handler.validateAndSave(
+        translations: translations,
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      // Both versions persisted — the bad one with needsReview status.
+      expect(persistedVersions, hasLength(2));
+
+      final captured = verify(() => tmService.addTranslationsBatch(
+            translations: captureAny(named: 'translations'),
+            sourceLanguageCode: any(named: 'sourceLanguageCode'),
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+          )).captured;
+      expect(captured, hasLength(1));
+      final batchEntries =
+          captured.single as List<({String sourceText, String targetText})>;
+      expect(batchEntries, hasLength(1));
+      expect(batchEntries.single.sourceText, 'Source good');
+      expect(batchEntries.single.targetText, 'bonne traduction');
+    });
+
+    test(
         'history service throwing is caught and logged; the unit is still '
         'counted as successful (history is non-critical)', () async {
       final units = [_fakeUnit('a', 'Hello')];
