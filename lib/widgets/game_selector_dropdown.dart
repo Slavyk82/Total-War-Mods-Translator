@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../widgets/common/fluent_spinner.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import 'package:twmt/utils/game_label.dart';
 
 /// Dropdown widget for selecting the active game
 class GameSelectorDropdown extends ConsumerStatefulWidget {
@@ -165,7 +166,8 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
     List<ConfiguredGame> games,
     ConfiguredGame? selectedGame,
   ) {
-    final displayText = selectedGame?.name ?? 'Select a game';
+    final displayText =
+        selectedGame != null ? gameLabel(selectedGame.name) : 'Select a game';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
@@ -314,7 +316,7 @@ class _GameMenuItemState extends State<_GameMenuItem> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  widget.game.name,
+                  gameLabel(widget.game.name),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: widget.isSelected
                         ? theme.colorScheme.primary

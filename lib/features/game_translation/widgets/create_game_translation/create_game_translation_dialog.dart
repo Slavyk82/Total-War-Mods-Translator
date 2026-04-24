@@ -19,6 +19,7 @@ import '../../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../../services/projects/i_project_initialization_service.dart'
     show InitializationLogMessage, InitializationLogLevel;
 import '../../../../services/service_locator.dart';
+import '../../../../utils/game_label.dart';
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
 import 'step_select_source.dart';
@@ -146,7 +147,7 @@ class _CreateGameTranslationDialogState
           ? targetLanguageNames.join(', ')
           : 'Translation';
       final projectName =
-          '${selectedGame.name} - Game Translation ($languageSuffix)';
+          '${gameLabel(selectedGame.name)} - Game Translation ($languageSuffix)';
 
       // Create metadata
       final metadata = ProjectMetadata(modTitle: projectName);

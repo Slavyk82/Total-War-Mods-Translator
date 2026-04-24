@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 
+import '../../utils/game_label.dart';
 import '../database/database_service.dart';
 import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
@@ -64,7 +65,7 @@ class GlossaryAutoProvisioningService {
 
     final gameName = supportedGames[gameCode]?.name ?? gameCode;
     final langCode = lang.first['code'] as String;
-    final baseName = '$gameName · $langCode';
+    final baseName = '${gameLabel(gameName)} · $langCode';
     final name = await _uniqueName(baseName);
     final now = DateTime.now().millisecondsSinceEpoch;
 

@@ -9,6 +9,7 @@ import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/utils/game_label.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
@@ -83,7 +84,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         if (!hasProjects) {
           return _buildCenteredMessage(
             context,
-            'No projects yet for ${game.name}. A glossary will be generated '
+            'No projects yet for ${gameLabel(game.name)}. A glossary will be generated '
             'automatically when you create your first project.',
           );
         }
@@ -103,7 +104,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         if (languages.isEmpty) {
           return _buildCenteredMessage(
             context,
-            'No target languages configured for projects of ${game.name} '
+            'No target languages configured for projects of ${gameLabel(game.name)} '
             'yet. A glossary will be generated when you add a language to '
             'a project.',
           );

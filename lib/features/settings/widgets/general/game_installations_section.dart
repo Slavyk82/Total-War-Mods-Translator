@@ -9,6 +9,7 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/fluent/fluent_expander.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/utils/game_label.dart';
 import '../../providers/settings_providers.dart';
 import 'settings_section_header.dart';
 
@@ -50,7 +51,7 @@ class _GameInstallationsSectionState
         ...widget.games.map((game) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: FluentExpander(
-                header: game.name,
+                header: gameLabel(game.name),
                 icon: FluentIcons.games_24_regular,
                 initiallyExpanded:
                     (widget.gamePathControllers[game.code]?.text ?? '')
@@ -109,7 +110,7 @@ class _GameInstallationsSectionState
           child: TextFormField(
             controller: widget.gamePathControllers[game.code],
             decoration: InputDecoration(
-              hintText: 'Path to ${game.name} installation...',
+              hintText: 'Path to ${gameLabel(game.name)} installation...',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(tokens.radiusSm),
               ),
@@ -224,6 +225,6 @@ class _GameInstallationsSectionState
       (g) => g.code == code,
       orElse: () => widget.games.first,
     );
-    return game.name;
+    return gameLabel(game.name);
   }
 }

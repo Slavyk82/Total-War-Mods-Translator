@@ -7,6 +7,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 import '../../../../providers/selected_game_provider.dart';
 import '../../../../services/game/game_localization_service.dart';
+import '../../../../utils/game_label.dart';
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
 
@@ -63,7 +64,7 @@ class StepSelectSource extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        game.name,
+                        gameLabel(game.name),
                         style: tokens.fontBody.copyWith(
                           fontSize: 13,
                           color: tokens.text,

@@ -9,6 +9,7 @@ import 'package:twmt/widgets/wizard/readonly_field.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
 
 import '../../../../models/domain/game_installation.dart';
+import '../../../../utils/game_label.dart';
 import '../../providers/projects_screen_providers.dart';
 import 'project_creation_state.dart';
 
@@ -243,7 +244,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
           items: games.map((game) {
             return DropdownMenuItem(
               value: game.id,
-              child: Text(game.gameName, style: bodyStyle),
+              child: Text(gameLabel(game.gameName), style: bodyStyle),
             );
           }).toList(),
           onChanged: (value) {

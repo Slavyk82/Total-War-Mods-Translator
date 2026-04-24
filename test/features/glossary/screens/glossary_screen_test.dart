@@ -14,6 +14,7 @@ import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/utils/game_label.dart';
 
 import '../../../helpers/test_helpers.dart';
 
@@ -127,7 +128,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.textContaining('No projects yet for ${_warhammer3.name}'),
+      find.textContaining('No projects yet for ${gameLabel(_warhammer3.name)}'),
       findsOneWidget,
     );
     expect(
@@ -155,7 +156,7 @@ void main() {
 
     expect(
       find.textContaining(
-          'No target languages configured for projects of ${_warhammer3.name}'),
+          'No target languages configured for projects of ${gameLabel(_warhammer3.name)}'),
       findsOneWidget,
     );
   });
