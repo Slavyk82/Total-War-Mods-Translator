@@ -51,5 +51,13 @@ void main() {
       final cleared = s.copyWith(clearCurrentStep: true);
       expect(cleared.currentStep, isNull);
     });
+
+    test('projectNames default to empty map and survive copyWith', () {
+      final s = BulkOperationState.idle();
+      expect(s.projectNames, isEmpty);
+      final s2 = s.copyWith(projectNames: {'id-1': 'Project One'});
+      expect(s2.projectNames['id-1'], 'Project One');
+      expect(s.projectNames, isEmpty); // original unchanged
+    });
   });
 }

@@ -31,6 +31,7 @@ class BulkOperationState {
   final String? currentStep;
   final double currentProjectProgress;
   final Map<String, ProjectOutcome> results;
+  final Map<String, String> projectNames;
   final bool isCancelled;
   final bool isComplete;
 
@@ -44,6 +45,7 @@ class BulkOperationState {
     this.currentStep,
     this.currentProjectProgress = -1,
     this.results = const {},
+    this.projectNames = const {},
     this.isCancelled = false,
     this.isComplete = false,
   });
@@ -67,6 +69,7 @@ class BulkOperationState {
     String? currentStep,
     double? currentProjectProgress,
     Map<String, ProjectOutcome>? results,
+    Map<String, String>? projectNames,
     bool? isCancelled,
     bool? isComplete,
     bool clearCurrentStep = false,
@@ -82,6 +85,7 @@ class BulkOperationState {
       currentProjectProgress:
           currentProjectProgress ?? this.currentProjectProgress,
       results: results ?? this.results,
+      projectNames: projectNames ?? this.projectNames,
       isCancelled: isCancelled ?? this.isCancelled,
       isComplete: isComplete ?? this.isComplete,
     );

@@ -210,7 +210,7 @@ class _TimelineList extends StatelessWidget {
         return ListTile(
           dense: true,
           leading: _statusIcon(outcome?.status ?? ProjectResultStatus.pending),
-          title: Text(id), // Task 14 will switch to project names
+          title: Text(state.projectNames[id] ?? id),
           trailing: outcome?.message != null
               ? Text(outcome!.message!, style: const TextStyle(fontSize: 11))
               : null,

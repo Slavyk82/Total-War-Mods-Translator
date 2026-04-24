@@ -80,6 +80,9 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
     }
 
     final ids = projects.map((p) => p.project.id).toList();
+    final projectNames = <String, String>{
+      for (final p in projects) p.project.id: p.project.name,
+    };
     final pendingResults = <String, ProjectOutcome>{
       for (final id in ids)
         id: const ProjectOutcome(status: ProjectResultStatus.pending),
@@ -88,6 +91,7 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
       operationType: type,
       targetLanguageCode: targetLanguageCode,
       projectIds: ids,
+      projectNames: projectNames,
       results: pendingResults,
     );
 
