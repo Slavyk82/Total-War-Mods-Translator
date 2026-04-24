@@ -107,7 +107,6 @@ mixin TranslationVersionBatchMixin {
         if (existing != null) {
           // UPDATE: Preserve original ID and createdAt
           final map = toMap(entity);
-          map['id'] = existing.id; // Keep original ID
           map['created_at'] = existing.createdAt; // Keep original createdAt
           map.remove('id'); // Remove from UPDATE fields
 
