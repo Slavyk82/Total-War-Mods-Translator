@@ -35,10 +35,9 @@ void main() {
     skip: true,
   );
 
-  testWidgets('force validate button is present', (tester) async {
+  testWidgets('review flagged button is present', (tester) async {
     await tester.pumpWidget(_wrap(const BulkActionButtons()));
     await tester.pumpAndSettle();
-    expect(find.text('Force validate reviews'), findsOneWidget);
-    expect(find.byIcon(Icons.verified), findsOneWidget);
+    expect(find.text('Review flagged'), findsOneWidget);
   });
 }

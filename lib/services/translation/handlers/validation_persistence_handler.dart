@@ -9,6 +9,7 @@ import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/validation/validation_schema.dart';
 import 'package:uuid/uuid.dart';
 
 /// Handles validation and persistence of translations
@@ -168,7 +169,12 @@ class ValidationPersistenceHandler {
           status: status,
           translationSource: translationSource,
           validationIssues: validationIssuesJson,
-          validationSchemaVersion: 1, // new structured format
+          // Stamp the current schema version so the startup rescan doesn't
+          // re-classify this freshly-validated row as legacy. The previous
+          // hardcoded `1` stuck even after `kCurrentValidationSchemaVersion`
+          // was bumped, so every upsert silently downgraded rows and made
+          // the "Resuming validation update" popup reappear on next boot.
+          validationSchemaVersion: kCurrentValidationSchemaVersion,
           createdAt: now,
           updatedAt: now,
         );

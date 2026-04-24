@@ -152,6 +152,86 @@ Future<ProjectOutcome> runBulkTranslate({
 }
 
 // ---------------------------------------------------------------------------
+// runBulkTranslateReviews
+// ---------------------------------------------------------------------------
+
+/// Retranslates every `needsReview` unit for [targetLanguageCode] in
+/// [project], forcing the LLM path (skipTranslationMemory = true).
+///
+/// Skip conditions:
+/// - Project has no target language configured for [targetLanguageCode].
+/// - 0 `needsReview` units for that language.
+Future<ProjectOutcome> runBulkTranslateReviews({
+  required Ref ref,
+  required ProjectWithDetails project,
+  required String targetLanguageCode,
+  HandlerCallback? onProgress,
+}) async {
+  final lang = _findLanguage(project, targetLanguageCode);
+  if (lang == null) {
+    return const ProjectOutcome(
+      status: ProjectResultStatus.skipped,
+      message: 'No target language configured',
+    );
+  }
+  if (lang.needsReviewUnits == 0) {
+    return const ProjectOutcome(
+      status: ProjectResultStatus.skipped,
+      message: 'No units flagged for review',
+    );
+  }
+
+  final projectLanguageId = lang.projectLanguage.id;
+  final versionRepo = ref.read(translationVersionRepositoryProvider);
+
+  try {
+    final rowsResult = await versionRepo.getNeedsReviewRows(
+      projectLanguageId: projectLanguageId,
+    );
+    final unitIds = rowsResult.unwrap().map((r) => r.unitId).toList();
+    if (unitIds.isEmpty) {
+      return const ProjectOutcome(
+        status: ProjectResultStatus.skipped,
+        message: 'No units flagged for review',
+      );
+    }
+
+    final resolved = await _resolveSelectedProvider(ref);
+    if (resolved == null) {
+      return const ProjectOutcome(
+        status: ProjectResultStatus.failed,
+        message: 'no LLM model selected',
+      );
+    }
+
+    final runner = ref.read(headlessBatchTranslationRunnerProvider);
+    final translated = await runner.run(
+      projectLanguageId: projectLanguageId,
+      projectId: project.project.id,
+      unitIds: unitIds,
+      // Force the LLM path: review flags exist precisely because the prior
+      // translation is suspect, so hitting TM would likely return the same
+      // suspect answer.
+      skipTM: true,
+      providerId: resolved.providerId,
+      modelId: resolved.modelId,
+      onProgress: onProgress,
+    );
+
+    return ProjectOutcome(
+      status: ProjectResultStatus.succeeded,
+      message: '$translated units retranslated',
+    );
+  } catch (e) {
+    return ProjectOutcome(
+      status: ProjectResultStatus.failed,
+      message: e.toString(),
+      error: e,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // runBulkRescan
 // ---------------------------------------------------------------------------
 

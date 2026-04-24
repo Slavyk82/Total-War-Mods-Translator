@@ -6,8 +6,8 @@ import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/bulk_target_language_provider.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_operation_progress_dialog.dart';
+import 'package:twmt/features/projects/widgets/bulk_review_dialog.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 
 enum _BulkButtonVariant { primary, regular, danger }
 
@@ -74,13 +74,15 @@ class BulkActionButtons extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           _BulkButton(
-            icon: Icons.verified,
-            label: 'Force validate reviews',
+            icon: FluentIcons.task_list_square_rtl_24_regular,
+            label: 'Review flagged',
             enabled: canAct,
             tooltip: disabledTooltip,
-            variant: _BulkButtonVariant.danger,
             unitCount: needsReviewUnits,
-            onPressed: () => _confirmThenStart(context, ref),
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => const BulkReviewDialog(),
+            ),
           ),
           const SizedBox(height: 8),
           _BulkButton(
@@ -114,39 +116,6 @@ class BulkActionButtons extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmThenStart(BuildContext context, WidgetRef ref) async {
-    final scope = ref.read(visibleProjectsForBulkProvider).asData?.value;
-    final targetLang = ref.read(bulkTargetLanguageProvider).asData?.value;
-    if (scope == null || targetLang == null) return;
-    final matching = scope.matching;
-
-    var units = 0;
-    for (final p in matching) {
-      final l = p.languages.firstWhere(
-        (l) => l.language?.code == targetLang,
-        orElse: () => throw StateError('unreachable'),
-      );
-      units += l.needsReviewUnits;
-    }
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => TokenConfirmDialog(
-        icon: FluentIcons.shield_checkmark_24_regular,
-        title: 'Force validate reviews?',
-        message:
-            'This will mark $units units across ${matching.length} projects '
-            'as validated for $targetLang, clearing all review flags.',
-        warningMessage: 'This cannot be undone from here.',
-        confirmLabel: 'Force validate',
-        confirmIcon: FluentIcons.shield_checkmark_24_regular,
-        destructive: true,
-      ),
-    );
-    if (ok == true && context.mounted) {
-      _start(context, ref, BulkOperationType.forceValidate);
-    }
-  }
 }
 
 class _BulkButton extends StatelessWidget {

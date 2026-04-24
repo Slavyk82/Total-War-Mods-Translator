@@ -61,6 +61,19 @@ class BulkHandlers {
         targetLanguageCode: targetLanguageCode,
         onProgress: onProgress,
       );
+
+  Future<ProjectOutcome> translateReviews({
+    required Ref ref,
+    required ProjectWithDetails project,
+    required String targetLanguageCode,
+    HandlerCallback? onProgress,
+  }) =>
+      runBulkTranslateReviews(
+        ref: ref,
+        project: project,
+        targetLanguageCode: targetLanguageCode,
+        onProgress: onProgress,
+      );
 }
 
 final bulkHandlersProvider =
@@ -197,13 +210,23 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
           targetLanguageCode: targetLanguageCode,
           onProgress: onProgress,
         );
+      case BulkOperationType.translateReviews:
+        return handlers.translateReviews(
+          ref: ref,
+          project: project,
+          targetLanguageCode: targetLanguageCode,
+          onProgress: onProgress,
+        );
     }
   }
 
   Future<void> cancel() async {
     if (state.operationType == null || state.isComplete) return;
     state = state.copyWith(isCancelled: true);
-    if (state.operationType == BulkOperationType.translate) {
+    final usesRunner =
+        state.operationType == BulkOperationType.translate ||
+            state.operationType == BulkOperationType.translateReviews;
+    if (usesRunner) {
       final runner = ref.read(headlessBatchTranslationRunnerProvider);
       await runner.stop();
     }

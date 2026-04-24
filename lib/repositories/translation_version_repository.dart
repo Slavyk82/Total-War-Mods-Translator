@@ -1041,7 +1041,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         final rowsAffected = await database.rawUpdate(
           '''
           UPDATE $tableName
-          SET status = 'needsReview',
+          SET status = 'needs_review',
               updated_at = ?
           WHERE unit_id IN (
             SELECT id FROM translation_units
@@ -1183,11 +1183,67 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         SELECT id
         FROM $tableName
         WHERE project_language_id = ?
-          AND status = 'needsReview'
+          AND status = 'needs_review'
         ''',
         [projectLanguageId],
       );
       return maps.map((map) => map['id'] as String).toList();
     });
   }
+
+  /// Returns the list of `needsReview` rows for [projectLanguageId] with the
+  /// display fields the bulk review dialog needs per line (unit id, version
+  /// id, key, source text, current translation). Obsolete units are
+  /// filtered out — same scope as [getUntranslatedIds].
+  Future<Result<List<NeedsReviewRow>, TWMTDatabaseException>>
+      getNeedsReviewRows({
+    required String projectLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.rawQuery(
+        '''
+        SELECT tu.id         AS unit_id,
+               tv.id         AS version_id,
+               tu.key        AS key,
+               tu.source_text AS source_text,
+               tv.translated_text AS translated_text
+        FROM $tableName tv
+        INNER JOIN translation_units tu ON tv.unit_id = tu.id
+        WHERE tv.project_language_id = ?
+          AND tv.status = 'needs_review'
+          AND tu.is_obsolete = 0
+        ORDER BY tu.key
+        ''',
+        [projectLanguageId],
+      );
+      return maps
+          .map(
+            (m) => NeedsReviewRow(
+              unitId: m['unit_id'] as String,
+              versionId: m['version_id'] as String,
+              key: m['key'] as String,
+              sourceText: (m['source_text'] as String?) ?? '',
+              translatedText: m['translated_text'] as String?,
+            ),
+          )
+          .toList();
+    });
+  }
+}
+
+/// Row returned by [TranslationVersionRepository.getNeedsReviewRows].
+class NeedsReviewRow {
+  final String unitId;
+  final String versionId;
+  final String key;
+  final String sourceText;
+  final String? translatedText;
+
+  const NeedsReviewRow({
+    required this.unitId,
+    required this.versionId,
+    required this.key,
+    required this.sourceText,
+    required this.translatedText,
+  });
 }

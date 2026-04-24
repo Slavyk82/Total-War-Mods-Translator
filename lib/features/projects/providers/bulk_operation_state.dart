@@ -1,6 +1,12 @@
 import 'package:flutter/foundation.dart';
 
-enum BulkOperationType { translate, rescan, forceValidate, generatePack }
+enum BulkOperationType {
+  translate,
+  rescan,
+  forceValidate,
+  generatePack,
+  translateReviews,
+}
 
 enum ProjectResultStatus {
   pending,

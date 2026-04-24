@@ -66,6 +66,8 @@ class BulkOperationProgressDialog extends ConsumerWidget {
         return 'Force-validating reviews';
       case BulkOperationType.generatePack:
         return 'Generating packs';
+      case BulkOperationType.translateReviews:
+        return 'Retranslating flagged units';
       case null:
         return 'Bulk operation';
     }
@@ -81,6 +83,8 @@ class BulkOperationProgressDialog extends ConsumerWidget {
         return FluentIcons.shield_checkmark_24_regular;
       case BulkOperationType.generatePack:
         return FluentIcons.box_24_regular;
+      case BulkOperationType.translateReviews:
+        return FluentIcons.arrow_clockwise_24_regular;
       case null:
         return FluentIcons.play_circle_24_regular;
     }

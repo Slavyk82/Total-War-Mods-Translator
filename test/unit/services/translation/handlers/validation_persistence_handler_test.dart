@@ -17,6 +17,7 @@ import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
+import 'package:twmt/services/validation/validation_schema.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 
 import '../../../../helpers/fakes/fake_logger.dart';
@@ -303,7 +304,10 @@ void main() {
       // of {rule, severity, message} objects (schema v1). Decode it and
       // assert each entry carries the canonical fields.
       expect(version.validationIssues, isNotNull);
-      expect(version.validationSchemaVersion, 1);
+      expect(
+        version.validationSchemaVersion,
+        kCurrentValidationSchemaVersion,
+      );
       final raw = version.validationIssues!;
       final parsed = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
       expect(parsed.length, 2);

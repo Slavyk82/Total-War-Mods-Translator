@@ -90,13 +90,13 @@ class TranslationVersion {
   @JsonKey(name: 'validation_issues')
   final String? validationIssues;
 
-  /// Schema version of [validationIssues].
+  /// Schema version of [validationIssues] and the validation rules that
+  /// produced it. Bumped whenever the validation output format or rule set
+  /// changes so the startup rescan knows which rows need re-validation.
   ///
-  /// 0 = legacy `List<String>` or `List.toString()` format
-  /// 1 = structured `[{rule, severity, message}, ...]` introduced in 2026-04.
-  ///
-  /// New writes should use version 1; the startup rescan migrates version-0
-  /// rows to version 1.
+  /// Writers should always stamp `kCurrentValidationSchemaVersion` (see
+  /// `lib/services/validation/validation_schema.dart`). Rows below that
+  /// value are classified as legacy and picked up by the rescan.
   @JsonKey(name: 'validation_schema_version', defaultValue: 0)
   final int validationSchemaVersion;
 
