@@ -354,7 +354,7 @@ Future<ProjectOutcome> runBulkForceValidate({
 /// - Project has no target language configured for [targetLanguageCode].
 ///
 /// On success returns a summary message of the form
-/// `"<n> entries · <size> bytes"`.
+/// `"<n> entries · <size> MB"`.
 Future<ProjectOutcome> runBulkGeneratePack({
   required Ref ref,
   required ProjectWithDetails project,
@@ -387,7 +387,8 @@ Future<ProjectOutcome> runBulkGeneratePack({
     return result.when(
       ok: (exportResult) => ProjectOutcome(
         status: ProjectResultStatus.succeeded,
-        message: '${exportResult.entryCount} entries · ${exportResult.fileSize} bytes',
+        message:
+            '${exportResult.entryCount} entries · ${(exportResult.fileSize / (1024 * 1024)).toStringAsFixed(2)} MB',
       ),
       err: (error) => ProjectOutcome(
         status: ProjectResultStatus.failed,
