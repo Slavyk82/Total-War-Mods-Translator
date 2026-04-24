@@ -163,9 +163,12 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
       state = state.copyWith(
         results: {...state.results, project.project.id: outcome},
       );
-
-      ref.invalidate(projectsWithDetailsProvider);
     }
+
+    // Refresh the projects list once, after the whole loop. Invalidating per
+    // iteration rapidly restarts `_loadAll()` and races with the dialog close,
+    // leaving the list stuck in AsyncLoading.
+    ref.invalidate(projectsWithDetailsProvider);
 
     state = state.copyWith(
       isComplete: true,
