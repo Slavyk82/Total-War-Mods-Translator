@@ -179,6 +179,54 @@ void main() {
   );
 
   testWidgets(
+    'State A saves a Workshop URL without a pack',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1920, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final fakeRepo = _FakeProjectRepository();
+      final savedIds = <String?>[];
+      final baseProject = Project(
+        id: 'p1',
+        name: 'Sigmars Heirs',
+        gameInstallationId: 'g1',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      when(() => fakeRepo.getById('p1')).thenAnswer(
+        (_) async => Ok<Project, TWMTDatabaseException>(baseProject),
+      );
+      when(() => fakeRepo.update(any())).thenAnswer((invocation) async {
+        final updated = invocation.positionalArguments.first as Project;
+        savedIds.add(updated.publishedSteamId);
+        return Ok<Project, TWMTDatabaseException>(updated);
+      });
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamActionCell(item: _project())),
+        theme: AppTheme.atelierDarkTheme,
+        overrides: [
+          projectRepositoryProvider.overrideWithValue(fakeRepo),
+        ],
+      ));
+      await tester.pumpAndSettle();
+
+      // Enter edit mode.
+      await tester.tap(find.byTooltip('Set Workshop id'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byType(TextField),
+        'https://steamcommunity.com/sharedfiles/filedetails/?id=3456789012',
+      );
+      await tester.tap(find.byTooltip('Save Workshop id'));
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+
+      expect(savedIds, ['3456789012']);
+    },
+  );
+
+  testWidgets(
       'State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
