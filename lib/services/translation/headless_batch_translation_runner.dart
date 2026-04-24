@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/features/projects/services/bulk_batch_helpers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/services/translation/models/translation_context.dart';
@@ -138,10 +139,9 @@ class HeadlessBatchTranslationRunner {
 
 /// Provider for [HeadlessBatchTranslationRunner].
 ///
-/// The default instance throws on [run] because [TranslationBatchHelper]
-/// requires a [WidgetRef].  Override this provider in your [ProviderContainer]
-/// (or use [HeadlessBatchTranslationRunner] directly) and supply real or stub
-/// delegates.
+/// Production instance wires delegates to the Ref-based helpers in
+/// `lib/features/projects/services/bulk_batch_helpers.dart`. Tests can
+/// override this provider with custom delegates (stubs).
 final headlessBatchTranslationRunnerProvider =
     Provider<HeadlessBatchTranslationRunner>((ref) {
   return HeadlessBatchTranslationRunner(
@@ -151,10 +151,12 @@ final headlessBatchTranslationRunnerProvider =
       required unitIds,
       required providerId,
     }) =>
-        throw UnsupportedError(
-          'Supply a createBatch delegate that wraps TranslationBatchHelper '
-          'with a WidgetRef, or override this provider in tests.',
-        ),
+        createBulkBatch(
+      ref: ref,
+      projectLanguageId: projectLanguageId,
+      unitIds: unitIds,
+      providerId: providerId,
+    ),
     buildContext: ({
       required projectLanguageId,
       required projectId,
@@ -163,9 +165,14 @@ final headlessBatchTranslationRunnerProvider =
       required unitsPerBatch,
       required parallelBatches,
     }) =>
-        throw UnsupportedError(
-          'Supply a buildContext delegate that wraps TranslationBatchHelper '
-          'with a WidgetRef, or override this provider in tests.',
-        ),
+        buildBulkTranslationContext(
+      ref: ref,
+      projectId: projectId,
+      projectLanguageId: projectLanguageId,
+      providerId: providerId,
+      unitsPerBatch: unitsPerBatch,
+      parallelBatches: parallelBatches,
+      skipTranslationMemory: skipTranslationMemory,
+    ),
   );
 });
