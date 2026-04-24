@@ -1,102 +1,94 @@
-// Screen tests for the migrated Glossary list view (Plan 5a · Task 5).
+// Screen tests for [GlossaryScreen].
 //
-// The legacy GlossaryListHeader + card layout was dropped; the list view
-// now renders a FilterToolbar + tokenised SfDataGrid. These tests exercise
-// the new chrome and the editor-view switch triggered by tapping a row.
+// The screen walks through four precondition states before rendering the
+// entries editor. These tests exercise each branch via provider overrides.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
-import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 
 import 'package:twmt/features/glossary/providers/glossary_providers.dart';
 import 'package:twmt/features/glossary/screens/glossary_screen.dart';
-import 'package:twmt/features/glossary/widgets/glossary_list.dart';
-import 'package:twmt/providers/clock_provider.dart';
-import 'package:twmt/providers/shared/logging_providers.dart';
+import 'package:twmt/models/domain/glossary_entry.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/app_theme.dart';
-import 'package:twmt/widgets/lists/filter_toolbar.dart';
-import 'package:twmt/widgets/lists/list_search_field.dart';
 
-import '../../../helpers/fakes/fake_logger.dart';
 import '../../../helpers/test_helpers.dart';
 
-const int _baseEpoch = 1_700_000_000;
+/// Test double for [SelectedGame] that returns a fixed [ConfiguredGame]
+/// (or null) without touching the settings services.
+class _FakeSelectedGame extends SelectedGame {
+  _FakeSelectedGame(this._value);
+
+  final ConfiguredGame? _value;
+
+  @override
+  Future<ConfiguredGame?> build() async => _value;
+}
+
+/// Test double for [SelectedGlossaryLanguage] that returns a fixed id
+/// without hitting settings.
+class _FakeSelectedGlossaryLanguage extends SelectedGlossaryLanguage {
+  _FakeSelectedGlossaryLanguage(this._value);
+
+  final String? _value;
+
+  @override
+  Future<String?> build(String gameCode) async => _value;
+
+  @override
+  Future<void> setLanguageId(String gameCode, String? languageId) async {
+    state = AsyncData(languageId);
+  }
+}
+
+Language _lang(String id, String code, String name) => Language(
+      id: id,
+      code: code,
+      name: name,
+      nativeName: name,
+    );
 
 Glossary _glossary({
   required String id,
-  required String name,
-  String? description,
-  bool isGlobal = false,
-  String? gameInstallationId,
-  String? targetLanguageId,
+  required String gameCode,
+  required String targetLanguageId,
   int entryCount = 0,
-  int? updatedAt,
-}) =>
-    Glossary(
+}) {
+  const epoch = 1_700_000_000;
+  return Glossary(
+    id: id,
+    name: '$gameCode/$targetLanguageId',
+    gameCode: gameCode,
+    targetLanguageId: targetLanguageId,
+    entryCount: entryCount,
+    createdAt: epoch,
+    updatedAt: epoch,
+  );
+}
+
+GlossaryEntry _entry(String id, String glossaryId, String source) =>
+    GlossaryEntry(
       id: id,
-      name: name,
-      description: description,
-      isGlobal: isGlobal,
-      gameInstallationId: gameInstallationId,
-      targetLanguageId: targetLanguageId,
-      entryCount: entryCount,
-      createdAt: _baseEpoch,
-      updatedAt: updatedAt ?? _baseEpoch,
+      glossaryId: glossaryId,
+      sourceTerm: source,
+      targetTerm: '$source (tr)',
+      targetLanguageCode: 'fr',
+      caseSensitive: false,
+      createdAt: 1,
+      updatedAt: 1,
     );
 
-List<Glossary> _populatedGlossaries() => [
-      // Universal glossary (no game scoping).
-      _glossary(
-        id: 'g1',
-        name: 'Warhammer Lore',
-        description: 'Shared terminology across every campaign.',
-        isGlobal: true,
-        targetLanguageId: 'fr',
-        entryCount: 128,
-        updatedAt: _baseEpoch,
-      ),
-      // Game-specific glossary, German target.
-      _glossary(
-        id: 'g2',
-        name: 'Three Kingdoms — Names',
-        description: 'Faction leaders and unique unit names.',
-        gameInstallationId: 'install-1',
-        targetLanguageId: 'de',
-        entryCount: 42,
-        updatedAt: _baseEpoch - 86400 * 3, // 3 days before baseEpoch
-      ),
-      // Second game-specific glossary, Spanish target — empty.
-      _glossary(
-        id: 'g3',
-        name: 'Troy — Heroes',
-        gameInstallationId: 'install-2',
-        targetLanguageId: 'es',
-        entryCount: 0,
-        updatedAt: _baseEpoch - 86400 * 30, // 30 days before baseEpoch
-      ),
-    ];
-
-List<Override> _populatedOverrides({List<Glossary>? glossaries}) {
-  final data = glossaries ?? _populatedGlossaries();
-  return [
-    // Pin the clock to the fixture's baseEpoch + 1 day so relative dates
-    // render deterministically ("1 day", "4 days", "1 month").
-    clockProvider.overrideWithValue(
-      () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
-          .add(const Duration(days: 1)),
-    ),
-    glossariesProvider().overrideWith((_) async => data),
-    selectedGlossaryProvider.overrideWith(_MockSelectedGlossaryNotifier.new),
-  ];
-}
+const ConfiguredGame _warhammer3 = ConfiguredGame(
+  code: 'wh3',
+  name: 'Total War: WARHAMMER III',
+  path: '/fake/path',
+);
 
 void main() {
   setUp(() async {
-    // The screen reads gameInstallationRepositoryProvider in initState, which
-    // resolves via ServiceLocator — setupMockServices registers a mock that
-    // returns an empty list so the async init completes without throwing.
     await setupMockServices();
   });
 
@@ -104,154 +96,147 @@ void main() {
     await tearDownMockServices();
   });
 
-  testWidgets('GlossaryScreen list view uses FilterToolbar + SfDataGrid',
+  testWidgets('empty state #1: no game selected prompts the user',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(createThemedTestableWidget(
-      const GlossaryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(FilterToolbar), findsOneWidget);
-    expect(find.byType(GlossaryList), findsOneWidget);
-    expect(find.byType(SfDataGrid), findsOneWidget);
-    expect(find.text('Warhammer Lore'), findsOneWidget);
-    expect(find.text('Three Kingdoms — Names'), findsOneWidget);
-    expect(find.text('Troy — Heroes'), findsOneWidget);
-  });
-
-  testWidgets('Tapping a glossary row swaps in the editor view',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final notifier = _MockSelectedGlossaryNotifier();
     await tester.pumpWidget(createThemedTestableWidget(
       const GlossaryScreen(),
       theme: AppTheme.atelierDarkTheme,
       overrides: [
-        clockProvider.overrideWithValue(
-          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
-              .add(const Duration(days: 1)),
-        ),
-        glossariesProvider().overrideWith((_) async => _populatedGlossaries()),
-        selectedGlossaryProvider.overrideWith(() => notifier),
+        selectedGameProvider.overrideWith(() => _FakeSelectedGame(null)),
       ],
     ));
     await tester.pumpAndSettle();
 
-    // List view visible.
-    expect(find.byType(GlossaryList), findsOneWidget);
-
-    // Tap a row cell — the grid's onCellTap switches the selected glossary
-    // via the notifier which triggers the editor view on rebuild.
-    await tester.tap(find.text('Warhammer Lore'));
-    await tester.pump();
-
-    expect(notifier.selected?.id, 'g1');
-  });
-
-  testWidgets('Empty glossary list renders the empty state', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(createThemedTestableWidget(
-      const GlossaryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(glossaries: const <Glossary>[]),
-    ));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SfDataGrid), findsNothing);
-    expect(find.text('No glossaries yet'), findsOneWidget);
-  });
-
-  testWidgets('List search field filters visible glossaries', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(createThemedTestableWidget(
-      const GlossaryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Warhammer Lore'), findsOneWidget);
-    expect(find.text('Troy — Heroes'), findsOneWidget);
-
-    // Type "troy" into the shared ListSearchField — in-memory filtering
-    // should narrow the grid to the single matching glossary.
-    await tester.enterText(find.byType(ListSearchField), 'troy');
-    await tester.pumpAndSettle();
-
-    expect(find.text('Warhammer Lore'), findsNothing);
-    expect(find.text('Troy — Heroes'), findsOneWidget);
-  });
-
-  testWidgets('Search with no matches surfaces the no-matches state',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(createThemedTestableWidget(
-      const GlossaryScreen(),
-      theme: AppTheme.atelierDarkTheme,
-      overrides: _populatedOverrides(),
-    ));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byType(ListSearchField), 'zzzz');
-    await tester.pumpAndSettle();
-
-    expect(find.byType(SfDataGrid), findsNothing);
     expect(
-      find.text('No glossaries match the current search'),
+      find.text('Select a game from the sidebar to view its glossary.'),
       findsOneWidget,
     );
   });
 
-  testWidgets('Error state renders a tokenised error block', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1920, 1080));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(ProviderScope(
+  testWidgets('empty state #2: game has no projects yet', (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GlossaryScreen(),
+      theme: AppTheme.atelierDarkTheme,
       overrides: [
-        loggingServiceProvider.overrideWithValue(FakeLogger()),
-        glossariesProvider().overrideWith((_) async => throw Exception('boom')),
-        selectedGlossaryProvider.overrideWith(_MockSelectedGlossaryNotifier.new),
+        selectedGameProvider
+            .overrideWith(() => _FakeSelectedGame(_warhammer3)),
+        hasProjectsForGameProvider(_warhammer3.code)
+            .overrideWith((_) async => false),
       ],
-      child: MaterialApp(
-        theme: AppTheme.atelierDarkTheme,
-        home: const SizedBox(
-          width: 1920,
-          height: 1080,
-          child: GlossaryScreen(),
-        ),
-      ),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('Error loading glossaries'), findsOneWidget);
+    expect(
+      find.textContaining('No projects yet for ${_warhammer3.name}'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+          'A glossary will be generated automatically when you create your first project'),
+      findsOneWidget,
+    );
   });
-}
 
-/// Test notifier for [selectedGlossaryProvider] that captures the currently
-/// selected glossary so assertions can verify row-tap routing without
-/// relying on the editor view's downstream widgets.
-class _MockSelectedGlossaryNotifier extends SelectedGlossary {
-  Glossary? selected;
+  testWidgets('empty state #3: game with projects but no target languages',
+      (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GlossaryScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        selectedGameProvider
+            .overrideWith(() => _FakeSelectedGame(_warhammer3)),
+        hasProjectsForGameProvider(_warhammer3.code)
+            .overrideWith((_) async => true),
+        glossaryAvailableLanguagesProvider(_warhammer3.code)
+            .overrideWith((_) async => const <Language>[]),
+      ],
+    ));
+    await tester.pumpAndSettle();
 
-  @override
-  Glossary? build() => selected;
+    expect(
+      find.textContaining(
+          'No target languages configured for projects of ${_warhammer3.name}'),
+      findsOneWidget,
+    );
+  });
 
-  @override
-  void select(Glossary? glossary) {
-    selected = glossary;
-    state = glossary;
-  }
+  testWidgets('empty state #4: glossary exists but has zero entries',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final glossary = _glossary(
+      id: 'g1',
+      gameCode: _warhammer3.code,
+      targetLanguageId: 'fr-id',
+      entryCount: 0,
+    );
 
-  @override
-  void clear() {
-    selected = null;
-    state = null;
-  }
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GlossaryScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        selectedGameProvider
+            .overrideWith(() => _FakeSelectedGame(_warhammer3)),
+        hasProjectsForGameProvider(_warhammer3.code)
+            .overrideWith((_) async => true),
+        glossaryAvailableLanguagesProvider(_warhammer3.code).overrideWith(
+          (_) async => [_lang('fr-id', 'fr', 'French')],
+        ),
+        selectedGlossaryLanguageProvider(_warhammer3.code)
+            .overrideWith(() => _FakeSelectedGlossaryLanguage('fr-id')),
+        currentGlossaryProvider.overrideWith((_) async => glossary),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    // Soft empty text surfaces in place of the grid.
+    expect(
+      find.text('No entries yet. Import a CSV or add your first entry.'),
+      findsOneWidget,
+    );
+    expect(find.byType(SfDataGrid), findsNothing);
+  });
+
+  testWidgets('nominal: glossary with entries renders the data grid',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final glossary = _glossary(
+      id: 'g1',
+      gameCode: _warhammer3.code,
+      targetLanguageId: 'fr-id',
+      entryCount: 2,
+    );
+
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GlossaryScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        selectedGameProvider
+            .overrideWith(() => _FakeSelectedGame(_warhammer3)),
+        hasProjectsForGameProvider(_warhammer3.code)
+            .overrideWith((_) async => true),
+        glossaryAvailableLanguagesProvider(_warhammer3.code).overrideWith(
+          (_) async => [_lang('fr-id', 'fr', 'French')],
+        ),
+        selectedGlossaryLanguageProvider(_warhammer3.code)
+            .overrideWith(() => _FakeSelectedGlossaryLanguage('fr-id')),
+        currentGlossaryProvider.overrideWith((_) async => glossary),
+        glossaryEntriesProvider(
+          glossaryId: 'g1',
+          targetLanguageCode: null,
+        ).overrideWith(
+          (_) async => [
+            _entry('e1', 'g1', 'Dwarf'),
+            _entry('e2', 'g1', 'Elf'),
+          ],
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SfDataGrid), findsOneWidget);
+    expect(find.text('Dwarf'), findsOneWidget);
+    expect(find.text('Elf'), findsOneWidget);
+  });
 }

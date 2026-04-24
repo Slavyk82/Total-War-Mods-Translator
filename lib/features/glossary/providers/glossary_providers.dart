@@ -63,6 +63,20 @@ Future<List<Language>> glossaryAvailableLanguages(
   );
 }
 
+/// Whether any project exists for the given [gameCode].
+///
+/// Consumed by the glossary screen to distinguish the "no projects yet"
+/// empty state from the "no target languages yet" one.
+@riverpod
+Future<bool> hasProjectsForGame(Ref ref, String gameCode) async {
+  final repo = ref.watch(projectRepositoryProvider);
+  final result = await repo.hasProjectsForGameCode(gameCode);
+  return result.when(
+    ok: (hasProjects) => hasProjects,
+    err: (error) => throw error,
+  );
+}
+
 /// Persisted per-game selected glossary language id.
 ///
 /// The selection is stored in settings under a per-game key so switching games
