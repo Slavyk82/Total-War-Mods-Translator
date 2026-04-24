@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../models/domain/game_installation.dart';
@@ -64,6 +65,11 @@ class ProjectFilter extends _$ProjectFilter {
   }
 }
 
+/// Toggle that restricts the project list in the compilation editor to the
+/// projects currently included in the compilation (i.e. those present in
+/// [CompilationEditorState.selectedProjectIds]).
+final showOnlySelectedProjectsProvider = StateProvider<bool>((_) => false);
+
 /// Provider for all compilations with details (filtered by selected game).
 final compilationsWithDetailsProvider =
     FutureProvider<List<CompilationWithDetails>>((ref) async {
@@ -121,7 +127,9 @@ final compilationsWithDetailsProvider =
   return results;
 });
 
-/// Provider for filtered projects based on search text in compilation editor.
+/// Provider for filtered projects in the compilation editor. Applies the
+/// text filter and, when [showOnlySelectedProjectsProvider] is on, further
+/// restricts the list to the projects currently included in the compilation.
 @riverpod
 AsyncValue<List<ProjectWithTranslationInfo>> filteredProjects(
   Ref ref,
@@ -129,14 +137,24 @@ AsyncValue<List<ProjectWithTranslationInfo>> filteredProjects(
 ) {
   final projectsAsync = ref.watch(projectsWithTranslationProvider(params));
   final filter = ref.watch(projectFilterProvider).toLowerCase().trim();
+  final onlySelected = ref.watch(showOnlySelectedProjectsProvider);
+  final selectedIds = onlySelected
+      ? ref.watch(
+          compilationEditorProvider.select((s) => s.selectedProjectIds),
+        )
+      : const <String>{};
 
   return projectsAsync.whenData((projects) {
-    if (filter.isEmpty) return projects;
-
-    return projects.where((p) {
-      final name = p.displayName.toLowerCase();
-      return name.contains(filter);
-    }).toList();
+    Iterable<ProjectWithTranslationInfo> result = projects;
+    if (onlySelected) {
+      result = result.where((p) => selectedIds.contains(p.id));
+    }
+    if (filter.isNotEmpty) {
+      result = result.where(
+        (p) => p.displayName.toLowerCase().contains(filter),
+      );
+    }
+    return result.toList();
   });
 }
 

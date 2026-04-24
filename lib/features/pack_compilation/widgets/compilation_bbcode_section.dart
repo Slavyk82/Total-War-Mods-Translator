@@ -43,7 +43,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
         border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -81,74 +81,75 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
             ),
           ),
           const SizedBox(height: 8),
-          bbCodeAsync.when(
-            data: (bbCode) {
-              if (bbCode.isEmpty) {
+          Expanded(
+            child: bbCodeAsync.when(
+              data: (bbCode) {
+                if (bbCode.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Text(
+                      'No mods with Steam Workshop IDs selected',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color
+                            ?.withValues(alpha: 0.5),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  );
+                }
                 return Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: theme.dividerColor),
                   ),
-                  child: Text(
-                    'No mods with Steam Workshop IDs selected',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color
-                          ?.withValues(alpha: 0.5),
-                      fontStyle: FontStyle.italic,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(12),
+                    child: SelectableText(
+                      bbCode,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 );
-              }
-              return Container(
+              },
+              loading: () => Container(
                 width: double.infinity,
-                constraints: const BoxConstraints(maxHeight: 200),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerHighest
                       .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: theme.dividerColor),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: SelectableText(
-                    bbCode,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
-                  ),
+                child: const Center(
+                  child: FluentSpinner(size: 20, strokeWidth: 2),
                 ),
-              );
-            },
-            loading: () => Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: theme.dividerColor),
               ),
-              child: const Center(
-                child: FluentSpinner(size: 20, strokeWidth: 2),
-              ),
-            ),
-            error: (error, _) => Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(4),
-                border:
-                    Border.all(color: theme.colorScheme.error.withValues(alpha: 0.5)),
-              ),
-              child: Text(
-                'Error generating BBCode',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.error,
+              error: (error, _) => Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                  border:
+                      Border.all(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  'Error generating BBCode',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
                 ),
               ),
             ),
@@ -188,7 +189,7 @@ class _CopyButtonState extends State<_CopyButton> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: widget.isCopied
                 ? Colors.green.withValues(alpha: 0.1)
@@ -202,26 +203,12 @@ class _CopyButtonState extends State<_CopyButton> {
                   : theme.colorScheme.outline.withValues(alpha: 0.5),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                widget.isCopied
-                    ? FluentIcons.checkmark_16_regular
-                    : FluentIcons.copy_16_regular,
-                size: 16,
-                color: widget.isCopied ? Colors.green : theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                widget.isCopied ? 'Copied!' : 'Copy',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color:
-                      widget.isCopied ? Colors.green : theme.colorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          child: Icon(
+            widget.isCopied
+                ? FluentIcons.checkmark_16_regular
+                : FluentIcons.copy_16_regular,
+            size: 16,
+            color: widget.isCopied ? Colors.green : theme.colorScheme.primary,
           ),
         ),
       ),

@@ -89,10 +89,6 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     state = state.copyWith(selectedProjectIds: current);
   }
 
-  void selectAllProjects(List<String> projectIds) {
-    state = state.copyWith(selectedProjectIds: projectIds.toSet());
-  }
-
   void deselectAllProjects() {
     state = state.copyWith(selectedProjectIds: const {});
   }
@@ -194,13 +190,15 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     }
   }
 
-  Future<bool> generatePack(String gameInstallationId) async {
-    if (!state.canCompile) return false;
+  /// Generates the pack file. Returns the absolute path of the produced
+  /// `.pack` on success, or `null` on failure/cancellation.
+  Future<String?> generatePack(String gameInstallationId) async {
+    if (!state.canCompile) return null;
 
     // First save if needed
     if (!state.isEditing) {
       final saved = await saveCompilation(gameInstallationId);
-      if (!saved) return false;
+      if (!saved) return null;
     }
 
     final logger = ref.read(loggingServiceProvider);
@@ -268,7 +266,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
             currentStep: null,
             errorMessage: 'Compilation cancelled',
           );
-          return false;
+          return null;
         }
 
         final projectResult = await projectRepo.getById(projectId);
@@ -320,7 +318,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
           currentStep: null,
           errorMessage: 'Compilation cancelled',
         );
-        return false;
+        return null;
       }
 
       state = state.copyWith(
@@ -420,7 +418,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         'totalFiles': totalFilesGenerated,
       });
 
-      return true;
+      return packPath;
     } catch (e, stackTrace) {
       logger.error('Pack compilation failed', e, stackTrace);
       state = state.copyWith(
@@ -429,7 +427,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         currentStep: null,
         errorMessage: e.toString(),
       );
-      return false;
+      return null;
     } finally {
       logger.info('Cleaning up temp directory...');
       await packUtils.cleanupTempDirectory(tempDir);

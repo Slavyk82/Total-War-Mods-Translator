@@ -6,9 +6,9 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Mirrors [StickyFormPanel]'s visual treatment (fixed width, themed
 /// background, hairline divider) but attaches to the right edge — divider
 /// on the left — and takes an arbitrary list of [children] instead of the
-/// form-specific sections/summary/actions slots. Intended for advisory or
-/// companion content (e.g. conflict analysis) shown alongside the wizard's
-/// dynamic zone.
+/// form-specific sections/summary/actions slots. Children are laid out in
+/// a full-height [Column] so callers can include [Expanded] children that
+/// stretch to fill the remaining vertical space.
 class RightStickyPanel extends StatelessWidget {
   final List<Widget> children;
   final double width;
@@ -33,12 +33,9 @@ class RightStickyPanel extends StatelessWidget {
         ),
         child: Padding(
           padding: padding,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: children,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: children,
           ),
         ),
       ),

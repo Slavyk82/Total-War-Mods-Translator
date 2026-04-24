@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/translation_editor/screens/progress/progress_widgets.dart';
 import 'package:twmt/models/domain/game_installation.dart';
@@ -9,14 +12,15 @@ import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
 import 'package:twmt/widgets/detail/detail_screen_toolbar.dart';
+import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/dynamic_zone_panel.dart';
 import 'package:twmt/widgets/wizard/form_section.dart';
 import 'package:twmt/widgets/wizard/right_sticky_panel.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
-import 'package:twmt/widgets/wizard/summary_box.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
+import '../models/conflict_analysis_result.dart';
 import '../providers/compilation_conflict_providers.dart';
 import '../providers/pack_compilation_providers.dart';
 import '../widgets/compilation_bbcode_section.dart';
@@ -136,9 +140,7 @@ class _PackCompilationEditorScreenState
   @override
   Widget build(BuildContext context) {
     // Auto-trigger / clear conflict analysis when project selection or target
-    // language changes. Replaces the prior Future.delayed(100ms) dance in
-    // onToggle / onSelectAll / onDeselectAll — by the time this listener
-    // fires the notifier state has already settled, so no delay is needed.
+    // language changes.
     ref.listen<({Set<String> ids, String? langId})>(
       compilationEditorProvider.select(
         (s) => (ids: s.selectedProjectIds, langId: s.selectedLanguageId),
@@ -161,14 +163,9 @@ class _PackCompilationEditorScreenState
     final state = ref.watch(compilationEditorProvider);
     final languagesAsync = ref.watch(allLanguagesProvider);
     final currentGameAsync = ref.watch(currentGameInstallationProvider);
-    final conflictsAsync = ref.watch(compilationConflictAnalysisProvider);
     final notifier = ref.read(compilationEditorProvider.notifier);
     final languages = languagesAsync.asData?.value ?? const <Language>[];
     final gameInstallation = currentGameAsync.asData?.value;
-
-    final showConflicts = !state.isCompiling &&
-        state.selectedProjectIds.length >= 2 &&
-        state.selectedLanguageId != null;
 
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
@@ -184,7 +181,7 @@ class _PackCompilationEditorScreenState
         onBack: _handleBack,
       ),
       formPanel: StickyFormPanel(
-        width: 240,
+        width: 300,
         sections: [
           FormSection(
             label: 'Basics',
@@ -233,22 +230,15 @@ class _PackCompilationEditorScreenState
             ],
           ),
         ],
-        summary: SummaryBox(
-          label: 'Will generate',
-          semantics: _summarySemantics(conflictsAsync),
-          lines: _summaryLines(state, conflictsAsync, languages),
-        ),
         actions: [
           SmallTextButton(
-            label: 'Cancel',
-            icon: FluentIcons.dismiss_24_regular,
-            onTap: state.isCompiling ? null : _handleBack,
-          ),
-          SmallTextButton(
-            label: state.isCompiling ? 'Compiling...' : 'Compile',
+            label: state.isCompiling
+                ? 'Compiling...'
+                : 'Compile and generate pack',
             icon: state.isCompiling
                 ? FluentIcons.stop_24_regular
                 : FluentIcons.play_24_regular,
+            filled: true,
             onTap: _buildCompileCallback(state, notifier, gameInstallation),
           ),
         ],
@@ -267,33 +257,26 @@ class _PackCompilationEditorScreenState
                   key: const ValueKey('editing'),
                   state: state,
                   currentGameAsync: currentGameAsync,
-                  hasSuccess: state.successMessage != null &&
-                      state.errorMessage == null &&
-                      !state.isCompiling,
                 ),
         ),
       ),
-      rightPanel: showConflicts
-          ? RightStickyPanel(
-              children: [
-                SizedBox(
-                  height: 560,
-                  child: ConflictingProjectsPanel(
-                    selectedProjectIds: state.selectedProjectIds,
-                    onToggleProject: (id) => ref
-                        .read(compilationEditorProvider.notifier)
-                        .toggleProject(id),
-                  ),
-                ),
-              ],
-            )
-          : null,
+      rightPanel: RightStickyPanel(
+        children: [
+          Expanded(
+            child: ConflictingProjectsPanel(
+              selectedProjectIds: state.selectedProjectIds,
+              onToggleProject: (id) => ref
+                  .read(compilationEditorProvider.notifier)
+                  .toggleProject(id),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   /// Builds the Compile action callback. Returns null when the action is
-  /// unavailable — visually disables the button (SmallTextButton keeps its
-  /// outlined look with a null onTap).
+  /// unavailable — the button renders its disabled visual in that case.
   VoidCallback? _buildCompileCallback(
     CompilationEditorState state,
     CompilationEditorNotifier notifier,
@@ -303,64 +286,169 @@ class _PackCompilationEditorScreenState
     if (gameInstallation == null) return null;
     if (!state.canCompile) return null;
     return () async {
-      final success = await notifier.generatePack(gameInstallation.id);
-      if (success) {
-        ref.invalidate(compilationsWithDetailsProvider);
+      final analysis =
+          ref.read(compilationConflictAnalysisProvider).asData?.value;
+      if (analysis != null && analysis.hasUnresolvedConflicts) {
+        final proceed = await _showConflictWarningDialog(analysis);
+        if (!proceed) return;
       }
+      final packPath = await notifier.generatePack(gameInstallation.id);
+      if (packPath == null) return;
+      ref.invalidate(compilationsWithDetailsProvider);
+      if (!mounted) return;
+      await _showPackGeneratedDialog(packPath);
     };
   }
 
-  SummarySemantics _summarySemantics(
-    AsyncValue<dynamic> conflictsAsync,
-  ) {
-    final analysis = conflictsAsync.asData?.value;
-    final count = analysis?.conflicts.length ?? 0;
-    return count > 0 ? SummarySemantics.warn : SummarySemantics.accent;
+  /// Warning popup shown before compilation when unresolved conflicts remain
+  /// between selected projects. Returns `true` when the user chooses to force
+  /// the compilation anyway, `false` on cancel or barrier dismiss.
+  Future<bool> _showConflictWarningDialog(
+    ConflictAnalysisResult analysis,
+  ) async {
+    final count = analysis.unresolvedCount;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final tokens = ctx.tokens;
+        return TokenDialog(
+          icon: FluentIcons.warning_24_regular,
+          iconColor: tokens.warn,
+          title: 'Unresolved conflicts detected',
+          body: Text(
+            '$count conflict${count > 1 ? 's' : ''} between the selected '
+            'projects remain unresolved. Compiling now may lead to '
+            'unpredictable in-game translation display for the affected '
+            'entries.\n\n'
+            'You can cancel to resolve them first, or force the compilation '
+            'to proceed anyway.',
+            style: tokens.fontBody.copyWith(
+              fontSize: 13,
+              color: tokens.textDim,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            SmallTextButton(
+              label: 'Cancel',
+              onTap: () => Navigator.of(ctx).pop(false),
+            ),
+            SmallTextButton(
+              label: 'Force compile',
+              icon: FluentIcons.play_24_regular,
+              filled: true,
+              onTap: () => Navigator.of(ctx).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
   }
 
-  List<SummaryLine> _summaryLines(
-    CompilationEditorState state,
-    AsyncValue<dynamic> conflictsAsync,
-    List<Language> languages,
-  ) {
-    // Target language display name ("English (English)") or em dash when not
-    // resolved yet.
-    String langName = '—';
-    if (state.selectedLanguageId != null) {
-      for (final l in languages) {
-        if (l.id == state.selectedLanguageId) {
-          langName = l.displayName;
-          break;
-        }
-      }
+  /// Success popup shown once the pack file has been produced. Displays the
+  /// absolute pack path + filename and exposes an "Open folder" action that
+  /// reveals the `.pack` in Windows Explorer.
+  Future<void> _showPackGeneratedDialog(String packPath) {
+    final packName = p.basename(packPath);
+    final folder = p.dirname(packPath);
+    return showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final tokens = ctx.tokens;
+        return TokenDialog(
+          icon: FluentIcons.checkmark_circle_24_regular,
+          iconColor: tokens.ok,
+          title: 'Pack generated',
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _DialogField(label: 'File name', value: packName),
+              const SizedBox(height: 12),
+              _DialogField(label: 'Location', value: folder),
+            ],
+          ),
+          leadingActions: [
+            SmallTextButton(
+              label: 'Open folder',
+              icon: FluentIcons.folder_open_24_regular,
+              onTap: () => _revealInExplorer(packPath),
+            ),
+          ],
+          actions: [
+            SmallTextButton(
+              label: 'OK',
+              filled: true,
+              onTap: () => Navigator.of(ctx).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Opens Windows Explorer with the generated pack pre-selected. Falls back
+  /// to opening the containing folder when `explorer /select,` is unavailable
+  /// (e.g. when running on a non-Windows host for tests).
+  void _revealInExplorer(String packPath) {
+    if (Platform.isWindows) {
+      Process.start(
+        'explorer',
+        ['/select,$packPath'],
+        mode: ProcessStartMode.detached,
+      );
+    } else {
+      Process.start(
+        'xdg-open',
+        [p.dirname(packPath)],
+        mode: ProcessStartMode.detached,
+      );
     }
-    final analysis = conflictsAsync.asData?.value;
-    final conflictCount = analysis?.conflicts.length ?? 0;
-    final filename = state.fullPackName.isEmpty ? '—' : state.fullPackName;
-    return [
-      SummaryLine(
-        key: 'Filename',
-        value: filename,
-      ),
-      SummaryLine(
-        key: 'Projects',
-        value: '${state.selectedProjectIds.length} selected',
-      ),
-      SummaryLine(
-        key: 'Target language',
-        value: langName,
-      ),
-      SummaryLine(
-        key: 'Conflicts',
-        value: conflictCount > 0 ? '$conflictCount' : 'None',
-        semantics:
-            conflictCount > 0 ? SummarySemantics.warn : SummarySemantics.ok,
-      ),
-      const SummaryLine(
-        key: 'Size estimate',
-        value: '—',
-      ),
-    ];
+  }
+}
+
+/// Two-line "label: value" row used inside the pack-generated dialog.
+class _DialogField extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DialogField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: tokens.fontBody.copyWith(
+            fontSize: 11,
+            color: tokens.textDim,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: tokens.panel2,
+            border: Border.all(color: tokens.border),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+          ),
+          child: SelectableText(
+            value,
+            style: tokens.fontMono.copyWith(
+              fontSize: 12,
+              color: tokens.text,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -370,83 +458,22 @@ class _EditingView extends ConsumerWidget {
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
 
-  /// Whether the last compile succeeded. When true, the view prepends a
-  /// success banner.
-  final bool hasSuccess;
-
   const _EditingView({
     super.key,
     required this.state,
     required this.currentGameAsync,
-    this.hasSuccess = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (hasSuccess) ...[
-          _CompileSuccessBanner(message: state.successMessage!),
-          const SizedBox(height: 16),
-        ],
-        Expanded(
-          child: CompilationProjectSelectionSection(
-            state: state,
-            currentGameAsync: currentGameAsync,
-            onToggle: (id) =>
-                ref.read(compilationEditorProvider.notifier).toggleProject(id),
-            onSelectAll: (ids) => ref
-                .read(compilationEditorProvider.notifier)
-                .selectAllProjects(ids),
-            onDeselectAll: () => ref
-                .read(compilationEditorProvider.notifier)
-                .deselectAllProjects(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Thin ok-colored banner shown after a successful compilation, summarizing
-/// the generated pack path. Sits just above the Next-step CTA.
-class _CompileSuccessBanner extends StatelessWidget {
-  final String message;
-  const _CompileSuccessBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: tokens.okBg,
-        border: Border.all(color: tokens.ok),
-        borderRadius: BorderRadius.circular(tokens.radiusSm),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            FluentIcons.checkmark_circle_24_regular,
-            size: 16,
-            color: tokens.ok,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: tokens.fontBody.copyWith(
-                fontSize: 13,
-                color: tokens.ok,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+    return CompilationProjectSelectionSection(
+      state: state,
+      currentGameAsync: currentGameAsync,
+      onToggle: (id) =>
+          ref.read(compilationEditorProvider.notifier).toggleProject(id),
+      onDeselectAll: () => ref
+          .read(compilationEditorProvider.notifier)
+          .deselectAllProjects(),
     );
   }
 }

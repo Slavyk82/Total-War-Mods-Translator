@@ -83,5 +83,6 @@ class CompilationEditorState {
       selectedProjectIds.isNotEmpty &&
       !isCompiling;
 
-  bool get canCompile => canSave && !isCompiling;
+  bool get canCompile =>
+      canSave && !isCompiling && selectedProjectIds.length >= 2;
 }

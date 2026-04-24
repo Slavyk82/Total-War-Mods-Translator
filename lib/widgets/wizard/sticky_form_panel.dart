@@ -6,9 +6,12 @@ import 'package:twmt/widgets/wizard/summary_box.dart';
 ///
 /// Renders a fixed-width panel (default 380) containing [sections] at top,
 /// an optional [summary] in the middle, stacked [actions] below, and an
-/// optional [extras] widget at the bottom for auxiliary content that does
-/// not fit the form-field idiom (e.g. an output/advisory card).
-/// The panel scrolls internally when content exceeds the viewport.
+/// optional [extras] widget anchored at the bottom.
+///
+/// When [extras] is provided, it fills all remaining vertical space and
+/// stays pinned to the bottom regardless of how many sections or actions
+/// are stacked above it. Without [extras], the panel behaves as a
+/// single scroll view.
 class StickyFormPanel extends StatelessWidget {
   final List<Widget> sections;
   final SummaryBox? summary;
@@ -27,9 +30,43 @@ class StickyFormPanel extends StatelessWidget {
     this.padding = const EdgeInsets.all(24),
   });
 
+  List<Widget> _topChildren() {
+    return [
+      ...sections,
+      if (summary != null) ...[
+        const SizedBox(height: 8),
+        summary!,
+      ],
+      if (actions.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        for (var i = 0; i < actions.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          actions[i],
+        ],
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final Widget content = extras == null
+        ? SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: _topChildren(),
+            ),
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ..._topChildren(),
+              const SizedBox(height: 16),
+              Expanded(child: extras!),
+            ],
+          );
+
     return SizedBox(
       width: width,
       child: Container(
@@ -39,30 +76,7 @@ class StickyFormPanel extends StatelessWidget {
         ),
         child: Padding(
           padding: padding,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ...sections,
-                if (summary != null) ...[
-                  const SizedBox(height: 8),
-                  summary!,
-                ],
-                if (actions.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  for (var i = 0; i < actions.length; i++) ...[
-                    if (i > 0) const SizedBox(height: 8),
-                    actions[i],
-                  ],
-                ],
-                if (extras != null) ...[
-                  const SizedBox(height: 16),
-                  extras!,
-                ],
-              ],
-            ),
-          ),
+          child: content,
         ),
       ),
     );

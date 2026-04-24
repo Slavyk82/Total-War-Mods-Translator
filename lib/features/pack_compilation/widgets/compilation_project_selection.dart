@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
-import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
 import '../providers/pack_compilation_providers.dart';
@@ -17,14 +17,12 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
     required this.state,
     required this.currentGameAsync,
     required this.onToggle,
-    required this.onSelectAll,
     required this.onDeselectAll,
   });
 
   final CompilationEditorState state;
   final AsyncValue<GameInstallation?> currentGameAsync;
   final void Function(String) onToggle;
-  final void Function(List<String>) onSelectAll;
   final VoidCallback onDeselectAll;
 
   @override
@@ -39,6 +37,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
 
     final projectsAsync = ref.watch(filteredProjectsProvider(filterParams));
     final filter = ref.watch(projectFilterProvider);
+    final onlySelected = ref.watch(showOnlySelectedProjectsProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -49,79 +48,58 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header - uses Wrap for responsive layout
+          // Header - title + pills on the left, responsive search field
+          // stretching to fill the remaining width on the right.
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      FluentIcons.folder_24_regular,
-                      color: tokens.accent,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Select Projects',
-                      style: tokens.fontDisplay.copyWith(
-                        fontSize: 18,
-                        color: tokens.text,
-                        fontStyle: tokens.fontDisplayItalic
-                            ? FontStyle.italic
-                            : FontStyle.normal,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: tokens.accent,
-                        borderRadius: BorderRadius.circular(tokens.radiusPill),
-                      ),
-                      child: Text(
-                        '${state.selectedProjectIds.length} selected',
-                        style: tokens.fontBody.copyWith(
-                          fontSize: 12,
-                          color: tokens.accentFg,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+                Icon(
+                  FluentIcons.folder_24_regular,
+                  color: tokens.accent,
                 ),
-                // Filter field
-                ListSearchField(
-                  width: 200,
-                  hintText: 'Search projects...',
-                  value: filter,
-                  onChanged: (value) => ref
-                      .read(projectFilterProvider.notifier)
-                      .setFilter(value),
-                  onClear: () =>
-                      ref.read(projectFilterProvider.notifier).clear(),
+                const SizedBox(width: 8),
+                Text(
+                  'Select Projects',
+                  style: tokens.fontDisplay.copyWith(
+                    fontSize: 18,
+                    color: tokens.text,
+                    fontStyle: tokens.fontDisplayItalic
+                        ? FontStyle.italic
+                        : FontStyle.normal,
+                  ),
                 ),
-                projectsAsync.whenData((projects) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SmallTextButton(
-                        label: 'Select all',
-                        onTap: () =>
-                            onSelectAll(projects.map((p) => p.id).toList()),
-                      ),
-                      const SizedBox(width: 8),
-                      SmallTextButton(
-                        label: 'Deselect all',
-                        onTap: onDeselectAll,
-                      ),
-                    ],
-                  );
-                }).value ?? const SizedBox.shrink(),
+                const SizedBox(width: 8),
+                _SelectionCountPill(
+                  count: state.selectedProjectIds.length,
+                  onClear: onDeselectAll,
+                ),
+                const SizedBox(width: 8),
+                FilterPill(
+                  label: 'Show only selected',
+                  selected: onlySelected,
+                  count: onlySelected
+                      ? state.selectedProjectIds.length
+                      : null,
+                  tooltip: 'Show only projects included in this compilation',
+                  onToggle: () => ref
+                      .read(showOnlySelectedProjectsProvider.notifier)
+                      .update((v) => !v),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ListSearchField(
+                    width: double.infinity,
+                    hintText: 'Search projects...',
+                    value: filter,
+                    onChanged: (value) => ref
+                        .read(projectFilterProvider.notifier)
+                        .setFilter(value),
+                    onClear: () =>
+                        ref.read(projectFilterProvider.notifier).clear(),
+                  ),
+                ),
               ],
             ),
           ),
@@ -135,7 +113,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                     : projectsAsync.when(
                         data: (projects) {
                         if (projects.isEmpty) {
-                          if (filter.isNotEmpty) {
+                          if (filter.isNotEmpty || onlySelected) {
                             return _buildNoFilterResults(theme, tokens);
                           }
                           return _buildNoProjectsMessage(theme, tokens);
@@ -306,6 +284,61 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Accent-filled badge showing the current count of selected projects.
+///
+/// Sized to match the filter pills used in the translation editor (12 px
+/// horizontal / 5 px vertical padding, `tokens.radiusPill`, 12 pt label).
+/// When at least one project is selected, a trailing close icon makes the
+/// entire pill tappable to clear the selection.
+class _SelectionCountPill extends StatelessWidget {
+  final int count;
+  final VoidCallback onClear;
+
+  const _SelectionCountPill({
+    required this.count,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final canClear = count > 0;
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: tokens.accent,
+        borderRadius: BorderRadius.circular(tokens.radiusPill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$count selected',
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: tokens.accentFg,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (canClear) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.close, size: 12, color: tokens.accentFg),
+          ],
+        ],
+      ),
+    );
+    if (!canClear) return pill;
+    return Tooltip(
+      message: 'Clear selection',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(onTap: onClear, child: pill),
       ),
     );
   }

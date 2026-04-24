@@ -171,8 +171,6 @@ class TooltipStrings {
       'Remove this compilation configuration (does not delete projects or generated files)';
   static const String compilationGenerate =
       'Regenerate the pack file with current translations';
-  static const String compilationSelectAll = 'Select all available projects';
-  static const String compilationDeselectAll = 'Clear all project selections';
   static const String compilationCopyBBCode =
       'Copy Steam Workshop BBCode links to clipboard';
   static const String compilationSave =

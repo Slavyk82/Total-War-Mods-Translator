@@ -10,6 +10,9 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Filled variant ([filled] = true): accent background, accent border,
 /// accentFg label/icon — used for primary/affirmative dialog actions.
 ///
+/// When [onTap] is null the button is non-interactive and rendered with a
+/// reduced-alpha tint so users can tell it's disabled.
+///
 /// Optionally wrapped in a [Tooltip] and prefixed with an [IconData] icon.
 class SmallTextButton extends StatelessWidget {
   /// Label displayed on the button.
@@ -40,9 +43,15 @@ class SmallTextButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final bgColor = filled ? tokens.accent : tokens.panel2;
-    final fgColor = filled ? tokens.accentFg : tokens.textMid;
-    final borderColor = filled ? tokens.accent : tokens.border;
+    final disabled = onTap == null;
+    Color bgColor = filled ? tokens.accent : tokens.panel2;
+    Color fgColor = filled ? tokens.accentFg : tokens.textMid;
+    Color borderColor = filled ? tokens.accent : tokens.border;
+    if (disabled) {
+      bgColor = bgColor.withValues(alpha: bgColor.a * 0.45);
+      fgColor = fgColor.withValues(alpha: fgColor.a * 0.5);
+      borderColor = borderColor.withValues(alpha: borderColor.a * 0.45);
+    }
 
     final core = MouseRegion(
       cursor:
