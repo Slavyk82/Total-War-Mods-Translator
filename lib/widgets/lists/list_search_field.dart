@@ -22,8 +22,9 @@ class ListSearchField extends StatefulWidget {
   /// Fired when the clear icon is tapped. When null, the clear icon is hidden.
   final VoidCallback? onClear;
 
-  /// Overall field width.
-  final double width;
+  /// Overall field width. When null, the field expands to fill the width
+  /// provided by its parent (e.g. inside an [Expanded] or [Flexible]).
+  final double? width;
 
   /// Optional external focus node. When provided, external controllers (e.g.
   /// keyboard shortcuts) can request focus on the field.

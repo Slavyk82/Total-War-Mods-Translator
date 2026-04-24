@@ -52,14 +52,18 @@ class _TranslationMemoryScreenState
         children: [
           FilterToolbar(
             leading: _Leading(total: total),
+            expandLeading: false,
             trailing: [
-              ListSearchField(
-                value: filtersState.searchText,
-                hintText: 'Search translation memory...',
-                onChanged: (value) {
-                  filterNotifier.setSearchText(value);
-                },
-                onClear: () => filterNotifier.setSearchText(''),
+              Expanded(
+                child: ListSearchField(
+                  value: filtersState.searchText,
+                  hintText: 'Search translation memory...',
+                  width: null,
+                  onChanged: (value) {
+                    filterNotifier.setSearchText(value);
+                  },
+                  onClear: () => filterNotifier.setSearchText(''),
+                ),
               ),
               SmallTextButton(
                 label: 'Import TMX',

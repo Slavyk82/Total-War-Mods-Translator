@@ -62,6 +62,7 @@ class SteamPublishToolbar extends StatelessWidget {
         selectedCount: selectedCount,
         searchActive: searchQuery.isNotEmpty,
       ),
+      expandLeading: false,
       trailing: _buildTrailing(context),
       pillGroups: [_buildStateGroup()],
     );
@@ -69,6 +70,15 @@ class SteamPublishToolbar extends StatelessWidget {
 
   List<Widget> _buildTrailing(BuildContext context) {
     return [
+      Expanded(
+        child: ListSearchField(
+          width: null,
+          value: searchQuery,
+          hintText: 'Search packs...',
+          onChanged: onSearchChanged,
+          onClear: () => onSearchChanged(''),
+        ),
+      ),
       SmallTextButton(
         label: 'Select all',
         icon: FluentIcons.checkbox_checked_24_regular,
@@ -106,13 +116,6 @@ class SteamPublishToolbar extends StatelessWidget {
         icon: FluentIcons.settings_24_regular,
         tooltip: 'Configure Workshop publish templates and defaults',
         onTap: onOpenSettings,
-      ),
-      ListSearchField(
-        width: 200,
-        value: searchQuery,
-        hintText: 'Search packs...',
-        onChanged: onSearchChanged,
-        onClear: () => onSearchChanged(''),
       ),
     ];
   }

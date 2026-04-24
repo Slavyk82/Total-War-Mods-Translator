@@ -89,6 +89,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         children: [
           FilterToolbar(
             leading: _buildLeading(projectsAsync),
+            expandLeading: false,
             trailing: _buildTrailingActions(selectionState),
             pillGroups: [_buildQuickFilterGroup()],
           ),
@@ -134,9 +135,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
 
   List<Widget> _buildTrailingActions(BatchProjectSelectionState selection) {
     return [
+      const Expanded(child: _SearchField()),
       const _SortButton(),
       _SelectionModeButton(selectionState: selection),
-      const _SearchField(),
     ];
   }
 
@@ -489,7 +490,7 @@ class _SearchField extends ConsumerWidget {
     final query =
         ref.watch(projectsFilterProvider.select((s) => s.searchQuery));
     return ListSearchField(
-      width: 200,
+      width: null,
       value: query,
       hintText: 'Search projects...',
       onChanged: (value) => ref

@@ -10,11 +10,19 @@ class FilterToolbar extends StatelessWidget {
   final List<Widget> trailing;
   final List<FilterPillGroup> pillGroups;
 
+  /// When true (default), [leading] is wrapped in an [Expanded] so it fills
+  /// the remaining space and pushes [trailing] to the right. Set to false
+  /// when one of the [trailing] widgets is itself wrapped in [Expanded]
+  /// (or [Flexible]) and should consume the free space instead — e.g. a
+  /// search field that must stretch across the toolbar.
+  final bool expandLeading;
+
   const FilterToolbar({
     super.key,
     required this.leading,
     this.trailing = const [],
     this.pillGroups = const [],
+    this.expandLeading = true,
   });
 
   @override
@@ -32,7 +40,7 @@ class FilterToolbar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Expanded(child: leading),
+              if (expandLeading) Expanded(child: leading) else leading,
               for (final w in trailing) ...[const SizedBox(width: 12), w],
             ],
           ),

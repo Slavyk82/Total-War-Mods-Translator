@@ -228,18 +228,21 @@ class _TranslationEditorScreenState
                     ),
                   ],
                 ),
+                expandLeading: false,
                 trailing: [
-                  ListSearchField(
-                    value: filter.searchQuery,
-                    focusNode: _searchFocus,
-                    width: 200,
-                    hintText: 'Search key · source · target',
-                    onChanged: (value) => ref
-                        .read(editorFilterProvider.notifier)
-                        .setSearchQuery(value),
-                    onClear: () => ref
-                        .read(editorFilterProvider.notifier)
-                        .setSearchQuery(''),
+                  Expanded(
+                    child: ListSearchField(
+                      value: filter.searchQuery,
+                      focusNode: _searchFocus,
+                      width: null,
+                      hintText: 'Search key · source · target',
+                      onChanged: (value) => ref
+                          .read(editorFilterProvider.notifier)
+                          .setSearchQuery(value),
+                      onClear: () => ref
+                          .read(editorFilterProvider.notifier)
+                          .setSearchQuery(''),
+                    ),
                   ),
                 ],
                 pillGroups: [

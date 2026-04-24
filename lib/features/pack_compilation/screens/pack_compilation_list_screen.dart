@@ -58,11 +58,15 @@ class _PackCompilationListScreenState
               title: 'Pack compilations',
               countLabel: '${filtered.length} / ${all.length}',
             ),
+            expandLeading: false,
             trailing: [
-              ListSearchField(
-                value: _query,
-                onChanged: (v) => setState(() => _query = v),
-                onClear: () => setState(() => _query = ''),
+              Expanded(
+                child: ListSearchField(
+                  value: _query,
+                  width: null,
+                  onChanged: (v) => setState(() => _query = v),
+                  onClear: () => setState(() => _query = ''),
+                ),
               ),
               SmallTextButton(
                 label: '+ New compilation',

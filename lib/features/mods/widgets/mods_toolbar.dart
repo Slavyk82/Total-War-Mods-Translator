@@ -64,6 +64,7 @@ class ModsToolbar extends StatelessWidget {
         projectsWithPendingChanges: projectsWithPendingChanges,
         onNavigateToProjects: onNavigateToProjects,
       ),
+      expandLeading: false,
       trailing: _buildTrailing(context),
       pillGroups: [_buildStateGroup()],
     );
@@ -71,11 +72,14 @@ class ModsToolbar extends StatelessWidget {
 
   List<Widget> _buildTrailing(BuildContext context) {
     return [
-      ListSearchField(
-        value: searchQuery,
-        hintText: 'Search mods...',
-        onChanged: onSearchChanged,
-        onClear: () => onSearchChanged(''),
+      Expanded(
+        child: ListSearchField(
+          width: null,
+          value: searchQuery,
+          hintText: 'Search mods...',
+          onChanged: onSearchChanged,
+          onClear: () => onSearchChanged(''),
+        ),
       ),
       if (onImportLocalPack != null)
         SmallTextButton(
