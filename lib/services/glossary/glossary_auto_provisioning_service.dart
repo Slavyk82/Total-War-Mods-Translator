@@ -7,9 +7,11 @@ import '../steam/models/game_definitions.dart';
 
 /// Creates empty `(game_code, target_language_id)` glossaries on demand.
 ///
-/// Called from two trigger sites:
+/// Called from three trigger sites:
 /// - When a new game path is saved in settings → [provisionForGame].
 /// - When a language is added to a project → [provisionForProjectLanguage].
+/// - When `project_languages` rows are inserted (create-project, add-language,
+///   game-translation, mod import) → [provisionForProject].
 class GlossaryAutoProvisioningService {
   final ILoggingService _logger;
   static const _uuid = Uuid();
@@ -75,6 +77,60 @@ class GlossaryAutoProvisioningService {
       'created_at': now,
       'updated_at': now,
     });
+  }
+
+  /// Resolves the `game_code` for [projectId] via its `game_installations` row,
+  /// then provisions an empty glossary for every `(gameCode, languageId)` pair
+  /// in [targetLanguageIds].
+  ///
+  /// Best-effort: any failure (unknown project, missing game installation, or
+  /// per-language provisioning error) is logged and swallowed. The caller's
+  /// flow is never interrupted.
+  Future<void> provisionForProject({
+    required String projectId,
+    required List<String> targetLanguageIds,
+  }) async {
+    if (targetLanguageIds.isEmpty) return;
+    try {
+      final rows = await DatabaseService.database.rawQuery('''
+        SELECT gi.game_code AS game_code
+        FROM projects p
+        INNER JOIN game_installations gi ON gi.id = p.game_installation_id
+        WHERE p.id = ?
+        LIMIT 1
+      ''', [projectId]);
+      if (rows.isEmpty) {
+        _logger.warning(
+          'provisionForProject: project or game installation not found',
+          {'projectId': projectId},
+        );
+        return;
+      }
+      final gameCode = rows.first['game_code'] as String;
+      for (final languageId in targetLanguageIds) {
+        try {
+          await provisionForProjectLanguage(
+            gameCode: gameCode,
+            targetLanguageId: languageId,
+          );
+        } catch (e) {
+          _logger.warning(
+            'provisionForProject: per-language provisioning failed',
+            {
+              'projectId': projectId,
+              'gameCode': gameCode,
+              'languageId': languageId,
+              'error': e.toString(),
+            },
+          );
+        }
+      }
+    } catch (e) {
+      _logger.warning(
+        'provisionForProject failed',
+        {'projectId': projectId, 'error': e.toString()},
+      );
+    }
   }
 
   /// Returns a glossary name that does not collide with any existing row.

@@ -75,4 +75,54 @@ void main() {
         .rawQuery('SELECT COUNT(*) as cnt FROM glossaries');
     expect(rows.first['cnt'], 1);
   });
+
+  test('provisionForProject resolves gameCode and provisions per language',
+      () async {
+    await service.provisionForProject(
+      projectId: 'p1',
+      targetLanguageIds: ['lang_fr', 'lang_de'],
+    );
+    final rows = await DatabaseService.database.rawQuery(
+      'SELECT game_code, target_language_id FROM glossaries '
+      'ORDER BY target_language_id',
+    );
+    expect(rows, hasLength(2));
+    expect(rows.map((r) => r['target_language_id']), ['lang_de', 'lang_fr']);
+    expect(rows.every((r) => r['game_code'] == 'wh3'), isTrue);
+  });
+
+  test('provisionForProject is idempotent', () async {
+    await service.provisionForProject(
+      projectId: 'p1',
+      targetLanguageIds: ['lang_fr'],
+    );
+    await service.provisionForProject(
+      projectId: 'p1',
+      targetLanguageIds: ['lang_fr'],
+    );
+    final rows = await DatabaseService.database
+        .rawQuery('SELECT COUNT(*) as cnt FROM glossaries');
+    expect(rows.first['cnt'], 1);
+  });
+
+  test('provisionForProject swallows unknown projectId (no throw, no rows)',
+      () async {
+    await service.provisionForProject(
+      projectId: 'does-not-exist',
+      targetLanguageIds: ['lang_fr'],
+    );
+    final rows = await DatabaseService.database
+        .rawQuery('SELECT COUNT(*) as cnt FROM glossaries');
+    expect(rows.first['cnt'], 0);
+  });
+
+  test('provisionForProject with empty target list is a no-op', () async {
+    await service.provisionForProject(
+      projectId: 'p1',
+      targetLanguageIds: const [],
+    );
+    final rows = await DatabaseService.database
+        .rawQuery('SELECT COUNT(*) as cnt FROM glossaries');
+    expect(rows.first['cnt'], 0);
+  });
 }

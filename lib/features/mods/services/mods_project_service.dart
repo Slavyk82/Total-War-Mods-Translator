@@ -12,6 +12,8 @@ import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
+import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
+import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
@@ -327,5 +329,16 @@ class ModsProjectService {
       updatedAt: now,
     );
     await _projectLanguageRepo.insert(projectLanguage);
+
+    // Best-effort: provision an empty glossary for the default target language.
+    // The helper is internally error-swallowed, and the locator lookup itself
+    // is guarded so unit tests that skip DI registration still pass.
+    if (ServiceLocator.isRegistered<GlossaryAutoProvisioningService>()) {
+      await ServiceLocator.get<GlossaryAutoProvisioningService>()
+          .provisionForProject(
+        projectId: projectId,
+        targetLanguageIds: [target.id],
+      );
+    }
   }
 }

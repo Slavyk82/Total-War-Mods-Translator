@@ -15,8 +15,10 @@ import '../../../../models/domain/project_language.dart';
 import '../../../../providers/selected_game_provider.dart';
 import '../../../projects/providers/projects_screen_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
+import '../../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../../services/projects/i_project_initialization_service.dart'
     show InitializationLogMessage, InitializationLogLevel;
+import '../../../../services/service_locator.dart';
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
 import 'step_select_source.dart';
@@ -188,6 +190,14 @@ class _CreateGameTranslationDialogState
 
         await projectLangRepo.insert(projectLanguage);
       }
+
+      // Best-effort: provision empty glossaries for each new target language.
+      // Internally error-swallowed — never blocks project creation.
+      await ServiceLocator.get<GlossaryAutoProvisioningService>()
+          .provisionForProject(
+        projectId: projectId,
+        targetLanguageIds: _state.selectedLanguageIds.toList(),
+      );
 
       // Initialize project (extract localization files)
       if (project.hasSourceFile) {
