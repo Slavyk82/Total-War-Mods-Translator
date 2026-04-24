@@ -255,7 +255,7 @@ void main() {
     expect(find.text('0 unit'), findsNothing);
   });
 
-  testWidgets('no subtitle is rendered when rows are selected',
+  testWidgets('subtitle shows the selection count when rows are selected',
       (tester) async {
     await tester.pumpWidget(build(pendingCount: 42));
     await tester.pumpAndSettle();
@@ -269,10 +269,28 @@ void main() {
         .selectAll(['a', 'b', 'c']);
     await tester.pumpAndSettle();
 
-    // Label flipped to "Translate selection"; the count hint belongs to the
-    // "Translate all" variant and must disappear alongside the label change.
+    // Label flips to "Translate selection" and the count hint switches from
+    // pending-total to the selection size — 3 selected, not 42 pending.
     expect(find.text('Translate selection'), findsOneWidget);
+    expect(find.text('3 units'), findsOneWidget);
     expect(find.text('42 units'), findsNothing);
+  });
+
+  testWidgets('selection-count subtitle uses singular form for exactly 1 row',
+      (tester) async {
+    await tester.pumpWidget(build(pendingCount: 42));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(EditorActionSidebar)),
+      listen: false,
+    );
+    container.read(editorSelectionProvider.notifier).selectAll(['a']);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Translate selection'), findsOneWidget);
+    expect(find.text('1 unit'), findsOneWidget);
+    expect(find.text('1 units'), findsNothing);
   });
 
   testWidgets('no subtitle is rendered while editorStats is loading',

@@ -103,23 +103,28 @@ class EditorActionSidebar extends ConsumerWidget {
                         hasSelection ? onTranslateSelected : onTranslateAll,
                   );
 
-                  // Count hint renders only for the "Translate all" variant,
-                  // and only once editorStats has resolved with a positive
-                  // pending count — we never flash a placeholder.
-                  if (hasSelection) return button;
-                  final statsAsync =
-                      ref.watch(editorStatsProvider(projectId, languageId));
-                  final pending = statsAsync.asData?.value.pendingCount ?? 0;
-                  if (pending <= 0) return button;
+                  // Pick the count that matches the button's current mode:
+                  //   - Selection mode → show how many rows are selected.
+                  //   - Translate-all mode → show the pending total (only
+                  //     once editorStats has resolved, to avoid a flicker).
+                  final int count;
+                  if (hasSelection) {
+                    count = selection.selectedCount;
+                  } else {
+                    final statsAsync =
+                        ref.watch(editorStatsProvider(projectId, languageId));
+                    count = statsAsync.asData?.value.pendingCount ?? 0;
+                  }
+                  if (count <= 0) return button;
 
-                  final suffix = pending == 1 ? 'unit' : 'units';
+                  final suffix = count == 1 ? 'unit' : 'units';
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       button,
                       const SizedBox(height: 4),
                       Text(
-                        '$pending $suffix',
+                        '$count $suffix',
                         textAlign: TextAlign.center,
                         style: tokens.fontBody.copyWith(
                           fontSize: 10.5,
