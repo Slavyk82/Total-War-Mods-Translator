@@ -18,9 +18,13 @@ class BulkOperationProgressDialog extends ConsumerWidget {
     final s = ref.watch(bulkOperationsProvider);
     final title = _titleFor(s.operationType);
     final subtitle = 'Target language: ${s.targetLanguageCode ?? '—'}';
+    // `currentIndex` is 0-based and stays on the last processed project once
+    // the loop exits, so it tops out at `n - 1` at completion. Snap to full
+    // when the notifier signals `isComplete`, otherwise trust the index.
+    final processedCount = s.isComplete ? s.projectIds.length : s.currentIndex;
     final overallProgress = s.projectIds.isEmpty
         ? 0.0
-        : s.currentIndex / s.projectIds.length;
+        : processedCount / s.projectIds.length;
 
     final (leadingActions, trailingActions) = _footerActions(context, ref, s);
 
@@ -37,7 +41,11 @@ class BulkOperationProgressDialog extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _OverallProgress(progress: overallProgress, state: s),
+            _OverallProgress(
+              progress: overallProgress,
+              processedCount: processedCount,
+              total: s.projectIds.length,
+            ),
             const SizedBox(height: 12),
             if (!s.isComplete) _CurrentProjectBlock(state: s),
             if (!s.isComplete) const SizedBox(height: 12),
@@ -197,9 +205,14 @@ class BulkOperationProgressDialog extends ConsumerWidget {
 }
 
 class _OverallProgress extends StatelessWidget {
-  const _OverallProgress({required this.progress, required this.state});
+  const _OverallProgress({
+    required this.progress,
+    required this.processedCount,
+    required this.total,
+  });
   final double progress;
-  final BulkOperationState state;
+  final int processedCount;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +234,7 @@ class _OverallProgress extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '${state.currentIndex} / ${state.projectIds.length} projects',
+              '$processedCount / $total projects',
               style: tokens.fontBody
                   .copyWith(fontSize: 12, color: tokens.textDim),
             ),
