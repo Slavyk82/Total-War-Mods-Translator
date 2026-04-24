@@ -246,10 +246,10 @@ class TranslationBatchHelper {
           gameInstallationId: gameInstallationId,
           includeUniversal: true,
         );
-        // Prefer game-specific glossary over universal
-        final gameSpecificGlossary = glossaries.where((g) => !g.isGlobal).firstOrNull;
-        final universalGlossary = glossaries.where((g) => g.isGlobal).firstOrNull;
-        glossaryId = gameSpecificGlossary?.id ?? universalGlossary?.id;
+        // TODO(task-9): rewrite with gameCode filter now that Glossary is game-scoped
+        // and the universal/game-specific distinction is gone. For now, pick the
+        // first glossary returned by the repo.
+        glossaryId = glossaries.firstOrNull?.id;
       }
 
       if (glossaryEntries.isNotEmpty) {
