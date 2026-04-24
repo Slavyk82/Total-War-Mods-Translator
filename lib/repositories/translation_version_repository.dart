@@ -1168,4 +1168,26 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
       isCancelled: isCancelled,
     );
   }
+
+  /// Get IDs of all translation versions with status `needsReview` for a
+  /// specific project language.
+  ///
+  /// Used by the bulk force-validate handler to collect version IDs that
+  /// need to be accepted (cleared) in a single batch operation.
+  Future<Result<List<String>, TWMTDatabaseException>> getNeedsReviewIds({
+    required String projectLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.rawQuery(
+        '''
+        SELECT id
+        FROM $tableName
+        WHERE project_language_id = ?
+          AND status = 'needsReview'
+        ''',
+        [projectLanguageId],
+      );
+      return maps.map((map) => map['id'] as String).toList();
+    });
+  }
 }
