@@ -91,6 +91,15 @@ void main() {
         updated_at INTEGER NOT NULL
       )
     ''');
+    // `acceptBatch` bumps `projects.updated_at` (scoped to affected projects)
+    // so the Projects screen's "Export outdated" filter sees bulk edits.
+    // Minimal shape — the bulk method only needs `id` + `updated_at`.
+    await db.execute('''
+      CREATE TABLE projects (
+        id TEXT PRIMARY KEY,
+        updated_at INTEGER NOT NULL
+      )
+    ''');
 
     DatabaseService.setTestDatabase(db);
 
