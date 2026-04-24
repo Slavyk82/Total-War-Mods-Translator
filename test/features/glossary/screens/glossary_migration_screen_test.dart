@@ -1,8 +1,8 @@
 // Widget tests for [GlossaryMigrationScreen].
 //
-// These tests only validate rendering of the two sections (universals +
-// duplicates). No action that would trigger `FilePicker` or
-// `applyMigration` is dispatched.
+// These tests validate rendering of the two sections (universals +
+// duplicates) and the double-confirmation guard before apply. No action
+// that would trigger `FilePicker` or `applyMigration` is dispatched.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/glossary/screens/glossary_migration_screen.dart';
@@ -96,5 +96,56 @@ void main() {
     expect(find.text('Duplicate glossaries'), findsOneWidget);
     expect(find.textContaining('A (2 entries)'), findsOneWidget);
     expect(find.textContaining('B (1 entries)'), findsOneWidget);
+  });
+
+  testWidgets(
+      'apply button opens a confirmation dialog when any universal is left '
+      'on "Don\'t convert"', (tester) async {
+    const pending = PendingGlossaryMigration(
+      universals: [
+        UniversalGlossaryInfo(
+          id: 'u1',
+          name: 'Legacy Universal',
+          description: null,
+          targetLanguageId: 'lang_fr',
+          targetLanguageCode: 'fr',
+          entryCount: 5,
+        ),
+      ],
+      duplicates: [],
+    );
+
+    await tester.pumpWidget(
+      createThemedTestableWidget(
+        GlossaryMigrationScreen(pending: pending, onDone: () {}),
+        theme: AppTheme.atelierDarkTheme,
+        overrides: [
+          configuredGamesProvider.overrideWith((ref) async => [
+                const ConfiguredGame(code: 'wh3', name: 'WH3', path: '/p'),
+              ]),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('glossary-migration-apply')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('glossary-migration-confirm-delete')),
+      findsOneWidget,
+    );
+    expect(find.text('Delete universal glossaries?'), findsOneWidget);
+    expect(find.textContaining('Legacy Universal'), findsWidgets);
+
+    // Go back dismisses the dialog and leaves the migration screen intact.
+    await tester.tap(find.text('Go back'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('glossary-migration-confirm-delete')),
+      findsNothing,
+    );
+    expect(find.text('Glossary migration required'), findsOneWidget);
   });
 }

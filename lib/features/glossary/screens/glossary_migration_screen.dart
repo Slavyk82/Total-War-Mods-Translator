@@ -11,6 +11,7 @@ import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/glossary/glossary_migration_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
@@ -81,10 +82,18 @@ class _GlossaryMigrationScreenState
   }
 
   Future<void> _apply() async {
+    final plan = ref.read(glossaryMigrationPlanProvider);
+    final unconverted = widget.pending.universals
+        .where((u) => plan[u.id] == null)
+        .toList();
+    if (unconverted.isNotEmpty) {
+      final confirmed = await _confirmDeletion(unconverted);
+      if (confirmed != true) return;
+    }
+
     setState(() => _applying = true);
     try {
       final service = ref.read(glossaryMigrationServiceProvider);
-      final plan = ref.read(glossaryMigrationPlanProvider);
       await service.applyMigration(MigrationPlan(conversions: plan));
       if (mounted) widget.onDone();
     } catch (e) {
@@ -94,6 +103,48 @@ class _GlossaryMigrationScreenState
     } finally {
       if (mounted) setState(() => _applying = false);
     }
+  }
+
+  Future<bool?> _confirmDeletion(List<UniversalGlossaryInfo> unconverted) {
+    final tokens = context.tokens;
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => TokenConfirmDialog(
+        key: const Key('glossary-migration-confirm-delete'),
+        icon: FluentIcons.delete_24_regular,
+        title: 'Delete universal glossaries?',
+        destructive: true,
+        confirmLabel: 'Delete and continue',
+        confirmIcon: FluentIcons.delete_24_regular,
+        cancelLabel: 'Go back',
+        warningMessage:
+            'Deleted glossaries cannot be recovered. Export to CSV first '
+            'if you want a backup.',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'The following ${unconverted.length == 1 ? 'glossary is' : 'glossaries are'} '
+              'marked "— Don\'t convert —" and will be permanently deleted:',
+              style: tokens.fontBody
+                  .copyWith(fontSize: 13, color: tokens.textDim),
+            ),
+            const SizedBox(height: 8),
+            for (final u in unconverted)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  '  • ${u.name} (${u.entryCount} entries)',
+                  style: tokens.fontBody
+                      .copyWith(fontSize: 12, color: tokens.text),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Closes the app cleanly. The DB is left half-migrated; the boot-time
