@@ -113,7 +113,7 @@ class GlossaryGameCodePartialMigration extends Migration {
       return true;
     } catch (e, stackTrace) {
       _logger.error('glossary_game_code_partial migration failed', e, stackTrace);
-      return false;
+      rethrow;
     }
   }
 }

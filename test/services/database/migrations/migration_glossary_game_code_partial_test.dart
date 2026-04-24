@@ -84,7 +84,7 @@ void main() {
       expect(rows.first['game_code'], isNull);
     });
 
-    test('drops UNIQUE(name) and CHECK is_global/game_installation_id', () async {
+    test('drops UNIQUE(name) — same name insertable twice after migration', () async {
       await DatabaseService.execute(
         "INSERT INTO game_installations (id, game_code, game_name, created_at, updated_at) VALUES ('gi1', 'wh3', 'WH3', 0, 0)",
       );
@@ -104,6 +104,30 @@ void main() {
       final rows = await DatabaseService.database
           .rawQuery("SELECT COUNT(*) as cnt FROM glossaries WHERE name = 'Dup'");
       expect(rows.first['cnt'], 2);
+    });
+
+    test('drops CHECK on is_global/game_installation_id — previously-violating row insertable', () async {
+      await DatabaseService.execute(
+        "INSERT INTO game_installations (id, game_code, game_name, created_at, updated_at) VALUES ('gi1', 'wh3', 'WH3', 0, 0)",
+      );
+      await DatabaseService.execute(
+        "INSERT INTO languages (id, code, name, native_name, is_active) VALUES ('lang_fr', 'fr', 'French', 'Français', 1)",
+      );
+
+      await GlossaryGameCodePartialMigration().execute();
+
+      // Before the migration, the CHECK constraint required:
+      //   (is_global = 1 AND game_installation_id IS NULL)
+      //   OR (is_global = 0 AND game_installation_id IS NOT NULL)
+      // A row with is_global=1 AND game_installation_id='gi1' would have
+      // violated it. After the migration it must be insertable.
+      await DatabaseService.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, target_language_id, game_code, created_at, updated_at) VALUES ('gv', 'Violator', 1, 'gi1', 'lang_fr', 'wh3', 0, 0)",
+      );
+      final rows = await DatabaseService.database
+          .rawQuery("SELECT is_global, game_installation_id FROM glossaries WHERE id = 'gv'");
+      expect(rows.first['is_global'], 1);
+      expect(rows.first['game_installation_id'], 'gi1');
     });
 
     test('is idempotent on already-migrated DB', () async {
