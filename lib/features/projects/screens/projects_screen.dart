@@ -20,7 +20,9 @@ import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
+import '../providers/projects_bulk_menu_visibility_provider.dart';
 import '../providers/projects_screen_providers.dart';
+import '../widgets/projects_bulk_menu_panel.dart';
 import 'package:twmt/features/projects/utils/open_project_editor.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
@@ -81,6 +83,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final projectsAsync = ref.watch(paginatedProjectsProvider);
     final languagesAsync = ref.watch(allLanguagesProvider);
     final selectionState = ref.watch(batchProjectSelectionProvider);
+    final bulkMenuVisible = ref.watch(projectsBulkMenuVisibilityProvider);
 
     return Material(
       color: tokens.bg,
@@ -109,10 +112,18 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               ),
             ),
           Expanded(
-            child: projectsAsync.when(
-              data: (projects) => _buildContent(projects, selectionState),
-              loading: () => _buildLoading(),
-              error: (e, _) => _buildError(e),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: projectsAsync.when(
+                    data: (projects) => _buildContent(projects, selectionState),
+                    loading: () => _buildLoading(),
+                    error: (e, _) => _buildError(e),
+                  ),
+                ),
+                if (bulkMenuVisible) const ProjectsBulkMenuPanel(),
+              ],
             ),
           ),
         ],
@@ -138,6 +149,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       const Expanded(child: _SearchField()),
       const _SortButton(),
       _SelectionModeButton(selectionState: selection),
+      const _BulkMenuToggleButton(),
     ];
   }
 
@@ -629,6 +641,58 @@ class _SelectionModeButton extends ConsumerWidget {
                 const SizedBox(width: 6),
                 Text(
                   'Selection',
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: isActive ? tokens.accent : tokens.textMid,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BulkMenuToggleButton extends ConsumerWidget {
+  const _BulkMenuToggleButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final isActive = ref.watch(projectsBulkMenuVisibilityProvider);
+    return Tooltip(
+      message: isActive ? 'Hide bulk menu' : 'Show bulk menu',
+      waitDuration: const Duration(milliseconds: 400),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: () => ref
+              .read(projectsBulkMenuVisibilityProvider.notifier)
+              .toggle(),
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: isActive ? tokens.accentBg : tokens.panel2,
+              border: Border.all(
+                color: isActive ? tokens.accent : tokens.border,
+              ),
+              borderRadius: BorderRadius.circular(tokens.radiusSm),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  FluentIcons.panel_right_24_regular,
+                  size: 16,
+                  color: isActive ? tokens.accent : tokens.textMid,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  isActive ? 'Hide bulk menu' : 'Show bulk menu',
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: isActive ? tokens.accent : tokens.textMid,
