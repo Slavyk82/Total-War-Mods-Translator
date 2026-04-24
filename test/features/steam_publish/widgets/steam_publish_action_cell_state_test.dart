@@ -227,6 +227,33 @@ void main() {
   );
 
   testWidgets(
+    'State A cancel returns to the non-edit rendering',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1920, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamActionCell(item: _project())),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      // Enter edit mode.
+      await tester.tap(find.byTooltip('Set Workshop id'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsOneWidget);
+
+      // Cancel and verify the A₀ row is back.
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('Generate pack'), findsOneWidget);
+      expect(find.byTooltip('Set Workshop id'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
       'State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
