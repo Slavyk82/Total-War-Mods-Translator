@@ -607,6 +607,8 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
             updated_at = ?
           ''', [now]);
         }
+
+        await _bumpProjectsUpdatedAtForVersions(txn, versionIds, now);
       } finally {
         if (disableTriggers) {
           await _recreateTriggers(txn);
@@ -707,6 +709,8 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
             updated_at = ?
           ''', [now]);
         }
+
+        await _bumpProjectsUpdatedAtForVersions(txn, versionIds, now);
       } finally {
         if (disableTriggers) {
           await _recreateTriggers(txn);
@@ -827,6 +831,12 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
             updated_at = ?
           ''', [now]);
         }
+
+        await _bumpProjectsUpdatedAtForVersions(
+          txn,
+          updates.map((u) => u.versionId).toList(),
+          now,
+        );
       } finally {
         if (disableTriggers) {
           await _recreateTriggers(txn);
@@ -906,6 +916,39 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
+  /// Bump `projects.updated_at` for every project whose translation units
+  /// are referenced by [versionIds].
+  ///
+  /// Scoped counterpart to the `trg_update_project_language_progress` trigger:
+  /// the trigger handles per-row writes but the bulk batch methods explicitly
+  /// drop it (for performance with >50 rows), so they must maintain the
+  /// invariant themselves. Runs inside the caller's transaction.
+  Future<void> _bumpProjectsUpdatedAtForVersions(
+    Transaction txn,
+    List<String> versionIds,
+    int now,
+  ) async {
+    if (versionIds.isEmpty) return;
+    const batchSize = 500;
+    for (var i = 0; i < versionIds.length; i += batchSize) {
+      final batch = versionIds.skip(i).take(batchSize).toList();
+      final placeholders = List.filled(batch.length, '?').join(',');
+      await txn.rawUpdate(
+        '''
+        UPDATE projects
+        SET updated_at = ?
+        WHERE id IN (
+          SELECT DISTINCT tu.project_id
+          FROM translation_units tu
+          INNER JOIN translation_versions tv ON tv.unit_id = tu.id
+          WHERE tv.id IN ($placeholders)
+        )
+        ''',
+        [now, ...batch],
+      );
+    }
+  }
+
   /// Recreate triggers after batch operations.
   Future<void> _recreateTriggers(Transaction txn) async {
     await txn.execute('''
@@ -925,6 +968,13 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
         ),
         updated_at = strftime('%s', 'now')
         WHERE id = NEW.project_language_id;
+
+        UPDATE projects
+        SET updated_at = strftime('%s', 'now')
+        WHERE id = (
+          SELECT project_id FROM project_languages
+          WHERE id = NEW.project_language_id
+        );
       END
     ''');
 

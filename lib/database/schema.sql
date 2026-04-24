@@ -839,7 +839,9 @@ BEGIN
     DELETE FROM translation_view_cache WHERE version_id = old.id;
 END;
 
--- Auto-update progress_percent
+-- Auto-update progress_percent and bubble the change up to projects.updated_at
+-- so UI filters that rely on `projects.updated_at` (e.g. the Projects screen's
+-- "Export outdated" quick filter) see per-row translation edits.
 CREATE TRIGGER IF NOT EXISTS trg_update_project_language_progress
 AFTER UPDATE ON translation_versions
 WHEN NEW.status != OLD.status
@@ -856,6 +858,13 @@ BEGIN
     ),
     updated_at = strftime('%s', 'now')
     WHERE id = NEW.project_language_id;
+
+    UPDATE projects
+    SET updated_at = strftime('%s', 'now')
+    WHERE id = (
+        SELECT project_id FROM project_languages
+        WHERE id = NEW.project_language_id
+    );
 END;
 
 -- Auto-update timestamps
