@@ -111,6 +111,24 @@ void main() {
   });
 
   testWidgets(
+    'State A (no pack, no id) renders the Set Workshop id icon button',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1920, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        SteamActionCell(item: _project()),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      // Generate pack must still render alongside the new pencil icon.
+      expect(find.text('Generate pack'), findsOneWidget);
+      expect(find.byTooltip('Set Workshop id'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
       'State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));

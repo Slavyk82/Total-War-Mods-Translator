@@ -78,7 +78,20 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
           ),
         );
       }
-      return _buildGenerateButton(context);
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            Expanded(child: _buildGenerateButton(context, padded: false)),
+            const SizedBox(width: 6),
+            _iconButton(
+              icon: FluentIcons.edit_24_regular,
+              tooltip: 'Set Workshop id',
+              onTap: _beginEditSteamId,
+            ),
+          ],
+        ),
+      );
     }
 
     if (!hasPublishedId || _isEditingSteamId) {
@@ -153,6 +166,13 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: core,
     );
+  }
+
+  /// Pre-fills the text field with the current id (if any) and switches the
+  /// cell into edit mode. Shared by the pencil icon in State A₀/A₁/C.
+  void _beginEditSteamId() {
+    _steamIdController.text = widget.item.publishedSteamId ?? '';
+    setState(() => _isEditingSteamId = true);
   }
 
   /// Opens the item's published Workshop page in the default browser.
