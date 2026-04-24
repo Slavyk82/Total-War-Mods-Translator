@@ -170,12 +170,20 @@ class ProjectWithDetails {
   }
 
   /// Check if there are pending changes to apply (excludes auto-applied changes)
-  /// OR if the project was impacted by a mod update (flag set during scan)
+  /// OR if the project was impacted by a mod update (flag set during scan).
+  ///
+  /// The persistent `has_mod_update_impact` flag is cleared only when the
+  /// translation editor's initState runs. Bulk workflows that don't route
+  /// through that path (per-row edits from the Projects screen, multi-project
+  /// bulk translate/validate) would otherwise leave the flag stuck at 1 even
+  /// when the remediation work is already done. Guard against that by also
+  /// checking the derived "everything is done" state.
   bool get hasUpdates {
-    // Check the persistent flag first (set when mod update is applied)
-    if (project.hasModUpdateImpact) return true;
-    // Also check for pending analysis changes (for backwards compatibility)
-    return updateAnalysis?.hasPendingChanges ?? false;
+    if (updateAnalysis?.hasPendingChanges ?? false) return true;
+    if (project.hasModUpdateImpact) {
+      return !(isFullyTranslated && !hasNeedsReviewUnits);
+    }
+    return false;
   }
 
   /// Check if all configured languages are 100% translated
@@ -549,6 +557,27 @@ class ProjectsWithDetailsNotifier
         }
       } else if (steamTimestamp != null && localTimestamp != null) {
         updateAnalysis = ModUpdateAnalysis.empty;
+      }
+    }
+
+    // Auto-heal the persistent `has_mod_update_impact` flag.
+    //
+    // The flag is set by `ProjectAnalysisHandler` during a mod scan and was
+    // originally cleared only by `TranslationEditorScreen.initState`. Any
+    // workflow that doesn't route through the editor (per-row edits from the
+    // Projects screen, bulk translate/validate spanning multiple projects)
+    // would otherwise leave the flag stuck at 1 even when the remediation
+    // work is complete — causing the "Needs Update" filter and "Mod updated"
+    // badges to remain stale. Clearing the flag here, when the project has
+    // nothing left to do, keeps the UI consistent with the actual DB state.
+    if (project.hasModUpdateImpact &&
+        languagesWithInfo.isNotEmpty &&
+        languagesWithInfo.every((lang) => lang.isComplete) &&
+        languagesWithInfo.every((lang) => lang.needsReviewUnits == 0) &&
+        !(updateAnalysis?.hasPendingChanges ?? false)) {
+      final clearResult = await projectRepo.clearModUpdateImpact(project.id);
+      if (clearResult.isOk) {
+        project = project.copyWith(hasModUpdateImpact: false);
       }
     }
 

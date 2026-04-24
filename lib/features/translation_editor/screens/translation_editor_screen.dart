@@ -14,6 +14,7 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
 import '../widgets/editor_action_sidebar.dart';
@@ -69,7 +70,13 @@ class _TranslationEditorScreenState
 
   Future<void> _clearModUpdateImpact() async {
     final projectRepo = ref.read(shared_repo.projectRepositoryProvider);
-    await projectRepo.clearModUpdateImpact(widget.projectId);
+    final result = await projectRepo.clearModUpdateImpact(widget.projectId);
+    if (result.isErr) {
+      ref.read(loggingServiceProvider).warning(
+        'Failed to clear mod update impact flag: ${result.unwrapErr().message}',
+        {'projectId': widget.projectId},
+      );
+    }
   }
 
   /// Ctrl+A handler: toggle selection over every row currently visible in
