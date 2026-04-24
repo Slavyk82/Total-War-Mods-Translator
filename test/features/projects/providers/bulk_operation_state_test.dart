@@ -44,5 +44,12 @@ void main() {
       );
       expect(s.failedProjectIds, ['b', 'c']);
     });
+
+    test('clearCurrentStep resets currentStep to null', () {
+      final s = BulkOperationState.idle().copyWith(currentStep: 'Translating');
+      expect(s.currentStep, 'Translating');
+      final cleared = s.copyWith(clearCurrentStep: true);
+      expect(cleared.currentStep, isNull);
+    });
   });
 }

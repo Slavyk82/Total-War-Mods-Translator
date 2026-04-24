@@ -69,6 +69,7 @@ class BulkOperationState {
     Map<String, ProjectOutcome>? results,
     bool? isCancelled,
     bool? isComplete,
+    bool clearCurrentStep = false,
   }) {
     return BulkOperationState(
       operationType: operationType ?? this.operationType,
@@ -77,7 +78,7 @@ class BulkOperationState {
       currentIndex: currentIndex ?? this.currentIndex,
       currentProjectId: currentProjectId ?? this.currentProjectId,
       currentProjectName: currentProjectName ?? this.currentProjectName,
-      currentStep: currentStep ?? this.currentStep,
+      currentStep: clearCurrentStep ? null : (currentStep ?? this.currentStep),
       currentProjectProgress:
           currentProjectProgress ?? this.currentProjectProgress,
       results: results ?? this.results,

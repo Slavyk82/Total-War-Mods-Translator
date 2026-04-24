@@ -152,7 +152,7 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
 
     state = state.copyWith(
       isComplete: true,
-      currentStep: null,
+      clearCurrentStep: true,
       currentProjectProgress: -1,
     );
   }
