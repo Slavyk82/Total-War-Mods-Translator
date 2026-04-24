@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
@@ -25,6 +26,40 @@ ProjectLanguageWithInfo? _findLanguage(
     if (l.language?.code == code) return l;
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Shared provider/model resolution
+// ---------------------------------------------------------------------------
+
+/// Resolves the current "selected LLM" state into the `(providerId, modelId)`
+/// shape expected by the translation batch schema.
+///
+/// Preference order — mirrors the editor's translate action:
+/// 1. A row in `llm_provider_models` referenced by `selectedLlmModelProvider`
+///    (provider code + per-provider model id).
+/// 2. The global `active_llm_provider` setting (provider only, no modelId).
+///
+/// Returns `null` if nothing is selected and no active provider is set.
+Future<({String providerId, String? modelId})?> _resolveSelectedProvider(
+  Ref ref,
+) async {
+  final selectedModelId = ref.read(selectedLlmModelProvider);
+  if (selectedModelId != null) {
+    final modelRepo = ref.read(llmProviderModelRepositoryProvider);
+    final modelResult = await modelRepo.getById(selectedModelId);
+    if (modelResult.isOk) {
+      final model = modelResult.unwrap();
+      return (
+        providerId: 'provider_${model.providerCode}',
+        modelId: model.modelId,
+      );
+    }
+  }
+  final settings = await ref.read(llmProviderSettingsProvider.future);
+  final activeCode = settings['active_llm_provider'] ?? '';
+  if (activeCode.isEmpty) return null;
+  return (providerId: 'provider_$activeCode', modelId: null);
 }
 
 // ---------------------------------------------------------------------------
@@ -69,9 +104,15 @@ Future<ProjectOutcome> runBulkTranslate({
       );
     }
 
-    // Require a selected LLM model.
-    final providerId = ref.read(selectedLlmModelProvider);
-    if (providerId == null) {
+    // Resolve the selected LLM model into the `(providerId, modelId)` pair
+    // expected by the batch schema. `translation_batches.provider_id` is a
+    // foreign key onto `translation_providers(id)` which uses the
+    // `'provider_<code>'` format (e.g. `'provider_anthropic'`). The raw
+    // `selectedLlmModelProvider` value is a model PK, not a provider id, so
+    // we look the model up to recover its provider code — same path the
+    // editor's translate action uses.
+    final resolved = await _resolveSelectedProvider(ref);
+    if (resolved == null) {
       return const ProjectOutcome(
         status: ProjectResultStatus.failed,
         message: 'no LLM model selected',
@@ -86,7 +127,8 @@ Future<ProjectOutcome> runBulkTranslate({
       projectId: project.project.id,
       unitIds: unitIds,
       skipTM: settings.skipTranslationMemory,
-      providerId: providerId,
+      providerId: resolved.providerId,
+      modelId: resolved.modelId,
       onProgress: onProgress,
     );
 

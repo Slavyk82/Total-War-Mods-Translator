@@ -85,6 +85,7 @@ Provider<HeadlessBatchTranslationRunner> _runnerProvider({
         required projectLanguageId,
         required projectId,
         required providerId,
+        modelId,
         required skipTranslationMemory,
         required unitsPerBatch,
         required parallelBatches,
