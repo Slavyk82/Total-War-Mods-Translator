@@ -41,7 +41,7 @@ String _issues(List<({String rule, String sev, String msg})> entries) {
 }
 
 void main() {
-  group('filteredTranslationRows — severityFilters', () {
+  group('filteredTranslationRows — severityFilter', () {
     test('keeps only versions with issues matching the selected severity',
         () async {
       final rows = [
@@ -70,10 +70,10 @@ void main() {
 
       container
           .read(editorFilterProvider.notifier)
-          .setStatusFilters({TranslationVersionStatus.needsReview});
+          .setStatusFilter(TranslationVersionStatus.needsReview);
       container
           .read(editorFilterProvider.notifier)
-          .setSeverityFilters({ValidationSeverity.error});
+          .setSeverityFilter(ValidationSeverity.error);
 
       final filtered = await container
           .read(filteredTranslationRowsProvider('p', 'fr').future);
@@ -98,17 +98,17 @@ void main() {
 
       container
           .read(editorFilterProvider.notifier)
-          .setStatusFilters({TranslationVersionStatus.needsReview});
+          .setStatusFilter(TranslationVersionStatus.needsReview);
       container
           .read(editorFilterProvider.notifier)
-          .setSeverityFilters({ValidationSeverity.error});
+          .setSeverityFilter(ValidationSeverity.error);
 
       final filtered = await container
           .read(filteredTranslationRowsProvider('p', 'fr').future);
       expect(filtered.map((r) => r.id).toList(), ['a']);
     });
 
-    test('empty severityFilters is a no-op', () async {
+    test('null severityFilter is a no-op', () async {
       final rows = [
         _row(id: 'a', status: TranslationVersionStatus.needsReview),
         _row(id: 'b', status: TranslationVersionStatus.needsReview),
@@ -121,7 +121,7 @@ void main() {
 
       container
           .read(editorFilterProvider.notifier)
-          .setStatusFilters({TranslationVersionStatus.needsReview});
+          .setStatusFilter(TranslationVersionStatus.needsReview);
 
       final filtered = await container
           .read(filteredTranslationRowsProvider('p', 'fr').future);
@@ -184,7 +184,7 @@ void main() {
       // counts — the counts are computed before the status filter.
       container
           .read(editorFilterProvider.notifier)
-          .setStatusFilters({TranslationVersionStatus.translated});
+          .setStatusFilter(TranslationVersionStatus.translated);
 
       final counts = await container
           .read(visibleSeverityCountsProvider('p', 'fr').future);

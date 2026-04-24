@@ -5,47 +5,54 @@ import 'editor_row_models.dart';
 
 part 'editor_filter_notifier.g.dart';
 
-/// Filter state for the translation editor
+/// Filter state for the translation editor.
+///
+/// The STATUS and SEVERITY groups are each single-select (nullable): at most
+/// one value active per group, independently of each other.
 class EditorFilterState {
-  final Set<TranslationVersionStatus> statusFilters;
+  final TranslationVersionStatus? statusFilter;
   final Set<TmSourceType> tmSourceFilters;
-  final Set<ValidationSeverity> severityFilters;
+  final ValidationSeverity? severityFilter;
   final String searchQuery;
   final bool showOnlyWithIssues;
 
   const EditorFilterState({
-    this.statusFilters = const {},
+    this.statusFilter,
     this.tmSourceFilters = const {},
-    this.severityFilters = const {},
+    this.severityFilter,
     this.searchQuery = '',
     this.showOnlyWithIssues = false,
   });
 
   bool get hasActiveFilters =>
-    statusFilters.isNotEmpty ||
-    tmSourceFilters.isNotEmpty ||
-    severityFilters.isNotEmpty ||
-    searchQuery.isNotEmpty ||
-    showOnlyWithIssues;
+      statusFilter != null ||
+      tmSourceFilters.isNotEmpty ||
+      severityFilter != null ||
+      searchQuery.isNotEmpty ||
+      showOnlyWithIssues;
 
   EditorFilterState copyWith({
-    Set<TranslationVersionStatus>? statusFilters,
+    TranslationVersionStatus? statusFilter,
+    bool clearStatusFilter = false,
     Set<TmSourceType>? tmSourceFilters,
-    Set<ValidationSeverity>? severityFilters,
+    ValidationSeverity? severityFilter,
+    bool clearSeverityFilter = false,
     String? searchQuery,
     bool? showOnlyWithIssues,
   }) {
     return EditorFilterState(
-      statusFilters: statusFilters ?? this.statusFilters,
+      statusFilter:
+          clearStatusFilter ? null : (statusFilter ?? this.statusFilter),
       tmSourceFilters: tmSourceFilters ?? this.tmSourceFilters,
-      severityFilters: severityFilters ?? this.severityFilters,
+      severityFilter: clearSeverityFilter
+          ? null
+          : (severityFilter ?? this.severityFilter),
       searchQuery: searchQuery ?? this.searchQuery,
       showOnlyWithIssues: showOnlyWithIssues ?? this.showOnlyWithIssues,
     );
   }
 }
 
-/// Provider for filter state
 @riverpod
 class EditorFilter extends _$EditorFilter {
   @override
@@ -53,15 +60,19 @@ class EditorFilter extends _$EditorFilter {
     return const EditorFilterState();
   }
 
-  void setStatusFilters(Set<TranslationVersionStatus> filters) {
-    // Dropping needsReview from the status set also wipes the severity
-    // sub-filter — severity is only meaningful under needsReview.
-    final droppingNeedsReview = state.statusFilters
-            .contains(TranslationVersionStatus.needsReview) &&
-        !filters.contains(TranslationVersionStatus.needsReview);
+  /// Set the STATUS pill selection. Pass `null` to clear.
+  ///
+  /// Dropping `needsReview` from status also wipes the severity sub-filter —
+  /// severity is only meaningful when status is `needsReview`.
+  void setStatusFilter(TranslationVersionStatus? value) {
+    final wasNeedsReview =
+        state.statusFilter == TranslationVersionStatus.needsReview;
+    final dropsNeedsReview =
+        wasNeedsReview && value != TranslationVersionStatus.needsReview;
     state = state.copyWith(
-      statusFilters: filters,
-      severityFilters: droppingNeedsReview ? const {} : state.severityFilters,
+      statusFilter: value,
+      clearStatusFilter: value == null,
+      clearSeverityFilter: dropsNeedsReview,
     );
   }
 
@@ -69,8 +80,12 @@ class EditorFilter extends _$EditorFilter {
     state = state.copyWith(tmSourceFilters: filters);
   }
 
-  void setSeverityFilters(Set<ValidationSeverity> filters) {
-    state = state.copyWith(severityFilters: filters);
+  /// Set the SEVERITY pill selection. Pass `null` to clear.
+  void setSeverityFilter(ValidationSeverity? value) {
+    state = state.copyWith(
+      severityFilter: value,
+      clearSeverityFilter: value == null,
+    );
   }
 
   void setSearchQuery(String query) {

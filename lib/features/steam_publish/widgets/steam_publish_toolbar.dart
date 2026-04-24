@@ -15,7 +15,7 @@ import '../providers/steam_publish_providers.dart';
 /// Toolbar for the Steam Publish screen.
 ///
 /// Row 1 hosts title + count/selection, plus trailing actions (select all,
-/// select outdated, search, publish, refresh, settings).
+/// select outdated, sort, sort direction, publish, refresh, settings, search).
 /// Row 2 hosts the STATE filter pill group.
 class SteamPublishToolbar extends StatelessWidget {
   final int totalItems;
@@ -87,12 +87,6 @@ class SteamPublishToolbar extends StatelessWidget {
             : 'No outdated items to select',
         onTap: onSelectOutdated,
       ),
-      ListSearchField(
-        value: searchQuery,
-        hintText: 'Search packs...',
-        onChanged: onSearchChanged,
-        onClear: () => onSearchChanged(''),
-      ),
       const _SortButton(),
       const _SortDirectionButton(),
       _PublishSelectionButton(
@@ -113,6 +107,13 @@ class SteamPublishToolbar extends StatelessWidget {
         onTap: onOpenSettings,
         size: 32,
         iconSize: 16,
+      ),
+      ListSearchField(
+        width: 200,
+        value: searchQuery,
+        hintText: 'Search packs...',
+        onChanged: onSearchChanged,
+        onClear: () => onSearchChanged(''),
       ),
     ];
   }

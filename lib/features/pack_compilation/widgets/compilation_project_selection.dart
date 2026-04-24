@@ -1,11 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/lists/list_row.dart';
+import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/game_installation.dart';
 import '../../../widgets/common/fluent_spinner.dart' hide FluentProgressBar;
-import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Section for selecting projects to include in compilation.
@@ -28,6 +30,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final tokens = context.tokens;
     final gameInstallation = currentGameAsync.asData?.value;
     final filterParams = ProjectFilterParams(
       gameInstallationId: gameInstallation?.id,
@@ -39,9 +42,9 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.dividerColor),
+        color: tokens.panel,
+        borderRadius: BorderRadius.circular(tokens.radiusSm),
+        border: Border.all(color: tokens.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,13 +62,17 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                   children: [
                     Icon(
                       FluentIcons.folder_24_regular,
-                      color: theme.colorScheme.primary,
+                      color: tokens.accent,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Select Projects',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: tokens.fontDisplay.copyWith(
+                        fontSize: 18,
+                        color: tokens.text,
+                        fontStyle: tokens.fontDisplayItalic
+                            ? FontStyle.italic
+                            : FontStyle.normal,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -73,13 +80,14 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: tokens.accent,
+                        borderRadius: BorderRadius.circular(tokens.radiusPill),
                       ),
                       child: Text(
                         '${state.selectedProjectIds.length} selected',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.primary,
+                        style: tokens.fontBody.copyWith(
+                          fontSize: 12,
+                          color: tokens.accentFg,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -87,22 +95,28 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                   ],
                 ),
                 // Filter field
-                SizedBox(
+                ListSearchField(
                   width: 200,
-                  child: _ProjectFilterField(filter: filter),
+                  hintText: 'Search projects...',
+                  value: filter,
+                  onChanged: (value) => ref
+                      .read(projectFilterProvider.notifier)
+                      .setFilter(value),
+                  onClear: () =>
+                      ref.read(projectFilterProvider.notifier).clear(),
                 ),
                 projectsAsync.whenData((projects) {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CompilationSmallButton(
-                        label: 'Select All',
+                      SmallTextButton(
+                        label: 'Select all',
                         onTap: () =>
                             onSelectAll(projects.map((p) => p.id).toList()),
                       ),
                       const SizedBox(width: 8),
-                      CompilationSmallButton(
-                        label: 'Deselect All',
+                      SmallTextButton(
+                        label: 'Deselect all',
                         onTap: onDeselectAll,
                       ),
                     ],
@@ -115,30 +129,72 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           // Project list
           Expanded(
             child: gameInstallation == null
-                ? _buildSelectGameMessage(theme)
+                ? _buildSelectGameMessage(theme, tokens)
                 : state.selectedLanguageId == null
-                    ? _buildSelectLanguageMessage(theme)
+                    ? _buildSelectLanguageMessage(theme, tokens)
                     : projectsAsync.when(
                         data: (projects) {
                         if (projects.isEmpty) {
                           if (filter.isNotEmpty) {
-                            return _buildNoFilterResults(theme);
+                            return _buildNoFilterResults(theme, tokens);
                           }
-                          return _buildNoProjectsMessage(theme);
+                          return _buildNoProjectsMessage(theme, tokens);
                         }
                         return ListView.builder(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: projects.length,
                           itemBuilder: (context, index) {
                             final projectInfo = projects[index];
-                            final isSelected =
-                                state.selectedProjectIds.contains(projectInfo.id);
-                            return CompilationProjectItem(
-                              name: projectInfo.displayName,
-                              imageUrl: projectInfo.imageUrl,
-                              isSelected: isSelected,
-                              onToggle: () => onToggle(projectInfo.id),
-                              progressPercent: projectInfo.progressPercent,
+                            final isSelected = state.selectedProjectIds
+                                .contains(projectInfo.id);
+                            return ListRow(
+                              selected: isSelected,
+                              onTap: () => onToggle(projectInfo.id),
+                              height: null,
+                              columns: const [
+                                ListRowColumn.fixed(80),
+                                ListRowColumn.flex(3),
+                              ],
+                              children: [
+                                ProjectCoverThumbnail(
+                                  imageUrl: projectInfo.imageUrl,
+                                  isGameTranslation:
+                                      projectInfo.project.isGameTranslation,
+                                  gameCode: gameInstallation.gameCode,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        projectInfo.displayName,
+                                        style: tokens.fontBody.copyWith(
+                                          color: tokens.text,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${projectInfo.translatedUnits}/'
+                                        '${projectInfo.totalUnits} · '
+                                        '${projectInfo.progressPercent.toStringAsFixed(0)}%',
+                                        style: tokens.fontMono.copyWith(
+                                          fontSize: 12,
+                                          color: tokens.textDim,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             );
                           },
                         );
@@ -149,7 +205,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                         error: (error, _) => Center(
                           child: Text(
                             'Failed to load projects',
-                            style: TextStyle(color: theme.colorScheme.error),
+                            style: TextStyle(color: tokens.err),
                           ),
                         ),
                       ),
@@ -159,7 +215,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildNoFilterResults(ThemeData theme) {
+  Widget _buildNoFilterResults(ThemeData theme, TwmtThemeTokens tokens) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -167,20 +223,20 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           Icon(
             FluentIcons.search_24_regular,
             size: 48,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            color: tokens.textFaint,
           ),
           const SizedBox(height: 12),
           Text(
             'No projects found',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodyMedium?.color,
+              color: tokens.textMid,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Try a different search term',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              color: tokens.textDim,
             ),
           ),
         ],
@@ -188,7 +244,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSelectGameMessage(ThemeData theme) {
+  Widget _buildSelectGameMessage(ThemeData theme, TwmtThemeTokens tokens) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -196,13 +252,13 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           Icon(
             FluentIcons.games_24_regular,
             size: 48,
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            color: tokens.textFaint,
           ),
           const SizedBox(height: 12),
           Text(
             'Select a game in the sidebar first',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              color: tokens.textDim,
             ),
           ),
         ],
@@ -210,7 +266,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSelectLanguageMessage(ThemeData theme) {
+  Widget _buildSelectLanguageMessage(ThemeData theme, TwmtThemeTokens tokens) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -218,13 +274,13 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           Icon(
             FluentIcons.translate_24_regular,
             size: 48,
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            color: tokens.textFaint,
           ),
           const SizedBox(height: 12),
           Text(
             'Select a language first',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              color: tokens.textDim,
             ),
           ),
         ],
@@ -232,7 +288,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildNoProjectsMessage(ThemeData theme) {
+  Widget _buildNoProjectsMessage(ThemeData theme, TwmtThemeTokens tokens) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -240,397 +296,17 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           Icon(
             FluentIcons.folder_24_regular,
             size: 48,
-            color: theme.colorScheme.primary.withValues(alpha: 0.3),
+            color: tokens.textFaint,
           ),
           const SizedBox(height: 12),
           Text(
             'No projects with translations in this language',
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+              color: tokens.textDim,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Individual project item in the selection list.
-class CompilationProjectItem extends StatefulWidget {
-  const CompilationProjectItem({
-    super.key,
-    required this.name,
-    required this.isSelected,
-    required this.onToggle,
-    this.imageUrl,
-    this.progressPercent = 0.0,
-  });
-
-  final String name;
-  final String? imageUrl;
-  final bool isSelected;
-  final VoidCallback onToggle;
-  final double progressPercent;
-
-  @override
-  State<CompilationProjectItem> createState() => _CompilationProjectItemState();
-}
-
-class _CompilationProjectItemState extends State<CompilationProjectItem> {
-  bool _isHovered = false;
-
-  Color _getProgressColor(ThemeData theme, double progress) {
-    if (progress >= 100) {
-      return Colors.green;
-    } else if (progress >= 50) {
-      return theme.colorScheme.primary;
-    } else if (progress > 0) {
-      return Colors.orange;
-    } else {
-      return theme.colorScheme.outline;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final progressPercent = widget.progressPercent.clamp(0.0, 100.0);
-
-    Color backgroundColor;
-    if (widget.isSelected) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.1);
-    } else if (_isHovered) {
-      backgroundColor = theme.colorScheme.primary.withValues(alpha: 0.05);
-    } else {
-      backgroundColor = Colors.transparent;
-    }
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onToggle,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              // Checkbox
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: widget.isSelected
-                      ? theme.colorScheme.primary
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: widget.isSelected
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.outline,
-                    width: 2,
-                  ),
-                ),
-                child: widget.isSelected
-                    ? Icon(
-                        FluentIcons.checkmark_16_regular,
-                        size: 14,
-                        color: theme.colorScheme.onPrimary,
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              // Mod image
-              CompilationModImage(imageUrl: widget.imageUrl),
-              const SizedBox(width: 12),
-              // Project name and progress
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.name,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight:
-                            widget.isSelected ? FontWeight.w600 : FontWeight.w400,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    // Progress bar
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FluentProgressBar(
-                            value: progressPercent / 100,
-                            height: 4,
-                            backgroundColor: theme
-                                .colorScheme.surfaceContainerHighest
-                                .withValues(alpha: 0.3),
-                            color: _getProgressColor(theme, progressPercent),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${progressPercent.toInt()}%',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: _getProgressColor(theme, progressPercent),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Mod image widget for the project list (75x75).
-class CompilationModImage extends StatelessWidget {
-  final String? imageUrl;
-
-  const CompilationModImage({super.key, this.imageUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    if (imageUrl == null || imageUrl!.isEmpty) {
-      return Container(
-        width: 75,
-        height: 75,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Icon(
-          FluentIcons.image_off_24_regular,
-          size: 24,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      );
-    }
-
-    // Check if it's a local file path or a URL
-    final isLocalFile =
-        !imageUrl!.startsWith('http://') && !imageUrl!.startsWith('https://');
-
-    if (isLocalFile) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: Image.file(
-          File(imageUrl!),
-          width: 75,
-          height: 75,
-          cacheWidth: 150,
-          cacheHeight: 150,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Container(
-            width: 75,
-            height: 75,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(
-              FluentIcons.image_alt_text_24_regular,
-              size: 24,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: CachedNetworkImage(
-        imageUrl: imageUrl!,
-        width: 75,
-        height: 75,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          width: 75,
-          height: 75,
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(
-            child: FluentSpinner(size: 20, strokeWidth: 2),
-          ),
-        ),
-        errorWidget: (context, url, error) => Container(
-          width: 75,
-          height: 75,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            FluentIcons.image_alt_text_24_regular,
-            size: 24,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Small button used in headers and toolbars within the compilation editor.
-class CompilationSmallButton extends StatefulWidget {
-  const CompilationSmallButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  State<CompilationSmallButton> createState() => _CompilationSmallButtonState();
-}
-
-class _CompilationSmallButtonState extends State<CompilationSmallButton> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: _isHovered
-                ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.5),
-            ),
-          ),
-          child: Text(
-            widget.label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Filter field for searching projects by name.
-class _ProjectFilterField extends ConsumerStatefulWidget {
-  const _ProjectFilterField({required this.filter});
-
-  final String filter;
-
-  @override
-  ConsumerState<_ProjectFilterField> createState() => _ProjectFilterFieldState();
-}
-
-class _ProjectFilterFieldState extends ConsumerState<_ProjectFilterField> {
-  late TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.filter);
-  }
-
-  @override
-  void didUpdateWidget(covariant _ProjectFilterField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.filter != _controller.text) {
-      _controller.text = widget.filter;
-      _controller.selection = TextSelection.collapsed(offset: widget.filter.length);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return TextField(
-      controller: _controller,
-      decoration: InputDecoration(
-        hintText: 'Filter projects...',
-        isDense: true,
-        prefixIcon: Padding(
-          padding: const EdgeInsets.only(left: 8, right: 4),
-          child: Icon(
-            FluentIcons.search_20_regular,
-            size: 18,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        suffixIcon: widget.filter.isNotEmpty
-            ? MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {
-                    ref.read(projectFilterProvider.notifier).clear();
-                    _controller.clear();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Icon(
-                      FluentIcons.dismiss_16_regular,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              )
-            : null,
-        suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: theme.dividerColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: theme.dividerColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: theme.colorScheme.primary),
-        ),
-        filled: true,
-        fillColor: theme.colorScheme.surfaceContainerLow,
-      ),
-      style: theme.textTheme.bodySmall,
-      onChanged: (value) =>
-          ref.read(projectFilterProvider.notifier).setFilter(value),
     );
   }
 }

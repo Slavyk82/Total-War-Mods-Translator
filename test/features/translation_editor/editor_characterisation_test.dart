@@ -162,7 +162,7 @@ void main() {
       addTearDown(filterSub.close);
       container
           .read(editorFilterProvider.notifier)
-          .setStatusFilters({TranslationVersionStatus.translated});
+          .setStatusFilter(TranslationVersionStatus.translated);
       final sub = container.listen(
         filteredTranslationRowsProvider(projectId, languageId),
         (_, _) {},
