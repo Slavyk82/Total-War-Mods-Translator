@@ -5,44 +5,63 @@ import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/providers/batch/batch_operations_provider.dart';
 
 void main() {
-  group('EditorFilter — severityFilters', () {
-    test('defaults to empty set', () {
+  group('EditorFilter — single-value severity filter', () {
+    test('defaults to null', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final state = container.read(editorFilterProvider);
-      expect(state.severityFilters, isEmpty);
+      expect(state.severityFilter, isNull);
       expect(state.hasActiveFilters, isFalse);
     });
 
-    test('setSeverityFilters replaces the set and flips hasActiveFilters', () {
+    test('setSeverityFilter replaces the value and flips hasActiveFilters', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       container
           .read(editorFilterProvider.notifier)
-          .setSeverityFilters({ValidationSeverity.error});
+          .setSeverityFilter(ValidationSeverity.error);
       final state = container.read(editorFilterProvider);
-      expect(state.severityFilters, {ValidationSeverity.error});
+      expect(state.severityFilter, ValidationSeverity.error);
       expect(state.hasActiveFilters, isTrue);
     });
 
-    test('clearFilters wipes severityFilters', () {
+    test('setSeverityFilter(null) clears severity', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(editorFilterProvider.notifier);
-      notifier.setSeverityFilters(
-          {ValidationSeverity.error, ValidationSeverity.warning});
-      notifier.clearFilters();
-      expect(container.read(editorFilterProvider).severityFilters, isEmpty);
+      notifier.setSeverityFilter(ValidationSeverity.error);
+      notifier.setSeverityFilter(null);
+      expect(container.read(editorFilterProvider).severityFilter, isNull);
     });
 
-    test('dropping needsReview from status wipes severityFilters', () {
+    test('clearFilters wipes severityFilter', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(editorFilterProvider.notifier);
-      notifier.setStatusFilters({TranslationVersionStatus.needsReview});
-      notifier.setSeverityFilters({ValidationSeverity.error});
-      notifier.setStatusFilters({TranslationVersionStatus.translated});
-      expect(container.read(editorFilterProvider).severityFilters, isEmpty);
+      notifier.setSeverityFilter(ValidationSeverity.warning);
+      notifier.clearFilters();
+      expect(container.read(editorFilterProvider).severityFilter, isNull);
+    });
+
+    test('dropping needsReview from status wipes severityFilter', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(editorFilterProvider.notifier);
+      notifier.setStatusFilter(TranslationVersionStatus.needsReview);
+      notifier.setSeverityFilter(ValidationSeverity.error);
+      notifier.setStatusFilter(TranslationVersionStatus.translated);
+      expect(container.read(editorFilterProvider).severityFilter, isNull);
+    });
+
+    test('setStatusFilter(null) does not wipe severityFilter when status was not needsReview', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(editorFilterProvider.notifier);
+      notifier.setStatusFilter(TranslationVersionStatus.translated);
+      notifier.setSeverityFilter(ValidationSeverity.error);
+      notifier.setStatusFilter(null);
+      expect(container.read(editorFilterProvider).severityFilter,
+          ValidationSeverity.error);
     });
   });
 }

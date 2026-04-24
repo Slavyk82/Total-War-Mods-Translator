@@ -52,10 +52,10 @@ mixin EditorActionsValidation on EditorActionsBase {
     // the filter state now contains `needsReview`.
     ref
         .read(editorFilterProvider.notifier)
-        .setStatusFilters({TranslationVersionStatus.needsReview});
+        .setStatusFilter(TranslationVersionStatus.needsReview);
     ref
         .read(editorFilterProvider.notifier)
-        .setSeverityFilters(const {});
+        .setSeverityFilter(null);
   }
 
   /// Re-runs the validation service on every translated entry and writes

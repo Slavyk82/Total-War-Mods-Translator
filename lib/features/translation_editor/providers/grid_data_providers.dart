@@ -125,8 +125,8 @@ Future<List<TranslationRow>> filteredTranslationRows(
   // Apply filters
   return allRows.where((row) {
     // Status filter
-    if (filterState.statusFilters.isNotEmpty) {
-      if (!filterState.statusFilters.contains(row.status)) {
+    if (filterState.statusFilter != null) {
+      if (filterState.statusFilter != row.status) {
         return false;
       }
     }
@@ -158,9 +158,9 @@ Future<List<TranslationRow>> filteredTranslationRows(
       }
     }
 
-    // Severity filter (only meaningful when statusFilters contains needsReview;
-    // applied unconditionally because an empty set short-circuits).
-    if (!_matchesSeverity(row, filterState.severityFilters)) {
+    // Severity filter (only meaningful when statusFilter is needsReview;
+    // state.setStatusFilter clears severity when it leaves needsReview).
+    if (!_matchesSeverity(row, filterState.severityFilter)) {
       return false;
     }
 
@@ -169,14 +169,14 @@ Future<List<TranslationRow>> filteredTranslationRows(
 }
 
 /// Returns true when the row has at least one parsed validation issue whose
-/// severity is in [severities]. An empty [severities] set is a no-op.
+/// severity matches [filter]. A null [filter] is a no-op.
 bool _matchesSeverity(
-    TranslationRow row, Set<batch.ValidationSeverity> severities) {
-  if (severities.isEmpty) return true;
+    TranslationRow row, batch.ValidationSeverity? filter) {
+  if (filter == null) return true;
   final parsed = parseValidationIssues(row.version.validationIssues);
   if (parsed.isEmpty) return false;
   for (final issue in parsed) {
-    if (severities.contains(bucketSeverity(issue.severity))) return true;
+    if (filter == bucketSeverity(issue.severity)) return true;
   }
   return false;
 }

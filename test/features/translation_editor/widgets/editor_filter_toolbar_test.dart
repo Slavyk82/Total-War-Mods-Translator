@@ -83,13 +83,13 @@ void main() {
     );
   }
 
-  testWidgets('renders FilterToolbar with STATUS group only',
+  testWidgets('renders FilterToolbar with STATE group only',
       (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
 
     expect(find.byType(FilterToolbar), findsOneWidget);
-    expect(find.text('STATUS'), findsOneWidget);
+    expect(find.text('STATE'), findsOneWidget);
     expect(find.text('TM SOURCE'), findsNothing);
 
     expect(find.text('Pending'), findsOneWidget);
@@ -97,7 +97,7 @@ void main() {
     expect(find.text('Needs review'), findsOneWidget);
   });
 
-  testWidgets('tapping Pending pill toggles editorFilterProvider.statusFilters',
+  testWidgets('tapping Pending pill toggles editorFilterProvider.statusFilter',
       (tester) async {
     final container = ProviderContainer(overrides: [
       editorStatsProvider(projectId, languageId).overrideWith(
@@ -124,13 +124,13 @@ void main() {
     final innerContainer =
         ProviderScope.containerOf(element, listen: false);
     expect(
-      innerContainer.read(editorFilterProvider).statusFilters,
-      contains(TranslationVersionStatus.pending),
+      innerContainer.read(editorFilterProvider).statusFilter,
+      TranslationVersionStatus.pending,
     );
   });
 
   testWidgets(
-      'hides SEVERITY pill group when needsReview is not in statusFilters',
+      'hides SEVERITY pill group when needsReview is not the statusFilter',
       (tester) async {
     await tester.pumpWidget(build());
     await tester.pumpAndSettle();
@@ -152,14 +152,16 @@ void main() {
     final container = ProviderScope.containerOf(element, listen: false);
     container
         .read(editorFilterProvider.notifier)
-        .setStatusFilters({TranslationVersionStatus.needsReview});
+        .setStatusFilter(TranslationVersionStatus.needsReview);
     await tester.pumpAndSettle();
 
     expect(find.text('SEVERITY'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'Errors'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'Warnings'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget); // error count
-    expect(find.text('7'), findsOneWidget); // warning count
+    // Scope the count assertions to the FilterPill widgets — the sidebar's
+    // step badge renders "3" too, so a bare find.text('3') matches twice.
+    expect(find.widgetWithText(FilterPill, '3'), findsOneWidget); // error count
+    expect(find.widgetWithText(FilterPill, '7'), findsOneWidget); // warning count
   });
 }
 

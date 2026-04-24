@@ -232,6 +232,7 @@ class _TranslationEditorScreenState
                   ListSearchField(
                     value: filter.searchQuery,
                     focusNode: _searchFocus,
+                    width: 200,
                     hintText: 'Search key · source · target',
                     onChanged: (value) => ref
                         .read(editorFilterProvider.notifier)
@@ -243,8 +244,7 @@ class _TranslationEditorScreenState
                 ],
                 pillGroups: [
                   _buildStatusGroup(filter, stats),
-                  if (filter.statusFilters
-                      .contains(TranslationVersionStatus.needsReview))
+                  if (filter.statusFilter == TranslationVersionStatus.needsReview)
                     _buildSeverityGroup(filter, severityCounts),
                 ],
               ),
@@ -335,30 +335,25 @@ class _TranslationEditorScreenState
       TranslationVersionStatus status,
       int? count,
     ) {
-      final active = filter.statusFilters.contains(status);
+      final active = filter.statusFilter == status;
       return FilterPill(
         label: label,
         selected: active,
         count: count,
         onToggle: () {
-          final updated =
-              Set<TranslationVersionStatus>.from(filter.statusFilters);
-          if (active) {
-            updated.remove(status);
-          } else {
-            updated.add(status);
-          }
-          ref.read(editorFilterProvider.notifier).setStatusFilters(updated);
+          ref
+              .read(editorFilterProvider.notifier)
+              .setStatusFilter(active ? null : status);
         },
       );
     }
 
     return FilterPillGroup(
-      label: 'STATUS',
+      label: 'STATE',
       clearLabel: 'Clear',
       onClear: () => ref
           .read(editorFilterProvider.notifier)
-          .setStatusFilters(const {}),
+          .setStatusFilter(null),
       pills: [
         pill('Pending', TranslationVersionStatus.pending, stats?.pendingCount),
         pill('Translated', TranslationVersionStatus.translated,
@@ -378,22 +373,15 @@ class _TranslationEditorScreenState
       ValidationSeverity severity,
       int count,
     ) {
-      final active = filter.severityFilters.contains(severity);
+      final active = filter.severityFilter == severity;
       return FilterPill(
         label: label,
         selected: active,
         count: count,
         onToggle: () {
-          final updated =
-              Set<ValidationSeverity>.from(filter.severityFilters);
-          if (active) {
-            updated.remove(severity);
-          } else {
-            updated.add(severity);
-          }
           ref
               .read(editorFilterProvider.notifier)
-              .setSeverityFilters(updated);
+              .setSeverityFilter(active ? null : severity);
         },
       );
     }
@@ -403,7 +391,7 @@ class _TranslationEditorScreenState
       clearLabel: 'Clear',
       onClear: () => ref
           .read(editorFilterProvider.notifier)
-          .setSeverityFilters(const {}),
+          .setSeverityFilter(null),
       pills: [
         pill('Errors', ValidationSeverity.error, counts.errors),
         pill('Warnings', ValidationSeverity.warning, counts.warnings),

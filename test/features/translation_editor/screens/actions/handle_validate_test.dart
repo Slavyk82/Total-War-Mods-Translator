@@ -193,9 +193,9 @@ void main() {
 
       // Keep `editorFilterProvider` alive for the duration of the test.
       // Without an active listener the provider (autoDispose) would reset
-      // between reads — `setStatusFilters({needsReview})` then
+      // between reads — `setStatusFilter(needsReview)` then
       // subsequently reading the state would yield the initial
-      // (empty) value again.
+      // (null) value again.
       final filterSubscription = container.listen(
         editorFilterProvider,
         (_, _) {},
@@ -205,8 +205,8 @@ void main() {
       // Confirm initial filter state is empty — otherwise the assertions
       // below would be vacuous.
       final initialFilter = container.read(editorFilterProvider);
-      expect(initialFilter.statusFilters, isEmpty);
-      expect(initialFilter.severityFilters, isEmpty);
+      expect(initialFilter.statusFilter, isNull);
+      expect(initialFilter.severityFilter, isNull);
 
       // Kick off `handleValidate` via the harness and settle the async
       // microtasks it schedules. We pump a handful of frames rather than
@@ -242,15 +242,15 @@ void main() {
 
       final finalFilter = container.read(editorFilterProvider);
       expect(
-        finalFilter.statusFilters,
-        isEmpty,
+        finalFilter.statusFilter,
+        isNull,
         reason:
             'handleValidate must not pivot the status filter when zero rows '
             'need review — pivoting would hide every row in the grid',
       );
       expect(
-        finalFilter.severityFilters,
-        isEmpty,
+        finalFilter.severityFilter,
+        isNull,
         reason: 'severity filter must remain untouched on the zero-issue path',
       );
     },
@@ -346,15 +346,15 @@ void main() {
 
       final finalFilter = container.read(editorFilterProvider);
       expect(
-        finalFilter.statusFilters,
-        contains(TranslationVersionStatus.needsReview),
+        finalFilter.statusFilter,
+        TranslationVersionStatus.needsReview,
         reason:
             'handleValidate must focus the grid on needsReview when at least '
             'one row needs review',
       );
       expect(
-        finalFilter.severityFilters,
-        isEmpty,
+        finalFilter.severityFilter,
+        isNull,
         reason:
             'handleValidate must clear severity filters so the SEVERITY pill '
             'group reflects fresh counts',
