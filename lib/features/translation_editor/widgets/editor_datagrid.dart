@@ -16,6 +16,7 @@ import '../../projects/providers/projects_screen_providers.dart' show projectsWi
 import 'editor_data_source.dart';
 import 'translation_history_dialog.dart';
 import 'prompt_preview_dialog.dart';
+import 'clear_confirmation_dialog.dart';
 import 'delete_confirmation_dialog.dart';
 import 'cell_renderers/context_menu_builder.dart';
 import 'grid_actions_handler.dart';
@@ -410,7 +411,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
       row: row,
       selectionCount: _selectedRowIds.length,
       onSelectAll: _handleSelectAll,
-      onClear: _handleClear,
+      onClear: _handleClearConfirmation,
       onViewHistory: () => _handleViewHistory(row),
       onDelete: _handleDeleteConfirmation,
       onForceRetranslate: widget.onForceRetranslate,
@@ -429,8 +430,24 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
     await handler.handleValidate();
   }
 
+  /// Show clear confirmation dialog
+  Future<void> _handleClearConfirmation() async {
+    if (_selectedRowIds.isEmpty || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => ClearConfirmationDialog(
+        count: _selectedRowIds.length,
+      ),
+    );
+
+    if (confirmed == true) {
+      await _performClear();
+    }
+  }
+
   /// Clear translation text for selected rows
-  Future<void> _handleClear() async {
+  Future<void> _performClear() async {
     final handler = _createActionsHandler();
     await handler.handleClear();
   }
