@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -18,6 +17,7 @@ import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_screen_providers.dart';
@@ -906,7 +906,7 @@ class _ProjectRow extends StatelessWidget {
         ),
       ),
       children: [
-        _CoverThumbnail(
+        ProjectCoverThumbnail(
           imageUrl: project.imageUrl,
           isGameTranslation: project.isGameTranslation,
           gameCode: details.gameInstallation?.gameCode,
@@ -1152,82 +1152,6 @@ class _RowLanguageLine extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CoverThumbnail extends StatelessWidget {
-  final String? imageUrl;
-  final bool isGameTranslation;
-  final String? gameCode;
-  const _CoverThumbnail({
-    required this.imageUrl,
-    required this.isGameTranslation,
-    required this.gameCode,
-  });
-
-  IconData _iconFor(String? code) {
-    switch (code?.toLowerCase()) {
-      case 'wh3':
-      case 'wh2':
-      case 'wh1':
-        return FluentIcons.shield_24_regular;
-      case 'troy':
-        return FluentIcons.crown_24_regular;
-      case 'threekingdoms':
-      case '3k':
-        return FluentIcons.people_24_regular;
-      default:
-        return FluentIcons.games_24_regular;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    Widget fallback() => Icon(
-          _iconFor(gameCode),
-          size: 44,
-          color: tokens.textMid,
-        );
-
-    Widget img;
-    if (isGameTranslation) {
-      img = Image.asset(
-        'assets/twmt_icon.png',
-        fit: BoxFit.cover,
-        width: 80,
-        height: 80,
-        cacheWidth: 160,
-        cacheHeight: 160,
-        errorBuilder: (_, _, _) => fallback(),
-      );
-    } else if (imageUrl != null && imageUrl!.isNotEmpty) {
-      img = Image.file(
-        File(imageUrl!),
-        fit: BoxFit.cover,
-        width: 80,
-        height: 80,
-        cacheWidth: 160,
-        cacheHeight: 160,
-        errorBuilder: (_, _, _) => fallback(),
-      );
-    } else {
-      img = fallback();
-    }
-    return Center(
-      child: Container(
-        width: 80,
-        height: 80,
-        decoration: BoxDecoration(
-          color: tokens.panel,
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-          border: Border.all(color: tokens.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        alignment: Alignment.center,
-        child: img,
       ),
     );
   }
