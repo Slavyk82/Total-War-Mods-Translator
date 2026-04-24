@@ -50,7 +50,7 @@ class ProjectsBulkMenuPanel extends ConsumerWidget {
             const SizedBox(height: 8),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 12),
-              child: EditorToolbarSkipTm(compact: true),
+              child: EditorToolbarSkipTm(),
             ),
             const SizedBox(height: 8),
             const Padding(

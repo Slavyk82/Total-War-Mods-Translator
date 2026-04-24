@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_target_language_provider.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 class BulkTargetLanguageSelector extends ConsumerWidget {
   const BulkTargetLanguageSelector({super.key});
@@ -10,33 +12,74 @@ class BulkTargetLanguageSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final languagesAsync = ref.watch(allLanguagesProvider);
+    final scopeAsync = ref.watch(visibleProjectsForBulkProvider);
     final current = ref.watch(bulkTargetLanguageProvider).asData?.value;
+    final tokens = context.tokens;
 
-    return languagesAsync.when(
-      data: (languages) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-        child: DropdownMenu<String>(
-          width: 296,
-          label: const Text('Target language'),
-          initialSelection: current,
-          dropdownMenuEntries: [
-            for (final l in languages)
-              DropdownMenuEntry<String>(
-                value: l.code,
-                label: l.displayName,
-              ),
-          ],
-          onSelected: (code) {
-            if (code != null) {
-              ref.read(bulkTargetLanguageProvider.notifier).setLanguage(code);
-            }
-          },
+    final padding = const EdgeInsets.fromLTRB(12, 12, 12, 0);
+
+    if (languagesAsync.isLoading || scopeAsync.isLoading) {
+      return const SizedBox.shrink();
+    }
+    if (languagesAsync.hasError) {
+      return Padding(
+        padding: padding,
+        child: Text(
+          'Failed to load languages: ${languagesAsync.error}',
+          style: tokens.fontBody.copyWith(color: tokens.err, fontSize: 12),
         ),
-      ),
-      loading: () => const SizedBox.shrink(),
-      error: (e, _) => Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text('Failed to load languages: $e'),
+      );
+    }
+
+    final allLanguages = languagesAsync.asData?.value ?? const <Language>[];
+    final scope = scopeAsync.asData?.value;
+
+    // Only propose languages already created in at least one visible project.
+    final visibleCodes = <String>{};
+    if (scope != null) {
+      for (final project in scope.visible) {
+        for (final pl in project.languages) {
+          final code = pl.language?.code;
+          if (code != null) visibleCodes.add(code);
+        }
+      }
+    }
+
+    final filtered = allLanguages
+        .where((l) => visibleCodes.contains(l.code))
+        .toList()
+      ..sort((a, b) => a.displayName.compareTo(b.displayName));
+
+    if (filtered.isEmpty) {
+      return Padding(
+        padding: padding,
+        child: Text(
+          'No target language available in visible projects.',
+          style: tokens.fontBody.copyWith(color: tokens.textDim, fontSize: 12),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: DropdownMenu<String>(
+        width: 296,
+        label: const Text('Target language'),
+        initialSelection: current != null && visibleCodes.contains(current)
+            ? current
+            : null,
+        dropdownMenuEntries: [
+          for (final l in filtered)
+            DropdownMenuEntry<String>(
+              value: l.code,
+              label: l.displayName,
+            ),
+        ],
+        onSelected: (code) {
+          if (code != null) {
+            ref.read(bulkTargetLanguageProvider.notifier).setLanguage(code);
+          }
+        },
       ),
     );
   }

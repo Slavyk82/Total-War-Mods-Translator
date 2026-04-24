@@ -5,6 +5,9 @@ import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/bulk_target_language_provider.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_operation_progress_dialog.dart';
+import 'package:twmt/theme/twmt_theme_tokens.dart';
+
+enum _BulkButtonVariant { primary, regular, danger }
 
 class BulkActionButtons extends ConsumerWidget {
   const BulkActionButtons({super.key});
@@ -40,6 +43,7 @@ class BulkActionButtons extends ConsumerWidget {
             label: 'Translate all',
             enabled: canAct,
             tooltip: disabledTooltip,
+            variant: _BulkButtonVariant.primary,
             onPressed: () => _start(context, ref, BulkOperationType.translate),
           ),
           const SizedBox(height: 8),
@@ -56,7 +60,7 @@ class BulkActionButtons extends ConsumerWidget {
             label: 'Force validate reviews',
             enabled: canAct,
             tooltip: disabledTooltip,
-            danger: true,
+            variant: _BulkButtonVariant.danger,
             onPressed: () => _confirmThenStart(context, ref),
           ),
           const SizedBox(height: 8),
@@ -143,27 +147,76 @@ class _BulkButton extends StatelessWidget {
     required this.enabled,
     required this.onPressed,
     this.tooltip,
-    this.danger = false,
+    this.variant = _BulkButtonVariant.regular,
   });
+
   final IconData icon;
   final String label;
   final bool enabled;
   final VoidCallback onPressed;
   final String? tooltip;
-  final bool danger;
+  final _BulkButtonVariant variant;
 
   @override
   Widget build(BuildContext context) {
-    final button = FilledButton.icon(
-      onPressed: enabled ? onPressed : null,
-      icon: Icon(icon),
-      label: Text(label),
-      style: danger
-          ? FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            )
-          : null,
+    final tokens = context.tokens;
+
+    final Color bg;
+    final Color fg;
+    final Color borderColor;
+    switch (variant) {
+      case _BulkButtonVariant.primary:
+        bg = enabled ? tokens.accent : tokens.accent.withValues(alpha: 0.4);
+        fg = enabled ? tokens.accentFg : tokens.accentFg.withValues(alpha: 0.6);
+        borderColor = bg;
+      case _BulkButtonVariant.danger:
+        bg = enabled ? tokens.errBg : Colors.transparent;
+        fg = enabled ? tokens.err : tokens.textFaint;
+        borderColor = enabled ? tokens.err : tokens.border;
+      case _BulkButtonVariant.regular:
+        bg = enabled ? tokens.panel2 : Colors.transparent;
+        fg = enabled ? tokens.text : tokens.textFaint;
+        borderColor = tokens.border;
+    }
+
+    final button = MouseRegion(
+      cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onPressed : null,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: bg,
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(tokens.radiusSm),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: fg,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+
     if (!enabled && tooltip != null) {
       return Tooltip(message: tooltip!, child: button);
     }
