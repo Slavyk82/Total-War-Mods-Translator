@@ -465,6 +465,66 @@ void main() {
       );
     });
 
+    test(
+        'skips exact match on already-translated units '
+        '(A-level protection for manual edits)', () async {
+      // u-a: NOT in alreadyTranslated → should be processed and persisted.
+      // u-b: IS in alreadyTranslated → must be skipped; its TM match must
+      //       never be written even though the TM service would return a hit.
+      final unitA = _fakeUnit('a', 'Hello');
+      final unitB = _fakeUnit('b', 'World');
+      final units = [unitA, unitB];
+
+      // Mark only u-b as already translated.
+      when(() => versionRepository.getTranslatedUnitIds(
+            unitIds: any(named: 'unitIds'),
+            projectLanguageId: any(named: 'projectLanguageId'),
+          )).thenAnswer((_) async => Ok({'unit-b'}));
+
+      // Both units have exact TM hits — only u-a's should be applied.
+      when(() => tmService.findExactMatch(
+            sourceText: 'Hello',
+            targetLanguageCode: 'fr',
+          )).thenAnswer((_) async => Ok(_fakeTmMatch(
+            sourceText: 'Hello',
+            targetText: 'Bonjour',
+            similarity: 1.0,
+            matchType: TmMatchType.exact,
+            entryId: 'entry-hello',
+          )));
+      when(() => tmService.findExactMatch(
+            sourceText: 'World',
+            targetLanguageCode: 'fr',
+          )).thenAnswer((_) async => Ok(_fakeTmMatch(
+            sourceText: 'World',
+            targetText: 'Monde',
+            similarity: 1.0,
+            matchType: TmMatchType.exact,
+            entryId: 'entry-world',
+          )));
+
+      final (_, matchedIds) = await handler.performLookup(
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      // Only u-a is returned in matchedIds.
+      expect(matchedIds, equals({'unit-a'}));
+      // Only u-a's version is written to the repository.
+      expect(persistedVersions, hasLength(1));
+      expect(persistedVersions.single.unitId, 'unit-a');
+      expect(persistedVersions.single.translatedText, 'Bonjour');
+      // u-b must not appear in persisted versions — its manual edit is preserved.
+      expect(
+        persistedVersions.map((v) => v.unitId),
+        isNot(contains('unit-b')),
+      );
+    });
+
     test('cancellation: a throwing checkPauseOrCancel propagates out of '
         'performLookup; fuzzy phase is never reached after the abort',
         () async {

@@ -65,9 +65,27 @@ class TmLookupHandler {
       'totalUnits': units.length,
     });
 
+    // Pre-fetch already-translated unit IDs once, applied to both phases.
+    // Protects hand-edited translations from being overwritten by TM matches
+    // (exact or fuzzy auto-accept).
+    final allUnitIds = units.map((u) => u.id).toList();
+    final alreadyTranslatedResult = await _versionRepository.getTranslatedUnitIds(
+      unitIds: allUnitIds,
+      projectLanguageId: context.projectLanguageId,
+    );
+    final alreadyTranslatedIds = alreadyTranslatedResult.isOk
+        ? alreadyTranslatedResult.unwrap()
+        : <String>{};
+
+    final untranslatedUnits = alreadyTranslatedIds.isEmpty
+        ? units
+        : units.where((u) => !alreadyTranslatedIds.contains(u.id)).toList();
+
+    final skippedAsAlreadyTranslated = units.length - untranslatedUnits.length;
+
     var progress = currentProgress.copyWith(
       currentPhase: TranslationPhase.tmExactLookup,
-      phaseDetail: 'Searching exact matches in Translation Memory (${units.length} units)...',
+      phaseDetail: 'Searching exact matches in Translation Memory (${untranslatedUnits.length} units)...',
       timestamp: DateTime.now(),
     );
     onProgressUpdate(batchId, progress);
@@ -78,16 +96,33 @@ class TmLookupHandler {
     // Accumulate usage counts across all chunks for a single batch increment at the end
     final allEntryUsageCounts = <String, int>{};
 
+    // Short-circuit when every unit already has a translation.
+    if (untranslatedUnits.isEmpty) {
+      _logger.info('All units already translated, skipping TM lookup', {
+        'batchId': batchId,
+        'skippedAsAlreadyTranslated': skippedAsAlreadyTranslated,
+      });
+      final finalProgress = progress.copyWith(
+        phaseDetail: 'TM lookup skipped: all $skippedAsAlreadyTranslated units already translated',
+        currentPhase: TranslationPhase.tmFuzzyLookup,
+        skippedUnits: 0,
+        processedUnits: 0,
+        tmReuseRate: 0.0,
+        timestamp: DateTime.now(),
+      );
+      return (finalProgress, <String>{});
+    }
+
     // === EXACT LOOKUP PHASE (collect only) ===
     final allExactMatches = <_PendingTmMatch>[];
-    for (var i = 0; i < units.length; i += _maxConcurrentLookups) {
+    for (var i = 0; i < untranslatedUnits.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
-      final chunk = units.skip(i).take(_maxConcurrentLookups).toList();
-      final progressPct = ((i / units.length) * 100).round();
+      final chunk = untranslatedUnits.skip(i).take(_maxConcurrentLookups).toList();
+      final progressPct = ((i / untranslatedUnits.length) * 100).round();
       progress = progress.copyWith(
         phaseDetail:
-            'Exact TM lookup: $progressPct% ($i/${units.length} units, ${allExactMatches.length} matches)...',
+            'Exact TM lookup: $progressPct% ($i/${untranslatedUnits.length} units, ${allExactMatches.length} matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
@@ -110,7 +145,7 @@ class TmLookupHandler {
         _logger.debug('TM exact lookup progress', {
           'batchId': batchId,
           'processed': i,
-          'total': units.length,
+          'total': untranslatedUnits.length,
           'matches': allExactMatches.length,
         });
       }
@@ -144,60 +179,44 @@ class TmLookupHandler {
       }
     }
 
-    // Update progress for fuzzy phase
+    // Update progress for fuzzy phase.
+    // Report how many units were skipped upfront so users understand the denominator.
+    final skippedMsg = skippedAsAlreadyTranslated > 0
+        ? ' ($skippedAsAlreadyTranslated units skipped, already translated).'
+        : '.';
     progress = progress.copyWith(
       currentPhase: TranslationPhase.tmFuzzyLookup,
-      phaseDetail: 'Exact lookup complete: ${exactMatchedUnitIds.length} matches found. Starting fuzzy search...',
+      phaseDetail:
+          'Exact lookup complete: ${exactMatchedUnitIds.length} matches found$skippedMsg Starting fuzzy search...',
       skippedUnits: skippedCount,
       processedUnits: processedCount,
       timestamp: DateTime.now(),
     );
     onProgressUpdate(batchId, progress);
 
-    // Filter units that need fuzzy matching (not already exact matched)
-    final unitsForFuzzy = units.where((u) => !exactMatchedUnitIds.contains(u.id)).toList();
+    // Filter units that need fuzzy matching (not already exact matched).
+    // No separate DB call needed — untranslatedUnits already excludes hand-edited units.
+    final unitsForFuzzy = untranslatedUnits.where((u) => !exactMatchedUnitIds.contains(u.id)).toList();
 
     _logger.info('Starting fuzzy TM lookup', {
       'batchId': batchId,
       'unitsForFuzzy': unitsForFuzzy.length,
       'exactMatched': exactMatchedUnitIds.length,
-    });
-
-    // Pre-fetch all translated unit IDs in one batch query (optimization)
-    // This avoids N sequential DB queries during fuzzy matching
-    final fuzzyUnitIds = unitsForFuzzy.map((u) => u.id).toList();
-    final alreadyTranslatedIdsResult = await _versionRepository.getTranslatedUnitIds(
-      unitIds: fuzzyUnitIds,
-      projectLanguageId: context.projectLanguageId,
-    );
-    final alreadyTranslatedIds = alreadyTranslatedIdsResult.isOk
-        ? alreadyTranslatedIdsResult.unwrap()
-        : <String>{};
-
-    // Further filter to exclude already translated units
-    final unitsForFuzzyFiltered = unitsForFuzzy
-        .where((u) => !alreadyTranslatedIds.contains(u.id))
-        .toList();
-
-    _logger.debug('Fuzzy lookup after pre-filter', {
-      'batchId': batchId,
-      'beforeFilter': unitsForFuzzy.length,
-      'afterFilter': unitsForFuzzyFiltered.length,
-      'alreadyTranslated': alreadyTranslatedIds.length,
+      'skippedAsAlreadyTranslated': skippedAsAlreadyTranslated,
     });
 
     // === FUZZY LOOKUP PHASE (collect only) ===
     final allFuzzyMatches = <_PendingTmMatch>[];
-    for (var i = 0; i < unitsForFuzzyFiltered.length; i += _maxConcurrentLookups) {
+    for (var i = 0; i < unitsForFuzzy.length; i += _maxConcurrentLookups) {
       await checkPauseOrCancel(batchId);
 
       final chunk =
-          unitsForFuzzyFiltered.skip(i).take(_maxConcurrentLookups).toList();
+          unitsForFuzzy.skip(i).take(_maxConcurrentLookups).toList();
       final progressPct =
-          ((i / unitsForFuzzyFiltered.length) * 100).round();
+          ((i / unitsForFuzzy.length) * 100).round();
       progress = progress.copyWith(
         phaseDetail:
-            'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzyFiltered.length} units, ${allFuzzyMatches.length} matches)...',
+            'Fuzzy TM lookup (≥85%): $progressPct% ($i/${unitsForFuzzy.length} units, ${allFuzzyMatches.length} matches)...',
         timestamp: DateTime.now(),
       );
       onProgressUpdate(batchId, progress);
