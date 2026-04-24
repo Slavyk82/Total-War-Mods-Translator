@@ -11,6 +11,9 @@ import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../services/glossary/glossary_auto_provisioning_service.dart';
+import '../../../services/service_locator.dart';
+import '../../../services/shared/i_logging_service.dart';
 import '../providers/projects_screen_providers.dart';
 import '../providers/project_detail_providers.dart';
 
@@ -218,6 +221,8 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
       final translationUnitRepo = ref.read(translationUnitRepositoryProvider);
       final translationVersionRepo =
           ref.read(translationVersionRepositoryProvider);
+      final projectRepo = ref.read(projectRepositoryProvider);
+      final gameInstallationRepo = ref.read(gameInstallationRepositoryProvider);
       const uuid = Uuid();
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
@@ -271,6 +276,51 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
           throw Exception(
               'Failed to create translation versions: ${versionResult.error}');
         }
+      }
+
+      // Best-effort: provision an empty glossary per (gameCode, languageId)
+      // so the new language automatically has a glossary available. Never
+      // block the add-language flow on provisioning failures.
+      try {
+        final projectResult = await projectRepo.getById(widget.projectId);
+        if (projectResult.isOk) {
+          final project = projectResult.value;
+          final gameResult =
+              await gameInstallationRepo.getById(project.gameInstallationId);
+          if (gameResult.isOk) {
+            final gameCode = gameResult.value.gameCode;
+            final provisioner =
+                ServiceLocator.get<GlossaryAutoProvisioningService>();
+            for (final languageId in languageIdsList) {
+              await provisioner.provisionForProjectLanguage(
+                gameCode: gameCode,
+                targetLanguageId: languageId,
+              );
+            }
+          } else {
+            ServiceLocator.get<ILoggingService>().warning(
+              'Glossary auto-provision skipped: game installation lookup failed',
+              {
+                'projectId': widget.projectId,
+                'gameInstallationId': project.gameInstallationId,
+                'error': gameResult.error.toString(),
+              },
+            );
+          }
+        } else {
+          ServiceLocator.get<ILoggingService>().warning(
+            'Glossary auto-provision skipped: project lookup failed',
+            {
+              'projectId': widget.projectId,
+              'error': projectResult.error.toString(),
+            },
+          );
+        }
+      } catch (e) {
+        ServiceLocator.get<ILoggingService>().warning(
+          'Glossary auto-provision for project languages failed',
+          {'projectId': widget.projectId, 'error': e.toString()},
+        );
       }
 
       if (!context.mounted) return;

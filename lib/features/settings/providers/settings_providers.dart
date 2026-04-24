@@ -4,6 +4,9 @@ import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/service_providers.dart' as bridge;
 import '../../../services/settings/settings_service.dart';
 import '../../../services/llm/llm_model_management_service.dart';
+import '../../../services/glossary/glossary_auto_provisioning_service.dart';
+import '../../../services/service_locator.dart';
+import '../../../services/shared/i_logging_service.dart';
 import '../../../models/domain/llm_provider_model.dart';
 
 part 'settings_providers.g.dart';
@@ -108,6 +111,21 @@ class GeneralSettings extends _$GeneralSettings {
     final key = _getGamePathKey(gameCode);
     await service.setString(key, path);
     ref.invalidateSelf();
+
+    // Auto-provision empty glossaries for this game only when a path is
+    // actually set. Clearing the path must not trigger provisioning.
+    if (path.isNotEmpty) {
+      try {
+        await ServiceLocator.get<GlossaryAutoProvisioningService>()
+            .provisionForGame(gameCode);
+      } catch (e) {
+        // Best-effort: don't block the settings save on provisioning.
+        ServiceLocator.get<ILoggingService>().warning(
+          'Glossary auto-provision for game failed',
+          {'gameCode': gameCode, 'error': e.toString()},
+        );
+      }
+    }
   }
 
   Future<void> updateWorkshopPath(String path) async {
