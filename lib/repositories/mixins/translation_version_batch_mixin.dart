@@ -465,6 +465,7 @@ mixin TranslationVersionBatchMixin {
       if (disableTriggers) {
         onProgress?.call(0, total, 'Preparing batch operation...');
         await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_insert');
         await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
         await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
       }
@@ -621,6 +622,16 @@ mixin TranslationVersionBatchMixin {
               ),
               updated_at = strftime('%s', 'now')
               WHERE id = NEW.project_language_id;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_translation_versions_fts_insert
+            AFTER INSERT ON translation_versions
+            WHEN new.translated_text IS NOT NULL
+            BEGIN
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              VALUES (new.translated_text, new.validation_issues, new.id);
             END
           ''');
 
