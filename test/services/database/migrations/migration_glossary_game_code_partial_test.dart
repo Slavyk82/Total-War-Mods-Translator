@@ -130,6 +130,53 @@ void main() {
       expect(rows.first['game_installation_id'], 'gi1');
     });
 
+    test('preserves glossary_entries rows through the table rebuild (FK ON)',
+        () async {
+      // Regression: with PRAGMA foreign_keys = ON (production setting), the
+      // `DROP TABLE glossaries` inside the rebuild performs an implicit
+      // DELETE FROM glossaries which cascades through
+      // `glossary_entries.glossary_id ON DELETE CASCADE`, wiping every entry.
+      // Seed a universal glossary with a handful of entries, flip FK on,
+      // run the migration, and assert entries survive.
+      await DatabaseService.execute(
+        "INSERT INTO languages (id, code, name, native_name, is_active) VALUES ('lang_fr', 'fr', 'French', 'Français', 1)",
+      );
+      await DatabaseService.execute(
+        "INSERT INTO glossaries (id, name, is_global, target_language_id, created_at, updated_at) VALUES ('gu', 'Universal FR', 1, 'lang_fr', 0, 0)",
+      );
+      // 5 entries on the universal glossary.
+      for (var i = 0; i < 5; i++) {
+        await DatabaseService.execute(
+          "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) "
+          "VALUES ('e$i', 'gu', 'fr', 'src$i', 'dst$i', 0, 0)",
+        );
+      }
+      expect(
+        (await DatabaseService.database.rawQuery(
+                "SELECT COUNT(*) AS cnt FROM glossary_entries WHERE glossary_id = 'gu'"))
+            .first['cnt'],
+        5,
+      );
+
+      // Match production: FK enforcement is ON.
+      await DatabaseService.execute('PRAGMA foreign_keys = ON');
+      try {
+        await GlossaryGameCodePartialMigration().execute();
+      } finally {
+        await DatabaseService.execute('PRAGMA foreign_keys = OFF');
+      }
+
+      expect(
+        (await DatabaseService.database.rawQuery(
+                "SELECT COUNT(*) AS cnt FROM glossary_entries WHERE glossary_id = 'gu'"))
+            .first['cnt'],
+        5,
+        reason:
+            'Table rebuild must not cascade-delete entries when FK=ON. '
+            'See SQLite docs on "Making Other Kinds Of Table Schema Changes".',
+      );
+    });
+
     test('is idempotent on already-migrated DB', () async {
       await GlossaryGameCodePartialMigration().execute();
       final applied = await GlossaryGameCodePartialMigration().isApplied();

@@ -44,7 +44,17 @@ class GlossaryGameCodePartialMigration extends Migration {
       // make the rename fail in a database that still has that view.
       // `legacy_alter_table = 1` tells SQLite to skip that full-schema
       // validation during this migration only. Restored afterward.
+      //
+      // `foreign_keys = OFF` is the SQLite-documented recipe for table
+      // rebuilds ("Making Other Kinds Of Table Schema Changes" §7). With
+      // FK enforcement on, `DROP TABLE glossaries` performs an implicit
+      // `DELETE FROM glossaries` which cascades through
+      // `glossary_entries.glossary_id ON DELETE CASCADE` and wipes every
+      // entry. The toggle must happen OUTSIDE the transaction: PRAGMA
+      // foreign_keys is a no-op inside one. Restored + `foreign_key_check`
+      // after commit.
       await DatabaseService.database.execute('PRAGMA legacy_alter_table = 1');
+      await DatabaseService.database.execute('PRAGMA foreign_keys = OFF');
       try {
         await DatabaseService.database.transaction((txn) async {
           await txn.execute('ALTER TABLE glossaries ADD COLUMN game_code TEXT');
@@ -106,7 +116,17 @@ class GlossaryGameCodePartialMigration extends Migration {
           ''');
         });
       } finally {
+        await DatabaseService.database.execute('PRAGMA foreign_keys = ON');
         await DatabaseService.database.execute('PRAGMA legacy_alter_table = 0');
+      }
+
+      final violations = await DatabaseService.database
+          .rawQuery('PRAGMA foreign_key_check');
+      if (violations.isNotEmpty) {
+        _logger.warning(
+          'glossary_game_code_partial: FK integrity violations after rebuild',
+          {'violations': violations.toString()},
+        );
       }
 
       _logger.info('glossary_game_code_partial migration applied');

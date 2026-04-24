@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/database/data_migrations/validation_issues_json_data_migration.dart';
 import '../services/shared/i_logging_service.dart';
 import 'shared/logging_providers.dart';
 import 'shared/service_providers.dart';
@@ -70,7 +71,9 @@ class DataMigration extends _$DataMigration {
     final prefs = await SharedPreferences.getInstance();
     final rebuildDone = prefs.getBool(_tmRebuildKey) ?? false;
     final hashMigrationDone = prefs.getBool(_tmHashMigrationKey) ?? false;
-    return !rebuildDone || !hashMigrationDone;
+    final validationIssuesApplied =
+        await ValidationIssuesJsonDataMigration().isApplied();
+    return !rebuildDone || !hashMigrationDone || !validationIssuesApplied;
   }
 
   /// Run all pending migrations
@@ -83,7 +86,30 @@ class DataMigration extends _$DataMigration {
     final tmService = ref.read(translationMemoryServiceProvider);
 
     try {
-      // Step 1: TM Rebuild (adds missing entries with SHA256 hashes)
+      // Step 1: validation_issues JSON rewrite (fast; drops triggers)
+      final validationMigration = ValidationIssuesJsonDataMigration();
+      if (!await validationMigration.isApplied()) {
+        _logging.info('Running validation_issues JSON rewrite');
+        state = state.copyWith(
+          currentStep: 'Upgrading validation data...',
+          progressMessage: 'Preparing...',
+          currentProgress: 0,
+          totalProgress: 0,
+        );
+        await validationMigration.run(
+          onProgress: (processed, total) {
+            state = state.copyWith(
+              progressMessage: total == 0
+                  ? 'No rows to migrate'
+                  : '$processed / $total entries',
+              currentProgress: processed,
+              totalProgress: total,
+            );
+          },
+        );
+      }
+
+      // Step 2: TM Rebuild (adds missing entries with SHA256 hashes)
       final rebuildDone = prefs.getBool(_tmRebuildKey) ?? false;
       if (!rebuildDone) {
         _logging.info('Running TM rebuild');
@@ -116,7 +142,7 @@ class DataMigration extends _$DataMigration {
         }
       }
 
-      // Step 2: TM Hash Migration (converts old hashes, removes duplicates)
+      // Step 3: TM Hash Migration (converts old hashes, removes duplicates)
       final hashMigrationDone = prefs.getBool(_tmHashMigrationKey) ?? false;
       if (!hashMigrationDone) {
         _logging.info('Running TM hash migration');

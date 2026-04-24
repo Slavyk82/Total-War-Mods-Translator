@@ -186,6 +186,44 @@ void main() {
           .rawQuery('SELECT game_code FROM glossaries WHERE id = ?', ['gu']);
       expect(rows.first['game_code'], 'wh3');
     });
+
+    test('preserves glossary_entries through finalizeSchema rebuild (FK ON)',
+        () async {
+      // Regression: with PRAGMA foreign_keys = ON (production setting), the
+      // `DROP TABLE glossaries` inside `_finalizeSchemaInTxn` performs an
+      // implicit DELETE FROM glossaries which cascades through
+      // `glossary_entries.glossary_id ON DELETE CASCADE`. That wiped every
+      // entry the user had just "converted" from a universal glossary.
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, target_language_id, created_at, updated_at) VALUES ('gu', 'Universal', 1, 'lang_fr', 0, 0)",
+      );
+      for (var i = 0; i < 4; i++) {
+        await DatabaseService.database.execute(
+          "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) "
+          "VALUES ('e$i', 'gu', 'fr', 'src$i', 'dst$i', 0, 0)",
+        );
+      }
+
+      await DatabaseService.database.execute('PRAGMA foreign_keys = ON');
+      try {
+        await service.applyMigration(
+            const MigrationPlan(conversions: {'gu': 'wh3'}));
+      } finally {
+        await DatabaseService.database.execute('PRAGMA foreign_keys = OFF');
+      }
+
+      // The glossary row survives with game_code='wh3', and its 4 entries
+      // must still be attached to it after the table rebuild.
+      final rows = await DatabaseService.database
+          .rawQuery('SELECT game_code FROM glossaries WHERE id = ?', ['gu']);
+      expect(rows.first['game_code'], 'wh3');
+      final count = (await DatabaseService.database.rawQuery(
+              "SELECT COUNT(*) AS cnt FROM glossary_entries WHERE glossary_id = 'gu'"))
+          .first['cnt'];
+      expect(count, 4,
+          reason:
+              'Table rebuild must not cascade-delete entries when FK=ON.');
+    });
   });
 
   group('applyMigration — duplicate merge', () {
