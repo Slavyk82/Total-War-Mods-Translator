@@ -114,31 +114,35 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
               border: Border.all(color: tokens.accent),
               borderRadius: BorderRadius.circular(tokens.radiusSm),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  item.isCompilation
-                      ? FluentIcons.open_24_regular
-                      : FluentIcons.box_arrow_up_24_regular,
-                  size: 14,
-                  color: tokens.accent,
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    item.isCompilation
+                        ? FluentIcons.open_24_regular
+                        : FluentIcons.box_arrow_up_24_regular,
+                    size: 14,
+                    color: tokens.accent,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
                     item.isCompilation
                         ? 'Open compilation'
                         : 'Generate pack',
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.clip,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12,
                       color: tokens.accent,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -527,27 +531,31 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                       border: Border.all(color: tokens.accent),
                       borderRadius: BorderRadius.circular(tokens.radiusSm),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          FluentIcons.cloud_arrow_up_24_regular,
-                          size: 14,
-                          color: tokens.accent,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const NeverScrollableScrollPhysics(),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FluentIcons.cloud_arrow_up_24_regular,
+                            size: 14,
+                            color: tokens.accent,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
                             'Update',
-                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.clip,
                             style: tokens.fontBody.copyWith(
                               fontSize: 12,
                               color: tokens.accent,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
