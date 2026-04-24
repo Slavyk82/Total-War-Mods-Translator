@@ -125,7 +125,14 @@ class TmLookupHandler {
       );
       onProgressUpdate(batchId, progress);
 
-      final applyCounts = await _applyTmMatchesBatch(allExactMatches, context);
+      final applyCounts = await _applyTmMatchesBatch(
+        allExactMatches,
+        context,
+        batchId: batchId,
+        phasePrefix: 'Applying ${allExactMatches.length} exact TM matches',
+        progress: progress,
+        onProgressUpdate: onProgressUpdate,
+      );
       for (final pending in allExactMatches) {
         exactMatchedUnitIds.add(pending.unit.id);
       }
@@ -222,7 +229,14 @@ class TmLookupHandler {
       );
       onProgressUpdate(batchId, progress);
 
-      final applyCounts = await _applyTmMatchesBatch(allFuzzyMatches, context);
+      final applyCounts = await _applyTmMatchesBatch(
+        allFuzzyMatches,
+        context,
+        batchId: batchId,
+        phasePrefix: 'Auto-accepting ${allFuzzyMatches.length} high-confidence fuzzy matches (≥95%)',
+        progress: progress,
+        onProgressUpdate: onProgressUpdate,
+      );
       for (final pending in allFuzzyMatches) {
         fuzzyMatchedUnitIds.add(pending.unit.id);
       }
@@ -324,8 +338,12 @@ class TmLookupHandler {
   /// Returns a map of entry IDs → applied count, for deferred usage increment.
   Future<Map<String, int>> _applyTmMatchesBatch(
     List<_PendingTmMatch> matches,
-    TranslationContext context,
-  ) async {
+    TranslationContext context, {
+    required String batchId,
+    required String phasePrefix,
+    required TranslationProgress progress,
+    required void Function(String batchId, TranslationProgress progress) onProgressUpdate,
+  }) async {
     if (matches.isEmpty) return {};
 
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -351,12 +369,22 @@ class TmLookupHandler {
     }
 
     // Single bulk write.
-    final upsertResult =
-        await _versionRepository.upsertBatchOptimized(entities: versions);
+    final upsertResult = await _versionRepository.upsertBatchOptimized(
+      entities: versions,
+      onProgress: (current, total, message) {
+        final updated = progress.copyWith(
+          phaseDetail: '$phasePrefix — $message',
+          timestamp: DateTime.now(),
+        );
+        onProgressUpdate(batchId, updated);
+      },
+    );
     if (upsertResult.isErr) {
       throw upsertResult.unwrapErr();
     }
     final effectiveIds = upsertResult.unwrap().effectiveVersionIds;
+    assert(effectiveIds.length == matches.length,
+        'upsertBatchOptimized returned mismatched effectiveVersionIds length');
 
     // Build history entries keyed off the REAL persisted ids.
     final historyEntries = <HistoryChangeEntry>[];
