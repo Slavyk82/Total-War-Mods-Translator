@@ -71,6 +71,26 @@ class TranslationVersionHistoryRepository
     });
   }
 
+  /// Insert many history entries in a single transaction using a batched
+  /// commit. Used by the TM apply flow to avoid per-row round trips.
+  Future<Result<void, TWMTDatabaseException>> insertBatch(
+      List<TranslationVersionHistory> entities) async {
+    if (entities.isEmpty) {
+      return const Ok(null);
+    }
+    return executeTransaction((txn) async {
+      final batch = txn.batch();
+      for (final entity in entities) {
+        batch.insert(
+          tableName,
+          toMap(entity),
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+
   @override
   Future<Result<TranslationVersionHistory, TWMTDatabaseException>> update(
       TranslationVersionHistory entity) async {

@@ -4,6 +4,7 @@ import '../../models/common/service_exception.dart';
 import '../../models/domain/translation_version.dart';
 import '../../models/domain/translation_version_history.dart';
 import '../../models/history/diff_models.dart';
+import '../../models/history/history_change_entry.dart';
 import '../../repositories/translation_version_history_repository.dart';
 import '../../repositories/translation_version_repository.dart';
 import 'diff_calculator.dart';
@@ -58,6 +59,32 @@ class HistoryServiceImpl implements IHistoryService {
       return Err(TWMTDatabaseException(
         'Failed to record history change: $e',
       ));
+    }
+  }
+
+  @override
+  Future<Result<void, TWMTDatabaseException>> recordChangesBatch(
+    List<HistoryChangeEntry> entries,
+  ) async {
+    if (entries.isEmpty) {
+      return const Ok(null);
+    }
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final rows = entries.map((e) {
+        return TranslationVersionHistory(
+          id: _uuid.v4(),
+          versionId: e.versionId,
+          translatedText: e.translatedText,
+          status: _parseStatus(e.status),
+          changedBy: e.changedBy,
+          changeReason: e.changeReason,
+          createdAt: now,
+        );
+      }).toList();
+      return await _historyRepository.insertBatch(rows);
+    } catch (e) {
+      return Err(TWMTDatabaseException('Failed to batch-record history: $e'));
     }
   }
 

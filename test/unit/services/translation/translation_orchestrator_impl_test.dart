@@ -11,6 +11,7 @@ import 'package:twmt/models/events/batch_events.dart';
 import 'package:twmt/models/events/domain_event.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/models/history/history_change_entry.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/repositories/translation_batch_unit_repository.dart';
 import 'package:twmt/repositories/translation_provider_repository.dart';
@@ -218,6 +219,8 @@ void main() {
     registerFallbackValue(_FakeTranslationBatch());
     registerFallbackValue(_FakeDomainEvent());
     registerFallbackValue(<TranslationUnit>[]);
+    registerFallbackValue(<TranslationVersion>[]);
+    registerFallbackValue(<HistoryChangeEntry>[]);
     registerFallbackValue(<String, int>{});
     registerFallbackValue(<({String sourceText, String targetText})>[]);
     registerFallbackValue(StackTrace.empty);
@@ -315,8 +318,18 @@ void main() {
     when(() => versionRepository.upsert(any())).thenAnswer(
       (inv) async => Ok(inv.positionalArguments[0] as TranslationVersion),
     );
-    when(() => versionRepository.upsertWithTransaction(any(), any()))
-        .thenAnswer((_) async {});
+    when(() => versionRepository.upsertBatchOptimized(
+          entities: any(named: 'entities'),
+          onProgress: any(named: 'onProgress'),
+        )).thenAnswer((inv) async {
+      final entities =
+          inv.namedArguments[#entities] as List<TranslationVersion>;
+      return Ok((
+        inserted: entities.length,
+        updated: 0,
+        effectiveVersionIds: entities.map((e) => e.id).toList(),
+      ));
+    });
 
     // Prompt builder default: minimal prompt.
     when(() => promptBuilder.buildPrompt(
@@ -367,6 +380,8 @@ void main() {
           changedBy: any(named: 'changedBy'),
           changeReason: any(named: 'changeReason'),
         )).thenAnswer((_) async => Ok(null));
+    when(() => historyService.recordChangesBatch(any()))
+        .thenAnswer((_) async => const Ok<void, TWMTDatabaseException>(null));
 
     // TransactionManager: invoke the callback with a fake Transaction so the
     // write path inside the closure actually runs. Without this the fuzzy
@@ -642,9 +657,11 @@ void main() {
           reason: 'Expected terminal Ok(progress.completed) but got: $terminal');
       expect(terminal.unwrap().status, TranslationProgressStatus.completed);
 
-      // Fuzzy auto-accept ran (transaction executor was called to persist the match).
-      verify(() => transactionManager.executeTransaction<bool>(any()))
-          .called(greaterThanOrEqualTo(1));
+      // Fuzzy auto-accept ran (bulk upsert was called to persist the match).
+      verify(() => versionRepository.upsertBatchOptimized(
+            entities: any(named: 'entities'),
+            onProgress: any(named: 'onProgress'),
+          )).called(greaterThanOrEqualTo(1));
 
       // LLM is never invoked because the fuzzy match covered the only unit.
       verifyNever(() => llmService.translateBatch(

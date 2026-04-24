@@ -107,7 +107,6 @@ mixin TranslationVersionBatchMixin {
         if (existing != null) {
           // UPDATE: Preserve original ID and createdAt
           final map = toMap(entity);
-          map['id'] = existing.id; // Keep original ID
           map['created_at'] = existing.createdAt; // Keep original createdAt
           map.remove('id'); // Remove from UPDATE fields
 
@@ -194,7 +193,241 @@ mixin TranslationVersionBatchMixin {
     }
   }
 
+  /// Upsert translation versions with trigger-disable optimization for large batches.
+  ///
+  /// Designed for the TM apply flow where thousands of matches must be
+  /// persisted quickly. All entities must share the same [projectLanguageId]
+  /// (the FTS / cache / progress rebuild is scoped to that language).
+  ///
+  /// Returns counts of inserted vs updated rows plus [effectiveVersionIds]
+  /// aligned by index with [entities]: each entry is the entity's own id when
+  /// the row was inserted, or the pre-existing row's id when it was updated.
+  /// Callers that need to reference the persisted row (e.g. for history)
+  /// should use these ids, not the ids on the input entities.
+  Future<Result<({int inserted, int updated, List<String> effectiveVersionIds}),
+      TWMTDatabaseException>> upsertBatchOptimized({
+    required List<TranslationVersion> entities,
+    void Function(int current, int total, String message)? onProgress,
+  }) async {
+    if (entities.isEmpty) {
+      return Ok((inserted: 0, updated: 0, effectiveVersionIds: <String>[]));
+    }
+    // Precondition: one projectLanguageId per call (scoped rebuild).
+    final projectLanguageId = entities.first.projectLanguageId;
+    assert(
+      entities.every((e) => e.projectLanguageId == projectLanguageId),
+      'upsertBatchOptimized requires all entities to share the same projectLanguageId',
+    );
+    return executeTransaction((txn) async {
+      final total = entities.length;
+      onProgress?.call(0, total, 'Preparing bulk apply...');
+
+      // Step 1: Batch existence query to distinguish INSERT vs UPDATE.
+      final unitIds = entities.map((e) => e.unitId).toSet().toList();
+      // Chunk the IN (...) list to stay clear of SQLite's default parameter cap.
+      const lookupChunkSize = 500;
+      final existingLookup = <String, ({String id, int createdAt})>{};
+      for (var i = 0; i < unitIds.length; i += lookupChunkSize) {
+        final chunk = unitIds.skip(i).take(lookupChunkSize).toList();
+        final placeholders = List.filled(chunk.length, '?').join(',');
+        final maps = await txn.rawQuery('''
+          SELECT id, unit_id, created_at
+          FROM $tableName
+          WHERE unit_id IN ($placeholders)
+            AND project_language_id = ?
+        ''', [...chunk, projectLanguageId]);
+        for (final row in maps) {
+          existingLookup[row['unit_id'] as String] = (
+            id: row['id'] as String,
+            createdAt: row['created_at'] as int,
+          );
+        }
+      }
+
+      final disableTriggers = entities.length > 50;
+      if (disableTriggers) {
+        onProgress?.call(0, total, 'Optimizing for bulk write...');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_insert');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
+      }
+
+      int inserted = 0;
+      int updated = 0;
+      final effectiveIds = <String>[];
+
+      try {
+        // Step 2: Batched writes, sharing the outer transaction.
+        const writeChunkSize = 500;
+        for (var i = 0; i < entities.length; i += writeChunkSize) {
+          final chunkEnd = (i + writeChunkSize).clamp(0, entities.length);
+          final chunk = entities.sublist(i, chunkEnd);
+          onProgress?.call(i, total, 'Saving translations...');
+
+          final batch = txn.batch();
+          for (final entity in chunk) {
+            final existing = existingLookup[entity.unitId];
+            if (existing != null) {
+              // UPDATE: preserve existing id and created_at.
+              final map = toMap(entity);
+              map['created_at'] = existing.createdAt;
+              map.remove('id');
+              batch.update(
+                tableName,
+                map,
+                where: 'id = ?',
+                whereArgs: [existing.id],
+              );
+              effectiveIds.add(existing.id);
+              updated++;
+            } else {
+              final map = toMap(entity);
+              batch.insert(
+                tableName,
+                map,
+                conflictAlgorithm: ConflictAlgorithm.abort,
+              );
+              effectiveIds.add(entity.id);
+              inserted++;
+            }
+          }
+          await batch.commit(noResult: true);
+        }
+
+        if (disableTriggers) {
+          // Step 3: Rebuild FTS / cache / progress in set-based SQL.
+          final now = DateTime.now().millisecondsSinceEpoch;
+          onProgress?.call(total, total, 'Rebuilding search index...');
+
+          const rebuildChunkSize = 500;
+          for (var i = 0; i < unitIds.length; i += rebuildChunkSize) {
+            final chunk = unitIds.skip(i).take(rebuildChunkSize).toList();
+            final placeholders = List.filled(chunk.length, '?').join(',');
+            await txn.rawDelete('''
+              DELETE FROM translation_versions_fts
+              WHERE version_id IN (
+                SELECT id FROM translation_versions
+                WHERE unit_id IN ($placeholders) AND project_language_id = ?
+              )
+            ''', [...chunk, projectLanguageId]);
+          }
+          for (var i = 0; i < unitIds.length; i += rebuildChunkSize) {
+            final chunk = unitIds.skip(i).take(rebuildChunkSize).toList();
+            final placeholders = List.filled(chunk.length, '?').join(',');
+            await txn.rawInsert('''
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              SELECT tv.translated_text, tv.validation_issues, tv.id
+              FROM translation_versions tv
+              WHERE tv.unit_id IN ($placeholders)
+                AND tv.project_language_id = ?
+                AND tv.translated_text IS NOT NULL
+                AND tv.translated_text != ''
+            ''', [...chunk, projectLanguageId]);
+          }
+
+          onProgress?.call(total, total, 'Updating cache...');
+          for (var i = 0; i < unitIds.length; i += rebuildChunkSize) {
+            final chunk = unitIds.skip(i).take(rebuildChunkSize).toList();
+            final placeholders = List.filled(chunk.length, '?').join(',');
+            await txn.rawUpdate('''
+              UPDATE translation_view_cache
+              SET translated_text = tv.translated_text,
+                  status = tv.status,
+                  is_manually_edited = tv.is_manually_edited,
+                  version_id = tv.id,
+                  version_updated_at = tv.updated_at
+              FROM translation_versions tv
+              WHERE translation_view_cache.unit_id = tv.unit_id
+                AND translation_view_cache.project_language_id = tv.project_language_id
+                AND tv.unit_id IN ($placeholders)
+                AND tv.project_language_id = ?
+            ''', [...chunk, projectLanguageId]);
+          }
+
+          onProgress?.call(total, total, 'Updating project progress...');
+          await txn.rawUpdate('''
+            UPDATE project_languages
+            SET progress_percent = (
+              SELECT
+                CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                NULLIF(COUNT(*), 0)
+              FROM translation_versions tv
+              INNER JOIN translation_units tu ON tv.unit_id = tu.id
+              WHERE tv.project_language_id = project_languages.id
+                AND tu.is_obsolete = 0
+            ),
+            updated_at = ?
+            WHERE id = ?
+          ''', [now, projectLanguageId]);
+        }
+      } finally {
+        if (disableTriggers) {
+          await txn.execute('''
+            CREATE TRIGGER trg_update_project_language_progress
+            AFTER UPDATE ON translation_versions
+            WHEN NEW.status != OLD.status
+            BEGIN
+              UPDATE project_languages
+              SET progress_percent = (
+                SELECT
+                  CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
+                  NULLIF(COUNT(*), 0)
+                FROM translation_versions tv
+                INNER JOIN translation_units tu ON tv.unit_id = tu.id
+                WHERE tv.project_language_id = NEW.project_language_id
+                  AND tu.is_obsolete = 0
+              ),
+              updated_at = strftime('%s', 'now')
+              WHERE id = NEW.project_language_id;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_translation_versions_fts_insert
+            AFTER INSERT ON translation_versions
+            WHEN new.translated_text IS NOT NULL
+            BEGIN
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              VALUES (new.translated_text, new.validation_issues, new.id);
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_translation_versions_fts_update
+            AFTER UPDATE OF translated_text, validation_issues ON translation_versions
+            BEGIN
+              DELETE FROM translation_versions_fts WHERE version_id = old.id;
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              SELECT new.translated_text, new.validation_issues, new.id
+              WHERE new.translated_text IS NOT NULL;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_update_cache_on_version_change
+            AFTER UPDATE ON translation_versions
+            BEGIN
+              UPDATE translation_view_cache
+              SET translated_text = new.translated_text,
+                  status = new.status,
+                  confidence_score = NULL,
+                  is_manually_edited = new.is_manually_edited,
+                  version_id = new.id,
+                  version_updated_at = new.updated_at
+              WHERE unit_id = new.unit_id
+                AND project_language_id = new.project_language_id;
+            END
+          ''');
+        }
+      }
+
+      return (inserted: inserted, updated: updated, effectiveVersionIds: effectiveIds);
+    });
+  }
+
   /// Import multiple translation versions with optimized batch operations.
+
   ///
   /// This method is optimized for importing large numbers of translations:
   /// - Disables triggers for batches > 50 to avoid per-row overhead
@@ -231,6 +464,7 @@ mixin TranslationVersionBatchMixin {
       if (disableTriggers) {
         onProgress?.call(0, total, 'Preparing batch operation...');
         await txn.execute('DROP TRIGGER IF EXISTS trg_update_project_language_progress');
+        await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_insert');
         await txn.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
         await txn.execute('DROP TRIGGER IF EXISTS trg_update_cache_on_version_change');
       }
@@ -387,6 +621,16 @@ mixin TranslationVersionBatchMixin {
               ),
               updated_at = strftime('%s', 'now')
               WHERE id = NEW.project_language_id;
+            END
+          ''');
+
+          await txn.execute('''
+            CREATE TRIGGER trg_translation_versions_fts_insert
+            AFTER INSERT ON translation_versions
+            WHEN new.translated_text IS NOT NULL
+            BEGIN
+              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+              VALUES (new.translated_text, new.validation_issues, new.id);
             END
           ''');
 
