@@ -131,10 +131,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('STATE'), findsOneWidget);
-    expect(find.byType(FilterPill), findsNWidgets(3));
+    expect(find.byType(FilterPill), findsNWidgets(4));
     expect(find.widgetWithText(FilterPill, 'All'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'Not imported'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'Needs update'), findsOneWidget);
+    expect(find.widgetWithText(FilterPill, 'Hidden'), findsOneWidget);
   });
 
   testWidgets('Tapping Not imported pill switches ModsFilter', (tester) async {
