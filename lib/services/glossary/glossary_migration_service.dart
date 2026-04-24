@@ -31,7 +31,16 @@ class GlossaryMigrationService {
     // and trips SQLite's full-schema validation during table rename. PRAGMA
     // must be toggled outside the transaction to avoid issues with
     // transactional pragma state.
+    //
+    // `foreign_keys = OFF` is the SQLite-documented recipe for table rebuilds
+    // ("Making Other Kinds Of Table Schema Changes" §7). With FK on, the
+    // `DROP TABLE glossaries` inside [_finalizeSchemaInTxn] performs an
+    // implicit DELETE FROM glossaries which cascades through
+    // `glossary_entries.glossary_id ON DELETE CASCADE` and wipes every
+    // entry. Toggle must be outside the transaction: PRAGMA foreign_keys is
+    // a no-op within one.
     await DatabaseService.database.execute('PRAGMA legacy_alter_table = 1');
+    await DatabaseService.database.execute('PRAGMA foreign_keys = OFF');
     try {
       await DatabaseService.database.transaction((txn) async {
         // Every UPDATE below sets `updated_at = updated_at + 1`. Letting the
@@ -129,6 +138,7 @@ class GlossaryMigrationService {
         await _finalizeSchemaInTxn(txn);
       });
     } finally {
+      await DatabaseService.database.execute('PRAGMA foreign_keys = ON');
       await DatabaseService.database.execute('PRAGMA legacy_alter_table = 0');
     }
   }
@@ -137,10 +147,13 @@ class GlossaryMigrationService {
   /// `UNIQUE(game_code, target_language_id)`, dropping the legacy
   /// `is_global` and `game_installation_id` columns. Idempotent.
   Future<void> finalizeSchema() async {
+    // See [applyMigration] for why both PRAGMAs must wrap the transaction.
     await DatabaseService.database.execute('PRAGMA legacy_alter_table = 1');
+    await DatabaseService.database.execute('PRAGMA foreign_keys = OFF');
     try {
       await DatabaseService.database.transaction(_finalizeSchemaInTxn);
     } finally {
+      await DatabaseService.database.execute('PRAGMA foreign_keys = ON');
       await DatabaseService.database.execute('PRAGMA legacy_alter_table = 0');
     }
   }
