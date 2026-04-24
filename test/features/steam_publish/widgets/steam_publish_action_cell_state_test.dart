@@ -149,6 +149,36 @@ void main() {
   );
 
   testWidgets(
+    'State A pencil tap reveals the inline Workshop-id input',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1920, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      // The Workshop-id TextField requires a Material ancestor, so wrap the
+      // cell in a Scaffold like the existing State-B tests do.
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamActionCell(item: _project())),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      // Tap the pencil and expect the State-B input to render.
+      await tester.tap(find.byTooltip('Set Workshop id'));
+      await tester.pumpAndSettle();
+
+      final inputFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.hintText == 'Paste Workshop URL or ID...',
+      );
+      expect(inputFinder, findsOneWidget);
+
+      // Launcher button remains visible per design decision.
+      expect(find.byTooltip('Open the in-game launcher'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
       'State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));

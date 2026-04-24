@@ -57,6 +57,13 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       return _buildGenerateProgress(context);
     }
 
+    // Edit mode takes precedence: once the user taps the pencil we render the
+    // shared Steam-id input regardless of pack presence. This is what lets
+    // the user set or change the Workshop id before a pack is generated.
+    if (_isEditingSteamId) {
+      return _buildSteamIdInput(context);
+    }
+
     if (!hasPack) {
       // Legacy parity: when the local pack was deleted but the item is still
       // published on the Workshop, surface Generate alongside Open-in-Steam so
@@ -100,7 +107,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       );
     }
 
-    if (!hasPublishedId || _isEditingSteamId) {
+    if (!hasPublishedId) {
       return _buildSteamIdInput(context);
     }
 
