@@ -18,7 +18,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
       final projectLanguageId = await getProjectLanguageId();
 
       final unitIds = await TranslationBatchHelper.getUntranslatedUnitIds(
-        ref: ref,
+        read: ref.read,
         projectLanguageId: projectLanguageId,
       );
 
@@ -61,7 +61,7 @@ mixin EditorActionsTranslation on EditorActionsBase {
       final projectLanguageId = await getProjectLanguageId();
       final selectedIds = selectionState.selectedUnitIds.toList();
       final untranslatedIds = await TranslationBatchHelper.filterUntranslatedUnits(
-        ref: ref,
+        read: ref.read,
         unitIds: selectedIds,
         projectLanguageId: projectLanguageId,
       );
@@ -161,7 +161,6 @@ mixin EditorActionsTranslation on EditorActionsBase {
 
   Future<bool> _checkProviderConfigured() async {
     final hasProvider = await TranslationBatchHelper.checkProviderConfigured(
-      ref: ref,
       getSettings: () => ref.read(llmProviderSettingsProvider.future),
     );
 
@@ -256,7 +255,7 @@ mixin EditorActionsBatch on EditorActionsBase {
     final providerId = 'provider_$providerCode';
 
     final batchId = await TranslationBatchHelper.createAndPrepareBatch(
-      ref: ref,
+      read: ref.read,
       projectLanguageId: projectLanguageId,
       unitIds: unitIds,
       providerId: providerId,
@@ -275,7 +274,7 @@ mixin EditorActionsBatch on EditorActionsBase {
     final shouldSkipTM = forceSkipTM || settings.skipTranslationMemory;
 
     final translationContext = await TranslationBatchHelper.buildTranslationContext(
-      ref: ref,
+      read: ref.read,
       projectId: projectId,
       projectLanguageId: projectLanguageId,
       providerId: providerId,

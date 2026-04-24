@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/projects/services/bulk_batch_helpers.dart';
 import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
+import 'package:twmt/features/translation_editor/utils/translation_batch_helper.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -139,9 +139,10 @@ class HeadlessBatchTranslationRunner {
 
 /// Provider for [HeadlessBatchTranslationRunner].
 ///
-/// Production instance wires delegates to the Ref-based helpers in
-/// `lib/features/projects/services/bulk_batch_helpers.dart`. Tests can
-/// override this provider with custom delegates (stubs).
+/// Production instance wires delegates directly to
+/// [TranslationBatchHelper], which accepts the generic `Reader` typedef
+/// (both `Ref.read` and `WidgetRef.read` satisfy it). Tests can override
+/// this provider with custom delegates (stubs).
 final headlessBatchTranslationRunnerProvider =
     Provider<HeadlessBatchTranslationRunner>((ref) {
   return HeadlessBatchTranslationRunner(
@@ -151,11 +152,12 @@ final headlessBatchTranslationRunnerProvider =
       required unitIds,
       required providerId,
     }) =>
-        createBulkBatch(
-      ref: ref,
+        TranslationBatchHelper.createAndPrepareBatch(
+      read: ref.read,
       projectLanguageId: projectLanguageId,
       unitIds: unitIds,
       providerId: providerId,
+      onError: () => throw StateError('Batch preparation failed'),
     ),
     buildContext: ({
       required projectLanguageId,
@@ -165,8 +167,8 @@ final headlessBatchTranslationRunnerProvider =
       required unitsPerBatch,
       required parallelBatches,
     }) =>
-        buildBulkTranslationContext(
-      ref: ref,
+        TranslationBatchHelper.buildTranslationContext(
+      read: ref.read,
       projectId: projectId,
       projectLanguageId: projectLanguageId,
       providerId: providerId,
