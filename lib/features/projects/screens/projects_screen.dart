@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
 import 'package:twmt/config/tooltip_strings.dart';
-import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -18,7 +17,6 @@ import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
-import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import '../providers/projects_bulk_menu_visibility_provider.dart';
 import '../providers/projects_screen_providers.dart';
@@ -28,8 +26,7 @@ import 'package:twmt/features/projects/utils/open_project_editor.dart';
 /// Projects screen — filterable list archetype per UI spec §7.1.
 ///
 /// Uses [FilterToolbar] + [ListRow] primitives and the token palette.
-/// Existing feature set is preserved: search, sort, quick filters,
-/// batch-selection mode with language picker + pack export.
+/// Existing feature set is preserved: search, sort, quick filters.
 class ProjectsScreen extends ConsumerStatefulWidget {
   /// Optional quick-filter to activate on mount — used when the Home
   /// dashboard navigates here with a `?filter=...` query param.
@@ -54,8 +51,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       if (initial != null && initial != ProjectQuickFilter.none) {
         notifier.setQuickFilter(initial);
       }
-      // Also reset selection mode when entering the screen
-      ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
     });
   }
 
@@ -81,8 +76,6 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final projectsAsync = ref.watch(paginatedProjectsProvider);
-    final languagesAsync = ref.watch(allLanguagesProvider);
-    final selectionState = ref.watch(batchProjectSelectionProvider);
     final bulkMenuVisible = ref.watch(projectsBulkMenuVisibilityProvider);
 
     return Material(
@@ -93,31 +86,16 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           FilterToolbar(
             leading: _buildLeading(projectsAsync),
             expandLeading: false,
-            trailing: _buildTrailingActions(selectionState),
+            trailing: _buildTrailingActions(),
             pillGroups: [_buildQuickFilterGroup()],
           ),
-          if (selectionState.isSelectionMode)
-            _SelectionBar(
-              selectionState: selectionState,
-              languages: languagesAsync.asData?.value ?? const [],
-              allProjectIds: projectsAsync.asData?.value
-                      .map((p) => p.project.id)
-                      .toList() ??
-                  const [],
-              onExportSelected: () => _startBatchExport(
-                context,
-                projectsAsync.asData?.value ?? const [],
-                selectionState,
-                languagesAsync.asData?.value ?? const [],
-              ),
-            ),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
                   child: projectsAsync.when(
-                    data: (projects) => _buildContent(projects, selectionState),
+                    data: (projects) => _buildContent(projects),
                     loading: () => _buildLoading(),
                     error: (e, _) => _buildError(e),
                   ),
@@ -144,11 +122,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     );
   }
 
-  List<Widget> _buildTrailingActions(BatchProjectSelectionState selection) {
+  List<Widget> _buildTrailingActions() {
     return [
       const Expanded(child: _SearchField()),
       const _SortButton(),
-      _SelectionModeButton(selectionState: selection),
       const _BulkMenuToggleButton(),
     ];
   }
@@ -222,10 +199,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
   // Content
   // ---------------------------------------------------------------------------
 
-  Widget _buildContent(
-    List<ProjectWithDetails> projects,
-    BatchProjectSelectionState selectionState,
-  ) {
+  Widget _buildContent(List<ProjectWithDetails> projects) {
     if (projects.isEmpty) {
       return _buildEmptyState();
     }
@@ -241,38 +215,15 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             itemBuilder: (context, index) {
               final details = projects[index];
               final projectId = details.project.id;
-              final isSelected =
-                  selectionState.selectedProjectIds.contains(projectId);
               return _ProjectRow(
                 details: details,
-                selected: isSelected,
                 isResyncing: resyncState.resyncingProjects.contains(projectId),
-                onTap: () {
-                  if (selectionState.isSelectionMode) {
-                    ref
-                        .read(batchProjectSelectionProvider.notifier)
-                        .toggleProject(projectId);
-                  } else {
-                    openProjectEditor(context, ref, projectId);
-                  }
-                },
+                onTap: () => openProjectEditor(context, ref, projectId),
                 onResync: () => _handleResync(context, projectId),
                 onDelete: () => _handleDeleteProject(context, details),
-                onOpenLanguage: (languageId) {
-                  // When selection mode is active, tapping a language mini-row
-                  // should toggle the project's selection rather than navigate
-                  // — mirrors the main row `onTap` behaviour so the entire card
-                  // reacts as one selection target during batch operations.
-                  if (selectionState.isSelectionMode) {
-                    ref
-                        .read(batchProjectSelectionProvider.notifier)
-                        .toggleProject(projectId);
-                  } else {
-                    context.go(
-                      AppRoutes.translationEditor(projectId, languageId),
-                    );
-                  }
-                },
+                onOpenLanguage: (languageId) => context.go(
+                  AppRoutes.translationEditor(projectId, languageId),
+                ),
                 onLaunchSteam: (modId) => _launchSteamWorkshop(modId),
               );
             },
@@ -449,49 +400,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     }
   }
 
-  void _startBatchExport(
-    BuildContext context,
-    List<ProjectWithDetails> allProjects,
-    BatchProjectSelectionState selectionState,
-    List<Language> languages,
-  ) {
-    if (!selectionState.canExport) return;
-
-    final Language? selectedLanguage = _findLanguage(
-      languages,
-      selectionState.selectedLanguageId,
-    );
-    if (selectedLanguage == null) return;
-
-    final projectsToExport = allProjects
-        .where((p) => selectionState.selectedProjectIds.contains(p.project.id))
-        .map((p) => ProjectExportInfo(id: p.project.id, name: p.project.name))
-        .toList();
-    if (projectsToExport.isEmpty) return;
-
-    ref.read(batchExportStagingProvider.notifier).set(
-          BatchExportStagingData(
-            projects: projectsToExport,
-            languageCode: selectedLanguage.code,
-            languageName: selectedLanguage.name,
-          ),
-        );
-    context.goBatchPackExport();
-  }
-}
-
-/// Returns the first [Language] whose id matches [id], or null if not found.
-/// Replaces the older untyped `firstWhere(..., orElse: () => null)` pattern.
-Language? _findLanguage(List<Language> languages, String? id) {
-  if (id == null) return null;
-  for (final l in languages) {
-    if (l.id == id) return l;
-  }
-  return null;
 }
 
 // =============================================================================
-// Toolbar widgets (search, sort, selection toggle)
+// Toolbar widgets (search, sort)
 // =============================================================================
 
 class _SearchField extends ConsumerWidget {
@@ -594,68 +506,6 @@ class _SortButton extends ConsumerWidget {
   }
 }
 
-class _SelectionModeButton extends ConsumerWidget {
-  final BatchProjectSelectionState selectionState;
-  const _SelectionModeButton({required this.selectionState});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final isActive = selectionState.isSelectionMode;
-    return Tooltip(
-      message: isActive
-          ? 'Exit selection mode'
-          : 'Select multiple projects for batch export',
-      waitDuration: const Duration(milliseconds: 400),
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: () {
-            final notifier = ref.read(batchProjectSelectionProvider.notifier);
-            if (isActive) {
-              notifier.exitSelectionMode();
-            } else {
-              notifier.enterSelectionMode();
-            }
-          },
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: isActive ? tokens.accentBg : tokens.panel2,
-              border: Border.all(
-                color: isActive ? tokens.accent : tokens.border,
-              ),
-              borderRadius: BorderRadius.circular(tokens.radiusSm),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isActive
-                      ? FluentIcons.checkbox_indeterminate_24_regular
-                      : FluentIcons.checkbox_unchecked_24_regular,
-                  size: 16,
-                  color: isActive ? tokens.accent : tokens.textMid,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Selection',
-                  style: tokens.fontBody.copyWith(
-                    fontSize: 12.5,
-                    color: isActive ? tokens.accent : tokens.textMid,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _BulkMenuToggleButton extends ConsumerWidget {
   const _BulkMenuToggleButton();
 
@@ -709,186 +559,6 @@ class _BulkMenuToggleButton extends ConsumerWidget {
 }
 
 // =============================================================================
-// Selection bar (shown below toolbar when in batch-selection mode)
-// =============================================================================
-
-class _SelectionBar extends ConsumerWidget {
-  final BatchProjectSelectionState selectionState;
-  final List<Language> languages;
-  final List<String> allProjectIds;
-  final VoidCallback onExportSelected;
-
-  const _SelectionBar({
-    required this.selectionState,
-    required this.languages,
-    required this.allProjectIds,
-    required this.onExportSelected,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final Language? selectedLanguage = _findLanguage(
-      languages,
-      selectionState.selectedLanguageId,
-    );
-    final canExport = selectionState.canExport;
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: tokens.accentBg,
-        border: Border(bottom: BorderSide(color: tokens.border)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: tokens.accent,
-              borderRadius: BorderRadius.circular(tokens.radiusPill),
-            ),
-            child: Text(
-              '${selectionState.selectedCount} selected',
-              style: tokens.fontBody.copyWith(
-                fontSize: 12,
-                color: tokens.accentFg,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          SmallTextButton(
-            label: 'All',
-            tooltip: 'Select all projects',
-            onTap: () => ref
-                .read(batchProjectSelectionProvider.notifier)
-                .selectAll(allProjectIds),
-          ),
-          const SizedBox(width: 6),
-          SmallTextButton(
-            label: 'None',
-            tooltip: 'Deselect all projects',
-            onTap: () => ref
-                .read(batchProjectSelectionProvider.notifier)
-                .deselectAll(),
-          ),
-          const Spacer(),
-          // Language picker
-          PopupMenuButton<String>(
-            tooltip: 'Pick target language',
-            enabled: languages.isNotEmpty,
-            color: tokens.panel,
-            offset: const Offset(0, 36),
-            itemBuilder: (context) => languages
-                .map<PopupMenuEntry<String>>(
-                  (lang) => PopupMenuItem<String>(
-                    value: lang.id,
-                    child: Text(
-                      lang.name,
-                      style: tokens.fontBody
-                          .copyWith(fontSize: 13, color: tokens.text),
-                    ),
-                  ),
-                )
-                .toList(),
-            onSelected: (id) => ref
-                .read(batchProjectSelectionProvider.notifier)
-                .setLanguage(id),
-            child: Container(
-              height: 28,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: tokens.panel2,
-                border: Border.all(color: tokens.border),
-                borderRadius: BorderRadius.circular(tokens.radiusSm),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    FluentIcons.translate_24_regular,
-                    size: 14,
-                    color: tokens.textMid,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    selectedLanguage?.name ?? 'Select language',
-                    style: tokens.fontBody.copyWith(
-                      fontSize: 12.5,
-                      color: tokens.textMid,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    FluentIcons.chevron_down_24_regular,
-                    size: 12,
-                    color: tokens.textDim,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Export button
-          Tooltip(
-            message: !canExport
-                ? selectionState.selectedProjectIds.isEmpty
-                    ? 'Select at least one project'
-                    : 'Select a target language'
-                : 'Export selected projects as .pack files',
-            waitDuration: const Duration(milliseconds: 400),
-            child: MouseRegion(
-              cursor: canExport
-                  ? SystemMouseCursors.click
-                  : SystemMouseCursors.basic,
-              child: GestureDetector(
-                onTap: canExport ? onExportSelected : null,
-                child: Container(
-                  height: 28,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: canExport ? tokens.accent : tokens.panel2,
-                    borderRadius: BorderRadius.circular(tokens.radiusSm),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FluentIcons.arrow_export_24_regular,
-                        size: 14,
-                        color: canExport ? tokens.accentFg : tokens.textFaint,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Export',
-                        style: tokens.fontBody.copyWith(
-                          fontSize: 12.5,
-                          color: canExport ? tokens.accentFg : tokens.textFaint,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          SmallTextButton(
-            label: 'Cancel',
-            tooltip: 'Exit selection mode',
-            onTap: () => ref
-                .read(batchProjectSelectionProvider.notifier)
-                .exitSelectionMode(),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =============================================================================
 // List header + row
 // =============================================================================
 
@@ -920,7 +590,6 @@ class _ProjectsListHeader extends StatelessWidget {
 
 class _ProjectRow extends StatelessWidget {
   final ProjectWithDetails details;
-  final bool selected;
   final bool isResyncing;
   final VoidCallback onTap;
   final VoidCallback onResync;
@@ -930,7 +599,6 @@ class _ProjectRow extends StatelessWidget {
 
   const _ProjectRow({
     required this.details,
-    required this.selected,
     required this.isResyncing,
     required this.onTap,
     required this.onResync,
@@ -953,7 +621,6 @@ class _ProjectRow extends StatelessWidget {
 
     return ListRow(
       columns: _projectColumns,
-      selected: selected,
       onTap: onTap,
       // Null height → the row grows to fit the stacked per-language lines.
       // A project with 3+ configured languages blows past the default 56px
