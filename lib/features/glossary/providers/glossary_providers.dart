@@ -3,32 +3,31 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/features/activity/models/activity_event.dart';
 import 'package:twmt/features/activity/providers/activity_providers.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import '../../../providers/shared/logging_providers.dart';
-import '../../../providers/shared/service_providers.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart' hide settingsServiceProvider;
 
 part 'glossary_providers.g.dart';
 
-/// All glossaries (universal + game-specific)
+/// All glossaries for the application, optionally filtered by game.
+///
+/// If [gameCode] is provided only glossaries scoped to that game are returned,
+/// otherwise every glossary is returned.
 @riverpod
-Future<List<Glossary>> glossaries(
-  Ref ref, {
-  String? gameInstallationId,
-  bool includeUniversal = true,
-}) async {
+Future<List<Glossary>> glossaries(Ref ref, {String? gameCode}) async {
   final logging = ref.watch(loggingServiceProvider);
   logging.debug('Starting glossaries provider', {
-    'gameInstallationId': gameInstallationId,
-    'includeUniversal': includeUniversal,
+    'gameCode': gameCode,
   });
   try {
     final service = ref.watch(glossaryServiceProvider);
 
-    final result = await service.getAllGlossaries(
-      gameInstallationId: gameInstallationId,
-      includeUniversal: includeUniversal,
-    );
+    final result = await service.getAllGlossaries(gameCode: gameCode);
 
     return result.when(
       ok: (glossaries) {
@@ -48,19 +47,73 @@ Future<List<Glossary>> glossaries(
   }
 }
 
-/// Selected glossary
+/// Distinct languages used by any project of the given [gameCode].
+///
+/// Used to populate the per-game language switcher in the glossary screen.
 @riverpod
-class SelectedGlossary extends _$SelectedGlossary {
+Future<List<Language>> glossaryAvailableLanguages(
+  Ref ref,
+  String gameCode,
+) async {
+  final repo = ref.watch(projectLanguageRepositoryProvider);
+  final result = await repo.distinctLanguagesForGameCode(gameCode);
+  return result.when(
+    ok: (languages) => languages,
+    err: (error) => throw error,
+  );
+}
+
+/// Persisted per-game selected glossary language id.
+///
+/// The selection is stored in settings under a per-game key so switching games
+/// restores the previous language choice.
+@riverpod
+class SelectedGlossaryLanguage extends _$SelectedGlossaryLanguage {
+  static String _key(String gameCode) =>
+      'glossary_selected_language_$gameCode';
+
   @override
-  Glossary? build() => null;
-
-  void select(Glossary? glossary) {
-    state = glossary;
+  Future<String?> build(String gameCode) async {
+    final settings = ref.read(settingsServiceProvider);
+    final saved = await settings.getString(_key(gameCode));
+    return saved.isEmpty ? null : saved;
   }
 
-  void clear() {
-    state = null;
+  /// Persist the selected language id for [gameCode] (or clear when null).
+  Future<void> setLanguageId(String gameCode, String? languageId) async {
+    final settings = ref.read(settingsServiceProvider);
+    if (languageId == null) {
+      await settings.setString(_key(gameCode), '');
+    } else {
+      await settings.setString(_key(gameCode), languageId);
+    }
+    state = AsyncData(languageId);
   }
+}
+
+/// Glossary currently in use, resolved from the selected game and the
+/// per-game selected language.
+///
+/// Returns `null` when either no game is selected, no language has been
+/// chosen yet, or no glossary exists for that (game, language) pair.
+@riverpod
+Future<Glossary?> currentGlossary(Ref ref) async {
+  final game = await ref.watch(selectedGameProvider.future);
+  if (game == null) return null;
+
+  final languageId =
+      await ref.watch(selectedGlossaryLanguageProvider(game.code).future);
+  if (languageId == null) return null;
+
+  final service = ref.watch(glossaryServiceProvider);
+  final result = await service.getGlossaryByGameAndLanguage(
+    gameCode: game.code,
+    targetLanguageId: languageId,
+  );
+  return result.when(
+    ok: (glossary) => glossary,
+    err: (error) => throw error,
+  );
 }
 
 /// Glossary entries with filtering and pagination
