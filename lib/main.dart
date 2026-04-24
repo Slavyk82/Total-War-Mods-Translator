@@ -179,29 +179,22 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
 
     // After schema migrations, check whether the glossary schema still
     // has universal or duplicate entries that require user decisions.
-    // If so, block bootstrap behind a full-screen modal until resolved.
+    // If so, block bootstrap behind a popup dialog until resolved.
     if (!mounted) return;
     final migrationService = ref.read(glossaryMigrationServiceProvider);
     final pending = await migrationService.detectPendingMigration();
     if (pending != null && mounted) {
       final glossaryContext = rootNavigatorKey.currentContext;
       if (glossaryContext != null && glossaryContext.mounted) {
-        final completer = Completer<void>();
-        unawaited(
-          Navigator.of(glossaryContext).push(
-            MaterialPageRoute<void>(
-              fullscreenDialog: true,
-              builder: (_) => GlossaryMigrationScreen(
-                pending: pending,
-                onDone: () {
-                  Navigator.of(glossaryContext).pop();
-                  if (!completer.isCompleted) completer.complete();
-                },
-              ),
-            ),
+        await showDialog<void>(
+          context: glossaryContext,
+          barrierDismissible: false,
+          barrierColor: Colors.black87,
+          builder: (ctx) => GlossaryMigrationScreen(
+            pending: pending,
+            onDone: () => Navigator.of(ctx).pop(),
           ),
         );
-        await completer.future;
       }
     }
 

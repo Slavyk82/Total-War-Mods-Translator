@@ -14,7 +14,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-/// Blocking full-screen modal shown at app boot when the glossary schema is
+/// Blocking popup dialog shown at app boot when the glossary schema is
 /// mid-migration to strictly game-scoped glossaries.
 ///
 /// Drives three sections:
@@ -121,96 +121,100 @@ class _GlossaryMigrationScreenState
     final games =
         configuredGamesAsync.asData?.value ?? const <ConfiguredGame>[];
 
+    final viewportHeight = MediaQuery.of(context).size.height;
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        backgroundColor: tokens.bg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: Dialog(
+        backgroundColor: tokens.panel,
+        insetPadding: const EdgeInsets.all(40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.radiusMd),
+          side: BorderSide(color: tokens.border),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 900,
+            maxHeight: viewportHeight - 80,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          FluentIcons.warning_24_filled,
-                          size: 24,
-                          color: tokens.warn,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Glossary migration required',
-                            style: tokens.fontDisplay.copyWith(
-                              fontSize: 20,
-                              color: tokens.text,
-                              fontStyle: tokens.fontDisplayStyle,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Icon(
+                      FluentIcons.warning_24_filled,
+                      size: 24,
+                      color: tokens.warn,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Glossaries are now strictly game-specific. '
-                      'Resolve the following items to continue.',
-                      style: tokens.fontBody
-                          .copyWith(fontSize: 13, color: tokens.textDim),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (widget.pending.universals.isNotEmpty)
-                              _UniversalsSection(
-                                universals: widget.pending.universals,
-                                games: games,
-                                plan: plan,
-                                onChanged: (id, gc) => ref
-                                    .read(glossaryMigrationPlanProvider
-                                        .notifier)
-                                    .setChoice(id, gc),
-                                onExport: _exportCsv,
-                              ),
-                            if (widget.pending.duplicates.isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              _DuplicatesSection(
-                                  groups: widget.pending.duplicates),
-                            ],
-                          ],
+                      child: Text(
+                        'Glossary migration required',
+                        style: tokens.fontDisplay.copyWith(
+                          fontSize: 20,
+                          color: tokens.text,
+                          fontStyle: tokens.fontDisplayStyle,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Glossaries are now strictly game-specific. '
+                  'Resolve the following items to continue.',
+                  style: tokens.fontBody
+                      .copyWith(fontSize: 13, color: tokens.textDim),
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SmallTextButton(
-                          key: const Key('glossary-migration-cancel'),
-                          label: 'Cancel migration',
-                          onTap: _applying ? null : _cancel,
-                        ),
-                        const SizedBox(width: 8),
-                        SmallTextButton(
-                          key: const Key('glossary-migration-apply'),
-                          label:
-                              _applying ? 'Applying…' : 'Apply and continue',
-                          icon: FluentIcons.checkmark_24_regular,
-                          filled: true,
-                          onTap: _applying ? null : _apply,
-                        ),
+                        if (widget.pending.universals.isNotEmpty)
+                          _UniversalsSection(
+                            universals: widget.pending.universals,
+                            games: games,
+                            plan: plan,
+                            onChanged: (id, gc) => ref
+                                .read(glossaryMigrationPlanProvider.notifier)
+                                .setChoice(id, gc),
+                            onExport: _exportCsv,
+                          ),
+                        if (widget.pending.duplicates.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          _DuplicatesSection(
+                              groups: widget.pending.duplicates),
+                        ],
                       ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    SmallTextButton(
+                      key: const Key('glossary-migration-cancel'),
+                      label: 'Cancel migration',
+                      onTap: _applying ? null : _cancel,
+                    ),
+                    const SizedBox(width: 8),
+                    SmallTextButton(
+                      key: const Key('glossary-migration-apply'),
+                      label: _applying ? 'Applying…' : 'Apply and continue',
+                      icon: FluentIcons.checkmark_24_regular,
+                      filled: true,
+                      onTap: _applying ? null : _apply,
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
           ),
         ),
