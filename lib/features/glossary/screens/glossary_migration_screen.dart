@@ -1,7 +1,9 @@
+import 'dart:io' show exit;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/glossary/providers/glossary_migration_providers.dart';
 import 'package:twmt/features/glossary/widgets/glossary_migration_universal_row.dart';
@@ -20,9 +22,10 @@ import 'package:twmt/widgets/lists/small_text_button.dart';
 ///  * Universal glossaries awaiting user decisions (convert / drop),
 ///  * Duplicate (game_code, target_language_id) groups that will be merged.
 ///
-/// The footer has `Cancel migration` (closes the app via [SystemNavigator.pop])
-/// and `Apply and continue` (runs [GlossaryMigrationService.applyMigration]
-/// then invokes [onDone]).
+/// The footer has `Cancel migration` (closes the app on desktop via [exit];
+/// on web it shows a toast asking the user to close the tab) and
+/// `Apply and continue` (runs [GlossaryMigrationService.applyMigration] then
+/// invokes [onDone]).
 class GlossaryMigrationScreen extends ConsumerStatefulWidget {
   const GlossaryMigrationScreen({
     super.key,
@@ -85,16 +88,29 @@ class _GlossaryMigrationScreenState
       await service.applyMigration(MigrationPlan(conversions: plan));
       if (mounted) widget.onDone();
     } catch (e) {
-      if (!mounted) return;
-      FluentToast.error(context, 'Migration failed: $e');
-      setState(() => _applying = false);
+      if (mounted) {
+        FluentToast.error(context, 'Migration failed: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _applying = false);
     }
   }
 
   /// Closes the app cleanly. The DB is left half-migrated; the boot-time
   /// predicate will re-open this screen next launch.
   void _cancel() {
-    SystemNavigator.pop();
+    // Cancel leaves the DB half-migrated; next boot will show this screen
+    // again.
+    if (kIsWeb) {
+      // On web there's no reliable exit; show a toast and leave the modal in
+      // place.
+      FluentToast.info(
+        context,
+        'Please close the browser tab to cancel the migration.',
+      );
+      return;
+    }
+    exit(0);
   }
 
   @override
