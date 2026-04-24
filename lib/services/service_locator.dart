@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import '../repositories/translation_batch_repository.dart';
 import 'database/database_service.dart';
 import 'database/migration_service.dart';
+import 'glossary/glossary_auto_provisioning_service.dart';
 import 'glossary/glossary_migration_service.dart';
 import 'locators/core_service_locator.dart';
 import 'locators/file_service_locator.dart';
@@ -95,6 +96,9 @@ class ServiceLocator {
       GlossaryServiceLocator.register(_locator);
       _locator.registerLazySingleton<GlossaryMigrationService>(
         () => GlossaryMigrationService(),
+      );
+      _locator.registerLazySingleton<GlossaryAutoProvisioningService>(
+        () => GlossaryAutoProvisioningService(),
       );
 
       // 9. Initialize TranslationSkipFilter with service
