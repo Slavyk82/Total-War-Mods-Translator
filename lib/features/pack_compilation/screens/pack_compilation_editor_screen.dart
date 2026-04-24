@@ -184,6 +184,7 @@ class _PackCompilationEditorScreenState
         onBack: _handleBack,
       ),
       formPanel: StickyFormPanel(
+        width: 240,
         sections: [
           FormSection(
             label: 'Basics',
