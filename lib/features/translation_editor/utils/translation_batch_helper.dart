@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:uuid/uuid.dart';
 import '../../../models/domain/translation_batch.dart';
 import '../../../models/domain/translation_batch_unit.dart';
@@ -10,6 +10,10 @@ import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart' as shared_svc;
 
+/// Generic provider-read function. Both `WidgetRef.read` and `Ref.read`
+/// have this signature, so callers can pass either as `read: ref.read`.
+typedef Reader = T Function<T>(ProviderListenable<T> provider);
+
 /// Helper for managing translation batch creation and execution
 ///
 /// Handles:
@@ -17,15 +21,19 @@ import '../../../providers/shared/service_providers.dart' as shared_svc;
 /// - Filtering unit lists
 /// - Creating batch entities
 /// - Building translation contexts
+///
+/// All methods take a [Reader] (typically `ref.read` from a widget, notifier
+/// or provider) so the helper works uniformly from both widget and
+/// notifier call sites.
 class TranslationBatchHelper {
   const TranslationBatchHelper._();
 
   static Future<List<String>> getUntranslatedUnitIds({
-    required WidgetRef ref,
+    required Reader read,
     required String projectLanguageId,
   }) async {
     try {
-      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final versionRepo = read(shared_repo.translationVersionRepositoryProvider);
 
       final result = await versionRepo.getUntranslatedIds(
         projectLanguageId: projectLanguageId,
@@ -37,7 +45,7 @@ class TranslationBatchHelper {
         throw result.unwrapErr();
       }
     } catch (e) {
-      ref.read(loggingServiceProvider).error(
+      read(loggingServiceProvider).error(
         'Failed to get untranslated unit IDs',
         e,
       );
@@ -46,12 +54,12 @@ class TranslationBatchHelper {
   }
 
   static Future<List<String>> filterUntranslatedUnits({
-    required WidgetRef ref,
+    required Reader read,
     required List<String> unitIds,
     required String projectLanguageId,
   }) async {
     try {
-      final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
+      final versionRepo = read(shared_repo.translationVersionRepositoryProvider);
 
       final result = await versionRepo.filterUntranslatedIds(
         ids: unitIds,
@@ -64,7 +72,7 @@ class TranslationBatchHelper {
         throw result.unwrapErr();
       }
     } catch (e) {
-      ref.read(loggingServiceProvider).error(
+      read(loggingServiceProvider).error(
         'Failed to filter untranslated unit IDs',
         e,
       );
@@ -73,7 +81,6 @@ class TranslationBatchHelper {
   }
 
   static Future<bool> checkProviderConfigured({
-    required WidgetRef ref,
     required Future<Map<String, dynamic>> Function() getSettings,
   }) async {
     // Check if at least one translation provider is configured with an API key
@@ -92,16 +99,16 @@ class TranslationBatchHelper {
   }
 
   static Future<String?> createAndPrepareBatch({
-    required WidgetRef ref,
+    required Reader read,
     required String projectLanguageId,
     required List<String> unitIds,
     required String providerId,
-    required VoidCallback onError,
+    required void Function() onError,
   }) async {
     try {
-      final batchRepo = ref.read(shared_svc.translationBatchRepositoryProvider);
-      final batchUnitRepo = ref.read(shared_svc.translationBatchUnitRepositoryProvider);
-      final logging = ref.read(loggingServiceProvider);
+      final batchRepo = read(shared_svc.translationBatchRepositoryProvider);
+      final batchUnitRepo = read(shared_svc.translationBatchUnitRepositoryProvider);
+      final logging = read(loggingServiceProvider);
 
       // Get the next batch number for this project language
       final existingBatchesResult = await batchRepo.getByProjectLanguage(
@@ -162,7 +169,7 @@ class TranslationBatchHelper {
 
       return batchId;
     } catch (e, stackTrace) {
-      ref.read(loggingServiceProvider).error(
+      read(loggingServiceProvider).error(
         'Failed to create and prepare batch',
         e,
         stackTrace,
@@ -173,7 +180,7 @@ class TranslationBatchHelper {
   }
 
   static Future<TranslationContext> buildTranslationContext({
-    required WidgetRef ref,
+    required Reader read,
     required String projectId,
     required String projectLanguageId,
     required String providerId,
@@ -183,13 +190,13 @@ class TranslationBatchHelper {
     bool? skipTranslationMemory,
   }) async {
     try {
-      final projectRepo = ref.read(shared_repo.projectRepositoryProvider);
-      final projectLanguageRepo = ref.read(shared_repo.projectLanguageRepositoryProvider);
-      final languageRepo = ref.read(shared_repo.languageRepositoryProvider);
-      final glossaryRepo = ref.read(shared_repo.glossaryRepositoryProvider);
+      final projectRepo = read(shared_repo.projectRepositoryProvider);
+      final projectLanguageRepo = read(shared_repo.projectLanguageRepositoryProvider);
+      final languageRepo = read(shared_repo.languageRepositoryProvider);
+      final glossaryRepo = read(shared_repo.glossaryRepositoryProvider);
       final gameInstallationRepo =
-          ref.read(shared_repo.gameInstallationRepositoryProvider);
-      final logging = ref.read(loggingServiceProvider);
+          read(shared_repo.gameInstallationRepositoryProvider);
+      final logging = read(loggingServiceProvider);
 
       // Get project to determine game code for glossary lookup
       String? gameCode;
@@ -303,7 +310,7 @@ class TranslationBatchHelper {
         updatedAt: DateTime.now(),
       );
     } catch (e, stackTrace) {
-      ref.read(loggingServiceProvider).error(
+      read(loggingServiceProvider).error(
         'Failed to build translation context',
         e,
         stackTrace,
