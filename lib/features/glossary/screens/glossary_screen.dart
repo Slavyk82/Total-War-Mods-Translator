@@ -3,14 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:twmt/models/domain/glossary_entry.dart';
+import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-import '../../../providers/shared/repository_providers.dart';
 import '../providers/glossary_providers.dart';
 import '../widgets/glossary_datagrid.dart';
 import '../widgets/glossary_entry_editor.dart';
@@ -107,12 +108,16 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             'a project.',
           );
         }
-        return _buildEditor(context, game);
+        return _buildEditor(context, game, languages);
       },
     );
   }
 
-  Widget _buildEditor(BuildContext context, ConfiguredGame game) {
+  Widget _buildEditor(
+    BuildContext context,
+    ConfiguredGame game,
+    List<Language> languages,
+  ) {
     final tokens = context.tokens;
     final selectedLangAsync =
         ref.watch(selectedGlossaryLanguageProvider(game.code));
@@ -163,7 +168,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   'Select a target language to view its glossary.',
                 );
               }
-              return _buildEditorBody(context, glossary);
+              return _buildEditorBody(context, glossary, languages);
             },
           ),
         ),
@@ -171,8 +176,19 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  Widget _buildEditorBody(BuildContext context, Glossary glossary) {
+  Widget _buildEditorBody(
+    BuildContext context,
+    Glossary glossary,
+    List<Language> languages,
+  ) {
     final tokens = context.tokens;
+    String? targetLanguageCode;
+    for (final language in languages) {
+      if (language.id == glossary.targetLanguageId) {
+        targetLanguageCode = language.code;
+        break;
+      }
+    }
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Container(
@@ -213,7 +229,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   SmallTextButton(
                     label: '+ Entry',
                     icon: FluentIcons.add_24_regular,
-                    onTap: () => _showEntryEditor(null, glossary),
+                    onTap: () => _showEntryEditor(glossary, targetLanguageCode),
                   ),
                   const SizedBox(width: 6),
                   SmallTextButton(
@@ -324,30 +340,25 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     );
   }
 
-  Future<void> _showEntryEditor(
-    GlossaryEntry? entry,
+  void _showEntryEditor(
     Glossary glossary,
-  ) async {
-    String? targetLanguageCode;
-    try {
-      final languageRepo = ref.read(languageRepositoryProvider);
-      final langResult = await languageRepo.getById(glossary.targetLanguageId);
-      langResult.when(
-        ok: (language) {
-          targetLanguageCode = language.code;
-        },
-        err: (_) {},
+    String? targetLanguageCode, {
+    GlossaryEntry? existing,
+  }) {
+    if (targetLanguageCode == null) {
+      FluentToast.error(
+        context,
+        'Unable to resolve target language for this glossary.',
       );
-    } catch (_) {}
-
-    if (!mounted) return;
+      return;
+    }
 
     showDialog<void>(
       context: context,
       builder: (dialogContext) => GlossaryEntryEditorDialog(
         glossaryId: glossary.id,
         targetLanguageCode: targetLanguageCode,
-        entry: entry,
+        entry: existing,
       ),
     );
   }
