@@ -275,21 +275,16 @@ CREATE TABLE IF NOT EXISTS translation_version_tm_usage (
 -- ============================================================================
 
 -- Glossaries: Term glossaries for consistent translations
--- is_global = 1: Universal glossary (all games, all projects)
--- is_global = 0: Game-specific glossary (all projects of one game)
+-- Each glossary is scoped to a single (game_code, target_language_id) pair.
 CREATE TABLE IF NOT EXISTS glossaries (
     id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     description TEXT,
-    is_global INTEGER NOT NULL DEFAULT 0,
-    game_installation_id TEXT,
+    game_code TEXT NOT NULL,
     target_language_id TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
-    FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE CASCADE,
     FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
-    CHECK (is_global IN (0, 1)),
-    CHECK ((is_global = 1 AND game_installation_id IS NULL) OR (is_global = 0 AND game_installation_id IS NOT NULL)),
     CHECK (created_at <= updated_at)
 );
 
@@ -560,9 +555,11 @@ CREATE INDEX IF NOT EXISTS idx_languages_code ON languages(code);
 CREATE INDEX IF NOT EXISTS idx_translation_providers_code ON translation_providers(code);
 
 -- Glossaries
-CREATE INDEX IF NOT EXISTS idx_glossaries_game ON glossaries(game_installation_id, is_global);
+CREATE INDEX IF NOT EXISTS idx_glossaries_game ON glossaries(game_code);
 CREATE INDEX IF NOT EXISTS idx_glossaries_target_language ON glossaries(target_language_id);
 CREATE INDEX IF NOT EXISTS idx_glossaries_name ON glossaries(name);
+CREATE UNIQUE INDEX IF NOT EXISTS glossaries_game_lang_uq
+  ON glossaries(game_code, target_language_id);
 
 -- Glossary Entries
 CREATE INDEX IF NOT EXISTS idx_glossary_entries_glossary ON glossary_entries(glossary_id);

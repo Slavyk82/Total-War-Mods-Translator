@@ -20,6 +20,50 @@ void main() {
     await DatabaseService.database.execute(
       "INSERT INTO game_installations (id, game_code, game_name, created_at, updated_at) VALUES ('gi1', 'wh3', 'WH3', 0, 0)",
     );
+
+    // These tests exercise GlossaryMigrationService against the legacy
+    // pre-finalization schema (universals + UNIQUE(name)). The current
+    // schema.sql emits only the finalized shape, so rebuild glossaries
+    // to the legacy shape here to stage pre-migration fixtures.
+    await DatabaseService.database.execute('PRAGMA legacy_alter_table = 1');
+    try {
+      await DatabaseService.database.execute('DROP TABLE IF EXISTS glossaries');
+      await DatabaseService.database.execute('''
+        CREATE TABLE glossaries (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          is_global INTEGER NOT NULL DEFAULT 0,
+          game_installation_id TEXT,
+          game_code TEXT,
+          target_language_id TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (game_installation_id) REFERENCES game_installations(id) ON DELETE CASCADE,
+          FOREIGN KEY (target_language_id) REFERENCES languages(id) ON DELETE RESTRICT,
+          CHECK (created_at <= updated_at)
+        )
+      ''');
+      await DatabaseService.database.execute(
+        'CREATE INDEX IF NOT EXISTS idx_glossaries_game ON glossaries(game_installation_id, is_global)',
+      );
+      await DatabaseService.database.execute(
+        'CREATE INDEX IF NOT EXISTS idx_glossaries_target_language ON glossaries(target_language_id)',
+      );
+      await DatabaseService.database.execute(
+        'CREATE INDEX IF NOT EXISTS idx_glossaries_name ON glossaries(name)',
+      );
+      await DatabaseService.database.execute('''
+        CREATE TRIGGER IF NOT EXISTS trg_glossaries_updated_at
+        AFTER UPDATE ON glossaries
+        WHEN NEW.updated_at = OLD.updated_at
+        BEGIN
+            UPDATE glossaries SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
+        END
+      ''');
+    } finally {
+      await DatabaseService.database.execute('PRAGMA legacy_alter_table = 0');
+    }
   });
   tearDown(() async => TestDatabase.close(db));
 

@@ -407,8 +407,10 @@ void main() {
         });
 
         test('should filter by glossary IDs', () async {
-          // Create second glossary
-          final g2 = createTestGlossary(id: 'glossary-2', name: 'Glossary 2');
+          // Create second glossary on a different game_code to avoid clashing
+          // with the UNIQUE(game_code, target_language_id) index.
+          final g2 = createTestGlossary(
+              id: 'glossary-2', name: 'Glossary 2', gameCode: 'wh2');
           await repository.insertGlossary(g2);
 
           final entry1 = createTestEntry(id: 'e1', glossaryId: 'glossary-id', sourceTerm: 'Test');
