@@ -34,6 +34,15 @@ class GlossaryMigrationService {
     await DatabaseService.database.execute('PRAGMA legacy_alter_table = 1');
     try {
       await DatabaseService.database.transaction((txn) async {
+        // Every UPDATE below sets `updated_at = updated_at + 1`. Letting the
+        // AFTER UPDATE trigger rewrite the column would call strftime('%s',
+        // 'now') which returns seconds, and on rows whose timestamps were
+        // stored in milliseconds by the glossary service that would violate
+        // CHECK(created_at <= updated_at). Using `updated_at + 1` guarantees
+        // NEW.updated_at != OLD.updated_at so the trigger's WHEN clause
+        // short-circuits, and preserves whatever unit (ms or s) the row
+        // originally used.
+
         // 1. Apply user decisions on universals the user chose to convert.
         for (final entry in plan.conversions.entries) {
           final universalId = entry.key;
@@ -61,11 +70,11 @@ class GlossaryMigrationService {
             limit: 1,
           );
           if (existingRows.isEmpty) {
-            await txn.update(
-              'glossaries',
-              {'game_code': gameCode, 'is_global': 0},
-              where: 'id = ?',
-              whereArgs: [universalId],
+            await txn.rawUpdate(
+              'UPDATE glossaries '
+              'SET game_code = ?, is_global = ?, updated_at = updated_at + 1 '
+              'WHERE id = ?',
+              [gameCode, 0, universalId],
             );
           } else {
             await _mergeEntriesDedup(
@@ -158,11 +167,11 @@ class GlossaryMigrationService {
         LIMIT 1
       ''', [survivorGlossaryId, srcTermKey, tlc]);
       if (conflicting.isEmpty) {
-        await txn.update(
-          'glossary_entries',
-          {'glossary_id': survivorGlossaryId},
-          where: 'id = ?',
-          whereArgs: [entry['id']],
+        await txn.rawUpdate(
+          'UPDATE glossary_entries '
+          'SET glossary_id = ?, updated_at = updated_at + 1 '
+          'WHERE id = ?',
+          [survivorGlossaryId, entry['id']],
         );
       } else {
         final conflictUpdatedAt = (conflicting.first['updated_at'] as num).toInt();
@@ -173,11 +182,11 @@ class GlossaryMigrationService {
             where: 'id = ?',
             whereArgs: [conflicting.first['id']],
           );
-          await txn.update(
-            'glossary_entries',
-            {'glossary_id': survivorGlossaryId},
-            where: 'id = ?',
-            whereArgs: [entry['id']],
+          await txn.rawUpdate(
+            'UPDATE glossary_entries '
+            'SET glossary_id = ?, updated_at = updated_at + 1 '
+            'WHERE id = ?',
+            [survivorGlossaryId, entry['id']],
           );
         } else {
           await txn.delete(

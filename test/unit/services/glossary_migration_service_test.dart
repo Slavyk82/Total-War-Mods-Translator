@@ -170,9 +170,49 @@ void main() {
       final rows = await DatabaseService.database.rawQuery('SELECT id FROM glossaries');
       expect(rows, isEmpty);
     });
+
+    test('succeeds when glossary rows use millisecond timestamps', () async {
+      // Real user data: glossary_service stores created_at/updated_at in
+      // milliseconds, but trg_glossaries_updated_at writes strftime('%s',...)
+      // (seconds). Without the fix, the trigger's own UPDATE violates
+      // CHECK(created_at <= updated_at) because ms > s by 3 orders of
+      // magnitude, and the migration fails.
+      final ms = DateTime.now().millisecondsSinceEpoch;
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, target_language_id, created_at, updated_at) VALUES ('gu', 'U', 1, 'lang_fr', $ms, $ms)",
+      );
+      await service.applyMigration(const MigrationPlan(conversions: {'gu': 'wh3'}));
+      final rows = await DatabaseService.database
+          .rawQuery('SELECT game_code FROM glossaries WHERE id = ?', ['gu']);
+      expect(rows.first['game_code'], 'wh3');
+    });
   });
 
   group('applyMigration — duplicate merge', () {
+    test('succeeds when rows use millisecond timestamps', () async {
+      // Same root cause as the conversion path: glossary_entries updates in
+      // _mergeEntriesDedup must not let the AFTER UPDATE trigger fire, or
+      // it would set updated_at (seconds) below created_at (milliseconds).
+      final ms = DateTime.now().millisecondsSinceEpoch;
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', $ms, $ms)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('new', 'New', 0, 'gi1', 'wh3', 'lang_fr', ${ms + 5}, ${ms + 5})",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('e1', 'new', 'fr', 'Apple', 'Pomme', $ms, $ms)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final glossaries = await DatabaseService.database.rawQuery('SELECT id FROM glossaries');
+      expect(glossaries.map((g) => g['id']), ['old']);
+      final entries = await DatabaseService.database.rawQuery(
+          'SELECT glossary_id FROM glossary_entries WHERE id = ?', ['e1']);
+      expect(entries.first['glossary_id'], 'old');
+    });
+
     test('merges duplicates into oldest, dedups case-insensitively', () async {
       await DatabaseService.database.execute(
         "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
