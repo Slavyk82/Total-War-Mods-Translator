@@ -28,7 +28,7 @@ const List<ListRowColumn> steamPublishColumns = [
   ListRowColumn.fixed(80), // cover
   ListRowColumn.flex(3), // title + filename
   ListRowColumn.fixed(160), // publish state
-  ListRowColumn.fixed(140), // last published
+  ListRowColumn.fixed(180), // last published — fits "Outdated · 12 months"
   ListRowColumn.fixed(180), // action
 ];
 
