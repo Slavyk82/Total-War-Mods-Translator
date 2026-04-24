@@ -129,6 +129,26 @@ void main() {
   );
 
   testWidgets(
+    'State A (no pack, with id) renders Generate + Open in Steam + Edit id',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1920, 1080));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        SteamActionCell(
+          item: _project(publishedSteamId: '3456789012'),
+        ),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Generate pack'), findsOneWidget);
+      expect(find.byTooltip('Open in Steam Workshop'), findsOneWidget);
+      expect(find.byTooltip('Edit Workshop id'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
       'State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));

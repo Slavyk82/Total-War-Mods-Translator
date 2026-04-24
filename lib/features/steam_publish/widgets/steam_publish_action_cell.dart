@@ -74,6 +74,12 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                 icon: FluentIcons.open_24_regular,
                 onTap: _openWorkshop,
               ),
+              const SizedBox(width: 4),
+              _iconButton(
+                icon: FluentIcons.edit_24_regular,
+                tooltip: 'Edit Workshop id',
+                onTap: _beginEditSteamId,
+              ),
             ],
           ),
         );
