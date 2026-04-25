@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../services/search/models/search_result.dart';
 import 'fluent_buttons.dart';
 
@@ -47,7 +48,7 @@ class SearchResultCard extends StatelessWidget {
               Row(
                 children: [
                   Text(
-                    'Result $index of $total',
+                    t.search.labels.resultOf(index: index, total: total),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -57,7 +58,7 @@ class SearchResultCard extends StatelessWidget {
                   const Spacer(),
                   FluentOutlinedButton(
                     icon: FluentIcons.arrow_right_24_regular,
-                    label: 'Go to',
+                    label: t.search.actions.goTo,
                     onPressed: onNavigate ?? () {},
                   ),
                 ],
@@ -68,7 +69,7 @@ class SearchResultCard extends StatelessWidget {
               // Key (monospace)
               if (result.key != null) ...[
                 Text(
-                  'Key: ${result.key}',
+                  t.search.labels.keyPrefix(key: result.key!),
                   style: TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 12,
@@ -80,8 +81,8 @@ class SearchResultCard extends StatelessWidget {
 
               // Source text with highlighting
               if (result.sourceText != null) ...[
-                const Text(
-                  'Source:',
+                Text(
+                  t.search.labels.source,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -100,8 +101,8 @@ class SearchResultCard extends StatelessWidget {
 
               // Target text with highlighting
               if (result.translatedText != null) ...[
-                const Text(
-                  'Target:',
+                Text(
+                  t.search.labels.target,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../models/search_query_model.dart';
 import 'fluent_buttons.dart';
 
@@ -48,7 +49,7 @@ class SearchPaginationControls extends StatelessWidget {
           FluentIconButton(
             icon: FluentIcons.chevron_left_24_regular,
             onPressed: results.hasPreviousPage ? onPreviousPage : null,
-            tooltip: 'Previous Page',
+            tooltip: t.search.actions.previousPage,
           ),
           const SizedBox(width: 12),
           Text(
@@ -59,7 +60,7 @@ class SearchPaginationControls extends StatelessWidget {
           FluentIconButton(
             icon: FluentIcons.chevron_right_24_regular,
             onPressed: results.hasNextPage ? onNextPage : null,
-            tooltip: 'Next Page',
+            tooltip: t.search.actions.nextPage,
           ),
         ],
       ),
@@ -83,18 +84,21 @@ class SearchPaginationControls extends StatelessWidget {
           FluentIconButton(
             icon: FluentIcons.chevron_left_24_regular,
             onPressed: results.hasPreviousPage ? onPreviousPage : null,
-            tooltip: 'Previous Page',
+            tooltip: t.search.actions.previousPage,
           ),
           const SizedBox(width: 12),
           Text(
-            'Page ${results.currentPage} of ${results.totalPages}',
+            t.search.labels.pageOf(
+              current: results.currentPage,
+              total: results.totalPages,
+            ),
             style: const TextStyle(fontSize: 13),
           ),
           const SizedBox(width: 12),
           FluentIconButton(
             icon: FluentIcons.chevron_right_24_regular,
             onPressed: results.hasNextPage ? onNextPage : null,
-            tooltip: 'Next Page',
+            tooltip: t.search.actions.nextPage,
           ),
         ],
       ),
