@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
@@ -43,10 +43,12 @@ class GameTranslationScreen extends ConsumerWidget {
           HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.globe_24_regular,
-              title: 'Game Translation',
+              title: t.gameTranslation.screen.title,
               countLabel: count == null
                   ? null
-                  : '$count ${count == 1 ? 'translation' : 'translations'}',
+                  : (count == 1
+                      ? t.gameTranslation.screen.countOne(count: count)
+                      : t.gameTranslation.screen.countMany(count: count)),
             ),
           ),
           FilterToolbar(
@@ -54,12 +56,12 @@ class GameTranslationScreen extends ConsumerWidget {
             expandLeading: false,
             trailing: [
               SmallTextButton(
-                label: 'Create Game Translation',
+                label: t.gameTranslation.screen.toolbar.create,
                 icon: FluentIcons.add_24_regular,
                 filled: true,
                 tooltip: hasPacks
                     ? null
-                    : 'No localization packs found for this game',
+                    : t.gameTranslation.screen.toolbar.noPacksTooltip,
                 onTap:
                     hasPacks ? () => _showCreateDialog(context, ref) : null,
               ),
@@ -115,14 +117,14 @@ class GameTranslationScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No game translations yet',
+            t.gameTranslation.screen.empty.title,
             style: theme.textTheme.headlineMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Create a new translation to translate the base game',
+            t.gameTranslation.screen.empty.subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
             ),
@@ -143,7 +145,7 @@ class GameTranslationScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'No localization packs found for this game',
+                          t.gameTranslation.screen.empty.noPacksWarning,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.error,
                           ),
@@ -154,11 +156,11 @@ class GameTranslationScreen extends ConsumerWidget {
                   return FluentButton(
                     onPressed: () => _showCreateDialog(context, ref),
                     icon: const Icon(FluentIcons.add_24_regular),
-                    child: const Text('Create Game Translation'),
+                    child: Text(t.gameTranslation.screen.toolbar.create),
                   );
                 },
                 loading: () => const CircularProgressIndicator(),
-                error: (_, _) => const Text('Error loading packs'),
+                error: (_, _) => Text(t.gameTranslation.screen.empty.errorLoadingPacks),
               );
             },
           ),
@@ -182,7 +184,7 @@ class GameTranslationScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Loading game translations...',
+            t.gameTranslation.screen.loading,
             style: theme.textTheme.bodyMedium,
           ),
         ],
@@ -202,7 +204,7 @@ class GameTranslationScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Error loading game translations',
+            t.gameTranslation.screen.errors.loadFailed,
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -243,11 +245,10 @@ class GameTranslationScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Game Translation',
-        message:
-            'Are you sure you want to delete "${details.project.name}"?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+        title: t.gameTranslation.screen.dialogs.delete.title,
+        message: t.gameTranslation.screen.dialogs.delete.message(name: details.project.name),
+        warningMessage: t.gameTranslation.screen.dialogs.delete.warning,
+        confirmLabel: t.gameTranslation.screen.dialogs.delete.confirm,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -262,12 +263,12 @@ class GameTranslationScreen extends ConsumerWidget {
       ref.invalidate(gameTranslationProjectsProvider);
       FluentToast.success(
         context,
-        'Game translation "${details.project.name}" deleted',
+        t.gameTranslation.screen.toasts.deleted(name: details.project.name),
       );
     } else {
       FluentToast.error(
         context,
-        'Failed to delete game translation: ${result.error}',
+        t.gameTranslation.screen.toasts.deleteFailed(error: result.error),
       );
     }
   }

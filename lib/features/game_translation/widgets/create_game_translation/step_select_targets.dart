@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 import '../../../../models/domain/language.dart';
@@ -36,7 +37,7 @@ class StepSelectTargets extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Choose the languages you want to translate the game into.',
+          t.gameTranslation.stepTargets.description,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -62,7 +63,7 @@ class StepSelectTargets extends ConsumerWidget {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Translating from: ',
+                  t.gameTranslation.stepTargets.translatingFrom,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.text,
@@ -118,7 +119,7 @@ class StepSelectTargets extends ConsumerWidget {
         if (state.selectedLanguageIds.isNotEmpty) ...[
           const SizedBox(height: 14),
           Text(
-            '${state.selectedLanguageIds.length} language(s) selected',
+            t.gameTranslation.stepTargets.selectionCount(count: state.selectedLanguageIds.length),
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.accent,
@@ -147,7 +148,7 @@ class StepSelectTargets extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'No languages available',
+            t.gameTranslation.stepTargets.noLanguages.title,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.text,
@@ -156,7 +157,7 @@ class StepSelectTargets extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Please configure target languages in Settings.',
+            t.gameTranslation.stepTargets.noLanguages.subtitle,
             style: tokens.fontBody.copyWith(
               fontSize: 12.5,
               color: tokens.textDim,
@@ -181,7 +182,7 @@ class StepSelectTargets extends ConsumerWidget {
         Row(
           children: [
             SmallTextButton(
-              label: 'Select All',
+              label: t.gameTranslation.stepTargets.actions.selectAll,
               icon: FluentIcons.select_all_on_24_regular,
               onTap: () {
                 for (final lang in languages) {
@@ -194,7 +195,7 @@ class StepSelectTargets extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             SmallTextButton(
-              label: 'Clear',
+              label: t.gameTranslation.stepTargets.actions.clear,
               icon: FluentIcons.select_all_off_24_regular,
               onTap: () {
                 state.clearLanguages();
@@ -203,7 +204,7 @@ class StepSelectTargets extends ConsumerWidget {
             ),
             const Spacer(),
             SmallTextButton(
-              label: 'Add Language',
+              label: t.gameTranslation.stepTargets.actions.addLanguage,
               icon: FluentIcons.add_24_regular,
               onTap: () => _showAddLanguageDialog(context, ref),
             ),
@@ -262,15 +263,15 @@ class StepSelectTargets extends ConsumerWidget {
         FluentToast.success(
           context,
           result.setAsDefault
-              ? 'Language "${result.name}" added and set as default'
-              : 'Language "${result.name}" added successfully',
+              ? t.gameTranslation.addLanguageDialog.toasts.addedAsDefault(name: result.name)
+              : t.gameTranslation.addLanguageDialog.toasts.addedSuccessfully(name: result.name),
         );
 
         // Refresh the languages list
         ref.invalidate(allLanguagesProvider);
         onStateChanged();
       } else {
-        FluentToast.error(context, error ?? 'Failed to add language');
+        FluentToast.error(context, error ?? t.gameTranslation.addLanguageDialog.toasts.addFailed);
       }
     }
   }

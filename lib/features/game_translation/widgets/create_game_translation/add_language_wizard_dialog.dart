@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -48,17 +49,17 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
 
   String? _validateCode(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Language code is required';
-    if (trimmed.length < 2) return 'Code must be at least 2 characters';
+    if (trimmed.isEmpty) return t.gameTranslation.addLanguageDialog.fields.codeErrors.required;
+    if (trimmed.length < 2) return t.gameTranslation.addLanguageDialog.fields.codeErrors.tooShort;
     if (!RegExp(r'^[a-zA-Z]+$').hasMatch(trimmed)) {
-      return 'Code must contain only letters';
+      return t.gameTranslation.addLanguageDialog.fields.codeErrors.lettersOnly;
     }
     return null;
   }
 
   String? _validateName(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Language name is required';
+    if (trimmed.isEmpty) return t.gameTranslation.addLanguageDialog.fields.nameErrors.required;
     return null;
   }
 
@@ -86,14 +87,14 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
 
     return TokenDialog(
       icon: FluentIcons.add_circle_24_regular,
-      title: 'Add Custom Language',
+      title: t.gameTranslation.addLanguageDialog.title,
       width: 480,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Add a custom language that will be available for translation projects.',
+            t.gameTranslation.addLanguageDialog.description,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -101,10 +102,10 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
           ),
           const SizedBox(height: 18),
           LabeledField(
-            label: 'LANGUAGE CODE',
+            label: t.gameTranslation.addLanguageDialog.fields.codeLabel,
             child: TokenTextField(
               controller: _codeController,
-              hint: 'e.g. pl, ko, ja',
+              hint: t.gameTranslation.addLanguageDialog.fields.codeHint,
               enabled: true,
               onChanged: (_) {
                 if (_codeError != null) {
@@ -115,7 +116,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
           ),
           const SizedBox(height: 4),
           Text(
-            _codeError ?? 'ISO 639-1 code (2-3 characters)',
+            _codeError ?? t.gameTranslation.addLanguageDialog.fields.codeHelper,
             style: tokens.fontBody.copyWith(
               fontSize: 11,
               color: _codeError != null ? tokens.err : tokens.textDim,
@@ -123,10 +124,10 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
           ),
           const SizedBox(height: 14),
           LabeledField(
-            label: 'LANGUAGE NAME',
+            label: t.gameTranslation.addLanguageDialog.fields.nameLabel,
             child: TokenTextField(
               controller: _nameController,
-              hint: 'e.g. Polish, Korean, Japanese',
+              hint: t.gameTranslation.addLanguageDialog.fields.nameHint,
               enabled: true,
               onChanged: (_) {
                 if (_nameError != null) {
@@ -137,7 +138,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
           ),
           const SizedBox(height: 4),
           Text(
-            _nameError ?? 'Display name for this language',
+            _nameError ?? t.gameTranslation.addLanguageDialog.fields.nameHelper,
             style: tokens.fontBody.copyWith(
               fontSize: 11,
               color: _nameError != null ? tokens.err : tokens.textDim,
@@ -151,11 +152,11 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.gameTranslation.wizard.actions.cancel,
           onTap: () => Navigator.pop(context),
         ),
         SmallTextButton(
-          label: 'Add',
+          label: t.gameTranslation.addLanguageDialog.actions.add,
           icon: FluentIcons.add_24_regular,
           filled: true,
           onTap: _save,
@@ -188,7 +189,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Set as default language',
+                  t.gameTranslation.addLanguageDialog.defaultLanguage.label,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.text,
@@ -197,7 +198,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'This language will become the default target language for all new mod translation projects.',
+                  t.gameTranslation.addLanguageDialog.defaultLanguage.description,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12,
                     color: tokens.textDim,
@@ -230,7 +231,7 @@ class _AddLanguageWizardDialogState extends State<AddLanguageWizardDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Custom languages can be deleted later from Settings. System languages (English, French, etc.) cannot be modified.',
+              t.gameTranslation.addLanguageDialog.info,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textMid,

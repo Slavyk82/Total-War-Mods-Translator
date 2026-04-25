@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 import '../../../../providers/selected_game_provider.dart';
@@ -35,7 +36,7 @@ class StepSelectSource extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Choose the game localization pack that will serve as the source for translation.',
+          t.gameTranslation.stepSource.description,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -75,7 +76,7 @@ class StepSelectSource extends ConsumerWidget {
                   ),
                 )
               : Text(
-                  'No game selected',
+                  t.gameTranslation.stepSource.noGameSelected,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textDim,
@@ -102,7 +103,7 @@ class StepSelectSource extends ConsumerWidget {
 
         // Pack selection
         Text(
-          'AVAILABLE LOCALIZATION PACKS',
+          t.gameTranslation.stepSource.sectionLabel,
           style: tokens.fontMono.copyWith(
             fontSize: 10,
             color: tokens.textDim,
@@ -155,7 +156,7 @@ class StepSelectSource extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'No localization packs found',
+            t.gameTranslation.stepSource.noPacks.title,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.err,
@@ -164,7 +165,7 @@ class StepSelectSource extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Make sure the game is installed and has localization files in the data folder.',
+            t.gameTranslation.stepSource.noPacks.subtitle,
             style: tokens.fontBody.copyWith(
               fontSize: 12.5,
               color: tokens.textDim,

@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -79,13 +80,13 @@ class _CreateGameTranslationDialogState
     if (_currentStep == 0) {
       if (_state.selectedSourcePack == null) {
         setState(
-            () => _errorMessage = 'Please select a source localization pack');
+            () => _errorMessage = t.gameTranslation.wizard.errors.selectSourcePack);
         return false;
       }
     } else if (_currentStep == 1) {
       if (_state.selectedLanguageIds.isEmpty) {
         setState(
-            () => _errorMessage = 'Please select at least one target language');
+            () => _errorMessage = t.gameTranslation.wizard.errors.selectTargetLanguage);
         return false;
       }
     }
@@ -99,7 +100,7 @@ class _CreateGameTranslationDialogState
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _progressMessage = 'Creating project...';
+      _progressMessage = t.gameTranslation.wizard.progress.creatingProject;
     });
 
     try {
@@ -203,7 +204,7 @@ class _CreateGameTranslationDialogState
       // Initialize project (extract localization files)
       if (project.hasSourceFile) {
         setState(() {
-          _progressMessage = 'Extracting localization files...';
+          _progressMessage = t.gameTranslation.wizard.progress.extracting;
           _importLogs.clear();
         });
 
@@ -214,7 +215,7 @@ class _CreateGameTranslationDialogState
           if (mounted) {
             setState(() {
               _progressMessage =
-                  'Extracting... ${(progress * 100).toStringAsFixed(0)}%';
+                  t.gameTranslation.wizard.progress.extractingProgress(percent: (progress * 100).toStringAsFixed(0));
             });
           }
         });
@@ -301,8 +302,8 @@ class _CreateGameTranslationDialogState
                             stepNumber: _currentStep + 1,
                             totalSteps: 2,
                             title: _currentStep == 0
-                                ? 'Select source pack'
-                                : 'Select target languages',
+                                ? t.gameTranslation.wizard.steps.selectSource
+                                : t.gameTranslation.wizard.steps.selectTargets,
                           ),
                           const SizedBox(height: 20),
                           // Step content
@@ -341,7 +342,7 @@ class _CreateGameTranslationDialogState
           ),
           const SizedBox(width: 12),
           Text(
-            'Create Game Translation',
+            t.gameTranslation.wizard.title,
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
@@ -353,7 +354,7 @@ class _CreateGameTranslationDialogState
           if (!_isLoading)
             SmallIconButton(
               icon: FluentIcons.dismiss_24_regular,
-              tooltip: 'Close',
+              tooltip: t.common.actions.close,
               onTap: () => Navigator.of(context).pop(),
             ),
         ],
@@ -424,7 +425,7 @@ class _CreateGameTranslationDialogState
           ),
           const SizedBox(height: 16),
           Text(
-            _progressMessage ?? 'Processing...',
+            _progressMessage ?? t.gameTranslation.wizard.progress.processing,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.text,
@@ -475,18 +476,18 @@ class _CreateGameTranslationDialogState
         children: [
           if (_currentStep > 0)
             SmallTextButton(
-              label: 'Back',
+              label: t.gameTranslation.wizard.actions.back,
               icon: FluentIcons.arrow_left_24_regular,
               onTap: _isLoading ? null : _previousStep,
             ),
           const Spacer(),
           SmallTextButton(
-            label: 'Cancel',
+            label: t.gameTranslation.wizard.actions.cancel,
             onTap: _isLoading ? null : () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 8),
           SmallTextButton(
-            label: _currentStep == 0 ? 'Next' : 'Create',
+            label: _currentStep == 0 ? t.gameTranslation.wizard.actions.next : t.gameTranslation.wizard.actions.create,
             icon: _currentStep == 0
                 ? FluentIcons.arrow_right_24_regular
                 : FluentIcons.play_24_regular,

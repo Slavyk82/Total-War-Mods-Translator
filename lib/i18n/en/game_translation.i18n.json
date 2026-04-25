@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "Game Translation",
+    "countOne": "$count translation",
+    "countMany": "$count translations",
+    "toolbar": {
+      "create": "Create Game Translation",
+      "noPacksTooltip": "No localization packs found for this game"
+    },
+    "empty": {
+      "title": "No game translations yet",
+      "subtitle": "Create a new translation to translate the base game",
+      "noPacksWarning": "No localization packs found for this game",
+      "errorLoadingPacks": "Error loading packs"
+    },
+    "loading": "Loading game translations...",
+    "errors": {
+      "loadFailed": "Error loading game translations"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Delete Game Translation",
+        "message": "Are you sure you want to delete \"$name\"?",
+        "warning": "This action cannot be undone.",
+        "confirm": "Delete"
+      }
+    },
+    "toasts": {
+      "deleted": "Game translation \"$name\" deleted",
+      "deleteFailed": "Failed to delete game translation: $error"
+    }
+  },
+  "wizard": {
+    "title": "Create Game Translation",
+    "steps": {
+      "selectSource": "Select source pack",
+      "selectTargets": "Select target languages"
+    },
+    "progress": {
+      "creatingProject": "Creating project...",
+      "extracting": "Extracting localization files...",
+      "extractingProgress": "Extracting... $percent%",
+      "processing": "Processing..."
+    },
+    "errors": {
+      "selectSourcePack": "Please select a source localization pack",
+      "selectTargetLanguage": "Please select at least one target language"
+    },
+    "actions": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "next": "Next",
+      "create": "Create"
+    }
+  },
+  "stepSource": {
+    "description": "Choose the game localization pack that will serve as the source for translation.",
+    "sectionLabel": "AVAILABLE LOCALIZATION PACKS",
+    "noGameSelected": "No game selected",
+    "noPacks": {
+      "title": "No localization packs found",
+      "subtitle": "Make sure the game is installed and has localization files in the data folder."
+    }
+  },
+  "stepTargets": {
+    "description": "Choose the languages you want to translate the game into.",
+    "translatingFrom": "Translating from: ",
+    "selectionCount": "$count language(s) selected",
+    "noLanguages": {
+      "title": "No languages available",
+      "subtitle": "Please configure target languages in Settings."
+    },
+    "actions": {
+      "selectAll": "Select All",
+      "clear": "Clear",
+      "addLanguage": "Add Language"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "Add Custom Language",
+    "description": "Add a custom language that will be available for translation projects.",
+    "fields": {
+      "codeLabel": "LANGUAGE CODE",
+      "codeHint": "e.g. pl, ko, ja",
+      "codeHelper": "ISO 639-1 code (2-3 characters)",
+      "codeErrors": {
+        "required": "Language code is required",
+        "tooShort": "Code must be at least 2 characters",
+        "lettersOnly": "Code must contain only letters"
+      },
+      "nameLabel": "LANGUAGE NAME",
+      "nameHint": "e.g. Polish, Korean, Japanese",
+      "nameHelper": "Display name for this language",
+      "nameErrors": {
+        "required": "Language name is required"
+      }
+    },
+    "defaultLanguage": {
+      "label": "Set as default language",
+      "description": "This language will become the default target language for all new mod translation projects."
+    },
+    "info": "Custom languages can be deleted later from Settings. System languages (English, French, etc.) cannot be modified.",
+    "actions": {
+      "add": "Add"
+    },
+    "toasts": {
+      "addedAsDefault": "Language \"$name\" added and set as default",
+      "addedSuccessfully": "Language \"$name\" added successfully",
+      "addFailed": "Failed to add language"
+    }
+  }
+}
