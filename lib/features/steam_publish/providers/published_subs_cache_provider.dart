@@ -22,20 +22,22 @@ class PublishedSubsCache extends _$PublishedSubsCache {
   @override
   Map<String, int> build() => const {};
 
-  /// Replace the cache wholesale with the result of a fresh Workshop API
-  /// query. On error, the prior state is left untouched.
-  Future<void> refreshFromWorkshop() async {
+  /// Collects unique non-empty `publishedSteamId` values from every project
+  /// and compilation of the currently selected game. Returns an empty list
+  /// when no game is selected, the game is unknown, or no published items
+  /// exist for the user.
+  ///
+  /// Pure DB read — does not mutate state.
+  Future<List<String>> collectPublishedIds() async {
     final selectedGame = await ref.read(selectedGameProvider.future);
-    if (selectedGame == null) return;
+    if (selectedGame == null) return const [];
 
     final game = getGameByCode(selectedGame.code);
-    if (game == null) return;
-    final appId = int.tryParse(game.steamAppId);
-    if (appId == null) return;
+    if (game == null) return const [];
 
     final installRepo = ref.read(gameInstallationRepositoryProvider);
     final installResult = await installRepo.getByGameCode(selectedGame.code);
-    if (installResult.isErr) return;
+    if (installResult.isErr) return const [];
     final installationId = installResult.value.id;
 
     final ids = <String>{};
@@ -60,29 +62,49 @@ class PublishedSubsCache extends _$PublishedSubsCache {
       }
     }
 
-    if (ids.isEmpty) {
-      state = const {};
-      return;
-    }
+    return ids.toList();
+  }
+
+  /// Fetches subscriber counts for the given IDs in chunks of ≤100 and
+  /// replaces state on success. On any chunk failure, leaves prior state
+  /// untouched and returns `false`.
+  ///
+  /// Returns `true` when the cache was updated, `false` on failure or when
+  /// the input is empty.
+  Future<bool> refreshForIds(List<String> ids) async {
+    if (ids.isEmpty) return false;
+
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (selectedGame == null) return false;
+    final game = getGameByCode(selectedGame.code);
+    if (game == null) return false;
+    final appId = int.tryParse(game.steamAppId);
+    if (appId == null) return false;
 
     final api = ref.read(workshopApiServiceProvider);
     final next = <String, int>{};
-    final idList = ids.toList();
     const chunkSize = 100;
-    for (var i = 0; i < idList.length; i += chunkSize) {
-      final end =
-          (i + chunkSize) > idList.length ? idList.length : i + chunkSize;
-      final chunk = idList.sublist(i, end);
+    for (var i = 0; i < ids.length; i += chunkSize) {
+      final end = (i + chunkSize) > ids.length ? ids.length : i + chunkSize;
+      final chunk = ids.sublist(i, end);
       final result = await api.getMultipleModInfo(
         workshopIds: chunk,
         appId: appId,
       );
-      if (result.isErr) return; // leave prior state untouched
+      if (result.isErr) return false;
       for (final info in result.value) {
-        final subs = info.subscriptions;
-        if (subs != null) next[info.workshopId] = subs;
+        next[info.workshopId] = info.subscriptions ?? 0;
       }
     }
     state = next;
+    return true;
+  }
+
+  /// Convenience wrapper: collect IDs and refresh in one call. Returns the
+  /// number of IDs that were processed (0 when there is nothing to refresh).
+  Future<void> refreshFromWorkshop() async {
+    final ids = await collectPublishedIds();
+    if (ids.isEmpty) return;
+    await refreshForIds(ids);
   }
 }

@@ -294,5 +294,46 @@ void main() {
       // Cache holds all 150 entries.
       expect(container.read(publishedSubsCacheProvider).length, 150);
     });
+
+    test('collectPublishedIds returns deduped non-empty ids from DB', () async {
+      final projectRepo = _MockProjectRepository();
+      final compilationRepo = _MockCompilationRepository();
+      final gameInstallRepo = _MockGameInstallationRepository();
+      final workshopApi = _MockWorkshopApiService();
+
+      when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
+        (_) async =>
+            Ok<GameInstallation, TWMTDatabaseException>(_installation()),
+      );
+      when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
+        (_) async => Ok<List<Project>, TWMTDatabaseException>([
+          _project(id: 'p1', publishedSteamId: '111'),
+          _project(id: 'p2'), // unpublished — must not appear
+        ]),
+      );
+      when(() => compilationRepo.getByGameInstallation('install-wh3'))
+          .thenAnswer(
+        (_) async => Ok<List<Compilation>, TWMTDatabaseException>([
+          _compilation(id: 'c1', publishedSteamId: '111'), // dup of p1
+          _compilation(id: 'c2', publishedSteamId: '222'),
+        ]),
+      );
+
+      final container = _makeContainer(
+        projectRepo: projectRepo,
+        compilationRepo: compilationRepo,
+        gameInstallationRepo: gameInstallRepo,
+        workshopApi: workshopApi,
+      );
+      addTearDown(container.dispose);
+
+      final ids = await container
+          .read(publishedSubsCacheProvider.notifier)
+          .collectPublishedIds();
+      // Sort because it's a list-from-set (insertion-order in practice, but
+      // assert on the unordered content to keep the test robust).
+      expect(ids.toSet(), {'111', '222'});
+      expect(ids.length, 2); // no duplicates
+    });
   });
 }

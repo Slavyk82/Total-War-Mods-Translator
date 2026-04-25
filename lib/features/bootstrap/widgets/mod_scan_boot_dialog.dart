@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';
@@ -55,6 +56,32 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
   String _title = 'Scanning Workshop mods...';
   bool _phaseTwoStarted = false;
 
+  /// Merged stream: relays scan logs and accepts phase-2 status lines added
+  /// via [_addPhaseTwoLog]. We own the controller so we can dispose it.
+  final StreamController<ScanLogMessage> _logController =
+      StreamController<ScanLogMessage>.broadcast();
+  StreamSubscription<ScanLogMessage>? _scanSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Subscribe to the scanner's stream once and forward into our controller.
+    final scanLogStream = ref.read(scanLogStreamProvider);
+    _scanSub = scanLogStream.listen(_logController.add);
+  }
+
+  @override
+  void dispose() {
+    _scanSub?.cancel();
+    _logController.close();
+    super.dispose();
+  }
+
+  void _addPhaseTwoLog(ScanLogMessage msg) {
+    if (_logController.isClosed) return;
+    _logController.add(msg);
+  }
+
   void _closeIfMounted() {
     if (_closed || !mounted) return;
     _closed = true;
@@ -65,16 +92,47 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
     if (_phaseTwoStarted) return;
     _phaseTwoStarted = true;
     if (!mounted) return;
-    setState(() {
-      _title = 'Refreshing subscriber counts...';
-    });
-    try {
-      await ref
-          .read(publishedSubsCacheProvider.notifier)
-          .refreshFromWorkshop();
-    } catch (_) {
-      // Subscriber refresh is best-effort. Log path is inside the API service.
+
+    // Step 1 — discover whether there is anything to refresh.
+    final ids = await ref
+        .read(publishedSubsCacheProvider.notifier)
+        .collectPublishedIds();
+
+    // Empty case: skip phase 2 entirely. No title flip, no log lines.
+    if (ids.isEmpty) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _closeIfMounted());
+      return;
     }
+
+    // Step 2 — announce the work and flip the title.
+    _addPhaseTwoLog(ScanLogMessage.info(
+      'Refreshing subscriber counts for ${ids.length} published translations…',
+    ));
+    if (mounted) {
+      setState(() {
+        _title = 'Refreshing subscriber counts...';
+      });
+    }
+
+    // Step 3 — fetch and report.
+    bool ok = false;
+    try {
+      ok = await ref
+          .read(publishedSubsCacheProvider.notifier)
+          .refreshForIds(ids);
+    } catch (_) {
+      ok = false;
+    }
+    _addPhaseTwoLog(
+      ok
+          ? ScanLogMessage.info('Done.')
+          : ScanLogMessage.error('Failed — subscriber counts unavailable.'),
+    );
+
+    // Step 4 — let the user see the final line, then close.
+    if (!mounted) return;
+    await Future<void>.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _closeIfMounted());
   }
@@ -91,8 +149,6 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
       }
     });
 
-    final scanLogStream = ref.watch(scanLogStreamProvider);
-
     return PopScope(
       canPop: false,
       child: Dialog(
@@ -100,7 +156,7 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
         elevation: 0,
         insetPadding: const EdgeInsets.all(24),
         child: ScanTerminalWidget(
-          logStream: scanLogStream,
+          logStream: _logController.stream,
           title: _title,
         ),
       ),
