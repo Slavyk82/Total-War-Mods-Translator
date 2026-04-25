@@ -228,7 +228,7 @@ class SteamTitleBlock extends StatelessWidget {
 // Publish state pill
 // =============================================================================
 
-/// Renders a publish-state badge in column 4. Three mutually-exclusive states:
+/// Renders a publish-state badge in column 5. Three mutually-exclusive states:
 /// `NO PACK` (no pack on disk), `PUBLISHED` (pack + Workshop id) or
 /// `UNPUBLISHED` (pack but no Workshop id).
 class SteamStateCell extends StatelessWidget {
@@ -290,7 +290,7 @@ class SteamStateCell extends StatelessWidget {
 // =============================================================================
 
 /// Renders the most recent publish timestamp (or last export) relative to the
-/// ambient [clockProvider] in column 5.
+/// ambient [clockProvider] in column 6.
 class SteamLastPublishedCell extends ConsumerWidget {
   final PublishableItem item;
 
