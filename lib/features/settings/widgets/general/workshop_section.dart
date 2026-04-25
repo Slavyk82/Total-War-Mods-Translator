@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -73,14 +73,14 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
             SmallTextButton(
               label: _isDetecting ? 'Detecting...' : 'Detect',
               icon: FluentIcons.search_24_regular,
-              tooltip: TooltipStrings.settingsDetectWorkshop,
+              tooltip: t.tooltips.settings.detectWorkshop,
               onTap: _isDetecting ? null : _autoDetectWorkshop,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
               label: 'Browse',
               icon: FluentIcons.folder_open_24_regular,
-              tooltip: TooltipStrings.settingsBrowsePath,
+              tooltip: t.tooltips.settings.browsePath,
               onTap: _selectWorkshopPath,
             ),
             const SizedBox(width: 8),

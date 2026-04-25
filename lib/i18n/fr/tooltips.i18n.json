@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Réanalyser les dossiers Steam Workshop pour trouver les mods contenant des fichiers de localisation",
+    "hiddenToggle": "Basculer entre les mods normaux et masqués",
+    "importLocalPack": "Importer un fichier .pack local qui ne provient pas de Steam Workshop",
+    "filterAll": "Afficher tous les mods",
+    "filterNotImported": "Afficher uniquement les mods sans projet de traduction",
+    "filterNeedsUpdate": "Afficher uniquement les mods avec des mises à jour ou modifications en attente"
+  },
+  "projects": {
+    "filterNeedsUpdate": "Afficher les projets nécessitant une attention en raison de modifications de la source du mod",
+    "filterNeedsReview": "Afficher les projets avec au moins une unité signalée pour révision",
+    "filterIncomplete": "Afficher les projets pas encore traduits à 100 % dans toutes les langues configurées",
+    "filterHasComplete": "Afficher les projets avec au moins une langue entièrement traduite",
+    "filterExportOutdated": "Afficher les projets modifiés depuis leur dernier export",
+    "filterExported": "Afficher uniquement les projets qui ont été exportés",
+    "filterNotExported": "Afficher uniquement les projets qui n'ont jamais été exportés",
+    "filterClear": "Effacer le filtre d'état actif"
+  },
+  "editor": {
+    "modelSelector": "Sélectionner le modèle d'IA à utiliser pour la traduction",
+    "useTm": "Si coché, consulter la mémoire de traduction avant d'interroger le modèle d'IA. Décocher pour ignorer la MT et envoyer les unités directement au modèle.",
+    "batchAuto": "Calculer automatiquement la taille du lot à partir du budget de tokens du modèle sélectionné. Désactiver pour fixer une valeur de lots / unités.",
+    "batchUnits": "Nombre maximum d'unités de traduction par requête LLM (1–1000). Des valeurs faibles réduisent les délais d'attente au prix de plus de tokens consommés.",
+    "batchParallel": "Nombre de requêtes LLM simultanées (1–20). Une valeur élevée est plus rapide mais augmente la charge API ; 3–5 est typique.",
+    "modRuleEdit": "Modifier la règle de traduction spécifique au mod",
+    "modRuleAdd": "Ajouter une règle de traduction spécifique au mod"
+  },
+  "settings": {
+    "detectAllGames": "Analyser l'installation Steam pour trouver automatiquement les chemins des jeux",
+    "detectGame": "Détecter automatiquement le chemin d'installation de ce jeu",
+    "browsePath": "Sélectionner le dossier manuellement",
+    "testRpfm": "Valider l'exécutable RPFM et afficher la version",
+    "defaultPath": "Utiliser le chemin par défaut",
+    "detectWorkshop": "Détecter automatiquement le dossier de contenu Steam Workshop",
+    "addLanguage": "Ajouter une langue personnalisée",
+    "addIgnoredText": "Ajouter un texte source à ignorer lors de la traduction",
+    "resetIgnoredDefaults": "Supprimer toutes les entrées et restaurer les textes ignorés par défaut",
+    "addRule": "Ajouter une nouvelle instruction de traduction",
+    "setDefaultModel": "Définir comme modèle par défaut pour ce fournisseur"
+  },
+  "tm": {
+    "import": "Importer des entrées de mémoire de traduction depuis un fichier TMX",
+    "export": "Exporter des entrées de mémoire de traduction vers un fichier TMX",
+    "cleanup": "Supprimer les entrées inutilisées pour réduire la taille de la base de données"
+  },
+  "glossary": {
+    "new": "Créer un nouveau glossaire"
+  }
+}

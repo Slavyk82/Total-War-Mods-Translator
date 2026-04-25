@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -75,14 +75,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
             SmallTextButton(
               label: 'Test',
               icon: FluentIcons.beaker_24_regular,
-              tooltip: TooltipStrings.settingsTestRpfm,
+              tooltip: t.tooltips.settings.testRpfm,
               onTap: _testRpfmPath,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
               label: 'Browse',
               icon: FluentIcons.folder_open_24_regular,
-              tooltip: TooltipStrings.settingsBrowsePath,
+              tooltip: t.tooltips.settings.browsePath,
               onTap: _selectRpfmPath,
             ),
             const SizedBox(width: 8),
@@ -143,14 +143,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
             SmallTextButton(
               label: 'Default',
               icon: FluentIcons.checkmark_circle_24_regular,
-              tooltip: TooltipStrings.settingsDefaultPath,
+              tooltip: t.tooltips.settings.defaultPath,
               onTap: _useDefaultRpfmSchemaPath,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
               label: 'Browse',
               icon: FluentIcons.folder_open_24_regular,
-              tooltip: TooltipStrings.settingsBrowsePath,
+              tooltip: t.tooltips.settings.browsePath,
               onTap: _selectRpfmSchemaPath,
             ),
             const SizedBox(width: 8),

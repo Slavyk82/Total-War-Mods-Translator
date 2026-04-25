@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../models/game_display_info.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -73,7 +73,7 @@ class _GameInstallationsSectionState
         SmallTextButton(
           label: _isDetecting ? 'Detecting...' : 'Auto-Detect All Games',
           icon: FluentIcons.search_24_regular,
-          tooltip: TooltipStrings.settingsDetectAllGames,
+          tooltip: t.tooltips.settings.detectAllGames,
           onTap: _isDetecting ? null : _autoDetectAllGames,
         ),
         const SizedBox(width: 8),
@@ -95,14 +95,14 @@ class _GameInstallationsSectionState
         SmallTextButton(
           label: 'Detect',
           icon: FluentIcons.search_24_regular,
-          tooltip: TooltipStrings.settingsDetectGame,
+          tooltip: t.tooltips.settings.detectGame,
           onTap: _isDetecting ? null : () => _autoDetectGame(game.code),
         ),
         const SizedBox(width: 6),
         SmallTextButton(
           label: 'Browse',
           icon: FluentIcons.folder_open_24_regular,
-          tooltip: TooltipStrings.settingsBrowsePath,
+          tooltip: t.tooltips.settings.browsePath,
           onTap: () => _selectGamePath(game.code),
         ),
         const SizedBox(width: 8),

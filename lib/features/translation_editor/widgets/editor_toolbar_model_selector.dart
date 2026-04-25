@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../settings/providers/settings_providers.dart';
@@ -85,7 +85,7 @@ class _EditorToolbarModelSelectorState
             : '${currentModel.providerCode}: ${currentModel.friendlyName}';
 
         return Tooltip(
-          message: TooltipStrings.editorModelSelector,
+          message: t.tooltips.editor.modelSelector,
           waitDuration: const Duration(milliseconds: 500),
           child: MenuAnchor(
             controller: _menuController,

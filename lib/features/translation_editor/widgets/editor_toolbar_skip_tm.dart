@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/translation_settings_provider.dart';
 
@@ -49,7 +49,7 @@ class EditorToolbarSkipTm extends ConsumerWidget {
     }
 
     return Tooltip(
-      message: TooltipStrings.editorUseTm,
+      message: t.tooltips.editor.useTm,
       waitDuration: const Duration(milliseconds: 500),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/translation_settings_provider.dart';
 
@@ -157,7 +157,7 @@ class _EditorToolbarBatchSettingsState
 
   Widget _buildAutoRow(TwmtThemeTokens tokens, TranslationSettings settings) {
     return Tooltip(
-      message: TooltipStrings.editorBatchAuto,
+      message: t.tooltips.editor.batchAuto,
       waitDuration: const Duration(milliseconds: 500),
       child: Row(
         children: [
@@ -188,7 +188,7 @@ class _EditorToolbarBatchSettingsState
   Widget _buildUnitsRow(TwmtThemeTokens tokens, TranslationSettings settings) {
     final enabled = !settings.isAutoMode;
     return Tooltip(
-      message: TooltipStrings.editorBatchUnits,
+      message: t.tooltips.editor.batchUnits,
       waitDuration: const Duration(milliseconds: 500),
       child: Row(
         children: [
@@ -223,7 +223,7 @@ class _EditorToolbarBatchSettingsState
     TranslationSettings settings,
   ) {
     return Tooltip(
-      message: TooltipStrings.editorBatchParallel,
+      message: t.tooltips.editor.batchParallel,
       waitDuration: const Duration(milliseconds: 500),
       child: Row(
         children: [

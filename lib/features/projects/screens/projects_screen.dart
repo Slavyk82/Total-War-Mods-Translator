@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/router/app_router.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -155,7 +155,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     return FilterPillGroup(
       label: 'STATE',
       clearLabel: 'Clear',
-      clearTooltip: TooltipStrings.projectsFilterClear,
+      clearTooltip: t.tooltips.projects.filterClear,
       onClear: () => ref
           .read(projectsFilterProvider.notifier)
           .setQuickFilter(ProjectQuickFilter.none),
@@ -163,37 +163,37 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
         pill(
           'Needs Update',
           ProjectQuickFilter.needsUpdate,
-          TooltipStrings.projectsFilterNeedsUpdate,
+          t.tooltips.projects.filterNeedsUpdate,
         ),
         pill(
           'Needs Review',
           ProjectQuickFilter.needsReview,
-          TooltipStrings.projectsFilterNeedsReview,
+          t.tooltips.projects.filterNeedsReview,
         ),
         pill(
           'Incomplete',
           ProjectQuickFilter.incomplete,
-          TooltipStrings.projectsFilterIncomplete,
+          t.tooltips.projects.filterIncomplete,
         ),
         pill(
           'Completed',
           ProjectQuickFilter.hasCompleteLanguage,
-          TooltipStrings.projectsFilterHasComplete,
+          t.tooltips.projects.filterHasComplete,
         ),
         pill(
           'Exported',
           ProjectQuickFilter.exported,
-          TooltipStrings.projectsFilterExported,
+          t.tooltips.projects.filterExported,
         ),
         pill(
           'Not Exported',
           ProjectQuickFilter.notExported,
-          TooltipStrings.projectsFilterNotExported,
+          t.tooltips.projects.filterNotExported,
         ),
         pill(
           'Export Outdated',
           ProjectQuickFilter.exportOutdated,
-          TooltipStrings.projectsFilterExportOutdated,
+          t.tooltips.projects.filterExportOutdated,
         ),
       ],
     );
@@ -975,7 +975,7 @@ class _StatusPill extends StatelessWidget {
         label: 'Export outdated',
         fg: tokens.warn,
         bg: tokens.warnBg,
-        tooltip: TooltipStrings.projectsFilterExportOutdated,
+        tooltip: t.tooltips.projects.filterExportOutdated,
       );
     }
     if (details.hasBeenExported) {

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
@@ -70,19 +70,19 @@ class _TranslationMemoryScreenState
               SmallTextButton(
                 label: 'Import TMX',
                 icon: FluentIcons.arrow_import_24_regular,
-                tooltip: TooltipStrings.tmImport,
+                tooltip: t.tooltips.tm.import,
                 onTap: _showImportDialog,
               ),
               SmallTextButton(
                 label: 'Export TMX',
                 icon: FluentIcons.arrow_export_24_regular,
-                tooltip: TooltipStrings.tmExport,
+                tooltip: t.tooltips.tm.export,
                 onTap: _showExportDialog,
               ),
               SmallTextButton(
                 label: 'Cleanup',
                 icon: FluentIcons.broom_24_regular,
-                tooltip: TooltipStrings.tmCleanup,
+                tooltip: t.tooltips.tm.cleanup,
                 onTap: _showCleanupDialog,
               ),
             ],

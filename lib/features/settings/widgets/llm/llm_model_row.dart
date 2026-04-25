@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../../models/domain/llm_provider_model.dart';
 import '../../providers/settings_providers.dart';
@@ -210,7 +210,7 @@ class _LlmModelRowState extends ConsumerState<LlmModelRow> {
                   // Default star button
                   const SizedBox(width: 8),
                   Tooltip(
-                    message: TooltipStrings.settingsSetDefaultModel,
+                    message: t.tooltips.settings.setDefaultModel,
                     waitDuration: const Duration(milliseconds: 500),
                     child: GestureDetector(
                       onTap: _isProcessing || widget.model.isDefault

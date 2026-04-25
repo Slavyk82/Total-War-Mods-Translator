@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
@@ -99,7 +99,7 @@ class _LlmCustomRulesBody extends StatelessWidget {
             SmallTextButton(
               label: 'Add Rule',
               icon: FluentIcons.add_24_regular,
-              tooltip: TooltipStrings.settingsAddRule,
+              tooltip: t.tooltips.settings.addRule,
               onTap: onAdd,
             ),
           ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -128,14 +128,14 @@ class _IgnoredSourceTextsBody extends StatelessWidget {
             SmallTextButton(
               label: 'Reset to Defaults',
               icon: FluentIcons.arrow_reset_24_regular,
-              tooltip: TooltipStrings.settingsResetIgnoredDefaults,
+              tooltip: t.tooltips.settings.resetIgnoredDefaults,
               onTap: onReset,
             ),
             const SizedBox(width: 8),
             SmallTextButton(
               label: 'Add Text',
               icon: FluentIcons.add_24_regular,
-              tooltip: TooltipStrings.settingsAddIgnoredText,
+              tooltip: t.tooltips.settings.addIgnoredText,
               onTap: onAdd,
             ),
           ],

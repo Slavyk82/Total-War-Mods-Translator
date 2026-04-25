@@ -234,7 +234,7 @@ Create `lib/i18n/_app/_app_fr.i18n.json` with:
 {
   "language": {
     "title": "Langue de l'application",
-    "subtitle": "Langue utilisée par l'interface de TWMT. Indépendante des langues dans lesquelles tes mods sont traduits.",
+    "subtitle": "Langue utilisée par l'interface de TWMT. Indépendante des langues dans lesquelles vos mods sont traduits.",
     "systemDefault": "Langue du système",
     "label": "Langue"
   }

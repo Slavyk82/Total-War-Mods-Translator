@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Rescan Steam Workshop folders for mods containing localization files",
+    "hiddenToggle": "Switch between viewing normal and hidden mods",
+    "importLocalPack": "Import a local .pack file that is not from Steam Workshop",
+    "filterAll": "Show all mods",
+    "filterNotImported": "Show only mods without translation projects",
+    "filterNeedsUpdate": "Show only mods with pending updates or changes"
+  },
+  "projects": {
+    "filterNeedsUpdate": "Show projects requiring attention due to mod source changes",
+    "filterNeedsReview": "Show projects with at least one unit flagged for review",
+    "filterIncomplete": "Show projects not yet 100% translated in all configured languages",
+    "filterHasComplete": "Show projects with at least one language fully translated",
+    "filterExportOutdated": "Show projects modified since their last export",
+    "filterExported": "Show only projects that have been exported",
+    "filterNotExported": "Show only projects that have never been exported",
+    "filterClear": "Clear the active state filter"
+  },
+  "editor": {
+    "modelSelector": "Select the AI model to use for translation",
+    "useTm": "When checked, consult Translation Memory before querying the AI model. Uncheck to bypass TM and always send units directly to the model.",
+    "batchAuto": "Calculate the batch size automatically from the selected model's token budget. Turn off to pin a fixed Units / batch value.",
+    "batchUnits": "Maximum translation units per LLM request (1–1000). Lower values reduce timeouts at the cost of more tokens consumed.",
+    "batchParallel": "Number of simultaneous LLM requests (1–20). Higher is faster but increases API load; 3–5 is typical.",
+    "modRuleEdit": "Edit mod-specific translation rule",
+    "modRuleAdd": "Add mod-specific translation rule"
+  },
+  "settings": {
+    "detectAllGames": "Scan Steam installation to automatically find game paths",
+    "detectGame": "Auto-detect this game installation path",
+    "browsePath": "Manually select folder",
+    "testRpfm": "Validate RPFM executable and display version",
+    "defaultPath": "Use the default path",
+    "detectWorkshop": "Auto-detect Steam Workshop content folder",
+    "addLanguage": "Add a custom language",
+    "addIgnoredText": "Add a new source text to skip during translation",
+    "resetIgnoredDefaults": "Delete all entries and restore default ignored texts",
+    "addRule": "Add a new translation instruction",
+    "setDefaultModel": "Set as default model for this provider"
+  },
+  "tm": {
+    "import": "Import translation memory entries from a TMX file",
+    "export": "Export translation memory entries to a TMX file",
+    "cleanup": "Remove unused entries to reduce database size"
+  },
+  "glossary": {
+    "new": "Create a new glossary"
+  }
+}

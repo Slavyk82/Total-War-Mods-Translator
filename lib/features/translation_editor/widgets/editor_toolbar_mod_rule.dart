@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../settings/providers/llm_custom_rules_providers.dart';
 import '../providers/editor_providers.dart';
@@ -47,8 +47,8 @@ class EditorToolbarModRule extends ConsumerWidget {
 
         return Tooltip(
           message: hasRule
-              ? TooltipStrings.editorModRuleEdit
-              : TooltipStrings.editorModRuleAdd,
+              ? t.tooltips.editor.modRuleEdit
+              : t.tooltips.editor.modRuleAdd,
           waitDuration: const Duration(milliseconds: 500),
           child: MouseRegion(
             cursor: SystemMouseCursors.click,

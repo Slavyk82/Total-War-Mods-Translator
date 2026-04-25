@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
@@ -71,7 +71,7 @@ class ModsToolbar extends StatelessWidget {
         SmallTextButton(
           label: 'Import pack',
           icon: FluentIcons.folder_add_24_regular,
-          tooltip: TooltipStrings.modsImportLocalPack,
+          tooltip: t.tooltips.mods.importLocalPack,
           onTap: onImportLocalPack,
         ),
       _RefreshButton(
@@ -89,14 +89,14 @@ class ModsToolbar extends StatelessWidget {
         FilterPill(
           label: 'All',
           selected: isAll,
-          tooltip: TooltipStrings.modsFilterAll,
+          tooltip: t.tooltips.mods.filterAll,
           onToggle: () => onFilterChanged(ModsFilter.all),
         ),
         FilterPill(
           label: 'Not imported',
           selected: currentFilter == ModsFilter.notImported,
           count: notImportedCount,
-          tooltip: TooltipStrings.modsFilterNotImported,
+          tooltip: t.tooltips.mods.filterNotImported,
           onToggle: () => onFilterChanged(
             currentFilter == ModsFilter.notImported
                 ? ModsFilter.all
@@ -107,7 +107,7 @@ class ModsToolbar extends StatelessWidget {
           label: 'Needs update',
           selected: currentFilter == ModsFilter.needsUpdate,
           count: needsUpdateCount,
-          tooltip: TooltipStrings.modsFilterNeedsUpdate,
+          tooltip: t.tooltips.mods.filterNeedsUpdate,
           onToggle: () => onFilterChanged(
             currentFilter == ModsFilter.needsUpdate
                 ? ModsFilter.all
@@ -118,7 +118,7 @@ class ModsToolbar extends StatelessWidget {
           label: 'Hidden',
           selected: showHidden,
           count: hiddenCount > 0 ? hiddenCount : null,
-          tooltip: TooltipStrings.modsHiddenToggle,
+          tooltip: t.tooltips.mods.hiddenToggle,
           onToggle: () => onShowHiddenChanged(!showHidden),
         ),
       ],
@@ -200,7 +200,7 @@ class _RefreshButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Tooltip(
-      message: TooltipStrings.modsRefresh,
+      message: t.tooltips.mods.refresh,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: isRefreshing

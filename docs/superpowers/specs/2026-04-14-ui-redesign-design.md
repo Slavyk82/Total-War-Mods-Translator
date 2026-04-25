@@ -262,7 +262,7 @@ Structure :
 3. **Action grid** — 4 cartes actionnables chiffrées (pas de vanity metrics) : À revoir / Prêts à compiler / Mods mis à jour / Prêt à publier. Les cartes avec action urgente ont un dot pulsé top-right.
 4. **Recent + Activity** — 2 colonnes 2fr/1fr : liste des projets récents avec next-action à droite (même pattern que §7.1) + feed d'activité horodaté à droite.
 
-**Adaptation vide (nouveau user)** — pas de mode séparé. Les compteurs à 0, le workflow ribbon highlight l'étape 1, la carte actionnable centrale devient un gros CTA "Commence par détecter tes mods", *Recent* se transforme en guide 3 étapes. **C'est le contenu qui s'adapte à l'état, pas l'UI.**
+**Adaptation vide (nouveau user)** — pas de mode séparé. Les compteurs à 0, le workflow ribbon highlight l'étape 1, la carte actionnable centrale devient un gros CTA "Commence par détecter vos mods", *Recent* se transforme en guide 3 étapes. **C'est le contenu qui s'adapte à l'état, pas l'UI.**
 
 ### 7.5 Wizard / form
 

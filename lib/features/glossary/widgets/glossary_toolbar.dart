@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
@@ -46,7 +46,7 @@ class GlossaryToolbar extends StatelessWidget {
         SmallTextButton(
           label: 'New glossary',
           icon: FluentIcons.add_24_regular,
-          tooltip: TooltipStrings.glossaryNew,
+          tooltip: t.tooltips.glossary.kNew,
           onTap: onNewGlossary,
         ),
       ],

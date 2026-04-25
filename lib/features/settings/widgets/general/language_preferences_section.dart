@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/config/tooltip_strings.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../../widgets/fluent/fluent_widgets.dart';
 import '../../providers/language_settings_providers.dart';
@@ -28,14 +28,14 @@ class LanguagePreferencesSection extends ConsumerWidget {
           children: [
             const Expanded(
               child: SettingsSectionHeader(
-                title: 'Transalation Language Preferences',
+                title: 'Translation Language Preferences',
                 subtitle: 'Manage available languages for translations and set the default target language',
               ),
             ),
             SmallTextButton(
               label: 'Add Language',
               icon: FluentIcons.add_24_regular,
-              tooltip: TooltipStrings.settingsAddLanguage,
+              tooltip: t.tooltips.settings.addLanguage,
               onTap: () => _showAddLanguageDialog(context, ref),
             ),
           ],
