@@ -9,6 +9,7 @@ class ProjectGrid extends StatelessWidget {
   final List<ProjectWithDetails> projects;
   final Function(String projectId)? onProjectTap;
   final Function(String projectId)? onResync;
+  final Function(String projectId)? onDelete;
   final Set<String> resyncingProjects;
   final bool isSelectionMode;
   final Set<String> selectedProjectIds;
@@ -19,6 +20,7 @@ class ProjectGrid extends StatelessWidget {
     required this.projects,
     this.onProjectTap,
     this.onResync,
+    this.onDelete,
     this.resyncingProjects = const {},
     this.isSelectionMode = false,
     this.selectedProjectIds = const {},
@@ -37,6 +39,7 @@ class ProjectGrid extends StatelessWidget {
           projectWithDetails: projectWithDetails,
           onTap: () => onProjectTap?.call(projectId),
           onResync: () => onResync?.call(projectId),
+          onDelete: onDelete == null ? null : () => onDelete!(projectId),
           isResyncing: resyncingProjects.contains(projectId),
           isSelectionMode: isSelectionMode,
           isSelected: selectedProjectIds.contains(projectId),
