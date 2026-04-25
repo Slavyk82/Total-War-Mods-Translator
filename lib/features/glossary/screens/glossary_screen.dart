@@ -235,7 +235,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: '+ Entry',
+                    label: 'Add Entry',
                     icon: FluentIcons.add_24_regular,
                     onTap: () => _showEntryEditor(glossary, targetLanguageCode),
                   ),

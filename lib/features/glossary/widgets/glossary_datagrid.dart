@@ -140,12 +140,12 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
         ),
         GridColumn(
           columnName: 'caseSensitive',
-          width: 80,
+          width: 140,
           label: Container(
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.center,
             child: Text(
-              'Case',
+              'Case sensitive',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
