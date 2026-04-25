@@ -29,7 +29,6 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
     systemPrompt: 'Translate videogame UI strings.',
     modelName: 'claude-3-5-sonnet-20241022',
     maxTokens: 512,
-    temperature: 0.2,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
 }
@@ -117,7 +116,7 @@ void main() {
       final payload = captured[1] as Map<String, dynamic>;
       expect(payload['model'], 'claude-3-5-sonnet-20241022');
       expect(payload['max_tokens'], 512);
-      expect(payload['temperature'], 0.2);
+      expect(payload.containsKey('temperature'), isFalse);
       expect(payload['system'], isA<String>());
       expect(payload['system'] as String,
           contains('Translate videogame UI strings.'));

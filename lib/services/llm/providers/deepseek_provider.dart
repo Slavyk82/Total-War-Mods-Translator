@@ -303,7 +303,6 @@ class DeepSeekProvider implements ILlmProvider {
       'model': modelName,
       'messages': messages,
       'response_format': {'type': 'json_object'},
-      'temperature': request.temperature,
       'max_tokens': maxTokens, // DeepSeek uses max_tokens, not max_completion_tokens
     };
 

@@ -43,9 +43,6 @@ class LlmRequest {
   /// If not provided, the active provider from settings is used
   final String? providerCode;
 
-  /// Temperature (0.0-1.0, default 0.3 for consistency)
-  final double temperature;
-
   /// Maximum tokens for response
   final int? maxTokens;
 
@@ -65,7 +62,6 @@ class LlmRequest {
     this.sourceLanguage,
     this.modelName,
     this.providerCode,
-    this.temperature = 0.3,
     this.maxTokens,
     required this.timestamp,
   });
@@ -88,7 +84,6 @@ class LlmRequest {
     String? sourceLanguage,
     String? modelName,
     String? providerCode,
-    double? temperature,
     int? maxTokens,
     DateTime? timestamp,
   }) {
@@ -105,7 +100,6 @@ class LlmRequest {
       sourceLanguage: sourceLanguage ?? this.sourceLanguage,
       modelName: modelName ?? this.modelName,
       providerCode: providerCode ?? this.providerCode,
-      temperature: temperature ?? this.temperature,
       maxTokens: maxTokens ?? this.maxTokens,
       timestamp: timestamp ?? this.timestamp,
     );
@@ -128,7 +122,6 @@ class LlmRequest {
           sourceLanguage == other.sourceLanguage &&
           modelName == other.modelName &&
           providerCode == other.providerCode &&
-          temperature == other.temperature &&
           maxTokens == other.maxTokens &&
           timestamp == other.timestamp;
 
@@ -146,7 +139,6 @@ class LlmRequest {
       (sourceLanguage?.hashCode ?? 0) ^
       (modelName?.hashCode ?? 0) ^
       (providerCode?.hashCode ?? 0) ^
-      temperature.hashCode ^
       (maxTokens?.hashCode ?? 0) ^
       timestamp.hashCode;
 
@@ -154,7 +146,7 @@ class LlmRequest {
   String toString() {
     return 'LlmRequest(requestId: $requestId, '
         'targetLanguage: $targetLanguage, texts: ${texts.length} items, '
-        'temperature: $temperature, timestamp: $timestamp)';
+        'timestamp: $timestamp)';
   }
 }
 

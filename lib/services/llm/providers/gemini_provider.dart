@@ -292,7 +292,6 @@ class GeminiProvider implements ILlmProvider {
         ],
       },
       'generationConfig': {
-        'temperature': request.temperature,
         'maxOutputTokens': maxTokens,
         'responseMimeType': 'application/json',
       },

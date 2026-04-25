@@ -32,7 +32,6 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
     systemPrompt: 'Translate videogame UI strings.',
     modelName: 'deepseek-v4-flash',
     maxTokens: 4096,
-    temperature: 0.2,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
 }
@@ -126,7 +125,7 @@ void main() {
       // DeepSeek uses max_tokens (not max_completion_tokens like OpenAI).
       expect(payload['max_tokens'], 4096);
       expect(payload.containsKey('max_completion_tokens'), isFalse);
-      expect(payload['temperature'], 0.2);
+      expect(payload.containsKey('temperature'), isFalse);
       final messages = payload['messages'] as List;
       expect(messages.length, greaterThanOrEqualTo(2));
       final userMessage = messages.last as Map;

@@ -33,7 +33,6 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
     systemPrompt: 'Translate videogame UI strings.',
     modelName: 'deepl',
     maxTokens: 512,
-    temperature: 0.0,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
 }

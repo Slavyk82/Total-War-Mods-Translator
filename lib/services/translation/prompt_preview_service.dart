@@ -214,7 +214,6 @@ class PromptPreviewService {
           'content': userMessage,
         },
       ],
-      'temperature': 0.3,
       'response_format': {'type': 'json_object'},
     };
 
@@ -229,7 +228,6 @@ class PromptPreviewService {
     final payload = {
       'model': modelName,
       'max_tokens': 4096,
-      'temperature': 0.3,
       'system': systemMessage,
       'messages': [
         {

@@ -27,7 +27,6 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
     systemPrompt: 'Translate videogame UI strings.',
     modelName: 'gpt-4o-mini',
     maxTokens: 512,
-    temperature: 0.2,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
 }
@@ -120,7 +119,7 @@ void main() {
       expect(payload['model'], 'gpt-4o-mini');
       expect(payload['response_format'], {'type': 'json_object'});
       expect(payload['max_completion_tokens'], 512);
-      expect(payload['temperature'], 0.2);
+      expect(payload.containsKey('temperature'), isFalse);
       final messages = payload['messages'] as List;
       // System + user messages at minimum.
       expect(messages.length, greaterThanOrEqualTo(2));

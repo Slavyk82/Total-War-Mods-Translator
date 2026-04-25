@@ -302,7 +302,6 @@ class AnthropicProvider implements ILlmProvider {
     return {
       'model': request.modelName,
       'max_tokens': request.maxTokens ?? 4096,
-      'temperature': request.temperature,
       'system': systemPrompt,
       'messages': [
         {

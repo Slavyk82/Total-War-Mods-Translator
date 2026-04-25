@@ -28,7 +28,6 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
     systemPrompt: 'Translate videogame UI strings.',
     modelName: 'gemini-3-flash-preview',
     maxTokens: 512,
-    temperature: 0.2,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
 }
@@ -135,7 +134,7 @@ void main() {
       expect(userText, contains('fr'));
 
       final generationConfig = payload['generationConfig'] as Map;
-      expect(generationConfig['temperature'], 0.2);
+      expect(generationConfig.containsKey('temperature'), isFalse);
       expect(generationConfig['maxOutputTokens'], 512);
       expect(generationConfig['responseMimeType'], 'application/json');
 

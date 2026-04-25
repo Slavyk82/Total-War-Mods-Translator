@@ -13,9 +13,11 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// API Documentation: https://platform.openai.com/docs/api-reference
 /// Rate Limits: Configurable RPM/TPM per account
 ///
-/// Note: Model capabilities (temperature support, JSON format support, token
-/// parameter names) should be stored in the database llm_provider_models table.
-/// This provider uses safe defaults that work with most modern models.
+/// Note: Model capabilities (JSON format support, token parameter names)
+/// should be stored in the database llm_provider_models table. This provider
+/// uses safe defaults that work with most modern models. Temperature is
+/// intentionally not sent — recent OpenAI models (GPT-5.x) reject any value
+/// other than the default.
 class OpenAiProvider implements ILlmProvider {
   final Dio _dio;
   final TokenCalculator _tokenCalculator;
@@ -316,7 +318,6 @@ class OpenAiProvider implements ILlmProvider {
       'model': modelName,
       'messages': messages,
       'response_format': {'type': 'json_object'},
-      'temperature': request.temperature,
       'max_completion_tokens': maxTokens,
     };
 
