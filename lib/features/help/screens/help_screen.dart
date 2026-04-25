@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../models/help_section.dart';
 import '../providers/help_providers.dart';
@@ -52,7 +53,7 @@ class HelpScreen extends ConsumerWidget {
     if (sections.isEmpty) {
       return Center(
         child: Text(
-          'No documentation available.',
+          t.help.errors.noDocumentation,
           style: tokens.fontBody.copyWith(color: tokens.textDim),
         ),
       );
@@ -112,7 +113,7 @@ class _HelpHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            'Help',
+            t.help.title,
             style: tokens.fontDisplay.copyWith(
               fontSize: 24,
               color: tokens.text,
@@ -122,7 +123,7 @@ class _HelpHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Text(
-            'documentation',
+            t.help.subtitle,
             style: tokens.fontMono.copyWith(
               fontSize: 11,
               color: tokens.textDim,
@@ -156,7 +157,7 @@ class _HelpError extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Failed to load documentation',
+              t.help.errors.loadFailed,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,

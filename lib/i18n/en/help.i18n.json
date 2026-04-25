@@ -1,0 +1,12 @@
+{
+  "title": "Help",
+  "subtitle": "documentation",
+  "toc": {
+    "title": "Table of Contents"
+  },
+  "errors": {
+    "loadFailed": "Failed to load documentation",
+    "noDocumentation": "No documentation available.",
+    "imageLoadFailed": "Image failed to load"
+  }
+}

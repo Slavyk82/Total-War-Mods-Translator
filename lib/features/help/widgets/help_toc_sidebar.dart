@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../models/help_section.dart';
 
@@ -48,7 +49,7 @@ class HelpTocSidebar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Table of Contents',
+                    t.help.toc.title,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/help_section.dart';
@@ -98,7 +99,7 @@ class HelpSectionContent extends StatelessWidget {
         height: height,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          return _buildImageError(tokens, alt ?? 'Image failed to load');
+          return _buildImageError(tokens, alt ?? t.help.errors.imageLoadFailed);
         },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -114,7 +115,7 @@ class HelpSectionContent extends StatelessWidget {
         height: height,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) {
-          return _buildImageError(tokens, alt ?? path);
+          return _buildImageError(tokens, alt ?? t.help.errors.imageLoadFailed);
         },
       );
     }
