@@ -454,7 +454,7 @@ class _KeyChip extends StatelessWidget {
           border: Border.all(color: tokens.border),
           borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(
+        child: SelectableText(
           text,
           style: tokens.fontMono.copyWith(
             fontSize: 11,
@@ -493,7 +493,7 @@ class _SourceBlock extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: SingleChildScrollView(
-                child: Text(
+                child: SelectableText(
                   escapeForDisplay(text),
                   style: TextStyle(
                     fontSize: 13,
