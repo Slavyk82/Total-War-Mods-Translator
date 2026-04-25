@@ -45,7 +45,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
   @override
   Widget build(BuildContext context) {
     if (_isEditing || _autoEdit) {
-      return _buildEdit(context, autoOpen: !_isEditing && _autoEdit);
+      return _buildEdit(context);
     }
     return _buildRead(context);
   }
@@ -90,84 +90,66 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
   // Edit mode (TextField + Save + Cancel).
   // ---------------------------------------------------------------------------
 
-  Widget _buildEdit(BuildContext context, {required bool autoOpen}) {
+  Widget _buildEdit(BuildContext context) {
     final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 28,
-                  child: TextField(
-                    controller: _controller,
-                    enabled: !_isSaving,
-                    style: tokens.fontMono.copyWith(
-                      fontSize: 12,
-                      color: tokens.text,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'ID',
-                      hintStyle: tokens.fontMono.copyWith(
-                        fontSize: 12,
-                        color: tokens.textFaint,
-                      ),
-                      isDense: true,
-                      filled: true,
-                      fillColor: tokens.panel2,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.accent),
-                      ),
-                    ),
-                    onSubmitted: (_) => _save(),
+          Expanded(
+            child: SizedBox(
+              height: 28,
+              child: TextField(
+                controller: _controller,
+                enabled: !_isSaving,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'ID',
+                  hintStyle: tokens.fontBody.copyWith(
+                    fontSize: 13,
+                    color: tokens.textFaint,
+                  ),
+                  isDense: true,
+                  filled: true,
+                  fillColor: tokens.panel2,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 6),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    borderSide: BorderSide(color: tokens.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    borderSide: BorderSide(color: tokens.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.radiusSm),
+                    borderSide: BorderSide(color: tokens.accent),
                   ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              _iconButton(
-                context: context,
-                icon: _isSaving ? null : FluentIcons.save_24_regular,
-                tooltip: 'Save Workshop id',
-                onTap: _isSaving ? null : _save,
-                busy: _isSaving,
-                accent: true,
-              ),
-              const SizedBox(width: 4),
-              _iconButton(
-                context: context,
-                icon: FluentIcons.dismiss_24_regular,
-                tooltip: 'Cancel',
-                onTap: _isSaving ? null : _cancel,
-              ),
-            ],
-          ),
-          if (autoOpen) ...[
-            const SizedBox(height: 4),
-            Text(
-              '1. Publish from the launcher · 2. Copy the mod URL here',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: tokens.fontMono.copyWith(
-                fontSize: 10,
-                color: tokens.textFaint,
+                onSubmitted: (_) => _save(),
               ),
             ),
-          ],
+          ),
+          const SizedBox(width: 6),
+          _iconButton(
+            context: context,
+            icon: _isSaving ? null : FluentIcons.save_24_regular,
+            tooltip: 'Save Workshop id',
+            onTap: _isSaving ? null : _save,
+            busy: _isSaving,
+            accent: true,
+          ),
+          const SizedBox(width: 4),
+          _iconButton(
+            context: context,
+            icon: FluentIcons.dismiss_24_regular,
+            tooltip: 'Cancel',
+            onTap: _isSaving ? null : _cancel,
+          ),
         ],
       ),
     );

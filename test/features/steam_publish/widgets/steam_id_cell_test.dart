@@ -263,7 +263,7 @@ void main() {
   );
 
   testWidgets(
-    'State B (pack + no id) auto-opens the editor and shows the 2-step hint',
+    'State B (pack + no id) auto-opens the editor',
     (tester) async {
       await tester.pumpWidget(createThemedTestableWidget(
         Scaffold(body: SteamIdCell(item: _project(hasPack: true))),
@@ -274,10 +274,6 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
       expect(find.byTooltip('Save Workshop id'), findsOneWidget);
       expect(find.byTooltip('Cancel'), findsOneWidget);
-      expect(
-        find.textContaining('Publish from the launcher'),
-        findsOneWidget,
-      );
     },
   );
 
