@@ -1,8 +1,18 @@
 # i18n Localization Design — Total War Mods Translator
 
 **Date:** 2026-04-26
-**Status:** Approved (brainstorming) — pending implementation plan
+**Status:** Approved — Step 0 infrastructure shipped on `main`. Lots 1-9 migrate progressively.
 **Owner:** Slavyk
+
+> **2026-04-26 amendment — no community contribution.**
+> The original design assumed a Tier 1 (`en`/`fr`) / Tier 2 (8 stubs)
+> / Tier 3 (PR-driven) tiered locale model. The author has decided
+> there will be no community contribution: only locales actually
+> maintained by the author ship. As a result, the Tier framework, the
+> 8 stub locales, and the "track placeholder keys" mechanism are
+> dropped. The ramifications throughout the document are noted inline
+> with `~~strikethrough~~` where the original text remains for
+> historical reference, and bold notes on the corrected stance.
 
 ---
 
@@ -49,7 +59,7 @@ feature-by-feature, with main remaining mergeable at every step.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Source language | `en` | Lingua franca; best LLM downstream quality; consistent with English-only commit messages rule |
-| Target locales (v1) | `en` + `fr` complete; `de`, `es`, `it`, `pl`, `pt`, `ru`, `zh`, `ja` stubs with EN fallback | Solo author can maintain `fr`; remaining 8 locales open for community |
+| Target locales | `en` + `fr` complete (author-maintained). Additional locales added one-by-one as the author commits to maintaining them. | No community contribution — every shipped locale is fully maintained by the author. |
 | Tooling | `slang` + `slang_flutter` (JSON files, codegen, type-safe) | JSON is Claude-Code-friendly; sharded namespaces match feature-by-feature migration; type-safe call sites prevent silent regressions |
 | File format | JSON, one file per locale per feature | Optimal for editing single feature in isolation; standard format for community |
 | Migration strategy | Progressive, feature-by-feature | Main always mergeable; PRs reviewable; mixed state during migration is acceptable |
@@ -364,54 +374,49 @@ Wired into:
 - Persistence test: start in `fr`, navigate 5 screens, restart, confirm
   the locale is still `fr`.
 
-## Locales at v1
+## Locales
 
-- **Tier 1 (shipped complete):** `en` (source), `fr` (author).
-- **Tier 2 (stubs, EN fallback):** `de`, `es`, `it`, `pl`, `pt`, `ru`,
-  `zh`, `ja`. Files exist with all keys, values empty (or copied from EN
-  with a `// TODO(i18n)` tracking comment removed since JSON has no
-  comments — tracked via a top-level `_meta` key per file or a tracking
-  issue, see "Tracking incomplete locales" below).
-- **Tier 3 (PR-driven):** any additional locale a contributor proposes.
+Only locales actually maintained by the author ship. There are no
+empty stubs and no community-PR pipeline. The shipped set grows
+deliberately — when the author commits to maintaining a new locale,
+it gets added; until then, the dropdown does not list it.
 
-### Tracking incomplete locales
+Initial set: `en` (base) + `fr` (author).
 
-JSON has no comment syntax. To track which keys are placeholder copies
-(literal English in a non-English file, awaiting human translation), one
-of two options applies — the choice is deferred to the implementation
-plan:
+### Tone
 
-1. **Convention**: a value byte-identical to the English value in a
-   non-English file means "not yet translated". Cheap; relies on
-   contributor discipline; the analyzer can compute the placeholder set
-   from a diff, no extra metadata needed.
-2. **Sidecar**: a top-level `_meta.placeholders: ["key1", "key2"]` array
-   per file lists placeholder keys explicitly. Requires slang to be
-   configured to ignore `_meta` (via key-pattern exclusion or a separate
-   metadata file).
+For every shipped locale, when the target language has both an
+informal and a formal second-person form, the **formal** form is
+mandatory. See `lib/i18n/README.md` for the full list (FR `vous`,
+DE `Sie`, ES `usted`, IT `Lei`, PL `Pan`/`Pani`, RU `Вы`, PT `você`).
 
-The implementation plan picks one, configures slang accordingly, and
-documents it in `lib/i18n/README.md`.
+### Adding a new locale later
 
-### Optional Settings filter
+1. Create `lib/i18n/<code>/`.
+2. Translate every namespace file (no English-verbatim placeholders —
+   the locale is committed only when complete).
+3. Add it to `lib/i18n/app_locale_info.dart` (`_localeInfo` map) with
+   its native name and matching flag asset.
+4. `dart run slang && dart run slang analyze && flutter test test/i18n`.
 
-A coverage-percent threshold (e.g. hide locales below 50%) is **not**
-shipped at v1. All Tier-2 locales appear in the dropdown, with the EN
-fallback showing transparently. This is the simplest contract for users
-who want to install incomplete locales early.
+### What the structural tests catch
 
-## Contributor workflow
+Because every shipped locale is fully maintained, the structural tests
+(`keys_completeness_test`, `format_consistency_test`) catch real bugs:
+a key the author forgot to add to a locale, or a placeholder rename
+applied unevenly. They do not need to be relaxed for "stubs in
+progress" — there are none.
+
+## Maintenance workflow
 
 `lib/i18n/README.md` documents:
 
-- How to add a new locale (one new JSON file per namespace, identical key
-  set).
-- How to complete an existing translation (edit values, run
-  `dart run slang` and `dart run slang analyze`).
-- The naming conventions (camelCase, `errors.*`, `actions.*`, etc.).
-- Where to find context for ambiguous keys (point to source file via
-  comments in commit messages or a per-key `@context` if slang's JSON
-  context is enabled later).
+- How to add a key (propagate to every locale at once, run slang +
+  analyze + tests).
+- How to add a locale (only when the author is committed to maintaining
+  it; no empty stubs).
+- The naming conventions (camelCase, `errors.*`, `actions.*`, etc.) and
+  the formal-second-person rule.
 
 ## Claude Code rule (added to `CLAUDE.md`)
 
@@ -459,16 +464,15 @@ enforces the structural part automatically.
 
 ## Open questions for the implementation plan
 
-These are deliberately deferred to the implementation plan and do not
-block spec approval:
-
-1. Tracking placeholder keys: convention vs `_meta` sidecar (see above).
-2. Hook on JSON edit: optional `PostToolUse` hook running
+1. Hook on JSON edit: optional `PostToolUse` hook running
    `dart run slang analyze` automatically (configurable via
    `update-config`).
-3. Whether a coverage-based hide-threshold for Tier-2 locales is wanted
-   later.
-4. Whether to extract a one-shot string-collection script (Q4 option C
+2. Whether to extract a one-shot string-collection script (Q4 option C
    "hybrid") to bulk-import all current `Text('...')` literals into
-   `_app.i18n.json` as a starting catalog before per-feature refactor —
-   currently treated as out of scope, can be added if velocity is too low.
+   the relevant namespace as a starting catalog before per-feature
+   refactor — currently treated as out of scope, can be added if
+   velocity is too low.
+
+(Removed: questions about Tier-2 stubs, placeholder-tracking, and
+coverage thresholds. They no longer apply now that only fully
+maintained locales ship.)
