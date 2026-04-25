@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:twmt/providers/clock_provider.dart';
@@ -11,6 +12,7 @@ import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
+import '../providers/published_subs_cache_provider.dart';
 import '../providers/steam_publish_providers.dart';
 
 /// Column spec for the Steam Publish list (§7.1 filterable list archetype).
@@ -365,6 +367,51 @@ class SteamLastPublishedCell extends ConsumerWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Subs cell
+// =============================================================================
+
+/// Renders the Workshop subscriber count for the published translation mod.
+/// Reads from [publishedSubsCacheProvider]; shows `-` for unpublished items
+/// and for cache misses (e.g. before the boot-time refresh has resolved, or
+/// when the API skipped the id).
+class SteamSubsCell extends ConsumerWidget {
+  final PublishableItem item;
+
+  const SteamSubsCell({super.key, required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.tokens;
+    final id = item.publishedSteamId;
+    final cache = ref.watch(publishedSubsCacheProvider);
+
+    final int? subs = (id != null && id.isNotEmpty) ? cache[id] : null;
+
+    final String label = subs == null
+        ? '-'
+        : NumberFormat('#,###', 'en_US').format(subs).replaceAll(',', ' ');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: 'Workshop subscribers — last refreshed at app start.',
+        waitDuration: const Duration(milliseconds: 400),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: tokens.fontMono.copyWith(
+              fontSize: 11.5,
+              color: subs == null ? tokens.textFaint : tokens.textMid,
+            ),
+          ),
         ),
       ),
     );
