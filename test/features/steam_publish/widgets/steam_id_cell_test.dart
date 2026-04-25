@@ -1,13 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 
 import 'package:twmt/features/steam_publish/providers/steam_publish_providers.dart';
 import 'package:twmt/features/steam_publish/widgets/steam_id_cell.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
+import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/repositories/project_repository.dart';
@@ -18,20 +21,49 @@ import '../../../helpers/test_helpers.dart';
 
 class _FakeProjectRepository extends Mock implements ProjectRepository {}
 
-ProjectPublishItem _project({String? publishedSteamId}) =>
-    ProjectPublishItem(
-      export: null,
-      project: Project(
-        id: 'p1',
-        name: 'P1',
-        gameInstallationId: 'g',
-        createdAt: 0,
-        updatedAt: 0,
-        publishedSteamId: publishedSteamId,
-        publishedAt: publishedSteamId != null ? 1_700_000_000 : null,
-      ),
-      languageCodes: const ['en'],
-    );
+String _createTempPack(String id) {
+  final dir = Directory.systemTemp.createTempSync('twmt-id-cell-$id-');
+  addTearDown(() {
+    try {
+      dir.deleteSync(recursive: true);
+    } catch (_) {}
+  });
+  final packPath = p.join(dir.path, '$id.pack');
+  File(packPath).writeAsBytesSync(const []);
+  return packPath;
+}
+
+ProjectPublishItem _project({
+  String id = 'p1',
+  String? publishedSteamId,
+  bool hasPack = false,
+}) {
+  final outputPath = hasPack ? _createTempPack(id) : '';
+  return ProjectPublishItem(
+    export: hasPack
+        ? ExportHistory(
+            id: 'e-$id',
+            projectId: id,
+            languages: '["en"]',
+            format: ExportFormat.pack,
+            validatedOnly: false,
+            outputPath: outputPath,
+            entryCount: 10,
+            exportedAt: 1_700_000_000,
+          )
+        : null,
+    project: Project(
+      id: id,
+      name: 'P1',
+      gameInstallationId: 'g',
+      createdAt: 0,
+      updatedAt: 0,
+      publishedSteamId: publishedSteamId,
+      publishedAt: publishedSteamId != null ? 1_700_000_000 : null,
+    ),
+    languageCodes: const ['en'],
+  );
+}
 
 void main() {
   setUpAll(() {
@@ -154,4 +186,43 @@ void main() {
 
     expect(savedIds, ['3456789012']);
   });
+
+  testWidgets(
+    'State B (pack + no id) auto-opens the editor and shows the 2-step hint',
+    (tester) async {
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamIdCell(item: _project(hasPack: true))),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byTooltip('Save Workshop id'), findsOneWidget);
+      expect(find.byTooltip('Cancel'), findsOneWidget);
+      expect(
+        find.textContaining('Publish from the launcher'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'State B cancel falls back to read mode for the lifetime of the row',
+    (tester) async {
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamIdCell(item: _project(hasPack: true))),
+        theme: AppTheme.atelierDarkTheme,
+      ));
+      await tester.pumpAndSettle();
+
+      // Cancel the auto-opened editor.
+      await tester.tap(find.byTooltip('Cancel'));
+      await tester.pumpAndSettle();
+
+      // The cell sits in read mode (em dash + Set pencil).
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('—'), findsOneWidget);
+      expect(find.byTooltip('Set Workshop id'), findsOneWidget);
+    },
+  );
 }
