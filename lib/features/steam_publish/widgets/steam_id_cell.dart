@@ -81,7 +81,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
             tooltip: hasId ? 'Edit Workshop id' : 'Set Workshop id',
             onTap: _beginEdit,
           ),
-          const Spacer(),
+          const SizedBox(width: 12),
         ],
       ),
     );
