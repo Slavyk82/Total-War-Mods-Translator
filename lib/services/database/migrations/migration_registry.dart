@@ -25,6 +25,7 @@ import 'migration_activity_events.dart';
 import 'migration_projects_filter_indexes.dart';
 import 'migration_glossary_game_code_partial.dart';
 import 'migration_cascade_project_updated_at.dart';
+import 'migration_projects_updated_at_trigger_scope.dart';
 
 /// Registry of all database migrations.
 ///
@@ -62,6 +63,7 @@ class MigrationRegistry {
       ProjectsFilterIndexesMigration(), // Priority 120 — must run after column-adding migrations
       GlossaryGameCodePartialMigration(), // Priority 130 — game-specific glossary refactor
       CascadeProjectUpdatedAtMigration(), // Priority 140 — adds projects.updated_at cascade to progress trigger
+      ProjectsUpdatedAtTriggerScopeMigration(), // Priority 150 — restricts trg_projects_updated_at to content columns
     ];
 
     // Sort by priority (lower numbers first)

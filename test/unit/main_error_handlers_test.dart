@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,7 +15,7 @@ void main() {
   test('PlatformDispatcher.onError is settable', () {
     final original = PlatformDispatcher.instance.onError;
     try {
-      PlatformDispatcher.instance.onError = (_, __) => true;
+      PlatformDispatcher.instance.onError = (_, _) => true;
       expect(PlatformDispatcher.instance.onError, isNotNull);
     } finally {
       PlatformDispatcher.instance.onError = original;

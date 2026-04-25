@@ -37,7 +37,6 @@ class _FakeLangInfo extends Fake implements ProjectLanguageWithInfo {
     required String languageCode,
     this.translatedUnits = 0,
     this.needsReviewUnits = 0,
-    this.totalUnits = 10,
   })  : language = _FakeLanguage(languageCode),
         projectLanguage = _FakeProjectLanguage(projectLanguageId);
 
@@ -50,7 +49,7 @@ class _FakeLangInfo extends Fake implements ProjectLanguageWithInfo {
   @override
   final int needsReviewUnits;
   @override
-  final int totalUnits;
+  final int totalUnits = 10;
 }
 
 class _FakeProjectWithDetails extends Fake implements ProjectWithDetails {
@@ -96,21 +95,6 @@ ProjectWithDetails _projectFrZeroStats() {
         languageCode: 'fr',
         translatedUnits: 0,
         needsReviewUnits: 0,
-      ),
-    ],
-  );
-}
-
-/// A project that has 'fr' with some translated units.
-ProjectWithDetails _projectFrTranslated() {
-  return _FakeProjectWithDetails(
-    project: _FakeProject(id: 'p4', name: 'Mod D'),
-    languages: [
-      _FakeLangInfo(
-        projectLanguageId: 'pl-fr',
-        languageCode: 'fr',
-        translatedUnits: 5,
-        needsReviewUnits: 2,
       ),
     ],
   );

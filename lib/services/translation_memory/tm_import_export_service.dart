@@ -130,7 +130,7 @@ class TmImportExportService {
           // Produce a valid empty-body TMX so callers always get a well-formed file.
           final emptyResult = await _tmxService.exportToTmxStreaming(
             filePath: outputPath,
-            pageFetcher: (_, __) async => const Ok([]),
+            pageFetcher: (_, _) async => const Ok([]),
             sourceLanguage: sourceLanguageCode ?? 'en',
             targetLanguage: 'unknown',
           );

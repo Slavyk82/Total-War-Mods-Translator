@@ -252,7 +252,7 @@ void main() {
         currentProgress: _initialProgress(),
         tmMatchedUnitIds: const <String>{},
         getCancellationToken: noCancellationToken,
-        onProgressUpdate: (_, __) {},
+        onProgressUpdate: (_, _) {},
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
@@ -300,7 +300,7 @@ void main() {
           currentProgress: _initialProgress(),
           tmMatchedUnitIds: const <String>{},
           getCancellationToken: noCancellationToken,
-          onProgressUpdate: (_, __) {},
+          onProgressUpdate: (_, _) {},
           checkPauseOrCancel: noopCheckPauseOrCancel,
         ),
         throwsA(isA<TranslationOrchestrationException>()),
@@ -328,7 +328,7 @@ void main() {
             'unit-k2': 'Monde',
           })));
 
-      final (finalProgress, translations, __) =
+      final (finalProgress, translations, _) =
           await handler.performTranslation(
         batchId: _batchId,
         units: units,
@@ -336,7 +336,7 @@ void main() {
         currentProgress: _initialProgress(),
         tmMatchedUnitIds: const <String>{},
         getCancellationToken: noCancellationToken,
-        onProgressUpdate: (_, ___) {},
+        onProgressUpdate: (_, _) {},
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
@@ -371,7 +371,7 @@ void main() {
             'unit-k1': 'Bonjour',
           })));
 
-      final (finalProgress, translations, __) =
+      final (finalProgress, translations, _) =
           await handler.performTranslation(
         batchId: _batchId,
         units: units,
@@ -379,7 +379,7 @@ void main() {
         currentProgress: _initialProgress(),
         tmMatchedUnitIds: const <String>{},
         getCancellationToken: noCancellationToken,
-        onProgressUpdate: (_, ___) {},
+        onProgressUpdate: (_, _) {},
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
@@ -410,7 +410,7 @@ void main() {
             'unit-unknown': 'Inconnu',
           })));
 
-      final (finalProgress, translations, __) =
+      final (finalProgress, translations, _) =
           await handler.performTranslation(
         batchId: _batchId,
         units: units,
@@ -418,7 +418,7 @@ void main() {
         currentProgress: _initialProgress(),
         tmMatchedUnitIds: const <String>{},
         getCancellationToken: noCancellationToken,
-        onProgressUpdate: (_, ___) {},
+        onProgressUpdate: (_, _) {},
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
@@ -453,7 +453,7 @@ void main() {
         // k1 was already translated by TM => must not be sent to LLM.
         tmMatchedUnitIds: const <String>{'unit-k1'},
         getCancellationToken: noCancellationToken,
-        onProgressUpdate: (_, __) {},
+        onProgressUpdate: (_, _) {},
         checkPauseOrCancel: noopCheckPauseOrCancel,
       );
 
@@ -499,7 +499,7 @@ void main() {
           currentProgress: _initialProgress(),
           tmMatchedUnitIds: const <String>{},
           getCancellationToken: noCancellationToken,
-          onProgressUpdate: (_, __) {},
+          onProgressUpdate: (_, _) {},
           checkPauseOrCancel: cancellingCheck,
         ),
         throwsA(isA<TranslationOrchestrationException>()),

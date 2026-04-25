@@ -209,11 +209,57 @@ class ProjectWithDetails {
   bool get hasBeenExported => lastPackExport != null;
 
   /// Check if the project was modified after the last export.
-  /// Uses a 60-second margin to avoid false positives when the export
-  /// process itself causes a minor timestamp update on the project.
+  ///
+  /// Uses the most recent of (last pack export, last Steam Workshop publish)
+  /// as the "checkpoint" against which `updatedAt` is compared, with a
+  /// 60-second margin to absorb minor write-time skew. The publish timestamp
+  /// is included on purpose: a publish operation persists `published_at` /
+  /// `published_steam_id` on the project row, and historically (before the
+  /// `trg_projects_updated_at` column-scope migration) that write also
+  /// bumped `updated_at` via the auto-stamp trigger — flagging every
+  /// just-published project as "Export outdated". Treating publish as a
+  /// checkpoint keeps existing databases correct without a data-migration
+  /// pass over `updated_at`.
   bool get isModifiedSinceLastExport {
     if (lastPackExport == null) return false;
-    return project.updatedAt > lastPackExport!.exportedAt + 60;
+    var checkpoint = lastPackExport!.exportedAt;
+    final publishedAt = project.publishedAt;
+    if (publishedAt != null && publishedAt > checkpoint) {
+      checkpoint = publishedAt;
+    }
+    return project.updatedAt > checkpoint + 60;
+  }
+
+  /// True when this project is part of a Steam Workshop publish flow —
+  /// either the source is a workshop mod, or the project itself has
+  /// already been pushed to Workshop at least once.
+  ///
+  /// Local packs and game translations return false: they never reach
+  /// Steam, so the "Exported" pill can keep its original "pack generated"
+  /// meaning for them.
+  bool get hasSteamPublishWorkflow {
+    final modSteamId = project.modSteamId;
+    if (modSteamId != null && modSteamId.isNotEmpty) return true;
+    final publishedId = project.publishedSteamId;
+    return publishedId != null && publishedId.isNotEmpty;
+  }
+
+  /// True when the latest local pack is also live on Steam Workshop —
+  /// the project has a Workshop id and its last publish timestamp is
+  /// newer than (or equal to) the last export timestamp.
+  ///
+  /// Drives the green "Exported" status pill for Steam-workflow projects:
+  /// after a bulk generate, the new pack is on disk but Steam still hosts
+  /// the previous version, so this returns false and the pill falls back
+  /// to "Unpublished".
+  bool get isPackPublishedOnSteam {
+    final export = lastPackExport;
+    if (export == null) return false;
+    final publishedId = project.publishedSteamId;
+    if (publishedId == null || publishedId.isEmpty) return false;
+    final publishedAt = project.publishedAt;
+    if (publishedAt == null) return false;
+    return publishedAt >= export.exportedAt;
   }
 }
 

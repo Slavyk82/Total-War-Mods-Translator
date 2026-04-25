@@ -13,6 +13,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/features/bootstrap/widgets/mod_scan_boot_dialog.dart';
 import 'package:twmt/features/bootstrap/widgets/validation_rescan_dialog.dart';
 import 'package:twmt/features/glossary/screens/glossary_migration_screen.dart';
 import 'package:twmt/features/settings/providers/update_providers.dart';
@@ -205,6 +206,15 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
     final rescanContext = rootNavigatorKey.currentContext;
     if (rescanContext != null && rescanContext.mounted) {
       await ValidationRescanDialog.showAndRun(rescanContext, ref);
+    }
+
+    // Run the Workshop mods scan up-front (with a progress popup) so the
+    // Home dashboard cards reflect fresh counts on the very first frame the
+    // user sees, instead of waiting for the Mods screen to be opened.
+    if (!mounted) return;
+    final modScanContext = rootNavigatorKey.currentContext;
+    if (modScanContext != null && modScanContext.mounted) {
+      await ModScanBootDialog.showAndRun(modScanContext, ref);
     }
 
     // After migrations, continue with other startup tasks

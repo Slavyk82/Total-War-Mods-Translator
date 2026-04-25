@@ -158,7 +158,7 @@ void main() {
       });
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
 
       final row = (await db.rawQuery(
@@ -178,7 +178,7 @@ void main() {
       });
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
 
       final row = (await db.rawQuery(
@@ -222,7 +222,7 @@ void main() {
       });
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
 
       final triggers = await db.rawQuery(
@@ -253,7 +253,7 @@ void main() {
       });
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
 
       final raw = (await db.rawQuery(
@@ -276,7 +276,7 @@ void main() {
       });
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
       final afterFirst = (await db.rawQuery(
               'SELECT validation_issues FROM translation_versions WHERE id = ?',
@@ -284,7 +284,7 @@ void main() {
           .single['validation_issues'];
 
       await ValidationIssuesJsonDataMigration().execute(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
       final afterSecond = (await db.rawQuery(
               'SELECT validation_issues FROM translation_versions WHERE id = ?',
@@ -299,7 +299,7 @@ void main() {
   group('ValidationIssuesJsonDataMigration.run — end-to-end', () {
     test('marker is written after successful run', () async {
       await ValidationIssuesJsonDataMigration().run(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
       final markers = await db.rawQuery(
           "SELECT 1 FROM _migration_markers WHERE id = 'validation_issues_json'");
@@ -310,7 +310,7 @@ void main() {
       // No FTS table exists — the rebuild command raises. Assert run
       // completes and writes the marker anyway.
       await ValidationIssuesJsonDataMigration().run(
-        onProgress: (_, __) {},
+        onProgress: (_, _) {},
       );
       final markers = await db.rawQuery(
           "SELECT 1 FROM _migration_markers WHERE id = 'validation_issues_json'");

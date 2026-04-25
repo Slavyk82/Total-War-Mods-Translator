@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/translation_provider.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/repositories/translation_provider_repository.dart';
@@ -113,7 +112,7 @@ void main() {
       llmService: llmService,
       promptBuilder: promptBuilder,
       logger: FakeLogger(),
-      isUnitTranslated: (_, __) async => false,
+      isUnitTranslated: (_, _) async => false,
       providerRepository: fakeRepo,
     );
 

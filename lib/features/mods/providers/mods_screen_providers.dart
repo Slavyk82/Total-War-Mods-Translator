@@ -90,6 +90,25 @@ enum ModsFilter {
   needsUpdate,
 }
 
+/// Map a URL filter token (e.g. `needs-update`) to a [ModsFilter].
+///
+/// Used by the Home dashboard cards that deep-link into the Mods screen
+/// (`/sources/mods?filter=needs-update`). Returns null for unknown or
+/// missing tokens — `ModsScreen` then leaves the user's existing filter
+/// untouched on mount.
+ModsFilter? modsFilterFromUrlToken(String? token) {
+  switch (token) {
+    case 'needs-update':
+      return ModsFilter.needsUpdate;
+    case 'not-imported':
+      return ModsFilter.notImported;
+    case 'all':
+      return ModsFilter.all;
+    default:
+      return null;
+  }
+}
+
 /// Filter state for mods screen
 @riverpod
 class ModsFilterState extends _$ModsFilterState {

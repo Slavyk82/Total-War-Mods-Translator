@@ -27,7 +27,6 @@ import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
-import 'package:twmt/services/settings/settings_service.dart';
 
 import '../../../helpers/test_bootstrap.dart';
 

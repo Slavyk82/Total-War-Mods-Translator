@@ -869,8 +869,21 @@ END;
 
 -- Auto-update timestamps
 -- IMPORTANT: All self-referential triggers MUST have WHEN clause to prevent infinite recursion
+--
+-- The `AFTER UPDATE OF <columns>` clause restricts the trigger to genuine
+-- content edits. Bookkeeping columns such as `published_steam_id`,
+-- `published_at` and `has_mod_update_impact` are intentionally excluded so a
+-- Steam Workshop publish or a mod-update-impact toggle does not bump
+-- `updated_at` (which would otherwise mark the project as "Export outdated"
+-- in the Projects screen).
 CREATE TRIGGER IF NOT EXISTS trg_projects_updated_at
-AFTER UPDATE ON projects
+AFTER UPDATE OF
+    name, mod_steam_id, mod_version, game_installation_id,
+    source_file_path, output_file_path, last_update_check,
+    source_mod_updated, batch_size, parallel_batches,
+    custom_prompt, completed_at, metadata,
+    project_type, source_language_code
+ON projects
 WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE projects SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
