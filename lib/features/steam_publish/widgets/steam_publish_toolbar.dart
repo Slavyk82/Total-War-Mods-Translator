@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 
@@ -8,17 +7,16 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
-import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
 import '../providers/steam_publish_providers.dart';
 
 /// Toolbar for the Steam Publish screen.
 ///
-/// Row 1 hosts the trailing actions (select all, select outdated, sort, sort
-/// direction, publish, refresh, settings, search). Row 2 hosts the STATE
-/// filter pill group. The screen title (icon + name + counts) is rendered
-/// higher up by `HomeBackToolbar`.
+/// Row 1 hosts the trailing actions (search, select all, deselect all,
+/// publish, refresh, settings). Row 2 hosts the STATE filter pill group.
+/// The screen title (icon + name + counts) is rendered higher up by
+/// `HomeBackToolbar`.
 class SteamPublishToolbar extends StatelessWidget {
   final int totalItems;
   final int outdatedCount;
@@ -29,10 +27,12 @@ class SteamPublishToolbar extends StatelessWidget {
   final SteamPublishDisplayFilter currentFilter;
   final ValueChanged<SteamPublishDisplayFilter> onFilterChanged;
   final VoidCallback onSelectAll;
-  final VoidCallback? onSelectOutdated;
+  final bool allSelected;
+  final VoidCallback? onDeselectAll;
   final VoidCallback? onPublishSelection;
   final String? publishDisabledTooltip;
   final int selectedCount;
+  final int publishableSelectedCount;
   final VoidCallback onRefresh;
   final VoidCallback onOpenSettings;
 
@@ -47,10 +47,12 @@ class SteamPublishToolbar extends StatelessWidget {
     required this.currentFilter,
     required this.onFilterChanged,
     required this.onSelectAll,
-    required this.onSelectOutdated,
+    required this.allSelected,
+    required this.onDeselectAll,
     required this.onPublishSelection,
     required this.publishDisabledTooltip,
     required this.selectedCount,
+    required this.publishableSelectedCount,
     required this.onRefresh,
     required this.onOpenSettings,
   });
@@ -81,35 +83,33 @@ class SteamPublishToolbar extends StatelessWidget {
         icon: FluentIcons.checkbox_checked_24_regular,
         tooltip: totalItems == 0
             ? 'No items to select'
-            : 'Select every item currently listed',
-        onTap: totalItems > 0 ? onSelectAll : null,
+            : (allSelected
+                ? 'Every listed item is already selected'
+                : 'Select every item currently listed'),
+        onTap: (totalItems > 0 && !allSelected) ? onSelectAll : null,
       ),
       SmallTextButton(
-        label: outdatedCount > 0
-            ? 'Select outdated ($outdatedCount)'
-            : 'Select outdated',
-        icon: FluentIcons.warning_24_regular,
-        tooltip: outdatedCount > 0
-            ? 'Select every item whose pack is newer than its last publish'
-            : 'No outdated items to select',
-        onTap: onSelectOutdated,
+        label: 'Deselect all',
+        icon: FluentIcons.checkbox_unchecked_24_regular,
+        tooltip: selectedCount == 0
+            ? 'No items selected'
+            : 'Clear the current selection',
+        onTap: onDeselectAll,
       ),
-      const _SortButton(),
-      const _SortDirectionButton(),
       _PublishSelectionButton(
+        publishableCount: publishableSelectedCount,
         selectedCount: selectedCount,
         disabledTooltip: publishDisabledTooltip,
         onPublish: onPublishSelection,
       ),
-      SmallIconButton(
+      SmallTextButton(
+        label: 'Refresh',
         icon: FluentIcons.arrow_sync_24_regular,
         tooltip: 'Refresh',
         onTap: onRefresh,
-        size: 32,
-        iconSize: 16,
       ),
       SmallTextButton(
-        label: 'Workshop Templates',
+        label: 'Workshop description template',
         icon: FluentIcons.settings_24_regular,
         tooltip: 'Configure Workshop publish templates and defaults',
         onTap: onOpenSettings,
@@ -212,11 +212,13 @@ class SteamPublishToolbarLeading extends StatelessWidget {
 // =============================================================================
 
 class _PublishSelectionButton extends StatelessWidget {
+  final int publishableCount;
   final int selectedCount;
   final String? disabledTooltip;
   final VoidCallback? onPublish;
 
   const _PublishSelectionButton({
+    required this.publishableCount,
     required this.selectedCount,
     required this.disabledTooltip,
     required this.onPublish,
@@ -225,13 +227,21 @@ class _PublishSelectionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final enabled = onPublish != null && selectedCount > 0;
-    final label = selectedCount > 0 ? 'Publish ($selectedCount)' : 'Publish';
+    final enabled = onPublish != null && publishableCount > 0;
+    const baseLabel = 'Publish on Steam';
+    final label =
+        publishableCount > 0 ? '$baseLabel ($publishableCount)' : baseLabel;
     final String tooltip;
     if (selectedCount == 0) {
       tooltip = 'Select at least one item to publish';
-    } else if (disabledTooltip != null && disabledTooltip!.isNotEmpty) {
-      tooltip = disabledTooltip!;
+    } else if (publishableCount == 0) {
+      tooltip = disabledTooltip != null && disabledTooltip!.isNotEmpty
+          ? disabledTooltip!
+          : 'No selected item has both a generated pack and a Workshop id';
+    } else if (publishableCount < selectedCount) {
+      final skipped = selectedCount - publishableCount;
+      tooltip =
+          'Publish $publishableCount item(s) — $skipped without Workshop id will be skipped';
     } else {
       tooltip = 'Publish selected items to Steam Workshop';
     }
@@ -277,113 +287,6 @@ class _PublishSelectionButton extends StatelessWidget {
       message: tooltip,
       waitDuration: const Duration(milliseconds: 400),
       child: core,
-    );
-  }
-}
-
-class _SortButton extends ConsumerWidget {
-  const _SortButton();
-
-  String _labelFor(SteamPublishSortMode mode) {
-    switch (mode) {
-      case SteamPublishSortMode.exportDate:
-        return 'Export date';
-      case SteamPublishSortMode.name:
-        return 'Name';
-      case SteamPublishSortMode.publishDate:
-        return 'Publish date';
-    }
-  }
-
-  IconData _iconFor(SteamPublishSortMode mode) {
-    switch (mode) {
-      case SteamPublishSortMode.exportDate:
-        return FluentIcons.arrow_export_24_regular;
-      case SteamPublishSortMode.name:
-        return FluentIcons.text_sort_ascending_24_regular;
-      case SteamPublishSortMode.publishDate:
-        return FluentIcons.cloud_arrow_up_24_regular;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = context.tokens;
-    final mode = ref.watch(steamPublishSortModeProvider);
-    return PopupMenuButton<SteamPublishSortMode>(
-      tooltip: 'Sort packs',
-      offset: const Offset(0, 36),
-      color: tokens.panel,
-      itemBuilder: (context) => SteamPublishSortMode.values
-          .map(
-            (option) => PopupMenuItem(
-              value: option,
-              child: Row(
-                children: [
-                  Icon(_iconFor(option), size: 16, color: tokens.textMid),
-                  const SizedBox(width: 10),
-                  Text(
-                    _labelFor(option),
-                    style: tokens.fontBody
-                        .copyWith(fontSize: 13, color: tokens.text),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
-      onSelected: (option) =>
-          ref.read(steamPublishSortModeProvider.notifier).state = option,
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: tokens.panel2,
-          border: Border.all(color: tokens.border),
-          borderRadius: BorderRadius.circular(tokens.radiusSm),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(_iconFor(mode), size: 16, color: tokens.textMid),
-            const SizedBox(width: 6),
-            Text(
-              _labelFor(mode),
-              style: tokens.fontBody.copyWith(
-                fontSize: 12.5,
-                color: tokens.textMid,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              FluentIcons.chevron_down_24_regular,
-              size: 14,
-              color: tokens.textDim,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SortDirectionButton extends ConsumerWidget {
-  const _SortDirectionButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ascending = ref.watch(steamPublishSortAscendingProvider);
-    return SmallIconButton(
-      icon: ascending
-          ? FluentIcons.arrow_sort_up_24_regular
-          : FluentIcons.arrow_sort_down_24_regular,
-      tooltip: ascending ? 'Sort ascending' : 'Sort descending',
-      size: 32,
-      iconSize: 16,
-      onTap: () => ref
-          .read(steamPublishSortAscendingProvider.notifier)
-          .state = !ascending,
     );
   }
 }

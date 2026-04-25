@@ -69,9 +69,16 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         ref.watch(compilationsPublishableItemsCountProvider);
     final subsTotal = ref.watch(filteredPublishableItemsSubsTotalProvider);
 
-    final disabledTooltip =
-        _publishDisabledTooltip(allItems, selection);
-    final canPublish = selection.isNotEmpty && disabledTooltip == null;
+    final publishableSelected = allItems
+        .where((e) => selection.contains(e.itemId))
+        .where(_isPublishable)
+        .toList(growable: false);
+    final canPublish = publishableSelected.isNotEmpty;
+    final disabledTooltip = !canPublish && selection.isNotEmpty
+        ? 'No selected item has both a generated pack and a Workshop id'
+        : null;
+    final allSelected = filteredItems.isNotEmpty &&
+        filteredItems.every((e) => selection.contains(e.itemId));
 
     return Material(
       color: tokens.bg,
@@ -103,12 +110,14 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
                   filter;
             },
             onSelectAll: () => _selectAll(filteredItems),
-            onSelectOutdated:
-                outdatedCount > 0 ? _selectOutdated : null,
+            allSelected: allSelected,
+            onDeselectAll:
+                selection.isNotEmpty ? _deselectAll : null,
             onPublishSelection:
                 canPublish ? () => _startBatchPublish(allItems) : null,
             publishDisabledTooltip: disabledTooltip,
             selectedCount: selection.length,
+            publishableSelectedCount: publishableSelected.length,
             onRefresh: () {
               ref.invalidate(publishableItemsProvider);
             },
@@ -144,43 +153,18 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         currentFiltered.map((e) => e.itemId).toSet();
   }
 
-  void _selectOutdated() {
-    // Switch the display filter so the screen matches the selection.
-    ref.read(steamPublishDisplayFilterProvider.notifier).state =
-        SteamPublishDisplayFilter.outdated;
-    // Compute outdated ids from the full list, not the current filtered view.
-    final all = ref.read(publishableItemsProvider).asData?.value ??
-        const <PublishableItem>[];
-    final outdated = all
-        .where((e) => e.publishedAt != null && e.exportedAt > e.publishedAt!)
-        .map((e) => e.itemId)
-        .toSet();
-    ref.read(steamPublishSelectionProvider.notifier).state = outdated;
+  void _deselectAll() {
+    ref.read(steamPublishSelectionProvider.notifier).state = {};
   }
 
   // ---------------------------------------------------------------------------
-  // Publish disabled tooltip — mirrors legacy behaviour.
+  // Publish gate — items lacking either a generated pack or a Workshop id are
+  // silently skipped during the batch publish flow.
   // ---------------------------------------------------------------------------
 
-  /// Returns the reason the Publish button should be disabled, or `null` when
-  /// every selected item has both a pack and a Workshop id.
-  String? _publishDisabledTooltip(
-    List<PublishableItem> allItems,
-    Set<String> selection,
-  ) {
-    if (selection.isEmpty) return null;
-    final selected =
-        allItems.where((e) => selection.contains(e.itemId)).toList();
-    final missingPack = selected.any((e) => !e.hasPack);
-    final missingId = selected.any(
-      (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty,
-    );
-    if (missingPack && missingId) {
-      return 'All items must have a pack and Workshop id';
-    }
-    if (missingPack) return 'All items must have a generated pack';
-    if (missingId) return 'All items must have a Workshop id';
-    return null;
+  static bool _isPublishable(PublishableItem item) {
+    final id = item.publishedSteamId;
+    return item.hasPack && id != null && id.isNotEmpty;
   }
 
   // ---------------------------------------------------------------------------
@@ -194,23 +178,15 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
   Future<void> _startBatchPublish(List<PublishableItem> allItems) async {
     final selection = ref.read(steamPublishSelectionProvider);
-    final selectedItems =
-        allItems.where((e) => selection.contains(e.itemId)).toList();
+    final selectedItems = allItems
+        .where((e) => selection.contains(e.itemId))
+        .where(_isPublishable)
+        .toList();
 
-    if (selectedItems.any((e) => !e.hasPack)) {
+    if (selectedItems.isEmpty) {
       FluentToast.warning(
         context,
-        'All selected items must have a generated pack before publishing.',
-      );
-      return;
-    }
-
-    if (selectedItems.any(
-      (e) => e.publishedSteamId == null || e.publishedSteamId!.isEmpty,
-    )) {
-      FluentToast.warning(
-        context,
-        'All selected items must have a Workshop ID before publishing.',
+        'No selected item has both a generated pack and a Workshop id.',
       );
       return;
     }
