@@ -23,6 +23,7 @@ class SteamPublishToolbar extends StatelessWidget {
   final int totalItems;
   final int outdatedCount;
   final int noPackCount;
+  final int compilationsCount;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final SteamPublishDisplayFilter currentFilter;
@@ -40,6 +41,7 @@ class SteamPublishToolbar extends StatelessWidget {
     required this.totalItems,
     required this.outdatedCount,
     required this.noPackCount,
+    required this.compilationsCount,
     required this.searchQuery,
     required this.onSearchChanged,
     required this.currentFilter,
@@ -146,6 +148,17 @@ class SteamPublishToolbar extends StatelessWidget {
             currentFilter == SteamPublishDisplayFilter.noPackGenerated
                 ? SteamPublishDisplayFilter.all
                 : SteamPublishDisplayFilter.noPackGenerated,
+          ),
+        ),
+        FilterPill(
+          label: 'Compilations',
+          selected: currentFilter == SteamPublishDisplayFilter.compilations,
+          count: compilationsCount,
+          tooltip: 'Show only pack compilations',
+          onToggle: () => onFilterChanged(
+            currentFilter == SteamPublishDisplayFilter.compilations
+                ? SteamPublishDisplayFilter.all
+                : SteamPublishDisplayFilter.compilations,
           ),
         ),
       ],

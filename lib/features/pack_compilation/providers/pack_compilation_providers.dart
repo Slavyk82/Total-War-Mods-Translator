@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../models/domain/game_installation.dart';
+import '../../../models/domain/language.dart';
 import '../../../models/domain/project.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../providers/selected_game_provider.dart';
@@ -76,6 +77,7 @@ final compilationsWithDetailsProvider =
   final compilationRepo = ref.watch(compilationRepositoryProvider);
   final projectRepo = ref.watch(projectRepositoryProvider);
   final gameRepo = ref.watch(gameInstallationRepositoryProvider);
+  final languageRepo = ref.watch(languageRepositoryProvider);
 
   // Watch the selected game to filter compilations
   final currentGameInstallation =
@@ -102,6 +104,15 @@ final compilationsWithDetailsProvider =
       gameInstallation = gameResult.unwrap();
     }
 
+    // Resolve target language (nullable)
+    Language? language;
+    if (compilation.languageId != null) {
+      final langResult = await languageRepo.getById(compilation.languageId!);
+      if (langResult.isOk) {
+        language = langResult.unwrap();
+      }
+    }
+
     // Get project IDs and projects
     final projectIdsResult =
         await compilationRepo.getProjectIds(compilation.id);
@@ -119,6 +130,7 @@ final compilationsWithDetailsProvider =
     results.add(CompilationWithDetails(
       compilation: compilation,
       gameInstallation: gameInstallation,
+      language: language,
       projects: projects,
       projectCount: projects.length,
     ));

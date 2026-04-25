@@ -17,7 +17,7 @@ part 'steam_publish_providers.g.dart';
 enum SteamPublishSortMode { exportDate, name, publishDate }
 
 /// Display filter applied on top of the publishable-items list.
-enum SteamPublishDisplayFilter { all, outdated, noPackGenerated }
+enum SteamPublishDisplayFilter { all, outdated, noPackGenerated, compilations }
 
 /// Current set of selected item ids (project or compilation) in the Steam
 /// Publish list. Kept dumb — the screen reads membership via `contains()`
@@ -299,6 +299,8 @@ List<PublishableItem> filteredPublishableItems(Ref ref) {
           .toList();
     case SteamPublishDisplayFilter.noPackGenerated:
       result = result.where((e) => !e.hasPack).toList();
+    case SteamPublishDisplayFilter.compilations:
+      result = result.where((e) => e.isCompilation).toList();
   }
 
   // Apply search query.
@@ -363,6 +365,15 @@ int noPackPublishableItemsCount(Ref ref) {
   final asyncItems = ref.watch(publishableItemsProvider);
   final items = asyncItems.asData?.value ?? const <PublishableItem>[];
   return items.where((e) => !e.hasPack).length;
+}
+
+/// Count of compilation items in the publishable list — used to label the
+/// Compilations filter pill.
+@riverpod
+int compilationsPublishableItemsCount(Ref ref) {
+  final asyncItems = ref.watch(publishableItemsProvider);
+  final items = asyncItems.asData?.value ?? const <PublishableItem>[];
+  return items.where((e) => e.isCompilation).length;
 }
 
 /// Sum of subscriber counts across the currently filtered publishable items,

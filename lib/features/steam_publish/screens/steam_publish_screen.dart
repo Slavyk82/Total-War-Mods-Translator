@@ -65,6 +65,8 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     final currentFilter = ref.watch(steamPublishDisplayFilterProvider);
     final outdatedCount = ref.watch(outdatedPublishableItemsCountProvider);
     final noPackCount = ref.watch(noPackPublishableItemsCountProvider);
+    final compilationsCount =
+        ref.watch(compilationsPublishableItemsCountProvider);
     final subsTotal = ref.watch(filteredPublishableItemsSubsTotalProvider);
 
     final disabledTooltip =
@@ -90,6 +92,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             totalItems: allItems.length,
             outdatedCount: outdatedCount,
             noPackCount: noPackCount,
+            compilationsCount: compilationsCount,
             searchQuery: searchQuery,
             onSearchChanged: (query) {
               ref.read(steamPublishSearchQueryProvider.notifier).state = query;

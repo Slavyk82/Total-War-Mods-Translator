@@ -174,10 +174,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('STATE'), findsOneWidget);
-    expect(find.byType(FilterPill), findsNWidgets(3));
+    expect(find.byType(FilterPill), findsNWidgets(4));
     expect(find.widgetWithText(FilterPill, 'All'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'Outdated'), findsOneWidget);
     expect(find.widgetWithText(FilterPill, 'No pack'), findsOneWidget);
+    expect(find.widgetWithText(FilterPill, 'Compilations'), findsOneWidget);
   });
 
   testWidgets('SteamPublishScreen Select all populates selection provider',
