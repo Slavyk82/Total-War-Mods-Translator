@@ -97,7 +97,8 @@ void main() {
     await TestBootstrap.registerFakes();
   });
 
-  testWidgets('State A (no pack) renders Generate pack', (tester) async {
+  testWidgets('State A₀ (no pack, no id) renders Generate pack only',
+      (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -108,153 +109,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Generate pack'), findsOneWidget);
+    expect(find.byTooltip('Set Workshop id'), findsNothing);
+    expect(find.byTooltip('Edit Workshop id'), findsNothing);
   });
 
   testWidgets(
-    'State A (no pack, no id) renders the Set Workshop id icon button',
+    'State A₁ (no pack, with id) renders Generate + Open in Steam (no pencil)',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1920, 1080));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(createThemedTestableWidget(
-        SteamActionCell(item: _project()),
-        theme: AppTheme.atelierDarkTheme,
-      ));
-      await tester.pumpAndSettle();
-
-      // Generate pack must still render alongside the new pencil icon.
-      expect(find.text('Generate pack'), findsOneWidget);
-      expect(find.byTooltip('Set Workshop id'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'State A (no pack, with id) renders Generate + Open in Steam + Edit id',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1920, 1080));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await tester.pumpWidget(createThemedTestableWidget(
-        SteamActionCell(
-          item: _project(publishedSteamId: '3456789012'),
-        ),
+        SteamActionCell(item: _project(publishedSteamId: '3456789012')),
         theme: AppTheme.atelierDarkTheme,
       ));
       await tester.pumpAndSettle();
 
       expect(find.text('Generate pack'), findsOneWidget);
       expect(find.byTooltip('Open in Steam Workshop'), findsOneWidget);
-      expect(find.byTooltip('Edit Workshop id'), findsOneWidget);
+      expect(find.byTooltip('Edit Workshop id'), findsNothing);
     },
   );
 
-  testWidgets(
-    'State A pencil tap reveals the inline Workshop-id input',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1920, 1080));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      // The Workshop-id TextField requires a Material ancestor, so wrap the
-      // cell in a Scaffold like the existing State-B tests do.
-      await tester.pumpWidget(createThemedTestableWidget(
-        Scaffold(body: SteamActionCell(item: _project())),
-        theme: AppTheme.atelierDarkTheme,
-      ));
-      await tester.pumpAndSettle();
-
-      // Tap the pencil and expect the State-B input to render.
-      await tester.tap(find.byTooltip('Set Workshop id'));
-      await tester.pumpAndSettle();
-
-      final inputFinder = find.byWidgetPredicate(
-        (widget) =>
-            widget is TextField &&
-            widget.decoration?.hintText == 'Paste Workshop URL or ID...',
-      );
-      expect(inputFinder, findsOneWidget);
-
-      // Launcher button remains visible per design decision.
-      expect(find.byTooltip('Open the in-game launcher'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-    'State A saves a Workshop URL without a pack',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1920, 1080));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      final fakeRepo = _FakeProjectRepository();
-      final savedIds = <String?>[];
-      final baseProject = Project(
-        id: 'p1',
-        name: 'Sigmars Heirs',
-        gameInstallationId: 'g1',
-        createdAt: 0,
-        updatedAt: 0,
-      );
-      when(() => fakeRepo.getById('p1')).thenAnswer(
-        (_) async => Ok<Project, TWMTDatabaseException>(baseProject),
-      );
-      when(() => fakeRepo.update(any())).thenAnswer((invocation) async {
-        final updated = invocation.positionalArguments.first as Project;
-        savedIds.add(updated.publishedSteamId);
-        return Ok<Project, TWMTDatabaseException>(updated);
-      });
-
-      await tester.pumpWidget(createThemedTestableWidget(
-        Scaffold(body: SteamActionCell(item: _project())),
-        theme: AppTheme.atelierDarkTheme,
-        overrides: [
-          projectRepositoryProvider.overrideWithValue(fakeRepo),
-        ],
-      ));
-      await tester.pumpAndSettle();
-
-      // Enter edit mode.
-      await tester.tap(find.byTooltip('Set Workshop id'));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.byType(TextField),
-        'https://steamcommunity.com/sharedfiles/filedetails/?id=3456789012',
-      );
-      await tester.tap(find.byTooltip('Save Workshop id'));
-      await tester.pumpAndSettle(const Duration(seconds: 2));
-
-      expect(savedIds, ['3456789012']);
-    },
-  );
-
-  testWidgets(
-    'State A cancel returns to the non-edit rendering',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1920, 1080));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await tester.pumpWidget(createThemedTestableWidget(
-        Scaffold(body: SteamActionCell(item: _project())),
-        theme: AppTheme.atelierDarkTheme,
-      ));
-      await tester.pumpAndSettle();
-
-      // Enter edit mode.
-      await tester.tap(find.byTooltip('Set Workshop id'));
-      await tester.pumpAndSettle();
-      expect(find.byType(TextField), findsOneWidget);
-
-      // Cancel and verify the A₀ row is back.
-      await tester.tap(find.byTooltip('Cancel'));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(TextField), findsNothing);
-      expect(find.text('Generate pack'), findsOneWidget);
-      expect(find.byTooltip('Set Workshop id'), findsOneWidget);
-    },
-  );
-
-  testWidgets(
-      'State B (pack, no Workshop id) renders the inline Workshop-id input',
+  testWidgets('State B (pack, no Workshop id) renders the inline Workshop-id input',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -361,7 +238,7 @@ void main() {
     );
   });
 
-  testWidgets('State C (pack + Workshop id) renders the Update action',
+  testWidgets('State C (pack + Workshop id) renders Update without a pencil',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -375,5 +252,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Update'), findsOneWidget);
+    expect(find.byTooltip('Open in Steam Workshop'), findsOneWidget);
+    expect(find.byTooltip('Edit Workshop id'), findsNothing);
   });
 }

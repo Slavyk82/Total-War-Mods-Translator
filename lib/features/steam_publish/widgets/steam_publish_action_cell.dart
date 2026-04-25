@@ -4,8 +4,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/steam_publish/utils/workshop_url_parser.dart';
-import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/platform/game_launcher_opener.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -16,21 +14,18 @@ import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
 import 'pack_language_dialog.dart';
 
-/// State-machine action cell rendered in column 6 of the Steam Publish list.
+/// State-machine action cell rendered in the action column of the Steam
+/// Publish list.
 ///
 /// Rendering modes:
 ///
-/// - A₀ — No pack, no Workshop id → "Generate pack" + edit-id pencil.
-/// - A₁ — No pack, has Workshop id → "Generate pack" + "Open in Steam" +
-///   edit-id pencil.
-/// - B — Pack + no Workshop id → inline Steam-id input + save.
-/// - C — Pack + Workshop id → "Update" + "Open in Steam" + edit-id pencil.
+/// - A₀ — No pack, no Workshop id → "Generate pack".
+/// - A₁ — No pack, has Workshop id → "Generate pack" + "Open in Steam".
+/// - B — Pack + no Workshop id → "Update" (disabled) + "Open launcher".
+/// - C — Pack + Workshop id → "Update" + "Open in Steam".
 ///
-/// Tapping any edit-id pencil (or being in B where `hasPublishedId` is false
-/// before any save) switches `_isEditingSteamId` on and renders the shared
-/// inline input regardless of pack presence. Cancel restores the pre-edit
-/// rendering; save persists the parsed id via the relevant repository and
-/// invalidates [publishableItemsProvider] so the cell recomputes.
+/// Editing the Workshop id lives in [SteamIdCell] in the dedicated Steam ID
+/// column — the action cell never owns the inline editor anymore.
 class SteamActionCell extends ConsumerStatefulWidget {
   final PublishableItem item;
 
@@ -41,18 +36,9 @@ class SteamActionCell extends ConsumerStatefulWidget {
 }
 
 class _SteamActionCellState extends ConsumerState<SteamActionCell> {
-  final TextEditingController _steamIdController = TextEditingController();
-  bool _isSavingSteamId = false;
-  bool _isEditingSteamId = false;
   bool _isGenerating = false;
   double _generateProgress = 0.0;
   String? _generateStep;
-
-  @override
-  void dispose() {
-    _steamIdController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,17 +51,9 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       return _buildGenerateProgress(context);
     }
 
-    // Edit mode takes precedence: once the user taps the pencil we render the
-    // shared Steam-id input regardless of pack presence. This is what lets
-    // the user set or change the Workshop id before a pack is generated.
-    if (_isEditingSteamId) {
-      return _buildSteamIdInput(context);
-    }
-
     if (!hasPack) {
-      // Legacy parity: when the local pack was deleted but the item is still
-      // published on the Workshop, surface Generate alongside Open-in-Steam so
-      // users can jump to their published listing without regenerating first.
+      // State A₀: Generate pack alone.
+      // State A₁: Generate pack + Open in Steam.
       if (hasPublishedId) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -89,37 +67,20 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                 icon: FluentIcons.open_24_regular,
                 onTap: _openWorkshop,
               ),
-              const SizedBox(width: 4),
-              _iconButton(
-                icon: FluentIcons.edit_24_regular,
-                tooltip: 'Edit Workshop id',
-                onTap: _beginEditSteamId,
-              ),
             ],
           ),
         );
       }
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          children: [
-            Expanded(child: _buildGenerateButton(context, padded: false)),
-            const SizedBox(width: 6),
-            _iconButton(
-              icon: FluentIcons.edit_24_regular,
-              tooltip: 'Set Workshop id',
-              onTap: _beginEditSteamId,
-            ),
-          ],
-        ),
-      );
+      return _buildGenerateButton(context);
     }
 
+    // State B is added in Task 7.
     if (!hasPublishedId) {
-      return _buildSteamIdInput(context);
+      return _buildPublishButtons(context, updateDisabled: true);
     }
 
-    return _buildPublishButtons(context);
+    // State C.
+    return _buildPublishButtons(context, updateDisabled: false);
   }
 
   // ---------------------------------------------------------------------------
@@ -189,18 +150,10 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     );
   }
 
-  /// Pre-fills the text field with the current id (if any) and switches the
-  /// cell into edit mode. Shared by the pencil icon in State A₀/A₁/C.
-  void _beginEditSteamId() {
-    _steamIdController.text = widget.item.publishedSteamId ?? '';
-    setState(() => _isEditingSteamId = true);
-  }
-
   /// Opens the item's published Workshop page in the default browser.
   ///
-  /// Shared by the "no pack but published" compound button and the
-  /// `_buildPublishButtons` State-C row. The caller is expected to guard on
-  /// `publishedSteamId != null` before invoking.
+  /// The caller is expected to guard on `publishedSteamId != null` before
+  /// invoking.
   void _openWorkshop() {
     final workshopId = widget.item.publishedSteamId;
     if (workshopId == null || workshopId.isEmpty) return;
@@ -376,154 +329,6 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // State B: pack, no/editing Workshop id — inline input.
-  // ---------------------------------------------------------------------------
-
-  Widget _buildSteamIdInput(BuildContext context) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 28,
-                  child: TextField(
-                    controller: _steamIdController,
-                    enabled: !_isSavingSteamId,
-                    style: tokens.fontMono.copyWith(
-                      fontSize: 12,
-                      color: tokens.text,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Paste Workshop URL or ID...',
-                      hintStyle: tokens.fontMono.copyWith(
-                        fontSize: 12,
-                        color: tokens.textFaint,
-                      ),
-                      isDense: true,
-                      filled: true,
-                      fillColor: tokens.panel2,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(tokens.radiusSm),
-                        borderSide: BorderSide(color: tokens.accent),
-                      ),
-                    ),
-                    onSubmitted: (_) => _saveSteamId(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              _iconButton(
-                icon: FluentIcons.play_24_regular,
-                tooltip: 'Open the in-game launcher',
-                onTap: _openLauncher,
-              ),
-              const SizedBox(width: 4),
-              _iconButton(
-                icon: _isSavingSteamId ? null : FluentIcons.save_24_regular,
-                tooltip: 'Save Workshop id',
-                onTap: _isSavingSteamId ? null : _saveSteamId,
-                busy: _isSavingSteamId,
-                accent: true,
-              ),
-              if (_isEditingSteamId) ...[
-                const SizedBox(width: 4),
-                _iconButton(
-                  icon: FluentIcons.dismiss_24_regular,
-                  tooltip: 'Cancel',
-                  onTap: () {
-                    _steamIdController.clear();
-                    setState(() => _isEditingSteamId = false);
-                  },
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '1. Publish from the launcher · 2. Copy the mod URL here',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: tokens.fontMono.copyWith(
-              fontSize: 10,
-              color: tokens.textFaint,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _saveSteamId() async {
-    final raw = _steamIdController.text.trim();
-    if (raw.isEmpty) return;
-
-    // Accept both bare numeric ids and full Workshop URLs; the parser does
-    // the extraction and returns null when neither shape matches.
-    final steamId = parseWorkshopId(raw);
-    if (steamId == null) {
-      FluentToast.warning(
-        context,
-        "Couldn't read a Workshop ID from that value.",
-      );
-      return;
-    }
-
-    setState(() => _isSavingSteamId = true);
-
-    try {
-      final item = widget.item;
-      if (item is ProjectPublishItem) {
-        final projectRepo = ref.read(projectRepositoryProvider);
-        final projectResult = await projectRepo.getById(item.project.id);
-        if (projectResult.isOk) {
-          final updated = projectResult.value.copyWith(
-            publishedSteamId: steamId,
-            updatedAt: projectResult.value.updatedAt,
-          );
-          await projectRepo.update(updated);
-        }
-      } else if (item is CompilationPublishItem) {
-        final compilationRepo = ref.read(compilationRepositoryProvider);
-        await compilationRepo.updateAfterPublish(
-          item.compilation.id,
-          steamId,
-          item.publishedAt ?? 0,
-        );
-      }
-      if (mounted) {
-        setState(() {
-          _isEditingSteamId = false;
-        });
-        ref.invalidate(publishableItemsProvider);
-      }
-    } catch (e) {
-      if (mounted) {
-        FluentToast.error(context, 'Failed to save Workshop id: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingSteamId = false);
-      }
-    }
-  }
-
   /// Launches the in-game Workshop publisher for Total War: WARHAMMER III.
   ///
   /// The app id is hard-coded to match parity with the workshop publish screen
@@ -540,10 +345,16 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
   }
 
   // ---------------------------------------------------------------------------
-  // State C: pack + Workshop id — Update / Open in Steam / Edit id.
+  // State C: pack + Workshop id — Update / Open in Steam.
+  // State B: pack + no Workshop id — handled by updateDisabled flag (Task 7).
   // ---------------------------------------------------------------------------
 
-  Widget _buildPublishButtons(BuildContext context) {
+  Widget _buildPublishButtons(
+    BuildContext context, {
+    required bool updateDisabled,
+  }) {
+    // Body unchanged from the existing State-C version. Task 7 adds the
+    // disabled-Update + Open-launcher branch.
     final tokens = context.tokens;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -608,15 +419,6 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
             icon: FluentIcons.open_24_regular,
             tooltip: 'Open in Steam Workshop',
             onTap: _openWorkshop,
-          ),
-          const SizedBox(width: 4),
-          _iconButton(
-            icon: FluentIcons.edit_24_regular,
-            tooltip: 'Edit Workshop id',
-            onTap: () {
-              _steamIdController.text = widget.item.publishedSteamId ?? '';
-              setState(() => _isEditingSteamId = true);
-            },
           ),
         ],
       ),
