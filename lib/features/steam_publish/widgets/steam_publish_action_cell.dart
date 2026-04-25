@@ -346,41 +346,51 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
 
   // ---------------------------------------------------------------------------
   // State C: pack + Workshop id — Update / Open in Steam.
-  // State B: pack + no Workshop id — handled by updateDisabled flag (Task 7).
+  // State B: pack + no Workshop id — Update (disabled) / Open launcher.
   // ---------------------------------------------------------------------------
 
   Widget _buildPublishButtons(
     BuildContext context, {
     required bool updateDisabled,
   }) {
-    // Body unchanged from the existing State-C version. Task 7 adds the
-    // disabled-Update + Open-launcher branch.
     final tokens = context.tokens;
+
+    final updateFg = updateDisabled ? tokens.textFaint : tokens.accent;
+    final updateBorder = updateDisabled ? tokens.border : tokens.accent;
+    final updateBg = updateDisabled ? tokens.panel2 : tokens.accentBg;
+    final updateTooltip = updateDisabled
+        ? 'Set the Steam ID first to enable updating'
+        : 'Update existing Workshop item';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
           Expanded(
             child: Tooltip(
-              message: 'Update existing Workshop item',
+              message: updateTooltip,
               waitDuration: const Duration(milliseconds: 400),
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
+                cursor: updateDisabled
+                    ? SystemMouseCursors.basic
+                    : SystemMouseCursors.click,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    ref
-                        .read(singlePublishStagingProvider.notifier)
-                        .set(widget.item);
-                    context.goWorkshopPublishSingle();
-                  },
+                  onTap: updateDisabled
+                      ? null
+                      : () {
+                          ref
+                              .read(singlePublishStagingProvider.notifier)
+                              .set(widget.item);
+                          context.goWorkshopPublishSingle();
+                        },
                   child: Container(
                     height: 28,
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
-                      color: tokens.accentBg,
-                      border: Border.all(color: tokens.accent),
+                      color: updateBg,
+                      border: Border.all(color: updateBorder),
                       borderRadius: BorderRadius.circular(tokens.radiusSm),
                     ),
                     child: SingleChildScrollView(
@@ -392,7 +402,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                           Icon(
                             FluentIcons.cloud_arrow_up_24_regular,
                             size: 14,
-                            color: tokens.accent,
+                            color: updateFg,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -402,7 +412,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                             overflow: TextOverflow.clip,
                             style: tokens.fontBody.copyWith(
                               fontSize: 12,
-                              color: tokens.accent,
+                              color: updateFg,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -415,11 +425,18 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
             ),
           ),
           const SizedBox(width: 6),
-          _iconButton(
-            icon: FluentIcons.open_24_regular,
-            tooltip: 'Open in Steam Workshop',
-            onTap: _openWorkshop,
-          ),
+          if (updateDisabled)
+            _iconButton(
+              icon: FluentIcons.play_24_regular,
+              tooltip: 'Open the in-game launcher',
+              onTap: _openLauncher,
+            )
+          else
+            _iconButton(
+              icon: FluentIcons.open_24_regular,
+              tooltip: 'Open in Steam Workshop',
+              onTap: _openWorkshop,
+            ),
         ],
       ),
     );
