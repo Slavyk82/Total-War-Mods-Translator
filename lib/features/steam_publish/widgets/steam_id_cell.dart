@@ -111,7 +111,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
                       color: tokens.text,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Paste Workshop URL or ID...',
+                      hintText: 'ID',
                       hintStyle: tokens.fontMono.copyWith(
                         fontSize: 12,
                         color: tokens.textFaint,
