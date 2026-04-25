@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "Chronologie",
+    "labels": {
+      "current": "Actuelle",
+      "latest": "Dernière",
+      "versionN": "Version $index",
+      "reason": "Raison : $reason"
+    },
+    "actions": {
+      "restore": "Restaurer",
+      "compare": "Comparer"
+    },
+    "empty": {
+      "title": "Aucun historique disponible",
+      "subtitle": "Les modifications apparaîtront ici lors de vos éditions"
+    },
+    "errors": {
+      "loadFailed": "Impossible de charger l'historique"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restaurer la version",
+        "message": "Êtes-vous sûr de vouloir restaurer cette version ?\n\nCela remplacera la traduction actuelle par :\n« $preview »"
+      }
+    },
+    "toasts": {
+      "restored": "Version restaurée avec succès",
+      "restoreFailed": "Échec de la restauration : $error"
+    }
+  },
+  "comparison": {
+    "title": "Comparer les versions",
+    "labels": {
+      "oldVersion": "Ancienne version",
+      "newVersion": "Nouvelle version",
+      "changes": "Modifications",
+      "charsAdded": "Caractères ajoutés",
+      "charsRemoved": "Caractères supprimés",
+      "wordsAdded": "Mots ajoutés",
+      "wordsRemoved": "Mots supprimés",
+      "totalChanges": "Total des modifications"
+    },
+    "actions": {
+      "copyOld": "Copier l'ancienne",
+      "copyNew": "Copier la nouvelle",
+      "restoreOld": "Restaurer l'ancienne"
+    },
+    "errors": {
+      "loadFailed": "Impossible de comparer les versions"
+    },
+    "toasts": {
+      "copied": "Copié dans le presse-papiers",
+      "restored": "Version restaurée avec succès",
+      "restoreFailed": "Échec de la restauration : $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restaurer la version",
+        "message": "Êtes-vous sûr de vouloir restaurer cette version ?\n\nAperçu :\n« $preview »"
+      }
+    }
+  }
+}

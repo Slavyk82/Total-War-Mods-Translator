@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "History Timeline",
+    "labels": {
+      "current": "Current",
+      "latest": "Latest",
+      "versionN": "Version $index",
+      "reason": "Reason: $reason"
+    },
+    "actions": {
+      "restore": "Restore",
+      "compare": "Compare"
+    },
+    "empty": {
+      "title": "No history available",
+      "subtitle": "Changes will appear here as you edit"
+    },
+    "errors": {
+      "loadFailed": "Failed to load history"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restore Version",
+        "message": "Are you sure you want to restore this version?\n\nThis will replace the current translation with:\n\"$preview\""
+      }
+    },
+    "toasts": {
+      "restored": "Version restored successfully",
+      "restoreFailed": "Failed to restore: $error"
+    }
+  },
+  "comparison": {
+    "title": "Compare Versions",
+    "labels": {
+      "oldVersion": "Old Version",
+      "newVersion": "New Version",
+      "changes": "Changes",
+      "charsAdded": "Characters Added",
+      "charsRemoved": "Characters Removed",
+      "wordsAdded": "Words Added",
+      "wordsRemoved": "Words Removed",
+      "totalChanges": "Total Changes"
+    },
+    "actions": {
+      "copyOld": "Copy Old",
+      "copyNew": "Copy New",
+      "restoreOld": "Restore Old"
+    },
+    "errors": {
+      "loadFailed": "Failed to compare versions"
+    },
+    "toasts": {
+      "copied": "Copied to clipboard",
+      "restored": "Version restored successfully",
+      "restoreFailed": "Failed to restore: $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restore Version",
+        "message": "Are you sure you want to restore this version?\n\nPreview:\n\"$preview\""
+      }
+    }
+  }
+}

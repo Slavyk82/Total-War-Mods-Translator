@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -72,7 +73,7 @@ class _VersionComparisonDialogState
 
     return TokenDialog(
       icon: FluentIcons.document_text_link_24_regular,
-      title: 'Compare Versions',
+      title: t.translation.comparison.title,
       width: media.size.width * 0.8,
       body: SizedBox(
         height: media.size.height * 0.72,
@@ -86,7 +87,7 @@ class _VersionComparisonDialogState
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           onTap: () => Navigator.of(context).pop(),
         ),
       ],
@@ -115,7 +116,7 @@ class _VersionComparisonDialogState
                     child: _buildVersionPanel(
                       tokens,
                       comparison.version1,
-                      'Old Version',
+                      t.translation.comparison.labels.oldVersion,
                       comparison.diff,
                       true,
                       _leftScrollController,
@@ -126,7 +127,7 @@ class _VersionComparisonDialogState
                     child: _buildVersionPanel(
                       tokens,
                       comparison.version2,
-                      'New Version',
+                      t.translation.comparison.labels.newVersion,
                       comparison.diff,
                       false,
                       _rightScrollController,
@@ -276,7 +277,7 @@ class _VersionComparisonDialogState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Changes',
+            t.translation.comparison.labels.changes,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.text,
@@ -289,15 +290,15 @@ class _VersionComparisonDialogState
             runSpacing: 8,
             children: [
               _buildStatItem(
-                  tokens, 'Characters Added', stats.charsAdded, tokens.ok),
+                  tokens, t.translation.comparison.labels.charsAdded, stats.charsAdded, tokens.ok),
               _buildStatItem(
-                  tokens, 'Characters Removed', stats.charsRemoved, tokens.err),
+                  tokens, t.translation.comparison.labels.charsRemoved, stats.charsRemoved, tokens.err),
               _buildStatItem(
-                  tokens, 'Words Added', stats.wordsAdded, tokens.ok),
+                  tokens, t.translation.comparison.labels.wordsAdded, stats.wordsAdded, tokens.ok),
               _buildStatItem(
-                  tokens, 'Words Removed', stats.wordsRemoved, tokens.err),
+                  tokens, t.translation.comparison.labels.wordsRemoved, stats.wordsRemoved, tokens.err),
               _buildStatItem(
-                  tokens, 'Total Changes', stats.charsChanged, tokens.info),
+                  tokens, t.translation.comparison.labels.totalChanges, stats.charsChanged, tokens.info),
             ],
           ),
         ],
@@ -346,19 +347,19 @@ class _VersionComparisonDialogState
     return Row(
       children: [
         SmallTextButton(
-          label: 'Copy Old',
+          label: t.translation.comparison.actions.copyOld,
           icon: FluentIcons.copy_24_regular,
           onTap: () => _copyToClipboard(comparison.version1.translatedText),
         ),
         const SizedBox(width: 8),
         SmallTextButton(
-          label: 'Copy New',
+          label: t.translation.comparison.actions.copyNew,
           icon: FluentIcons.copy_24_regular,
           onTap: () => _copyToClipboard(comparison.version2.translatedText),
         ),
         const Spacer(),
         SmallTextButton(
-          label: 'Restore Old',
+          label: t.translation.comparison.actions.restoreOld,
           icon: FluentIcons.arrow_undo_24_regular,
           filled: true,
           onTap: () => _restoreVersion(context, comparison.version1),
@@ -379,7 +380,7 @@ class _VersionComparisonDialogState
           ),
           const SizedBox(height: 16),
           Text(
-            'Failed to compare versions',
+            t.translation.comparison.errors.loadFailed,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.text,
@@ -403,7 +404,7 @@ class _VersionComparisonDialogState
   Future<void> _copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      FluentToast.success(context, 'Copied to clipboard');
+      FluentToast.success(context, t.translation.comparison.toasts.copied);
     }
   }
 
@@ -411,10 +412,11 @@ class _VersionComparisonDialogState
     final confirmed = await TokenDialog.showConfirm(
       context,
       icon: FluentIcons.arrow_undo_24_regular,
-      title: 'Restore Version',
-      message: 'Are you sure you want to restore this version?\n\n'
-          'Preview:\n"${version.getTranslatedTextPreview(100)}"',
-      confirmLabel: 'Restore',
+      title: t.translation.comparison.dialogs.restore.title,
+      message: t.translation.comparison.dialogs.restore.message(
+        preview: version.getTranslatedTextPreview(100),
+      ),
+      confirmLabel: t.translation.history.actions.restore,
     );
 
     if (confirmed && mounted) {
@@ -428,11 +430,14 @@ class _VersionComparisonDialogState
       if (mounted) {
         result.when(
           ok: (_) {
-            FluentToast.success(context, 'Version restored successfully');
+            FluentToast.success(context, t.translation.comparison.toasts.restored);
             Navigator.of(context).pop();
           },
           err: (error) {
-            FluentToast.error(context, 'Failed to restore: $error');
+            FluentToast.error(
+              context,
+              t.translation.comparison.toasts.restoreFailed(error: error),
+            );
           },
         );
       }

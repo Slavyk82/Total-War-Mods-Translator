@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../config/app_constants.dart';
 import '../../../models/domain/translation_version_history.dart';
 import '../../../models/domain/translation_version.dart';
@@ -89,7 +90,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'History Timeline',
+            t.translation.history.title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -186,7 +187,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                 Row(
                   children: [
                     Text(
-                      'Current',
+                      t.translation.history.labels.current,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: Theme.of(context).colorScheme.primary,
@@ -203,7 +204,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'Latest',
+                        t.translation.history.labels.latest,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: Theme.of(context)
                                   .colorScheme
@@ -281,7 +282,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                 Row(
                   children: [
                     Text(
-                      'Version $index',
+                      t.translation.history.labels.versionN(index: index),
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -346,7 +347,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                 if (entry.hasChangeReason) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Reason: ${entry.changeReason}',
+                    t.translation.history.labels.reason(reason: entry.changeReason!),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color:
                               Theme.of(context).colorScheme.onSurfaceVariant,
@@ -362,7 +363,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                   children: [
                     _buildActionButton(
                       context,
-                      'Restore',
+                      t.translation.history.actions.restore,
                       FluentIcons.arrow_undo_24_regular,
                       () => _onRestore(context, ref, entry),
                     ),
@@ -370,7 +371,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
                     if (previousEntry != null)
                       _buildActionButton(
                         context,
-                        'Compare',
+                        t.translation.history.actions.compare,
                         FluentIcons.document_text_link_24_regular,
                         () => _onCompare(context, entry, previousEntry),
                       ),
@@ -466,14 +467,14 @@ class HistoryTimelinePanel extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No history available',
+            t.translation.history.empty.title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Changes will appear here as you edit',
+            t.translation.history.empty.subtitle,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -495,7 +496,7 @@ class HistoryTimelinePanel extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Failed to load history',
+            t.translation.history.errors.loadFailed,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -520,11 +521,11 @@ class HistoryTimelinePanel extends ConsumerWidget {
       context: context,
       builder: (_) => TokenConfirmDialog(
         icon: FluentIcons.history_24_regular,
-        title: 'Restore Version',
-        message: 'Are you sure you want to restore this version?\n\n'
-            'This will replace the current translation with:\n'
-            '"${entry.getTranslatedTextPreview(100)}"',
-        confirmLabel: 'Restore',
+        title: t.translation.history.dialogs.restore.title,
+        message: t.translation.history.dialogs.restore.message(
+          preview: entry.getTranslatedTextPreview(100),
+        ),
+        confirmLabel: t.translation.history.actions.restore,
         confirmIcon: FluentIcons.arrow_reset_24_regular,
       ),
     );
@@ -540,12 +541,15 @@ class HistoryTimelinePanel extends ConsumerWidget {
       if (context.mounted) {
         result.when(
           ok: (_) {
-            FluentToast.success(context, 'Version restored successfully');
+            FluentToast.success(context, t.translation.history.toasts.restored);
             // Refresh history
             ref.invalidate(versionHistoryProvider(versionId));
           },
           err: (error) {
-            FluentToast.error(context, 'Failed to restore: $error');
+            FluentToast.error(
+              context,
+              t.translation.history.toasts.restoreFailed(error: error),
+            );
           },
         );
       }
