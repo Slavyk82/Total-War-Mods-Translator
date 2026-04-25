@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
+import 'general/app_language_section.dart';
 import 'general/backup_section.dart';
 import 'general/language_preferences_section.dart';
 import 'general/maintenance_section.dart';
@@ -35,6 +36,8 @@ class GeneralSettingsTab extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            const AppLanguageSection(),
+            const SizedBox(height: 32),
             const LanguagePreferencesSection(),
             const SizedBox(height: 32),
             const IgnoredSourceTextsSection(),
