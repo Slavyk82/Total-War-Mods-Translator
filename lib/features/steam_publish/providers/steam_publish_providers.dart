@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';
 import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
@@ -362,4 +363,21 @@ int noPackPublishableItemsCount(Ref ref) {
   final asyncItems = ref.watch(publishableItemsProvider);
   final items = asyncItems.asData?.value ?? const <PublishableItem>[];
   return items.where((e) => !e.hasPack).length;
+}
+
+/// Sum of subscriber counts across the currently filtered publishable items,
+/// resolved against the session-level [publishedSubsCacheProvider]. Items
+/// without a `publishedSteamId` or absent from the cache contribute 0.
+@riverpod
+int filteredPublishableItemsSubsTotal(Ref ref) {
+  final items = ref.watch(filteredPublishableItemsProvider);
+  final cache = ref.watch(publishedSubsCacheProvider);
+  if (items.isEmpty || cache.isEmpty) return 0;
+  var sum = 0;
+  for (final item in items) {
+    final id = item.publishedSteamId;
+    if (id == null || id.isEmpty) continue;
+    sum += cache[id] ?? 0;
+  }
+  return sum;
 }
