@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
@@ -39,4 +40,25 @@ Future<int> projectsToReviewCount(Ref ref) async {
     if (s.value.errorCount > 0) count++;
   }
   return count;
+}
+
+/// Count of projects whose source has been modified since the last `.pack`
+/// export — i.e. the on-disk pack no longer reflects the current translation
+/// state and a re-export is required.
+///
+/// Defers to `ProjectWithDetails.isModifiedSinceLastExport` from
+/// [projectsWithDetailsProvider] so the Home dashboard tile and the in-screen
+/// "Export outdated" pill share a single source of truth (and the underlying
+/// `MAX(exportedAt, publishedAt) + 60s` checkpoint logic stays in one place).
+///
+/// Marked `keepAlive` so the value survives a Home → Projects → Home round
+/// trip. Otherwise the auto-disposed counter would briefly flash `0`
+/// (initial AsyncLoading has no previous value) before resolving back to the
+/// real count, even when the data didn't change. Refreshes still happen
+/// automatically: the counter watches `projectsWithDetailsProvider`, which is
+/// invalidated by every workflow that mutates project state.
+@Riverpod(keepAlive: true)
+Future<int> projectsExportOutdatedCount(Ref ref) async {
+  final details = await ref.watch(projectsWithDetailsProvider.future);
+  return details.where((d) => d.isModifiedSinceLastExport).length;
 }

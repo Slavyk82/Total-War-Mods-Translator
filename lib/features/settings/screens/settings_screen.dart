@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/settings/settings_tab_bar.dart';
 import '../widgets/general_settings_tab.dart';
 import '../widgets/folders_settings_tab.dart';
@@ -19,27 +21,12 @@ class SettingsScreen extends StatelessWidget {
       body: DefaultTabController(
         length: 3,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                children: [
-                  Icon(
-                    FluentIcons.settings_24_regular,
-                    size: 32,
-                    color: tokens.accent,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Settings',
-                    style: tokens.fontDisplay.copyWith(
-                      fontSize: 24,
-                      color: tokens.text,
-                      fontStyle: tokens.fontDisplayStyle,
-                    ),
-                  ),
-                ],
+            const HomeBackToolbar(
+              leading: ListToolbarLeading(
+                icon: FluentIcons.settings_24_regular,
+                title: 'Settings',
               ),
             ),
             Container(

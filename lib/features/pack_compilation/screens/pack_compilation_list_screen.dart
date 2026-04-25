@@ -14,6 +14,7 @@ import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Pack compilations list screen (§7.1 archetype).
@@ -52,12 +53,15 @@ class _PackCompilationListScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          FilterToolbar(
+          HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.archive_multiple_24_regular,
               title: 'Pack compilations',
               countLabel: '${filtered.length} / ${all.length}',
             ),
+          ),
+          FilterToolbar(
+            leading: const SizedBox.shrink(),
             expandLeading: false,
             trailing: [
               Expanded(

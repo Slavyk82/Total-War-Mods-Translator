@@ -13,16 +13,14 @@ import 'package:twmt/widgets/lists/status_pill.dart';
 /// Toolbar for the Mods screen.
 ///
 /// Composed on top of the shared [FilterToolbar] primitive introduced in
-/// Plan 5a. Row 1 hosts a title, mod count and the primary actions (search,
-/// hidden toggle, import local pack, refresh). Row 2 hosts the STATE filter
-/// pill group.
+/// Plan 5a. Row 1 hosts the primary actions (search, hidden toggle, import
+/// local pack, refresh). Row 2 hosts the STATE filter pill group. The screen
+/// title (icon + name + count) is rendered higher up by `HomeBackToolbar`.
 class ModsToolbar extends StatelessWidget {
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onRefresh;
   final bool isRefreshing;
-  final int totalMods;
-  final int filteredMods;
   final ModsFilter currentFilter;
   final ValueChanged<ModsFilter> onFilterChanged;
   final int notImportedCount;
@@ -30,8 +28,6 @@ class ModsToolbar extends StatelessWidget {
   final bool showHidden;
   final ValueChanged<bool> onShowHiddenChanged;
   final int hiddenCount;
-  final int projectsWithPendingChanges;
-  final VoidCallback? onNavigateToProjects;
   final VoidCallback? onImportLocalPack;
 
   const ModsToolbar({
@@ -40,8 +36,6 @@ class ModsToolbar extends StatelessWidget {
     required this.onSearchChanged,
     required this.onRefresh,
     this.isRefreshing = false,
-    required this.totalMods,
-    required this.filteredMods,
     required this.currentFilter,
     required this.onFilterChanged,
     required this.notImportedCount,
@@ -49,21 +43,13 @@ class ModsToolbar extends StatelessWidget {
     required this.showHidden,
     required this.onShowHiddenChanged,
     required this.hiddenCount,
-    this.projectsWithPendingChanges = 0,
-    this.onNavigateToProjects,
     this.onImportLocalPack,
   });
 
   @override
   Widget build(BuildContext context) {
     return FilterToolbar(
-      leading: _Leading(
-        totalMods: totalMods,
-        filteredMods: filteredMods,
-        searchActive: searchQuery.isNotEmpty,
-        projectsWithPendingChanges: projectsWithPendingChanges,
-        onNavigateToProjects: onNavigateToProjects,
-      ),
+      leading: const SizedBox.shrink(),
       expandLeading: false,
       trailing: _buildTrailing(context),
       pillGroups: [_buildStateGroup()],
@@ -142,16 +128,19 @@ class ModsToolbar extends StatelessWidget {
 
 // =============================================================================
 // Leading (title + count + pending-projects banner)
+//
+// Public so [ModsScreen] can mount it inside `HomeBackToolbar.leading`.
 // =============================================================================
 
-class _Leading extends StatelessWidget {
+class ModsToolbarLeading extends StatelessWidget {
   final int totalMods;
   final int filteredMods;
   final bool searchActive;
   final int projectsWithPendingChanges;
   final VoidCallback? onNavigateToProjects;
 
-  const _Leading({
+  const ModsToolbarLeading({
+    super.key,
     required this.totalMods,
     required this.filteredMods,
     required this.searchActive,
@@ -170,7 +159,7 @@ class _Leading extends StatelessWidget {
       countLabel: countLabel,
       trailing: [
         if (projectsWithPendingChanges > 0)
-          _PendingProjectsBanner(
+          PendingProjectsBanner(
             count: projectsWithPendingChanges,
             onTap: onNavigateToProjects,
           ),
@@ -179,10 +168,10 @@ class _Leading extends StatelessWidget {
   }
 }
 
-class _PendingProjectsBanner extends StatelessWidget {
+class PendingProjectsBanner extends StatelessWidget {
   final int count;
   final VoidCallback? onTap;
-  const _PendingProjectsBanner({required this.count, required this.onTap});
+  const PendingProjectsBanner({super.key, required this.count, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

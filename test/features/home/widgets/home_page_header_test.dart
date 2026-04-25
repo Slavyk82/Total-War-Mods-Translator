@@ -37,11 +37,4 @@ void main() {
 
     expect(find.text('All caught up'), findsOneWidget);
   });
-
-  testWidgets('renders New project button label', (tester) async {
-    await tester.pumpWidget(wrap(const HomePageHeader()));
-    await tester.pumpAndSettle();
-
-    expect(find.text('+ New project'), findsOneWidget);
-  });
 }

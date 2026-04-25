@@ -8,6 +8,7 @@ import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 
 import '../providers/tm_providers.dart';
 import '../widgets/tm_browser_datagrid.dart';
@@ -50,8 +51,9 @@ class _TranslationMemoryScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          HomeBackToolbar(leading: _Leading(total: total)),
           FilterToolbar(
-            leading: _Leading(total: total),
+            leading: const SizedBox.shrink(),
             expandLeading: false,
             trailing: [
               Expanded(

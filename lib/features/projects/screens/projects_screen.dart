@@ -18,6 +18,7 @@ import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import '../providers/projects_bulk_menu_visibility_provider.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/projects_bulk_menu_panel.dart';
@@ -83,8 +84,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          HomeBackToolbar(leading: _buildLeading(projectsAsync)),
           FilterToolbar(
-            leading: _buildLeading(projectsAsync),
+            leading: const SizedBox.shrink(),
             expandLeading: false,
             trailing: _buildTrailingActions(),
             pillGroups: [_buildQuickFilterGroup()],
@@ -973,6 +975,16 @@ class _StatusPill extends StatelessWidget {
       );
     }
     if (details.hasBeenExported) {
+      if (details.hasSteamPublishWorkflow &&
+          !details.isPackPublishedOnSteam) {
+        return _pill(
+          label: 'Unpublished',
+          fg: tokens.textDim,
+          bg: tokens.panel,
+          tooltip:
+              'Pack generated locally — not yet published on Steam Workshop',
+        );
+      }
       return _pill(
         label: 'Exported',
         fg: tokens.ok,

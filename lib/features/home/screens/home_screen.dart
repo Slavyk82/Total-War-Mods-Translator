@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:twmt/features/home/widgets/action_grid.dart';
-import 'package:twmt/features/home/widgets/activity_feed_panel.dart';
 import 'package:twmt/features/home/widgets/empty_state_guide.dart';
 import 'package:twmt/features/home/widgets/home_page_header.dart';
-import 'package:twmt/features/home/widgets/recent_projects_list.dart';
 import 'package:twmt/features/home/widgets/workflow_ribbon.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
@@ -13,8 +11,8 @@ import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 /// Home/Dashboard screen.
 ///
 /// Composes the redesigned Home dashboard widgets (header, workflow ribbon,
-/// action grid, recent projects, activity feed) and switches to the
-/// [EmptyStateGuide] when there are no active projects for the current game.
+/// action grid) and switches to the [EmptyStateGuide] when there are no
+/// active projects for the current game.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -44,37 +42,7 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: 10),
                   const ActionGrid(),
                   const SizedBox(height: 28),
-                  if (isEmpty)
-                    const EmptyStateGuide()
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: const [
-                              _SectionLabel('Recent'),
-                              SizedBox(height: 10),
-                              RecentProjectsList(),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 24),
-                        Expanded(
-                          flex: 1,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: const [
-                              _SectionLabel('Activity'),
-                              SizedBox(height: 10),
-                              ActivityFeedPanel(),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  if (isEmpty) const EmptyStateGuide(),
                   const SizedBox(height: 40),
                 ],
               ),

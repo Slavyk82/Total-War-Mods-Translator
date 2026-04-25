@@ -7,6 +7,8 @@ import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 // Screens
 import '../../features/home/screens/home_screen.dart';
+import '../../features/mods/providers/mods_screen_providers.dart'
+    show modsFilterFromUrlToken;
 import '../../features/mods/screens/mods_screen.dart';
 import '../../features/projects/providers/projects_screen_providers.dart'
     show projectQuickFilterFromUrlToken;
@@ -147,8 +149,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.mods,
             name: 'mods',
             pageBuilder: (context, state) {
+              // Optional `?filter=<token>` query param — applied by
+              // ModsScreen on mount (e.g. the Home dashboard's "Mod updates"
+              // action card uses `filter=needs-update`).
+              final filter = modsFilterFromUrlToken(
+                state.uri.queryParameters['filter'],
+              );
               return FluentPageTransitions.fadeTransition(
-                child: const ModsScreen(),
+                child: ModsScreen(initialFilter: filter),
                 state: state,
               );
             },

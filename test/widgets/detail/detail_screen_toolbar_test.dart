@@ -143,7 +143,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/work/projects/42',
-            builder: (_, __) => Scaffold(
+            builder: (_, _) => Scaffold(
               body: DetailScreenToolbar(
                 crumbs: const [
                   CrumbSegment('Work'),
@@ -156,7 +156,7 @@ void main() {
           ),
           GoRoute(
             path: '/work/projects',
-            builder: (_, __) =>
+            builder: (_, _) =>
                 const Scaffold(body: Text('PROJECTS_LIST_PAGE')),
           ),
         ],
@@ -184,7 +184,7 @@ void main() {
           routes: [
             GoRoute(
               path: '/a',
-              builder: (_, __) => Scaffold(
+              builder: (_, _) => Scaffold(
                 body: DetailScreenToolbar(
                   crumbs: const [
                     CrumbSegment('Work'),
@@ -197,7 +197,7 @@ void main() {
             ),
             GoRoute(
               path: '/b',
-              builder: (_, __) {
+              builder: (_, _) {
                 navigated = true;
                 return const Scaffold(body: Text('B'));
               },

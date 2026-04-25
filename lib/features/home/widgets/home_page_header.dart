@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/home/providers/home_status_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Header shown at the top of the Home page.
 ///
-/// Layout: display-font "Home" title with a status sub-line on the left and
-/// a `+ New project` primary action on the right that navigates to the Mods
-/// library.
+/// Layout: display-font "Home" title with a status sub-line below it.
 class HomePageHeader extends ConsumerWidget {
   const HomePageHeader({super.key});
 
@@ -20,40 +16,29 @@ class HomePageHeader extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 22, 28, 22),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Home',
-                  style: tokens.fontDisplay.copyWith(
-                    fontSize: 28,
-                    height: 1.1,
-                    letterSpacing: -0.5,
-                    color: tokens.text,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                statusAsync.when(
-                  data: (s) => Text(
-                    s.label,
-                    style: tokens.fontBody.copyWith(
-                      fontSize: 13,
-                      color: tokens.textDim,
-                    ),
-                  ),
-                  loading: () => const SizedBox(height: 16),
-                  error: (_, _) => const SizedBox(height: 16),
-                ),
-              ],
+          Text(
+            'Home',
+            style: tokens.fontDisplay.copyWith(
+              fontSize: 28,
+              height: 1.1,
+              letterSpacing: -0.5,
+              color: tokens.text,
             ),
           ),
-          FilledButton(
-            key: const Key('HomePageHeader.NewProjectButton'),
-            onPressed: () => context.go(AppRoutes.mods),
-            child: const Text('+ New project'),
+          const SizedBox(height: 4),
+          statusAsync.when(
+            data: (s) => Text(
+              s.label,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.textDim,
+              ),
+            ),
+            loading: () => const SizedBox(height: 16),
+            error: (_, _) => const SizedBox(height: 16),
           ),
         ],
       ),

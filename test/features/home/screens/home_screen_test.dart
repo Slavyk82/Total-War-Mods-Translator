@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/activity/providers/activity_providers.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
-import 'package:twmt/features/home/providers/home_providers.dart';
 import 'package:twmt/features/home/providers/home_status_provider.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:twmt/features/home/screens/home_screen.dart';
 import 'package:twmt/features/home/widgets/empty_state_guide.dart';
-import 'package:twmt/features/home/widgets/recent_projects_list.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_bootstrap.dart';
@@ -16,8 +13,8 @@ import '../../../helpers/test_helpers.dart';
 void main() {
   setUp(() async {
     await TestBootstrap.registerFakes();
-    // Ensure the viewport is wide enough for the full dashboard (workflow
-    // ribbon + recent/activity columns) without triggering overflow.
+    // Ensure the viewport is wide enough for the full dashboard without
+    // triggering overflow.
     final binding = TestWidgetsFlutterBinding.ensureInitialized();
     binding.platformDispatcher.views.first.physicalSize =
         const Size(1920, 1080);
@@ -43,11 +40,9 @@ void main() {
     homeStatusProvider.overrideWith(
       (ref) async => const HomeStatus(HomeStatusKind.needsAttention, 2),
     ),
-    recentProjectsProvider.overrideWith((ref) async => const []),
-    activityFeedProvider.overrideWith((ref) async => const []),
   ];
 
-  testWidgets('renders full dashboard when projects > 0', (tester) async {
+  testWidgets('renders dashboard sections when projects > 0', (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       const HomeScreen(),
       theme: AppTheme.atelierDarkTheme,
@@ -61,10 +56,7 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect(find.text('Workflow'), findsOneWidget);
     expect(find.text('Needs attention'), findsOneWidget);
-    expect(find.text('Recent'), findsOneWidget);
-    expect(find.text('Activity'), findsOneWidget);
     expect(find.byType(EmptyStateGuide), findsNothing);
-    expect(find.byType(RecentProjectsList), findsOneWidget);
   });
 
   testWidgets('renders empty state when projects == 0', (tester) async {
@@ -79,6 +71,5 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(EmptyStateGuide), findsOneWidget);
-    expect(find.byType(RecentProjectsList), findsNothing);
   });
 }

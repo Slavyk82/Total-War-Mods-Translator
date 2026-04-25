@@ -32,7 +32,7 @@ class DetailCover extends StatelessWidget {
             : Image.network(
                 imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _Monogram(label: monogramFallback),
+                errorBuilder: (_, _, _) => _Monogram(label: monogramFallback),
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
                   return Container(color: tokens.panel2);

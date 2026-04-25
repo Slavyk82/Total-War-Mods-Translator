@@ -60,13 +60,35 @@ class ActionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label.toUpperCase(),
-                    style: tokens.fontMono.copyWith(
-                      fontSize: 10.5,
-                      letterSpacing: 1.5,
-                      color: accentActive ? tokens.accent : tokens.textDim,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label.toUpperCase(),
+                          style: tokens.fontMono.copyWith(
+                            fontSize: 10.5,
+                            letterSpacing: 1.5,
+                            color:
+                                accentActive ? tokens.accent : tokens.textDim,
+                          ),
+                        ),
+                      ),
+                      if (accentActive && onTap != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8, right: 14),
+                          child: Text(
+                            'click to open',
+                            style: tokens.fontBody.copyWith(
+                              fontSize: 10,
+                              height: 1,
+                              fontStyle: FontStyle.italic,
+                              color: tokens.textDim,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Text(

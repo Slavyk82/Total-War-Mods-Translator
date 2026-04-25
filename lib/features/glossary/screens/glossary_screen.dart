@@ -11,7 +11,9 @@ import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/utils/game_label.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
+import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 
 import '../providers/glossary_providers.dart';
 import '../widgets/glossary_datagrid.dart';
@@ -57,18 +59,31 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
 
     return Material(
       color: tokens.bg,
-      child: gameAsync.when(
-        loading: () => const Center(child: FluentInlineSpinner()),
-        error: (error, _) => _buildError(context, error),
-        data: (game) {
-          if (game == null) {
-            return _buildCenteredMessage(
-              context,
-              'Select a game from the sidebar to view its glossary.',
-            );
-          }
-          return _buildForGame(context, game);
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const HomeBackToolbar(
+            leading: ListToolbarLeading(
+              icon: FluentIcons.book_24_regular,
+              title: 'Glossary',
+            ),
+          ),
+          Expanded(
+            child: gameAsync.when(
+              loading: () => const Center(child: FluentInlineSpinner()),
+              error: (error, _) => _buildError(context, error),
+              data: (game) {
+                if (game == null) {
+                  return _buildCenteredMessage(
+                    context,
+                    'Select a game from the sidebar to view its glossary.',
+                  );
+                }
+                return _buildForGame(context, game);
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -128,7 +143,8 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Top bar: language switcher chip.
+        // Top bar: language switcher chip (the screen title now lives in
+        // `HomeBackToolbar` above).
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -139,15 +155,6 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
           ),
           child: Row(
             children: [
-              Text(
-                'Glossary',
-                style: tokens.fontDisplay.copyWith(
-                  fontSize: 16,
-                  color: tokens.text,
-                  fontStyle: tokens.fontDisplayStyle,
-                ),
-              ),
-              const SizedBox(width: 12),
               GlossaryLanguageSwitcher(
                 gameCode: game.code,
                 currentLanguageId: selectedLangId,

@@ -8,11 +8,12 @@ import 'package:twmt/widgets/cards/action_card.dart';
 
 /// "Needs attention" action grid on the Home dashboard.
 ///
-/// Renders four [ActionCard]s in a row, each backed by a primitive Riverpod
-/// counter. The first two cards (To review / Ready to compile) use the
-/// accent highlight treatment when their count is greater than zero; the
-/// remaining cards are informational. Tapping any card navigates to the
-/// relevant feature route with a query filter where appropriate.
+/// Renders five [ActionCard]s in a row, each backed by a primitive Riverpod
+/// counter. Every tile uses the accent highlight treatment when its count is
+/// greater than zero — the whole grid is "things that need attention", so a
+/// non-zero count always warrants the visual nudge. Tapping any card
+/// navigates to the relevant feature route with a query filter where
+/// appropriate.
 class ActionGrid extends ConsumerWidget {
   const ActionGrid({super.key});
 
@@ -20,6 +21,8 @@ class ActionGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final toReview = ref.watch(projectsToReviewCountProvider).value ?? 0;
     final ready = ref.watch(projectsReadyToCompileCountProvider).value ?? 0;
+    final exportOutdated =
+        ref.watch(projectsExportOutdatedCountProvider).value ?? 0;
     final updates = ref.watch(modsWithUpdatesCountProvider).value ?? 0;
     final awaiting = ref.watch(packsAwaitingPublishCountProvider).value ?? 0;
 
@@ -48,10 +51,22 @@ class ActionGrid extends ConsumerWidget {
       const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
+          label: 'Export outdated',
+          value: exportOutdated,
+          description: 'projects modified since last pack',
+          highlight: true,
+          onTap: () =>
+              context.go('${AppRoutes.projects}?filter=export-outdated'),
+        ),
+      ),
+      const SizedBox(width: 20),
+      Expanded(
+        child: ActionCard(
           label: 'Mod updates',
           value: updates,
           description: 'new Workshop version available',
-          onTap: () => context.go('${AppRoutes.mods}?filter=updates'),
+          highlight: true,
+          onTap: () => context.go('${AppRoutes.mods}?filter=needs-update'),
         ),
       ),
       const SizedBox(width: 20),
@@ -60,6 +75,7 @@ class ActionGrid extends ConsumerWidget {
           label: 'Ready to publish',
           value: awaiting,
           description: 'pack(s) to send to Workshop',
+          highlight: true,
           onTap: () => context.go(AppRoutes.steamPublish),
         ),
       ),

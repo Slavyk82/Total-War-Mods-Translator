@@ -5,33 +5,41 @@
 
 ## Goal
 
-Add a thin top toolbar on every top-level screen reachable from the sidebar, in
-the same visual style as the existing `DetailScreenToolbar` used by the
-translation editor: a back arrow on the left and a breadcrumb trail next to it.
-Crumb format: `Home › <Screen Name>`. The back arrow returns to the Home screen.
+Add a thin top toolbar on every top-level screen reachable from the sidebar,
+in the visual style of the editor's `DetailScreenToolbar`: a back arrow on
+the left and the screen identity (icon + title + count) right next to it.
+The back arrow returns to the Home screen. The screen identity moves UP from
+each screen's secondary toolbar — so the title is no longer duplicated below.
 
 This gives users an explicit "go back to Home" affordance on every screen,
-even though the sidebar already exposes Home — the back arrow + crumb pattern
-is more discoverable, and consistent with the editor's chrome.
+even though the sidebar already exposes Home — the discoverable back arrow
+matches the chrome rhythm of the editor.
+
+**Iteration history:**
+- v1: proposed a `Home › <Screen>` breadcrumb. Rejected as redundant with
+  the screen titles already shown below.
+- v2: only the back arrow. Rejected as too sparse.
+- v3 (current): back arrow + the screen's icon/title/count moved up from
+  the secondary toolbar's leading slot.
 
 ## Scope
 
-Eight screens get the toolbar:
+Eight screens get the toolbar, with the icon+title relocated from their
+existing secondary toolbar:
 
-| Screen              | Crumb                       | File |
-|---------------------|-----------------------------|------|
-| Mods                | `Home › Mods`               | `lib/features/mods/screens/mods_screen.dart` |
-| Projects            | `Home › Projects`           | `lib/features/projects/screens/projects_screen.dart` |
-| Publish             | `Home › Publish`            | `lib/features/steam_publish/screens/steam_publish_screen.dart` |
-| Glossary            | `Home › Glossary`           | `lib/features/glossary/screens/glossary_screen.dart` |
-| Translation Memory  | `Home › Translation Memory` | `lib/features/translation_memory/screens/translation_memory_screen.dart` |
-| Game Files          | `Home › Game Files`         | `lib/features/game_translation/screens/game_translation_screen.dart` |
-| Compile             | `Home › Compile`            | `lib/features/pack_compilation/screens/pack_compilation_list_screen.dart` |
-| Settings            | `Home › Settings`           | `lib/features/settings/screens/settings_screen.dart` |
+| Screen              | Icon                              | Title                |
+|---------------------|-----------------------------------|----------------------|
+| Mods                | `cube_24_regular`                 | `Mods`               |
+| Projects            | `folder_24_regular`               | `Projects`           |
+| Publish (Steam)     | `cloud_arrow_up_24_regular`       | `Publish on Steam`   |
+| Glossary            | `book_24_regular` (newly added)   | `Glossary`           |
+| Translation Memory  | `database_24_regular`             | `Translation Memory` |
+| Game Files          | `globe_24_regular`                | `Game Translation`   |
+| Compile             | `archive_multiple_24_regular`     | `Pack compilations`  |
+| Settings            | `settings_24_regular`             | `Settings`           |
 
-Screens labels match the sidebar `navigationTree` labels. The Home screen
-itself is not modified (no need for a back button there). The translation
-editor and other detail/sub-screens keep their existing toolbars.
+The Home screen itself is not modified (no need for a back button there). The
+translation editor and other detail/sub-screens keep their existing toolbars.
 
 ## Non-goals
 
@@ -39,48 +47,61 @@ editor and other detail/sub-screens keep their existing toolbars.
 - The translation editor's existing 3-segment crumb (`Work › Projects › <name>`)
   is not changed.
 - Sub-screens like `BatchPackExportScreen`, `WorkshopPublishScreen`,
-  `BatchWorkshopPublishScreen`, `PackCompilationEditorScreen` are out of scope —
-  they have a different navigation pattern (descendants of lists) and are not
-  in the user's list.
+  `BatchWorkshopPublishScreen`, `PackCompilationEditorScreen` are out of scope.
 
 ## Architecture
 
-### New widget: `HomeBackToolbar`
+### `HomeBackToolbar`
 
 File: `lib/widgets/detail/home_back_toolbar.dart`
 
-A thin `ConsumerWidget` wrapper around `DetailScreenToolbar`. It centralises
-the "back to Home" navigation logic so the eight screens don't each duplicate
-the route + guard boilerplate.
+A small `ConsumerWidget` rendering a 48 px bar with the back arrow on the
+left and an optional `leading` widget (typically a `ListToolbarLeading`)
+right next to it.
 
 ```dart
 class HomeBackToolbar extends ConsumerWidget {
-  final String currentLabel;
-  const HomeBackToolbar({super.key, required this.currentLabel});
+  final Widget? leading;
+
+  const HomeBackToolbar({super.key, this.leading});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DetailScreenToolbar(
-      crumbs: [
-        const CrumbSegment('Home'),
-        CrumbSegment(currentLabel),
-      ],
-      onBack: () {
-        if (canNavigateNow(context, ref)) {
-          context.go(AppRoutes.home);
-        }
-      },
+    final tokens = context.tokens;
+    final l = leading;
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: tokens.panel,
+        border: Border(bottom: BorderSide(color: tokens.border)),
+      ),
+      child: Row(
+        children: [
+          SmallIconButton(
+            icon: FluentIcons.arrow_left_24_regular,
+            tooltip: 'Back',
+            onTap: () {
+              if (canNavigateNow(context, ref)) {
+                context.go(AppRoutes.home);
+              }
+            },
+          ),
+          if (l != null) ...[
+            const SizedBox(width: 12),
+            Expanded(child: l),
+          ],
+        ],
+      ),
     );
   }
 }
 ```
 
-Why a wrapper rather than inlining `DetailScreenToolbar` in each screen:
-- Avoids duplicating the navigation + guard logic eight times.
-- Single source of truth: a future tweak (tooltip text, icon, behaviour) is
-  one edit instead of eight.
-- Keeps `DetailScreenToolbar` generic — it remains usable for other crumb
-  patterns (the editor still uses it directly with three segments).
+The widget intentionally builds its own 48 px container rather than wrapping
+`DetailScreenToolbar` because the editor's toolbar is a crumb-trail layout
+and forcing a foreign `leading` slot through the `crumbs` parameter would be
+semantically wrong.
 
 ### Navigation behaviour
 
@@ -89,49 +110,84 @@ Why a wrapper rather than inlining `DetailScreenToolbar` in each screen:
   `canPop()` returns `false` in the common case. Using `go` is deterministic.
 - The call is wrapped in `canNavigateNow(context, ref)` so an in-progress
   translation or pack compilation blocks the back navigation with the existing
-  warning toast — consistent with the sidebar and with crumb taps in the
-  editor.
+  warning toast.
 
 ### Per-screen integration
 
-Each target screen already builds a `Column` (or a `FluentScaffold` with a
-`Column` body). The integration is uniform: insert
-`HomeBackToolbar(currentLabel: '<X>')` as the **first child** of that column,
-above the existing screen toolbar.
+For the five screens already on the `FilterToolbar` archetype (Mods, Projects,
+Steam Publish, Translation Memory, Pack Compilation):
 
-For screens using `FluentScaffold` (Game Files, Steam Publish), the wrapper is
-prepended inside the scaffold body so the sidebar layout is unchanged.
+- The screen builds a `ListToolbarLeading` (icon + title + count, optionally
+  with status pills) and passes it to `HomeBackToolbar.leading`.
+- The same screen's `FilterToolbar.leading` is replaced by
+  `const SizedBox.shrink()` with `expandLeading: false` so the trailing slot
+  (search field + actions) keeps stretching as before.
+- For Mods and Steam Publish, the previously-private `_Leading` /
+  `_PendingProjectsBanner` widgets in `mods_toolbar.dart` /
+  `steam_publish_toolbar.dart` are renamed to public
+  (`ModsToolbarLeading`, `PendingProjectsBanner`,
+  `SteamPublishToolbarLeading`) so the screen can construct them.
+- Constructor parameters of `ModsToolbar` / `SteamPublishToolbar` that are
+  now only consumed by the leading (e.g. `totalMods`, `filteredMods`,
+  `projectsWithPendingChanges`, `onNavigateToProjects`) are dropped from those
+  widgets — the screen passes the matching values directly to the leading
+  builder.
+
+For the three "off-pattern" screens:
+
+- **Glossary**: gains a `ListToolbarLeading(icon: book_24_regular, title:
+  'Glossary')` in `HomeBackToolbar.leading` (the screen had no icon before).
+  The custom 48 px Container in `_buildEditor` keeps the
+  `GlossaryLanguageSwitcher` chip but loses the duplicated `Text('Glossary')`.
+- **Game Files**: `_buildHeader(theme)` and its trailing `SizedBox(height: 24)`
+  are removed; the icon + title move into `HomeBackToolbar.leading`. The
+  `Padding(all: 24)` now wraps the `projectsAsync.when(...)` directly.
+- **Settings**: the `Padding(all: 24)` containing the title `Row` is removed;
+  the icon + title move into `HomeBackToolbar.leading`. The Column's
+  `crossAxisAlignment` is changed to `stretch` so the new toolbar spans the
+  available width.
 
 ## Visual / UX details
 
-- Toolbar height: 48 px (inherited from `DetailScreenToolbar`).
-- First crumb (`Home`) is rendered in dim text, non-clickable — this matches
-  the existing `_CrumbTrail` convention (`isFirst` branch returns `null` for
-  `onTap`). Users navigate Home via the **back arrow**, not the crumb text.
-- Last crumb (`<Screen Name>`) is rendered bold/current.
-- No trailing widgets in the toolbar.
+- Toolbar height: 48 px (matches the editor's `DetailScreenToolbar`).
+- Icon: 20 px (`tokens.textMid`), via `ListToolbarLeading`.
+- Title: `tokens.fontDisplay` 20 px (`tokens.text`).
+- Count label: `tokens.fontMono` 12 px (`tokens.textDim`), shown when the
+  screen carries one.
+- Trailing widget slot of `ListToolbarLeading` is preserved — Mods uses it for
+  its `PendingProjectsBanner` status pill.
 
 ## Risks & considerations
 
-- **Vertical space**: each screen adds 48 px of chrome. The 8 screens already
-  have a content toolbar below, so the result is two stacked bars (same as the
-  editor today). Acceptable.
-- **`Settings` screen** uses `Scaffold` + `Padding(all: 24)` rather than the
-  shared toolbar primitives. The `HomeBackToolbar` will sit above the existing
-  padded content; the visual rhythm should remain coherent (verify in app).
-- **`GameTranslationScreen` and `SteamPublishScreen`** use `FluentScaffold`.
-  Adding the toolbar inside their body is a structural change but additive —
-  no existing widget is removed.
+- **Vertical space**: top bar is now 48 px and the secondary toolbar (when
+  present) is still 48 px. The total chrome height is unchanged from the
+  previous iteration.
+- **Glossary's secondary container**: it now holds only the
+  `GlossaryLanguageSwitcher` chip, padded `16 × 12`. Visually slim; the
+  alternative (moving the switcher into `HomeBackToolbar`) was rejected
+  because the switcher only exists in the editor sub-state, not the
+  preconditions states (no game / no projects / no language).
+- **Color regressions**: Game Files used `theme.colorScheme.primary` for its
+  globe icon; Settings used `tokens.accent` for its gear. Both now render in
+  `tokens.textMid` (the `ListToolbarLeading` default). Trade-off accepted in
+  exchange for visual consistency across all eight screens.
 
 ## Test plan
 
-Manual verification in the running Flutter app:
-1. From Home, navigate to each of the 8 screens via the sidebar — confirm the
-   `Home › <Name>` crumb and back arrow appear.
+Manual verification in the running Flutter app (`flutter run -d windows`):
+1. From Home, open each of the 8 screens via the sidebar. Confirm the top
+   bar shows back arrow + icon + title + count where applicable.
 2. Click the back arrow on each screen — confirm it returns to Home.
-3. Start a translation in the editor, then click a sidebar item to leave —
-   confirm the existing in-progress guard still fires (regression check, not
-   directly affected but the same `canNavigateNow` is used).
-4. Visual sanity: confirm the toolbar height/style matches the editor's.
+3. Confirm the secondary toolbars (search field, action buttons, filter
+   pills) still work and stretch to full width.
+4. Mods: when a project has pending translation changes, confirm the
+   `PendingProjectsBanner` status pill appears next to the count in the top
+   bar.
+5. Glossary: enter the editor sub-state (game with at least one project and
+   one target language), confirm the `GlossaryLanguageSwitcher` is still
+   reachable in the slim Container below the top bar.
+6. Start a translation in the editor, then click the back arrow on any of
+   the eight screens — confirm `canNavigateNow` blocks the move with the
+   existing warning toast.
 
 `flutter analyze` must pass with no new warnings.

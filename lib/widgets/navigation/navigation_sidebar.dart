@@ -138,37 +138,40 @@ class _BrandHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: FittedBox(
-        fit: BoxFit.fitWidth,
-        alignment: Alignment.centerLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'TOTAL WAR',
-              style: TextStyle(
-                fontFamily: 'Cinzel',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2.4,
-                height: 1.05,
-                color: _brandColor,
+      child: SizedBox(
+        width: double.infinity,
+        child: FittedBox(
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.centerLeft,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'TOTAL WAR',
+                style: TextStyle(
+                  fontFamily: 'Cinzel',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 2.4,
+                  height: 1.05,
+                  color: _brandColor,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Mods Translator',
-              style: TextStyle(
-                fontFamily: 'Cinzel',
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 1.8,
-                height: 1.1,
-                color: _brandColor,
+              const SizedBox(height: 2),
+              Text(
+                'Mods Translator',
+                style: TextStyle(
+                  fontFamily: 'Cinzel',
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.8,
+                  height: 1.1,
+                  color: _brandColor,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

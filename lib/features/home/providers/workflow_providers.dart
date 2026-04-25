@@ -24,13 +24,39 @@ Future<int> modsWithUpdatesCount(Ref ref) =>
 
 /// Number of active projects for the selected game.
 ///
-/// Mirrors the filter logic used by `recentProjectsProvider`: when a game is
-/// selected, only projects attached to that game's installation are counted.
-/// When no game is selected, all projects are counted.
+/// When a game is selected, only projects attached to that game's installation
+/// are counted. When no game is selected, all projects are counted.
 @riverpod
 Future<int> activeProjectsCount(Ref ref) async {
   final projects = await _projectsForSelectedGame(ref);
   return projects.length;
+}
+
+/// Projects currently being translated — i.e. work has started but is not
+/// finished yet. Defined as `0 < translatedCount < totalCount`, mirroring
+/// [NextProjectAction.continueWork]. Used by the Home dashboard's Translate
+/// card so its metric reflects the (small) set of projects the user is
+/// actively working on, not the entire project list.
+///
+/// Projects with zero translatable units, fully untranslated projects (the
+/// "not started" bucket) and 100%-translated projects are intentionally
+/// excluded from this count.
+@riverpod
+Future<int> projectsInProgressCount(Ref ref) async {
+  final versionRepo = ref.watch(translationVersionRepositoryProvider);
+  final projects = await _projectsForSelectedGame(ref);
+
+  var count = 0;
+  for (final p in projects) {
+    final statsResult = await versionRepo.getProjectStatistics(p.id);
+    if (statsResult.isErr) continue;
+    final stats = statsResult.value;
+    if (stats.totalCount == 0) continue;
+    if (stats.translatedCount == 0) continue;
+    if (stats.translatedCount >= stats.totalCount) continue;
+    count++;
+  }
+  return count;
 }
 
 /// Projects whose units are 100% translated AND that do not have a generated

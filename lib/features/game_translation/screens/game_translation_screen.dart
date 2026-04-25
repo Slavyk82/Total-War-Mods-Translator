@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widgets/detail/home_back_toolbar.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
+import '../../../widgets/lists/list_toolbar_leading.dart';
 import '../../projects/providers/projects_screen_providers.dart';
 import '../../projects/utils/open_project_editor.dart';
 import '../../projects/widgets/project_grid.dart';
@@ -23,44 +25,28 @@ class GameTranslationScreen extends ConsumerWidget {
     final projectsAsync = ref.watch(gameTranslationProjectsProvider);
 
     return FluentScaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            _buildHeader(theme),
-            const SizedBox(height: 24),
-            // Projects grid
-            Expanded(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const HomeBackToolbar(
+            leading: ListToolbarLeading(
+              icon: FluentIcons.globe_24_regular,
+              title: 'Game Translation',
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
               child: projectsAsync.when(
-                data: (projects) => _buildContent(context, ref, theme, projects),
+                data: (projects) =>
+                    _buildContent(context, ref, theme, projects),
                 loading: () => _buildLoading(theme),
                 error: (error, stack) => _buildError(theme, error),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(ThemeData theme) {
-    return Row(
-      children: [
-        Icon(
-          FluentIcons.globe_24_regular,
-          size: 32,
-          color: theme.colorScheme.primary,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Game Translation',
-            style: theme.textTheme.headlineLarge,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -22,6 +22,8 @@ class WorkflowRibbon extends ConsumerWidget {
     final mods = ref.watch(modsDiscoveredCountProvider).value ?? 0;
     final modUpdates = ref.watch(modsWithUpdatesCountProvider).value ?? 0;
     final projects = ref.watch(activeProjectsCountProvider).value ?? 0;
+    final inProgress =
+        ref.watch(projectsInProgressCountProvider).value ?? 0;
     final toReview = ref.watch(projectsToReviewCountProvider).value ?? 0;
     final awaitingPub =
         ref.watch(packsAwaitingPublishCountProvider).value ?? 0;
@@ -50,10 +52,12 @@ class WorkflowRibbon extends ConsumerWidget {
         child: WorkflowCard(
           stepNumber: 2,
           title: 'Translate',
-          stateLabel: projects > 0 ? 'In progress' : 'Waiting',
-          metric: '$projects',
+          stateLabel: inProgress > 0
+              ? 'In progress'
+              : (projects > 0 ? 'Idle' : 'Waiting'),
+          metric: '$inProgress',
           subtitle:
-              'active projects${toReview > 0 ? ' · $toReview to review' : ''}',
+              'projects in progress${toReview > 0 ? ' · $toReview to review' : ''}',
           cta: 'Open projects',
           state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.projects),

@@ -7,6 +7,7 @@ import 'package:twmt/features/mods/widgets/mods_list.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 
 /// Mods screen — filterable list archetype per UI spec §7.1.
 ///
@@ -15,7 +16,13 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// filter pills, hidden toggle, refresh, import-local-pack, tap-to-open)
 /// is preserved.
 class ModsScreen extends ConsumerStatefulWidget {
-  const ModsScreen({super.key});
+  /// Optional filter to apply on mount. Populated by the router from the
+  /// `?filter=` query parameter so Home dashboard cards (e.g. "Mod updates")
+  /// can deep-link into a pre-filtered Mods list. When null, the previously
+  /// selected filter is left untouched.
+  final ModsFilter? initialFilter;
+
+  const ModsScreen({super.key, this.initialFilter});
 
   @override
   ConsumerState<ModsScreen> createState() => _ModsScreenState();
@@ -30,15 +37,16 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
     _controller = ModsScreenController(ref);
     // Always reopen the screen with the canonical sort (Mod ascending), so
     // a user landing here finds the same A→Z list every time.
+    //
+    // The once-per-session Workshop rescan is now driven from the bootstrap
+    // sequence (`ModScanBootDialog`), so this screen only resets the sort
+    // on (re-)entry — no scan trigger here.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(modsSortProvider.notifier).reset();
-      // First time the Mods screen is opened in this app session, force a
-      // rescan so mod updates published since the last run are picked up.
-      final alreadyRescanned = ref.read(modsInitialRescanDoneProvider);
-      if (!alreadyRescanned) {
-        ref.read(modsInitialRescanDoneProvider.notifier).markDone();
-        _controller.handleRefresh();
+      final initialFilter = widget.initialFilter;
+      if (initialFilter != null) {
+        ref.read(modsFilterStateProvider.notifier).setFilter(initialFilter);
       }
     });
   }
@@ -67,6 +75,16 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          HomeBackToolbar(
+            leading: ModsToolbarLeading(
+              totalMods: totalModsAsync.value ?? 0,
+              filteredMods: filteredMods.length,
+              searchActive: searchQuery.isNotEmpty,
+              projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
+              onNavigateToProjects: () =>
+                  _controller.navigateToProjectsWithFilter(context),
+            ),
+          ),
           ModsToolbar(
             searchQuery: searchQuery,
             onSearchChanged: (query) {
@@ -74,8 +92,6 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
             },
             onRefresh: () => _controller.handleRefresh(),
             isRefreshing: isRefreshing || isInitialLoading,
-            totalMods: totalModsAsync.value ?? 0,
-            filteredMods: filteredMods.length,
             currentFilter: currentFilter,
             onFilterChanged: (filter) {
               ref.read(modsFilterStateProvider.notifier).setFilter(filter);
@@ -88,9 +104,6 @@ class _ModsScreenState extends ConsumerState<ModsScreen> {
               ref.read(showHiddenModsProvider.notifier).set(value);
             },
             hiddenCount: hiddenCountAsync.value ?? 0,
-            projectsWithPendingChanges: pendingProjectsCountAsync.value ?? 0,
-            onNavigateToProjects: () =>
-                _controller.navigateToProjectsWithFilter(context),
             onImportLocalPack: () =>
                 _controller.handleImportLocalPack(context),
           ),
