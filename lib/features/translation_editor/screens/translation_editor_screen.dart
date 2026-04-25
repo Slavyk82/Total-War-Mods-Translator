@@ -214,7 +214,7 @@ class _TranslationEditorScreenState
                 crumbs: [
                   const CrumbSegment('Work'),
                   const CrumbSegment('Projects', route: AppRoutes.projects),
-                  CrumbSegment(projectName),
+                  const CrumbSegment('Translation Editor'),
                 ],
                 onBack: () {
                   if (context.canPop()) {
