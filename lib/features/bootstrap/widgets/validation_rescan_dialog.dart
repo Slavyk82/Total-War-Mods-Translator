@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/validation/validation_rescan_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -100,7 +101,7 @@ class _ValidationRescanDialogState
         if (plan != null) {
           FluentToast.success(
             context,
-            'Validation data update complete.',
+            t.bootstrap.validationRescan.toasts.updateComplete,
           );
         }
       });
@@ -120,17 +121,17 @@ class _ValidationRescanDialogState
   }
 
   String _titleFor(RescanState state) {
-    if (state.isNormalizing) return 'Preparing validation data';
+    if (state.isNormalizing) return t.bootstrap.validationRescan.titles.preparing;
     if (state.progress != null || state.isRunning) {
-      return 'Updating validation data';
+      return t.bootstrap.validationRescan.titles.updating;
     }
     final plan = state.plan;
     if (plan != null) {
       return plan.isResume
-          ? 'Resuming validation update'
-          : 'Validation data update required';
+          ? t.bootstrap.validationRescan.titles.resuming
+          : t.bootstrap.validationRescan.titles.required;
     }
-    return 'Preparing validation data';
+    return t.bootstrap.validationRescan.titles.preparing;
   }
 
   Widget _body(TwmtThemeTokens tokens, RescanState state) {
@@ -157,8 +158,11 @@ class _ValidationRescanDialogState
     final processed = state.normalizeProcessed;
     final value = total == 0 ? null : (processed / total).clamp(0.0, 1.0);
     final label = total == 0
-        ? 'Scanning validation entries...'
-        : 'Normalized ${formatCount(processed)} of ${formatCount(total)}';
+        ? t.bootstrap.validationRescan.labels.scanningEntries
+        : t.bootstrap.validationRescan.labels.normalizedOf(
+            processed: formatCount(processed),
+            total: formatCount(total),
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -172,7 +176,7 @@ class _ValidationRescanDialogState
         ),
         const SizedBox(height: 12),
         Text(
-          'Upgrading legacy validation records to the new format.',
+          t.bootstrap.validationRescan.labels.upgradingLegacy,
           style: tokens.fontBody.copyWith(
             fontSize: 11,
             color: tokens.textDim,
@@ -188,7 +192,7 @@ class _ValidationRescanDialogState
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'Preparing...',
+          t.bootstrap.validationRescan.labels.preparing,
           style: tokens.fontBody,
         ),
         const SizedBox(height: 12),
@@ -203,17 +207,16 @@ class _ValidationRescanDialogState
   Widget _planBody(TwmtThemeTokens tokens, RescanPlan plan) {
     final totalAll = plan.total + plan.already;
     final bodyText = plan.isResume
-        ? 'A previous update was interrupted. '
-            '${formatCount(plan.already)} of ${formatCount(totalAll)} units '
-            'already processed. Remaining: ${formatCount(plan.total)} units '
-            '• Estimated: ~${formatDuration(plan.estimated)}.'
-        : 'This release uses a new, richer format for translation '
-            'validation diagnostics. All existing translations need to be '
-            'rescanned once to benefit from it.\n\n'
-            '${formatCount(plan.total)} units to rescan • '
-            'Estimated: ~${formatDuration(plan.estimated)}\n\n'
-            'This will only run once. Do not close the app until it '
-            'completes — if interrupted, the update will resume on next launch.';
+        ? t.bootstrap.validationRescan.plan.resumeBody(
+            already: formatCount(plan.already),
+            totalAll: formatCount(totalAll),
+            remaining: formatCount(plan.total),
+            estimated: formatDuration(plan.estimated),
+          )
+        : t.bootstrap.validationRescan.plan.freshBody(
+            total: formatCount(plan.total),
+            estimated: formatDuration(plan.estimated),
+          );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,7 +230,9 @@ class _ValidationRescanDialogState
         Align(
           alignment: Alignment.centerRight,
           child: SmallTextButton(
-            label: plan.isResume ? 'Continue' : 'Start rescan',
+            label: plan.isResume
+                ? t.bootstrap.validationRescan.actions.kContinue
+                : t.bootstrap.validationRescan.actions.startRescan,
             icon: FluentIcons.play_24_regular,
             filled: true,
             onTap: () => ref
@@ -248,16 +253,21 @@ class _ValidationRescanDialogState
     final String headline;
     if (progress == null) {
       value = null;
-      headline = 'Starting rescan...';
+      headline = t.bootstrap.validationRescan.labels.startingRescan;
     } else {
       value = progress.total == 0
           ? 1.0
           : (progress.done / progress.total).clamp(0.0, 1.0);
-      final etaText = progress.eta == null
-          ? ''
-          : ' — ETA ${formatDuration(progress.eta!)}';
-      headline = 'Rescanned ${formatCount(progress.done)} of '
-          '${formatCount(progress.total)}$etaText';
+      headline = progress.eta == null
+          ? t.bootstrap.validationRescan.labels.rescannedOf(
+              done: formatCount(progress.done),
+              total: formatCount(progress.total),
+            )
+          : t.bootstrap.validationRescan.labels.rescannedOfEta(
+              done: formatCount(progress.done),
+              total: formatCount(progress.total),
+              eta: formatDuration(progress.eta!),
+            );
     }
 
     return Column(
@@ -272,8 +282,7 @@ class _ValidationRescanDialogState
         ),
         const SizedBox(height: 12),
         Text(
-          'Closing the app will pause the update; it will resume on '
-          'next launch.',
+          t.bootstrap.validationRescan.labels.closingWillPause,
           style: tokens.fontBody.copyWith(
             fontSize: 11,
             color: tokens.textDim,

@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "Analyse des mods Workshop...",
+    "titleRefreshing": "Actualisation des compteurs d'abonnés...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI introuvable",
+      "content": "L'analyse Workshop nécessite RPFM-CLI pour lire les fichiers pack des mods, mais celui-ci est introuvable à l'emplacement configuré.\n\nOuvrez Paramètres → Dossiers → RPFM pour mettre à jour le chemin ou télécharger une nouvelle copie.",
+      "actions": {
+        "close": "Fermer",
+        "openSettings": "Ouvrir les paramètres"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "Préparation des données de validation",
+      "updating": "Mise à jour des données de validation",
+      "resuming": "Reprise de la mise à jour de validation",
+      "required": "Mise à jour des données de validation requise"
+    },
+    "labels": {
+      "scanningEntries": "Analyse des entrées de validation...",
+      "normalizedOf": "Normalisé $processed sur $total",
+      "upgradingLegacy": "Mise à niveau des enregistrements de validation hérités vers le nouveau format.",
+      "preparing": "Préparation en cours...",
+      "startingRescan": "Démarrage du réanalyse...",
+      "rescannedOf": "Réanalysé $done sur $total",
+      "rescannedOfEta": "Réanalysé $done sur $total — ETA $eta",
+      "closingWillPause": "La fermeture de l'application suspendra la mise à jour ; elle reprendra au prochain démarrage."
+    },
+    "plan": {
+      "resumeBody": "Une mise à jour précédente a été interrompue. $already sur $totalAll unités déjà traitées. Restantes : $remaining unités • Estimé : ~$estimated.",
+      "freshBody": "Cette version utilise un format plus riche pour les diagnostics de validation. Toutes les traductions existantes doivent être réanalysées une fois.\n\n$total unités à réanalyser • Estimé : ~$estimated\n\nCette opération ne s'exécute qu'une seule fois. Ne fermez pas l'application avant la fin — si elle est interrompue, la mise à jour reprendra au prochain démarrage."
+    },
+    "actions": {
+      "continue": "Continuer",
+      "startRescan": "Lancer le réanalyse"
+    },
+    "toasts": {
+      "updateComplete": "Mise à jour des données de validation terminée."
+    }
+  }
+}

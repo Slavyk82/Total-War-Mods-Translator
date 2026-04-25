@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
@@ -56,7 +57,7 @@ class ModScanBootDialog extends ConsumerStatefulWidget {
 
 class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
   bool _closed = false;
-  String _title = 'Scanning Workshop mods...';
+  late String _title = t.bootstrap.modScan.titleScanning;
   bool _phaseTwoStarted = false;
 
   /// Merged stream: relays scan logs and accepts phase-2 status lines added
@@ -111,21 +112,16 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('RPFM-CLI not found'),
-          content: const Text(
-            'The Workshop scan needs RPFM-CLI to read mod pack files, but '
-            'it could not be found at the configured path.\n\n'
-            'Open Settings → Folders → RPFM to update the path or download '
-            'a fresh copy.',
-          ),
+          title: Text(t.bootstrap.modScan.rpfmDialog.title),
+          content: Text(t.bootstrap.modScan.rpfmDialog.content),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Close'),
+              child: Text(t.bootstrap.modScan.rpfmDialog.actions.close),
             ),
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Open Settings'),
+              child: Text(t.bootstrap.modScan.rpfmDialog.actions.openSettings),
             ),
           ],
         ),
@@ -162,7 +158,7 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
     ));
     if (mounted) {
       setState(() {
-        _title = 'Refreshing subscriber counts...';
+        _title = t.bootstrap.modScan.titleRefreshing;
       });
     }
 

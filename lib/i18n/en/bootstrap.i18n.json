@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "Scanning Workshop mods...",
+    "titleRefreshing": "Refreshing subscriber counts...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI not found",
+      "content": "The Workshop scan needs RPFM-CLI to read mod pack files, but it could not be found at the configured path.\n\nOpen Settings → Folders → RPFM to update the path or download a fresh copy.",
+      "actions": {
+        "close": "Close",
+        "openSettings": "Open Settings"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "Preparing validation data",
+      "updating": "Updating validation data",
+      "resuming": "Resuming validation update",
+      "required": "Validation data update required"
+    },
+    "labels": {
+      "scanningEntries": "Scanning validation entries...",
+      "normalizedOf": "Normalized $processed of $total",
+      "upgradingLegacy": "Upgrading legacy validation records to the new format.",
+      "preparing": "Preparing...",
+      "startingRescan": "Starting rescan...",
+      "rescannedOf": "Rescanned $done of $total",
+      "rescannedOfEta": "Rescanned $done of $total — ETA $eta",
+      "closingWillPause": "Closing the app will pause the update; it will resume on next launch."
+    },
+    "plan": {
+      "resumeBody": "A previous update was interrupted. $already of $totalAll units already processed. Remaining: $remaining units • Estimated: ~$estimated.",
+      "freshBody": "This release uses a new, richer format for translation validation diagnostics. All existing translations need to be rescanned once to benefit from it.\n\n$total units to rescan • Estimated: ~$estimated\n\nThis will only run once. Do not close the app until it completes — if interrupted, the update will resume on next launch."
+    },
+    "actions": {
+      "continue": "Continue",
+      "startRescan": "Start rescan"
+    },
+    "toasts": {
+      "updateComplete": "Validation data update complete."
+    }
+  }
+}
