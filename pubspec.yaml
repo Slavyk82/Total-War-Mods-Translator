@@ -141,6 +141,7 @@ flutter:
     - lib/database/schema.sql
     - assets/data/
     - assets/twmt_icon.png
+    - assets/slavyk.png
     - assets/screenshots/
     - assets/flags/
     - docs/user_guide.md
