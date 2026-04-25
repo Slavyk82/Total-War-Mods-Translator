@@ -18,6 +18,7 @@ class ProjectCard extends StatefulWidget {
   final bool isSelectionMode;
   final bool isSelected;
   final VoidCallback? onSelectionToggle;
+  final VoidCallback? onDelete;
 
   const ProjectCard({
     super.key,
@@ -28,6 +29,7 @@ class ProjectCard extends StatefulWidget {
     this.isSelectionMode = false,
     this.isSelected = false,
     this.onSelectionToggle,
+    this.onDelete,
   });
 
   @override
@@ -196,6 +198,11 @@ class _ProjectCardState extends State<ProjectCard> {
           const SizedBox(width: 8),
           _buildResyncButton(context),
         ],
+        // Delete button (only shown when caller provides an onDelete callback)
+        if (widget.onDelete != null) ...[
+          const SizedBox(width: 8),
+          _buildDeleteButton(context),
+        ],
       ],
     );
   }
@@ -324,6 +331,38 @@ class _ProjectCardState extends State<ProjectCard> {
               FluentIcons.arrow_sync_24_regular,
               size: 14,
               color: theme.colorScheme.primary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: 'Delete',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          // Absorb the tap so the card's outer GestureDetector does not also
+          // fire and navigate into the project.
+          behavior: HitTestBehavior.opaque,
+          onTap: () => widget.onDelete?.call(),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: theme.colorScheme.error.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Icon(
+              FluentIcons.delete_24_regular,
+              size: 14,
+              color: theme.colorScheme.error,
             ),
           ),
         ),
