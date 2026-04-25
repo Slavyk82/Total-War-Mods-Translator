@@ -33,6 +33,7 @@ import '../../services/service_locator.dart';
 import '../../services/settings/settings_service.dart';
 import '../../services/shared/event_bus.dart';
 import '../../services/steam/i_steamcmd_service.dart';
+import '../../services/steam/i_workshop_api_service.dart';
 import '../../services/steam/i_workshop_publish_service.dart';
 import '../../services/steam/steam_detection_service.dart';
 import '../../services/steam/steamcmd_manager.dart';
@@ -175,6 +176,10 @@ IValidationService validationService(Ref ref) =>
 @Riverpod(keepAlive: true)
 IWorkshopPublishService workshopPublishService(Ref ref) =>
     ServiceLocator.get<IWorkshopPublishService>();
+
+@Riverpod(keepAlive: true)
+IWorkshopApiService workshopApiService(Ref ref) =>
+    ServiceLocator.get<IWorkshopApiService>();
 
 @Riverpod(keepAlive: true)
 WorkshopScannerService workshopScannerService(Ref ref) =>
