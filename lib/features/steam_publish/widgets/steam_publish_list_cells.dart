@@ -400,10 +400,14 @@ class SteamSubsCell extends ConsumerWidget {
         ? '-'
         : NumberFormat('#,###', 'en_US').format(subs).replaceAll(',', ' ');
 
+    final tooltipMessage = (id == null || id.isEmpty)
+        ? 'Not published to the Workshop yet.'
+        : 'Workshop subscribers — last refreshed at app start.';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Tooltip(
-        message: 'Workshop subscribers — last refreshed at app start.',
+        message: tooltipMessage,
         waitDuration: const Duration(milliseconds: 400),
         child: Align(
           alignment: Alignment.centerLeft,

@@ -28,7 +28,7 @@ ProjectPublishItem _project({String? publishedSteamId}) => ProjectPublishItem(
 void main() {
   setUp(() async => TestBootstrap.registerFakes());
 
-  testWidgets('SteamSubsCell shows "-" when item is unpublished',
+  testWidgets('SteamSubsCell shows "-" and unpublished tooltip when item is unpublished',
       (tester) async {
     await tester.pumpWidget(createThemedTestableWidget(
       SteamSubsCell(item: _project()),
@@ -37,6 +37,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('-'), findsOneWidget);
+
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'Not published to the Workshop yet.');
   });
 
   testWidgets('SteamSubsCell shows "-" when published but cache has no entry',
@@ -48,6 +51,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('-'), findsOneWidget);
+
+    final tooltip = tester.widget<Tooltip>(find.byType(Tooltip));
+    expect(tooltip.message, 'Workshop subscribers — last refreshed at app start.');
   });
 
   testWidgets('SteamSubsCell formats the count with non-breaking spaces',
@@ -68,6 +74,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('1 234'), findsOneWidget);
+  });
+
+  testWidgets(
+      'SteamSubsCell tooltip says "Not published to the Workshop yet." when publishedSteamId is null',
+      (tester) async {
+    await tester.pumpWidget(createThemedTestableWidget(
+      SteamSubsCell(item: _project()),
+      theme: AppTheme.atelierDarkTheme,
+    ));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byTooltip('Not published to the Workshop yet.'),
+      findsOneWidget,
+    );
   });
 }
 
