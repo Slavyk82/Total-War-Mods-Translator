@@ -232,5 +232,67 @@ void main() {
           .refreshFromWorkshop();
       expect(container.read(publishedSubsCacheProvider), {'111': 999});
     });
+
+    test('refreshFromWorkshop splits >100 ids into multiple API calls',
+        () async {
+      final projectRepo = _MockProjectRepository();
+      final compilationRepo = _MockCompilationRepository();
+      final gameInstallRepo = _MockGameInstallationRepository();
+      final workshopApi = _MockWorkshopApiService();
+
+      // 150 published projects → must split into 100 + 50.
+      final projects = List<Project>.generate(
+        150,
+        (i) => _project(id: 'p$i', publishedSteamId: '${1000 + i}'),
+      );
+
+      when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
+        (_) async =>
+            Ok<GameInstallation, TWMTDatabaseException>(_installation()),
+      );
+      when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
+        (_) async => Ok<List<Project>, TWMTDatabaseException>(projects),
+      );
+      when(() => compilationRepo.getByGameInstallation('install-wh3'))
+          .thenAnswer(
+        (_) async => Ok<List<Compilation>, TWMTDatabaseException>(const []),
+      );
+      when(() => workshopApi.getMultipleModInfo(
+            workshopIds: any(named: 'workshopIds'),
+            appId: any(named: 'appId'),
+          )).thenAnswer((invocation) async {
+        final ids = invocation.namedArguments[#workshopIds] as List<String>;
+        return Ok<List<WorkshopModInfo>, SteamServiceException>(
+          [for (final id in ids) _modInfo(id: id, subs: 1)],
+        );
+      });
+
+      final container = _makeContainer(
+        projectRepo: projectRepo,
+        compilationRepo: compilationRepo,
+        gameInstallationRepo: gameInstallRepo,
+        workshopApi: workshopApi,
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(publishedSubsCacheProvider.notifier)
+          .refreshFromWorkshop();
+
+      // Two API calls expected: one of size 100, one of size 50.
+      final calls = verify(() => workshopApi.getMultipleModInfo(
+            workshopIds: captureAny(named: 'workshopIds'),
+            appId: 1142710,
+          )).captured;
+      expect(calls.length, 2);
+      final sizes = calls
+          .map((e) => (e as List<String>).length)
+          .toList()
+        ..sort();
+      expect(sizes, [50, 100]);
+
+      // Cache holds all 150 entries.
+      expect(container.read(publishedSubsCacheProvider).length, 150);
+    });
   });
 }

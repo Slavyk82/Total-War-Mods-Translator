@@ -66,16 +66,22 @@ class PublishedSubsCache extends _$PublishedSubsCache {
     }
 
     final api = ref.read(workshopApiServiceProvider);
-    final result = await api.getMultipleModInfo(
-      workshopIds: ids.toList(),
-      appId: appId,
-    );
-    if (result.isErr) return;
-
     final next = <String, int>{};
-    for (final info in result.value) {
-      final subs = info.subscriptions;
-      if (subs != null) next[info.workshopId] = subs;
+    final idList = ids.toList();
+    const chunkSize = 100;
+    for (var i = 0; i < idList.length; i += chunkSize) {
+      final end =
+          (i + chunkSize) > idList.length ? idList.length : i + chunkSize;
+      final chunk = idList.sublist(i, end);
+      final result = await api.getMultipleModInfo(
+        workshopIds: chunk,
+        appId: appId,
+      );
+      if (result.isErr) return; // leave prior state untouched
+      for (final info in result.value) {
+        final subs = info.subscriptions;
+        if (subs != null) next[info.workshopId] = subs;
+      }
     }
     state = next;
   }
