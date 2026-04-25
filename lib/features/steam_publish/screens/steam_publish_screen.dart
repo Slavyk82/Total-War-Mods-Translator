@@ -24,6 +24,8 @@ import '../widgets/steamcmd_install_dialog.dart';
 import '../widgets/workshop_onboarding_card.dart';
 import '../widgets/workshop_publish_settings_dialog.dart';
 
+import 'package:twmt/widgets/detail/home_back_toolbar.dart';
+
 /// Steam Publish screen — filterable list archetype per UI spec §7.1.
 ///
 /// Migrated from the legacy `FluentScaffold` + card-list layout to the shared
@@ -63,6 +65,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     final currentFilter = ref.watch(steamPublishDisplayFilterProvider);
     final outdatedCount = ref.watch(outdatedPublishableItemsCountProvider);
     final noPackCount = ref.watch(noPackPublishableItemsCountProvider);
+    final subsTotal = ref.watch(filteredPublishableItemsSubsTotalProvider);
 
     final disabledTooltip =
         _publishDisabledTooltip(allItems, selection);
@@ -73,11 +76,18 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          HomeBackToolbar(
+            leading: SteamPublishToolbarLeading(
+              totalItems: allItems.length,
+              filteredItems: filteredItems.length,
+              selectedCount: selection.length,
+              searchActive: searchQuery.isNotEmpty,
+              subsTotal: subsTotal,
+            ),
+          ),
           const WorkshopOnboardingCard(),
           SteamPublishToolbar(
             totalItems: allItems.length,
-            filteredItems: filteredItems.length,
-            selectedCount: selection.length,
             outdatedCount: outdatedCount,
             noPackCount: noPackCount,
             searchQuery: searchQuery,
@@ -95,6 +105,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             onPublishSelection:
                 canPublish ? () => _startBatchPublish(allItems) : null,
             publishDisabledTooltip: disabledTooltip,
+            selectedCount: selection.length,
             onRefresh: () {
               ref.invalidate(publishableItemsProvider);
             },

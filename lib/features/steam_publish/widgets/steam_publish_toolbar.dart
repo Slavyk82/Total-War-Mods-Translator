@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:intl/intl.dart';
 
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
@@ -14,13 +15,12 @@ import '../providers/steam_publish_providers.dart';
 
 /// Toolbar for the Steam Publish screen.
 ///
-/// Row 1 hosts title + count/selection, plus trailing actions (select all,
-/// select outdated, sort, sort direction, publish, refresh, settings, search).
-/// Row 2 hosts the STATE filter pill group.
+/// Row 1 hosts the trailing actions (select all, select outdated, sort, sort
+/// direction, publish, refresh, settings, search). Row 2 hosts the STATE
+/// filter pill group. The screen title (icon + name + counts) is rendered
+/// higher up by `HomeBackToolbar`.
 class SteamPublishToolbar extends StatelessWidget {
   final int totalItems;
-  final int filteredItems;
-  final int selectedCount;
   final int outdatedCount;
   final int noPackCount;
   final String searchQuery;
@@ -31,14 +31,13 @@ class SteamPublishToolbar extends StatelessWidget {
   final VoidCallback? onSelectOutdated;
   final VoidCallback? onPublishSelection;
   final String? publishDisabledTooltip;
+  final int selectedCount;
   final VoidCallback onRefresh;
   final VoidCallback onOpenSettings;
 
   const SteamPublishToolbar({
     super.key,
     required this.totalItems,
-    required this.filteredItems,
-    required this.selectedCount,
     required this.outdatedCount,
     required this.noPackCount,
     required this.searchQuery,
@@ -49,6 +48,7 @@ class SteamPublishToolbar extends StatelessWidget {
     required this.onSelectOutdated,
     required this.onPublishSelection,
     required this.publishDisabledTooltip,
+    required this.selectedCount,
     required this.onRefresh,
     required this.onOpenSettings,
   });
@@ -56,12 +56,7 @@ class SteamPublishToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilterToolbar(
-      leading: _Leading(
-        totalItems: totalItems,
-        filteredItems: filteredItems,
-        selectedCount: selectedCount,
-        searchActive: searchQuery.isNotEmpty,
-      ),
+      leading: const SizedBox.shrink(),
       expandLeading: false,
       trailing: _buildTrailing(context),
       pillGroups: [_buildStateGroup()],
@@ -159,20 +154,25 @@ class SteamPublishToolbar extends StatelessWidget {
 }
 
 // =============================================================================
-// Leading (crumb + title + count / selection)
+// Leading (icon + title + count / selection)
+//
+// Public so [SteamPublishScreen] can mount it inside `HomeBackToolbar.leading`.
 // =============================================================================
 
-class _Leading extends StatelessWidget {
+class SteamPublishToolbarLeading extends StatelessWidget {
   final int totalItems;
   final int filteredItems;
   final int selectedCount;
   final bool searchActive;
+  final int subsTotal;
 
-  const _Leading({
+  const SteamPublishToolbarLeading({
+    super.key,
     required this.totalItems,
     required this.filteredItems,
     required this.selectedCount,
     required this.searchActive,
+    this.subsTotal = 0,
   });
 
   @override
@@ -181,12 +181,15 @@ class _Leading extends StatelessWidget {
     final base = searchActive
         ? '$filteredItems / $totalItems $packLabel'
         : '$totalItems $packLabel';
-    final countLabel =
-        selectedCount > 0 ? '$base · $selectedCount selected' : base;
+    final selectedSegment =
+        selectedCount > 0 ? ' · $selectedCount selected' : '';
+    final subsSegment = subsTotal > 0
+        ? ' · ${NumberFormat('#,###', 'en_US').format(subsTotal).replaceAll(',', ' ')} subs'
+        : '';
     return ListToolbarLeading(
       icon: FluentIcons.cloud_arrow_up_24_regular,
       title: 'Publish on Steam',
-      countLabel: countLabel,
+      countLabel: '$base$selectedSegment$subsSegment',
     );
   }
 }
