@@ -174,5 +174,63 @@ void main() {
           )).captured.single as List<String>;
       expect(captured.toSet(), {'111', '222', '333'});
     });
+
+    test('refreshFromWorkshop leaves prior state untouched on API failure',
+        () async {
+      final projectRepo = _MockProjectRepository();
+      final compilationRepo = _MockCompilationRepository();
+      final gameInstallRepo = _MockGameInstallationRepository();
+      final workshopApi = _MockWorkshopApiService();
+
+      when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
+        (_) async =>
+            Ok<GameInstallation, TWMTDatabaseException>(_installation()),
+      );
+      when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
+        (_) async => Ok<List<Project>, TWMTDatabaseException>([
+          _project(id: 'p1', publishedSteamId: '111'),
+        ]),
+      );
+      when(() => compilationRepo.getByGameInstallation('install-wh3'))
+          .thenAnswer(
+        (_) async => Ok<List<Compilation>, TWMTDatabaseException>(const []),
+      );
+
+      var callCount = 0;
+      when(() => workshopApi.getMultipleModInfo(
+            workshopIds: any(named: 'workshopIds'),
+            appId: any(named: 'appId'),
+          )).thenAnswer((_) async {
+        callCount += 1;
+        if (callCount == 1) {
+          return Ok<List<WorkshopModInfo>, SteamServiceException>([
+            _modInfo(id: '111', subs: 999),
+          ]);
+        }
+        return Err<List<WorkshopModInfo>, SteamServiceException>(
+          const WorkshopApiException('boom'),
+        );
+      });
+
+      final container = _makeContainer(
+        projectRepo: projectRepo,
+        compilationRepo: compilationRepo,
+        gameInstallationRepo: gameInstallRepo,
+        workshopApi: workshopApi,
+      );
+      addTearDown(container.dispose);
+
+      // First call — succeeds, populates cache.
+      await container
+          .read(publishedSubsCacheProvider.notifier)
+          .refreshFromWorkshop();
+      expect(container.read(publishedSubsCacheProvider), {'111': 999});
+
+      // Second call — API fails. Cache must not be cleared.
+      await container
+          .read(publishedSubsCacheProvider.notifier)
+          .refreshFromWorkshop();
+      expect(container.read(publishedSubsCacheProvider), {'111': 999});
+    });
   });
 }
