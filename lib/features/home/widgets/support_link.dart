@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
@@ -30,10 +31,7 @@ class SupportLink extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    'If TWMT made your modding life easier, keeping '
-                    'translations tidy and surviving every mod update, a '
-                    'small tip would be hugely appreciated and helps me '
-                    'keep improving it!',
+                    t.home.support.message,
                     textAlign: TextAlign.center,
                     style: tokens.fontBody.copyWith(
                       fontSize: 13,
@@ -178,7 +176,7 @@ class _BuyMeABeerButtonState extends State<_BuyMeABeerButton> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'Buy me a beer :-)',
+                  t.home.support.buyMeABeer,
                   style: tokens.fontDisplay.copyWith(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

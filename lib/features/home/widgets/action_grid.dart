@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/cards/action_card.dart';
 
 /// "Needs attention" action grid on the Home dashboard.
@@ -29,9 +30,9 @@ class ActionGrid extends ConsumerWidget {
     return Row(children: [
       Expanded(
         child: ActionCard(
-          label: 'To review',
+          label: t.home.actionGrid.toReview.label,
           value: toReview,
-          description: 'projects with needs-review units',
+          description: t.home.actionGrid.toReview.description,
           highlight: true,
           onTap: () =>
               context.go('${AppRoutes.projects}?filter=needs-review'),
@@ -40,9 +41,9 @@ class ActionGrid extends ConsumerWidget {
       const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
-          label: 'Ready to compile',
+          label: t.home.actionGrid.readyToCompile.label,
           value: ready,
-          description: 'projects 100% translated',
+          description: t.home.actionGrid.readyToCompile.description,
           highlight: true,
           onTap: () =>
               context.go('${AppRoutes.projects}?filter=ready-to-compile'),
@@ -51,9 +52,9 @@ class ActionGrid extends ConsumerWidget {
       const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
-          label: 'Export outdated',
+          label: t.home.actionGrid.exportOutdated.label,
           value: exportOutdated,
-          description: 'projects modified since last pack',
+          description: t.home.actionGrid.exportOutdated.description,
           highlight: true,
           onTap: () =>
               context.go('${AppRoutes.projects}?filter=export-outdated'),
@@ -62,9 +63,9 @@ class ActionGrid extends ConsumerWidget {
       const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
-          label: 'Mod updates',
+          label: t.home.actionGrid.modUpdates.label,
           value: updates,
-          description: 'new Workshop version available',
+          description: t.home.actionGrid.modUpdates.description,
           highlight: true,
           onTap: () => context.go('${AppRoutes.mods}?filter=needs-update'),
         ),
@@ -72,9 +73,9 @@ class ActionGrid extends ConsumerWidget {
       const SizedBox(width: 20),
       Expanded(
         child: ActionCard(
-          label: 'Ready to publish',
+          label: t.home.actionGrid.readyToPublish.label,
           value: awaiting,
-          description: 'pack(s) to send to Workshop',
+          description: t.home.actionGrid.readyToPublish.description,
           highlight: true,
           onTap: () => context.go(AppRoutes.steamPublish),
         ),

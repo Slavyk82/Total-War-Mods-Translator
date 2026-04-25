@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/home/providers/home_status_provider.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Header shown at the top of the Home page.
@@ -20,7 +21,7 @@ class HomePageHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Home',
+            t.home.title,
             style: tokens.fontDisplay.copyWith(
               fontSize: 28,
               height: 1.1,

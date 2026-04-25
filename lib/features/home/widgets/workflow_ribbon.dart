@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/workflow_card.dart';
 
@@ -37,12 +38,12 @@ class WorkflowRibbon extends ConsumerWidget {
       Expanded(
         child: WorkflowCard(
           stepNumber: 1,
-          title: 'Detect',
-          stateLabel: mods > 0 ? 'Done' : 'Start here',
+          title: t.home.workflow.detect.title,
+          stateLabel: mods > 0 ? t.home.workflow.detect.done : t.home.workflow.detect.startHere,
           metric: '$mods',
-          subtitle: '${mods > 0 ? 'mods discovered' : 'no mods yet'}'
-              '${modUpdates > 0 ? ' · $modUpdates with updates' : ''}',
-          cta: 'View mods',
+          subtitle: '${mods > 0 ? t.home.workflow.detect.modsDiscovered : t.home.workflow.detect.noModsYet}'
+              '${modUpdates > 0 ? t.home.workflow.detect.withUpdates(count: modUpdates) : ''}',
+          cta: t.home.workflow.detect.cta,
           state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.mods),
         ),
@@ -51,14 +52,14 @@ class WorkflowRibbon extends ConsumerWidget {
       Expanded(
         child: WorkflowCard(
           stepNumber: 2,
-          title: 'Translate',
+          title: t.home.workflow.translate.title,
           stateLabel: inProgress > 0
-              ? 'In progress'
-              : (projects > 0 ? 'Idle' : 'Waiting'),
+              ? t.home.workflow.translate.inProgress
+              : (projects > 0 ? t.home.workflow.translate.idle : t.home.workflow.translate.waiting),
           metric: '$inProgress',
           subtitle:
-              'projects in progress${toReview > 0 ? ' · $toReview to review' : ''}',
-          cta: 'Open projects',
+              '${t.home.workflow.translate.subtitle}${toReview > 0 ? t.home.workflow.translate.toReview(count: toReview) : ''}',
+          cta: t.home.workflow.translate.cta,
           state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.projects),
         ),
@@ -67,11 +68,13 @@ class WorkflowRibbon extends ConsumerWidget {
       Expanded(
         child: WorkflowCard(
           stepNumber: 3,
-          title: 'Publish',
-          stateLabel: awaitingPub > 0 ? '$awaitingPub waiting' : 'Waiting',
+          title: t.home.workflow.publish.title,
+          stateLabel: awaitingPub > 0
+              ? t.home.workflow.publish.waitingCount(count: awaitingPub)
+              : t.home.workflow.publish.waiting,
           metric: '$awaitingPub',
-          subtitle: 'compiled packs ready for Workshop',
-          cta: 'Publish',
+          subtitle: t.home.workflow.publish.subtitle,
+          cta: t.home.workflow.publish.cta,
           state: WorkflowCardState.current,
           onTap: () => context.go(AppRoutes.steamPublish),
         ),

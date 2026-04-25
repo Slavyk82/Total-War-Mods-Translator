@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/token_card.dart';
 
@@ -19,8 +20,8 @@ class EmptyStateGuide extends StatelessWidget {
         Expanded(
           child: _Step(
             number: 1,
-            title: 'Detect your mods in Sources',
-            ctaLabel: 'Go to Sources',
+            title: t.home.emptyState.step1.title,
+            ctaLabel: t.home.emptyState.step1.cta,
             onTap: () => context.go(AppRoutes.mods),
           ),
         ),
@@ -28,8 +29,8 @@ class EmptyStateGuide extends StatelessWidget {
         Expanded(
           child: _Step(
             number: 2,
-            title: 'Create a project from a mod',
-            ctaLabel: 'Open Sources',
+            title: t.home.emptyState.step2.title,
+            ctaLabel: t.home.emptyState.step2.cta,
             onTap: () => context.go(AppRoutes.mods),
           ),
         ),
@@ -37,8 +38,8 @@ class EmptyStateGuide extends StatelessWidget {
         Expanded(
           child: _Step(
             number: 3,
-            title: 'Translate the units',
-            ctaLabel: 'Open Projects',
+            title: t.home.emptyState.step3.title,
+            ctaLabel: t.home.emptyState.step3.cta,
             onTap: () => context.go(AppRoutes.projects),
           ),
         ),
@@ -46,7 +47,7 @@ class EmptyStateGuide extends StatelessWidget {
         Expanded(
           child: _Step(
             number: 4,
-            title: 'Compile your pack',
+            title: t.home.emptyState.step4.title,
             ctaLabel: null,
             onTap: null,
           ),
@@ -55,7 +56,7 @@ class EmptyStateGuide extends StatelessWidget {
         Expanded(
           child: _Step(
             number: 5,
-            title: 'Publish on Steam Workshop',
+            title: t.home.emptyState.step5.title,
             ctaLabel: null,
             onTap: null,
           ),

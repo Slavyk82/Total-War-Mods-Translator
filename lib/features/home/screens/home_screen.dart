@@ -6,6 +6,7 @@ import 'package:twmt/features/home/widgets/empty_state_guide.dart';
 import 'package:twmt/features/home/widgets/home_page_header.dart';
 import 'package:twmt/features/home/widgets/support_link.dart';
 import 'package:twmt/features/home/widgets/workflow_ribbon.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
 
@@ -40,11 +41,11 @@ class HomeScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const _SectionLabel('Workflow'),
+                          _SectionLabel(t.home.sections.workflow),
                           const SizedBox(height: 10),
                           const WorkflowRibbon(),
                           const SizedBox(height: 28),
-                          const _SectionLabel('Needs attention'),
+                          _SectionLabel(t.home.sections.needsAttention),
                           const SizedBox(height: 10),
                           const ActionGrid(),
                           const SizedBox(height: 28),

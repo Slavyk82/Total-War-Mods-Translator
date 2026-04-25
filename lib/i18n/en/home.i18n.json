@@ -1,0 +1,95 @@
+{
+  "title": "Home",
+  "sections": {
+    "workflow": "Workflow",
+    "needsAttention": "Needs attention"
+  },
+  "status": {
+    "needsAttentionOne": "1 project needs your attention",
+    "needsAttentionMany": "$count projects need your attention",
+    "readyToCompileOne": "1 project ready to compile",
+    "readyToCompileMany": "$count projects ready to compile",
+    "modUpdatesOne": "1 mod update available",
+    "modUpdatesMany": "$count mod updates available",
+    "allCaughtUp": "All caught up"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "To review",
+      "description": "projects with needs-review units"
+    },
+    "readyToCompile": {
+      "label": "Ready to compile",
+      "description": "projects 100% translated"
+    },
+    "exportOutdated": {
+      "label": "Export outdated",
+      "description": "projects modified since last pack"
+    },
+    "modUpdates": {
+      "label": "Mod updates",
+      "description": "new Workshop version available"
+    },
+    "readyToPublish": {
+      "label": "Ready to publish",
+      "description": "pack(s) to send to Workshop"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "Detect",
+      "done": "Done",
+      "startHere": "Start here",
+      "modsDiscovered": "mods discovered",
+      "noModsYet": "no mods yet",
+      "withUpdates": " · $count with updates",
+      "cta": "View mods"
+    },
+    "translate": {
+      "title": "Translate",
+      "inProgress": "In progress",
+      "idle": "Idle",
+      "waiting": "Waiting",
+      "subtitle": "projects in progress",
+      "toReview": " · $count to review",
+      "cta": "Open projects"
+    },
+    "publish": {
+      "title": "Publish",
+      "waiting": "Waiting",
+      "waitingCount": "$count waiting",
+      "subtitle": "compiled packs ready for Workshop",
+      "cta": "Publish"
+    }
+  },
+  "nextAction": {
+    "toReview": "To review",
+    "translate": "Translate",
+    "readyToCompile": "Ready to compile",
+    "continue": "Continue"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "Detect your mods in Sources",
+      "cta": "Go to Sources"
+    },
+    "step2": {
+      "title": "Create a project from a mod",
+      "cta": "Open Sources"
+    },
+    "step3": {
+      "title": "Translate the units",
+      "cta": "Open Projects"
+    },
+    "step4": {
+      "title": "Compile your pack"
+    },
+    "step5": {
+      "title": "Publish on Steam Workshop"
+    }
+  },
+  "support": {
+    "message": "If TWMT made your modding life easier, keeping translations tidy and surviving every mod update, a small tip would be hugely appreciated and helps me keep improving it!",
+    "buyMeABeer": "Buy me a beer :-)"
+  }
+}

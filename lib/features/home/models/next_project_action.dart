@@ -1,3 +1,5 @@
+import 'package:twmt/i18n/strings.g.dart';
+
 enum NextProjectAction {
   toReview,
   translate,
@@ -18,9 +20,9 @@ enum NextProjectAction {
   }
 
   String get label => switch (this) {
-        NextProjectAction.toReview => 'To review',
-        NextProjectAction.translate => 'Translate',
-        NextProjectAction.readyToCompile => 'Ready to compile',
-        NextProjectAction.continueWork => 'Continue',
+        NextProjectAction.toReview => t.home.nextAction.toReview,
+        NextProjectAction.translate => t.home.nextAction.translate,
+        NextProjectAction.readyToCompile => t.home.nextAction.readyToCompile,
+        NextProjectAction.continueWork => t.home.nextAction.kContinue,
       };
 }

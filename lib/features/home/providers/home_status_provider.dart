@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'action_grid_providers.dart';
 import 'workflow_providers.dart';
 
@@ -12,13 +13,16 @@ class HomeStatus {
   const HomeStatus(this.kind, this.count);
 
   String get label => switch (kind) {
-        HomeStatusKind.needsAttention =>
-          '$count ${count == 1 ? 'project' : 'projects'} need your attention',
-        HomeStatusKind.readyToCompile =>
-          '$count ${count == 1 ? 'project' : 'projects'} ready to compile',
-        HomeStatusKind.modUpdates =>
-          '$count mod ${count == 1 ? 'update' : 'updates'} available',
-        HomeStatusKind.allCaughtUp => 'All caught up',
+        HomeStatusKind.needsAttention => count == 1
+          ? t.home.status.needsAttentionOne
+          : t.home.status.needsAttentionMany(count: count),
+        HomeStatusKind.readyToCompile => count == 1
+          ? t.home.status.readyToCompileOne
+          : t.home.status.readyToCompileMany(count: count),
+        HomeStatusKind.modUpdates => count == 1
+          ? t.home.status.modUpdatesOne
+          : t.home.status.modUpdatesMany(count: count),
+        HomeStatusKind.allCaughtUp => t.home.status.allCaughtUp,
       };
 }
 
