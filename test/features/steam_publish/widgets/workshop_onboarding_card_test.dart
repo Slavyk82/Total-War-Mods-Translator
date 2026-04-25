@@ -85,14 +85,34 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Publishing on the Steam Workshop'), findsOneWidget);
+
+    // Body intro explains why the first publish must go through the launcher.
     expect(
-      find.text(
-        "The first publication goes through the in-game launcher. After "
-        "you paste the Workshop ID here, all future updates are handled "
-        "automatically from this screen.",
-      ),
+      find.textContaining('original game launcher'),
+      findsWidgets,
+    );
+
+    // Four numbered onboarding steps walk the user through the flow.
+    for (final index in const [1, 2, 3, 4]) {
+      expect(find.text('$index.'), findsOneWidget);
+    }
+    expect(
+      find.textContaining('Publish the mod once'),
       findsOneWidget,
     );
+    expect(
+      find.textContaining('Workshop ID assigned by Steam'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Paste that ID'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('"Update" button'),
+      findsOneWidget,
+    );
+
     expect(find.byType(Checkbox), findsOneWidget);
     expect(find.text("Don't show this again"), findsOneWidget);
     expect(find.text('Dismiss'), findsOneWidget);

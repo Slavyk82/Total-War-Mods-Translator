@@ -141,14 +141,41 @@ class _WorkshopOnboardingCardState
               ),
               const SizedBox(height: 8),
               Text(
-                'The first publication goes through the in-game launcher. '
-                'After you paste the Workshop ID here, all future updates '
-                'are handled automatically from this screen.',
+                'This app cannot create a brand-new Workshop entry directly. '
+                'A bug in the game launcher prevents mods uploaded outside of '
+                'it from appearing in subscribers\' launchers, so the very '
+                'first publication of a translation mod must go through the '
+                'original game launcher. Every subsequent update can then be '
+                'pushed straight from this screen.',
                 style: tokens.fontBody.copyWith(
                   fontSize: 12.5,
                   color: tokens.textMid,
                   height: 1.4,
                 ),
+              ),
+              const SizedBox(height: 10),
+              _OnboardingStep(
+                index: 1,
+                text: 'Publish the mod once through the original game '
+                    'launcher.',
+              ),
+              const SizedBox(height: 4),
+              _OnboardingStep(
+                index: 2,
+                text: 'Copy the Workshop ID assigned by Steam : it appears in '
+                    'the mod\'s Workshop URL (e.g. "3661242610").',
+              ),
+              const SizedBox(height: 4),
+              _OnboardingStep(
+                index: 3,
+                text: 'Paste that ID into the dedicated field for this mod in '
+                    'the app.',
+              ),
+              const SizedBox(height: 4),
+              _OnboardingStep(
+                index: 4,
+                text: 'Use the "Update" button to push every future '
+                    'translation update from this screen.',
               ),
               const SizedBox(height: 10),
               Row(
@@ -184,6 +211,39 @@ class _WorkshopOnboardingCardState
           ),
         ),
       ),
+    );
+  }
+}
+
+class _OnboardingStep extends StatelessWidget {
+  final int index;
+  final String text;
+
+  const _OnboardingStep({required this.index, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textStyle = tokens.fontBody.copyWith(
+      fontSize: 12.5,
+      color: tokens.textMid,
+      height: 1.4,
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 18,
+          child: Text(
+            '$index.',
+            style: textStyle.copyWith(
+              color: tokens.text,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(child: Text(text, style: textStyle)),
+      ],
     );
   }
 }
