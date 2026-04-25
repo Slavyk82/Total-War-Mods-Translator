@@ -17,12 +17,27 @@ import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import '../providers/pack_compilation_providers.dart';
 
+/// Column layout shared between [_CompilationRow] and the list header so
+/// rows stay aligned with their column titles.
+const List<ListRowColumn> _compilationColumns = [
+  ListRowColumn.flex(1),
+  ListRowColumn.fixed(120),
+  ListRowColumn.fixed(140),
+  ListRowColumn.fixed(100),
+];
+
+/// Trailing action width reserved in the header to mirror each row's
+/// "Edit" SmallTextButton + 6 px gap + delete SmallIconButton(28) plus the
+/// 8 px gap that [ListRow] inserts before its `trailingAction`.
+const double _compilationTrailingActionWidth = 92;
+
 /// Pack compilations list screen (§7.1 archetype).
 ///
 /// Displays all compilations for the currently selected game with name
-/// search, project count, and relative "updated" timestamp columns. Tapping
-/// a row (or its "Edit" action) routes to the editor; the delete action
-/// pops a confirmation dialog and invalidates the provider on success.
+/// search, language, project count, pack-status, and relative "updated"
+/// timestamp columns. Tapping a row (or its "Edit" action) routes to the
+/// editor; the delete action pops a confirmation dialog and invalidates the
+/// provider on success.
 class PackCompilationListScreen extends ConsumerStatefulWidget {
   const PackCompilationListScreen({super.key});
 
@@ -93,17 +108,41 @@ class _PackCompilationListScreenState
                   ? _EmptyState(
                       onNew: () => context.push(AppRoutes.packCompilationNew),
                     )
-                  : ListView.builder(
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) => _CompilationRow(
-                        details: filtered[i],
-                        onEdit: () => context.push(
-                          AppRoutes.packCompilationEdit(
-                            filtered[i].compilation.id,
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ListRowHeader(
+                          columns: _compilationColumns,
+                          labels: const [
+                            'Compilation',
+                            'Projects',
+                            'Pack status',
+                            'Updated',
+                          ],
+                          alignments: const [
+                            TextAlign.left,
+                            TextAlign.right,
+                            TextAlign.right,
+                            TextAlign.right,
+                          ],
+                          trailingActionWidth:
+                              _compilationTrailingActionWidth,
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) => _CompilationRow(
+                              details: filtered[i],
+                              onEdit: () => context.push(
+                                AppRoutes.packCompilationEdit(
+                                  filtered[i].compilation.id,
+                                ),
+                              ),
+                              onDelete: () => _confirmDelete(filtered[i]),
+                            ),
                           ),
                         ),
-                        onDelete: () => _confirmDelete(filtered[i]),
-                      ),
+                      ],
                     ),
             ),
           ),
@@ -212,12 +251,7 @@ class _CompilationRow extends ConsumerWidget {
     final needsRegeneration = lastGeneratedAt != null &&
         details.projects.any((p) => p.updatedAt > lastGeneratedAt);
     return ListRow(
-      columns: const [
-        ListRowColumn.flex(1),
-        ListRowColumn.fixed(120),
-        ListRowColumn.fixed(140),
-        ListRowColumn.fixed(100),
-      ],
+      columns: _compilationColumns,
       onTap: onEdit,
       trailingAction: Row(
         mainAxisSize: MainAxisSize.min,
