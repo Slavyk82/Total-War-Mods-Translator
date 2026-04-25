@@ -6,6 +6,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 
 import '../providers/steam_publish_providers.dart';
+import 'steam_id_cell.dart';
 import 'steam_publish_action_cell.dart';
 import 'steam_publish_list_cells.dart';
 
@@ -47,6 +48,7 @@ class SteamPublishList extends ConsumerWidget {
                   ),
                   SteamCoverCell(item: item),
                   SteamTitleBlock(item: item),
+                  SteamIdCell(item: item),
                   SteamSubsCell(item: item),
                   SteamStateCell(item: item),
                   SteamLastPublishedCell(item: item),
@@ -84,6 +86,7 @@ class _SteamPublishListHeader extends StatelessWidget {
         '',
         '',
         'Pack',
+        'Steam ID',
         'Subs',
         'Status',
         'Last published',
