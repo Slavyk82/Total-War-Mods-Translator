@@ -271,6 +271,8 @@ class _TranslationEditorScreenState
                       onValidate: () => _getActions().handleValidate(),
                       onExport: () => _getActions().handleExport(),
                       onImportPack: () => _getActions().handleImportPack(),
+                      onOpenModFolder: () =>
+                          _getActions().handleOpenModFolder(),
                     ),
                     Expanded(
                       child: EditorDataGrid(

@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
-import 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
-import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_action_sidebar.dart';
 import 'package:twmt/theme/app_theme.dart';
 
@@ -23,6 +21,7 @@ void main() {
     VoidCallback? onValidate,
     VoidCallback? onExport,
     VoidCallback? onImportPack,
+    VoidCallback? onOpenModFolder,
     int? pendingCount,
     bool statsLoading = false,
   }) {
@@ -48,6 +47,7 @@ void main() {
           onValidate: onValidate ?? () {},
           onExport: onExport ?? () {},
           onImportPack: onImportPack ?? () {},
+          onOpenModFolder: onOpenModFolder ?? () {},
         ),
       ),
       theme: AppTheme.atelierDarkTheme,
@@ -197,6 +197,18 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Import external pack'));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
+
+  testWidgets('tapping Open local folder invokes onOpenModFolder',
+      (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(build(onOpenModFolder: () => tapped = true));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open local folder'));
     await tester.pumpAndSettle();
 
     expect(tapped, isTrue);

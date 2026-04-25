@@ -2,7 +2,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
-import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/workflow/pipeline_timeline.dart';
 
@@ -33,6 +32,7 @@ class EditorActionSidebar extends ConsumerWidget {
   final VoidCallback onValidate;
   final VoidCallback onExport;
   final VoidCallback onImportPack;
+  final VoidCallback onOpenModFolder;
 
   const EditorActionSidebar({
     super.key,
@@ -43,6 +43,7 @@ class EditorActionSidebar extends ConsumerWidget {
     required this.onValidate,
     required this.onExport,
     required this.onImportPack,
+    required this.onOpenModFolder,
   });
 
   @override
@@ -75,6 +76,12 @@ class EditorActionSidebar extends ConsumerWidget {
               icon: FluentIcons.arrow_import_24_regular,
               label: 'Import external pack',
               onTap: onImportPack,
+            ),
+            const SizedBox(height: 8),
+            _SidebarActionButton(
+              icon: FluentIcons.folder_open_24_regular,
+              label: 'Open local folder',
+              onTap: onOpenModFolder,
             ),
             const SizedBox(height: 20),
             _SectionHeader(label: 'Workflow', tokens: tokens),
@@ -223,17 +230,11 @@ class _SidebarActionButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool primary;
 
-  /// Optional trailing keyboard-shortcut hint (e.g. `Ctrl+T`). When provided,
-  /// the button layout switches from centre-hug to a left-anchored label with
-  /// the hint pinned right so users can discover the binding at a glance.
-  final String? shortcutHint;
-
   const _SidebarActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
     this.primary = false,
-    this.shortcutHint,
   });
 
   @override
@@ -249,17 +250,6 @@ class _SidebarActionButton extends StatelessWidget {
     final borderColor = primary
         ? tokens.accent
         : tokens.border;
-    final hasHint = shortcutHint != null;
-    final labelText = Text(
-      label,
-      overflow: TextOverflow.ellipsis,
-      textAlign: TextAlign.center,
-      style: tokens.fontBody.copyWith(
-        fontSize: 12.5,
-        color: fg,
-        fontWeight: FontWeight.w500,
-      ),
-    );
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       child: GestureDetector(
@@ -274,63 +264,26 @@ class _SidebarActionButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(tokens.radiusSm),
           ),
           alignment: Alignment.center,
-          // A single hug-and-centre layout whether or not a hint is attached:
-          // icon + label + (optional) kbd badge sit in one tight cluster.
-          // This keeps the badge visually identical across states — long
-          // labels ellipsize via [Flexible] rather than stretching a gap.
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 14, color: fg),
               const SizedBox(width: 8),
-              Flexible(child: labelText),
-              if (hasHint) ...[
-                const SizedBox(width: 6),
-                _KbdBadge(text: shortcutHint!, primary: primary),
-              ],
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: tokens.fontBody.copyWith(
+                    fontSize: 12.5,
+                    color: fg,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Inline keyboard-shortcut chip rendered inside action buttons.
-///
-/// Matches the button's variant: on [primary] buttons we tint a translucent
-/// accent-fg pill; on outlined buttons we drop the chip onto the panel surface
-/// with a dim foreground. Text is rendered in a monospace-like face at 10px
-/// so it reads as "kbd" rather than regular copy.
-class _KbdBadge extends StatelessWidget {
-  final String text;
-  final bool primary;
-
-  const _KbdBadge({required this.text, this.primary = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    final fg = primary ? tokens.accentFg : tokens.textDim;
-    final bg = primary
-        ? tokens.accentFg.withValues(alpha: 0.16)
-        : tokens.panel;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(3),
-        border: Border.all(color: fg.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          color: fg,
-          fontFamily: 'monospace',
-          fontWeight: FontWeight.w500,
-          height: 1.2,
         ),
       ),
     );

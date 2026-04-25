@@ -10,6 +10,7 @@ import 'actions/editor_actions_base.dart';
 import 'actions/editor_actions_cell_edit.dart';
 import 'actions/editor_actions_export.dart';
 import 'actions/editor_actions_import.dart';
+import 'actions/editor_actions_open_folder.dart';
 import 'actions/editor_actions_translation.dart';
 import 'actions/editor_actions_undo_redo.dart';
 import 'actions/editor_actions_validation.dart';
@@ -33,6 +34,7 @@ class TranslationEditorActions
         EditorActionsValidation,
         EditorActionsExport,
         EditorActionsImport,
+        EditorActionsOpenFolder,
         EditorActionsUndoRedo {
   TranslationEditorActions({
     required this.ref,
