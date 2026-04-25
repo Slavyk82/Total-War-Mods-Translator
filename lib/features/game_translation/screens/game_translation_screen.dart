@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
+import 'package:twmt/widgets/lists/filter_toolbar.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
+
 import '../../../widgets/detail/home_back_toolbar.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
@@ -23,16 +28,38 @@ class GameTranslationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final projectsAsync = ref.watch(gameTranslationProjectsProvider);
+    final hasPacksAsync = ref.watch(hasLocalPacksProvider);
+    // During loading/error treat packs as available (permissive). Empty data
+    // means no packs detected — disable the toolbar Create button.
+    final hasPacks = hasPacksAsync.value ?? true;
+    final count = projectsAsync.asData?.value.length ?? 0;
 
     return FluentScaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const HomeBackToolbar(
+          HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.globe_24_regular,
               title: 'Game Translation',
+              countLabel: '$count ${count == 1 ? 'translation' : 'translations'}',
             ),
+          ),
+          FilterToolbar(
+            leading: const SizedBox.shrink(),
+            expandLeading: false,
+            trailing: [
+              SmallTextButton(
+                label: 'Create Game Translation',
+                icon: FluentIcons.add_24_regular,
+                filled: true,
+                tooltip: hasPacks
+                    ? null
+                    : 'No localization packs found for this game',
+                onTap:
+                    hasPacks ? () => _showCreateDialog(context, ref) : null,
+              ),
+            ],
           ),
           Expanded(
             child: Padding(
@@ -63,6 +90,12 @@ class GameTranslationScreen extends ConsumerWidget {
     return ProjectGrid(
       projects: projects,
       onProjectTap: (projectId) => _navigateToProject(context, ref, projectId),
+      onDelete: (projectId) {
+        final details = projects.firstWhere(
+          (p) => p.project.id == projectId,
+        );
+        _handleDeleteProject(context, ref, details);
+      },
     );
   }
 
@@ -191,5 +224,47 @@ class GameTranslationScreen extends ConsumerWidget {
 
   void _navigateToProject(BuildContext context, WidgetRef ref, String projectId) {
     openProjectEditor(context, ref, projectId);
+  }
+
+  /// Confirm + delete a game translation project.
+  ///
+  /// Mirrors `projects_screen.dart:_handleDeleteProject` but invalidates the
+  /// game-translations provider instead of patching the optimistic notifier,
+  /// since `gameTranslationProjectsProvider` is a plain FutureProvider.
+  Future<void> _handleDeleteProject(
+    BuildContext context,
+    WidgetRef ref,
+    ProjectWithDetails details,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => TokenConfirmDialog(
+        title: 'Delete Game Translation',
+        message:
+            'Are you sure you want to delete "${details.project.name}"?',
+        warningMessage: 'This action cannot be undone.',
+        confirmLabel: 'Delete',
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final result = await ref
+        .read(shared_repo.projectRepositoryProvider)
+        .delete(details.project.id);
+    if (!context.mounted) return;
+    if (result.isOk) {
+      ref.invalidate(gameTranslationProjectsProvider);
+      FluentToast.success(
+        context,
+        'Game translation "${details.project.name}" deleted',
+      );
+    } else {
+      FluentToast.error(
+        context,
+        'Failed to delete game translation: ${result.error}',
+      );
+    }
   }
 }
