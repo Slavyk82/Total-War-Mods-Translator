@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -11,33 +12,37 @@ import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/widgets/lists/project_cover_thumbnail.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
-import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/widgets/lists/status_pill.dart';
 import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Column layout shared between [_CompilationRow] and the list header so
-/// rows stay aligned with their column titles.
+/// rows stay aligned with their column titles. Mirrors the Projects-screen
+/// layout (cover / name+meta / language / modified / status).
 const List<ListRowColumn> _compilationColumns = [
-  ListRowColumn.flex(1),
-  ListRowColumn.fixed(120),
-  ListRowColumn.fixed(140),
-  ListRowColumn.fixed(100),
+  ListRowColumn.fixed(80), // cover thumbnail
+  ListRowColumn.flex(3), // name + meta line
+  ListRowColumn.flex(2), // language
+  ListRowColumn.fixed(180), // modified
+  ListRowColumn.fixed(150), // status pill
 ];
 
 /// Trailing action width reserved in the header to mirror each row's
-/// "Edit" SmallTextButton + 6 px gap + delete SmallIconButton(28) plus the
-/// 8 px gap that [ListRow] inserts before its `trailingAction`.
-const double _compilationTrailingActionWidth = 92;
+/// delete IconButton (16 px icon + 12 px padding) and the right-side gap
+/// kept between the icon and the list scrollbar. Same value as the
+/// Projects screen.
+const double _compilationRowTrailingActionWidth = 52;
 
 /// Pack compilations list screen (§7.1 archetype).
 ///
-/// Displays all compilations for the currently selected game with name
-/// search, language, project count, pack-status, and relative "updated"
-/// timestamp columns. Tapping a row (or its "Edit" action) routes to the
-/// editor; the delete action pops a confirmation dialog and invalidates the
-/// provider on success.
+/// Mirrors the Projects-list visual: 80 px cover thumbnail, name + meta
+/// (.pack filename + last generation), language, modified date, and a
+/// [StatusPill] reflecting whether the pack must be (re)generated. Tapping
+/// a row opens the editor; the trailing delete icon pops a confirmation
+/// dialog and invalidates the provider on success.
 class PackCompilationListScreen extends ConsumerStatefulWidget {
   const PackCompilationListScreen({super.key});
 
@@ -114,19 +119,14 @@ class _PackCompilationListScreenState
                         ListRowHeader(
                           columns: _compilationColumns,
                           labels: const [
+                            '',
                             'Compilation',
-                            'Projects',
-                            'Pack status',
-                            'Updated',
-                          ],
-                          alignments: const [
-                            TextAlign.left,
-                            TextAlign.right,
-                            TextAlign.right,
-                            TextAlign.right,
+                            'Language',
+                            'Modified',
+                            'Status',
                           ],
                           trailingActionWidth:
-                              _compilationTrailingActionWidth,
+                              _compilationRowTrailingActionWidth,
                         ),
                         Expanded(
                           child: ListView.builder(
@@ -224,9 +224,13 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Single row in the compilation list: name (+ language chip) + packName /
-/// project count / pack status (last generation, outdated, or never) /
-/// relative updated-at date, with trailing Edit + Delete actions.
+/// Single row in the compilation list, mirroring the Projects-list layout.
+///
+/// Columns: 80 px game cover (game-specific Fluent icon fallback) /
+/// compilation name + .pack filename + relative last-pack timestamp /
+/// language label / absolute modified date / status pill (Draft /
+/// Regenerate pack / Generated). Tap on the row opens the editor; the
+/// trailing icon deletes the compilation after a confirmation dialog.
 class _CompilationRow extends ConsumerWidget {
   final CompilationWithDetails details;
   final VoidCallback onEdit;
@@ -248,90 +252,131 @@ class _CompilationRow extends ConsumerWidget {
     // to `DateTime.fromMillisecondsSinceEpoch`.
     final updatedAt =
         DateTime.fromMillisecondsSinceEpoch(compilation.updatedAt * 1000);
+    final lastModified = DateFormat('dd/MM/yyyy HH:mm').format(updatedAt);
     final lastGeneratedAt = compilation.lastGeneratedAt;
+    final lastGeneratedRelative = lastGeneratedAt == null
+        ? null
+        : formatRelativeSince(
+            DateTime.fromMillisecondsSinceEpoch(lastGeneratedAt * 1000),
+            now: now,
+          );
     // A compilation pack is stale when at least one bundled project was
     // updated after the last successful generation.
     final needsRegeneration = lastGeneratedAt != null &&
         details.projects.any((p) => p.updatedAt > lastGeneratedAt);
+
     return ListRow(
       columns: _compilationColumns,
       onTap: onEdit,
-      trailingAction: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SmallTextButton(label: 'Edit', onTap: onEdit),
-          const SizedBox(width: 6),
-          SmallIconButton(
-            icon: FluentIcons.delete_24_regular,
-            tooltip: 'Delete compilation',
-            onTap: onDelete,
-            foreground: tokens.err,
-            background: tokens.errBg,
-            borderColor: tokens.err.withValues(alpha: 0.3),
-          ),
-        ],
+      // Null height → the row grows to fit the 80×80 cover, mirroring the
+      // Projects-list footprint.
+      height: null,
+      trailingAction: Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: IconButton(
+          key: Key('compilation-row-delete-${compilation.id}'),
+          icon: const Icon(FluentIcons.delete_24_regular, size: 16),
+          tooltip: 'Delete compilation',
+          onPressed: onDelete,
+          color: Theme.of(context).colorScheme.error,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        ),
       ),
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    compilation.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: tokens.fontBody.copyWith(
-                      fontSize: 13,
-                      color: tokens.text,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                if (details.language != null) ...[
-                  const SizedBox(width: 8),
-                  _LanguageChip(code: details.language!.code),
-                ],
-              ],
-            ),
-            if (compilation.packName.isNotEmpty)
+        // Cover — compilations don't carry an image; fall back to the game
+        // icon resolved by ProjectCoverThumbnail's gameCode switch.
+        ProjectCoverThumbnail(
+          imageUrl: null,
+          isGameTranslation: false,
+          gameCode: details.gameInstallation?.gameCode,
+        ),
+        // Name + meta
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
               Text(
-                compilation.packName,
+                compilation.name,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: tokens.fontMono.copyWith(
-                  fontSize: 10,
-                  color: tokens.textDim,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: tokens.text,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-          ],
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  if (compilation.packName.isNotEmpty)
+                    Flexible(
+                      child: Text(
+                        compilation.packName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tokens.fontMono.copyWith(
+                          fontSize: 11,
+                          color: tokens.textDim,
+                        ),
+                      ),
+                    ),
+                  if (lastGeneratedRelative != null) ...[
+                    const SizedBox(width: 10),
+                    Icon(
+                      FluentIcons.arrow_export_24_regular,
+                      size: 12,
+                      color: tokens.textFaint,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      lastGeneratedRelative,
+                      style: tokens.fontMono.copyWith(
+                        fontSize: 10.5,
+                        color: tokens.textFaint,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
+        // Language — single language per compilation; rendered like a
+        // Projects-row language line, sans progress bar.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            '${details.projects.length} packs',
-            style: tokens.fontMono.copyWith(
-              fontSize: 11,
-              color: tokens.textMid,
+            details.language?.name ?? 'No language',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: tokens.fontBody.copyWith(
+              fontSize: 12,
+              color: details.language != null
+                  ? tokens.textMid
+                  : tokens.textFaint,
             ),
           ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _PackStatus(
+        // Modified — absolute date matching the Projects row.
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            lastModified,
+            style: tokens.fontMono.copyWith(
+              fontSize: 11.5,
+              color: tokens.textDim,
+            ),
+          ),
+        ),
+        // Status pill
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: _CompilationStatusPill(
             lastGeneratedAt: lastGeneratedAt,
             needsRegeneration: needsRegeneration,
-            now: now,
-          ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Text(
-            formatRelativeSince(updatedAt, now: now) ?? '—',
-            style: tokens.fontMono.copyWith(
-              fontSize: 10,
-              color: tokens.textFaint,
-            ),
           ),
         ),
       ],
@@ -339,97 +384,44 @@ class _CompilationRow extends ConsumerWidget {
   }
 }
 
-/// Small bordered chip displaying the compilation's target language code
-/// (e.g. `FR`). Rendered next to the compilation name.
-class _LanguageChip extends StatelessWidget {
-  final String code;
-
-  const _LanguageChip({required this.code});
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = context.tokens;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        color: tokens.panel2,
-        border: Border.all(color: tokens.border),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        code.toUpperCase(),
-        style: tokens.fontMono.copyWith(
-          fontSize: 10,
-          color: tokens.textMid,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-/// Renders the right-aligned pack-status cell for a compilation row.
+/// Status badge used in the right-most column of [_CompilationRow].
+///
 /// Three mutually-exclusive states:
-///   * never generated → faint "Never generated" text
-///   * stale (project changed after last gen) → orange "Pack outdated" badge
-///   * up to date → "Last pack: {relative}" mono text
-class _PackStatus extends StatelessWidget {
+///   * never generated         → neutral "Draft" pill
+///   * stale (project changed) → warn "Regenerate pack" pill
+///   * up to date              → ok    "Generated" pill
+class _CompilationStatusPill extends StatelessWidget {
   final int? lastGeneratedAt;
   final bool needsRegeneration;
-  final DateTime now;
 
-  const _PackStatus({
+  const _CompilationStatusPill({
     required this.lastGeneratedAt,
     required this.needsRegeneration,
-    required this.now,
   });
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     if (lastGeneratedAt == null) {
-      return Text(
-        'Never generated',
-        style: tokens.fontMono.copyWith(
-          fontSize: 10,
-          color: tokens.textFaint,
-        ),
+      return StatusPill(
+        label: 'Draft',
+        foreground: tokens.textDim,
+        background: tokens.panel,
       );
     }
     if (needsRegeneration) {
-      return Tooltip(
-        message:
-            'One or more projects changed after the last pack generation',
-        waitDuration: const Duration(milliseconds: 400),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: tokens.warnBg,
-            border: Border.all(color: tokens.warn.withValues(alpha: 0.4)),
-            borderRadius: BorderRadius.circular(tokens.radiusSm),
-          ),
-          child: Text(
-            'Pack outdated',
-            style: tokens.fontBody.copyWith(
-              fontSize: 10,
-              color: tokens.warn,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+      return StatusPill(
+        label: 'Regenerate pack',
+        foreground: tokens.warn,
+        background: tokens.warnBg,
+        tooltip:
+            'One or more bundled projects changed after the last pack generation.',
       );
     }
-    // `lastGeneratedAt` is stored as Unix seconds.
-    final generated =
-        DateTime.fromMillisecondsSinceEpoch(lastGeneratedAt! * 1000);
-    final relative = formatRelativeSince(generated, now: now) ?? '—';
-    return Text(
-      'Last pack: $relative',
-      style: tokens.fontMono.copyWith(
-        fontSize: 10,
-        color: tokens.textFaint,
-      ),
+    return StatusPill(
+      label: 'Generated',
+      foreground: tokens.ok,
+      background: tokens.okBg,
     );
   }
 }

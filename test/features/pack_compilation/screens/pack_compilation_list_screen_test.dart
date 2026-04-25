@@ -78,7 +78,7 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    expect(find.text('3 packs'), findsOneWidget);
-    expect(find.text('1 packs'), findsOneWidget);
+    // Both fixtures have lastGeneratedAt == null → status pill is "Draft".
+    expect(find.text('Draft'), findsNWidgets(2));
   });
 }
