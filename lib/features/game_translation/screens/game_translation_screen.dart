@@ -32,7 +32,9 @@ class GameTranslationScreen extends ConsumerWidget {
     // During loading/error treat packs as available (permissive). Empty data
     // means no packs detected — disable the toolbar Create button.
     final hasPacks = hasPacksAsync.value ?? true;
-    final count = projectsAsync.asData?.value.length ?? 0;
+    // Suppress the count label until data arrives so loading/error states
+    // do not briefly read "0 translations".
+    final count = projectsAsync.asData?.value.length;
 
     return FluentScaffold(
       body: Column(
@@ -42,7 +44,9 @@ class GameTranslationScreen extends ConsumerWidget {
             leading: ListToolbarLeading(
               icon: FluentIcons.globe_24_regular,
               title: 'Game Translation',
-              countLabel: '$count ${count == 1 ? 'translation' : 'translations'}',
+              countLabel: count == null
+                  ? null
+                  : '$count ${count == 1 ? 'translation' : 'translations'}',
             ),
           ),
           FilterToolbar(
