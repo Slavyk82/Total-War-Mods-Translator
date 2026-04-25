@@ -14,6 +14,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
+import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
 import 'package:twmt/services/mods/utils/workshop_mod_processor.dart';
 import 'package:twmt/services/mods/pack_file_scanner.dart';
@@ -36,6 +37,7 @@ class WorkshopScannerService {
   final WorkshopModProcessor _workshopModProcessor;
   final PackFileScanner _packFileScanner;
   final DetectedModBuilder _detectedModBuilder;
+  final IRpfmService _rpfmService;
   final ILoggingService _logger;
 
   /// Stream controller for scan progress logs
@@ -70,6 +72,7 @@ class WorkshopScannerService {
   })  : _projectRepository = projectRepository,
         _gameInstallationRepository = gameInstallationRepository,
         _workshopModRepository = workshopModRepository,
+        _rpfmService = rpfmService,
         _workshopModProcessor = WorkshopModProcessor(
           workshopModRepository: workshopModRepository,
           workshopApiService: workshopApiService,
@@ -104,6 +107,21 @@ class WorkshopScannerService {
     try {
       _logger.info('Scanning Workshop folder for game: $gameCode');
       _emitLog('Starting scan for game: $gameCode');
+
+      // Fail fast if RPFM-CLI is missing or has an incompatible version: a
+      // scan without RPFM cannot detect localization files and would silently
+      // return zero mods, leaving the user without an explanation.
+      final rpfmAvailable = await _rpfmService.isRpfmAvailable();
+      if (!rpfmAvailable) {
+        const message =
+            'RPFM-CLI is not available. Update its path in Settings → '
+            'Folders → RPFM, or download it from there.';
+        _logger.error(message);
+        _emitLog(message, ScanLogLevel.error);
+        return const Err(RpfmNotFoundException(
+          'RPFM-CLI is not available. Please update the path in Settings.',
+        ));
+      }
 
       // Get game installation from database
       final gameInstallationResult =

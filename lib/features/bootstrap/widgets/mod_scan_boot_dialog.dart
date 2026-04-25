@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
@@ -10,6 +12,7 @@ import 'package:twmt/features/steam_publish/providers/published_subs_cache_provi
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 
 /// Boot-time dialog that drives the Workshop mods scan and displays its
 /// progress in a terminal-like surface.
@@ -88,6 +91,54 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
     Navigator.of(context).pop();
   }
 
+  bool _rpfmErrorShown = false;
+
+  /// Handle the case where RPFM-CLI is missing or invalid: skip phase 2 and
+  /// surface a clear, actionable error dialog instead of silently closing
+  /// the boot dialog with zero mods.
+  void _handleRpfmUnavailable() {
+    if (_rpfmErrorShown || _closed || !mounted) return;
+    _rpfmErrorShown = true;
+    _phaseTwoStarted = true; // prevent any later phase-2 trigger
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // Capture the long-lived router up front: once the boot dialog pops,
+      // the State's context is unmounted and `context.go(...)` becomes a
+      // use-across-async-gap problem.
+      final router = GoRouter.of(context);
+      final goToSettings = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('RPFM-CLI not found'),
+          content: const Text(
+            'The Workshop scan needs RPFM-CLI to read mod pack files, but '
+            'it could not be found at the configured path.\n\n'
+            'Open Settings → Folders → RPFM to update the path or download '
+            'a fresh copy.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Close'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+      // Close the boot dialog first so navigation lands on a clean route
+      // stack, then route to Settings if the user asked for it.
+      _closeIfMounted();
+      if (goToSettings == true) {
+        router.go(AppRoutes.settings);
+      }
+    });
+  }
+
   Future<void> _runPhaseTwo() async {
     if (_phaseTwoStarted) return;
     _phaseTwoStarted = true;
@@ -144,6 +195,10 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
     // dialog when it resolves.
     ref.listen<AsyncValue<List<DetectedMod>>>(detectedModsProvider,
         (prev, next) {
+      if (next.hasError && next.error is RpfmNotFoundException) {
+        _handleRpfmUnavailable();
+        return;
+      }
       if ((next.hasValue && !next.isLoading) || next.hasError) {
         unawaited(_runPhaseTwo());
       }

@@ -5,6 +5,7 @@ import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
+import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 import '../shared/repository_providers.dart';
 import '../shared/service_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart'
@@ -56,7 +57,14 @@ class DetectedMods extends _$DetectedMods {
             ref.read(loggingServiceProvider).debug('Cached mods for game: $gameCode (${result.mods.length} mods)');
             return result.mods;
           },
-          err: (_) => <DetectedMod>[],
+          err: (error) {
+            // Surface RPFM-unavailable so the boot dialog can prompt the user
+            // to fix the path in Settings instead of silently showing 0 mods.
+            if (error is RpfmNotFoundException) {
+              throw error;
+            }
+            return <DetectedMod>[];
+          },
         );
       }
     }
