@@ -85,6 +85,10 @@ dependencies:
   timeago: ^3.7.0
   url_launcher: ^6.3.1
   intl: ^0.20.1
+
+  # i18n
+  slang: ^4.0.0
+  slang_flutter: ^4.0.0
   cached_network_image: ^3.4.1
 
   # File Processing
