@@ -87,13 +87,13 @@ const List<NavGroup> navigationTree = [
       selectedIcon: FluentIcons.database_24_filled,
     ),
     NavItem(
-      label: 'Game Files',
+      label: 'Game Translation',
       route: AppRoutes.gameFiles,
       icon: FluentIcons.globe_24_regular,
       selectedIcon: FluentIcons.globe_24_filled,
     ),
     NavItem(
-      label: 'Compile',
+      label: 'Pack Compilation',
       route: AppRoutes.packCompilation,
       icon: FluentIcons.box_multiple_24_regular,
       selectedIcon: FluentIcons.box_multiple_24_filled,

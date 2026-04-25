@@ -76,7 +76,7 @@ class _PackCompilationListScreenState
           HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.archive_multiple_24_regular,
-              title: 'Pack compilations',
+              title: 'Pack Compilation',
               countLabel: '${filtered.length} / ${all.length}',
             ),
           ),
