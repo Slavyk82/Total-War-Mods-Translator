@@ -247,6 +247,7 @@ class _GlossaryEntryEditorDialogState
             targetTerm: _targetTermController.text.trim(),
             caseSensitive: _caseSensitive,
             notes: notes,
+            existingEntry: widget.entry,
           );
 
       if (!mounted) return;

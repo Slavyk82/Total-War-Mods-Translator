@@ -224,10 +224,11 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
     required String targetTerm,
     bool caseSensitive = false,
     String? notes,
+    GlossaryEntry? existingEntry,
   }) async {
     final logging = ref.read(loggingServiceProvider);
     logging.debug('[GlossaryEntryEditor.save] Starting save operation', {
-      'mode': state != null ? 'UPDATE' : 'ADD NEW',
+      'mode': existingEntry != null ? 'UPDATE' : 'ADD NEW',
       'glossaryId': glossaryId,
       'targetLanguageCode': targetLanguageCode,
       'sourceTerm': sourceTerm,
@@ -237,12 +238,12 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
 
     final service = ref.read(glossaryServiceProvider);
 
-    if (state != null) {
+    if (existingEntry != null) {
       // Update existing entry
       logging.debug('[GlossaryEntryEditor.save] Updating existing entry', {
-        'entryId': state!.id,
+        'entryId': existingEntry.id,
       });
-      final updated = state!.copyWith(
+      final updated = existingEntry.copyWith(
         sourceTerm: sourceTerm,
         targetTerm: targetTerm,
         caseSensitive: caseSensitive,
