@@ -13,7 +13,7 @@ import '../../../helpers/fakes/fake_token_calculator.dart';
 // OpenAI-compatible API (/chat/completions, Bearer auth, choices[0].message
 // .content), so these tests mirror openai_provider_test.dart while pinning
 // DeepSeek-specific payload quirks (max_tokens vs max_completion_tokens,
-// default model deepseek-chat) and the wider error-mapping branches
+// default model deepseek-v4-flash) and the wider error-mapping branches
 // (insufficient_quota -> LlmQuotaException, context_length_exceeded ->
 // LlmTokenLimitException). Retry scheduling is owned by LlmRetryHandler and
 // is out of scope here.
@@ -30,7 +30,7 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
           'ui_subtitle': 'Welcome back',
         },
     systemPrompt: 'Translate videogame UI strings.',
-    modelName: 'deepseek-chat',
+    modelName: 'deepseek-v4-flash',
     maxTokens: 4096,
     temperature: 0.2,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
@@ -71,7 +71,7 @@ void main() {
       final successBody = <String, dynamic>{
         'id': 'chatcmpl-abc123',
         'object': 'chat.completion',
-        'model': 'deepseek-chat',
+        'model': 'deepseek-v4-flash',
         'choices': [
           {
             'index': 0,
@@ -101,7 +101,7 @@ void main() {
         'ui_title': 'Bonjour le monde',
         'ui_subtitle': 'Bon retour',
       });
-      expect(response.modelName, 'deepseek-chat');
+      expect(response.modelName, 'deepseek-v4-flash');
       expect(response.inputTokens, 42);
       expect(response.outputTokens, 17);
       expect(response.totalTokens, 59);
@@ -121,7 +121,7 @@ void main() {
       expect(captured[0], '/chat/completions');
 
       final payload = captured[1] as Map<String, dynamic>;
-      expect(payload['model'], 'deepseek-chat');
+      expect(payload['model'], 'deepseek-v4-flash');
       expect(payload['response_format'], {'type': 'json_object'});
       // DeepSeek uses max_tokens (not max_completion_tokens like OpenAI).
       expect(payload['max_tokens'], 4096);
@@ -160,7 +160,7 @@ void main() {
       final successBody = <String, dynamic>{
         'id': 'chatcmpl-test',
         'object': 'chat.completion',
-        'model': 'deepseek-chat',
+        'model': 'deepseek-v4-flash',
         'choices': [
           {
             'index': 0,
@@ -297,7 +297,7 @@ void main() {
       // a TypeError/cast failure bubble up to the caller.
       final malformedBody = <String, dynamic>{
         'id': 'chatcmpl-broken',
-        'model': 'deepseek-chat',
+        'model': 'deepseek-v4-flash',
         'usage': {
           'prompt_tokens': 1,
           'completion_tokens': 0,

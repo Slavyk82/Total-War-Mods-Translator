@@ -14,8 +14,8 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 /// Uses OpenAI-compatible API format with some differences:
 /// - Base URL: https://api.deepseek.com
 /// - Uses max_tokens parameter (not max_completion_tokens)
-/// - Model: deepseek-chat (DeepSeek-V3.2)
-/// - Max output: Default 4K, Maximum 8K tokens
+/// - Models: deepseek-v4-flash (default), deepseek-v4-pro
+/// - Context window: 1M tokens; max output: up to 384K tokens
 class DeepSeekProvider implements ILlmProvider {
   final Dio _dio;
   final TokenCalculator _tokenCalculator;
@@ -105,7 +105,7 @@ class DeepSeekProvider implements ILlmProvider {
     try {
       // Make a minimal request to validate API key
       final payload = <String, dynamic>{
-        'model': model ?? 'deepseek-chat',
+        'model': model ?? 'deepseek-v4-flash',
         'messages': [
           {'role': 'user', 'content': 'Hi'}
         ],
@@ -294,8 +294,9 @@ class DeepSeekProvider implements ILlmProvider {
       'content': _buildUserMessage(request),
     });
 
-    final modelName = request.modelName ?? 'deepseek-chat';
-    // DeepSeek default max output is 4K, maximum is 8K
+    final modelName = request.modelName ?? 'deepseek-v4-flash';
+    // DeepSeek v4 supports up to 384K output tokens; default to 4K like the
+    // other providers — callers should pass an explicit maxTokens for long jobs.
     final maxTokens = request.maxTokens ?? 4096;
 
     final payload = <String, dynamic>{

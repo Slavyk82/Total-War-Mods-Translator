@@ -26,6 +26,9 @@ import 'migration_projects_filter_indexes.dart';
 import 'migration_glossary_game_code_partial.dart';
 import 'migration_cascade_project_updated_at.dart';
 import 'migration_projects_updated_at_trigger_scope.dart';
+import 'migration_deepseek_v4_models.dart';
+import 'migration_openai_v5_4_5_5_models.dart';
+import 'migration_anthropic_opus47_sonnet46.dart';
 
 /// Registry of all database migrations.
 ///
@@ -64,6 +67,9 @@ class MigrationRegistry {
       GlossaryGameCodePartialMigration(), // Priority 130 — game-specific glossary refactor
       CascadeProjectUpdatedAtMigration(), // Priority 140 — adds projects.updated_at cascade to progress trigger
       ProjectsUpdatedAtTriggerScopeMigration(), // Priority 150 — restricts trg_projects_updated_at to content columns
+      DeepSeekV4ModelsMigration(), // Priority 160 — DeepSeek v3.2 → v4 (flash + pro), archives deepseek-chat
+      OpenAiGpt5xModelsMigration(), // Priority 170 — OpenAI gpt-5.1 → gpt-5.5 (default) + gpt-5.4
+      AnthropicOpus47Sonnet46Migration(), // Priority 180 — Anthropic adds Opus 4.7 + Sonnet 4.6 (default), archives Sonnet 4.5
     ];
 
     // Sort by priority (lower numbers first)

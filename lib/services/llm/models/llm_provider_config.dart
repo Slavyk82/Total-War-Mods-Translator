@@ -62,12 +62,14 @@ class LlmProviderConfig {
       );
 
   /// OpenAI configuration
+  /// API Documentation: https://developers.openai.com/api/docs/models
+  /// Models: gpt-5.5 (default), gpt-5.4 (1M context, 128K max output)
   static LlmProviderConfig get openai => LlmProviderConfig(
         providerCode: 'openai',
         providerName: 'OpenAI',
         apiBaseUrl: 'https://api.openai.com/v1',
         supportsStreaming: true,
-        maxTokensPerRequest: 128000,
+        maxTokensPerRequest: 1000000, // 1M context window for gpt-5.4 / 5.5
         defaultRateLimitRpm: 500,
         defaultRateLimitTpm: 150000,
         retryConfig: RetryConfig.defaultConfig,
@@ -88,12 +90,13 @@ class LlmProviderConfig {
   /// DeepSeek configuration
   /// API Documentation: https://api-docs.deepseek.com/
   /// Uses OpenAI-compatible API format
+  /// Models: deepseek-v4-flash, deepseek-v4-pro (1M context, 384K max output)
   static LlmProviderConfig get deepseek => LlmProviderConfig(
         providerCode: 'deepseek',
         providerName: 'DeepSeek',
         apiBaseUrl: 'https://api.deepseek.com',
         supportsStreaming: true,
-        maxTokensPerRequest: 64000, // Context window for deepseek-chat
+        maxTokensPerRequest: 1000000, // 1M context window for v4 models
         defaultRateLimitRpm: 60,
         defaultRateLimitTpm: 100000,
         retryConfig: RetryConfig.defaultConfig,
