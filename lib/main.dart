@@ -3,6 +3,8 @@ import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:twmt/providers/theme_name_provider.dart';
@@ -84,7 +86,24 @@ void main() async {
     // Register app lifecycle observer for proper cleanup
     WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
 
-    runApp(const ProviderScope(child: MyApp()));
+    // Apply persisted app-UI locale (or fall back to device locale).
+    final localePrefs = await SharedPreferences.getInstance();
+    final savedLocaleCode = localePrefs.getString('twmt_app_locale');
+    if (savedLocaleCode != null) {
+      final match = AppLocale.values.firstWhere(
+        (l) => l.languageCode == savedLocaleCode,
+        orElse: () => AppLocale.en,
+      );
+      await LocaleSettings.setLocale(match);
+    } else {
+      await LocaleSettings.useDeviceLocale();
+    }
+
+    runApp(
+      TranslationProvider(
+        child: const ProviderScope(child: MyApp()),
+      ),
+    );
   }, (Object error, StackTrace stack) {
     // If ServiceLocator already initialized, route through the logger;
     // otherwise fall back to debugPrint so early errors are not swallowed.
