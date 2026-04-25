@@ -101,7 +101,8 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                   hint:
                       'e.g., Always use formal language and avoid contractions...',
                   enabled: true,
-                  maxLines: 8,
+                  minLines: 10,
+                  maxLines: 14,
                   onChanged: (_) {
                     if (_errorText != null) {
                       setState(() => _errorText = null);

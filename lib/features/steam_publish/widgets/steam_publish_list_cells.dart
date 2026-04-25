@@ -31,7 +31,7 @@ const List<ListRowColumn> steamPublishColumns = [
   ListRowColumn.fixed(40),  // checkbox
   ListRowColumn.fixed(80),  // cover
   ListRowColumn.flex(3),    // title + filename
-  ListRowColumn.fixed(280), // steam id — fits "Paste Workshop URL or ID..." hint + 2-step note
+  ListRowColumn.fixed(180), // steam id (new)
   ListRowColumn.fixed(100), // subs
   ListRowColumn.fixed(160), // status
   ListRowColumn.fixed(180), // last published — fits "Outdated · 12 months"
