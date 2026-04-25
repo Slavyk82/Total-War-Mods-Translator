@@ -752,6 +752,44 @@ final paginatedProjectsProvider = FutureProvider<List<ProjectWithDetails>>((ref)
   return ref.watch(filteredProjectsProvider.future);
 });
 
+/// Counts of projects matching each [ProjectQuickFilter].
+///
+/// Computed against the full, unfiltered project list so each pill shows the
+/// same total regardless of the currently selected filter — mirroring the
+/// behavior of the Mods screen filter pills.
+final projectQuickFilterCountsProvider =
+    FutureProvider<Map<ProjectQuickFilter, int>>((ref) async {
+  final all = await ref.watch(projectsWithDetailsProvider.future);
+  var needsUpdate = 0;
+  var needsReview = 0;
+  var incomplete = 0;
+  var hasComplete = 0;
+  var exported = 0;
+  var notExported = 0;
+  var exportOutdated = 0;
+  for (final p in all) {
+    if (p.hasUpdates) needsUpdate++;
+    if (p.hasNeedsReviewUnits) needsReview++;
+    if (!p.isFullyTranslated) incomplete++;
+    if (p.hasAtLeastOneCompleteLanguage) hasComplete++;
+    if (p.hasBeenExported) {
+      exported++;
+    } else {
+      notExported++;
+    }
+    if (p.isModifiedSinceLastExport) exportOutdated++;
+  }
+  return {
+    ProjectQuickFilter.needsUpdate: needsUpdate,
+    ProjectQuickFilter.needsReview: needsReview,
+    ProjectQuickFilter.incomplete: incomplete,
+    ProjectQuickFilter.hasCompleteLanguage: hasComplete,
+    ProjectQuickFilter.exported: exported,
+    ProjectQuickFilter.notExported: notExported,
+    ProjectQuickFilter.exportOutdated: exportOutdated,
+  };
+});
+
 /// Find mod preview image in the mod directory.
 ///
 /// Searches for images in a specific priority order:

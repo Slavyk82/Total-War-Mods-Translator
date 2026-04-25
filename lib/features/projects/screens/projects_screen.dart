@@ -135,11 +135,14 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final currentFilter = ref.watch(
       projectsFilterProvider.select((s) => s.quickFilter),
     );
+    final counts =
+        ref.watch(projectQuickFilterCountsProvider).value ?? const {};
 
     FilterPill pill(String label, ProjectQuickFilter filter, String tooltip) {
       return FilterPill(
         label: label,
         selected: currentFilter == filter,
+        count: counts[filter],
         tooltip: tooltip,
         onToggle: () {
           ref.read(projectsFilterProvider.notifier).setQuickFilter(
@@ -173,7 +176,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           TooltipStrings.projectsFilterIncomplete,
         ),
         pill(
-          'Has Complete',
+          'Completed',
           ProjectQuickFilter.hasCompleteLanguage,
           TooltipStrings.projectsFilterHasComplete,
         ),
@@ -564,6 +567,7 @@ class _StaticHeaderLabel extends StatelessWidget {
     final tokens = context.tokens;
     return Text(
       label.toUpperCase(),
+      textAlign: TextAlign.center,
       style: tokens.fontMono.copyWith(
         fontSize: 11,
         color: tokens.textDim,
