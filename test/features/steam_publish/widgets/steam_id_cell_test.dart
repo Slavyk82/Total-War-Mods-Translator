@@ -187,6 +187,82 @@ void main() {
   });
 
   testWidgets(
+    'Save with unparseable input keeps the editor open and never calls update',
+    (tester) async {
+      final fakeRepo = _FakeProjectRepository();
+      when(() => fakeRepo.getById(any())).thenAnswer(
+        (_) async => Ok<Project, TWMTDatabaseException>(
+          Project(
+            id: 'p1',
+            name: 'P1',
+            gameInstallationId: 'g',
+            createdAt: 0,
+            updatedAt: 0,
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamIdCell(item: _project())),
+        theme: AppTheme.atelierDarkTheme,
+        overrides: [projectRepositoryProvider.overrideWithValue(fakeRepo)],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Set Workshop id'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'not-a-url');
+      await tester.tap(find.byTooltip('Save Workshop id'));
+      // Pump past the toast's 4-second auto-dismiss so its `Future.delayed`
+      // doesn't leak into the next test as a pending timer.
+      await tester.pumpAndSettle(const Duration(seconds: 5));
+
+      // Editor stays open so the user can correct the input without re-typing.
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byTooltip('Save Workshop id'), findsOneWidget);
+      verifyNever(() => fakeRepo.update(any()));
+    },
+  );
+
+  testWidgets(
+    'Save surfaces a failure when the repository throws and keeps the editor open',
+    (tester) async {
+      final fakeRepo = _FakeProjectRepository();
+      when(() => fakeRepo.getById('p1')).thenAnswer(
+        (_) async => Ok<Project, TWMTDatabaseException>(
+          Project(
+            id: 'p1',
+            name: 'P1',
+            gameInstallationId: 'g',
+            createdAt: 0,
+            updatedAt: 0,
+          ),
+        ),
+      );
+      when(() => fakeRepo.update(any())).thenThrow(Exception('db down'));
+
+      await tester.pumpWidget(createThemedTestableWidget(
+        Scaffold(body: SteamIdCell(item: _project())),
+        theme: AppTheme.atelierDarkTheme,
+        overrides: [projectRepositoryProvider.overrideWithValue(fakeRepo)],
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Set Workshop id'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), '3456789012');
+      await tester.tap(find.byTooltip('Save Workshop id'));
+      // Pump past the toast's 4-second auto-dismiss to drain its pending timer.
+      await tester.pumpAndSettle(const Duration(seconds: 5));
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byTooltip('Save Workshop id'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'State B (pack + no id) auto-opens the editor and shows the 2-step hint',
     (tester) async {
       await tester.pumpWidget(createThemedTestableWidget(
