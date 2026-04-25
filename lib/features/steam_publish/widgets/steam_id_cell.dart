@@ -63,6 +63,13 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
+          _iconButton(
+            context: context,
+            icon: FluentIcons.edit_24_regular,
+            tooltip: hasId ? 'Edit Workshop id' : 'Set Workshop id',
+            onTap: _beginEdit,
+          ),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               hasId ? id : '—',
@@ -73,13 +80,6 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
                 color: hasId ? tokens.textMid : tokens.textFaint,
               ),
             ),
-          ),
-          const SizedBox(width: 6),
-          _iconButton(
-            context: context,
-            icon: FluentIcons.edit_24_regular,
-            tooltip: hasId ? 'Edit Workshop id' : 'Set Workshop id',
-            onTap: _beginEdit,
           ),
         ],
       ),
