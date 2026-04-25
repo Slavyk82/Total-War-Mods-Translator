@@ -1,0 +1,21 @@
+{
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "add": "Ajouter",
+    "remove": "Retirer",
+    "refresh": "Actualiser",
+    "close": "Fermer",
+    "back": "Retour",
+    "confirm": "Confirmer",
+    "apply": "Appliquer",
+    "reset": "Réinitialiser"
+  },
+  "yes": "Oui",
+  "no": "Non",
+  "ok": "OK",
+  "loading": "Chargement…",
+  "error": "Erreur"
+}

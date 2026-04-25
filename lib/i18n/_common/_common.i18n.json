@@ -1,0 +1,21 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "remove": "Remove",
+    "refresh": "Refresh",
+    "close": "Close",
+    "back": "Back",
+    "confirm": "Confirm",
+    "apply": "Apply",
+    "reset": "Reset"
+  },
+  "yes": "Yes",
+  "no": "No",
+  "ok": "OK",
+  "loading": "Loading…",
+  "error": "Error"
+}
