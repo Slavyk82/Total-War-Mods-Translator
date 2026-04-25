@@ -20,7 +20,7 @@ Compilation _c(String id, String name) => Compilation(
       languageId: 'fr',
       gameInstallationId: 'g',
       createdAt: _epoch,
-      updatedAt: _epoch * 1000,
+      updatedAt: _epoch,
     );
 
 CompilationWithDetails _d(String id, String name, int projCount) =>

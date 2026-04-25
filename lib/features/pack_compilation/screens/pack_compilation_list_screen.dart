@@ -243,8 +243,11 @@ class _CompilationRow extends ConsumerWidget {
     final tokens = context.tokens;
     final now = ref.watch(clockProvider)();
     final compilation = details.compilation;
+    // Compilation timestamps are stored as Unix *seconds* (see
+    // `compilation_repository.dart`), so multiply by 1000 before passing
+    // to `DateTime.fromMillisecondsSinceEpoch`.
     final updatedAt =
-        DateTime.fromMillisecondsSinceEpoch(compilation.updatedAt);
+        DateTime.fromMillisecondsSinceEpoch(compilation.updatedAt * 1000);
     final lastGeneratedAt = compilation.lastGeneratedAt;
     // A compilation pack is stale when at least one bundled project was
     // updated after the last successful generation.
@@ -417,7 +420,9 @@ class _PackStatus extends StatelessWidget {
         ),
       );
     }
-    final generated = DateTime.fromMillisecondsSinceEpoch(lastGeneratedAt!);
+    // `lastGeneratedAt` is stored as Unix seconds.
+    final generated =
+        DateTime.fromMillisecondsSinceEpoch(lastGeneratedAt! * 1000);
     final relative = formatRelativeSince(generated, now: now) ?? '—';
     return Text(
       'Last pack: $relative',
