@@ -22,14 +22,16 @@ import '../providers/steam_publish_providers.dart';
 /// 1. checkbox (batch-selection toggle)
 /// 2. cover (pack preview)
 /// 3. title + pack filename mono (flex)
-/// 4. publish state badge
-/// 5. last published / exported (mono)
-/// 6. inline action
+/// 4. subs (Workshop subscriber count)
+/// 5. publish state badge
+/// 6. last published / exported (mono)
+/// 7. inline action
 const List<ListRowColumn> steamPublishColumns = [
-  ListRowColumn.fixed(40), // checkbox
-  ListRowColumn.fixed(80), // cover
-  ListRowColumn.flex(3), // title + filename
-  ListRowColumn.fixed(160), // publish state
+  ListRowColumn.fixed(40),  // checkbox
+  ListRowColumn.fixed(80),  // cover
+  ListRowColumn.flex(3),    // title + filename
+  ListRowColumn.fixed(100), // subs (new)
+  ListRowColumn.fixed(160), // status
   ListRowColumn.fixed(180), // last published — fits "Outdated · 12 months"
   ListRowColumn.fixed(180), // action
 ];
