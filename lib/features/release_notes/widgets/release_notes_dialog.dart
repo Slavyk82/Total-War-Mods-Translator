@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -24,14 +25,14 @@ class ReleaseNotesDialog extends ConsumerWidget {
     final tokens = context.tokens;
     final content = release.body.isNotEmpty
         ? release.body
-        : 'No release notes available for this version.';
+        : t.releaseNotes.dialogs.whatsNew.noNotes;
 
     return TokenDialog(
       icon: FluentIcons.rocket_24_regular,
-      title: "What's New",
+      title: t.releaseNotes.dialogs.whatsNew.title,
       subtitle: release.name.isNotEmpty
           ? release.name
-          : 'Release ${release.version}',
+          : t.releaseNotes.dialogs.whatsNew.releasePrefix(version: release.version),
       width: 720,
       body: SizedBox(
         height: 480,
@@ -78,14 +79,14 @@ class ReleaseNotesDialog extends ConsumerWidget {
       ),
       leadingActions: [
         SmallTextButton(
-          label: 'View on GitHub',
+          label: t.releaseNotes.actions.viewOnGitHub,
           icon: FluentIcons.open_24_regular,
           onTap: () => _handleLinkTap(release.htmlUrl),
         ),
       ],
       actions: [
         SmallTextButton(
-          label: 'Got it',
+          label: t.releaseNotes.actions.gotIt,
           icon: FluentIcons.checkmark_24_regular,
           filled: true,
           onTap: () => _dismissDialog(context, ref),

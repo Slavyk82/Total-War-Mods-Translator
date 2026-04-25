@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -24,9 +25,10 @@ class AllReleaseNotesDialog extends StatelessWidget {
 
     return TokenDialog(
       icon: FluentIcons.history_24_regular,
-      title: 'Release History',
-      subtitle: '${releases.length} release'
-          '${releases.length != 1 ? 's' : ''}',
+      title: t.releaseNotes.dialogs.releaseHistory.title,
+      subtitle: releases.length == 1
+          ? t.releaseNotes.dialogs.releaseHistory.subtitleOne(count: releases.length)
+          : t.releaseNotes.dialogs.releaseHistory.subtitleMany(count: releases.length),
       width: 760,
       body: SizedBox(
         height: 560,
@@ -36,7 +38,7 @@ class AllReleaseNotesDialog extends StatelessWidget {
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.releaseNotes.actions.gotIt,
           filled: true,
           onTap: () => Navigator.of(context).pop(),
         ),
@@ -56,7 +58,7 @@ class AllReleaseNotesDialog extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No release notes available',
+            t.releaseNotes.dialogs.releaseHistory.noNotes,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.textDim,
@@ -190,7 +192,7 @@ class _ReleaseExpansionTileState extends State<_ReleaseExpansionTile> {
                       child: Text(
                         release.name.isNotEmpty
                             ? release.name
-                            : 'Release ${release.version}',
+                            : t.releaseNotes.dialogs.whatsNew.releasePrefix(version: release.version),
                         style: tokens.fontBody.copyWith(
                           fontSize: 13,
                           color: tokens.text,
@@ -222,7 +224,7 @@ class _ReleaseExpansionTileState extends State<_ReleaseExpansionTile> {
                   MarkdownBody(
                     data: release.body.isNotEmpty
                         ? release.body
-                        : 'No release notes available for this version.',
+                        : t.releaseNotes.dialogs.releaseHistory.noReleasesAvailable,
                     selectable: true,
                     shrinkWrap: true,
                     onTapLink: (_, href, _) => _handleLinkTap(href),
@@ -230,7 +232,7 @@ class _ReleaseExpansionTileState extends State<_ReleaseExpansionTile> {
                   ),
                   const SizedBox(height: 10),
                   SmallTextButton(
-                    label: 'View on GitHub',
+                    label: t.releaseNotes.actions.viewOnGitHub,
                     icon: FluentIcons.open_24_regular,
                     onTap: () => _handleLinkTap(release.htmlUrl),
                   ),
