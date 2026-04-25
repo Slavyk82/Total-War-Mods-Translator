@@ -348,7 +348,7 @@ class _PackCompilationEditorScreenState
 
   /// Success popup shown once the pack file has been produced. Displays the
   /// absolute pack path + filename and exposes an "Open folder" action that
-  /// reveals the `.pack` in Windows Explorer.
+  /// opens the containing game `data\` folder in the OS file manager.
   Future<void> _showPackGeneratedDialog(String packPath) {
     final packName = p.basename(packPath);
     final folder = p.dirname(packPath);
@@ -373,7 +373,7 @@ class _PackCompilationEditorScreenState
             SmallTextButton(
               label: 'Open folder',
               icon: FluentIcons.folder_open_24_regular,
-              onTap: () => _revealInExplorer(packPath),
+              onTap: () => _openPackFolder(folder),
             ),
           ],
           actions: [
@@ -388,20 +388,26 @@ class _PackCompilationEditorScreenState
     );
   }
 
-  /// Opens Windows Explorer with the generated pack pre-selected. Falls back
-  /// to opening the containing folder when `explorer /select,` is unavailable
-  /// (e.g. when running on a non-Windows host for tests).
-  void _revealInExplorer(String packPath) {
+  /// Opens the containing folder of the generated pack in the OS file
+  /// manager. Avoids `explorer /select,` because it falls back to the user's
+  /// Documents folder when the path contains commas or spaces.
+  void _openPackFolder(String folder) {
     if (Platform.isWindows) {
       Process.start(
         'explorer',
-        ['/select,$packPath'],
+        [folder],
+        mode: ProcessStartMode.detached,
+      );
+    } else if (Platform.isMacOS) {
+      Process.start(
+        'open',
+        [folder],
         mode: ProcessStartMode.detached,
       );
     } else {
       Process.start(
         'xdg-open',
-        [p.dirname(packPath)],
+        [folder],
         mode: ProcessStartMode.detached,
       );
     }
