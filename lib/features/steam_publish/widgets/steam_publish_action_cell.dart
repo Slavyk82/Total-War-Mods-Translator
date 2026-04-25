@@ -74,12 +74,12 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       return _buildGenerateButton(context);
     }
 
-    // State B is added in Task 7.
+    // State B: pack but no Workshop id — disabled Update + launcher.
     if (!hasPublishedId) {
       return _buildPublishButtons(context, updateDisabled: true);
     }
 
-    // State C.
+    // State C: pack + Workshop id — Update + Open in Steam.
     return _buildPublishButtons(context, updateDisabled: false);
   }
 
@@ -444,18 +444,13 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
 
   // Small square icon button used for inline actions.
   Widget _iconButton({
-    required IconData? icon,
+    required IconData icon,
     required String tooltip,
     required VoidCallback? onTap,
-    bool busy = false,
-    bool accent = false,
   }) {
     return Builder(
       builder: (context) {
         final tokens = context.tokens;
-        final fg = accent ? tokens.accent : tokens.textMid;
-        final borderColor = accent ? tokens.accent : tokens.border;
-        final bg = accent ? tokens.accentBg : tokens.panel2;
         return Tooltip(
           message: tooltip,
           waitDuration: const Duration(milliseconds: 400),
@@ -471,22 +466,11 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                 height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: bg,
-                  border: Border.all(color: borderColor),
+                  color: tokens.panel2,
+                  border: Border.all(color: tokens.border),
                   borderRadius: BorderRadius.circular(tokens.radiusSm),
                 ),
-                child: busy
-                    ? SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: fg,
-                        ),
-                      )
-                    : (icon != null
-                        ? Icon(icon, size: 14, color: fg)
-                        : const SizedBox.shrink()),
+                child: Icon(icon, size: 14, color: tokens.textMid),
               ),
             ),
           ),
