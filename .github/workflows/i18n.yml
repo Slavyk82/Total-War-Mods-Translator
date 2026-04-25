@@ -1,0 +1,44 @@
+name: i18n
+
+on:
+  pull_request:
+    paths:
+      - 'lib/i18n/**'
+      - 'slang.yaml'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'test/i18n/**'
+      - '.github/workflows/i18n.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/i18n/**'
+      - 'slang.yaml'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - 'test/i18n/**'
+      - '.github/workflows/i18n.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Riverpod and slang code
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          dart run slang
+
+      - name: Run slang analyze
+        run: dart run slang analyze
+
+      - name: Run i18n tests
+        run: flutter test test/i18n
