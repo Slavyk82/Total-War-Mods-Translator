@@ -87,6 +87,21 @@ To add namespace `my_feature`:
   `intl` BEFORE injecting them; never inside the template.
 - **Plurals**: use slang's `one`/`other` map syntax.
 - **Never localize**: LLM system prompts, `assets/flags/*` filenames.
+- **Tone (T-V distinction)**: when the target language has both an
+  informal and a formal second-person form, ALWAYS use the **formal**
+  one. The app addresses the user with the polite register.
+  - French: `vous` / `vos` / `votre`, never `tu` / `tes` / `ton`.
+  - German: `Sie` / `Ihr`, never `du` / `dein`.
+  - Spanish: `usted`, never `tú`.
+  - Italian: `Lei`, never `tu`.
+  - Polish: `Pan` / `Pani`, never `ty`.
+  - Russian: `Вы`, never `ты`.
+  - Portuguese: `você` (BR) / `o senhor` / `a senhora` (PT formal),
+    never `tu`.
+  - Languages with no T-V distinction (English, Japanese honorifics
+    aside, Mandarin in modern app contexts): no action needed.
+  Reformulate in the impersonal voice when both forms feel awkward
+  ("Saisir un mot-clé" rather than "Vous pouvez saisir un mot-clé").
 
 ## Tracking incomplete locales
 
