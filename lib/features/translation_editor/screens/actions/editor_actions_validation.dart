@@ -8,6 +8,7 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
+import '../../../../services/validation/validation_schema.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
 import 'editor_actions_base.dart';
@@ -248,7 +249,9 @@ mixin EditorActionsValidation on EditorActionsBase {
             versionId: version.id,
             status: newStatus.toDbValue,
             validationIssues: newValidationIssues,
-            schemaVersion: 1,
+            // Stamp the current schema version so the startup rescan
+            // doesn't re-classify these freshly-validated rows as legacy.
+            schemaVersion: kCurrentValidationSchemaVersion,
           ));
 
           if (newStatus == TranslationVersionStatus.needsReview) {

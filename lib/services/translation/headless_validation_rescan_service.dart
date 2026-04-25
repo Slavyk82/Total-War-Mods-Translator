@@ -4,6 +4,7 @@ import 'package:riverpod/riverpod.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/services/validation/validation_schema.dart';
 
 /// Summary returned by [runHeadlessValidationRescan].
 typedef RescanResult = ({
@@ -136,7 +137,9 @@ Future<RescanResult> runHeadlessValidationRescan({
         versionId: version.id,
         status: newStatus.toDbValue,
         validationIssues: newValidationIssues,
-        schemaVersion: 1,
+        // Stamp the current schema version so the startup rescan
+        // doesn't re-classify these freshly-validated rows as legacy.
+        schemaVersion: kCurrentValidationSchemaVersion,
       ));
 
       if (newStatus == TranslationVersionStatus.needsReview) {
