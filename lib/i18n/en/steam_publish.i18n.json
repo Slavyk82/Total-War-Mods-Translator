@@ -245,11 +245,11 @@
   },
   "onboarding": {
     "title": "Publishing on the Steam Workshop",
-    "description": "Before publishing through this tool, you need to create your Workshop item through the in-game launcher for the first publication.",
-    "step1": "Open the game launcher and navigate to the Workshop section.",
-    "step2": "Upload your mod for the first time using the in-game tool — this creates the Workshop item and assigns it a Steam ID.",
-    "step3": "Copy the Steam ID from the Workshop URL and paste it here using the Steam ID column.",
-    "step4": "From that point on, you can update your Workshop item directly from this tool.",
+    "description": "This app cannot create a brand-new Workshop entry directly. A bug in the game launcher prevents mods uploaded outside of it from appearing in subscribers' launchers, so the very first publication of a translation mod must go through the original game launcher. Every subsequent update can then be pushed straight from this screen.",
+    "step1": "Publish the mod once through the original game launcher.",
+    "step2": "Copy the Workshop ID assigned by Steam: it appears in the mod's Workshop URL (e.g. \"3661242610\").",
+    "step3": "Paste that ID into the dedicated field for this mod in the app.",
+    "step4": "Use the \"Update\" button to push every future translation update from this screen.",
     "dontShowAgain": "Don't show this again",
     "dismiss": "Dismiss"
   },

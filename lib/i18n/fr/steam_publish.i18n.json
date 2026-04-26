@@ -245,11 +245,11 @@
   },
   "onboarding": {
     "title": "Publier sur le Steam Workshop",
-    "description": "Avant de publier via cet outil, vous devez créer votre élément Workshop via le lanceur du jeu pour la première publication.",
-    "step1": "Ouvrez le lanceur du jeu et accédez à la section Workshop.",
-    "step2": "Uploadez votre mod pour la première fois via l'outil intégré — cela crée l'élément Workshop et lui attribue un ID Steam.",
-    "step3": "Copiez l'ID Steam depuis l'URL Workshop et collez-le ici via la colonne ID Steam.",
-    "step4": "À partir de là, vous pouvez mettre à jour votre élément Workshop directement depuis cet outil.",
+    "description": "Cette application ne peut pas créer directement une nouvelle entrée Workshop. Un bug du lanceur du jeu empêche les mods téléversés en dehors de celui-ci d'apparaître dans le lanceur des abonnés ; la toute première publication d'un mod de traduction doit donc passer par le lanceur d'origine du jeu. Toutes les mises à jour suivantes pourront ensuite être envoyées directement depuis cet écran.",
+    "step1": "Publiez le mod une première fois via le lanceur d'origine du jeu.",
+    "step2": "Copiez l'ID Workshop attribué par Steam : il apparaît dans l'URL Workshop du mod (par ex. « 3661242610 »).",
+    "step3": "Collez cet ID dans le champ dédié à ce mod dans l'application.",
+    "step4": "Utilisez le bouton « Mettre à jour » pour envoyer toutes les futures mises à jour de traduction depuis cet écran.",
     "dontShowAgain": "Ne plus afficher",
     "dismiss": "Fermer"
   },
