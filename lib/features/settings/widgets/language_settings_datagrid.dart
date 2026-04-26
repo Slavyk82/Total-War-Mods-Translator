@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
@@ -86,7 +87,7 @@ class _LanguageSettingsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Default',
+                  t.settings.general.languagePreferences.grid.columnDefault,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -102,7 +103,7 @@ class _LanguageSettingsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Code',
+                  t.settings.general.languagePreferences.grid.columnCode,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -117,7 +118,7 @@ class _LanguageSettingsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Language',
+                  t.settings.general.languagePreferences.grid.columnLanguage,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -176,7 +177,7 @@ class _LanguageSettingsDataGridState
             ),
             const SizedBox(height: 8),
             Text(
-              'No languages available',
+              t.settings.general.languagePreferences.grid.emptyTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.textMid,
@@ -206,7 +207,7 @@ class _LanguageSettingsDataGridState
             ),
             const SizedBox(height: 8),
             Text(
-              'Error loading languages',
+              t.settings.general.languagePreferences.grid.errorTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.err,
@@ -228,10 +229,10 @@ class _LanguageSettingsDataGridState
       if (success) {
         FluentToast.success(
           context,
-          '${language.name} set as default language',
+          t.settings.general.languagePreferences.toastsGrid.setDefaultSuccess(name: language.name),
         );
       } else {
-        FluentToast.error(context, error ?? 'Failed to set default language');
+        FluentToast.error(context, error ?? t.settings.general.languagePreferences.toastsGrid.setDefaultFailed);
       }
     }
   }
@@ -240,10 +241,10 @@ class _LanguageSettingsDataGridState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Language',
-        message: 'Are you sure you want to delete "${language.name}"?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+        title: t.settings.general.languagePreferences.dialogs.deleteLanguage.title,
+        message: t.settings.general.languagePreferences.dialogs.deleteLanguage.message(name: language.name),
+        warningMessage: t.settings.general.languagePreferences.dialogs.deleteLanguage.warning,
+        confirmLabel: t.settings.general.languagePreferences.dialogs.deleteLanguage.confirmLabel,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -257,9 +258,9 @@ class _LanguageSettingsDataGridState
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Language deleted successfully');
+          FluentToast.success(context, t.settings.general.languagePreferences.toastsGrid.deleteSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to delete language');
+          FluentToast.error(context, error ?? t.settings.general.languagePreferences.toastsGrid.deleteFailed);
         }
       }
     }

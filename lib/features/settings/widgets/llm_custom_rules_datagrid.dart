@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
@@ -86,7 +87,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Active',
+                  t.settings.customRules.grid.columnActive,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -101,7 +102,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Rule Text',
+                  t.settings.customRules.grid.columnRuleText,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -117,7 +118,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Actions',
+                  t.settings.customRules.grid.columnActions,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -161,7 +162,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             ),
             const SizedBox(height: 8),
             Text(
-              'No custom rules defined',
+              t.settings.customRules.grid.emptyTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.textMid,
@@ -169,7 +170,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             ),
             const SizedBox(height: 4),
             Text(
-              'Add global rules to customize all translation prompts',
+              t.settings.customRules.grid.emptySubtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -199,7 +200,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
             ),
             const SizedBox(height: 8),
             Text(
-              'Error loading rules',
+              t.settings.customRules.grid.errorTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.err,
@@ -226,9 +227,9 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Rule updated successfully');
+          FluentToast.success(context, t.settings.customRules.toasts.updateSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to update rule');
+          FluentToast.error(context, error ?? t.settings.customRules.toasts.updateFailed);
         }
       }
     }
@@ -237,11 +238,11 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
   Future<void> _deleteRule(LlmCustomRule rule) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Delete Rule',
-        message: 'Are you sure you want to delete this custom rule?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+      builder: (_) => TokenConfirmDialog(
+        title: t.settings.customRules.deleteDialog.title,
+        message: t.settings.customRules.deleteDialog.message,
+        warningMessage: t.settings.customRules.deleteDialog.warning,
+        confirmLabel: t.settings.customRules.deleteDialog.confirmLabel,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -253,9 +254,9 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Rule deleted successfully');
+          FluentToast.success(context, t.settings.customRules.toasts.deleteSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to delete rule');
+          FluentToast.error(context, error ?? t.settings.customRules.toasts.deleteFailed);
         }
       }
     }
@@ -266,7 +267,7 @@ class _LlmCustomRulesDataGridState extends ConsumerState<LlmCustomRulesDataGrid>
         await ref.read(llmCustomRulesProvider.notifier).toggleEnabled(rule.id);
 
     if (mounted && !success) {
-      FluentToast.error(context, error ?? 'Failed to toggle rule');
+      FluentToast.error(context, error ?? t.settings.customRules.toasts.toggleFailed);
     }
   }
 }

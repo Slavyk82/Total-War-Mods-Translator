@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/settings_providers.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -54,7 +55,7 @@ class LlmModelsList extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Error loading models: $error',
+                t.settings.llmProviders.models.errorLoading(error: error),
                 style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
               ),
             ),
@@ -82,7 +83,7 @@ class LlmModelsList extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'No models available for this provider',
+                    t.settings.llmProviders.models.noModels,
                     style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
                   ),
                 ),
@@ -123,7 +124,7 @@ class LlmModelsList extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Check models to enable them. Click the star to set as global default.',
+              t.settings.llmProviders.models.footer,
               style: tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
             ),
           ],

@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "Settings",
+    "tabs": {
+      "general": "General",
+      "folders": "Folders",
+      "llmProviders": "LLM Providers"
+    }
+  },
+  "errors": {
+    "loadSettings": "Error loading settings: $error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "Database Backup",
+      "sectionSubtitle": "Create backups to protect your data or restore from previous backups.",
+      "cardTitle": "Backup Actions",
+      "processing": "Processing...",
+      "exportTitle": "Export Backup",
+      "exportDescription": "Save your database to a ZIP file",
+      "importTitle": "Import Backup",
+      "importDescription": "Restore database from a backup file",
+      "saveDialogTitle": "Save Database Backup",
+      "openDialogTitle": "Select Backup File",
+      "restoreDialog": {
+        "title": "Restore Complete",
+        "message": "The database has been restored successfully. The application will now restart to apply the changes.",
+        "restartNow": "Restart Now"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "Database Maintenance",
+      "sectionSubtitle": "Tools to maintain and fix database statistics and translation states.",
+      "cardTitle": "Maintenance Actions",
+      "processing": "Processing...",
+      "actions": {
+        "reanalyzeTitle": "Reanalyze Translations",
+        "reanalyzeDescription": "Fix status inconsistencies and detect untranslated units",
+        "clearModCacheTitle": "Clear Mod Update Cache",
+        "clearModCacheDescription": "Remove stale \"pending changes\" badges",
+        "rebuildTmTitle": "Rebuild Translation Memory",
+        "rebuildTmDescription": "Recover missing TM entries from existing translations",
+        "migrateTmHashesTitle": "Migrate Legacy TM Hashes",
+        "migrateTmHashesDescription": "Convert old integer hashes to SHA256 for TM lookup",
+        "resetOnboardingTitle": "Reset onboarding hints",
+        "resetOnboardingDescription": "Bring back the Workshop onboarding card if you hid it"
+      },
+      "toasts": {
+        "onboardingReset": "Onboarding hints will show again."
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "Translation Language Preferences",
+      "sectionSubtitle": "Manage available languages for translations and set the default target language",
+      "addLanguage": "Add Language",
+      "toasts": {
+        "addSuccess": "Language added successfully",
+        "addFailed": "Failed to add language"
+      },
+      "grid": {
+        "columnDefault": "Default",
+        "columnCode": "Code",
+        "columnLanguage": "Language",
+        "customBadge": "Custom",
+        "emptyTitle": "No languages available",
+        "errorTitle": "Error loading languages",
+        "deleteTooltip": "Delete language"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "Delete Language",
+          "message": "Are you sure you want to delete \"$name\"?",
+          "warning": "This action cannot be undone.",
+          "confirmLabel": "Delete"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name set as default language",
+        "setDefaultFailed": "Failed to set default language",
+        "deleteSuccess": "Language deleted successfully",
+        "deleteFailed": "Failed to delete language"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "Game Installations",
+      "sectionSubtitle": "Configure paths to your Total War games",
+      "detectingLabel": "Detecting...",
+      "detectAllButton": "Auto-Detect All Games",
+      "detectAllDescription": "Automatically find all installed Total War games",
+      "detectButton": "Detect",
+      "browseButton": "Browse",
+      "pathHint": "Path to $game installation...",
+      "browseDialogTitle": "Select $game Installation Folder",
+      "toasts": {
+        "gameFound": "Found $game",
+        "gameNotFound": "$game not found",
+        "detectionFailed": "Detection failed: $error",
+        "allFound": "Found $count game(s)",
+        "noneFound": "No games found",
+        "saveError": "Error saving game path: $error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "RPFM Tool",
+      "sectionSubtitle": "Path to RPFM executable for pack file extraction",
+      "executableSubtitle": "RPFM Executable",
+      "schemaSubtitle": "RPFM Schema Folder",
+      "schemaDescription": "Folder containing RPFM schema files (e.g., schema_wh3.ron)",
+      "testButton": "Test",
+      "browseButton": "Browse",
+      "defaultButton": "Default",
+      "browseExeDialogTitle": "Select RPFM Executable",
+      "browseSchemaDialogTitle": "Select RPFM Schema Folder",
+      "toasts": {
+        "enterPathFirst": "Please enter RPFM path first",
+        "testing": "Testing RPFM executable...",
+        "validating": "Validating RPFM executable...",
+        "validatedSuccess": "RPFM v$version validated successfully",
+        "testSuccess": "RPFM v$version is working correctly",
+        "invalidExe": "Invalid RPFM executable: $error",
+        "testFailed": "RPFM test failed: $error",
+        "usernameNotDetected": "Could not detect username",
+        "defaultPathSet": "Set to default schema path",
+        "savePathError": "Error saving RPFM path: $error",
+        "saveSchemaPathError": "Error saving RPFM schema path: $error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Base folder for Steam Workshop content (game IDs will be appended automatically)",
+      "folderSubtitle": "Steam Workshop Base Folder",
+      "detectingLabel": "Detecting...",
+      "detectButton": "Detect",
+      "browseButton": "Browse",
+      "browseDialogTitle": "Select Steam Workshop Folder",
+      "toasts": {
+        "detected": "Workshop folder detected: $path",
+        "notFound": "Workshop folder not found. Please select manually.",
+        "detectionFailed": "Detection failed: $error",
+        "detectionError": "Detection error: $error",
+        "saveError": "Error saving workshop path: $error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "Add Custom Language",
+    "description": "Add a custom language that will be available for translation projects.",
+    "codeLabel": "Language code (ISO 639-1, 2-3 letters)",
+    "nameLabel": "Language name",
+    "codeHint": "e.g., pl, ko, ja",
+    "nameHint": "e.g., Polish, Korean, Japanese",
+    "info": "Custom languages can be deleted later. System languages (English, French, etc.) cannot be modified.",
+    "cancel": "Cancel",
+    "add": "Add",
+    "errors": {
+      "codeRequired": "Language code is required",
+      "codeTooShort": "Code must be at least 2 characters",
+      "codeLettersOnly": "Code must contain only letters",
+      "codeTooLong": "Code must be at most 5 characters",
+      "nameRequired": "Language name is required",
+      "nameTooLong": "Name must be at most 50 characters"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "Restore Database Backup?",
+    "fromLabel": "You are about to restore the database from:",
+    "warningTitle": "Warning: This will replace ALL your current data!",
+    "warningBody": "All projects, translations, glossaries, and settings will be overwritten. This action cannot be undone.",
+    "cancel": "Cancel",
+    "restore": "Restore"
+  },
+  "llmProviders": {
+    "title": "LLM Providers",
+    "subtitle": "Configure API keys and models for translation providers",
+    "advancedSettings": {
+      "title": "Advanced Settings",
+      "rateLimitLabel": "Rate Limit (requests per minute)",
+      "saveError": "Error saving rate limit: $error"
+    },
+    "providerSection": {
+      "subtitle": "Configure API key and models",
+      "apiKeyLabel": "API Key",
+      "apiKeyHint": "Enter API key...",
+      "testConnectionTooltip": "Test connection",
+      "toasts": {
+        "connectionSuccess": "Connection successful!",
+        "connectionFailed": "Connection failed: $error",
+        "saveApiKeyError": "Error saving $provider API key: $error"
+      }
+    },
+    "models": {
+      "headerTitle": "Models",
+      "footer": "Check models to enable them. Click the star to set as global default.",
+      "legend": "Check models to make them available for translations. Click the star to set a model as global default (only one default across all providers).",
+      "errorLoading": "Error loading models: $error",
+      "noModels": "No models available for this provider",
+      "badges": {
+        "default": "Default",
+        "archived": "Archived"
+      },
+      "toasts": {
+        "disabled": "Model disabled",
+        "enabled": "Model enabled",
+        "toggleFailed": "Failed to toggle model: $error",
+        "setDefaultSuccess": "Model set as default",
+        "setDefaultFailed": "Failed to set default: $error"
+      },
+      "dialog": {
+        "titleManage": "Manage $provider Models",
+        "subtitle": "Select which models are available for translations"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "Custom Translation Rules",
+    "accordionSubtitle": "Add custom instructions to translation prompts",
+    "infoText": "Custom rules are appended to every translation prompt sent to the LLM. Use this to define global instructions, terminology guidelines, or translation preferences that apply to all projects.",
+    "addRuleButton": "Add Rule",
+    "toasts": {
+      "addSuccess": "Rule added successfully",
+      "addFailed": "Failed to add rule",
+      "updateSuccess": "Rule updated successfully",
+      "updateFailed": "Failed to update rule",
+      "deleteSuccess": "Rule deleted successfully",
+      "deleteFailed": "Failed to delete rule",
+      "toggleFailed": "Failed to toggle rule"
+    },
+    "grid": {
+      "columnActive": "Active",
+      "columnRuleText": "Rule Text",
+      "columnActions": "Actions",
+      "emptyTitle": "No custom rules defined",
+      "emptySubtitle": "Add global rules to customize all translation prompts",
+      "errorTitle": "Error loading rules",
+      "editTooltip": "Edit rule",
+      "deleteTooltip": "Delete rule"
+    },
+    "editorDialog": {
+      "addTitle": "Add Custom Rule",
+      "editTitle": "Edit Custom Rule",
+      "description": "Enter the rule text that will be appended to every translation prompt. These rules apply globally to all projects.",
+      "ruleTextLabel": "Rule text",
+      "ruleTextHint": "e.g., Always use formal language and avoid contractions...",
+      "tipsTitle": "Tips",
+      "tipsText": "• Be specific and clear in your instructions\n• Use bullet points for multiple rules\n• Rules are appended in order to the translation prompt\n• You can disable rules temporarily without deleting them",
+      "cancel": "Cancel",
+      "save": "Save",
+      "add": "Add",
+      "errors": {
+        "ruleTextRequired": "Please enter a rule text"
+      }
+    },
+    "deleteDialog": {
+      "title": "Delete Rule",
+      "message": "Are you sure you want to delete this custom rule?",
+      "warning": "This action cannot be undone.",
+      "confirmLabel": "Delete"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "Ignored Source Texts",
+    "accordionSubtitle": "Skip specific source texts during translation",
+    "infoText": "Source texts matching these values will be excluded from translation. Note: Fully bracketed texts like [PLACEHOLDER] are automatically skipped. Use this list for custom patterns specific to your mods.",
+    "resetButton": "Reset to Defaults",
+    "addButton": "Add Text",
+    "toasts": {
+      "addSuccess": "Text added successfully",
+      "addFailed": "Failed to add text",
+      "updateSuccess": "Text updated successfully",
+      "updateFailed": "Failed to update text",
+      "deleteSuccess": "Text deleted successfully",
+      "deleteFailed": "Failed to delete text",
+      "resetSuccess": "Reset to defaults successfully",
+      "resetFailed": "Failed to reset to defaults",
+      "toggleFailed": "Failed to toggle text"
+    },
+    "grid": {
+      "columnActive": "Active",
+      "columnSourceText": "Source Text",
+      "columnActions": "Actions",
+      "emptyTitle": "No ignored texts defined",
+      "emptySubtitle": "Add source texts to skip during translation",
+      "errorTitle": "Error loading ignored texts",
+      "editTooltip": "Edit",
+      "deleteTooltip": "Delete"
+    },
+    "editorDialog": {
+      "addTitle": "Add Ignored Text",
+      "editTitle": "Edit Ignored Text",
+      "description": "Enter a source text that should be skipped during translation. Matching is case-insensitive.",
+      "sourceTextLabel": "Source text",
+      "sourceTextHint": "e.g., placeholder, [hidden], etc.",
+      "infoTitle": "Info",
+      "infoText": "• Units matching these texts are excluded from translation\n• Bracketed texts like [unit_name] are automatically skipped\n• Use this for custom placeholders specific to your mods\n• Changes take effect immediately for new translations",
+      "cancel": "Cancel",
+      "save": "Save",
+      "add": "Add",
+      "errors": {
+        "sourceTextRequired": "Please enter a source text"
+      }
+    },
+    "deleteDialog": {
+      "title": "Delete Ignored Text",
+      "message": "Are you sure you want to delete \"$text\"?",
+      "warning": "This action cannot be undone.",
+      "confirmLabel": "Delete"
+    },
+    "resetDialog": {
+      "title": "Reset to Defaults",
+      "message": "This will delete all current ignored texts and restore the default values:\n\n• placeholder\n• dummy\n\nNote: Texts fully enclosed in brackets like [placeholder] are always filtered automatically.\n\nAre you sure you want to continue?",
+      "confirmLabel": "Reset"
+    }
+  }
+}

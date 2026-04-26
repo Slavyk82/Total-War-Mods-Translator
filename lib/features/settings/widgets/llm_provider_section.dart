@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
@@ -45,11 +46,11 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Connection successful!');
+          FluentToast.success(context, t.settings.llmProviders.providerSection.toasts.connectionSuccess);
         } else {
           FluentToast.error(
             context,
-            'Connection failed: ${errorMessage ?? "Unknown error"}',
+            t.settings.llmProviders.providerSection.toasts.connectionFailed(error: errorMessage ?? 'Unknown error'),
           );
         }
       }
@@ -68,13 +69,13 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
       child: SettingsAccordionSection(
         icon: FluentIcons.plug_connected_24_regular,
         title: widget.providerName,
-        subtitle: 'Configure API key and models',
+        subtitle: t.settings.llmProviders.providerSection.subtitle,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // API Key label
             Text(
-              'API Key',
+              t.settings.llmProviders.providerSection.apiKeyLabel,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -87,7 +88,7 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
                 Expanded(
                   child: TokenTextField(
                     controller: widget.apiKeyController,
-                    hint: 'Enter API key...',
+                    hint: t.settings.llmProviders.providerSection.apiKeyHint,
                     enabled: true,
                     obscureText: true,
                     onChanged: (_) => widget.onSaveApiKey(),
@@ -130,7 +131,7 @@ class _TestConnectionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Tooltip(
-      message: 'Test connection',
+      message: t.settings.llmProviders.providerSection.testConnectionTooltip,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor:

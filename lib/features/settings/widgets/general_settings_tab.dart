@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/settings_providers.dart';
@@ -25,7 +26,7 @@ class GeneralSettingsTab extends ConsumerWidget {
       loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Text(
-          'Error loading settings: $error',
+          t.settings.errors.loadSettings(error: error),
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.err,

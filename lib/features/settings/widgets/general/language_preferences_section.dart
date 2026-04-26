@@ -26,14 +26,14 @@ class LanguagePreferencesSection extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Expanded(
+            Expanded(
               child: SettingsSectionHeader(
-                title: 'Translation Language Preferences',
-                subtitle: 'Manage available languages for translations and set the default target language',
+                title: t.settings.general.languagePreferences.sectionTitle,
+                subtitle: t.settings.general.languagePreferences.sectionSubtitle,
               ),
             ),
             SmallTextButton(
-              label: 'Add Language',
+              label: t.settings.general.languagePreferences.addLanguage,
               icon: FluentIcons.add_24_regular,
               tooltip: t.tooltips.settings.addLanguage,
               onTap: () => _showAddLanguageDialog(context, ref),
@@ -64,9 +64,9 @@ class LanguagePreferencesSection extends ConsumerWidget {
 
       if (context.mounted) {
         if (success) {
-          FluentToast.success(context, 'Language added successfully');
+          FluentToast.success(context, t.settings.general.languagePreferences.toasts.addSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to add language');
+          FluentToast.error(context, error ?? t.settings.general.languagePreferences.toasts.addFailed);
         }
       }
     }

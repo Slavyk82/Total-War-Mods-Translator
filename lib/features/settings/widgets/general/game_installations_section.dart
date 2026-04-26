@@ -41,9 +41,9 @@ class _GameInstallationsSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(
-          title: 'Game Installations',
-          subtitle: 'Configure paths to your Total War games',
+        SettingsSectionHeader(
+          title: t.settings.general.gameInstallations.sectionTitle,
+          subtitle: t.settings.general.gameInstallations.sectionSubtitle,
         ),
         const SizedBox(height: 8),
         _buildAutoDetectAllButton(),
@@ -71,14 +71,14 @@ class _GameInstallationsSectionState
     return Row(
       children: [
         SmallTextButton(
-          label: _isDetecting ? 'Detecting...' : 'Auto-Detect All Games',
+          label: _isDetecting ? t.settings.general.gameInstallations.detectingLabel : t.settings.general.gameInstallations.detectAllButton,
           icon: FluentIcons.search_24_regular,
           tooltip: t.tooltips.settings.detectAllGames,
           onTap: _isDetecting ? null : _autoDetectAllGames,
         ),
         const SizedBox(width: 8),
         Text(
-          'Automatically find all installed Total War games',
+          t.settings.general.gameInstallations.detectAllDescription,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -93,14 +93,14 @@ class _GameInstallationsSectionState
     return Row(
       children: [
         SmallTextButton(
-          label: 'Detect',
+          label: t.settings.general.gameInstallations.detectButton,
           icon: FluentIcons.search_24_regular,
           tooltip: t.tooltips.settings.detectGame,
           onTap: _isDetecting ? null : () => _autoDetectGame(game.code),
         ),
         const SizedBox(width: 6),
         SmallTextButton(
-          label: 'Browse',
+          label: t.settings.general.gameInstallations.browseButton,
           icon: FluentIcons.folder_open_24_regular,
           tooltip: t.tooltips.settings.browsePath,
           onTap: () => _selectGamePath(game.code),
@@ -110,7 +110,7 @@ class _GameInstallationsSectionState
           child: TextFormField(
             controller: widget.gamePathControllers[game.code],
             decoration: InputDecoration(
-              hintText: 'Path to ${gameLabel(game.name)} installation...',
+              hintText: t.settings.general.gameInstallations.pathHint(game: gameLabel(game.name)),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(tokens.radiusSm),
               ),
@@ -128,7 +128,7 @@ class _GameInstallationsSectionState
 
   Future<void> _selectGamePath(String gameCode) async {
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select ${_getGameName(gameCode)} Installation Folder',
+      dialogTitle: t.settings.general.gameInstallations.browseDialogTitle(game: _getGameName(gameCode)),
     );
     if (result != null) {
       setState(() => widget.gamePathControllers[gameCode]?.text = result);
@@ -151,19 +151,19 @@ class _GameInstallationsSectionState
             _saveGamePath(gameCode, path);
             if (mounted) {
               FluentToast.success(
-                  context, 'Found ${_getGameName(gameCode)}');
+                  context, t.settings.general.gameInstallations.toasts.gameFound(game: _getGameName(gameCode)));
             }
           } else {
             if (mounted) {
               FluentToast.warning(
-                  context, '${_getGameName(gameCode)} not found');
+                  context, t.settings.general.gameInstallations.toasts.gameNotFound(game: _getGameName(gameCode)));
             }
           }
         },
         err: (error) {
           if (mounted) {
             FluentToast.error(
-                context, 'Detection failed: ${error.message}');
+                context, t.settings.general.gameInstallations.toasts.detectionFailed(error: error.message));
           }
         },
       );
@@ -189,15 +189,15 @@ class _GameInstallationsSectionState
           }
           if (mounted) {
             if (detectedGames.isNotEmpty) {
-              FluentToast.success(context, 'Found ${detectedGames.length} game(s)');
+              FluentToast.success(context, t.settings.general.gameInstallations.toasts.allFound(count: detectedGames.length));
             } else {
-              FluentToast.warning(context, 'No games found');
+              FluentToast.warning(context, t.settings.general.gameInstallations.toasts.noneFound);
             }
           }
         },
         err: (error) {
           if (mounted) {
-            FluentToast.error(context, 'Detection failed: ${error.message}');
+            FluentToast.error(context, t.settings.general.gameInstallations.toasts.detectionFailed(error: error.message));
           }
         },
       );
@@ -214,7 +214,7 @@ class _GameInstallationsSectionState
           .read(generalSettingsProvider.notifier)
           .updateGamePath(gameCode, path);
     } catch (e) {
-      if (mounted) FluentToast.error(context, 'Error saving game path: $e');
+      if (mounted) FluentToast.error(context, t.settings.general.gameInstallations.toasts.saveError(error: e));
     }
   }
 

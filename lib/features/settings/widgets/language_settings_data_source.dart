@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/language.dart';
 
@@ -129,7 +130,7 @@ class LanguageSettingsDataSource extends DataGridSource {
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                'Custom',
+                t.settings.general.languagePreferences.grid.customBadge,
                 style: tokens.fontBody.copyWith(
                   fontSize: 11,
                   color: tokens.accent,
@@ -153,7 +154,7 @@ class LanguageSettingsDataSource extends DataGridSource {
       alignment: Alignment.center,
       child: _ActionButton(
         icon: FluentIcons.delete_24_regular,
-        tooltip: 'Delete language',
+        tooltip: t.settings.general.languagePreferences.grid.deleteTooltip,
         onTap: () => onDelete(language),
         isDestructive: true,
       ),

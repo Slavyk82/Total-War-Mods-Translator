@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
@@ -27,10 +28,9 @@ class BackupSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(
-          title: 'Database Backup',
-          subtitle:
-              'Create backups to protect your data or restore from previous backups.',
+        SettingsSectionHeader(
+          title: t.settings.general.backup.sectionTitle,
+          subtitle: t.settings.general.backup.sectionSubtitle,
         ),
         const SizedBox(height: 16),
         _buildBackupCard(context, ref, backupState),
@@ -66,7 +66,7 @@ class BackupSection extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Backup Actions',
+                  t.settings.general.backup.cardTitle,
                   style: tokens.fontBody.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -94,7 +94,7 @@ class BackupSection extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  state.progressMessage ?? 'Processing...',
+                  state.progressMessage ?? t.settings.general.backup.processing,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.text,
@@ -107,8 +107,8 @@ class BackupSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.arrow_export_24_regular,
-              title: 'Export Backup',
-              description: 'Save your database to a ZIP file',
+              title: t.settings.general.backup.exportTitle,
+              description: t.settings.general.backup.exportDescription,
               onTap: () => _exportBackup(context, ref),
               isPrimary: true,
             ),
@@ -117,8 +117,8 @@ class BackupSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.arrow_import_24_regular,
-              title: 'Import Backup',
-              description: 'Restore database from a backup file',
+              title: t.settings.general.backup.importTitle,
+              description: t.settings.general.backup.importDescription,
               onTap: () => _importBackup(context, ref),
               isPrimary: false,
             ),
@@ -247,7 +247,7 @@ class BackupSection extends ConsumerWidget {
     final suggestedName = backupService.generateBackupFilename();
 
     final result = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save Database Backup',
+      dialogTitle: t.settings.general.backup.saveDialogTitle,
       fileName: suggestedName,
       type: FileType.custom,
       allowedExtensions: ['zip'],
@@ -266,7 +266,7 @@ class BackupSection extends ConsumerWidget {
 
   Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Select Backup File',
+      dialogTitle: t.settings.general.backup.openDialogTitle,
       type: FileType.custom,
       allowedExtensions: ['zip'],
     );
@@ -329,7 +329,7 @@ class BackupSection extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Restore Complete',
+                t.settings.general.backup.restoreDialog.title,
                 style: tokens.fontDisplay.copyWith(
                   fontSize: 20,
                   color: tokens.text,
@@ -339,8 +339,7 @@ class BackupSection extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'The database has been restored successfully. '
-                'The application will now restart to apply the changes.',
+                t.settings.general.backup.restoreDialog.message,
                 textAlign: TextAlign.center,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
@@ -349,7 +348,7 @@ class BackupSection extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               SmallTextButton(
-                label: 'Restart Now',
+                label: t.settings.general.backup.restoreDialog.restartNow,
                 filled: true,
                 onTap: () => Navigator.of(context).pop(),
               ),

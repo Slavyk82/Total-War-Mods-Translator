@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart'
     hide settingsServiceProvider;
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
@@ -23,10 +24,9 @@ class MaintenanceSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(
-          title: 'Database Maintenance',
-          subtitle:
-              'Tools to maintain and fix database statistics and translation states.',
+        SettingsSectionHeader(
+          title: t.settings.general.maintenance.sectionTitle,
+          subtitle: t.settings.general.maintenance.sectionSubtitle,
         ),
         const SizedBox(height: 16),
         _buildMaintenanceCard(context, ref, maintenanceState),
@@ -62,7 +62,7 @@ class MaintenanceSection extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Maintenance Actions',
+                  t.settings.general.maintenance.cardTitle,
                   style: tokens.fontBody.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -90,7 +90,7 @@ class MaintenanceSection extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  state.progressMessage ?? 'Processing...',
+                  state.progressMessage ?? t.settings.general.maintenance.processing,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.text,
@@ -103,8 +103,8 @@ class MaintenanceSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.arrow_sync_24_regular,
-              title: 'Reanalyze Translations',
-              description: 'Fix status inconsistencies and detect untranslated units',
+              title: t.settings.general.maintenance.actions.reanalyzeTitle,
+              description: t.settings.general.maintenance.actions.reanalyzeDescription,
               onTap: () => _runReanalysis(ref),
               isPrimary: true,
             ),
@@ -113,8 +113,8 @@ class MaintenanceSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.delete_24_regular,
-              title: 'Clear Mod Update Cache',
-              description: 'Remove stale "pending changes" badges',
+              title: t.settings.general.maintenance.actions.clearModCacheTitle,
+              description: t.settings.general.maintenance.actions.clearModCacheDescription,
               onTap: () => _clearCache(ref),
               isPrimary: false,
             ),
@@ -123,8 +123,8 @@ class MaintenanceSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.database_24_regular,
-              title: 'Rebuild Translation Memory',
-              description: 'Recover missing TM entries from existing translations',
+              title: t.settings.general.maintenance.actions.rebuildTmTitle,
+              description: t.settings.general.maintenance.actions.rebuildTmDescription,
               onTap: () => _rebuildTranslationMemory(ref),
               isPrimary: false,
             ),
@@ -133,8 +133,8 @@ class MaintenanceSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.arrow_sync_24_regular,
-              title: 'Migrate Legacy TM Hashes',
-              description: 'Convert old integer hashes to SHA256 for TM lookup',
+              title: t.settings.general.maintenance.actions.migrateTmHashesTitle,
+              description: t.settings.general.maintenance.actions.migrateTmHashesDescription,
               onTap: () => _migrateLegacyHashes(ref),
               isPrimary: true,
             ),
@@ -143,9 +143,8 @@ class MaintenanceSection extends ConsumerWidget {
               context,
               ref,
               icon: FluentIcons.eye_24_regular,
-              title: 'Reset onboarding hints',
-              description:
-                  'Bring back the Workshop onboarding card if you hid it',
+              title: t.settings.general.maintenance.actions.resetOnboardingTitle,
+              description: t.settings.general.maintenance.actions.resetOnboardingDescription,
               onTap: () => _resetOnboardingHints(context, ref),
               isPrimary: false,
             ),
@@ -279,6 +278,6 @@ class MaintenanceSection extends ConsumerWidget {
           false,
         );
     if (!context.mounted) return;
-    FluentToast.success(context, 'Onboarding hints will show again.');
+    FluentToast.success(context, t.settings.general.maintenance.toasts.onboardingReset);
   }
 }

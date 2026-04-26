@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
@@ -74,7 +75,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    _isEditing ? 'Edit Custom Rule' : 'Add Custom Rule',
+                    _isEditing ? t.settings.customRules.editorDialog.editTitle : t.settings.customRules.editorDialog.addTitle,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
@@ -86,8 +87,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Enter the rule text that will be appended to every translation prompt. '
-                'These rules apply globally to all projects.',
+                t.settings.customRules.editorDialog.description,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -95,11 +95,10 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
               ),
               const SizedBox(height: 16),
               LabeledField(
-                label: 'Rule text',
+                label: t.settings.customRules.editorDialog.ruleTextLabel,
                 child: TokenTextField(
                   controller: _textController,
-                  hint:
-                      'e.g., Always use formal language and avoid contractions...',
+                  hint: t.settings.customRules.editorDialog.ruleTextHint,
                   enabled: true,
                   minLines: 10,
                   maxLines: 14,
@@ -127,12 +126,12 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   SmallTextButton(
-                    label: 'Cancel',
+                    label: t.settings.customRules.editorDialog.cancel,
                     onTap: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: _isEditing ? 'Save' : 'Add',
+                    label: _isEditing ? t.settings.customRules.editorDialog.save : t.settings.customRules.editorDialog.add,
                     icon: _isEditing
                         ? FluentIcons.save_24_regular
                         : FluentIcons.add_24_regular,
@@ -167,7 +166,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Tips',
+                t.settings.customRules.editorDialog.tipsTitle,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -178,10 +177,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            '• Be specific and clear in your instructions\n'
-            '• Use bullet points for multiple rules\n'
-            '• Rules are appended in order to the translation prompt\n'
-            '• You can disable rules temporarily without deleting them',
+            t.settings.customRules.editorDialog.tipsText,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -195,7 +191,7 @@ class _LlmCustomRuleEditorDialogState extends State<LlmCustomRuleEditorDialog> {
   void _save() {
     final value = _textController.text.trim();
     if (value.isEmpty) {
-      setState(() => _errorText = 'Please enter a rule text');
+      setState(() => _errorText = t.settings.customRules.editorDialog.errors.ruleTextRequired);
       return;
     }
     Navigator.pop(context, value);

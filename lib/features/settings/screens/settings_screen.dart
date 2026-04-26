@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
@@ -23,10 +24,10 @@ class SettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const HomeBackToolbar(
+            HomeBackToolbar(
               leading: ListToolbarLeading(
                 icon: FluentIcons.settings_24_regular,
-                title: 'Settings',
+                title: t.settings.screen.title,
               ),
             ),
             Container(
@@ -36,18 +37,18 @@ class SettingsScreen extends StatelessWidget {
                   bottom: BorderSide(color: tokens.border, width: 1),
                 ),
               ),
-              child: const SettingsTabBar(tabs: [
+              child: SettingsTabBar(tabs: [
                 SettingsTabItem(
                   icon: FluentIcons.settings_24_regular,
-                  label: 'General',
+                  label: t.settings.screen.tabs.general,
                 ),
                 SettingsTabItem(
                   icon: FluentIcons.folder_24_regular,
-                  label: 'Folders',
+                  label: t.settings.screen.tabs.folders,
                 ),
                 SettingsTabItem(
                   icon: FluentIcons.brain_circuit_24_regular,
-                  label: 'LLM Providers',
+                  label: t.settings.screen.tabs.llmProviders,
                 ),
               ]),
             ),

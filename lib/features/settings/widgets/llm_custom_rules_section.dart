@@ -20,8 +20,8 @@ class LlmCustomRulesSection extends ConsumerWidget {
 
     return SettingsAccordionSection(
       icon: FluentIcons.text_bullet_list_ltr_24_regular,
-      title: 'Custom Translation Rules',
-      subtitle: 'Add custom instructions to translation prompts',
+      title: t.settings.customRules.accordionTitle,
+      subtitle: t.settings.customRules.accordionSubtitle,
       activeCount: enabledCount,
       child: _LlmCustomRulesBody(onAdd: () => _addRule(context, ref)),
     );
@@ -41,9 +41,9 @@ class LlmCustomRulesSection extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (success) {
-      FluentToast.success(context, 'Rule added successfully');
+      FluentToast.success(context, t.settings.customRules.toasts.addSuccess);
     } else {
-      FluentToast.error(context, error ?? 'Failed to add rule');
+      FluentToast.error(context, error ?? t.settings.customRules.toasts.addFailed);
     }
   }
 }
@@ -78,9 +78,7 @@ class _LlmCustomRulesBody extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Custom rules are appended to every translation prompt sent to the LLM. '
-                  'Use this to define global instructions, terminology guidelines, '
-                  'or translation preferences that apply to all projects.',
+                  t.settings.customRules.infoText,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12,
                     color: tokens.textMid,
@@ -97,7 +95,7 @@ class _LlmCustomRulesBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             SmallTextButton(
-              label: 'Add Rule',
+              label: t.settings.customRules.addRuleButton,
               icon: FluentIcons.add_24_regular,
               tooltip: t.tooltips.settings.addRule,
               onTap: onAdd,

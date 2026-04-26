@@ -34,9 +34,9 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(
-          title: 'RPFM Tool',
-          subtitle: 'Path to RPFM executable for pack file extraction',
+        SettingsSectionHeader(
+          title: t.settings.general.rpfm.sectionTitle,
+          subtitle: t.settings.general.rpfm.sectionSubtitle,
         ),
         const SizedBox(height: 16),
         _buildRpfmPathField(),
@@ -60,7 +60,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
             ),
             const SizedBox(width: 8),
             Text(
-              'RPFM Executable',
+              t.settings.general.rpfm.executableSubtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -73,14 +73,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         Row(
           children: [
             SmallTextButton(
-              label: 'Test',
+              label: t.settings.general.rpfm.testButton,
               icon: FluentIcons.beaker_24_regular,
               tooltip: t.tooltips.settings.testRpfm,
               onTap: _testRpfmPath,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
-              label: 'Browse',
+              label: t.settings.general.rpfm.browseButton,
               icon: FluentIcons.folder_open_24_regular,
               tooltip: t.tooltips.settings.browsePath,
               onTap: _selectRpfmPath,
@@ -120,7 +120,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
             ),
             const SizedBox(width: 8),
             Text(
-              'RPFM Schema Folder',
+              t.settings.general.rpfm.schemaSubtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -131,7 +131,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Folder containing RPFM schema files (e.g., schema_wh3.ron)',
+          t.settings.general.rpfm.schemaDescription,
           style: tokens.fontBody.copyWith(
             fontSize: 12,
             color: tokens.textDim,
@@ -141,14 +141,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
         Row(
           children: [
             SmallTextButton(
-              label: 'Default',
+              label: t.settings.general.rpfm.defaultButton,
               icon: FluentIcons.checkmark_circle_24_regular,
               tooltip: t.tooltips.settings.defaultPath,
               onTap: _useDefaultRpfmSchemaPath,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
-              label: 'Browse',
+              label: t.settings.general.rpfm.browseButton,
               icon: FluentIcons.folder_open_24_regular,
               tooltip: t.tooltips.settings.browsePath,
               onTap: _selectRpfmSchemaPath,
@@ -179,14 +179,14 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
 
   Future<void> _selectRpfmPath() async {
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Select RPFM Executable',
+      dialogTitle: t.settings.general.rpfm.browseExeDialogTitle,
       type: FileType.custom,
       allowedExtensions: ['exe'],
     );
 
     if (result != null && result.files.single.path != null) {
       final path = result.files.single.path!;
-      if (mounted) FluentToast.info(context, 'Validating RPFM executable...');
+      if (mounted) FluentToast.info(context, t.settings.general.rpfm.toasts.validating);
 
       final validationResult = await RpfmCliManager.validateRpfmPath(path);
       validationResult.when(
@@ -195,13 +195,13 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
           _saveRpfmPath(path);
           if (mounted) {
             FluentToast.success(
-                context, 'RPFM v$version validated successfully');
+                context, t.settings.general.rpfm.toasts.validatedSuccess(version: version));
           }
         },
         err: (error) {
           if (mounted) {
             FluentToast.error(
-                context, 'Invalid RPFM executable: ${error.message}');
+                context, t.settings.general.rpfm.toasts.invalidExe(error: error.message));
           }
         },
       );
@@ -210,7 +210,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
 
   Future<void> _selectRpfmSchemaPath() async {
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select RPFM Schema Folder',
+      dialogTitle: t.settings.general.rpfm.browseSchemaDialogTitle,
     );
     if (result != null) {
       setState(() => widget.rpfmSchemaPathController.text = result);
@@ -223,22 +223,22 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
   Future<void> _testRpfmPath() async {
     final path = widget.rpfmPathController.text.trim();
     if (path.isEmpty) {
-      FluentToast.warning(context, 'Please enter RPFM path first');
+      FluentToast.warning(context, t.settings.general.rpfm.toasts.enterPathFirst);
       return;
     }
 
-    FluentToast.info(context, 'Testing RPFM executable...');
+    FluentToast.info(context, t.settings.general.rpfm.toasts.testing);
 
     final validationResult = await RpfmCliManager.validateRpfmPath(path);
     validationResult.when(
       ok: (version) {
         if (mounted) {
-          FluentToast.success(context, 'RPFM v$version is working correctly');
+          FluentToast.success(context, t.settings.general.rpfm.toasts.testSuccess(version: version));
         }
       },
       err: (error) {
         if (mounted) {
-          FluentToast.error(context, 'RPFM test failed: ${error.message}');
+          FluentToast.error(context, t.settings.general.rpfm.toasts.testFailed(error: error.message));
         }
       },
     );
@@ -250,7 +250,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
     final username =
         io.Platform.environment['USERNAME'] ?? io.Platform.environment['USER'];
     if (username == null || username.isEmpty) {
-      if (mounted) FluentToast.warning(context, 'Could not detect username');
+      if (mounted) FluentToast.warning(context, t.settings.general.rpfm.toasts.usernameNotDetected);
       return;
     }
 
@@ -262,7 +262,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
     await _saveRpfmSchemaPath(defaultPath);
 
     if (mounted) {
-      FluentToast.info(context, 'Set to default schema path');
+      FluentToast.info(context, t.settings.general.rpfm.toasts.defaultPathSet);
     }
   }
 
@@ -274,7 +274,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
           .read(generalSettingsProvider.notifier)
           .updateRpfmPath(path);
     } catch (e) {
-      if (mounted) FluentToast.error(context, 'Error saving RPFM path: $e');
+      if (mounted) FluentToast.error(context, t.settings.general.rpfm.toasts.savePathError(error: e));
     }
   }
 
@@ -284,7 +284,7 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
           .read(generalSettingsProvider.notifier)
           .updateRpfmSchemaPath(path);
     } catch (e) {
-      if (mounted) FluentToast.error(context, 'Error saving RPFM schema path: $e');
+      if (mounted) FluentToast.error(context, t.settings.general.rpfm.toasts.saveSchemaPathError(error: e));
     }
   }
 }

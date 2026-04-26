@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
@@ -66,7 +67,7 @@ class BackupRestoreConfirmationDialog extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Text(
-            'Restore Database Backup?',
+            t.settings.backupRestoreDialog.title,
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
@@ -84,7 +85,7 @@ class BackupRestoreConfirmationDialog extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'You are about to restore the database from:',
+          t.settings.backupRestoreDialog.fromLabel,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -143,7 +144,7 @@ class BackupRestoreConfirmationDialog extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Warning: This will replace ALL your current data!',
+                      t.settings.backupRestoreDialog.warningTitle,
                       style: tokens.fontBody.copyWith(
                         fontSize: 13,
                         color: tokens.err,
@@ -152,7 +153,7 @@ class BackupRestoreConfirmationDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'All projects, translations, glossaries, and settings will be overwritten. This action cannot be undone.',
+                      t.settings.backupRestoreDialog.warningBody,
                       style: tokens.fontBody.copyWith(
                         fontSize: 12,
                         color: tokens.err,
@@ -173,12 +174,12 @@ class BackupRestoreConfirmationDialog extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.settings.backupRestoreDialog.cancel,
           onTap: () => Navigator.of(context).pop(false),
         ),
         const SizedBox(width: 8),
         SmallTextButton(
-          label: 'Restore',
+          label: t.settings.backupRestoreDialog.restore,
           icon: FluentIcons.arrow_import_24_regular,
           onTap: () => Navigator.of(context).pop(true),
         ),

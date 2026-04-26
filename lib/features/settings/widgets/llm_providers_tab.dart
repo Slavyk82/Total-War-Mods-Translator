@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -79,7 +80,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
       await update(controller.text);
     } catch (e) {
       if (mounted) {
-        FluentToast.error(context, 'Error saving $providerLabel API key: $e');
+        FluentToast.error(context, t.settings.llmProviders.providerSection.toasts.saveApiKeyError(provider: providerLabel, error: e));
       }
     }
   }
@@ -93,7 +94,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
       loading: () => const Center(child: FluentSpinner()),
       error: (error, stack) => Center(
         child: Text(
-          'Error loading settings: $error',
+          t.settings.errors.loadSettings(error: error),
           style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.err),
         ),
       ),
@@ -103,7 +104,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
           children: [
             // Header
             Text(
-              'LLM Providers',
+              t.settings.llmProviders.title,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 20,
                 color: tokens.accent,
@@ -113,7 +114,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Configure API keys and models for translation providers',
+              t.settings.llmProviders.subtitle,
               style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.textDim),
             ),
             const SizedBox(height: 24),
@@ -221,7 +222,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Advanced Settings',
+                t.settings.llmProviders.advancedSettings.title,
                 style: tokens.fontBody.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -236,7 +237,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
               Icon(FluentIcons.timer_24_regular, size: 16, color: tokens.textMid),
               const SizedBox(width: 8),
               Text(
-                'Rate Limit (requests per minute)',
+                t.settings.llmProviders.advancedSettings.rateLimitLabel,
                 style: tokens.fontBody.copyWith(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -288,7 +289,7 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
                             if (mounted) {
                               FluentToast.error(
                                 context,
-                                'Error saving rate limit: $e',
+                                t.settings.llmProviders.advancedSettings.saveError(error: e),
                               );
                             }
                           }

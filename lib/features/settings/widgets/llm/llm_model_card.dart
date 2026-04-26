@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../../models/domain/llm_provider_model.dart';
 import '../../../../widgets/common/fluent_spinner.dart';
@@ -177,7 +178,7 @@ class LlmModelCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(tokens.radiusSm),
                 ),
                 child: Text(
-                  model.isDefault ? 'Default' : 'Archived',
+                  model.isDefault ? t.settings.llmProviders.models.badges.kDefault : t.settings.llmProviders.models.badges.archived,
                   style: tokens.fontMono.copyWith(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,

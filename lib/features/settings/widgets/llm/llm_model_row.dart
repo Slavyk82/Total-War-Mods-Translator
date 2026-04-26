@@ -49,12 +49,12 @@ class _LlmModelRowState extends ConsumerState<LlmModelRow> {
       if (success) {
         FluentToast.success(
           context,
-          widget.model.isEnabled ? 'Model disabled' : 'Model enabled',
+          widget.model.isEnabled ? t.settings.llmProviders.models.toasts.disabled : t.settings.llmProviders.models.toasts.enabled,
         );
       } else {
         FluentToast.error(
           context,
-          'Failed to toggle model: ${errorMessage ?? "Unknown error"}',
+          t.settings.llmProviders.models.toasts.toggleFailed(error: errorMessage ?? 'Unknown error'),
         );
       }
     } finally {
@@ -82,11 +82,11 @@ class _LlmModelRowState extends ConsumerState<LlmModelRow> {
       if (!mounted) return;
 
       if (success) {
-        FluentToast.success(context, 'Model set as default');
+        FluentToast.success(context, t.settings.llmProviders.models.toasts.setDefaultSuccess);
       } else {
         FluentToast.error(
           context,
-          'Failed to set default: ${errorMessage ?? "Unknown error"}',
+          t.settings.llmProviders.models.toasts.setDefaultFailed(error: errorMessage ?? 'Unknown error'),
         );
       }
     } finally {
@@ -182,7 +182,7 @@ class _LlmModelRowState extends ConsumerState<LlmModelRow> {
                                   borderRadius: BorderRadius.circular(tokens.radiusSm),
                                 ),
                                 child: Text(
-                                  'Default',
+                                  t.settings.llmProviders.models.badges.kDefault,
                                   style: tokens.fontBody.copyWith(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,

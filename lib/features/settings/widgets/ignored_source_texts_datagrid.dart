@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
@@ -88,7 +89,7 @@ class _IgnoredSourceTextsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Active',
+                  t.settings.ignoredTexts.grid.columnActive,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -103,7 +104,7 @@ class _IgnoredSourceTextsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Source Text',
+                  t.settings.ignoredTexts.grid.columnSourceText,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -119,7 +120,7 @@ class _IgnoredSourceTextsDataGridState
                 padding: const EdgeInsets.all(8.0),
                 alignment: Alignment.center,
                 child: Text(
-                  'Actions',
+                  t.settings.ignoredTexts.grid.columnActions,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -163,7 +164,7 @@ class _IgnoredSourceTextsDataGridState
             ),
             const SizedBox(height: 8),
             Text(
-              'No ignored texts defined',
+              t.settings.ignoredTexts.grid.emptyTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.textMid,
@@ -171,7 +172,7 @@ class _IgnoredSourceTextsDataGridState
             ),
             const SizedBox(height: 4),
             Text(
-              'Add source texts to skip during translation',
+              t.settings.ignoredTexts.grid.emptySubtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -201,7 +202,7 @@ class _IgnoredSourceTextsDataGridState
             ),
             const SizedBox(height: 8),
             Text(
-              'Error loading ignored texts',
+              t.settings.ignoredTexts.grid.errorTitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.err,
@@ -228,9 +229,9 @@ class _IgnoredSourceTextsDataGridState
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Text updated successfully');
+          FluentToast.success(context, t.settings.ignoredTexts.toasts.updateSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to update text');
+          FluentToast.error(context, error ?? t.settings.ignoredTexts.toasts.updateFailed);
         }
       }
     }
@@ -240,10 +241,10 @@ class _IgnoredSourceTextsDataGridState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Ignored Text',
-        message: 'Are you sure you want to delete "${text.sourceText}"?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+        title: t.settings.ignoredTexts.deleteDialog.title,
+        message: t.settings.ignoredTexts.deleteDialog.message(text: text.sourceText),
+        warningMessage: t.settings.ignoredTexts.deleteDialog.warning,
+        confirmLabel: t.settings.ignoredTexts.deleteDialog.confirmLabel,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -255,9 +256,9 @@ class _IgnoredSourceTextsDataGridState
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'Text deleted successfully');
+          FluentToast.success(context, t.settings.ignoredTexts.toasts.deleteSuccess);
         } else {
-          FluentToast.error(context, error ?? 'Failed to delete text');
+          FluentToast.error(context, error ?? t.settings.ignoredTexts.toasts.deleteFailed);
         }
       }
     }
@@ -268,7 +269,7 @@ class _IgnoredSourceTextsDataGridState
         await ref.read(ignoredSourceTextsProvider.notifier).toggleEnabled(text.id);
 
     if (mounted && !success) {
-      FluentToast.error(context, error ?? 'Failed to toggle text');
+      FluentToast.error(context, error ?? t.settings.ignoredTexts.toasts.toggleFailed);
     }
   }
 }

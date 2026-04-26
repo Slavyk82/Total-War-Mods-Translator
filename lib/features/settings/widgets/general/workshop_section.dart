@@ -33,10 +33,9 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SettingsSectionHeader(
-          title: 'Steam Workshop',
-          subtitle:
-              'Base folder for Steam Workshop content (game IDs will be appended automatically)',
+        SettingsSectionHeader(
+          title: t.settings.general.workshop.sectionTitle,
+          subtitle: t.settings.general.workshop.sectionSubtitle,
         ),
         const SizedBox(height: 16),
         _buildWorkshopPathField(),
@@ -58,7 +57,7 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
             ),
             const SizedBox(width: 8),
             Text(
-              'Steam Workshop Base Folder',
+              t.settings.general.workshop.folderSubtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -71,14 +70,14 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
         Row(
           children: [
             SmallTextButton(
-              label: _isDetecting ? 'Detecting...' : 'Detect',
+              label: _isDetecting ? t.settings.general.workshop.detectingLabel : t.settings.general.workshop.detectButton,
               icon: FluentIcons.search_24_regular,
               tooltip: t.tooltips.settings.detectWorkshop,
               onTap: _isDetecting ? null : _autoDetectWorkshop,
             ),
             const SizedBox(width: 6),
             SmallTextButton(
-              label: 'Browse',
+              label: t.settings.general.workshop.browseButton,
               icon: FluentIcons.folder_open_24_regular,
               tooltip: t.tooltips.settings.browsePath,
               onTap: _selectWorkshopPath,
@@ -109,7 +108,7 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
 
   Future<void> _selectWorkshopPath() async {
     final result = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Select Steam Workshop Folder',
+      dialogTitle: t.settings.general.workshop.browseDialogTitle,
     );
     if (result != null) {
       setState(() => widget.workshopPathController.text = result);
@@ -136,21 +135,21 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
           setState(() => widget.workshopPathController.text = workshopPath);
           await _saveWorkshopPath(workshopPath);
           if (mounted) {
-            FluentToast.success(context, 'Workshop folder detected: $workshopPath');
+            FluentToast.success(context, t.settings.general.workshop.toasts.detected(path: workshopPath));
           }
         } else {
           if (mounted) {
-            FluentToast.warning(context, 'Workshop folder not found. Please select manually.');
+            FluentToast.warning(context, t.settings.general.workshop.toasts.notFound);
           }
         }
       } else {
         if (mounted) {
-          FluentToast.error(context, 'Detection failed: ${result.unwrapErr().message}');
+          FluentToast.error(context, t.settings.general.workshop.toasts.detectionFailed(error: result.unwrapErr().message));
         }
       }
     } catch (e) {
       if (mounted) {
-        FluentToast.error(context, 'Detection error: $e');
+        FluentToast.error(context, t.settings.general.workshop.toasts.detectionError(error: e));
       }
     } finally {
       if (mounted) {
@@ -167,7 +166,7 @@ class _WorkshopSectionState extends ConsumerState<WorkshopSection> {
           .read(generalSettingsProvider.notifier)
           .updateWorkshopPath(path);
     } catch (e) {
-      if (mounted) FluentToast.error(context, 'Error saving workshop path: $e');
+      if (mounted) FluentToast.error(context, t.settings.general.workshop.toasts.saveError(error: e));
     }
   }
 }

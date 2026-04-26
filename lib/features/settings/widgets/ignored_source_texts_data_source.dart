@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../models/domain/ignored_source_text.dart';
 
@@ -120,13 +121,13 @@ class IgnoredSourceTextsDataSource extends DataGridSource {
         children: [
           _ActionButton(
             icon: FluentIcons.edit_24_regular,
-            tooltip: 'Edit',
+            tooltip: t.settings.ignoredTexts.grid.editTooltip,
             onTap: () => onEdit(text),
           ),
           const SizedBox(width: 4),
           _ActionButton(
             icon: FluentIcons.delete_24_regular,
-            tooltip: 'Delete',
+            tooltip: t.settings.ignoredTexts.grid.deleteTooltip,
             onTap: () => onDelete(text),
             isDestructive: true,
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
@@ -61,7 +62,7 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Add Custom Language',
+                    t.settings.addCustomLanguage.title,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
@@ -73,7 +74,7 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Add a custom language that will be available for translation projects.',
+                t.settings.addCustomLanguage.description,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -82,10 +83,10 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
               const SizedBox(height: 20),
               // Language code field
               LabeledField(
-                label: 'Language code (ISO 639-1, 2-3 letters)',
+                label: t.settings.addCustomLanguage.codeLabel,
                 child: TokenTextField(
                   controller: _codeController,
-                  hint: 'e.g., pl, ko, ja',
+                  hint: t.settings.addCustomLanguage.codeHint,
                   enabled: true,
                   onChanged: (_) {
                     if (_codeError != null) {
@@ -107,10 +108,10 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
               const SizedBox(height: 16),
               // Language name field
               LabeledField(
-                label: 'Language name',
+                label: t.settings.addCustomLanguage.nameLabel,
                 child: TokenTextField(
                   controller: _nameController,
-                  hint: 'e.g., Polish, Korean, Japanese',
+                  hint: t.settings.addCustomLanguage.nameHint,
                   enabled: true,
                   onChanged: (_) {
                     if (_nameError != null) {
@@ -136,12 +137,12 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   SmallTextButton(
-                    label: 'Cancel',
+                    label: t.settings.addCustomLanguage.cancel,
                     onTap: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: 'Add',
+                    label: t.settings.addCustomLanguage.add,
                     icon: FluentIcons.add_24_regular,
                     onTap: _save,
                   ),
@@ -173,7 +174,7 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Custom languages can be deleted later. System languages (English, French, etc.) cannot be modified.',
+              t.settings.addCustomLanguage.info,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -193,19 +194,19 @@ class _AddCustomLanguageDialogState extends State<AddCustomLanguageDialog> {
     String? nameError;
 
     if (code.isEmpty) {
-      codeError = 'Language code is required';
+      codeError = t.settings.addCustomLanguage.errors.codeRequired;
     } else if (code.length < 2) {
-      codeError = 'Code must be at least 2 characters';
+      codeError = t.settings.addCustomLanguage.errors.codeTooShort;
     } else if (!RegExp(r'^[a-zA-Z]+$').hasMatch(code)) {
-      codeError = 'Code must contain only letters';
+      codeError = t.settings.addCustomLanguage.errors.codeLettersOnly;
     } else if (code.length > 5) {
-      codeError = 'Code must be at most 5 characters';
+      codeError = t.settings.addCustomLanguage.errors.codeTooLong;
     }
 
     if (name.isEmpty) {
-      nameError = 'Language name is required';
+      nameError = t.settings.addCustomLanguage.errors.nameRequired;
     } else if (name.length > 50) {
-      nameError = 'Name must be at most 50 characters';
+      nameError = t.settings.addCustomLanguage.errors.nameTooLong;
     }
 
     if (codeError != null || nameError != null) {

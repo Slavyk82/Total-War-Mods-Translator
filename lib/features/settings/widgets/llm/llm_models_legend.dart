@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Informational "legend" box shown at the top of the
@@ -30,7 +31,7 @@ class LlmModelsLegend extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Check models to make them available for translations. Click the star to set a model as global default (only one default across all providers).',
+              t.settings.llmProviders.models.legend,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,

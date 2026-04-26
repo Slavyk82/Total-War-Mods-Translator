@@ -22,8 +22,8 @@ class IgnoredSourceTextsSection extends ConsumerWidget {
 
     return SettingsAccordionSection(
       icon: FluentIcons.text_bullet_list_square_24_regular,
-      title: 'Ignored Source Texts',
-      subtitle: 'Skip specific source texts during translation',
+      title: t.settings.ignoredTexts.accordionTitle,
+      subtitle: t.settings.ignoredTexts.accordionSubtitle,
       activeCount: enabledCount,
       child: _IgnoredSourceTextsBody(
         onAdd: () => _addText(context, ref),
@@ -46,9 +46,9 @@ class IgnoredSourceTextsSection extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (success) {
-      FluentToast.success(context, 'Text added successfully');
+      FluentToast.success(context, t.settings.ignoredTexts.toasts.addSuccess);
     } else {
-      FluentToast.error(context, error ?? 'Failed to add text');
+      FluentToast.error(context, error ?? t.settings.ignoredTexts.toasts.addFailed);
     }
   }
 
@@ -66,9 +66,9 @@ class IgnoredSourceTextsSection extends ConsumerWidget {
 
     if (!context.mounted) return;
     if (success) {
-      FluentToast.success(context, 'Reset to defaults successfully');
+      FluentToast.success(context, t.settings.ignoredTexts.toasts.resetSuccess);
     } else {
-      FluentToast.error(context, error ?? 'Failed to reset to defaults');
+      FluentToast.error(context, error ?? t.settings.ignoredTexts.toasts.resetFailed);
     }
   }
 }
@@ -107,9 +107,7 @@ class _IgnoredSourceTextsBody extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Source texts matching these values will be excluded from translation. '
-                  'Note: Fully bracketed texts like [PLACEHOLDER] are automatically skipped. '
-                  'Use this list for custom patterns specific to your mods.',
+                  t.settings.ignoredTexts.infoText,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12,
                     color: tokens.textMid,
@@ -126,14 +124,14 @@ class _IgnoredSourceTextsBody extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             SmallTextButton(
-              label: 'Reset to Defaults',
+              label: t.settings.ignoredTexts.resetButton,
               icon: FluentIcons.arrow_reset_24_regular,
               tooltip: t.tooltips.settings.resetIgnoredDefaults,
               onTap: onReset,
             ),
             const SizedBox(width: 8),
             SmallTextButton(
-              label: 'Add Text',
+              label: t.settings.ignoredTexts.addButton,
               icon: FluentIcons.add_24_regular,
               tooltip: t.tooltips.settings.addIgnoredText,
               onTap: onAdd,
@@ -153,18 +151,11 @@ class _ResetConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const TokenConfirmDialog(
+    return TokenConfirmDialog(
       icon: FluentIcons.arrow_reset_24_regular,
-      title: 'Reset to Defaults',
-      message:
-          'This will delete all current ignored texts and restore the default '
-          'values:\n\n'
-          '• placeholder\n'
-          '• dummy\n\n'
-          'Note: Texts fully enclosed in brackets like [placeholder] are always '
-          'filtered automatically.\n\n'
-          'Are you sure you want to continue?',
-      confirmLabel: 'Reset',
+      title: t.settings.ignoredTexts.resetDialog.title,
+      message: t.settings.ignoredTexts.resetDialog.message,
+      confirmLabel: t.settings.ignoredTexts.resetDialog.confirmLabel,
       confirmIcon: FluentIcons.arrow_reset_24_regular,
     );
   }

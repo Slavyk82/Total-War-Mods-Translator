@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
@@ -75,7 +76,7 @@ class _IgnoredSourceTextEditorDialogState
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    _isEditing ? 'Edit Ignored Text' : 'Add Ignored Text',
+                    _isEditing ? t.settings.ignoredTexts.editorDialog.editTitle : t.settings.ignoredTexts.editorDialog.addTitle,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
@@ -87,8 +88,7 @@ class _IgnoredSourceTextEditorDialogState
               ),
               const SizedBox(height: 16),
               Text(
-                'Enter a source text that should be skipped during translation. '
-                'Matching is case-insensitive.',
+                t.settings.ignoredTexts.editorDialog.description,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -96,10 +96,10 @@ class _IgnoredSourceTextEditorDialogState
               ),
               const SizedBox(height: 16),
               LabeledField(
-                label: 'Source text',
+                label: t.settings.ignoredTexts.editorDialog.sourceTextLabel,
                 child: TokenTextField(
                   controller: _textController,
-                  hint: 'e.g., placeholder, [hidden], etc.',
+                  hint: t.settings.ignoredTexts.editorDialog.sourceTextHint,
                   enabled: true,
                   onChanged: (_) {
                     if (_errorText != null) {
@@ -125,12 +125,12 @@ class _IgnoredSourceTextEditorDialogState
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   SmallTextButton(
-                    label: 'Cancel',
+                    label: t.settings.ignoredTexts.editorDialog.cancel,
                     onTap: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: _isEditing ? 'Save' : 'Add',
+                    label: _isEditing ? t.settings.ignoredTexts.editorDialog.save : t.settings.ignoredTexts.editorDialog.add,
                     icon: _isEditing
                         ? FluentIcons.save_24_regular
                         : FluentIcons.add_24_regular,
@@ -165,7 +165,7 @@ class _IgnoredSourceTextEditorDialogState
               ),
               const SizedBox(width: 8),
               Text(
-                'Info',
+                t.settings.ignoredTexts.editorDialog.infoTitle,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -176,10 +176,7 @@ class _IgnoredSourceTextEditorDialogState
           ),
           const SizedBox(height: 8),
           Text(
-            '• Units matching these texts are excluded from translation\n'
-            '• Bracketed texts like [unit_name] are automatically skipped\n'
-            '• Use this for custom placeholders specific to your mods\n'
-            '• Changes take effect immediately for new translations',
+            t.settings.ignoredTexts.editorDialog.infoText,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -193,7 +190,7 @@ class _IgnoredSourceTextEditorDialogState
   void _save() {
     final value = _textController.text.trim();
     if (value.isEmpty) {
-      setState(() => _errorText = 'Please enter a source text');
+      setState(() => _errorText = t.settings.ignoredTexts.editorDialog.errors.sourceTextRequired);
       return;
     }
     Navigator.pop(context, value);

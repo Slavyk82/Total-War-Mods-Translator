@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Header row of the [ModelManagementDialog] with a leading icon, a bold
@@ -37,7 +38,7 @@ class LlmDialogHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Manage $providerName Models',
+                t.settings.llmProviders.models.dialog.titleManage(provider: providerName),
                 style: tokens.fontDisplay.copyWith(
                   fontSize: 18,
                   color: tokens.text,
@@ -47,7 +48,7 @@ class LlmDialogHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Select which models are available for translations',
+                t.settings.llmProviders.models.dialog.subtitle,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
