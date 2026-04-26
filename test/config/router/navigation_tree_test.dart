@@ -9,12 +9,11 @@ void main() {
           ['', 'Workflow', 'Tools', 'System']);
     });
 
-    test('uncategorised top group has Home then Help', () {
+    test('uncategorised top group has Home only', () {
       final top = navigationTree.first;
       expect(top.label, '');
-      expect(top.items.map((i) => i.label).toList(), ['Home', 'Help']);
-      expect(top.items.map((i) => i.route).toList(),
-          [AppRoutes.home, AppRoutes.help]);
+      expect(top.items.map((i) => i.label).toList(), ['Home']);
+      expect(top.items.map((i) => i.route).toList(), [AppRoutes.home]);
     });
 
     test('Workflow group contains the 3 pipeline steps routed correctly', () {

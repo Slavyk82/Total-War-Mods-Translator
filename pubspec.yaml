@@ -148,7 +148,6 @@ flutter:
     - assets/slavyk.png
     - assets/screenshots/
     - assets/flags/
-    - docs/user_guide.md
 
   fonts:
     - family: IBMPlexSans

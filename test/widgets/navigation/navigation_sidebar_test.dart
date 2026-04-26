@@ -20,7 +20,6 @@ Widget _wrap(String path) {
         '/publishing/pack',
         '/publishing/steam',
         '/system/settings',
-        '/system/help',
       ])
         GoRoute(
           path: p,
@@ -121,7 +120,7 @@ void main() {
       'Detect', 'Translate', 'Compile', 'Publish',
       'Home',
       'Glossary', 'Translation Memory', 'Game Files',
-      'Settings', 'Help',
+      'Settings',
     ]) {
       expect(find.text(label), findsWidgets, reason: label);
     }

@@ -46,12 +46,6 @@ const List<NavGroup> navigationTree = [
       icon: FluentIcons.home_24_regular,
       selectedIcon: FluentIcons.home_24_filled,
     ),
-    NavItem(
-      label: 'Help',
-      route: AppRoutes.help,
-      icon: FluentIcons.question_circle_24_regular,
-      selectedIcon: FluentIcons.question_circle_24_filled,
-    ),
   ]),
   NavGroup('Workflow', [
     NavItem(

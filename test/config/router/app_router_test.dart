@@ -23,7 +23,6 @@ GoRouter _buildTestRouter({required String initial}) {
         AppRoutes.steamPublishSingle,
         AppRoutes.steamPublishBatch,
         AppRoutes.settings,
-        AppRoutes.help,
       ])
         GoRoute(
           path: path,
@@ -87,9 +86,6 @@ void main() {
     test('settings is /system/settings', () {
       expect(AppRoutes.settings, '/system/settings');
     });
-    test('help is /system/help', () {
-      expect(AppRoutes.help, '/system/help');
-    });
     test('rootRedirect is /work/home', () {
       expect(AppRoutes.rootRedirect, '/work/home');
     });
@@ -140,9 +136,6 @@ void main() {
     });
     test('legacy /settings redirects to /system/settings', () {
       expect(appRouterRedirect('/settings'), '/system/settings');
-    });
-    test('legacy /help redirects to /system/help', () {
-      expect(appRouterRedirect('/help'), '/system/help');
     });
     test('new-path input returns null (no redirect)', () {
       expect(appRouterRedirect('/sources/mods'), isNull);

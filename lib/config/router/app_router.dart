@@ -20,7 +20,6 @@ import '../../features/translation_memory/screens/translation_memory_screen.dart
 import '../../features/pack_compilation/screens/pack_compilation_editor_screen.dart';
 import '../../features/pack_compilation/screens/pack_compilation_list_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/help/screens/help_screen.dart';
 import '../../features/game_translation/screens/game_translation_screen.dart';
 import '../../features/steam_publish/screens/steam_publish_screen.dart';
 import '../../features/steam_publish/screens/workshop_publish_screen.dart';
@@ -70,7 +69,6 @@ class AppRoutes {
   static const String settings = '/system/settings';
   static const String settingsGeneral = '/system/settings/general';
   static const String settingsLlm = '/system/settings/llm';
-  static const String help = '/system/help';
 
   // Detail / parameterised routes
   static String translationEditor(String projectId, String languageId) =>
@@ -94,7 +92,6 @@ const Map<String, String> legacyRedirects = {
   '/pack-compilation': '/publishing/pack',
   '/steam-publish': '/publishing/steam',
   '/settings': '/system/settings',
-  '/help': '/system/help',
 };
 
 /// Pure redirect function. Returns the new path or `null` if no redirect
@@ -330,18 +327,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               );
             },
           ),
-
-          // Help
-          GoRoute(
-            path: AppRoutes.help,
-            name: 'help',
-            pageBuilder: (context, state) {
-              return FluentPageTransitions.fadeTransition(
-                child: const HelpScreen(),
-                state: state,
-              );
-            },
-          ),
         ],
       ),
     ],
@@ -389,7 +374,6 @@ extension GoRouterExtensions on BuildContext {
   void goWorkshopPublishSingle() => go(AppRoutes.steamPublishSingle);
   void goWorkshopPublishBatch() => go(AppRoutes.steamPublishBatch);
   void goSettings() => go(AppRoutes.settings);
-  void goHelp() => go(AppRoutes.help);
 
   void goTranslationEditor(String projectId, String languageId) =>
       go(AppRoutes.translationEditor(projectId, languageId));

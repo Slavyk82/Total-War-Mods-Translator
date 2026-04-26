@@ -93,7 +93,6 @@ const Map<String, String> _segmentLabels = {
   'pack': 'Pack Compilation',
   'steam': 'Steam Workshop',
   'settings': 'Settings',
-  'help': 'Help',
   // Leaf segments
   'editor': 'Editor',
   'single': 'Single',

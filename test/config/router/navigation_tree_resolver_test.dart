@@ -63,7 +63,6 @@ void main() {
       expect(NavigationTreeResolver.labelForSegment('pack'), 'Pack Compilation');
       expect(NavigationTreeResolver.labelForSegment('steam'), 'Steam Workshop');
       expect(NavigationTreeResolver.labelForSegment('settings'), 'Settings');
-      expect(NavigationTreeResolver.labelForSegment('help'), 'Help');
     });
 
     test('leaf segments resolve to their labels', () {
