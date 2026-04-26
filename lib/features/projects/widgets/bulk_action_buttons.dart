@@ -1,6 +1,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/bulk_target_language_provider.dart';
@@ -28,11 +29,11 @@ class BulkActionButtons extends ConsumerWidget {
 
     String? disabledTooltip;
     if (targetLang == null) {
-      disabledTooltip = 'Select a target language';
+      disabledTooltip = t.projects.bulk.tooltips.selectLanguage;
     } else if (isRunning) {
-      disabledTooltip = 'An operation is already running';
+      disabledTooltip = t.projects.bulk.tooltips.alreadyRunning;
     } else if (!hasMatching) {
-      disabledTooltip = 'No visible projects match';
+      disabledTooltip = t.projects.bulk.tooltips.noVisibleProjects;
     }
 
     // Aggregate units the two highlighted buttons will touch across all
@@ -57,7 +58,7 @@ class BulkActionButtons extends ConsumerWidget {
         children: [
           _BulkButton(
             icon: Icons.translate,
-            label: 'Translate all',
+            label: t.projects.bulk.buttons.translateAll,
             enabled: canAct,
             tooltip: disabledTooltip,
             variant: _BulkButtonVariant.primary,
@@ -67,7 +68,7 @@ class BulkActionButtons extends ConsumerWidget {
           const SizedBox(height: 8),
           _BulkButton(
             icon: Icons.refresh,
-            label: 'Rescan reviews',
+            label: t.projects.bulk.buttons.rescanReviews,
             enabled: canAct,
             tooltip: disabledTooltip,
             onPressed: () => _start(context, ref, BulkOperationType.rescan),
@@ -75,7 +76,7 @@ class BulkActionButtons extends ConsumerWidget {
           const SizedBox(height: 8),
           _BulkButton(
             icon: FluentIcons.task_list_square_rtl_24_regular,
-            label: 'Review flagged',
+            label: t.projects.bulk.buttons.reviewFlagged,
             enabled: canAct,
             tooltip: disabledTooltip,
             unitCount: needsReviewUnits,
@@ -87,7 +88,7 @@ class BulkActionButtons extends ConsumerWidget {
           const SizedBox(height: 8),
           _BulkButton(
             icon: Icons.inventory_2,
-            label: 'Generate pack',
+            label: t.projects.bulk.buttons.generatePack,
             enabled: canAct,
             tooltip: disabledTooltip,
             onPressed: () =>
@@ -209,7 +210,7 @@ class _BulkButton extends StatelessWidget {
               button,
               const SizedBox(height: 4),
               Text(
-                '${unitCount!} ${unitCount == 1 ? 'unit' : 'units'}',
+                t.projects.bulk.unitCount(n: unitCount!),
                 textAlign: TextAlign.center,
                 style: tokens.fontBody.copyWith(
                   fontSize: 10.5,

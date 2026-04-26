@@ -1,6 +1,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/bulk_review_rows_provider.dart';
@@ -40,8 +41,11 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
 
     final rows = rowsAsync.asData?.value ?? const <BulkReviewRow>[];
     final projectCount = rows.map((r) => r.projectId).toSet().length;
-    final subtitle =
-        'Target: $targetCode · ${rows.length} units across $projectCount projects';
+    final subtitle = t.projects.bulk.review.subtitle(
+      code: targetCode,
+      units: rows.length,
+      projects: projectCount,
+    );
 
     final hasRows = rows.isNotEmpty;
     final canAct = hasRows && !_busy;
@@ -49,7 +53,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
     return TokenDialog(
       icon: FluentIcons.task_list_square_rtl_24_regular,
       iconColor: tokens.accent,
-      title: 'Review flagged translations',
+      title: t.projects.bulk.review.title,
       subtitle: subtitle,
       width: 760,
       body: SizedBox(
@@ -66,7 +70,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
             child: Text(
-              'Failed to load review queue: $e',
+              t.projects.bulk.review.loadFailed(error: e.toString()),
               style:
                   tokens.fontBody.copyWith(color: tokens.err, fontSize: 12.5),
             ),
@@ -75,26 +79,26 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
       ),
       leadingActions: [
         if (_busy)
-          _InlineSpinner(tokens: tokens, label: 'Working…')
+          _InlineSpinner(tokens: tokens, label: t.projects.bulk.review.working)
         else
           SmallTextButton(
-            label: 'Refresh',
+            label: t.common.actions.refresh,
             icon: FluentIcons.arrow_clockwise_24_regular,
             onTap: () => ref.invalidate(bulkReviewRowsProvider),
           ),
       ],
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           onTap: () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: 'Validate all',
+          label: t.projects.bulk.review.validateAll,
           icon: FluentIcons.checkmark_circle_24_regular,
           onTap: canAct ? () => _validateAll(rows) : null,
         ),
         SmallTextButton(
-          label: 'Force retranslate all',
+          label: t.projects.bulk.review.retranslateAll,
           icon: FluentIcons.arrow_clockwise_24_regular,
           filled: true,
           onTap: canAct ? () => _retranslateAll(rows) : null,
@@ -114,7 +118,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
     if (!mounted) return;
     setState(() => _inFlight.remove(row.versionId));
     if (result.isErr) {
-      _showError('Failed to validate: ${result.unwrapErr()}');
+      _showError(t.projects.bulk.review.validateFailed(error: result.unwrapErr().toString()));
       return;
     }
     ref.invalidate(bulkReviewRowsProvider);
@@ -128,7 +132,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
       final resolved = await _resolveProviderModel(ref);
       if (resolved == null) {
         if (!mounted) return;
-        _showError('No LLM model selected');
+        _showError(t.projects.bulk.review.noModelSelected);
         setState(() => _inFlight.remove(row.versionId));
         return;
       }
@@ -146,7 +150,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
       ref.invalidate(projectsWithDetailsProvider);
     } catch (e) {
       if (!mounted) return;
-      _showError('Retranslate failed: $e');
+      _showError(t.projects.bulk.review.retranslateFailed(error: e.toString()));
     } finally {
       if (mounted) {
         setState(() => _inFlight.remove(row.versionId));
@@ -163,7 +167,7 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (result.isErr) {
-      _showError('Failed to validate all: ${result.unwrapErr()}');
+      _showError(t.projects.bulk.review.validateAllFailed(error: result.unwrapErr().toString()));
       return;
     }
     ref.invalidate(bulkReviewRowsProvider);
@@ -340,15 +344,15 @@ class _ReviewRowTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 _TextBlock(
-                  label: 'EN',
+                  label: t.projects.bulk.review.columnSource,
                   text: row.sourceText,
                   tokens: tokens,
                   color: tokens.text,
                 ),
                 const SizedBox(height: 4),
                 _TextBlock(
-                  label: 'Translation',
-                  text: row.translatedText ?? '(empty)',
+                  label: t.projects.bulk.review.columnTranslation,
+                  text: row.translatedText ?? t.projects.bulk.review.emptyTranslation,
                   tokens: tokens,
                   color: row.translatedText == null
                       ? tokens.textFaint
@@ -361,7 +365,7 @@ class _ReviewRowTile extends StatelessWidget {
           const SizedBox(width: 8),
           _RowActionButton(
             icon: FluentIcons.checkmark_circle_24_regular,
-            tooltip: 'Validate (clear review flag)',
+            tooltip: t.projects.bulk.review.tooltipValidate,
             color: tokens.ok,
             busy: action == _RowAction.validating,
             enabled: !busy,
@@ -370,7 +374,7 @@ class _ReviewRowTile extends StatelessWidget {
           const SizedBox(width: 4),
           _RowActionButton(
             icon: FluentIcons.arrow_clockwise_24_regular,
-            tooltip: 'Force retranslate this unit',
+            tooltip: t.projects.bulk.review.tooltipRetranslate,
             color: tokens.accent,
             busy: action == _RowAction.retranslating,
             enabled: !busy,
@@ -503,7 +507,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No flagged translations',
+            t.projects.bulk.review.emptyTitle,
             style: tokens.fontDisplay.copyWith(
               fontSize: 15,
               color: tokens.text,
@@ -512,7 +516,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Every visible project is up to date for this language.',
+            t.projects.bulk.review.emptySubtitle,
             style: tokens.fontBody
                 .copyWith(fontSize: 12, color: tokens.textDim),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -92,10 +93,10 @@ class _ProjectInitializationDialogState
         ? tokens.err
         : (_isInitializing ? tokens.accent : tokens.ok);
     final title = _isInitializing
-        ? 'Initializing Project'
+        ? t.projects.initialization.titleInProgress
         : (_errorMessage != null
-            ? 'Initialization Failed'
-            : 'Initialization Complete');
+            ? t.projects.initialization.titleFailed
+            : t.projects.initialization.titleComplete);
 
     return PopScope(
       canPop: !_isInitializing,
@@ -123,7 +124,7 @@ class _ProjectInitializationDialogState
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      'Extracting and importing localization files...',
+                      t.projects.initialization.extracting,
                       style: tokens.fontBody.copyWith(
                         fontSize: 13,
                         color: tokens.textDim,
@@ -139,7 +140,7 @@ class _ProjectInitializationDialogState
               Divider(height: 1, color: tokens.border),
               const SizedBox(height: 10),
               Text(
-                'Logs',
+                t.projects.initialization.sectionLogs,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.text,
@@ -157,7 +158,7 @@ class _ProjectInitializationDialogState
                   child: _logs.isEmpty
                       ? Center(
                           child: Text(
-                            'No logs yet...',
+                            t.projects.initialization.noLogs,
                             style: tokens.fontBody.copyWith(
                               fontSize: 12,
                               color: tokens.textFaint,
@@ -181,7 +182,7 @@ class _ProjectInitializationDialogState
             ? const []
             : [
                 SmallTextButton(
-                  label: 'Close',
+                  label: t.common.actions.close,
                   icon: FluentIcons.checkmark_24_regular,
                   filled: true,
                   onTap: () =>
@@ -240,7 +241,7 @@ class _ProjectInitializationDialogState
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Successfully imported $_unitsImported translation units',
+              t.projects.initialization.successUnits(count: _unitsImported!),
               style: tokens.fontBody.copyWith(
                 fontSize: 12.5,
                 color: tokens.ok,

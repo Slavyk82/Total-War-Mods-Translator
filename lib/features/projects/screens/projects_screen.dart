@@ -119,8 +119,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final count = async.asData?.value.length ?? 0;
     return ListToolbarLeading(
       icon: FluentIcons.folder_24_regular,
-      title: 'Projects',
-      countLabel: '$count ${count == 1 ? 'project' : 'projects'}',
+      title: t.projects.title,
+      countLabel: t.projects.projectCount(count: count),
     );
   }
 
@@ -153,45 +153,45 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     }
 
     return FilterPillGroup(
-      label: 'STATE',
-      clearLabel: 'Clear',
+      label: t.projects.stateLabel,
+      clearLabel: t.projects.clearFilters,
       clearTooltip: t.tooltips.projects.filterClear,
       onClear: () => ref
           .read(projectsFilterProvider.notifier)
           .setQuickFilter(ProjectQuickFilter.none),
       pills: [
         pill(
-          'Needs Update',
+          t.projects.filters.needsUpdate,
           ProjectQuickFilter.needsUpdate,
           t.tooltips.projects.filterNeedsUpdate,
         ),
         pill(
-          'Needs Review',
+          t.projects.filters.needsReview,
           ProjectQuickFilter.needsReview,
           t.tooltips.projects.filterNeedsReview,
         ),
         pill(
-          'Incomplete',
+          t.projects.filters.incomplete,
           ProjectQuickFilter.incomplete,
           t.tooltips.projects.filterIncomplete,
         ),
         pill(
-          'Completed',
+          t.projects.filters.completed,
           ProjectQuickFilter.hasCompleteLanguage,
           t.tooltips.projects.filterHasComplete,
         ),
         pill(
-          'Exported',
+          t.projects.filters.exported,
           ProjectQuickFilter.exported,
           t.tooltips.projects.filterExported,
         ),
         pill(
-          'Not Exported',
+          t.projects.filters.notExported,
           ProjectQuickFilter.notExported,
           t.tooltips.projects.filterNotExported,
         ),
         pill(
-          'Export Outdated',
+          t.projects.filters.exportOutdated,
           ProjectQuickFilter.exportOutdated,
           t.tooltips.projects.filterExportOutdated,
         ),
@@ -258,7 +258,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            hasActiveFilters ? 'No projects match filters' : 'No projects yet',
+            hasActiveFilters ? t.projects.emptyStates.noMatch : t.projects.emptyStates.noProjects,
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
@@ -268,8 +268,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           const SizedBox(height: 6),
           Text(
             hasActiveFilters
-                ? 'Try adjusting your filters'
-                : 'Go to Mods screen to create a project from a mod',
+                ? t.projects.emptyStates.adjustFilters
+                : t.projects.emptyStates.goToMods,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -296,7 +296,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Loading projects...',
+            t.projects.loading,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -322,7 +322,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Failed to load projects',
+              t.projects.emptyStates.failedToLoad,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
@@ -352,12 +352,12 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     try {
       await ref.read(projectResyncProvider.notifier).resync(projectId);
       if (context.mounted) {
-        FluentToast.success(context, 'Project resynced successfully');
+        FluentToast.success(context, t.projects.messages.resyncSuccess);
         ref.invalidate(projectsWithDetailsProvider);
       }
     } catch (e) {
       if (context.mounted) {
-        FluentToast.error(context, 'Resync failed: $e');
+        FluentToast.error(context, t.projects.messages.resyncFailed(error: e.toString()));
       }
     }
   }
@@ -378,10 +378,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Project',
-        message: 'Are you sure you want to delete "${details.project.name}"?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+        title: t.projects.dialogs.deleteProject.title,
+        message: t.projects.dialogs.deleteProject.message(name: details.project.name),
+        warningMessage: t.projects.dialogs.deleteProject.warning,
+        confirmLabel: t.projects.dialogs.deleteProject.confirmLabel,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -397,10 +397,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
           .read(projectsWithDetailsProvider.notifier)
           .removeProject(details.project.id);
       FluentToast.success(
-          context, 'Project "${details.project.name}" deleted');
+          context, t.projects.messages.deleteSuccess(name: details.project.name));
     } else {
       FluentToast.error(
-          context, 'Failed to delete project: ${result.error}');
+          context, t.projects.messages.deleteFailed(error: result.error.toString()));
     }
   }
 
@@ -420,7 +420,7 @@ class _SearchField extends ConsumerWidget {
     return ListSearchField(
       width: null,
       value: query,
-      hintText: 'Search projects...',
+      hintText: t.projects.search.hint,
       onChanged: (value) => ref
           .read(projectsFilterProvider.notifier)
           .updateSearchQuery(value),
@@ -439,7 +439,7 @@ class _BulkMenuToggleButton extends ConsumerWidget {
     final tokens = context.tokens;
     final isActive = ref.watch(projectsBulkMenuVisibilityProvider);
     return Tooltip(
-      message: isActive ? 'Hide bulk menu' : 'Show bulk menu',
+      message: isActive ? t.projects.tooltips.hideBulkMenu : t.projects.tooltips.showBulkMenu,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -467,7 +467,7 @@ class _BulkMenuToggleButton extends ConsumerWidget {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  isActive ? 'Hide bulk menu' : 'Show bulk menu',
+                  isActive ? t.projects.tooltips.hideBulkMenu : t.projects.tooltips.showBulkMenu,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: isActive ? tokens.accent : tokens.textMid,
@@ -537,19 +537,19 @@ class _ProjectsListHeader extends ConsumerWidget {
           const SizedBox(width: 80),
           Expanded(
             flex: 3,
-            child: cell('Project', ProjectSortOption.name),
+            child: cell(t.projects.columns.project, ProjectSortOption.name),
           ),
           Expanded(
             flex: 2,
-            child: cell('Languages & progress', ProjectSortOption.progress),
+            child: cell(t.projects.columns.languagesProgress, ProjectSortOption.progress),
           ),
           SizedBox(
             width: 180,
-            child: cell('Modified', ProjectSortOption.dateModified),
+            child: cell(t.projects.columns.modified, ProjectSortOption.dateModified),
           ),
           SizedBox(
             width: 150,
-            child: _StaticHeaderLabel(label: 'Status'),
+            child: _StaticHeaderLabel(label: t.projects.columns.status),
           ),
           const SizedBox(width: _projectRowTrailingActionWidth),
         ],
@@ -677,7 +677,7 @@ class _ProjectRow extends StatelessWidget {
         child: IconButton(
           key: Key('project-row-delete-${project.id}'),
           icon: const Icon(FluentIcons.delete_24_regular, size: 16),
-          tooltip: 'Delete project',
+          tooltip: t.projects.tooltips.deleteProject,
           onPressed: onDelete,
           color: Theme.of(context).colorScheme.error,
           padding: EdgeInsets.zero,
@@ -716,7 +716,7 @@ class _ProjectRow extends StatelessWidget {
                     ),
                   ] else if (!project.isGameTranslation) ...[
                     Text(
-                      'Local pack',
+                      t.projects.labels.localPack,
                       style: tokens.fontMono.copyWith(
                         fontSize: 11,
                         color: tokens.textDim,
@@ -724,7 +724,7 @@ class _ProjectRow extends StatelessWidget {
                     ),
                   ] else ...[
                     Text(
-                      'Game translation',
+                      t.projects.labels.gameTranslation,
                       style: tokens.fontMono.copyWith(
                         fontSize: 11,
                         color: tokens.textDim,
@@ -801,7 +801,7 @@ class _SteamLinkPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return Tooltip(
-      message: 'Open in Steam Workshop',
+      message: t.projects.tooltips.openInWorkshop,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -850,7 +850,7 @@ class _RowLanguagesCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     if (languages.isEmpty) {
-      return Text('No target language',
+      return Text(t.projects.labels.noTargetLanguage,
           style: tokens.fontBody
               .copyWith(fontSize: 12, color: tokens.textFaint));
     }
@@ -948,7 +948,7 @@ class _StatusPill extends StatelessWidget {
 
     if (hasModUpdateImpact) {
       return _pill(
-        label: 'Mod updated',
+        label: t.projects.status.modUpdated,
         fg: tokens.warn,
         bg: tokens.warnBg,
         tooltip:
@@ -965,14 +965,14 @@ class _StatusPill extends StatelessWidget {
     }
     if (analysis != null) {
       return _pill(
-        label: 'Up to date',
+        label: t.projects.status.upToDate,
         fg: tokens.ok,
         bg: tokens.okBg,
       );
     }
     if (details.isModifiedSinceLastExport) {
       return _pill(
-        label: 'Export outdated',
+        label: t.projects.status.exportOutdated,
         fg: tokens.warn,
         bg: tokens.warnBg,
         tooltip: t.tooltips.projects.filterExportOutdated,
@@ -982,7 +982,7 @@ class _StatusPill extends StatelessWidget {
       if (details.hasSteamPublishWorkflow &&
           !details.isPackPublishedOnSteam) {
         return _pill(
-          label: 'Unpublished',
+          label: t.projects.status.unpublished,
           fg: tokens.textDim,
           bg: tokens.panel,
           tooltip:
@@ -990,13 +990,13 @@ class _StatusPill extends StatelessWidget {
         );
       }
       return _pill(
-        label: 'Exported',
+        label: t.projects.status.exported,
         fg: tokens.ok,
         bg: tokens.okBg,
       );
     }
     return _pill(
-      label: 'Draft',
+      label: t.projects.status.draft,
       fg: tokens.textDim,
       bg: tokens.panel,
     );
@@ -1005,13 +1005,13 @@ class _StatusPill extends StatelessWidget {
   String _buildChangesTooltip(ModUpdateAnalysis analysis) {
     final lines = <String>[];
     if (analysis.hasNewUnits) {
-      lines.add('+${analysis.newUnitsCount} new translations to add');
+      lines.add(t.projects.tooltips.newTranslations(n: analysis.newUnitsCount));
     }
     if (analysis.hasRemovedUnits) {
-      lines.add('-${analysis.removedUnitsCount} translations removed');
+      lines.add(t.projects.tooltips.removedTranslations(n: analysis.removedUnitsCount));
     }
     if (analysis.hasModifiedUnits) {
-      lines.add('~${analysis.modifiedUnitsCount} source texts changed');
+      lines.add(t.projects.tooltips.changedSources(n: analysis.modifiedUnitsCount));
     }
     return lines.join('\n');
   }
@@ -1050,7 +1050,7 @@ class _ResyncIcon extends StatelessWidget {
       );
     }
     return Tooltip(
-      message: 'Resync with source pack file',
+      message: t.projects.tooltips.resync,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,

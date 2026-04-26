@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
@@ -27,7 +28,7 @@ class StepSettings extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Tune translation throughput and optionally provide an extra prompt.',
+          t.projects.createProject.translationSettings.description,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -37,10 +38,10 @@ class StepSettings extends StatelessWidget {
 
         // Batch size
         LabeledField(
-          label: 'BATCH SIZE',
+          label: t.projects.createProject.translationSettings.fieldBatchSize,
           child: TokenTextField(
             controller: state.batchSizeController,
-            hint: 'Number of units per batch (default: 25)',
+            hint: t.projects.createProject.translationSettings.hintBatchSize,
             enabled: true,
           ),
         ),
@@ -48,10 +49,10 @@ class StepSettings extends StatelessWidget {
 
         // Parallel batches
         LabeledField(
-          label: 'PARALLEL BATCHES',
+          label: t.projects.createProject.translationSettings.fieldParallelBatches,
           child: TokenTextField(
             controller: state.parallelBatchesController,
-            hint: 'Number of batches to process in parallel (default: 3)',
+            hint: t.projects.createProject.translationSettings.hintParallelBatches,
             enabled: true,
           ),
         ),
@@ -59,10 +60,10 @@ class StepSettings extends StatelessWidget {
 
         // Custom prompt
         LabeledField(
-          label: 'CUSTOM TRANSLATION PROMPT (OPTIONAL)',
+          label: t.projects.createProject.translationSettings.fieldCustomPrompt,
           child: TokenTextField(
             controller: state.customPromptController,
-            hint: 'Enter custom instructions for the AI translator',
+            hint: t.projects.createProject.translationSettings.hintCustomPrompt,
             enabled: true,
             maxLines: 6,
           ),

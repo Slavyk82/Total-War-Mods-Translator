@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
 import 'package:twmt/widgets/wizard/readonly_field.dart';
@@ -124,7 +125,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Auto-filled from the detected mod. Review and continue.',
+              t.projects.createProject.basicInfo.descriptionAutoFilled,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -132,21 +133,21 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
             ),
             const SizedBox(height: 16),
             LabeledField(
-              label: 'PROJECT NAME',
+              label: t.projects.createProject.basicInfo.fieldProjectName,
               child: TokenTextField(
                 controller: widget.state.nameController,
-                hint: 'Enter project name',
+                hint: t.projects.createProject.basicInfo.hintProjectName,
                 enabled: true,
               ),
             ),
             const SizedBox(height: 12),
             ReadonlyField(
-              label: 'SOURCE PACK',
+              label: t.projects.createProject.basicInfo.fieldSourcePack,
               value: widget.state.sourceFileController.text,
             ),
             const SizedBox(height: 12),
             ReadonlyField(
-              label: 'WORKSHOP ID',
+              label: t.projects.createProject.basicInfo.fieldWorkshopId,
               value: widget.state.modSteamIdController.text,
             ),
           ],
@@ -161,7 +162,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Enter the project name and pick a game installation.',
+            t.projects.createProject.basicInfo.descriptionManual,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -169,16 +170,16 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
           ),
           const SizedBox(height: 16),
           LabeledField(
-            label: 'PROJECT NAME',
+            label: t.projects.createProject.basicInfo.fieldProjectName,
             child: TokenTextField(
               controller: widget.state.nameController,
-              hint: 'Enter project name',
+              hint: t.projects.createProject.basicInfo.hintProjectName,
               enabled: true,
             ),
           ),
           const SizedBox(height: 12),
           LabeledField(
-            label: 'GAME',
+            label: t.projects.createProject.basicInfo.fieldGame,
             child: _buildGameSelection(tokens),
           ),
         ],
@@ -203,7 +204,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
         ),
       ),
       error: (err, _) => Text(
-        'Error loading games: $err',
+        t.projects.createProject.basicInfo.errorLoadingGames(error: err.toString()),
         style: tokens.fontBody.copyWith(
           fontSize: 13,
           color: tokens.err,
@@ -229,7 +230,7 @@ class _StepBasicInfoState extends ConsumerState<StepBasicInfo> {
         child: DropdownButton<String>(
           value: widget.state.selectedGameId,
           hint: Text(
-            'Select a game',
+            t.projects.createProject.basicInfo.hintGame,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textFaint,

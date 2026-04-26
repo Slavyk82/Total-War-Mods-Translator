@@ -1,6 +1,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
@@ -17,7 +18,7 @@ class BulkOperationProgressDialog extends ConsumerWidget {
     final tokens = context.tokens;
     final s = ref.watch(bulkOperationsProvider);
     final title = _titleFor(s.operationType);
-    final subtitle = 'Target language: ${s.targetLanguageCode ?? '—'}';
+    final subtitle = t.projects.bulk.progress.targetLanguage(code: s.targetLanguageCode ?? '—');
     // `currentIndex` is 0-based and stays on the last processed project once
     // the loop exits, so it tops out at `n - 1` at completion. Snap to full
     // when the notifier signals `isComplete`, otherwise trust the index.
@@ -59,17 +60,17 @@ class BulkOperationProgressDialog extends ConsumerWidget {
   String _titleFor(BulkOperationType? type) {
     switch (type) {
       case BulkOperationType.translate:
-        return 'Translating projects';
+        return t.projects.bulk.progress.titleTranslating;
       case BulkOperationType.rescan:
-        return 'Rescanning reviews';
+        return t.projects.bulk.progress.titleRescanning;
       case BulkOperationType.forceValidate:
-        return 'Force-validating reviews';
+        return t.projects.bulk.progress.titleValidating;
       case BulkOperationType.generatePack:
-        return 'Generating packs';
+        return t.projects.bulk.progress.titleGeneratingPacks;
       case BulkOperationType.translateReviews:
-        return 'Retranslating flagged units';
+        return t.projects.bulk.progress.titleRetranslating;
       case null:
-        return 'Bulk operation';
+        return t.projects.bulk.progress.titleDefault;
     }
   }
 
@@ -103,9 +104,11 @@ class BulkOperationProgressDialog extends ConsumerWidget {
         child: Padding(
           padding: const EdgeInsets.only(right: 8),
           child: Text(
-            '${s.countByStatus(ProjectResultStatus.succeeded)} succeeded · '
-            '${s.countByStatus(ProjectResultStatus.skipped)} skipped · '
-            '$failed failed',
+            t.projects.bulk.progress.summary(
+              succeeded: s.countByStatus(ProjectResultStatus.succeeded),
+              skipped: s.countByStatus(ProjectResultStatus.skipped),
+              failed: failed,
+            ),
             overflow: TextOverflow.ellipsis,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
@@ -117,12 +120,12 @@ class BulkOperationProgressDialog extends ConsumerWidget {
       final trailing = <Widget>[
         if (failed > 0)
           SmallTextButton(
-            label: 'Retry failed',
+            label: t.projects.bulk.progress.retryFailed,
             icon: FluentIcons.arrow_clockwise_24_regular,
             onTap: () => _retryFailed(context, ref, s),
           ),
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           filled: true,
           onTap: () {
             ref.read(bulkOperationsProvider.notifier).reset();
@@ -147,7 +150,7 @@ class BulkOperationProgressDialog extends ConsumerWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Cancelling…',
+            t.projects.bulk.progress.cancelling,
             style: tokens.fontBody
                 .copyWith(fontSize: 12, color: tokens.textDim),
           ),
@@ -160,7 +163,7 @@ class BulkOperationProgressDialog extends ConsumerWidget {
       <Widget>[],
       <Widget>[
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           icon: FluentIcons.dismiss_24_regular,
           onTap: () => _confirmCancel(context, ref),
         ),
@@ -171,12 +174,12 @@ class BulkOperationProgressDialog extends ConsumerWidget {
   Future<void> _confirmCancel(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
+      builder: (_) => TokenConfirmDialog(
         icon: FluentIcons.warning_24_regular,
-        title: 'Stop the current operation?',
-        message: 'Projects already processed will keep their changes.',
-        confirmLabel: 'Stop',
-        cancelLabel: 'Keep running',
+        title: t.projects.dialogs.confirmCancelBulk.title,
+        message: t.projects.dialogs.confirmCancelBulk.message,
+        confirmLabel: t.projects.dialogs.confirmCancelBulk.stop,
+        cancelLabel: t.projects.dialogs.confirmCancelBulk.keepRunning,
         destructive: true,
         confirmIcon: FluentIcons.stop_24_regular,
       ),
@@ -238,7 +241,7 @@ class _OverallProgress extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '$processedCount / $total projects',
+              t.projects.bulk.progress.projectProgress(current: processedCount, total: total),
               style: tokens.fontBody
                   .copyWith(fontSize: 12, color: tokens.textDim),
             ),

@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -134,7 +135,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     if (_currentStep == 0) {
       if (!_formKey.currentState!.validate()) return false;
       if (_state.selectedGameId == null) {
-        setState(() => _errorMessage = 'Please select a game installation');
+        setState(() => _errorMessage = t.projects.createProject.errors.selectGame);
         return false;
       }
     }
@@ -181,7 +182,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       }
 
       if (gameId == null) {
-        throw Exception('Game installation must be selected');
+        throw Exception(t.projects.createProject.errors.gameMustBeSelected);
       }
 
       // Get game installation to determine output folder
@@ -194,7 +195,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       if (gameInstallation.installationPath != null) {
         outputFolder = path.join(gameInstallation.installationPath!, 'data');
       } else {
-        throw Exception('Game installation path is not configured');
+        throw Exception(t.projects.createProject.errors.gamePathNotConfigured);
       }
 
       // Create metadata with the project name as mod title
@@ -267,7 +268,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       } else {
         if (!mounted) return;
         // Show success without import
-        FluentToast.success(context, 'Project created successfully');
+        FluentToast.success(context, t.projects.messages.projectCreated);
       }
 
       if (!mounted) return;
@@ -279,7 +280,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       Navigator.of(context).pop(projectId);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to create project: $e';
+        _errorMessage = t.projects.messages.createFailed(error: e.toString());
         _isLoading = false;
       });
     }
@@ -296,16 +297,14 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     if (schemaPath.isEmpty) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'RPFM schema path is not configured.\n\n'
-            'Please configure it in Settings > RPFM Tool before creating a project.\n\n'
-            'The schema path is required to extract localization files from .pack files.';
+        _errorMessage = t.projects.createProject.errors.rpfmSchemaNotConfigured;
         _isLoading = false;
       });
       return;
     }
 
     setState(() {
-      _progressMessage = 'Extracting and importing localization files...';
+      _progressMessage = t.projects.createProject.progress.extracting;
       _importLogs.clear();
     });
 
@@ -341,7 +340,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       setState(() {
         _progressMessage = null;
         _errorMessage =
-            'Project created but failed to import translations: ${initResult.error}';
+            t.projects.messages.importFailed(error: initResult.error.toString());
         _isLoading = false;
       });
       return;
@@ -353,7 +352,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     // Show success with import count
     FluentToast.success(
       context,
-      'Project created with $unitsCount translation units',
+      t.projects.messages.projectCreatedUnits(count: unitsCount),
     );
   }
 
@@ -389,9 +388,9 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
                           WizardStepHeader(
                             stepNumber: _currentStep + 1,
                             totalSteps: 2,
-                            title: const [
-                              'Basic info',
-                              'Translation settings',
+                            title: [
+                              t.projects.createProject.steps.basicInfo,
+                              t.projects.createProject.steps.translationSettings,
                             ][_currentStep],
                           ),
                           const SizedBox(height: 20),
@@ -431,7 +430,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
           ),
           const SizedBox(width: 12),
           Text(
-            'Create New Project',
+            t.projects.createProject.title,
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
@@ -443,7 +442,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
           if (!_isLoading)
             SmallIconButton(
               icon: FluentIcons.dismiss_24_regular,
-              tooltip: 'Close',
+              tooltip: t.common.actions.close,
               onTap: () => Navigator.of(context).pop(),
             ),
         ],
@@ -505,7 +504,7 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
           ),
           const SizedBox(height: 16),
           Text(
-            _progressMessage ?? 'Processing...',
+            _progressMessage ?? t.projects.createProject.progress.processing,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.text,
@@ -582,18 +581,18 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         children: [
           if (_currentStep > _minStep)
             SmallTextButton(
-              label: 'Back',
+              label: t.common.actions.back,
               icon: FluentIcons.arrow_left_24_regular,
               onTap: _isLoading ? null : _previousStep,
             ),
           const Spacer(),
           SmallTextButton(
-            label: 'Cancel',
+            label: t.common.actions.cancel,
             onTap: _isLoading ? null : () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 8),
           SmallTextButton(
-            label: _currentStep < 1 ? 'Next' : 'Create',
+            label: _currentStep < 1 ? t.projects.createProject.actions.next : t.projects.createProject.actions.create,
             icon: _currentStep < 1
                 ? FluentIcons.arrow_right_24_regular
                 : FluentIcons.play_24_regular,

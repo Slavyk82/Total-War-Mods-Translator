@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/bulk_info_card_dismissed_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_action_buttons.dart';
 import 'package:twmt/features/projects/widgets/bulk_info_card.dart';
@@ -36,11 +37,11 @@ class ProjectsBulkMenuPanel extends ConsumerWidget {
           children: [
             const BulkInfoCard(),
             const BulkTargetLanguageSelector(),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 16, 12, 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 4),
               child: Text(
-                'Settings',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                t.projects.bulk.sectionSettings,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
             const Padding(
@@ -57,11 +58,11 @@ class ProjectsBulkMenuPanel extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: 12),
               child: EditorToolbarBatchSettings(),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(12, 16, 12, 4),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 16, 12, 4),
               child: Text(
-                'Actions',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                t.projects.bulk.sectionActions,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
             const BulkActionButtons(),
@@ -73,7 +74,7 @@ class ProjectsBulkMenuPanel extends ConsumerWidget {
                   onPressed: () =>
                       ref.read(bulkInfoCardDismissedProvider.notifier).reset(),
                   icon: const Icon(Icons.info_outline, size: 14),
-                  label: const Text('Show info'),
+                  label: Text(t.projects.bulk.sectionInfo),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,

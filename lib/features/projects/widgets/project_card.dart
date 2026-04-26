@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../providers/projects_screen_providers.dart';
 import '../../../models/domain/project.dart';
 import '../../../models/domain/game_installation.dart';
@@ -233,7 +234,7 @@ class _ProjectCardState extends State<ProjectCard> {
         ),
         const SizedBox(width: 4),
         Text(
-          'Last modified: $lastModifiedStr',
+          t.projects.labels.lastModified(date: lastModifiedStr),
           style: theme.textTheme.bodySmall?.copyWith(
             color: mutedColor,
             fontSize: 11,
@@ -248,7 +249,7 @@ class _ProjectCardState extends State<ProjectCard> {
           ),
           const SizedBox(width: 4),
           Text(
-            'Last export: $lastExportStr',
+            t.projects.labels.lastExport(date: lastExportStr),
             style: theme.textTheme.bodySmall?.copyWith(
               color: mutedColor,
               fontSize: 11,
@@ -274,7 +275,7 @@ class _ProjectCardState extends State<ProjectCard> {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      'Export outdated',
+                      t.projects.status.exportOutdated,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: Colors.orange.shade700,
                         fontSize: 10,
@@ -309,7 +310,7 @@ class _ProjectCardState extends State<ProjectCard> {
     }
 
     return Tooltip(
-      message: 'Resync with source pack file',
+      message: t.projects.tooltips.resync,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -342,7 +343,7 @@ class _ProjectCardState extends State<ProjectCard> {
     final theme = Theme.of(context);
 
     return Tooltip(
-      message: 'Delete',
+      message: t.common.actions.delete,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -376,7 +377,7 @@ class _ProjectCardState extends State<ProjectCard> {
 
     if (languages.isEmpty) {
       return Text(
-        'No target languages configured',
+        t.projects.labels.noTargetLanguage,
         style: theme.textTheme.bodySmall?.copyWith(
           color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
           fontStyle: FontStyle.italic,
@@ -473,7 +474,7 @@ class _ProjectCardState extends State<ProjectCard> {
               ),
               const SizedBox(width: 4),
               Text(
-                'Mod updated',
+                t.projects.status.modUpdated,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: Colors.orange.shade700,
                   fontSize: 11,
@@ -509,7 +510,7 @@ class _ProjectCardState extends State<ProjectCard> {
             ),
             const SizedBox(width: 4),
             Text(
-              'Up to date',
+              t.projects.status.upToDate,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onPrimaryContainer,
                 fontSize: 11,
@@ -523,13 +524,13 @@ class _ProjectCardState extends State<ProjectCard> {
     // Has changes - build tooltip with details and show summary badge
     final tooltipLines = <String>[];
     if (analysis.hasNewUnits) {
-      tooltipLines.add('+${analysis.newUnitsCount} new translations to add');
+      tooltipLines.add(t.projects.tooltips.newTranslations(n: analysis.newUnitsCount));
     }
     if (analysis.hasRemovedUnits) {
-      tooltipLines.add('-${analysis.removedUnitsCount} translations removed');
+      tooltipLines.add(t.projects.tooltips.removedTranslations(n: analysis.removedUnitsCount));
     }
     if (analysis.hasModifiedUnits) {
-      tooltipLines.add('~${analysis.modifiedUnitsCount} source texts changed');
+      tooltipLines.add(t.projects.tooltips.changedSources(n: analysis.modifiedUnitsCount));
     }
 
     return Tooltip(

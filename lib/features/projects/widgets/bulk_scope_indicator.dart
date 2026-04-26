@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 
 class BulkScopeIndicator extends ConsumerWidget {
@@ -12,8 +13,10 @@ class BulkScopeIndicator extends ConsumerWidget {
       data: (scope) => Padding(
         padding: const EdgeInsets.all(12),
         child: Text(
-          'Will affect ${scope.visible.length} visible projects '
-          '(${scope.matching.length} match target language).',
+          t.projects.bulk.scopeMessage(
+            visible: scope.visible.length,
+            matching: scope.matching.length,
+          ),
           style: TextStyle(
             fontSize: 11,
             color: Theme.of(context).colorScheme.onSurfaceVariant,

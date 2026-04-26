@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/bulk_info_card_dismissed_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
@@ -28,9 +29,7 @@ class BulkInfoCard extends ConsumerWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Bulk actions are designed for projects already partially '
-              'translated. The bulk of the work should be done project by '
-              'project in the editor — bulk is here to finish up or harmonise.',
+              t.projects.bulk.infoText,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.text,
@@ -45,7 +44,7 @@ class BulkInfoCard extends ConsumerWidget {
             constraints: const BoxConstraints(),
             padding: EdgeInsets.zero,
             visualDensity: VisualDensity.compact,
-            tooltip: 'Hide',
+            tooltip: t.projects.bulk.infoHide,
             onPressed: () =>
                 ref.read(bulkInfoCardDismissedProvider.notifier).dismiss(),
           ),

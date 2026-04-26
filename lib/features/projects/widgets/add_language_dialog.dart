@@ -8,6 +8,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../models/domain/language.dart';
 import '../../../models/domain/project_language.dart';
 import '../../../models/domain/translation_version.dart';
@@ -43,7 +44,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
 
     return TokenDialog(
       icon: FluentIcons.add_circle_24_regular,
-      title: 'Add Target Languages',
+      title: t.projects.addLanguage.title,
       width: 540,
       body: SizedBox(
         height: 420,
@@ -55,7 +56,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
               const SizedBox(height: 14),
             ],
             Text(
-              'Select languages to add to this project',
+              t.projects.addLanguage.subtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -76,11 +77,11 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: _isLoading ? null : () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: _isLoading ? 'Adding...' : 'Add Languages',
+          label: _isLoading ? t.projects.addLanguage.adding : t.projects.addLanguage.addButton,
           icon: FluentIcons.checkmark_24_regular,
           filled: true,
           onTap: _selectedLanguageIds.isEmpty || _isLoading
@@ -112,7 +113,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
             ),
             const SizedBox(height: 12),
             Text(
-              'All languages already added',
+              t.projects.addLanguage.allAdded,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.textDim,
@@ -188,7 +189,7 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Error loading languages',
+            t.projects.addLanguage.loadError,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.err,
@@ -294,15 +295,13 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
 
       FluentToast.success(
         context,
-        'Added ${languageIdsList.length} language'
-        '${languageIdsList.length > 1 ? 's' : ''} with '
-        '${translationUnits.length} translation units each',
+        t.projects.addLanguage.addSuccess(count: languageIdsList.length, units: translationUnits.length),
       );
 
       Navigator.of(context).pop(languageIdsList);
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to add languages: $e';
+        _errorMessage = t.projects.addLanguage.addFailed(error: e.toString());
         _isLoading = false;
       });
     }
@@ -360,7 +359,7 @@ class _LanguageOption extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Code: ${language.code.toUpperCase()}',
+                      t.projects.addLanguage.languageCode(code: language.code.toUpperCase()),
                       style: tokens.fontBody.copyWith(
                         fontSize: 11.5,
                         color: tokens.textDim,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../widgets/dialogs/token_confirm_dialog.dart';
 import '../../../widgets/fluent/fluent_progress_indicator.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
@@ -64,13 +65,11 @@ class _BatchPackExportScreenState
     if (!state.isExporting) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Export in Progress',
-        message:
-            'A batch export is currently in progress. Are you sure you want '
-            'to leave? The export will be cancelled.',
-        cancelLabel: 'Stay',
-        confirmLabel: 'Leave',
+      builder: (_) => TokenConfirmDialog(
+        title: t.projects.dialogs.confirmLeave.title,
+        message: t.projects.dialogs.confirmLeave.message,
+        cancelLabel: t.projects.dialogs.confirmLeave.stay,
+        confirmLabel: t.projects.dialogs.confirmLeave.leave,
         destructive: true,
       ),
     );
@@ -95,14 +94,14 @@ class _BatchPackExportScreenState
     if (_staging == null) {
       return FluentScaffold(
         header: FluentHeader(
-          title: 'Batch Pack Export',
+          title: t.projects.batchExport.title,
           leading: FluentIconButton(
             icon: FluentIcons.arrow_left_24_regular,
             onPressed: () => context.pop(),
-            tooltip: 'Back',
+            tooltip: t.common.actions.back,
           ),
         ),
-        body: const Center(child: Text('No export data.')),
+        body: Center(child: Text(t.projects.batchExport.noData)),
       );
     }
 
@@ -112,11 +111,11 @@ class _BatchPackExportScreenState
     return FluentScaffold(
       backgroundColor: theme.colorScheme.surfaceContainerLow,
       header: FluentHeader(
-        title: 'Batch Pack Export',
+        title: t.projects.batchExport.title,
         leading: FluentIconButton(
           icon: FluentIcons.arrow_left_24_regular,
           onPressed: _handleBack,
-          tooltip: 'Back',
+          tooltip: t.common.actions.back,
         ),
         actions: [
           // Info badge
@@ -165,7 +164,7 @@ class _BatchPackExportScreenState
                 ref.read(batchPackExportProvider.notifier).cancel();
               },
               icon: const Icon(FluentIcons.dismiss_24_regular, size: 18),
-              label: const Text('Cancel'),
+              label: Text(t.common.actions.cancel),
               style: TextButton.styleFrom(
                 foregroundColor: theme.colorScheme.error,
               ),
@@ -179,7 +178,7 @@ class _BatchPackExportScreenState
                 context.pop();
               },
               icon: const Icon(FluentIcons.checkmark_24_regular, size: 18),
-              label: const Text('Close'),
+              label: Text(t.common.actions.close),
             ),
         ],
       ),
@@ -205,7 +204,7 @@ class _BatchPackExportScreenState
 
           // Project list header
           Text(
-            'Projects',
+            t.projects.batchExport.sectionProjects,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -273,10 +272,10 @@ class _BatchPackExportScreenState
             children: [
               Text(
                 state.isComplete
-                    ? 'Export Complete'
+                    ? t.projects.batchExport.statusComplete
                     : state.isCancelled
-                        ? 'Cancelled'
-                        : 'Exporting...',
+                        ? t.projects.batchExport.statusCancelled
+                        : t.projects.batchExport.statusExporting,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -308,7 +307,7 @@ class _BatchPackExportScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            '${state.completedProjects} / ${state.totalProjects} projects',
+            t.projects.batchExport.progressOf(completed: state.completedProjects, total: state.totalProjects),
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
@@ -316,7 +315,7 @@ class _BatchPackExportScreenState
           if (state.currentProjectName != null && state.isExporting) ...[
             const SizedBox(height: 4),
             Text(
-              'Current: ${state.currentProjectName}',
+              t.projects.batchExport.current(name: state.currentProjectName!),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.primary,
                 fontWeight: FontWeight.w500,
@@ -361,8 +360,8 @@ class _BatchPackExportScreenState
               children: [
                 Text(
                   hasFailures
-                      ? 'Export completed with errors'
-                      : 'All packs exported successfully',
+                      ? t.projects.batchExport.completedWithErrors
+                      : t.projects.batchExport.allSuccess,
                   style: theme.textTheme.titleSmall?.copyWith(
                     color: hasFailures
                         ? Colors.orange.shade700
@@ -372,7 +371,7 @@ class _BatchPackExportScreenState
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${state.successCount} succeeded, ${state.failedCount} failed',
+                  t.projects.batchExport.summary(succeeded: state.successCount, failed: state.failedCount),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: hasFailures
                         ? Colors.orange.shade700
@@ -435,7 +434,7 @@ class _ProjectStatusItem extends StatelessWidget {
                 if (result != null && result!.success) ...[
                   const SizedBox(height: 2),
                   Text(
-                    '${result!.entryCount} entries',
+                    t.projects.batchExport.entryCount(count: result!.entryCount),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurface
                           .withValues(alpha: 0.5),

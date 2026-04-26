@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
@@ -82,9 +83,9 @@ Future<ProjectOutcome> runBulkTranslate({
 }) async {
   final lang = _findLanguage(project, targetLanguageCode);
   if (lang == null) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No target language configured',
+      message: t.projects.bulk.outcomes.noTargetLanguage,
     );
   }
 
@@ -98,9 +99,9 @@ Future<ProjectOutcome> runBulkTranslate({
     final unitIds = untranslatedResult.unwrap();
 
     if (unitIds.isEmpty) {
-      return const ProjectOutcome(
+      return ProjectOutcome(
         status: ProjectResultStatus.skipped,
-        message: 'No untranslated units',
+        message: t.projects.bulk.outcomes.noUntranslatedUnits,
       );
     }
 
@@ -113,9 +114,9 @@ Future<ProjectOutcome> runBulkTranslate({
     // editor's translate action uses.
     final resolved = await _resolveSelectedProvider(ref);
     if (resolved == null) {
-      return const ProjectOutcome(
+      return ProjectOutcome(
         status: ProjectResultStatus.failed,
-        message: 'no LLM model selected',
+        message: t.projects.bulk.outcomes.noLlmModel,
       );
     }
 
@@ -140,7 +141,7 @@ Future<ProjectOutcome> runBulkTranslate({
 
     return ProjectOutcome(
       status: ProjectResultStatus.succeeded,
-      message: '$translated units translated · ${rescan.needsReviewTotal} flagged',
+      message: t.projects.bulk.outcomes.unitsTranslated(count: translated, flagged: rescan.needsReviewTotal),
     );
   } catch (e) {
     return ProjectOutcome(
@@ -169,15 +170,15 @@ Future<ProjectOutcome> runBulkTranslateReviews({
 }) async {
   final lang = _findLanguage(project, targetLanguageCode);
   if (lang == null) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No target language configured',
+      message: t.projects.bulk.outcomes.noTargetLanguage,
     );
   }
   if (lang.needsReviewUnits == 0) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No units flagged for review',
+      message: t.projects.bulk.outcomes.noFlaggedUnits,
     );
   }
 
@@ -190,17 +191,17 @@ Future<ProjectOutcome> runBulkTranslateReviews({
     );
     final unitIds = rowsResult.unwrap().map((r) => r.unitId).toList();
     if (unitIds.isEmpty) {
-      return const ProjectOutcome(
+      return ProjectOutcome(
         status: ProjectResultStatus.skipped,
-        message: 'No units flagged for review',
+        message: t.projects.bulk.outcomes.noFlaggedUnits,
       );
     }
 
     final resolved = await _resolveSelectedProvider(ref);
     if (resolved == null) {
-      return const ProjectOutcome(
+      return ProjectOutcome(
         status: ProjectResultStatus.failed,
-        message: 'no LLM model selected',
+        message: t.projects.bulk.outcomes.noLlmModel,
       );
     }
 
@@ -220,7 +221,7 @@ Future<ProjectOutcome> runBulkTranslateReviews({
 
     return ProjectOutcome(
       status: ProjectResultStatus.succeeded,
-      message: '$translated units retranslated',
+      message: t.projects.bulk.outcomes.unitsRetranslated(count: translated),
     );
   } catch (e) {
     return ProjectOutcome(
@@ -250,16 +251,16 @@ Future<ProjectOutcome> runBulkRescan({
 }) async {
   final lang = _findLanguage(project, targetLanguageCode);
   if (lang == null) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No target language configured',
+      message: t.projects.bulk.outcomes.noTargetLanguage,
     );
   }
 
   if (lang.translatedUnits == 0) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No translated units to rescan',
+      message: t.projects.bulk.outcomes.noUnitsToRescan,
     );
   }
 
@@ -271,7 +272,7 @@ Future<ProjectOutcome> runBulkRescan({
 
     return ProjectOutcome(
       status: ProjectResultStatus.succeeded,
-      message: '${rescan.needsReviewTotal} flagged for review',
+      message: t.projects.bulk.outcomes.unitsFlagged(count: rescan.needsReviewTotal),
     );
   } catch (e) {
     return ProjectOutcome(
@@ -301,16 +302,16 @@ Future<ProjectOutcome> runBulkForceValidate({
 }) async {
   final lang = _findLanguage(project, targetLanguageCode);
   if (lang == null) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No target language configured',
+      message: t.projects.bulk.outcomes.noTargetLanguage,
     );
   }
 
   if (lang.needsReviewUnits == 0) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No units flagged for review',
+      message: t.projects.bulk.outcomes.noFlaggedUnits,
     );
   }
 
@@ -322,9 +323,9 @@ Future<ProjectOutcome> runBulkForceValidate({
     final versionIds = idsResult.unwrap();
 
     if (versionIds.isEmpty) {
-      return const ProjectOutcome(
+      return ProjectOutcome(
         status: ProjectResultStatus.skipped,
-        message: 'No units flagged for review',
+        message: t.projects.bulk.outcomes.noFlaggedUnits,
       );
     }
 
@@ -333,7 +334,7 @@ Future<ProjectOutcome> runBulkForceValidate({
 
     return ProjectOutcome(
       status: ProjectResultStatus.succeeded,
-      message: '$cleared flags cleared',
+      message: t.projects.bulk.outcomes.flagsCleared(count: cleared),
     );
   } catch (e) {
     return ProjectOutcome(
@@ -363,9 +364,9 @@ Future<ProjectOutcome> runBulkGeneratePack({
 }) async {
   final lang = _findLanguage(project, targetLanguageCode);
   if (lang == null) {
-    return const ProjectOutcome(
+    return ProjectOutcome(
       status: ProjectResultStatus.skipped,
-      message: 'No target language configured',
+      message: t.projects.bulk.outcomes.noTargetLanguage,
     );
   }
 
@@ -387,8 +388,10 @@ Future<ProjectOutcome> runBulkGeneratePack({
     return result.when(
       ok: (exportResult) => ProjectOutcome(
         status: ProjectResultStatus.succeeded,
-        message:
-            '${exportResult.entryCount} entries · ${(exportResult.fileSize / (1024 * 1024)).toStringAsFixed(2)} MB',
+        message: t.projects.bulk.outcomes.packGenerated(
+          entries: exportResult.entryCount,
+          size: (exportResult.fileSize / (1024 * 1024)).toStringAsFixed(2),
+        ),
       ),
       err: (error) => ProjectOutcome(
         status: ProjectResultStatus.failed,

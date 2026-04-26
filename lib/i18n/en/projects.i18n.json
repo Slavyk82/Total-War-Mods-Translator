@@ -1,0 +1,235 @@
+{
+  "title": "Projects",
+  "projectCount": "$count project(s)",
+  "stateLabel": "STATE",
+  "clearFilters": "Clear",
+  "filters": {
+    "needsUpdate": "Needs Update",
+    "needsReview": "Needs Review",
+    "incomplete": "Incomplete",
+    "completed": "Completed",
+    "exported": "Exported",
+    "notExported": "Not Exported",
+    "exportOutdated": "Export Outdated"
+  },
+  "emptyStates": {
+    "noMatch": "No projects match filters",
+    "noProjects": "No projects yet",
+    "adjustFilters": "Try adjusting your filters",
+    "goToMods": "Go to Mods screen to create a project from a mod",
+    "failedToLoad": "Failed to load projects"
+  },
+  "loading": "Loading projects...",
+  "columns": {
+    "project": "Project",
+    "languagesProgress": "Languages & progress",
+    "modified": "Modified",
+    "status": "Status"
+  },
+  "labels": {
+    "noTargetLanguage": "No target language",
+    "localPack": "Local pack",
+    "gameTranslation": "Game translation",
+    "lastModified": "Last modified: $date",
+    "lastExport": "Last export: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Open in Steam Workshop",
+    "resync": "Resync with source pack file",
+    "deleteProject": "Delete project",
+    "hideBulkMenu": "Hide bulk menu",
+    "showBulkMenu": "Show bulk menu",
+    "newTranslations": "+$n new translations to add",
+    "removedTranslations": "-$n translations removed",
+    "changedSources": "~$n source texts changed"
+  },
+  "status": {
+    "modUpdated": "Mod updated",
+    "upToDate": "Up to date",
+    "exportOutdated": "Export outdated",
+    "unpublished": "Unpublished",
+    "exported": "Exported",
+    "draft": "Draft"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "Delete Project",
+      "message": "Are you sure you want to delete \"$name\"?",
+      "warning": "This action cannot be undone.",
+      "confirmLabel": "Delete"
+    },
+    "confirmLeave": {
+      "title": "Export in Progress",
+      "message": "A batch export is currently in progress. Are you sure you want to leave? The export will be cancelled.",
+      "stay": "Stay",
+      "leave": "Leave"
+    },
+    "confirmCancelBulk": {
+      "title": "Stop the current operation?",
+      "message": "Projects already processed will keep their changes.",
+      "stop": "Stop",
+      "keepRunning": "Keep running"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "Project resynced successfully",
+    "resyncFailed": "Resync failed: $error",
+    "deleteSuccess": "Project \"$name\" deleted",
+    "deleteFailed": "Failed to delete project: $error",
+    "projectCreated": "Project created successfully",
+    "projectCreatedUnits": "Project created with $count translation units",
+    "createFailed": "Failed to create project: $error",
+    "importFailed": "Project created but failed to import translations: $error"
+  },
+  "search": {
+    "hint": "Search projects..."
+  },
+  "batchExport": {
+    "title": "Batch Pack Export",
+    "noData": "No export data.",
+    "statusComplete": "Export Complete",
+    "statusCancelled": "Cancelled",
+    "statusExporting": "Exporting...",
+    "completedWithErrors": "Export completed with errors",
+    "allSuccess": "All packs exported successfully",
+    "summary": "$succeeded succeeded, $failed failed",
+    "current": "Current: $name",
+    "sectionProjects": "Projects",
+    "sectionLabel": "$count projects • $lang",
+    "progressOf": "$completed / $total projects",
+    "entryCount": "$count entries"
+  },
+  "bulk": {
+    "sectionSettings": "Settings",
+    "sectionActions": "Actions",
+    "sectionInfo": "Show info",
+    "infoText": "Bulk actions are designed for projects already partially translated. They apply to all visible projects that match the selected target language.",
+    "infoHide": "Hide",
+    "targetLanguageLabel": "Target language",
+    "scopeMessage": "Will affect $visible visible projects ($matching match target language).",
+    "buttons": {
+      "translateAll": "Translate all",
+      "rescanReviews": "Rescan reviews",
+      "reviewFlagged": "Review flagged",
+      "generatePack": "Generate pack"
+    },
+    "unitCount": "$n unit(s)",
+    "tooltips": {
+      "selectLanguage": "Select a target language",
+      "alreadyRunning": "An operation is already running",
+      "noVisibleProjects": "No visible projects match"
+    },
+    "progress": {
+      "titleTranslating": "Translating projects",
+      "titleRescanning": "Rescanning reviews",
+      "titleValidating": "Force-validating reviews",
+      "titleGeneratingPacks": "Generating packs",
+      "titleRetranslating": "Retranslating flagged units",
+      "titleDefault": "Bulk operation",
+      "targetLanguage": "Target language: $code",
+      "projectProgress": "$current / $total projects",
+      "cancelling": "Cancelling…",
+      "retryFailed": "Retry failed",
+      "summary": "$succeeded succeeded · $skipped skipped · $failed failed"
+    },
+    "review": {
+      "title": "Review flagged translations",
+      "subtitle": "Target: $code · $units units across $projects projects",
+      "loadFailed": "Failed to load review queue: $error",
+      "working": "Working…",
+      "validateAll": "Validate all",
+      "retranslateAll": "Force retranslate all",
+      "emptyTitle": "No flagged translations",
+      "emptySubtitle": "Every visible project is up to date for this language.",
+      "noModelSelected": "No LLM model selected",
+      "retranslateFailed": "Retranslate failed: $error",
+      "validateFailed": "Failed to validate: $error",
+      "validateAllFailed": "Failed to validate all: $error",
+      "columnSource": "EN",
+      "columnTranslation": "Translation",
+      "emptyTranslation": "(empty)",
+      "tooltipValidate": "Validate (clear review flag)",
+      "tooltipRetranslate": "Force retranslate this unit"
+    },
+    "languageSelector": {
+      "loadFailed": "Failed to load languages: $error",
+      "noLanguages": "No target language available in visible projects."
+    },
+    "outcomes": {
+      "noTargetLanguage": "No target language configured",
+      "noUntranslatedUnits": "No untranslated units",
+      "noLlmModel": "no LLM model selected",
+      "noFlaggedUnits": "No units flagged for review",
+      "noUnitsToRescan": "No translated units to rescan",
+      "unitsTranslated": "$count units translated · $flagged flagged",
+      "unitsFlagged": "$count flagged for review",
+      "flagsCleared": "$count flags cleared",
+      "packGenerated": "$entries entries · $size MB",
+      "unitsRetranslated": "$count units retranslated"
+    }
+  },
+  "addLanguage": {
+    "title": "Add Target Languages",
+    "subtitle": "Select languages to add to this project",
+    "adding": "Adding...",
+    "addButton": "Add Languages",
+    "allAdded": "All languages already added",
+    "loadError": "Error loading languages",
+    "languageCode": "Code: $code",
+    "addSuccess": "Added $count language(s) with $units translation units each",
+    "addFailed": "Failed to add languages: $error"
+  },
+  "createProject": {
+    "title": "Create New Project",
+    "steps": {
+      "basicInfo": "Basic info",
+      "translationSettings": "Translation settings"
+    },
+    "actions": {
+      "close": "Close",
+      "back": "Back",
+      "next": "Next",
+      "create": "Create"
+    },
+    "errors": {
+      "selectGame": "Please select a game installation",
+      "gameMustBeSelected": "Game installation must be selected",
+      "gamePathNotConfigured": "Game installation path is not configured",
+      "rpfmSchemaNotConfigured": "RPFM schema path is not configured.\n\nPlease configure it in Settings > RPFM Tool before creating a project.\n\nThe schema path is required to extract localization files from .pack files."
+    },
+    "progress": {
+      "extracting": "Extracting and importing localization files...",
+      "processing": "Processing..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "Auto-filled from the detected mod. Review and continue.",
+      "descriptionManual": "Enter the project name and pick a game installation.",
+      "fieldProjectName": "PROJECT NAME",
+      "fieldSourcePack": "SOURCE PACK",
+      "fieldWorkshopId": "WORKSHOP ID",
+      "fieldGame": "GAME",
+      "hintProjectName": "Enter project name",
+      "hintGame": "Select a game",
+      "errorLoadingGames": "Error loading games: $error"
+    },
+    "translationSettings": {
+      "description": "Tune translation throughput and optionally provide an extra prompt.",
+      "fieldBatchSize": "BATCH SIZE",
+      "fieldParallelBatches": "PARALLEL BATCHES",
+      "fieldCustomPrompt": "CUSTOM TRANSLATION PROMPT (OPTIONAL)",
+      "hintBatchSize": "Number of units per batch (default: 25)",
+      "hintParallelBatches": "Number of batches to process in parallel (default: 3)",
+      "hintCustomPrompt": "Enter custom instructions for the AI translator"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "Initializing Project",
+    "titleFailed": "Initialization Failed",
+    "titleComplete": "Initialization Complete",
+    "extracting": "Extracting and importing localization files...",
+    "successUnits": "Successfully imported $count translation units",
+    "noLogs": "No logs yet...",
+    "sectionLogs": "Logs",
+    "close": "Close"
+  }
+}
