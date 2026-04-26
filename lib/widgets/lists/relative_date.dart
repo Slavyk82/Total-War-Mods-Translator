@@ -6,6 +6,8 @@
 /// so tests can drive deterministic clocks.
 library;
 
+import 'package:twmt/i18n/strings.g.dart';
+
 /// Formats the elapsed time from [date] up to [now] as a short relative
 /// label used in list cells.
 ///
@@ -24,16 +26,22 @@ String? formatRelativeSince(DateTime? date, {required DateTime now}) {
   final days = diff.inDays;
   if (days == 0) {
     final hours = diff.inHours;
-    return hours == 0 ? '< 1h' : '${hours}h';
+    return hours == 0
+        ? t.widgets.relativeDate.lessThanOneHour
+        : t.widgets.relativeDate.hours(hours: hours);
   }
-  if (days == 1) return '1 day';
-  if (days < 30) return '$days days';
+  if (days == 1) return t.widgets.relativeDate.oneDay;
+  if (days < 30) return t.widgets.relativeDate.days(days: days);
   if (days < 365) {
     final months = (days / 30).floor();
-    return months == 1 ? '1 month' : '$months months';
+    return months == 1
+        ? t.widgets.relativeDate.oneMonth
+        : t.widgets.relativeDate.months(months: months);
   }
   final years = (days / 365).floor();
-  return years == 1 ? '1 year' : '$years years';
+  return years == 1
+      ? t.widgets.relativeDate.oneYear
+      : t.widgets.relativeDate.years(years: years);
 }
 
 /// Formats [date] as `dd/MM/yyyy HH:mm` for use in hover tooltips.

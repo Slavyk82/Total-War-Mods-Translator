@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// A toggleable filter pill per §6.2 of the UI spec.
@@ -105,7 +106,7 @@ class FilterPillGroup extends StatelessWidget {
         if (showClear) ...[
           const SizedBox(width: 6),
           _FilterGroupClearPill(
-            label: clearLabel ?? 'Clear',
+            label: clearLabel ?? t.widgets.filterPill.clear,
             tooltip: clearTooltip,
             onTap: onClear!,
           ),

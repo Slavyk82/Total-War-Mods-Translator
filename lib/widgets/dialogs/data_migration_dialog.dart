@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -58,8 +59,8 @@ class _DataMigrationDialogState extends ConsumerState<DataMigrationDialog> {
       canPop: false,
       child: TokenDialog(
         icon: FluentIcons.database_arrow_right_24_regular,
-        title: 'Database Update',
-        subtitle: 'One-time migration required',
+        title: t.widgets.dataMigrationDialog.title,
+        subtitle: t.widgets.dataMigrationDialog.subtitle,
         width: 500,
         body: Column(
           mainAxisSize: MainAxisSize.min,
@@ -71,7 +72,7 @@ class _DataMigrationDialogState extends ConsumerState<DataMigrationDialog> {
               Align(
                 alignment: Alignment.centerRight,
                 child: SmallTextButton(
-                  label: 'Retry',
+                  label: t.widgets.dataMigrationDialog.actions.retry,
                   icon: FluentIcons.arrow_clockwise_24_regular,
                   filled: true,
                   onTap: () => ref
@@ -82,7 +83,7 @@ class _DataMigrationDialogState extends ConsumerState<DataMigrationDialog> {
             ] else ...[
               Text(
                 state.currentStep.isEmpty
-                    ? 'Preparing...'
+                    ? t.widgets.dataMigrationDialog.preparing
                     : state.currentStep,
                 style: tokens.fontBody.copyWith(
                   fontSize: 14,
@@ -143,8 +144,7 @@ class _DataMigrationDialogState extends ConsumerState<DataMigrationDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'This process ensures Translation Memory works '
-                      'correctly. Please do not close the application.',
+                      t.widgets.dataMigrationDialog.info,
                       style: tokens.fontBody.copyWith(
                         fontSize: 12,
                         color: tokens.textDim,

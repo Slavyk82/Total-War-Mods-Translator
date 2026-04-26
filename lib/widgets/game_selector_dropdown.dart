@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../widgets/common/fluent_spinner.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
@@ -66,7 +67,7 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
             ),
             const SizedBox(width: 12),
             Text(
-              'Loading games...',
+              t.widgets.gameSelectorDropdown.loadingGames,
               style: theme.textTheme.bodyMedium,
             ),
           ],
@@ -95,7 +96,7 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Error loading games',
+                t.widgets.gameSelectorDropdown.errorLoadingGames,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.error,
                 ),
@@ -140,7 +141,7 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Configure a game',
+                    t.widgets.gameSelectorDropdown.configureAGame,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w500,
@@ -167,7 +168,7 @@ class _GameSelectorDropdownState extends ConsumerState<GameSelectorDropdown> {
     ConfiguredGame? selectedGame,
   ) {
     final displayText =
-        selectedGame != null ? gameLabel(selectedGame.name) : 'Select a game';
+        selectedGame != null ? gameLabel(selectedGame.name) : t.widgets.gameSelectorDropdown.selectAGame;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),

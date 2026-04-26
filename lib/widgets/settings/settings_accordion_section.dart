@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
@@ -100,7 +101,7 @@ class _SettingsAccordionSectionState extends State<SettingsAccordionSection> {
               ),
               if ((widget.activeCount ?? 0) > 0) ...[
                 StatusPill(
-                  label: '${widget.activeCount} active',
+                  label: t.widgets.settingsAccordion.activeCount(count: widget.activeCount!),
                   foreground: tokens.accent,
                   background: tokens.accentBg,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'token_card.dart';
 
@@ -79,7 +80,7 @@ class ActionCard extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.only(left: 8, right: 14),
                           child: Text(
-                            'click to open',
+                            t.widgets.actionCard.clickToOpen,
                             style: tokens.fontBody.copyWith(
                               fontSize: 10,
                               height: 1,

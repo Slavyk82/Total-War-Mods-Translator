@@ -1,0 +1,66 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Chargement des jeux...",
+    "errorLoadingGames": "Erreur lors du chargement des jeux",
+    "configureAGame": "Configurer un jeu",
+    "selectAGame": "Sélectionner un jeu"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Version : $version",
+    "checking": "Vérification...",
+    "upToDate": "À jour",
+    "checkForUpdates": "Vérifier les mises à jour",
+    "updateAvailable": "v$version disponible",
+    "dismiss": "Ignorer",
+    "downloading": "Téléchargement...",
+    "installAndRestart": "Installer et redémarrer",
+    "downloadWithSize": "Télécharger ($size)",
+    "viewOnGitHub": "Voir sur GitHub",
+    "viewReleaseNotes": "Voir les notes de version",
+    "whatsNew": "Quoi de neuf ?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Impossible de charger les notes de version : $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Sélecteur de thème",
+    "selectTheme": "Sélectionner un thème"
+  },
+  "dataMigrationDialog": {
+    "title": "Mise à jour de la base de données",
+    "subtitle": "Migration unique requise",
+    "preparing": "Préparation...",
+    "info": "Ce processus garantit le bon fonctionnement de la Mémoire de traduction. Veuillez ne pas fermer l'application.",
+    "actions": {
+      "retry": "Réessayer"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "cliquer pour ouvrir"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count actif(s)"
+  },
+  "nextStepCta": {
+    "next": "Suivant : $label"
+  },
+  "toolbar": {
+    "back": "Retour"
+  },
+  "wizardStepHeader": {
+    "step": "ÉTAPE $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Effacer"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1h",
+    "hours": "${hours}h",
+    "oneDay": "1 jour",
+    "days": "$days jours",
+    "oneMonth": "1 mois",
+    "months": "$months mois",
+    "oneYear": "1 an",
+    "years": "$years ans"
+  }
+}

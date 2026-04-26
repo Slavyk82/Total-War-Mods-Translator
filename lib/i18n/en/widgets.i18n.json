@@ -1,0 +1,66 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Loading games...",
+    "errorLoadingGames": "Error loading games",
+    "configureAGame": "Configure a game",
+    "selectAGame": "Select a game"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Version: $version",
+    "checking": "Checking...",
+    "upToDate": "Up-to-date",
+    "checkForUpdates": "Check for updates",
+    "updateAvailable": "v$version available",
+    "dismiss": "Dismiss",
+    "downloading": "Downloading...",
+    "installAndRestart": "Install & Restart",
+    "downloadWithSize": "Download ($size)",
+    "viewOnGitHub": "View on GitHub",
+    "viewReleaseNotes": "View release notes",
+    "whatsNew": "What's new?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Failed to load release notes: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Theme switcher",
+    "selectTheme": "Select theme"
+  },
+  "dataMigrationDialog": {
+    "title": "Database Update",
+    "subtitle": "One-time migration required",
+    "preparing": "Preparing...",
+    "info": "This process ensures Translation Memory works correctly. Please do not close the application.",
+    "actions": {
+      "retry": "Retry"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "click to open"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count active"
+  },
+  "nextStepCta": {
+    "next": "Next: $label"
+  },
+  "toolbar": {
+    "back": "Back"
+  },
+  "wizardStepHeader": {
+    "step": "STEP $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Clear"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1h",
+    "hours": "${hours}h",
+    "oneDay": "1 day",
+    "days": "$days days",
+    "oneMonth": "1 month",
+    "months": "$months months",
+    "oneYear": "1 year",
+    "years": "$years years"
+  }
+}

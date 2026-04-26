@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 import '../../config/router/navigation_guard.dart';
 import '../../theme/twmt_theme_tokens.dart';
@@ -41,7 +42,7 @@ class DetailScreenToolbar extends ConsumerWidget {
         children: [
           SmallIconButton(
             icon: FluentIcons.arrow_left_24_regular,
-            tooltip: 'Back',
+            tooltip: t.widgets.toolbar.back,
             onTap: onBack,
           ),
           const SizedBox(width: 12),

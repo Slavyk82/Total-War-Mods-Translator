@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Step counter + title used at the top of wizard dialogs (Plan 5d §7.5).
@@ -30,7 +31,7 @@ class WizardStepHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'STEP $stepNumber/$totalSteps',
+            t.widgets.wizardStepHeader.step(stepNumber: stepNumber, totalSteps: totalSteps),
             style: tokens.fontMono.copyWith(
               fontSize: 10,
               color: tokens.textDim,

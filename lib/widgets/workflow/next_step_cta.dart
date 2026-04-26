@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Compact accent card surfaced at the end of a workflow screen to nudge the
@@ -45,7 +45,7 @@ class NextStepCta extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Next: $label',
+                t.widgets.nextStepCta.next(label: label),
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: disabled ? tokens.textFaint : tokens.accent,

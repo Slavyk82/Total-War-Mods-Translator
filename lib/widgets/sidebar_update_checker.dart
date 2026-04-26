@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../features/release_notes/widgets/all_release_notes_dialog.dart';
@@ -54,7 +55,7 @@ class SidebarUpdateChecker extends ConsumerWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                'Version: $version',
+                t.widgets.sidebarUpdateChecker.version(version: version),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -117,13 +118,13 @@ class _CheckUpdateButton extends ConsumerWidget {
         strokeWidth: 2,
         color: theme.colorScheme.onPrimary,
       );
-      label = 'Checking...';
+      label = t.widgets.sidebarUpdateChecker.checking;
     } else if (isUpToDate) {
       icon = const Icon(FluentIcons.checkmark_circle_24_regular, size: 14);
-      label = 'Up-to-date';
+      label = t.widgets.sidebarUpdateChecker.upToDate;
     } else {
       icon = const Icon(FluentIcons.arrow_sync_24_regular, size: 14);
-      label = 'Check for updates';
+      label = t.widgets.sidebarUpdateChecker.checkForUpdates;
     }
 
     return SizedBox(
@@ -187,7 +188,7 @@ class _UpdateAvailableSection extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'v${release.version} available',
+                  t.widgets.sidebarUpdateChecker.updateAvailable(version: release.version),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -207,7 +208,7 @@ class _UpdateAvailableSection extends ConsumerWidget {
                   onPressed: () {
                     ref.read(updateCheckerProvider.notifier).dismissUpdate();
                   },
-                  tooltip: 'Dismiss',
+                  tooltip: t.widgets.sidebarUpdateChecker.dismiss,
                 ),
               ),
             ],
@@ -259,7 +260,7 @@ class _DownloadProgress extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Downloading...',
+          t.widgets.sidebarUpdateChecker.downloading,
           style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -280,7 +281,7 @@ class _InstallButton extends ConsumerWidget {
           ref.read(updateDownloaderProvider.notifier).installUpdate();
         },
         icon: const Icon(FluentIcons.play_24_regular, size: 14),
-        label: const Text('Install & Restart', style: TextStyle(fontSize: 12)),
+        label: Text(t.widgets.sidebarUpdateChecker.installAndRestart, style: const TextStyle(fontSize: 12)),
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           minimumSize: const Size(0, 28),
@@ -312,7 +313,7 @@ class _DownloadButtons extends ConsumerWidget {
             },
             icon: const Icon(FluentIcons.arrow_download_24_regular, size: 14),
             label: Text(
-              'Download (${asset.formattedSize})',
+              t.widgets.sidebarUpdateChecker.downloadWithSize(size: asset.formattedSize),
               style: const TextStyle(fontSize: 12),
             ),
             style: FilledButton.styleFrom(
@@ -329,7 +330,7 @@ class _DownloadButtons extends ConsumerWidget {
             }
           },
           icon: const Icon(FluentIcons.open_24_regular, size: 14),
-          label: const Text('View on GitHub', style: TextStyle(fontSize: 12)),
+          label: Text(t.widgets.sidebarUpdateChecker.viewOnGitHub, style: const TextStyle(fontSize: 12)),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             minimumSize: const Size(0, 28),
@@ -436,7 +437,7 @@ class _WhatsNewLinkState extends State<_WhatsNewLink> {
         err: (error) {
           FluentToast.error(
             context,
-            'Failed to load release notes: ${error.message}',
+            t.widgets.sidebarUpdateChecker.errors.failedToLoadReleaseNotes(message: error.message),
           );
         },
       );
@@ -452,7 +453,7 @@ class _WhatsNewLinkState extends State<_WhatsNewLink> {
     final theme = Theme.of(context);
 
     return Tooltip(
-      message: 'View release notes',
+      message: t.widgets.sidebarUpdateChecker.viewReleaseNotes,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _isHovered = true),
@@ -469,7 +470,7 @@ class _WhatsNewLinkState extends State<_WhatsNewLink> {
                   ),
                 )
               : Text(
-                  "What's new?",
+                  t.widgets.sidebarUpdateChecker.whatsNew,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.primary,
                     decoration: _isHovered ? TextDecoration.underline : null,

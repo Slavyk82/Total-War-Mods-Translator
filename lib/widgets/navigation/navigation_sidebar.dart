@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 import '../../config/router/navigation_tree.dart';
 import '../../config/router/navigation_tree_resolver.dart';
@@ -384,7 +385,7 @@ class _ThemeSelectorState extends ConsumerState<_ThemeSelector> {
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
             child: Text(
-              'Theme switcher',
+              t.widgets.navigationSidebar.themeSwitcher,
               style: tokens.fontMono.copyWith(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -394,7 +395,7 @@ class _ThemeSelectorState extends ConsumerState<_ThemeSelector> {
             ),
           ),
           PopupMenuButton<TwmtThemeName>(
-            tooltip: 'Select theme',
+            tooltip: t.widgets.navigationSidebar.selectTheme,
             initialValue: active,
             position: PopupMenuPosition.over,
             color: tokens.panel2,
