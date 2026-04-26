@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "翻译编辑器",
+    "crumbWork": "工作区",
+    "crumbProjects": "项目"
+  },
+  "toolbar": {
+    "searchHint": "搜索 键 · 源 · 目标",
+    "filterStateLabel": "状态",
+    "filterSeverityLabel": "严重程度",
+    "clearLabel": "清除",
+    "sectionAiContext": "AI 上下文",
+    "sectionOther": "其他",
+    "sectionWorkflow": "工作流",
+    "autoBatchSize": "自动批次大小",
+    "unitsPerBatch": "单元 / 批次",
+    "parallelBatches": "并行批次",
+    "useTranslationMemory": "使用翻译记忆库",
+    "modSpecificRule": "模组专属规则",
+    "importExternalPack": "导入外部包",
+    "openLocalFolder": "打开本地文件夹"
+  },
+  "filters": {
+    "pending": "待处理",
+    "translated": "已翻译",
+    "needsReview": "需审核",
+    "errors": "错误",
+    "warnings": "警告"
+  },
+  "sidebar": {
+    "translateSelection": "翻译所选",
+    "translateAll": "全部翻译",
+    "review": "审核",
+    "generatePack": "生成包",
+    "unitSingular": "单元",
+    "unitPlural": "单元"
+  },
+  "inspector": {
+    "emptyState": "选择一个单元以查看详情",
+    "unitsSelected": "已选择 $count 个单元",
+    "accept": "接受",
+    "reject": "拒绝",
+    "edit": "编辑",
+    "retranslate": "重新翻译",
+    "deselect": "取消选择",
+    "validationIssues": "验证问题",
+    "sourceLabel": "源 · $lang",
+    "targetLabel": "目标 · $lang — 编辑中",
+    "unitLabel": "单元"
+  },
+  "datagrid": {
+    "columnKey": "键",
+    "columnSource": "源",
+    "columnTarget": "目标",
+    "errorLoadingTranslations": "加载翻译时出错"
+  },
+  "statusBar": {
+    "units": "$count 个单元",
+    "translated": "已翻译 $count 个 ($pct%)",
+    "needReview": "$count 个需审核",
+    "tmReuse": "TM $pct%"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "未选择",
+      "message": "请选择一个或多个翻译单元进行翻译。"
+    },
+    "noUntranslated": {
+      "title": "无未翻译单元",
+      "message": "此项目语言中的所有单元均已翻译。"
+    },
+    "allTranslated": {
+      "title": "所选单元均已翻译",
+      "message": "所选单元均已翻译。"
+    },
+    "translateAll": {
+      "title": "全部翻译",
+      "message": "翻译 $count 个未翻译的单元？"
+    },
+    "translateSelected": {
+      "title": "翻译所选",
+      "message": "翻译 $count 个未翻译的单元（$skipped 个已翻译）？"
+    },
+    "forceRetranslate": {
+      "title": "强制重新翻译",
+      "message": "重新翻译 $count 个单元？\n\n警告：此操作将覆盖现有翻译。"
+    },
+    "validationRescan": {
+      "title": "验证重新扫描",
+      "scanning": "正在扫描 $current/$total...",
+      "saving": "正在保存 $count 个更新..."
+    },
+    "noIssues": {
+      "title": "无需审核的问题",
+      "message": "所有翻译均已通过验证。"
+    },
+    "nothingToScan": {
+      "title": "无可扫描内容",
+      "message": "未找到已翻译的条目。"
+    },
+    "clearConfirm": {
+      "title": "确认清除",
+      "messageSingle": "确定要清除此翻译吗？",
+      "messageMultiple": "确定要清除 $count 条翻译吗？",
+      "clearButton": "清除",
+      "cannotBeUndone": "此操作无法撤销。"
+    },
+    "deleteConfirm": {
+      "title": "确认删除",
+      "messageSingle": "确定要删除此翻译吗？",
+      "messageMultiple": "确定要删除 $count 条翻译吗？",
+      "deleteButton": "删除",
+      "cannotBeUndone": "此操作无法撤销。"
+    },
+    "clearTranslations": {
+      "title": "正在清除翻译"
+    },
+    "editTranslation": {
+      "title": "编辑翻译",
+      "translationLabel": "翻译",
+      "hint": "输入修正后的翻译..."
+    },
+    "translationHistory": {
+      "title": "翻译历史",
+      "noHistory": "无可用历史",
+      "noHistoryDetail": "此翻译尚无记录的历史。",
+      "errorLoading": "加载历史时出错"
+    },
+    "promptPreview": {
+      "title": "提示词预览",
+      "subtitle": "查看将发送给 LLM 的确切提示词",
+      "tabSystemPrompt": "系统提示词",
+      "tabUserMessage": "用户消息",
+      "tabApiPayload": "API 负载",
+      "systemPromptDesc": "作为系统消息发送的指令、上下文和术语表",
+      "userMessageDesc": "包含源文本的实际翻译请求",
+      "apiPayloadDesc": "将发送给提供商的完整 JSON 负载",
+      "copyFullPrompt": "复制完整提示词",
+      "copiedToClipboard": "$title 已复制到剪贴板",
+      "noPreview": "无可用预览",
+      "errorBuilding": "生成提示词预览时出错",
+      "keyLabel": "键: $key"
+    },
+    "providerSetup": {
+      "title": "未配置翻译提供商",
+      "message": "要使用自动翻译，您需要至少配置一个 LLM 提供商。请前往设置并配置以下提供商之一：",
+      "goToSettings": "前往设置",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "具备上下文感知的高质量翻译",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "通用语言模型，翻译质量良好",
+      "deepl": "DeepL",
+      "deeplDesc": "专业翻译服务"
+    },
+    "modRule": {
+      "title": "模组翻译规则",
+      "infoBanner": "此规则仅适用于本模组，并将在每次翻译提示词中追加于全局规则之后。",
+      "ruleTextLabel": "规则文本",
+      "ruleTextHint": "例如：本模组使用不应翻译的奇幻名称……",
+      "ruleActive": "规则已启用",
+      "ruleDisabled": "规则已禁用",
+      "deleteTitle": "删除模组规则",
+      "deleteMessage": "确定要删除此规则吗？此操作无法撤销。",
+      "savedSuccess": "模组规则保存成功",
+      "deletedSuccess": "模组规则已删除",
+      "errorSave": "保存规则失败",
+      "errorDelete": "删除规则失败",
+      "errorToggle": "切换规则失败",
+      "validationEmpty": "请输入规则文本"
+    },
+    "packImport": {
+      "title": "从 .pack 文件导入翻译",
+      "noFileSelected": "未选择文件",
+      "browse": "浏览",
+      "analyzingPack": "正在分析包文件...",
+      "selectPackPrompt": "选择一个包含翻译的 .pack 文件",
+      "noMatchingTranslations": "未找到匹配的翻译",
+      "overwriteExisting": "覆盖现有翻译",
+      "selectAll": "全选",
+      "deselectAll": "全不选",
+      "importButton": "导入 ($count)",
+      "importing": "导入中...",
+      "cancelImport": "取消导入",
+      "cancelling": "正在取消...",
+      "startingImport": "正在开始导入...",
+      "summaryTitle": "分析摘要",
+      "summaryTotalInPack": "包内总数",
+      "summaryMatches": "匹配",
+      "summaryNew": "新增",
+      "summaryConflicts": "冲突",
+      "summaryNotFound": "未找到",
+      "gridColumnKey": "键",
+      "gridColumnValue": "待导入值",
+      "gridColumnStatus": "状态",
+      "statusConflict": "冲突",
+      "statusNew": "新增",
+      "importComplete": "导入完成：已导入 $imported 条翻译",
+      "importSkipped": "，已跳过 $count 条",
+      "importErrors": "，$count 个错误",
+      "progressEntries": "已处理 $current / $total 条目"
+    },
+    "export": {
+      "title": "导出翻译",
+      "selectFormat": "选择导出格式：",
+      "packTitle": ".pack (Total War 模组)",
+      "packSubtitle": "可直接用于游戏的包文件",
+      "csvTitle": "CSV",
+      "csvSubtitle": "逗号分隔值",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Microsoft Excel 电子表格"
+    },
+    "deleteLanguage": {
+      "title": "删除语言",
+      "message": "从此项目中移除「$name」？将删除 $count 条翻译。",
+      "cannotBeUndone": "此操作无法撤销。"
+    },
+    "sourceText": "源文本"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "包生成",
+      "header": "正在生成包",
+      "packGenerated": "包已生成",
+      "translationsIncluded": "已包含 $count 条翻译",
+      "languages": "语言: $langs",
+      "steps": {
+        "preparingData": "正在准备数据...",
+        "generatingLocFiles": "正在生成 .loc 文件...",
+        "creatingPack": "正在创建 .pack 文件...",
+        "generatingImage": "正在生成包图像...",
+        "finalizing": "正在完成...",
+        "completed": "包已生成！",
+        "collectingData": "正在收集翻译数据...",
+        "writingFile": "正在写入输出文件..."
+      },
+      "processing": "正在处理: $lang ($current/$total)",
+      "inProgressWarning": "包生成进行中。请等待完成。",
+      "statusFailed": "失败",
+      "statusCompleted": "已完成",
+      "statusInProgress": "进行中"
+    },
+    "translation": {
+      "header": "批量翻译",
+      "title": "翻译进行中",
+      "batchId": "批次 ID: $id",
+      "progress": "进度",
+      "units": "$processed / $total 个单元",
+      "stop": "停止",
+      "stopping": "正在停止...",
+      "stopWarning": "翻译进行中。点击「停止」以安全退出。",
+      "preparing": "正在准备翻译",
+      "preparingDetail": "正在创建批次并收集上下文...",
+      "preparationFailed": "准备翻译批次失败",
+      "preparationError": "准备错误: $error",
+      "currentPhase": "当前阶段",
+      "paused": "已暂停",
+      "elapsed": {
+        "seconds": "已用时: $n 秒",
+        "minutes": "已用时: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "约剩余 $n 秒",
+        "minutes": "约剩余 $n 分钟",
+        "minutesPlural": "约剩余 $n 分钟"
+      },
+      "logs": {
+        "title": "日志",
+        "autoScroll": "自动滚动",
+        "waiting": "正在等待日志..."
+      },
+      "llmLogs": "LLM 交互日志 ($count)",
+      "llmLogsEmpty": "暂无 LLM 交互。日志将随翻译进度显示。",
+      "phases": {
+        "initializing": "初始化中...",
+        "tmExactLookup": "正在查询翻译记忆库（精确）",
+        "tmFuzzyLookup": "正在查询翻译记忆库（模糊）",
+        "buildingPrompt": "正在构建翻译提示词",
+        "llmTranslation": "正在使用 LLM 翻译",
+        "validating": "正在验证翻译",
+        "saving": "正在保存翻译",
+        "updatingTm": "正在更新翻译记忆库",
+        "finalizing": "正在完成批次",
+        "completed": "已完成"
+      },
+      "stats": {
+        "success": "成功",
+        "failed": "失败",
+        "skipped": "已跳过"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "全选",
+    "forceRetranslate": "强制重新翻译",
+    "forceRetranslateCount": "强制重新翻译 ($count)",
+    "markAsTranslated": "标记为已翻译",
+    "markAsTranslatedCount": "标记为已翻译 ($count)",
+    "clearTranslation": "清除翻译",
+    "clearTranslationCount": "清除翻译 ($count)",
+    "viewHistory": "查看历史",
+    "viewPrompt": "查看提示词",
+    "deleteCount": "删除 ($count)"
+  },
+  "actions": {
+    "undoSuccess": "撤销成功",
+    "undoFailed": "撤销失败: $error",
+    "redoSuccess": "重做成功",
+    "redoFailed": "重做失败: $error",
+    "autoFixApplied": "已应用自动修复",
+    "translationValidated": "翻译已验证",
+    "markedAsTranslated": "已将 $count 条翻译标记为已翻译",
+    "cleared": "已清除 $count 条翻译",
+    "deleted": "已删除 $count 条翻译",
+    "copied": "已将 $count 行复制到剪贴板",
+    "pasted": "已粘贴 $count 条翻译",
+    "noRowsSelected": "未选择任何行",
+    "clipboardEmpty": "剪贴板为空",
+    "noValidTranslations": "剪贴板中未找到有效的翻译",
+    "packGenerationFailed": "包生成失败",
+    "failedToOpenModFolder": "打开模组文件夹失败: $error",
+    "gamePathNotConfigured": "未配置游戏安装路径。"
+  },
+  "languageSwitcher": {
+    "noLanguage": "此项目中无语言",
+    "addLanguage": "+ 添加语言",
+    "deleteLanguage": "删除语言",
+    "cannotDeleteLast": "无法删除最后一个语言"
+  },
+  "validation": {
+    "validationIssuesFound": "检测到验证问题",
+    "readyToValidate": "准备验证",
+    "noIssuesFound": "未发现问题！",
+    "translationPassesAll": "此翻译通过了所有验证检查",
+    "selectUnitToView": "选择一个翻译单元以查看验证问题",
+    "errorLoadingIssues": "加载验证问题时出错",
+    "validate": "验证",
+    "autoFix": "自动修复",
+    "errors": "错误",
+    "warnings": "警告",
+    "info": "信息",
+    "noIssues": "未发现问题"
+  },
+  "issueTypes": {
+    "emptyTranslation": "空翻译",
+    "lengthDifference": "长度差异",
+    "missingVariables": "缺少变量",
+    "whitespaceIssue": "空白字符问题",
+    "punctuationMismatch": "标点不匹配",
+    "caseMismatch": "大小写不匹配",
+    "missingNumbers": "缺少数字",
+    "modifiedNumbers": "数字被修改"
+  }
+}

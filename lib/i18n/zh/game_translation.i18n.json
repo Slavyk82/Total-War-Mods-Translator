@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "游戏翻译",
+    "countOne": "$count 条翻译",
+    "countMany": "$count 条翻译",
+    "toolbar": {
+      "create": "创建游戏翻译",
+      "noPacksTooltip": "未找到该游戏的本地化包"
+    },
+    "empty": {
+      "title": "暂无游戏翻译",
+      "subtitle": "创建新的翻译以翻译基础游戏",
+      "noPacksWarning": "未找到该游戏的本地化包",
+      "errorLoadingPacks": "加载包时出错"
+    },
+    "loading": "正在加载游戏翻译……",
+    "errors": {
+      "loadFailed": "加载游戏翻译时出错"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "删除游戏翻译",
+        "message": "确定要删除“$name”吗？",
+        "warning": "此操作无法撤销。",
+        "confirm": "删除"
+      }
+    },
+    "toasts": {
+      "deleted": "游戏翻译“$name”已删除",
+      "deleteFailed": "删除游戏翻译失败：$error"
+    }
+  },
+  "wizard": {
+    "title": "创建游戏翻译",
+    "steps": {
+      "selectSource": "选择源包",
+      "selectTargets": "选择目标语言"
+    },
+    "progress": {
+      "creatingProject": "正在创建项目……",
+      "extracting": "正在提取本地化文件……",
+      "extractingProgress": "正在提取…… $percent%",
+      "processing": "正在处理……"
+    },
+    "errors": {
+      "selectSourcePack": "请选择一个源本地化包",
+      "selectTargetLanguage": "请至少选择一种目标语言"
+    },
+    "actions": {
+      "back": "返回",
+      "cancel": "取消",
+      "next": "下一步",
+      "create": "创建"
+    }
+  },
+  "stepSource": {
+    "description": "选择将作为翻译源的游戏本地化包。",
+    "sectionLabel": "可用的本地化包",
+    "noGameSelected": "未选择游戏",
+    "noPacks": {
+      "title": "未找到本地化包",
+      "subtitle": "请确认游戏已安装，且本地化文件位于 data 文件夹中。"
+    }
+  },
+  "stepTargets": {
+    "description": "选择您希望将游戏翻译成的语言。",
+    "translatingFrom": "翻译自：",
+    "selectionCount": "已选择 $count 种语言",
+    "noLanguages": {
+      "title": "无可用语言",
+      "subtitle": "请在设置中配置目标语言。"
+    },
+    "actions": {
+      "selectAll": "全选",
+      "clear": "清除",
+      "addLanguage": "添加语言"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "添加自定义语言",
+    "description": "添加一种自定义语言，使其可用于翻译项目。",
+    "fields": {
+      "codeLabel": "语言代码",
+      "codeHint": "例如：pl、ko、ja",
+      "codeHelper": "ISO 639-1 代码（2-3 个字符）",
+      "codeErrors": {
+        "required": "语言代码为必填项",
+        "tooShort": "代码至少需要 2 个字符",
+        "lettersOnly": "代码只能包含字母"
+      },
+      "nameLabel": "语言名称",
+      "nameHint": "例如：波兰语、韩语、日语",
+      "nameHelper": "此语言的显示名称",
+      "nameErrors": {
+        "required": "语言名称为必填项"
+      }
+    },
+    "defaultLanguage": {
+      "label": "设为默认语言",
+      "description": "此语言将成为所有新模组翻译项目的默认目标语言。"
+    },
+    "info": "自定义语言之后可在设置中删除。系统语言（英语、法语等）无法修改。",
+    "actions": {
+      "add": "添加"
+    },
+    "toasts": {
+      "addedAsDefault": "语言“$name”已添加并设为默认",
+      "addedSuccessfully": "语言“$name”添加成功",
+      "addFailed": "添加语言失败"
+    }
+  }
+}

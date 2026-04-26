@@ -1,0 +1,20 @@
+{
+  "dialogs": {
+    "whatsNew": {
+      "title": "新功能",
+      "releasePrefix": "版本 $version",
+      "noNotes": "此版本暂无更新日志。"
+    },
+    "releaseHistory": {
+      "title": "版本历史",
+      "subtitleOne": "$count 个版本",
+      "subtitleMany": "$count 个版本",
+      "noNotes": "暂无更新日志",
+      "noReleasesAvailable": "此版本暂无更新日志。"
+    }
+  },
+  "actions": {
+    "viewOnGitHub": "在 GitHub 上查看",
+    "gotIt": "知道了"
+  }
+}

@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "设置",
+    "tabs": {
+      "general": "常规",
+      "folders": "文件夹",
+      "llmProviders": "LLM 提供商"
+    }
+  },
+  "errors": {
+    "loadSettings": "加载设置时出错：$error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "数据库备份",
+      "sectionSubtitle": "创建备份以保护您的数据，或从先前的备份中恢复。",
+      "cardTitle": "备份操作",
+      "processing": "处理中…",
+      "exportTitle": "导出备份",
+      "exportDescription": "将数据库保存为 ZIP 文件",
+      "importTitle": "导入备份",
+      "importDescription": "从备份文件恢复数据库",
+      "saveDialogTitle": "保存数据库备份",
+      "openDialogTitle": "选择备份文件",
+      "restoreDialog": {
+        "title": "恢复完成",
+        "message": "数据库已成功恢复。应用程序将立即重新启动以应用更改。",
+        "restartNow": "立即重新启动"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "数据库维护",
+      "sectionSubtitle": "用于维护和修复数据库统计信息及翻译状态的工具。",
+      "cardTitle": "维护操作",
+      "processing": "处理中…",
+      "actions": {
+        "reanalyzeTitle": "重新分析翻译",
+        "reanalyzeDescription": "修复状态不一致问题并检测未翻译的单元",
+        "clearModCacheTitle": "清除模组更新缓存",
+        "clearModCacheDescription": "移除过期的“待处理更改”徽标",
+        "rebuildTmTitle": "重建翻译记忆库",
+        "rebuildTmDescription": "从现有翻译中恢复缺失的 TM 条目",
+        "migrateTmHashesTitle": "迁移旧版 TM 哈希",
+        "migrateTmHashesDescription": "将旧的整数哈希转换为 SHA256 以用于 TM 查找",
+        "resetOnboardingTitle": "重置引导提示",
+        "resetOnboardingDescription": "如果您隐藏了 Workshop 引导卡片，可让其重新显示"
+      },
+      "toasts": {
+        "onboardingReset": "引导提示将再次显示。"
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "翻译语言偏好",
+      "sectionSubtitle": "管理可用于翻译的语言并设置默认目标语言",
+      "addLanguage": "添加语言",
+      "toasts": {
+        "addSuccess": "语言添加成功",
+        "addFailed": "添加语言失败"
+      },
+      "grid": {
+        "columnDefault": "默认",
+        "columnCode": "代码",
+        "columnLanguage": "语言",
+        "customBadge": "自定义",
+        "emptyTitle": "无可用语言",
+        "errorTitle": "加载语言时出错",
+        "deleteTooltip": "删除语言"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "删除语言",
+          "message": "确定要删除“$name”吗？",
+          "warning": "此操作无法撤销。",
+          "confirmLabel": "删除"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name 已设为默认语言",
+        "setDefaultFailed": "设置默认语言失败",
+        "deleteSuccess": "语言删除成功",
+        "deleteFailed": "删除语言失败"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "游戏安装",
+      "sectionSubtitle": "配置 Total War 游戏的路径",
+      "detectingLabel": "检测中…",
+      "detectAllButton": "自动检测所有游戏",
+      "detectAllDescription": "自动查找所有已安装的 Total War 游戏",
+      "detectButton": "检测",
+      "browseButton": "浏览",
+      "pathHint": "$game 安装路径…",
+      "browseDialogTitle": "选择 $game 安装文件夹",
+      "toasts": {
+        "gameFound": "已找到 $game",
+        "gameNotFound": "未找到 $game",
+        "detectionFailed": "检测失败：$error",
+        "allFound": "已找到 $count 个游戏",
+        "noneFound": "未找到任何游戏",
+        "saveError": "保存游戏路径时出错：$error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "RPFM 工具",
+      "sectionSubtitle": "用于解包 pack 文件的 RPFM 可执行文件路径",
+      "executableSubtitle": "RPFM 可执行文件",
+      "schemaSubtitle": "RPFM Schema 文件夹",
+      "schemaDescription": "包含 RPFM schema 文件的文件夹（例如 schema_wh3.ron）",
+      "testButton": "测试",
+      "browseButton": "浏览",
+      "defaultButton": "默认",
+      "browseExeDialogTitle": "选择 RPFM 可执行文件",
+      "browseSchemaDialogTitle": "选择 RPFM Schema 文件夹",
+      "toasts": {
+        "enterPathFirst": "请先输入 RPFM 路径",
+        "testing": "正在测试 RPFM 可执行文件…",
+        "validating": "正在验证 RPFM 可执行文件…",
+        "validatedSuccess": "RPFM v$version 验证成功",
+        "testSuccess": "RPFM v$version 工作正常",
+        "invalidExe": "无效的 RPFM 可执行文件：$error",
+        "testFailed": "RPFM 测试失败：$error",
+        "usernameNotDetected": "无法检测到用户名",
+        "defaultPathSet": "已设置为默认 schema 路径",
+        "savePathError": "保存 RPFM 路径时出错：$error",
+        "saveSchemaPathError": "保存 RPFM schema 路径时出错：$error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Steam Workshop 内容的根文件夹（游戏 ID 将自动追加）",
+      "folderSubtitle": "Steam Workshop 根文件夹",
+      "detectingLabel": "检测中…",
+      "detectButton": "检测",
+      "browseButton": "浏览",
+      "browseDialogTitle": "选择 Steam Workshop 文件夹",
+      "toasts": {
+        "detected": "已检测到 Workshop 文件夹：$path",
+        "notFound": "未找到 Workshop 文件夹。请手动选择。",
+        "detectionFailed": "检测失败：$error",
+        "detectionError": "检测错误：$error",
+        "saveError": "保存 Workshop 路径时出错：$error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "添加自定义语言",
+    "description": "添加一种自定义语言，使其可用于翻译项目。",
+    "codeLabel": "语言代码（ISO 639-1，2-3 个字母）",
+    "nameLabel": "语言名称",
+    "codeHint": "例如：pl、ko、ja",
+    "nameHint": "例如：波兰语、韩语、日语",
+    "info": "自定义语言之后可被删除。系统语言（英语、法语等）无法修改。",
+    "cancel": "取消",
+    "add": "添加",
+    "errors": {
+      "codeRequired": "语言代码为必填项",
+      "codeTooShort": "代码至少需要 2 个字符",
+      "codeLettersOnly": "代码只能包含字母",
+      "codeTooLong": "代码最多为 5 个字符",
+      "nameRequired": "语言名称为必填项",
+      "nameTooLong": "名称最多为 50 个字符"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "恢复数据库备份？",
+    "fromLabel": "您即将从以下位置恢复数据库：",
+    "warningTitle": "警告：这将替换您当前的所有数据！",
+    "warningBody": "所有项目、翻译、术语表和设置都将被覆盖。此操作无法撤销。",
+    "cancel": "取消",
+    "restore": "恢复"
+  },
+  "llmProviders": {
+    "title": "LLM 提供商",
+    "subtitle": "为翻译提供商配置 API 密钥和模型",
+    "advancedSettings": {
+      "title": "高级设置",
+      "rateLimitLabel": "速率限制（每分钟请求数）",
+      "saveError": "保存速率限制时出错：$error"
+    },
+    "providerSection": {
+      "subtitle": "配置 API 密钥和模型",
+      "apiKeyLabel": "API 密钥",
+      "apiKeyHint": "输入 API 密钥…",
+      "testConnectionTooltip": "测试连接",
+      "toasts": {
+        "connectionSuccess": "连接成功！",
+        "connectionFailed": "连接失败：$error",
+        "saveApiKeyError": "保存 $provider API 密钥时出错：$error"
+      }
+    },
+    "models": {
+      "headerTitle": "模型",
+      "footer": "勾选模型以启用它们。点击星标可设置为全局默认模型。",
+      "legend": "勾选模型以使其可用于翻译。点击星标可将模型设置为全局默认（所有提供商中只能有一个默认模型）。",
+      "errorLoading": "加载模型时出错：$error",
+      "noModels": "此提供商没有可用模型",
+      "badges": {
+        "default": "默认",
+        "archived": "已归档"
+      },
+      "toasts": {
+        "disabled": "模型已禁用",
+        "enabled": "模型已启用",
+        "toggleFailed": "切换模型状态失败：$error",
+        "setDefaultSuccess": "已将模型设为默认",
+        "setDefaultFailed": "设置默认模型失败：$error"
+      },
+      "dialog": {
+        "titleManage": "管理 $provider 模型",
+        "subtitle": "选择可用于翻译的模型"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "自定义翻译规则",
+    "accordionSubtitle": "向翻译提示词添加自定义指令",
+    "infoText": "自定义规则会附加到发送给 LLM 的每个翻译提示词中。可使用此功能定义全局指令、术语指南或适用于所有项目的翻译偏好。",
+    "addRuleButton": "添加规则",
+    "toasts": {
+      "addSuccess": "规则添加成功",
+      "addFailed": "添加规则失败",
+      "updateSuccess": "规则更新成功",
+      "updateFailed": "更新规则失败",
+      "deleteSuccess": "规则删除成功",
+      "deleteFailed": "删除规则失败",
+      "toggleFailed": "切换规则状态失败"
+    },
+    "grid": {
+      "columnActive": "启用",
+      "columnRuleText": "规则文本",
+      "columnActions": "操作",
+      "emptyTitle": "未定义任何自定义规则",
+      "emptySubtitle": "添加全局规则以自定义所有翻译提示词",
+      "errorTitle": "加载规则时出错",
+      "editTooltip": "编辑规则",
+      "deleteTooltip": "删除规则"
+    },
+    "editorDialog": {
+      "addTitle": "添加自定义规则",
+      "editTitle": "编辑自定义规则",
+      "description": "输入将附加到每个翻译提示词的规则文本。这些规则将全局应用于所有项目。",
+      "ruleTextLabel": "规则文本",
+      "ruleTextHint": "例如：始终使用正式语言并避免使用缩写…",
+      "tipsTitle": "提示",
+      "tipsText": "• 指令应具体而清晰\n• 如有多条规则，请使用项目符号\n• 规则按顺序附加到翻译提示词中\n• 您可以临时禁用规则，无需将其删除",
+      "cancel": "取消",
+      "save": "保存",
+      "add": "添加",
+      "errors": {
+        "ruleTextRequired": "请输入规则文本"
+      }
+    },
+    "deleteDialog": {
+      "title": "删除规则",
+      "message": "确定要删除此自定义规则吗？",
+      "warning": "此操作无法撤销。",
+      "confirmLabel": "删除"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "已忽略的源文本",
+    "accordionSubtitle": "在翻译过程中跳过特定的源文本",
+    "infoText": "与这些值匹配的源文本将被排除在翻译之外。注意：完全用方括号括起的文本（如 [PLACEHOLDER]）会被自动跳过。请使用此列表添加专属于您模组的自定义模式。",
+    "resetButton": "重置为默认值",
+    "addButton": "添加文本",
+    "toasts": {
+      "addSuccess": "文本添加成功",
+      "addFailed": "添加文本失败",
+      "updateSuccess": "文本更新成功",
+      "updateFailed": "更新文本失败",
+      "deleteSuccess": "文本删除成功",
+      "deleteFailed": "删除文本失败",
+      "resetSuccess": "已成功重置为默认值",
+      "resetFailed": "重置为默认值失败",
+      "toggleFailed": "切换文本状态失败"
+    },
+    "grid": {
+      "columnActive": "启用",
+      "columnSourceText": "源文本",
+      "columnActions": "操作",
+      "emptyTitle": "未定义任何已忽略的文本",
+      "emptySubtitle": "添加在翻译过程中需要跳过的源文本",
+      "errorTitle": "加载已忽略文本时出错",
+      "editTooltip": "编辑",
+      "deleteTooltip": "删除"
+    },
+    "editorDialog": {
+      "addTitle": "添加忽略文本",
+      "editTitle": "编辑忽略文本",
+      "description": "输入在翻译过程中应跳过的源文本。匹配不区分大小写。",
+      "sourceTextLabel": "源文本",
+      "sourceTextHint": "例如：placeholder、[hidden] 等",
+      "infoTitle": "信息",
+      "infoText": "• 与这些文本匹配的单元会被排除在翻译之外\n• 用方括号括起的文本（如 [unit_name]）会被自动跳过\n• 请使用此功能添加专属于您模组的自定义占位符\n• 更改将立即对新翻译生效",
+      "cancel": "取消",
+      "save": "保存",
+      "add": "添加",
+      "errors": {
+        "sourceTextRequired": "请输入源文本"
+      }
+    },
+    "deleteDialog": {
+      "title": "删除忽略文本",
+      "message": "确定要删除“$text”吗？",
+      "warning": "此操作无法撤销。",
+      "confirmLabel": "删除"
+    },
+    "resetDialog": {
+      "title": "重置为默认值",
+      "message": "这将删除所有当前已忽略的文本，并恢复默认值：\n\n• placeholder\n• dummy\n\n注意：完全用方括号括起的文本（如 [placeholder]）始终会被自动过滤。\n\n确定要继续吗？",
+      "confirmLabel": "重置"
+    }
+  }
+}

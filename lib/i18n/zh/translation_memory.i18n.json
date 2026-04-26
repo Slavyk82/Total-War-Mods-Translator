@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "翻译记忆库",
+    "statistics": "统计信息",
+    "totalEntries": "条目总数",
+    "languagePairs": "语言对",
+    "performance": "性能",
+    "totalReuse": "复用总数",
+    "tokensSaved": "节省的 Token",
+    "reuseRate": "复用率",
+    "sourceText": "源文本",
+    "targetText": "目标文本",
+    "usageCount": "使用次数",
+    "lastUsed": "最近使用",
+    "created": "创建时间",
+    "selectedFile": "已选文件",
+    "importOptions": "导入选项",
+    "filters": "筛选条件",
+    "whatToExport": "导出内容",
+    "outputFile": "输出文件",
+    "formatOptions": "格式选项",
+    "deleteIfUnusedDays": "未使用天数超过则删除（天）",
+    "deleteAll": "全部删除",
+    "targetLanguage": "目标语言"
+  },
+  "actions": {
+    "importTmx": "导入 TMX",
+    "exportTmx": "导出 TMX",
+    "cleanup": "清理",
+    "import": "导入",
+    "export": "导出",
+    "importing": "正在导入……",
+    "exporting": "正在导出……"
+  },
+  "dialogs": {
+    "importTitle": "导入翻译记忆库（TMX）",
+    "exportTitle": "导出翻译记忆库（TMX）",
+    "cleanupTitle": "清理翻译记忆库",
+    "entryDetailsTitle": "翻译记忆库条目详情",
+    "deleteTmTitle": "删除 TM 条目",
+    "deleteTmMessage": "确定要删除此翻译记忆库条目吗？",
+    "deleteTmWarning": "此操作无法撤销。"
+  },
+  "messages": {
+    "noEntries": "翻译记忆库中暂无条目",
+    "importHint": "导入 TMX 文件或开始翻译以构建您的记忆库",
+    "failedToLoadEntries": "加载条目失败",
+    "failedToLoadStatistics": "加载统计信息失败",
+    "removeUnusedHint": "移除未使用的条目以优化您的翻译记忆库。",
+    "allEntriesWillBeDeleted": "所有条目将被删除——此操作无法撤销",
+    "deletedEntries": "已删除 $count 条条目",
+    "tmEntryDeletedSuccess": "TM 条目删除成功",
+    "failedToDeleteTmEntry": "删除 TM 条目失败",
+    "deleteEntry": "删除条目",
+    "importComplete": "导入完成",
+    "exportComplete": "导出完成",
+    "exportedEntries": "已导出 $count 条条目",
+    "processedOf": "已处理 $processed / $total 条条目",
+    "sizeKb": "大小：$size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 条条目",
+    "showingRange": "显示 $start–$end，共 $total 条",
+    "firstPage": "第一页",
+    "previousPage": "上一页",
+    "nextPage": "下一页",
+    "lastPage": "最后一页"
+  },
+  "importResult": {
+    "totalEntries": "条目总数",
+    "imported": "已导入",
+    "skippedDuplicates": "已跳过（重复）",
+    "failedValidation": "失败（验证错误）"
+  },
+  "options": {
+    "overwriteExisting": "覆盖现有条目",
+    "overwriteExistingHint": "用导入的条目替换现有条目",
+    "validateEntries": "验证条目",
+    "validateEntriesHint": "导入前检查错误",
+    "includeMetadata": "包含元数据",
+    "includeMetadataHint": "添加质量评分、使用次数等",
+    "includeStats": "包含统计信息",
+    "includeStatsHint": "在文件头部添加导出摘要和统计信息",
+    "allEntries": "全部条目（符合筛选条件）",
+    "frequentlyUsed": "仅常用（>5 次）"
+  },
+  "columns": {
+    "sourceText": "源文本",
+    "targetText": "目标文本",
+    "usage": "使用次数",
+    "lastUsed": "最近使用"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "点击选择 .tmx 文件",
+    "clickToSelectSaveLocation": "点击选择保存位置",
+    "searchPlaceholder": "搜索翻译记忆库……"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "正在扫描 Workshop 模组……",
+    "titleRefreshing": "正在刷新订阅数……",
+    "rpfmDialog": {
+      "title": "未找到 RPFM-CLI",
+      "content": "Workshop 扫描需要 RPFM-CLI 来读取模组包文件，但在已配置的路径中未找到它。\n\n请打开“设置 → 文件夹 → RPFM”以更新路径或下载新副本。",
+      "actions": {
+        "close": "关闭",
+        "openSettings": "打开设置"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "正在准备验证数据",
+      "updating": "正在更新验证数据",
+      "resuming": "正在恢复验证更新",
+      "required": "需要更新验证数据"
+    },
+    "labels": {
+      "scanningEntries": "正在扫描验证条目……",
+      "normalizedOf": "已规范化 $processed / $total",
+      "upgradingLegacy": "正在将旧版验证记录升级到新格式。",
+      "preparing": "正在准备……",
+      "startingRescan": "正在启动重新扫描……",
+      "rescannedOf": "已重新扫描 $done / $total",
+      "rescannedOfEta": "已重新扫描 $done / $total — 预计 $eta",
+      "closingWillPause": "关闭应用将暂停更新；下次启动时会继续。"
+    },
+    "plan": {
+      "resumeBody": "上一次更新被中断。已处理 $already / $totalAll 个单元。剩余：$remaining 个单元 • 预计：约 $estimated。",
+      "freshBody": "本版本采用更丰富的全新格式来呈现翻译验证诊断。所有现有翻译需要重新扫描一次才能受益。\n\n需重新扫描 $total 个单元 • 预计：约 $estimated\n\n此操作仅运行一次。在完成之前请勿关闭应用 — 如被中断，更新将在下次启动时继续。"
+    },
+    "actions": {
+      "continue": "继续",
+      "startRescan": "开始重新扫描"
+    },
+    "toasts": {
+      "updateComplete": "验证数据更新完成。"
+    }
+  }
+}

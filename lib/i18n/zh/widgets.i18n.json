@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "正在加载游戏……",
+    "errorLoadingGames": "加载游戏时出错",
+    "configureAGame": "配置游戏",
+    "selectAGame": "选择游戏"
+  },
+  "sidebarUpdateChecker": {
+    "version": "版本：$version",
+    "checking": "正在检查……",
+    "upToDate": "已是最新",
+    "checkForUpdates": "检查更新",
+    "updateAvailable": "v$version 可用",
+    "dismiss": "忽略",
+    "downloading": "正在下载……",
+    "installAndRestart": "安装并重启",
+    "downloadWithSize": "下载（$size）",
+    "viewOnGitHub": "在 GitHub 上查看",
+    "viewReleaseNotes": "查看发行说明",
+    "whatsNew": "有什么新内容？",
+    "errors": {
+      "failedToLoadReleaseNotes": "加载发行说明失败：$message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "主题切换器",
+    "selectTheme": "选择主题",
+    "groups": {
+      "workflow": "工作流",
+      "tools": "工具",
+      "system": "系统"
+    },
+    "items": {
+      "home": "主页",
+      "detect": "检测",
+      "translate": "翻译",
+      "publish": "发布",
+      "glossary": "术语表",
+      "translationMemory": "翻译记忆库",
+      "gameTranslation": "游戏翻译",
+      "packCompilation": "包编译",
+      "settings": "设置"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "数据库更新",
+    "subtitle": "需要执行一次性迁移",
+    "preparing": "正在准备……",
+    "info": "此过程可确保翻译记忆库正常工作。请勿关闭应用程序。",
+    "actions": {
+      "retry": "重试"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "点击打开"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count 项已启用"
+  },
+  "nextStepCta": {
+    "next": "下一步：$label"
+  },
+  "toolbar": {
+    "back": "返回"
+  },
+  "wizardStepHeader": {
+    "step": "步骤 $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "清除"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1 小时",
+    "hours": "${hours} 小时",
+    "oneDay": "1 天",
+    "days": "$days 天",
+    "oneMonth": "1 个月",
+    "months": "$months 个月",
+    "oneYear": "1 年",
+    "years": "$years 年"
+  }
+}

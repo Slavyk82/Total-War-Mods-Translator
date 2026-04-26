@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "重新扫描 Steam Workshop 文件夹以查找包含本地化文件的模组",
+    "hiddenToggle": "在显示普通模组和已隐藏模组之间切换",
+    "importLocalPack": "导入非来自 Steam Workshop 的本地 .pack 文件",
+    "filterAll": "显示所有模组",
+    "filterNotImported": "仅显示没有翻译项目的模组",
+    "filterNeedsUpdate": "仅显示有待处理更新或变更的模组"
+  },
+  "projects": {
+    "filterNeedsUpdate": "显示因模组源变动而需要关注的项目",
+    "filterNeedsReview": "显示至少有一个单元被标记为需审核的项目",
+    "filterIncomplete": "显示在所有已配置语言中尚未 100% 翻译完成的项目",
+    "filterHasComplete": "显示至少有一种语言已完全翻译的项目",
+    "filterExportOutdated": "显示自上次导出后已修改的项目",
+    "filterExported": "仅显示已导出过的项目",
+    "filterNotExported": "仅显示从未导出过的项目",
+    "filterClear": "清除当前的状态筛选"
+  },
+  "editor": {
+    "modelSelector": "选择用于翻译的 AI 模型",
+    "useTm": "勾选后，在查询 AI 模型前先查阅翻译记忆库。取消勾选则跳过 TM，始终将单元直接发送给模型。",
+    "batchAuto": "根据所选模型的 token 预算自动计算批次大小。关闭后可固定 单元 / 批次 的值。",
+    "batchUnits": "每次 LLM 请求的最大翻译单元数（1–1000）。较低的值可减少超时，但会消耗更多 tokens。",
+    "batchParallel": "同时进行的 LLM 请求数（1–20）。数值越高速度越快，但会增加 API 负载；通常为 3–5。",
+    "modRuleEdit": "编辑模组专属翻译规则",
+    "modRuleAdd": "添加模组专属翻译规则"
+  },
+  "settings": {
+    "detectAllGames": "扫描 Steam 安装目录以自动查找游戏路径",
+    "detectGame": "自动检测此游戏的安装路径",
+    "browsePath": "手动选择文件夹",
+    "testRpfm": "验证 RPFM 可执行文件并显示版本",
+    "defaultPath": "使用默认路径",
+    "detectWorkshop": "自动检测 Steam Workshop 内容文件夹",
+    "addLanguage": "添加自定义语言",
+    "addIgnoredText": "添加翻译时跳过的新源文本",
+    "resetIgnoredDefaults": "删除所有条目并恢复默认忽略文本",
+    "addRule": "添加新的翻译指令",
+    "setDefaultModel": "设为此提供商的默认模型"
+  },
+  "tm": {
+    "import": "从 TMX 文件导入翻译记忆库条目",
+    "export": "将翻译记忆库条目导出到 TMX 文件",
+    "cleanup": "移除未使用的条目以减小数据库大小"
+  },
+  "glossary": {
+    "new": "创建新术语表"
+  }
+}

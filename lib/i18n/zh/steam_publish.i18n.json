@@ -1,0 +1,306 @@
+{
+  "screen": {
+    "title": "发布到 Steam",
+    "errorLoading": "无法加载可发布项",
+    "retry": "重试"
+  },
+  "toolbar": {
+    "searchHint": "搜索包……",
+    "selectAll": "全选",
+    "deselectAll": "取消全选",
+    "refresh": "刷新",
+    "workshopTemplate": "创意工坊描述模板",
+    "publish": "发布到 Steam",
+    "publishWithCount": "发布到 Steam ($count)",
+    "filters": {
+      "all": "全部",
+      "outdated": "已过期",
+      "noPack": "无包",
+      "compilations": "合集"
+    },
+    "counts": {
+      "pack": "包",
+      "packs": "包"
+    },
+    "tooltips": {
+      "noItemsToSelect": "没有可选择的项",
+      "allAlreadySelected": "列表中的所有项均已选择",
+      "selectAllListed": "选择当前列出的所有项",
+      "noItemsSelected": "未选择任何项",
+      "clearSelection": "清除当前选择",
+      "configureTemplates": "配置创意工坊发布模板和默认值",
+      "selectAtLeastOne": "请至少选择一个要发布的项",
+      "noPackOrWorkshopId": "所选项中没有同时具备已生成包和创意工坊 ID 的项",
+      "publishSkipped": "发布 $count 个项 —— $skipped 个无创意工坊 ID 的项将被跳过",
+      "publishSelected": "将所选项发布到 Steam Workshop"
+    }
+  },
+  "warnings": {
+    "noValidItems": "所选项中没有同时具备已生成包和创意工坊 ID 的项。",
+    "skippedNoPreview": "已跳过 $count 个无预览图的项：$list",
+    "noItemsToPublish": "无可发布的项（所有预览图均缺失）。"
+  },
+  "publishScreen": {
+    "formSections": {
+      "publication": "发布",
+      "title": "标题",
+      "description": "描述",
+      "visibility": "可见性",
+      "changeNote": "更新说明",
+      "pack": "包",
+      "packFile": "包文件",
+      "steamId": "Steam ID"
+    },
+    "summary": {
+      "willUpdate": "将更新",
+      "mode": "模式",
+      "modeUpdate": "更新现有",
+      "modePublish": "发布新项",
+      "packSize": "包大小",
+      "visibility": "可见性",
+      "steamId": "Steam ID"
+    },
+    "preview": {
+      "labelUpdate": "预览（更新）",
+      "label": "预览",
+      "untitled": "无标题",
+      "noDescription": "尚未提供描述。"
+    },
+    "upload": {
+      "uploading": "正在上传到 Steam Workshop……",
+      "outputLabel": "STEAMCMD 输出"
+    },
+    "result": {
+      "updatedTitle": "创意工坊项已更新！",
+      "publishedTitle": "创意工坊项已发布！",
+      "workshopId": "Workshop ID: $id",
+      "openInSteam": "在 Steam 中打开"
+    },
+    "actions": {
+      "cancel": "取消",
+      "update": "更新",
+      "publish": "发布",
+      "close": "关闭",
+      "retry": "重试"
+    },
+    "status": {
+      "cancelled": "发布已取消",
+      "failed": "发布失败"
+    },
+    "confirmLeave": {
+      "title": "正在发布",
+      "message": "当前正在发布。确定要离开吗？上传将被取消。",
+      "stay": "留下",
+      "leave": "离开"
+    },
+    "warnings": {
+      "previewFailed": "无法为 .pack 文件生成预览图",
+      "noPackStaged": "没有暂存的包 —— 请先设置创意工坊 ID。"
+    }
+  },
+  "settingsDialog": {
+    "title": "创意工坊模板",
+    "description": "使用 $modName 作为项目名称的占位符。",
+    "titleTemplateLabel": "标题模板",
+    "titleTemplateHint": "$modName - 中文翻译",
+    "descriptionTemplateLabel": "描述模板",
+    "descriptionTemplateHint": "$modName 的中文翻译",
+    "defaultVisibilityLabel": "默认可见性",
+    "noDefault": "无默认值",
+    "cancel": "取消",
+    "save": "保存"
+  },
+  "loginDialog": {
+    "title": "Steam 登录",
+    "description": "输入您的 Steam 凭据以发布到创意工坊。",
+    "usernameLabel": "用户名",
+    "passwordLabel": "密码",
+    "steamGuardSection": "Steam Guard（可选）",
+    "steamGuardCodeLabel": "Steam Guard 验证码",
+    "steamGuardDescription": "如果您使用 Steam 手机验证器，请在此输入 5 位轮换验证码。您也可以将其留空，在系统提示时再输入。",
+    "rememberCredentials": "记住我的凭据",
+    "storedSecurely": "在本设备上安全存储",
+    "cancel": "取消",
+    "login": "登录",
+    "hintCode": "XXXXX",
+    "errors": {
+      "usernameRequired": "用户名为必填项",
+      "passwordRequired": "密码为必填项"
+    }
+  },
+  "steamGuardDialog": {
+    "title": "Steam Guard",
+    "description": "请输入 Steam 手机应用中显示的 5 位验证码。\n打开 Steam 应用 → Steam Guard → 使用屏幕上显示的轮换验证码。",
+    "note": "注意：仅批准推送通知不够 —— steamcmd 需要验证码。",
+    "codeLabel": "Steam Guard 验证码",
+    "hintCode": "XXXXX",
+    "cancel": "取消",
+    "verify": "验证",
+    "errors": {
+      "codeRequired": "验证码为必填项",
+      "codeTooShort": "验证码必须为 5 个字符"
+    }
+  },
+  "steamcmdDialog": {
+    "title": "需要 SteamCMD",
+    "subtitle": "用于创意工坊上传的 Valve 命令行工具",
+    "confirmText": "向 Steam Workshop 发布项目需要 SteamCMD（约 3 MB）。它将从 Valve 的 CDN 下载并自动安装。",
+    "confirmText2": "此工具由 Valve 提供，可安全使用。它将存储在应用程序的数据文件夹中。",
+    "downloading": "正在下载 SteamCMD……",
+    "downloadingFrom": "正在从 Valve CDN 下载……",
+    "successTitle": "SteamCMD 安装成功",
+    "successMessage": "您现在可以发布到 Steam Workshop。",
+    "errorTitle": "安装失败",
+    "cancel": "取消",
+    "install": "安装",
+    "continue": "继续",
+    "close": "关闭",
+    "retry": "重试"
+  },
+  "list": {
+    "empty": {
+      "title": "暂无项目或合集",
+      "subtitle": "创建一个项目或合集后即可在此查看。"
+    },
+    "noMatch": "没有项与当前筛选条件匹配",
+    "columns": {
+      "pack": "包",
+      "steamId": "Steam ID",
+      "subs": "订阅数",
+      "status": "状态",
+      "lastPublished": "最近发布"
+    }
+  },
+  "cells": {
+    "subtitleCompilation": "合集 · 暂无包",
+    "subtitleProject": "项目 · 暂无包",
+    "outdatedPrefix": "已过期",
+    "status": {
+      "noPack": "无包",
+      "published": "已发布",
+      "unpublished": "未发布"
+    },
+    "tooltips": {
+      "workshopNoPack": "创意工坊项 #$id —— 无本地包文件",
+      "noPackOnDisk": "磁盘上没有包文件 —— 请先生成一个包",
+      "workshopItem": "创意工坊项 #$id",
+      "packReadyNoId": "包已就绪 —— 尚未分配创意工坊 ID",
+      "notPublishedYet": "尚未发布到创意工坊。",
+      "subscribers": "创意工坊订阅数 —— 上次刷新于应用启动时。",
+      "lastPublished": "最近发布：$date",
+      "lastExported": "最近导出：$date"
+    }
+  },
+  "actionCell": {
+    "buttons": {
+      "openCompilation": "打开合集",
+      "generatePack": "生成包",
+      "openInWorkshop": "在 Steam Workshop 中打开",
+      "update": "更新"
+    },
+    "tooltips": {
+      "openCompilationToGenerate": "打开合集编辑器以生成",
+      "generatePackFile": "生成 .pack 文件",
+      "setIdFirst": "请先设置 Steam ID 以启用更新",
+      "updateWorkshop": "更新现有的创意工坊项",
+      "openGameLauncher": "打开游戏内启动器",
+      "openInWorkshop": "在 Steam Workshop 中打开"
+    },
+    "progress": {
+      "generating": "生成中……",
+      "preparing": "准备中……",
+      "steps": {
+        "preparingData": "正在准备数据……",
+        "generatingLocFiles": "正在生成 .loc 文件$lang",
+        "creatingPack": "正在创建 .pack$lang",
+        "generatingPreview": "正在生成预览图……",
+        "finalizing": "正在完成……",
+        "completed": "已完成"
+      }
+    },
+    "toasts": {
+      "packGenerated": "包已生成：$count 个条目",
+      "packFailed": "无法生成包：$error",
+      "packError": "生成包时出错：$error",
+      "noLanguages": "未为此项目配置任何语言。",
+      "steamNotFound": "无法打开 Steam 客户端。是否已安装 Steam？"
+    }
+  },
+  "packLanguageDialog": {
+    "title": "选择语言",
+    "cancel": "取消",
+    "generate": "生成"
+  },
+  "steamId": {
+    "tooltips": {
+      "edit": "编辑创意工坊 ID",
+      "set": "设置创意工坊 ID",
+      "save": "保存创意工坊 ID",
+      "cancel": "取消"
+    },
+    "hintId": "ID",
+    "toasts": {
+      "parseWarning": "无法从该值中读取创意工坊 ID。",
+      "saveFailed": "无法保存创意工坊 ID：$error"
+    }
+  },
+  "onboarding": {
+    "title": "发布到 Steam Workshop",
+    "description": "本应用无法直接创建全新的创意工坊条目。游戏启动器存在一个 bug，会导致在其外部上传的模组无法出现在订阅者的启动器中，因此翻译模组的首次发布必须通过原版游戏启动器完成。之后的每次更新便可直接从此界面推送。",
+    "step1": "首次通过原版游戏启动器发布该模组。",
+    "step2": "复制 Steam 分配的创意工坊 ID：它会显示在该模组的创意工坊 URL 中（例如 \"3661242610\"）。",
+    "step3": "将该 ID 粘贴到本应用中此模组的专用字段。",
+    "step4": "使用 \"更新\" 按钮从此界面推送之后的所有翻译更新。",
+    "dontShowAgain": "不再显示",
+    "dismiss": "关闭"
+  },
+  "batchPublish": {
+    "confirmLeave": {
+      "title": "正在发布",
+      "message": "当前正在进行批量发布。确定要离开吗？上传将被取消。",
+      "stay": "留下",
+      "leave": "离开"
+    },
+    "confirmCancel": {
+      "title": "取消批量发布？",
+      "message": "剩余的上传将被中止。已上传的项不会被回滚。",
+      "keepGoing": "继续",
+      "stop": "停止"
+    },
+    "empty": {
+      "title": "未暂存任何项",
+      "subtitle": "无可发布的项。"
+    },
+    "staging": {
+      "packs": "包",
+      "totalSize": "总大小",
+      "publish": "发布",
+      "update": "更新",
+      "account": "账户",
+      "elapsed": "已用时间",
+      "completed": "已完成"
+    },
+    "actions": {
+      "stop": "停止",
+      "close": "关闭"
+    },
+    "progress": {
+      "complete": "批量发布已完成",
+      "completedWithErrors": "已完成但存在错误",
+      "cancelled": "已取消",
+      "steamGuardRequired": "需要 Steam Guard",
+      "publishing": "正在发布……",
+      "current": "当前：$name",
+      "workshopId": "Workshop ID: $id"
+    },
+    "pills": {
+      "pending": "待处理",
+      "uploading": "上传中",
+      "done": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消",
+      "update": "更新",
+      "publish": "发布"
+    }
+  }
+}

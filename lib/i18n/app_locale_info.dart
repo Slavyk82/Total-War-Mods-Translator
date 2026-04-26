@@ -25,6 +25,11 @@ const Map<AppLocale, AppLocaleInfo> _localeInfo = {
     nativeName: 'Français',
     flagAsset: 'assets/flags/fr.png',
   ),
+  AppLocale.zh: AppLocaleInfo(
+    locale: AppLocale.zh,
+    nativeName: '简体中文',
+    flagAsset: 'assets/flags/zh.png',
+  ),
 };
 
 /// Returns the display info for [locale]. Throws if the map is missing

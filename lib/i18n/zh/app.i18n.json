@@ -1,0 +1,8 @@
+{
+  "language": {
+    "title": "应用程序语言",
+    "subtitle": "TWMT 用户界面所使用的语言。该设置与您的模组所翻译成的语言相互独立。",
+    "systemDefault": "系统默认",
+    "label": "语言"
+  }
+}

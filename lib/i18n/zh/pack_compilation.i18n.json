@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "包编译",
+    "new": "新建",
+    "untitled": "未命名",
+    "compilation": "编译",
+    "language": "语言",
+    "modified": "修改时间",
+    "status": "状态",
+    "basics": "基本信息",
+    "output": "输出",
+    "name": "名称",
+    "targetLanguage": "目标语言",
+    "prefix": "前缀",
+    "packName": "包名称",
+    "fileName": "文件名",
+    "location": "位置",
+    "publishing": "发布",
+    "selectProjects": "选择项目",
+    "noLanguage": "无语言",
+    "steamWorkshopBbcode": "Steam Workshop BBCode",
+    "bbcodeHint": "复制此 BBCode 用于您的 Steam Workshop 描述：",
+    "conflictingProjects": "冲突项目",
+    "conflictingKey": "冲突键",
+    "sourceTextThis": "源文本（本项目）",
+    "sourceTextConflicting": "源文本（冲突项）"
+  },
+  "actions": {
+    "newCompilation": "+ 新建编译",
+    "compile": "编译并生成包",
+    "compiling": "正在编译……",
+    "forceCompile": "强制编译",
+    "openFolder": "打开文件夹",
+    "stopTooltip": "停止",
+    "cancelling": "正在取消……",
+    "deleteCompilation": "删除编译"
+  },
+  "status": {
+    "draft": "草稿",
+    "regeneratePack": "重新生成包",
+    "generated": "已生成",
+    "generatingPack": "正在生成包……",
+    "regenerateTooltip": "上次生成包后，一个或多个已包含的项目发生了变更。"
+  },
+  "messages": {
+    "noCompilationsYet": "暂无编译",
+    "createCompilationHint": "创建编译以将多个项目打包为一个 .pack 文件。",
+    "errorLoadingCompilations": "加载编译时出错：$error",
+    "packGenerated": "包已生成",
+    "deletedSuccess": "已删除“$name”",
+    "deleteFailed": "删除失败：$error",
+    "noModsWithWorkshopIds": "未选择任何带有 Steam Workshop ID 的模组"
+  },
+  "dialogs": {
+    "deleteTitle": "删除编译",
+    "deleteMessage": "删除“$name”？",
+    "deleteWarning": "此操作无法撤销。",
+    "conflictsTitle": "检测到未解决的冲突",
+    "conflictsBody": "所选项目之间有 $count 个冲突尚未解决。立即编译可能导致受影响条目在游戏内的翻译显示出现不可预期的结果。\n\n您可以取消以先解决冲突，或强制继续编译。",
+    "conflictsForProject": "项目的冲突"
+  },
+  "hints": {
+    "namePlaceholder": "我的中文翻译",
+    "prefixPlaceholder": "!!!!!!!!!!_zh_compilation_twmt_",
+    "packNamePlaceholder": "my_pack",
+    "selectLanguage": "选择语言……",
+    "noProjectsFound": "未找到项目",
+    "tryDifferentSearch": "请尝试其他搜索词",
+    "selectGameFirst": "请先在侧边栏选择游戏",
+    "selectLanguageFirst": "请先选择语言",
+    "noProjectsWithLanguage": "没有该语言翻译的项目",
+    "searchProjects": "搜索项目……",
+    "showOnlySelected": "仅显示已选",
+    "showOnlySelectedTooltip": "仅显示已包含在此编译中的项目",
+    "clearSelection": "清除选择",
+    "selectedCount": "已选择 $count 个",
+    "failedToLoadProjects": "加载项目失败"
+  },
+  "conflicts": {
+    "analysisWillRun": "冲突分析将运行",
+    "whenYouClickGenerate": "当您点击“生成包”时",
+    "noConflictsDetected": "未检测到冲突",
+    "readyToCompile": "可以编译",
+    "analyzingConflicts": "正在分析冲突……",
+    "analysisFailed": "分析失败",
+    "conflictInfo": "点击项目名称查看详情。取消勾选可排除项目。",
+    "noAnalysisData": "无分析数据",
+    "noConflictsFound": "未发现冲突",
+    "errorPrefix": "错误：$error",
+    "bbcodeError": "生成 BBCode 时出错"
+  }
+}

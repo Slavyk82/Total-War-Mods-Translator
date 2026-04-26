@@ -1,0 +1,95 @@
+{
+  "title": "主页",
+  "sections": {
+    "workflow": "工作流",
+    "needsAttention": "需要关注"
+  },
+  "status": {
+    "needsAttentionOne": "1 个项目需要您的关注",
+    "needsAttentionMany": "$count 个项目需要您的关注",
+    "readyToCompileOne": "1 个项目可编译",
+    "readyToCompileMany": "$count 个项目可编译",
+    "modUpdatesOne": "1 个模组更新可用",
+    "modUpdatesMany": "$count 个模组更新可用",
+    "allCaughtUp": "全部已处理"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "待审核",
+      "description": "包含需审核单元的项目"
+    },
+    "readyToCompile": {
+      "label": "可编译",
+      "description": "已 100% 翻译的项目"
+    },
+    "exportOutdated": {
+      "label": "导出已过时",
+      "description": "自上次打包以来已修改的项目"
+    },
+    "modUpdates": {
+      "label": "模组更新",
+      "description": "新的 Workshop 版本可用"
+    },
+    "readyToPublish": {
+      "label": "可发布",
+      "description": "可发送到 Workshop 的包"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "检测",
+      "done": "完成",
+      "startHere": "从此开始",
+      "modsDiscovered": "已发现的模组",
+      "noModsYet": "尚无模组",
+      "withUpdates": " · $count 个有更新",
+      "cta": "查看模组"
+    },
+    "translate": {
+      "title": "翻译",
+      "inProgress": "进行中",
+      "idle": "空闲",
+      "waiting": "等待中",
+      "subtitle": "进行中的项目",
+      "toReview": " · $count 个待审核",
+      "cta": "打开项目"
+    },
+    "publish": {
+      "title": "发布",
+      "waiting": "等待中",
+      "waitingCount": "$count 个等待中",
+      "subtitle": "已编译并准备发布到 Workshop 的包",
+      "cta": "发布"
+    }
+  },
+  "nextAction": {
+    "toReview": "待审核",
+    "translate": "翻译",
+    "readyToCompile": "可编译",
+    "continue": "继续"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "在“源”中检测您的模组",
+      "cta": "前往“源”"
+    },
+    "step2": {
+      "title": "从模组创建项目",
+      "cta": "打开“源”"
+    },
+    "step3": {
+      "title": "翻译各单元",
+      "cta": "打开“项目”"
+    },
+    "step4": {
+      "title": "编译您的包"
+    },
+    "step5": {
+      "title": "发布到 Steam Workshop"
+    }
+  },
+  "support": {
+    "message": "如果 TWMT 让您的模组制作生活更轻松，让翻译保持井然有序并撑过每一次模组更新，一点小小的支持将不胜感激，也帮助我持续改进它！",
+    "buyMeABeer": "请我喝杯啤酒 :-)"
+  }
+}

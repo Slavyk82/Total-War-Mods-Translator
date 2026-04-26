@@ -1,0 +1,14 @@
+{
+  "labels": {
+    "resultOf": "第 $index 个结果，共 $total 个",
+    "pageOf": "第 $current 页，共 $total 页",
+    "keyPrefix": "键：$key",
+    "source": "源：",
+    "target": "目标："
+  },
+  "actions": {
+    "goTo": "前往",
+    "previousPage": "上一页",
+    "nextPage": "下一页"
+  }
+}

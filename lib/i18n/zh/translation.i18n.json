@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "历史时间线",
+    "labels": {
+      "current": "当前",
+      "latest": "最新",
+      "versionN": "版本 $index",
+      "reason": "原因：$reason"
+    },
+    "actions": {
+      "restore": "恢复",
+      "compare": "比较"
+    },
+    "empty": {
+      "title": "暂无历史记录",
+      "subtitle": "您编辑时变更将显示在此处"
+    },
+    "errors": {
+      "loadFailed": "加载历史记录失败"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "恢复版本",
+        "message": "确定要恢复此版本吗？\n\n这将以以下内容替换当前翻译：\n“$preview”"
+      }
+    },
+    "toasts": {
+      "restored": "版本已成功恢复",
+      "restoreFailed": "恢复失败：$error"
+    }
+  },
+  "comparison": {
+    "title": "比较版本",
+    "labels": {
+      "oldVersion": "旧版本",
+      "newVersion": "新版本",
+      "changes": "变更",
+      "charsAdded": "新增字符",
+      "charsRemoved": "删除字符",
+      "wordsAdded": "新增词数",
+      "wordsRemoved": "删除词数",
+      "totalChanges": "变更总数"
+    },
+    "actions": {
+      "copyOld": "复制旧版",
+      "copyNew": "复制新版",
+      "restoreOld": "恢复旧版"
+    },
+    "errors": {
+      "loadFailed": "比较版本失败"
+    },
+    "toasts": {
+      "copied": "已复制到剪贴板",
+      "restored": "版本已成功恢复",
+      "restoreFailed": "恢复失败：$error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "恢复版本",
+        "message": "确定要恢复此版本吗？\n\n预览：\n“$preview”"
+      }
+    }
+  }
+}

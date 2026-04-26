@@ -1,0 +1,235 @@
+{
+  "title": "项目",
+  "projectCount": "$count 个项目",
+  "stateLabel": "状态",
+  "clearFilters": "清除",
+  "filters": {
+    "needsUpdate": "需更新",
+    "needsReview": "需审核",
+    "incomplete": "未完成",
+    "completed": "已完成",
+    "exported": "已导出",
+    "notExported": "未导出",
+    "exportOutdated": "导出已过期"
+  },
+  "emptyStates": {
+    "noMatch": "没有项目匹配筛选条件",
+    "noProjects": "暂无项目",
+    "adjustFilters": "请尝试调整筛选条件",
+    "goToMods": "前往模组界面，从模组创建项目",
+    "failedToLoad": "加载项目失败"
+  },
+  "loading": "正在加载项目...",
+  "columns": {
+    "project": "项目",
+    "languagesProgress": "语言与进度",
+    "modified": "已修改",
+    "status": "状态"
+  },
+  "labels": {
+    "noTargetLanguage": "无目标语言",
+    "localPack": "本地包",
+    "gameTranslation": "游戏翻译",
+    "lastModified": "最后修改：$date",
+    "lastExport": "上次导出：$date"
+  },
+  "tooltips": {
+    "openInWorkshop": "在 Steam Workshop 中打开",
+    "resync": "与源包文件重新同步",
+    "deleteProject": "删除项目",
+    "hideBulkMenu": "隐藏批量菜单",
+    "showBulkMenu": "显示批量菜单",
+    "newTranslations": "+$n 条新翻译待添加",
+    "removedTranslations": "-$n 条翻译已移除",
+    "changedSources": "~$n 条源文本已更改"
+  },
+  "status": {
+    "modUpdated": "模组已更新",
+    "upToDate": "已是最新",
+    "exportOutdated": "导出已过期",
+    "unpublished": "未发布",
+    "exported": "已导出",
+    "draft": "草稿"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "删除项目",
+      "message": "确定要删除“$name”吗？",
+      "warning": "此操作无法撤销。",
+      "confirmLabel": "删除"
+    },
+    "confirmLeave": {
+      "title": "导出进行中",
+      "message": "批量导出正在进行中。确定要离开吗？导出将被取消。",
+      "stay": "留下",
+      "leave": "离开"
+    },
+    "confirmCancelBulk": {
+      "title": "停止当前操作？",
+      "message": "已处理的项目将保留其更改。",
+      "stop": "停止",
+      "keepRunning": "继续运行"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "项目重新同步成功",
+    "resyncFailed": "重新同步失败：$error",
+    "deleteSuccess": "项目“$name”已删除",
+    "deleteFailed": "删除项目失败：$error",
+    "projectCreated": "项目创建成功",
+    "projectCreatedUnits": "已创建项目，包含 $count 个翻译单元",
+    "createFailed": "创建项目失败：$error",
+    "importFailed": "项目已创建，但导入翻译失败：$error"
+  },
+  "search": {
+    "hint": "搜索项目..."
+  },
+  "batchExport": {
+    "title": "批量包导出",
+    "noData": "无导出数据。",
+    "statusComplete": "导出完成",
+    "statusCancelled": "已取消",
+    "statusExporting": "正在导出...",
+    "completedWithErrors": "导出完成，但存在错误",
+    "allSuccess": "所有包已成功导出",
+    "summary": "$succeeded 成功，$failed 失败",
+    "current": "当前：$name",
+    "sectionProjects": "项目",
+    "sectionLabel": "$count 个项目 • $lang",
+    "progressOf": "$completed / $total 个项目",
+    "entryCount": "$count 个条目"
+  },
+  "bulk": {
+    "sectionSettings": "设置",
+    "sectionActions": "操作",
+    "sectionInfo": "显示信息",
+    "infoText": "批量操作专为已部分翻译的项目设计。它们将应用于所有匹配所选目标语言的可见项目。",
+    "infoHide": "隐藏",
+    "targetLanguageLabel": "目标语言",
+    "scopeMessage": "将影响 $visible 个可见项目（其中 $matching 个匹配目标语言）。",
+    "buttons": {
+      "translateAll": "全部翻译",
+      "rescanReviews": "重新扫描审核",
+      "reviewFlagged": "审核标记项",
+      "generatePack": "生成包"
+    },
+    "unitCount": "$n 个单元",
+    "tooltips": {
+      "selectLanguage": "请选择目标语言",
+      "alreadyRunning": "已有操作正在运行",
+      "noVisibleProjects": "没有匹配的可见项目"
+    },
+    "progress": {
+      "titleTranslating": "正在翻译项目",
+      "titleRescanning": "正在重新扫描审核",
+      "titleValidating": "正在强制验证审核",
+      "titleGeneratingPacks": "正在生成包",
+      "titleRetranslating": "正在重新翻译标记单元",
+      "titleDefault": "批量操作",
+      "targetLanguage": "目标语言：$code",
+      "projectProgress": "$current / $total 个项目",
+      "cancelling": "正在取消…",
+      "retryFailed": "重试失败项",
+      "summary": "$succeeded 成功 · $skipped 已跳过 · $failed 失败"
+    },
+    "review": {
+      "title": "审核标记的翻译",
+      "subtitle": "目标：$code · $units 个单元，跨 $projects 个项目",
+      "loadFailed": "加载审核队列失败：$error",
+      "working": "处理中…",
+      "validateAll": "全部验证",
+      "retranslateAll": "全部强制重新翻译",
+      "emptyTitle": "无标记的翻译",
+      "emptySubtitle": "所有可见项目在此语言下均已是最新。",
+      "noModelSelected": "未选择 LLM 模型",
+      "retranslateFailed": "重新翻译失败：$error",
+      "validateFailed": "验证失败：$error",
+      "validateAllFailed": "全部验证失败：$error",
+      "columnSource": "EN",
+      "columnTranslation": "翻译",
+      "emptyTranslation": "（空）",
+      "tooltipValidate": "验证（清除审核标记）",
+      "tooltipRetranslate": "强制重新翻译此单元"
+    },
+    "languageSelector": {
+      "loadFailed": "加载语言失败：$error",
+      "noLanguages": "可见项目中无可用的目标语言。"
+    },
+    "outcomes": {
+      "noTargetLanguage": "未配置目标语言",
+      "noUntranslatedUnits": "无未翻译的单元",
+      "noLlmModel": "未选择 LLM 模型",
+      "noFlaggedUnits": "无标记待审核的单元",
+      "noUnitsToRescan": "无可重新扫描的已翻译单元",
+      "unitsTranslated": "已翻译 $count 个单元 · 标记 $flagged 个",
+      "unitsFlagged": "$count 个已标记待审核",
+      "flagsCleared": "$count 个标记已清除",
+      "packGenerated": "$entries 个条目 · $size MB",
+      "unitsRetranslated": "$count 个单元已重新翻译"
+    }
+  },
+  "addLanguage": {
+    "title": "添加目标语言",
+    "subtitle": "选择要添加到此项目的语言",
+    "adding": "添加中...",
+    "addButton": "添加语言",
+    "allAdded": "所有语言均已添加",
+    "loadError": "加载语言时出错",
+    "languageCode": "代码：$code",
+    "addSuccess": "已添加 $count 种语言，每种包含 $units 个翻译单元",
+    "addFailed": "添加语言失败：$error"
+  },
+  "createProject": {
+    "title": "创建新项目",
+    "steps": {
+      "basicInfo": "基本信息",
+      "translationSettings": "翻译设置"
+    },
+    "actions": {
+      "close": "关闭",
+      "back": "返回",
+      "next": "下一步",
+      "create": "创建"
+    },
+    "errors": {
+      "selectGame": "请选择一个游戏安装",
+      "gameMustBeSelected": "必须选择一个游戏安装",
+      "gamePathNotConfigured": "游戏安装路径未配置",
+      "rpfmSchemaNotConfigured": "RPFM schema 路径未配置。\n\n请在“设置 > RPFM 工具”中配置后再创建项目。\n\n需要 schema 路径才能从 .pack 文件中提取本地化文件。"
+    },
+    "progress": {
+      "extracting": "正在提取并导入本地化文件...",
+      "processing": "处理中..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "已根据检测到的模组自动填充。请检查后继续。",
+      "descriptionManual": "请输入项目名称并选择一个游戏安装。",
+      "fieldProjectName": "项目名称",
+      "fieldSourcePack": "源包",
+      "fieldWorkshopId": "Workshop ID",
+      "fieldGame": "游戏",
+      "hintProjectName": "请输入项目名称",
+      "hintGame": "请选择一个游戏",
+      "errorLoadingGames": "加载游戏时出错：$error"
+    },
+    "translationSettings": {
+      "description": "调整翻译吞吐量，并可选择提供额外的提示词。",
+      "fieldBatchSize": "批次大小",
+      "fieldParallelBatches": "并行批次",
+      "fieldCustomPrompt": "自定义翻译提示词（可选）",
+      "hintBatchSize": "每批次的单元数（默认：25）",
+      "hintParallelBatches": "并行处理的批次数（默认：3）",
+      "hintCustomPrompt": "请输入提供给 AI 翻译器的自定义指令"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "正在初始化项目",
+    "titleFailed": "初始化失败",
+    "titleComplete": "初始化完成",
+    "extracting": "正在提取并导入本地化文件...",
+    "successUnits": "成功导入 $count 个翻译单元",
+    "noLogs": "暂无日志...",
+    "sectionLogs": "日志",
+    "close": "关闭"
+  }
+}
