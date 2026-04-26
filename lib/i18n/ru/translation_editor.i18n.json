@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "Редактор переводов",
+    "crumbWork": "Работа",
+    "crumbProjects": "Проекты"
+  },
+  "toolbar": {
+    "searchHint": "Поиск по ключу · источнику · цели",
+    "filterStateLabel": "СОСТОЯНИЕ",
+    "filterSeverityLabel": "ВАЖНОСТЬ",
+    "clearLabel": "Очистить",
+    "sectionAiContext": "Контекст ИИ",
+    "sectionOther": "Прочее",
+    "sectionWorkflow": "Рабочий процесс",
+    "autoBatchSize": "Автоматический размер пакета",
+    "unitsPerBatch": "Единиц в пакете",
+    "parallelBatches": "Параллельные пакеты",
+    "useTranslationMemory": "Использовать Translation Memory",
+    "modSpecificRule": "Правило для конкретного мода",
+    "importExternalPack": "Импортировать внешний пакет",
+    "openLocalFolder": "Открыть локальную папку"
+  },
+  "filters": {
+    "pending": "В ожидании",
+    "translated": "Переведено",
+    "needsReview": "Требует проверки",
+    "errors": "Ошибки",
+    "warnings": "Предупреждения"
+  },
+  "sidebar": {
+    "translateSelection": "Перевести выбранное",
+    "translateAll": "Перевести всё",
+    "review": "Проверить",
+    "generatePack": "Создать пакет",
+    "unitSingular": "единица",
+    "unitPlural": "единиц"
+  },
+  "inspector": {
+    "emptyState": "Выберите единицу, чтобы увидеть подробности",
+    "unitsSelected": "Выбрано единиц: $count",
+    "accept": "Принять",
+    "reject": "Отклонить",
+    "edit": "Изменить",
+    "retranslate": "Перевести заново",
+    "deselect": "Снять выбор",
+    "validationIssues": "ПРОБЛЕМЫ ВАЛИДАЦИИ",
+    "sourceLabel": "Источник · $lang",
+    "targetLabel": "Цель · $lang — редактирование",
+    "unitLabel": "Единица"
+  },
+  "datagrid": {
+    "columnKey": "КЛЮЧ",
+    "columnSource": "ИСТОЧНИК",
+    "columnTarget": "ЦЕЛЬ",
+    "errorLoadingTranslations": "Ошибка при загрузке переводов"
+  },
+  "statusBar": {
+    "units": "Единиц: $count",
+    "translated": "Переведено: $count ($pct%)",
+    "needReview": "Требуют проверки: $count",
+    "tmReuse": "TM $pct%"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "Ничего не выбрано",
+      "message": "Выберите одну или несколько единиц перевода."
+    },
+    "noUntranslated": {
+      "title": "Нет непереведённых единиц",
+      "message": "Все единицы на этом языке проекта уже переведены."
+    },
+    "allTranslated": {
+      "title": "Все выбранные единицы переведены",
+      "message": "Все выбранные единицы уже переведены."
+    },
+    "translateAll": {
+      "title": "Перевести всё",
+      "message": "Перевести непереведённых единиц: $count?"
+    },
+    "translateSelected": {
+      "title": "Перевести выбранное",
+      "message": "Перевести непереведённых единиц: $count (уже переведено: $skipped)?"
+    },
+    "forceRetranslate": {
+      "title": "Принудительный повторный перевод",
+      "message": "Перевести заново единиц: $count?\n\nВнимание: существующие переводы будут перезаписаны."
+    },
+    "validationRescan": {
+      "title": "Повторная проверка валидации",
+      "scanning": "Сканирование $current/$total...",
+      "saving": "Сохранение обновлений: $count..."
+    },
+    "noIssues": {
+      "title": "Нет проблем для проверки",
+      "message": "Все переводы прошли валидацию."
+    },
+    "nothingToScan": {
+      "title": "Нечего сканировать",
+      "message": "Переведённых записей не найдено."
+    },
+    "clearConfirm": {
+      "title": "Подтвердите очистку",
+      "messageSingle": "Вы действительно хотите очистить этот перевод?",
+      "messageMultiple": "Вы действительно хотите очистить переводов: $count?",
+      "clearButton": "Очистить",
+      "cannotBeUndone": "Это действие необратимо."
+    },
+    "deleteConfirm": {
+      "title": "Подтвердите удаление",
+      "messageSingle": "Вы действительно хотите удалить этот перевод?",
+      "messageMultiple": "Вы действительно хотите удалить переводов: $count?",
+      "deleteButton": "Удалить",
+      "cannotBeUndone": "Это действие необратимо."
+    },
+    "clearTranslations": {
+      "title": "Очистка переводов"
+    },
+    "editTranslation": {
+      "title": "Изменить перевод",
+      "translationLabel": "Перевод",
+      "hint": "Введите исправленный перевод..."
+    },
+    "translationHistory": {
+      "title": "История перевода",
+      "noHistory": "История недоступна",
+      "noHistoryDetail": "У этого перевода ещё нет записанной истории.",
+      "errorLoading": "Ошибка при загрузке истории"
+    },
+    "promptPreview": {
+      "title": "Предпросмотр промпта",
+      "subtitle": "Просмотр точного промпта, который будет отправлен в LLM",
+      "tabSystemPrompt": "Системный промпт",
+      "tabUserMessage": "Сообщение пользователя",
+      "tabApiPayload": "Полезная нагрузка API",
+      "systemPromptDesc": "Инструкции, контекст и глоссарий, отправляемые как системное сообщение",
+      "userMessageDesc": "Сам запрос на перевод с исходным текстом",
+      "apiPayloadDesc": "Полная полезная нагрузка JSON в том виде, в котором она будет отправлена провайдеру",
+      "copyFullPrompt": "Копировать промпт полностью",
+      "copiedToClipboard": "$title скопировано в буфер обмена",
+      "noPreview": "Предпросмотр недоступен",
+      "errorBuilding": "Ошибка при построении предпросмотра промпта",
+      "keyLabel": "Ключ: $key"
+    },
+    "providerSetup": {
+      "title": "Провайдер перевода не настроен",
+      "message": "Чтобы использовать автоматический перевод, необходимо настроить хотя бы одного провайдера LLM. Перейдите в настройки и настройте одного из следующих провайдеров:",
+      "goToSettings": "Перейти в настройки",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "Высококачественные переводы с учётом контекста",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "Универсальная языковая модель с хорошим качеством перевода",
+      "deepl": "DeepL",
+      "deeplDesc": "Специализированный сервис перевода"
+    },
+    "modRule": {
+      "title": "Правило перевода мода",
+      "infoBanner": "Это правило применяется только к этому моду и будет добавлено после глобальных правил в каждом промпте перевода.",
+      "ruleTextLabel": "Текст правила",
+      "ruleTextHint": "Например: в этом моде используются фэнтезийные имена, которые не следует переводить...",
+      "ruleActive": "Правило активно",
+      "ruleDisabled": "Правило отключено",
+      "deleteTitle": "Удалить правило мода",
+      "deleteMessage": "Вы действительно хотите удалить это правило? Это действие необратимо.",
+      "savedSuccess": "Правило мода успешно сохранено",
+      "deletedSuccess": "Правило мода удалено",
+      "errorSave": "Не удалось сохранить правило",
+      "errorDelete": "Не удалось удалить правило",
+      "errorToggle": "Не удалось переключить правило",
+      "validationEmpty": "Введите текст правила"
+    },
+    "packImport": {
+      "title": "Импортировать переводы из файла .pack",
+      "noFileSelected": "Файл не выбран",
+      "browse": "Обзор",
+      "analyzingPack": "Анализ файла pack...",
+      "selectPackPrompt": "Выберите файл .pack, содержащий переводы",
+      "noMatchingTranslations": "Совпадающих переводов не найдено",
+      "overwriteExisting": "Перезаписать существующие переводы",
+      "selectAll": "Выбрать всё",
+      "deselectAll": "Снять выбор со всех",
+      "importButton": "Импортировать ($count)",
+      "importing": "Импорт...",
+      "cancelImport": "Отменить импорт",
+      "cancelling": "Отмена...",
+      "startingImport": "Запуск импорта...",
+      "summaryTitle": "Сводка анализа",
+      "summaryTotalInPack": "Всего в пакете",
+      "summaryMatches": "Совпадения",
+      "summaryNew": "Новые",
+      "summaryConflicts": "Конфликты",
+      "summaryNotFound": "Не найдено",
+      "gridColumnKey": "Ключ",
+      "gridColumnValue": "Значение для импорта",
+      "gridColumnStatus": "Статус",
+      "statusConflict": "Конфликт",
+      "statusNew": "Новый",
+      "importComplete": "Импорт завершён: импортировано переводов: $imported",
+      "importSkipped": ", пропущено: $count",
+      "importErrors": ", ошибок: $count",
+      "progressEntries": "Обработано записей: $current / $total"
+    },
+    "export": {
+      "title": "Экспорт переводов",
+      "selectFormat": "Выберите формат экспорта:",
+      "packTitle": ".pack (мод Total War)",
+      "packSubtitle": "Готовый к игре файл пакета",
+      "csvTitle": "CSV",
+      "csvSubtitle": "Значения, разделённые запятыми",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Таблица Microsoft Excel"
+    },
+    "deleteLanguage": {
+      "title": "Удалить язык",
+      "message": "Удалить «$name» из этого проекта? Будет удалено переводов: $count.",
+      "cannotBeUndone": "Это действие необратимо."
+    },
+    "sourceText": "Исходный текст"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "Создание пакета",
+      "header": "Создание пакета",
+      "packGenerated": "Пакет создан",
+      "translationsIncluded": "Включено переводов: $count",
+      "languages": "Языки: $langs",
+      "steps": {
+        "preparingData": "Подготовка данных...",
+        "generatingLocFiles": "Создание файлов .loc...",
+        "creatingPack": "Создание файла .pack...",
+        "generatingImage": "Создание изображения пакета...",
+        "finalizing": "Завершение...",
+        "completed": "Пакет создан!",
+        "collectingData": "Сбор данных перевода...",
+        "writingFile": "Запись выходного файла..."
+      },
+      "processing": "Обработка: $lang ($current/$total)",
+      "inProgressWarning": "Создание пакета выполняется. Дождитесь завершения.",
+      "statusFailed": "Ошибка",
+      "statusCompleted": "Завершено",
+      "statusInProgress": "Выполняется"
+    },
+    "translation": {
+      "header": "Массовый перевод",
+      "title": "Перевод выполняется",
+      "batchId": "ID пакета: $id",
+      "progress": "Прогресс",
+      "units": "$processed / $total единиц",
+      "stop": "Остановить",
+      "stopping": "Остановка...",
+      "stopWarning": "Перевод выполняется. Нажмите «Остановить», чтобы безопасно выйти.",
+      "preparing": "Подготовка перевода",
+      "preparingDetail": "Создание пакета и сбор контекста...",
+      "preparationFailed": "Не удалось подготовить пакет перевода",
+      "preparationError": "Ошибка подготовки: $error",
+      "currentPhase": "Текущая фаза",
+      "paused": "Приостановлено",
+      "elapsed": {
+        "seconds": "Прошло: $n секунд",
+        "minutes": "Прошло: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "Осталось около $n секунд",
+        "minutes": "Осталось около $n минуты",
+        "minutesPlural": "Осталось около $n минут"
+      },
+      "logs": {
+        "title": "Журналы",
+        "autoScroll": "Автопрокрутка",
+        "waiting": "Ожидание журналов..."
+      },
+      "llmLogs": "Журналы обмена с LLM ($count)",
+      "llmLogsEmpty": "Пока нет обменов с LLM. Журналы будут появляться по мере выполнения перевода.",
+      "phases": {
+        "initializing": "Инициализация...",
+        "tmExactLookup": "Проверка Translation Memory (точное совпадение)",
+        "tmFuzzyLookup": "Проверка Translation Memory (нечёткое совпадение)",
+        "buildingPrompt": "Построение промпта перевода",
+        "llmTranslation": "Перевод с помощью LLM",
+        "validating": "Валидация переводов",
+        "saving": "Сохранение переводов",
+        "updatingTm": "Обновление Translation Memory",
+        "finalizing": "Завершение пакета",
+        "completed": "Завершено"
+      },
+      "stats": {
+        "success": "Успешно",
+        "failed": "Ошибка",
+        "skipped": "Пропущено"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "Выбрать всё",
+    "forceRetranslate": "Принудительный повторный перевод",
+    "forceRetranslateCount": "Принудительный повторный перевод ($count)",
+    "markAsTranslated": "Отметить как переведённое",
+    "markAsTranslatedCount": "Отметить как переведённое ($count)",
+    "clearTranslation": "Очистить перевод",
+    "clearTranslationCount": "Очистить перевод ($count)",
+    "viewHistory": "Посмотреть историю",
+    "viewPrompt": "Посмотреть промпт",
+    "deleteCount": "Удалить ($count)"
+  },
+  "actions": {
+    "undoSuccess": "Отмена выполнена",
+    "undoFailed": "Не удалось отменить: $error",
+    "redoSuccess": "Повтор выполнен",
+    "redoFailed": "Не удалось повторить: $error",
+    "autoFixApplied": "Автоисправление применено",
+    "translationValidated": "Перевод проверен",
+    "markedAsTranslated": "Отмечено как переведённые: $count",
+    "cleared": "Очищено переводов: $count",
+    "deleted": "Удалено переводов: $count",
+    "copied": "Скопировано строк в буфер обмена: $count",
+    "pasted": "Вставлено переводов: $count",
+    "noRowsSelected": "Строки не выбраны",
+    "clipboardEmpty": "Буфер обмена пуст",
+    "noValidTranslations": "В буфере обмена не найдено корректных переводов",
+    "packGenerationFailed": "Не удалось создать пакет",
+    "failedToOpenModFolder": "Не удалось открыть папку мода: $error",
+    "gamePathNotConfigured": "Путь установки игры не настроен."
+  },
+  "languageSwitcher": {
+    "noLanguage": "В этом проекте нет языка",
+    "addLanguage": "+ Добавить язык",
+    "deleteLanguage": "Удалить язык",
+    "cannotDeleteLast": "Невозможно удалить последний язык"
+  },
+  "validation": {
+    "validationIssuesFound": "Обнаружены проблемы валидации",
+    "readyToValidate": "Готово к валидации",
+    "noIssuesFound": "Проблем не найдено!",
+    "translationPassesAll": "Этот перевод прошёл все проверки валидации",
+    "selectUnitToView": "Выберите единицу перевода, чтобы увидеть проблемы валидации",
+    "errorLoadingIssues": "Ошибка при загрузке проблем валидации",
+    "validate": "Проверить",
+    "autoFix": "Автоисправление",
+    "errors": "Ошибки",
+    "warnings": "Предупреждения",
+    "info": "Информация",
+    "noIssues": "Проблем не найдено"
+  },
+  "issueTypes": {
+    "emptyTranslation": "Пустой перевод",
+    "lengthDifference": "Разница в длине",
+    "missingVariables": "Отсутствуют переменные",
+    "whitespaceIssue": "Проблема с пробелами",
+    "punctuationMismatch": "Несоответствие пунктуации",
+    "caseMismatch": "Несоответствие регистра",
+    "missingNumbers": "Отсутствуют числа",
+    "modifiedNumbers": "Изменённые числа"
+  }
+}

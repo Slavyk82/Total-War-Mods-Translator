@@ -1,0 +1,235 @@
+{
+  "title": "Проекты",
+  "projectCount": "$count проект(ов)",
+  "stateLabel": "СОСТОЯНИЕ",
+  "clearFilters": "Очистить",
+  "filters": {
+    "needsUpdate": "Требует обновления",
+    "needsReview": "Требует проверки",
+    "incomplete": "Не завершён",
+    "completed": "Завершён",
+    "exported": "Экспортирован",
+    "notExported": "Не экспортирован",
+    "exportOutdated": "Экспорт устарел"
+  },
+  "emptyStates": {
+    "noMatch": "Нет проектов, соответствующих фильтрам",
+    "noProjects": "Пока нет проектов",
+    "adjustFilters": "Попробуйте изменить фильтры",
+    "goToMods": "Перейдите на экран «Моды», чтобы создать проект из мода",
+    "failedToLoad": "Не удалось загрузить проекты"
+  },
+  "loading": "Загрузка проектов...",
+  "columns": {
+    "project": "Проект",
+    "languagesProgress": "Языки и прогресс",
+    "modified": "Изменён",
+    "status": "Статус"
+  },
+  "labels": {
+    "noTargetLanguage": "Нет целевого языка",
+    "localPack": "Локальный пак",
+    "gameTranslation": "Перевод игры",
+    "lastModified": "Последнее изменение: $date",
+    "lastExport": "Последний экспорт: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Открыть в Steam Workshop",
+    "resync": "Повторно синхронизировать с исходным pack-файлом",
+    "deleteProject": "Удалить проект",
+    "hideBulkMenu": "Скрыть меню массовых операций",
+    "showBulkMenu": "Показать меню массовых операций",
+    "newTranslations": "+$n новых переводов для добавления",
+    "removedTranslations": "-$n переводов удалено",
+    "changedSources": "~$n исходных текстов изменено"
+  },
+  "status": {
+    "modUpdated": "Мод обновлён",
+    "upToDate": "Актуален",
+    "exportOutdated": "Экспорт устарел",
+    "unpublished": "Не опубликован",
+    "exported": "Экспортирован",
+    "draft": "Черновик"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "Удалить проект",
+      "message": "Вы уверены, что хотите удалить «$name»?",
+      "warning": "Это действие нельзя отменить.",
+      "confirmLabel": "Удалить"
+    },
+    "confirmLeave": {
+      "title": "Выполняется экспорт",
+      "message": "Сейчас выполняется массовый экспорт. Вы уверены, что хотите выйти? Экспорт будет отменён.",
+      "stay": "Остаться",
+      "leave": "Выйти"
+    },
+    "confirmCancelBulk": {
+      "title": "Остановить текущую операцию?",
+      "message": "Уже обработанные проекты сохранят свои изменения.",
+      "stop": "Остановить",
+      "keepRunning": "Продолжить"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "Проект успешно синхронизирован",
+    "resyncFailed": "Ошибка синхронизации: $error",
+    "deleteSuccess": "Проект «$name» удалён",
+    "deleteFailed": "Не удалось удалить проект: $error",
+    "projectCreated": "Проект успешно создан",
+    "projectCreatedUnits": "Проект создан с $count единицами перевода",
+    "createFailed": "Не удалось создать проект: $error",
+    "importFailed": "Проект создан, но не удалось импортировать переводы: $error"
+  },
+  "search": {
+    "hint": "Поиск проектов..."
+  },
+  "batchExport": {
+    "title": "Массовый экспорт паков",
+    "noData": "Нет данных экспорта.",
+    "statusComplete": "Экспорт завершён",
+    "statusCancelled": "Отменено",
+    "statusExporting": "Экспорт...",
+    "completedWithErrors": "Экспорт завершён с ошибками",
+    "allSuccess": "Все паки успешно экспортированы",
+    "summary": "$succeeded успешно, $failed с ошибкой",
+    "current": "Текущий: $name",
+    "sectionProjects": "Проекты",
+    "sectionLabel": "$count проектов • $lang",
+    "progressOf": "$completed / $total проектов",
+    "entryCount": "$count записей"
+  },
+  "bulk": {
+    "sectionSettings": "Настройки",
+    "sectionActions": "Действия",
+    "sectionInfo": "Показать информацию",
+    "infoText": "Массовые действия предназначены для проектов, уже частично переведённых. Они применяются ко всем видимым проектам, соответствующим выбранному целевому языку.",
+    "infoHide": "Скрыть",
+    "targetLanguageLabel": "Целевой язык",
+    "scopeMessage": "Затронет $visible видимых проектов ($matching соответствуют целевому языку).",
+    "buttons": {
+      "translateAll": "Перевести все",
+      "rescanReviews": "Пересканировать проверки",
+      "reviewFlagged": "Проверить отмеченные",
+      "generatePack": "Создать пак"
+    },
+    "unitCount": "$n единиц",
+    "tooltips": {
+      "selectLanguage": "Выберите целевой язык",
+      "alreadyRunning": "Операция уже выполняется",
+      "noVisibleProjects": "Нет соответствующих видимых проектов"
+    },
+    "progress": {
+      "titleTranslating": "Перевод проектов",
+      "titleRescanning": "Пересканирование проверок",
+      "titleValidating": "Принудительная валидация проверок",
+      "titleGeneratingPacks": "Создание паков",
+      "titleRetranslating": "Повторный перевод отмеченных единиц",
+      "titleDefault": "Массовая операция",
+      "targetLanguage": "Целевой язык: $code",
+      "projectProgress": "$current / $total проектов",
+      "cancelling": "Отмена…",
+      "retryFailed": "Повторить неудачные",
+      "summary": "$succeeded успешно · $skipped пропущено · $failed с ошибкой"
+    },
+    "review": {
+      "title": "Проверить отмеченные переводы",
+      "subtitle": "Цель: $code · $units единиц в $projects проектах",
+      "loadFailed": "Не удалось загрузить очередь проверки: $error",
+      "working": "Обработка…",
+      "validateAll": "Подтвердить все",
+      "retranslateAll": "Принудительно перевести все заново",
+      "emptyTitle": "Нет отмеченных переводов",
+      "emptySubtitle": "Все видимые проекты актуальны для этого языка.",
+      "noModelSelected": "Не выбрана модель LLM",
+      "retranslateFailed": "Ошибка повторного перевода: $error",
+      "validateFailed": "Не удалось подтвердить: $error",
+      "validateAllFailed": "Не удалось подтвердить все: $error",
+      "columnSource": "EN",
+      "columnTranslation": "Перевод",
+      "emptyTranslation": "(пусто)",
+      "tooltipValidate": "Подтвердить (снять отметку проверки)",
+      "tooltipRetranslate": "Принудительно перевести эту единицу заново"
+    },
+    "languageSelector": {
+      "loadFailed": "Не удалось загрузить языки: $error",
+      "noLanguages": "В видимых проектах нет доступных целевых языков."
+    },
+    "outcomes": {
+      "noTargetLanguage": "Целевой язык не настроен",
+      "noUntranslatedUnits": "Нет непереведённых единиц",
+      "noLlmModel": "не выбрана модель LLM",
+      "noFlaggedUnits": "Нет единиц, отмеченных для проверки",
+      "noUnitsToRescan": "Нет переведённых единиц для пересканирования",
+      "unitsTranslated": "$count единиц переведено · $flagged отмечено",
+      "unitsFlagged": "$count отмечено для проверки",
+      "flagsCleared": "$count отметок снято",
+      "packGenerated": "$entries записей · $size МБ",
+      "unitsRetranslated": "$count единиц переведено заново"
+    }
+  },
+  "addLanguage": {
+    "title": "Добавить целевые языки",
+    "subtitle": "Выберите языки для добавления в этот проект",
+    "adding": "Добавление...",
+    "addButton": "Добавить языки",
+    "allAdded": "Все языки уже добавлены",
+    "loadError": "Ошибка загрузки языков",
+    "languageCode": "Код: $code",
+    "addSuccess": "Добавлено $count языков с $units единицами перевода в каждом",
+    "addFailed": "Не удалось добавить языки: $error"
+  },
+  "createProject": {
+    "title": "Создать новый проект",
+    "steps": {
+      "basicInfo": "Основные сведения",
+      "translationSettings": "Параметры перевода"
+    },
+    "actions": {
+      "close": "Закрыть",
+      "back": "Назад",
+      "next": "Далее",
+      "create": "Создать"
+    },
+    "errors": {
+      "selectGame": "Пожалуйста, выберите установку игры",
+      "gameMustBeSelected": "Должна быть выбрана установка игры",
+      "gamePathNotConfigured": "Путь к установке игры не настроен",
+      "rpfmSchemaNotConfigured": "Путь к схеме RPFM не настроен.\n\nПожалуйста, настройте его в «Настройки > RPFM Tool» перед созданием проекта.\n\nПуть к схеме необходим для извлечения файлов локализации из .pack-файлов."
+    },
+    "progress": {
+      "extracting": "Извлечение и импорт файлов локализации...",
+      "processing": "Обработка..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "Заполнено автоматически на основе обнаруженного мода. Проверьте и продолжите.",
+      "descriptionManual": "Введите название проекта и выберите установку игры.",
+      "fieldProjectName": "НАЗВАНИЕ ПРОЕКТА",
+      "fieldSourcePack": "ИСХОДНЫЙ ПАК",
+      "fieldWorkshopId": "WORKSHOP ID",
+      "fieldGame": "ИГРА",
+      "hintProjectName": "Введите название проекта",
+      "hintGame": "Выберите игру",
+      "errorLoadingGames": "Ошибка загрузки игр: $error"
+    },
+    "translationSettings": {
+      "description": "Настройте производительность перевода и при необходимости укажите дополнительный промпт.",
+      "fieldBatchSize": "РАЗМЕР ПАКЕТА",
+      "fieldParallelBatches": "ПАРАЛЛЕЛЬНЫЕ ПАКЕТЫ",
+      "fieldCustomPrompt": "ПОЛЬЗОВАТЕЛЬСКИЙ ПРОМПТ ПЕРЕВОДА (НЕОБЯЗАТЕЛЬНО)",
+      "hintBatchSize": "Количество единиц в пакете (по умолчанию: 25)",
+      "hintParallelBatches": "Количество пакетов, обрабатываемых параллельно (по умолчанию: 3)",
+      "hintCustomPrompt": "Введите пользовательские инструкции для AI-переводчика"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "Инициализация проекта",
+    "titleFailed": "Сбой инициализации",
+    "titleComplete": "Инициализация завершена",
+    "extracting": "Извлечение и импорт файлов локализации...",
+    "successUnits": "Успешно импортировано $count единиц перевода",
+    "noLogs": "Журналов пока нет...",
+    "sectionLogs": "Журналы",
+    "close": "Закрыть"
+  }
+}

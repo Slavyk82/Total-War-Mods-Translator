@@ -45,6 +45,11 @@ const Map<AppLocale, AppLocaleInfo> _localeInfo = {
     nativeName: 'Deutsch',
     flagAsset: 'assets/flags/de.png',
   ),
+  AppLocale.ru: AppLocaleInfo(
+    locale: AppLocale.ru,
+    nativeName: 'Русский',
+    flagAsset: 'assets/flags/ru.png',
+  ),
 };
 
 /// Returns the display info for [locale]. Throws if the map is missing

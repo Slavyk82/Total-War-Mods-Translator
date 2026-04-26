@@ -1,0 +1,306 @@
+{
+  "screen": {
+    "title": "Опубликовать в Steam",
+    "errorLoading": "Не удалось загрузить элементы для публикации",
+    "retry": "Повторить"
+  },
+  "toolbar": {
+    "searchHint": "Поиск паков...",
+    "selectAll": "Выбрать все",
+    "deselectAll": "Снять выделение",
+    "refresh": "Обновить",
+    "workshopTemplate": "Шаблон описания Workshop",
+    "publish": "Опубликовать в Steam",
+    "publishWithCount": "Опубликовать в Steam ($count)",
+    "filters": {
+      "all": "Все",
+      "outdated": "Устаревшие",
+      "noPack": "Без пака",
+      "compilations": "Сборки"
+    },
+    "counts": {
+      "pack": "пак",
+      "packs": "паки"
+    },
+    "tooltips": {
+      "noItemsToSelect": "Нет элементов для выбора",
+      "allAlreadySelected": "Все элементы списка уже выбраны",
+      "selectAllListed": "Выбрать все элементы текущего списка",
+      "noItemsSelected": "Не выбрано ни одного элемента",
+      "clearSelection": "Очистить текущий выбор",
+      "configureTemplates": "Настроить шаблоны и значения по умолчанию для публикации в Workshop",
+      "selectAtLeastOne": "Выберите хотя бы один элемент для публикации",
+      "noPackOrWorkshopId": "Ни один из выбранных элементов не имеет одновременно сгенерированного пака и Workshop ID",
+      "publishSkipped": "Опубликовать $count элемент(ов) — $skipped без Workshop ID будут пропущены",
+      "publishSelected": "Опубликовать выбранные элементы в Steam Workshop"
+    }
+  },
+  "warnings": {
+    "noValidItems": "Ни один из выбранных элементов не имеет одновременно сгенерированного пака и Workshop ID.",
+    "skippedNoPreview": "Пропущено $count элемент(ов) без изображения предпросмотра: $list",
+    "noItemsToPublish": "Нет элементов для публикации (у всех отсутствуют изображения предпросмотра)."
+  },
+  "publishScreen": {
+    "formSections": {
+      "publication": "Публикация",
+      "title": "Название",
+      "description": "Описание",
+      "visibility": "Видимость",
+      "changeNote": "Примечание к обновлению",
+      "pack": "Пак",
+      "packFile": "Файл пака",
+      "steamId": "Steam ID"
+    },
+    "summary": {
+      "willUpdate": "Будет обновлено",
+      "mode": "Режим",
+      "modeUpdate": "Обновление существующего",
+      "modePublish": "Новая публикация",
+      "packSize": "Размер пака",
+      "visibility": "Видимость",
+      "steamId": "Steam ID"
+    },
+    "preview": {
+      "labelUpdate": "Предпросмотр (обновление)",
+      "label": "Предпросмотр",
+      "untitled": "Без названия",
+      "noDescription": "Описание ещё не предоставлено."
+    },
+    "upload": {
+      "uploading": "Загрузка в Steam Workshop...",
+      "outputLabel": "ВЫВОД STEAMCMD"
+    },
+    "result": {
+      "updatedTitle": "Элемент Workshop обновлён!",
+      "publishedTitle": "Элемент Workshop опубликован!",
+      "workshopId": "Workshop ID: $id",
+      "openInSteam": "Открыть в Steam"
+    },
+    "actions": {
+      "cancel": "Отмена",
+      "update": "Обновить",
+      "publish": "Опубликовать",
+      "close": "Закрыть",
+      "retry": "Повторить"
+    },
+    "status": {
+      "cancelled": "Публикация отменена",
+      "failed": "Публикация не удалась"
+    },
+    "confirmLeave": {
+      "title": "Публикация выполняется",
+      "message": "Сейчас выполняется публикация. Вы уверены, что хотите выйти? Загрузка будет отменена.",
+      "stay": "Остаться",
+      "leave": "Выйти"
+    },
+    "warnings": {
+      "previewFailed": "Не удалось сгенерировать изображение предпросмотра для файла .pack",
+      "noPackStaged": "Пак не подготовлен — пожалуйста, сначала укажите Workshop ID."
+    }
+  },
+  "settingsDialog": {
+    "title": "Шаблоны Workshop",
+    "description": "Используйте $modName в качестве плейсхолдера для названия проекта.",
+    "titleTemplateLabel": "Шаблон названия",
+    "titleTemplateHint": "$modName - Русский перевод",
+    "descriptionTemplateLabel": "Шаблон описания",
+    "descriptionTemplateHint": "Русский перевод для $modName",
+    "defaultVisibilityLabel": "Видимость по умолчанию",
+    "noDefault": "Нет значения по умолчанию",
+    "cancel": "Отмена",
+    "save": "Сохранить"
+  },
+  "loginDialog": {
+    "title": "Вход в Steam",
+    "description": "Введите Ваши учётные данные Steam для публикации в Workshop.",
+    "usernameLabel": "Имя пользователя",
+    "passwordLabel": "Пароль",
+    "steamGuardSection": "Steam Guard (необязательно)",
+    "steamGuardCodeLabel": "Код Steam Guard",
+    "steamGuardDescription": "Если Вы используете мобильный аутентификатор Steam, введите здесь 5-символьный сменяемый код. Также Вы можете оставить поле пустым и ввести код, когда он будет запрошен.",
+    "rememberCredentials": "Запомнить мои учётные данные",
+    "storedSecurely": "Сохраняются безопасно на этом устройстве",
+    "cancel": "Отмена",
+    "login": "Войти",
+    "hintCode": "XXXXX",
+    "errors": {
+      "usernameRequired": "Требуется имя пользователя",
+      "passwordRequired": "Требуется пароль"
+    }
+  },
+  "steamGuardDialog": {
+    "title": "Steam Guard",
+    "description": "Введите 5-символьный код из мобильного приложения Steam.\nОткройте приложение Steam → Steam Guard → используйте сменяемый код, отображаемый на экране.",
+    "note": "Примечание: одобрения push-уведомления недостаточно — steamcmd требует код.",
+    "codeLabel": "Код Steam Guard",
+    "hintCode": "XXXXX",
+    "cancel": "Отмена",
+    "verify": "Проверить",
+    "errors": {
+      "codeRequired": "Требуется код",
+      "codeTooShort": "Код должен состоять из 5 символов"
+    }
+  },
+  "steamcmdDialog": {
+    "title": "Требуется SteamCMD",
+    "subtitle": "Инструмент командной строки Valve для загрузок в Workshop",
+    "confirmText": "SteamCMD (~3 МБ) необходим для публикации элементов в Steam Workshop. Он будет автоматически скачан с CDN Valve и установлен.",
+    "confirmText2": "Этот инструмент предоставляется Valve и безопасен в использовании. Он будет сохранён в папке данных приложения.",
+    "downloading": "Скачивание SteamCMD...",
+    "downloadingFrom": "Скачивание с CDN Valve...",
+    "successTitle": "SteamCMD успешно установлен",
+    "successMessage": "Теперь Вы можете публиковать в Steam Workshop.",
+    "errorTitle": "Ошибка установки",
+    "cancel": "Отмена",
+    "install": "Установить",
+    "continue": "Продолжить",
+    "close": "Закрыть",
+    "retry": "Повторить"
+  },
+  "list": {
+    "empty": {
+      "title": "Пока нет проектов или сборок",
+      "subtitle": "Создайте проект или сборку, чтобы увидеть её здесь."
+    },
+    "noMatch": "Ни один элемент не соответствует текущим фильтрам",
+    "columns": {
+      "pack": "Пак",
+      "steamId": "Steam ID",
+      "subs": "Подписчики",
+      "status": "Статус",
+      "lastPublished": "Последняя публикация"
+    }
+  },
+  "cells": {
+    "subtitleCompilation": "Сборка · пака пока нет",
+    "subtitleProject": "Проект · пака пока нет",
+    "outdatedPrefix": "Устарел",
+    "status": {
+      "noPack": "Без пака",
+      "published": "Опубликовано",
+      "unpublished": "Не опубликовано"
+    },
+    "tooltips": {
+      "workshopNoPack": "Элемент Workshop #$id — нет локального файла пака",
+      "noPackOnDisk": "На диске нет файла пака — сначала сгенерируйте пак",
+      "workshopItem": "Элемент Workshop #$id",
+      "packReadyNoId": "Пак готов — Workshop ID ещё не назначен",
+      "notPublishedYet": "Ещё не опубликовано в Workshop.",
+      "subscribers": "Подписчики Workshop — последнее обновление при запуске приложения.",
+      "lastPublished": "Последняя публикация: $date",
+      "lastExported": "Последний экспорт: $date"
+    }
+  },
+  "actionCell": {
+    "buttons": {
+      "openCompilation": "Открыть сборку",
+      "generatePack": "Сгенерировать пак",
+      "openInWorkshop": "Открыть в Steam Workshop",
+      "update": "Обновить"
+    },
+    "tooltips": {
+      "openCompilationToGenerate": "Открыть редактор сборки для генерации",
+      "generatePackFile": "Сгенерировать файл .pack",
+      "setIdFirst": "Сначала укажите Steam ID, чтобы включить обновление",
+      "updateWorkshop": "Обновить существующий элемент Workshop",
+      "openGameLauncher": "Открыть игровой лаунчер",
+      "openInWorkshop": "Открыть в Steam Workshop"
+    },
+    "progress": {
+      "generating": "Генерация...",
+      "preparing": "Подготовка...",
+      "steps": {
+        "preparingData": "Подготовка данных...",
+        "generatingLocFiles": "Генерация файлов .loc$lang",
+        "creatingPack": "Создание .pack$lang",
+        "generatingPreview": "Генерация изображения предпросмотра...",
+        "finalizing": "Завершение...",
+        "completed": "Завершено"
+      }
+    },
+    "toasts": {
+      "packGenerated": "Пак сгенерирован: $count записей",
+      "packFailed": "Не удалось сгенерировать пак: $error",
+      "packError": "Ошибка генерации пака: $error",
+      "noLanguages": "Для этого проекта не настроены языки.",
+      "steamNotFound": "Не удалось открыть клиент Steam. Steam установлен?"
+    }
+  },
+  "packLanguageDialog": {
+    "title": "Выберите языки",
+    "cancel": "Отмена",
+    "generate": "Сгенерировать"
+  },
+  "steamId": {
+    "tooltips": {
+      "edit": "Изменить Workshop ID",
+      "set": "Указать Workshop ID",
+      "save": "Сохранить Workshop ID",
+      "cancel": "Отмена"
+    },
+    "hintId": "ID",
+    "toasts": {
+      "parseWarning": "Не удалось прочитать Workshop ID из этого значения.",
+      "saveFailed": "Не удалось сохранить Workshop ID: $error"
+    }
+  },
+  "onboarding": {
+    "title": "Публикация в Steam Workshop",
+    "description": "Это приложение не может напрямую создать новую запись в Workshop. Из-за бага в игровом лаунчере моды, загруженные за его пределами, не появляются в лаунчерах подписчиков, поэтому самая первая публикация мода-перевода должна выполняться через оригинальный игровой лаунчер. Все последующие обновления уже можно отправлять прямо с этого экрана.",
+    "step1": "Опубликуйте мод один раз через оригинальный игровой лаунчер.",
+    "step2": "Скопируйте Workshop ID, присвоенный Steam: он отображается в Workshop URL мода (например, «3661242610»).",
+    "step3": "Вставьте этот ID в соответствующее поле для данного мода в приложении.",
+    "step4": "Используйте кнопку «Обновить», чтобы отправлять все будущие обновления перевода с этого экрана.",
+    "dontShowAgain": "Больше не показывать",
+    "dismiss": "Закрыть"
+  },
+  "batchPublish": {
+    "confirmLeave": {
+      "title": "Публикация выполняется",
+      "message": "Сейчас выполняется пакетная публикация. Вы уверены, что хотите выйти? Загрузка будет отменена.",
+      "stay": "Остаться",
+      "leave": "Выйти"
+    },
+    "confirmCancel": {
+      "title": "Отменить пакетную публикацию?",
+      "message": "Оставшиеся загрузки будут прерваны. Уже загруженные элементы не будут отменены.",
+      "keepGoing": "Продолжить",
+      "stop": "Остановить"
+    },
+    "empty": {
+      "title": "Нет подготовленных элементов",
+      "subtitle": "Нет элементов для публикации."
+    },
+    "staging": {
+      "packs": "Паки",
+      "totalSize": "Общий размер",
+      "publish": "Опубликовать",
+      "update": "Обновить",
+      "account": "Аккаунт",
+      "elapsed": "Прошло времени",
+      "completed": "Завершено"
+    },
+    "actions": {
+      "stop": "Остановить",
+      "close": "Закрыть"
+    },
+    "progress": {
+      "complete": "Пакетная публикация завершена",
+      "completedWithErrors": "Завершено с ошибками",
+      "cancelled": "Отменено",
+      "steamGuardRequired": "Требуется Steam Guard",
+      "publishing": "Публикация...",
+      "current": "Текущий: $name",
+      "workshopId": "Workshop ID: $id"
+    },
+    "pills": {
+      "pending": "ОЖИДАНИЕ",
+      "uploading": "ЗАГРУЗКА",
+      "done": "ГОТОВО",
+      "failed": "ОШИБКА",
+      "cancelled": "ОТМЕНЕНО",
+      "update": "ОБНОВЛЕНИЕ",
+      "publish": "ПУБЛИКАЦИЯ"
+    }
+  }
+}

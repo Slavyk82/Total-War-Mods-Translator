@@ -1,0 +1,20 @@
+{
+  "dialogs": {
+    "whatsNew": {
+      "title": "Что нового",
+      "releasePrefix": "Версия $version",
+      "noNotes": "Заметки о выпуске для этой версии отсутствуют."
+    },
+    "releaseHistory": {
+      "title": "История выпусков",
+      "subtitleOne": "$count выпуск",
+      "subtitleMany": "$count выпусков",
+      "noNotes": "Заметки о выпуске отсутствуют",
+      "noReleasesAvailable": "Заметки о выпуске для этой версии отсутствуют."
+    }
+  },
+  "actions": {
+    "viewOnGitHub": "Открыть на GitHub",
+    "gotIt": "Понятно"
+  }
+}

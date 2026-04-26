@@ -1,0 +1,14 @@
+{
+  "labels": {
+    "resultOf": "Результат $index из $total",
+    "pageOf": "Страница $current из $total",
+    "keyPrefix": "Ключ: $key",
+    "source": "Источник:",
+    "target": "Перевод:"
+  },
+  "actions": {
+    "goTo": "Перейти",
+    "previousPage": "Предыдущая страница",
+    "nextPage": "Следующая страница"
+  }
+}

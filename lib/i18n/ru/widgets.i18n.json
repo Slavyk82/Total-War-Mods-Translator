@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Загрузка игр...",
+    "errorLoadingGames": "Ошибка загрузки игр",
+    "configureAGame": "Настроить игру",
+    "selectAGame": "Выберите игру"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Версия: $version",
+    "checking": "Проверка...",
+    "upToDate": "Актуально",
+    "checkForUpdates": "Проверить обновления",
+    "updateAvailable": "Доступна v$version",
+    "dismiss": "Скрыть",
+    "downloading": "Загрузка...",
+    "installAndRestart": "Установить и перезапустить",
+    "downloadWithSize": "Скачать ($size)",
+    "viewOnGitHub": "Открыть на GitHub",
+    "viewReleaseNotes": "Список изменений",
+    "whatsNew": "Что нового?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Не удалось загрузить список изменений: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Переключатель темы",
+    "selectTheme": "Выбрать тему",
+    "groups": {
+      "workflow": "Рабочий процесс",
+      "tools": "Инструменты",
+      "system": "Система"
+    },
+    "items": {
+      "home": "Главная",
+      "detect": "Обнаружение",
+      "translate": "Перевод",
+      "publish": "Публикация",
+      "glossary": "Глоссарий",
+      "translationMemory": "Translation Memory",
+      "gameTranslation": "Перевод игры",
+      "packCompilation": "Компиляция пакета",
+      "settings": "Настройки"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "Обновление базы данных",
+    "subtitle": "Требуется однократная миграция",
+    "preparing": "Подготовка...",
+    "info": "Этот процесс обеспечивает корректную работу Translation Memory. Пожалуйста, не закрывайте приложение.",
+    "actions": {
+      "retry": "Повторить"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "нажмите, чтобы открыть"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count активно"
+  },
+  "nextStepCta": {
+    "next": "Далее: $label"
+  },
+  "toolbar": {
+    "back": "Назад"
+  },
+  "wizardStepHeader": {
+    "step": "ШАГ $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Очистить"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1 ч",
+    "hours": "${hours} ч",
+    "oneDay": "1 день",
+    "days": "$days дн.",
+    "oneMonth": "1 месяц",
+    "months": "$months мес.",
+    "oneYear": "1 год",
+    "years": "$years г."
+  }
+}

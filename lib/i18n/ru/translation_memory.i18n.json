@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Translation Memory",
+    "statistics": "Статистика",
+    "totalEntries": "Всего записей",
+    "languagePairs": "Языковые пары",
+    "performance": "Производительность",
+    "totalReuse": "Всего повторных использований",
+    "tokensSaved": "Сэкономлено токенов",
+    "reuseRate": "Доля повторного использования",
+    "sourceText": "Исходный текст",
+    "targetText": "Перевод",
+    "usageCount": "Количество использований",
+    "lastUsed": "Последнее использование",
+    "created": "Создано",
+    "selectedFile": "Выбранный файл",
+    "importOptions": "Параметры импорта",
+    "filters": "Фильтры",
+    "whatToExport": "Что экспортировать",
+    "outputFile": "Выходной файл",
+    "formatOptions": "Параметры формата",
+    "deleteIfUnusedDays": "Удалить, если не используется (дней)",
+    "deleteAll": "Удалить всё",
+    "targetLanguage": "Язык перевода"
+  },
+  "actions": {
+    "importTmx": "Импортировать TMX",
+    "exportTmx": "Экспортировать TMX",
+    "cleanup": "Очистка",
+    "import": "Импортировать",
+    "export": "Экспортировать",
+    "importing": "Импорт...",
+    "exporting": "Экспорт..."
+  },
+  "dialogs": {
+    "importTitle": "Импорт Translation Memory (TMX)",
+    "exportTitle": "Экспорт Translation Memory (TMX)",
+    "cleanupTitle": "Очистка Translation Memory",
+    "entryDetailsTitle": "Сведения о записи Translation Memory",
+    "deleteTmTitle": "Удалить запись TM",
+    "deleteTmMessage": "Вы уверены, что хотите удалить эту запись памяти переводов?",
+    "deleteTmWarning": "Это действие нельзя отменить."
+  },
+  "messages": {
+    "noEntries": "Нет записей в памяти переводов",
+    "importHint": "Импортируйте файл TMX или начните переводить, чтобы наполнить память",
+    "failedToLoadEntries": "Не удалось загрузить записи",
+    "failedToLoadStatistics": "Не удалось загрузить статистику",
+    "removeUnusedHint": "Удалите неиспользуемые записи, чтобы оптимизировать память переводов.",
+    "allEntriesWillBeDeleted": "Все записи будут удалены — это действие нельзя отменить",
+    "deletedEntries": "Удалено записей: $count",
+    "tmEntryDeletedSuccess": "Запись TM успешно удалена",
+    "failedToDeleteTmEntry": "Не удалось удалить запись TM",
+    "deleteEntry": "Удалить запись",
+    "importComplete": "Импорт завершён",
+    "exportComplete": "Экспорт завершён",
+    "exportedEntries": "Экспортировано записей: $count",
+    "processedOf": "Обработано $processed из $total записей",
+    "sizeKb": "Размер: $size КБ"
+  },
+  "pagination": {
+    "zeroEntries": "0 записей",
+    "showingRange": "Показано $start–$end из $total",
+    "firstPage": "Первая страница",
+    "previousPage": "Предыдущая страница",
+    "nextPage": "Следующая страница",
+    "lastPage": "Последняя страница"
+  },
+  "importResult": {
+    "totalEntries": "Всего записей",
+    "imported": "Импортировано",
+    "skippedDuplicates": "Пропущено (дубликаты)",
+    "failedValidation": "Не удалось (ошибки проверки)"
+  },
+  "options": {
+    "overwriteExisting": "Перезаписать существующие записи",
+    "overwriteExistingHint": "Заменить существующие записи импортируемыми",
+    "validateEntries": "Проверять записи",
+    "validateEntriesHint": "Проверять на ошибки перед импортом",
+    "includeMetadata": "Включить метаданные",
+    "includeMetadataHint": "Добавить оценки качества, счётчики использования и т. д.",
+    "includeStats": "Включить статистику",
+    "includeStatsHint": "Добавить сводку и статистику экспорта в заголовок файла",
+    "allEntries": "Все записи (соответствующие фильтрам)",
+    "frequentlyUsed": "Только часто используемые (>5 раз)"
+  },
+  "columns": {
+    "sourceText": "ИСХОДНЫЙ ТЕКСТ",
+    "targetText": "ПЕРЕВОД",
+    "usage": "ИСПОЛЬЗОВАНИЕ",
+    "lastUsed": "ПОСЛЕДНЕЕ ИСПОЛЬЗОВАНИЕ"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Нажмите, чтобы выбрать файл .tmx",
+    "clickToSelectSaveLocation": "Нажмите, чтобы выбрать место сохранения",
+    "searchPlaceholder": "Поиск в памяти переводов..."
+  }
+}

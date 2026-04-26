@@ -1,0 +1,95 @@
+{
+  "title": "Главная",
+  "sections": {
+    "workflow": "Рабочий процесс",
+    "needsAttention": "Требует внимания"
+  },
+  "status": {
+    "needsAttentionOne": "1 проект требует Вашего внимания",
+    "needsAttentionMany": "$count проектов требуют Вашего внимания",
+    "readyToCompileOne": "1 проект готов к компиляции",
+    "readyToCompileMany": "$count проектов готовы к компиляции",
+    "modUpdatesOne": "Доступно 1 обновление мода",
+    "modUpdatesMany": "Доступно обновлений модов: $count",
+    "allCaughtUp": "Всё в порядке"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "На проверку",
+      "description": "проекты с единицами на проверку"
+    },
+    "readyToCompile": {
+      "label": "Готов к компиляции",
+      "description": "проекты переведены на 100%"
+    },
+    "exportOutdated": {
+      "label": "Экспорт устарел",
+      "description": "проекты изменены после последнего пакета"
+    },
+    "modUpdates": {
+      "label": "Обновления модов",
+      "description": "доступна новая версия Workshop"
+    },
+    "readyToPublish": {
+      "label": "Готов к публикации",
+      "description": "пакет(ы) для отправки в Workshop"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "Обнаружение",
+      "done": "Готово",
+      "startHere": "Начните здесь",
+      "modsDiscovered": "модов найдено",
+      "noModsYet": "пока нет модов",
+      "withUpdates": " · $count с обновлениями",
+      "cta": "Просмотреть моды"
+    },
+    "translate": {
+      "title": "Перевод",
+      "inProgress": "В процессе",
+      "idle": "Простой",
+      "waiting": "Ожидание",
+      "subtitle": "проектов в работе",
+      "toReview": " · $count на проверку",
+      "cta": "Открыть проекты"
+    },
+    "publish": {
+      "title": "Публикация",
+      "waiting": "Ожидание",
+      "waitingCount": "$count в ожидании",
+      "subtitle": "скомпилированных пакетов готовы для Workshop",
+      "cta": "Опубликовать"
+    }
+  },
+  "nextAction": {
+    "toReview": "На проверку",
+    "translate": "Перевести",
+    "readyToCompile": "Готов к компиляции",
+    "continue": "Продолжить"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "Найдите Ваши моды в разделе Источники",
+      "cta": "Перейти к Источникам"
+    },
+    "step2": {
+      "title": "Создайте проект на основе мода",
+      "cta": "Открыть Источники"
+    },
+    "step3": {
+      "title": "Переведите единицы",
+      "cta": "Открыть Проекты"
+    },
+    "step4": {
+      "title": "Скомпилируйте пакет"
+    },
+    "step5": {
+      "title": "Опубликуйте в Steam Workshop"
+    }
+  },
+  "support": {
+    "message": "Если TWMT облегчил Вашу жизнь моддера, помогая поддерживать переводы в порядке и переживать каждое обновление мода, небольшая поддержка будет очень ценной и поможет мне продолжать его улучшать!",
+    "buyMeABeer": "Угостить меня пивом :-)"
+  }
+}

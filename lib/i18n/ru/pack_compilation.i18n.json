@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Pack Compilation",
+    "new": "Новая",
+    "untitled": "Без названия",
+    "compilation": "Сборка",
+    "language": "Язык",
+    "modified": "Изменено",
+    "status": "Статус",
+    "basics": "Основное",
+    "output": "Результат",
+    "name": "Название",
+    "targetLanguage": "Язык перевода",
+    "prefix": "Префикс",
+    "packName": "Имя пака",
+    "fileName": "Имя файла",
+    "location": "Расположение",
+    "publishing": "Публикация",
+    "selectProjects": "Выбрать проекты",
+    "noLanguage": "Без языка",
+    "steamWorkshopBbcode": "BBCode для Steam Workshop",
+    "bbcodeHint": "Скопируйте этот BBCode для использования в описании Steam Workshop:",
+    "conflictingProjects": "Конфликтующие проекты",
+    "conflictingKey": "Конфликтующий ключ",
+    "sourceTextThis": "Исходный текст (этот проект)",
+    "sourceTextConflicting": "Исходный текст (конфликтующий)"
+  },
+  "actions": {
+    "newCompilation": "+ Новая сборка",
+    "compile": "Скомпилировать и создать пак",
+    "compiling": "Компиляция...",
+    "forceCompile": "Принудительная компиляция",
+    "openFolder": "Открыть папку",
+    "stopTooltip": "Остановить",
+    "cancelling": "Отмена...",
+    "deleteCompilation": "Удалить сборку"
+  },
+  "status": {
+    "draft": "Черновик",
+    "regeneratePack": "Пересоздать пак",
+    "generated": "Создан",
+    "generatingPack": "Создание пака...",
+    "regenerateTooltip": "Один или несколько включённых проектов изменились после последней генерации пака."
+  },
+  "messages": {
+    "noCompilationsYet": "Сборок пока нет",
+    "createCompilationHint": "Создайте сборку, чтобы объединить несколько проектов в один файл .pack.",
+    "errorLoadingCompilations": "Ошибка загрузки сборок: $error",
+    "packGenerated": "Пак создан",
+    "deletedSuccess": "Удалено: «$name»",
+    "deleteFailed": "Не удалось удалить: $error",
+    "noModsWithWorkshopIds": "Не выбрано ни одного мода с ID Steam Workshop"
+  },
+  "dialogs": {
+    "deleteTitle": "Удалить сборку",
+    "deleteMessage": "Удалить «$name»?",
+    "deleteWarning": "Это действие нельзя отменить.",
+    "conflictsTitle": "Обнаружены неразрешённые конфликты",
+    "conflictsBody": "Между выбранными проектами осталось неразрешённых конфликтов: $count. Компиляция сейчас может привести к непредсказуемому отображению перевода в игре для затронутых записей.\n\nВы можете отменить, чтобы сначала их разрешить, или принудительно продолжить компиляцию.",
+    "conflictsForProject": "Конфликты по проекту"
+  },
+  "hints": {
+    "namePlaceholder": "Мои переводы на русский",
+    "prefixPlaceholder": "!!!!!!!!!!_ru_compilation_twmt_",
+    "packNamePlaceholder": "my_pack",
+    "selectLanguage": "Выберите язык...",
+    "noProjectsFound": "Проекты не найдены",
+    "tryDifferentSearch": "Попробуйте другой поисковый запрос",
+    "selectGameFirst": "Сначала выберите игру в боковой панели",
+    "selectLanguageFirst": "Сначала выберите язык",
+    "noProjectsWithLanguage": "Нет проектов с переводами на этом языке",
+    "searchProjects": "Поиск проектов...",
+    "showOnlySelected": "Только выбранные",
+    "showOnlySelectedTooltip": "Показывать только проекты, включённые в эту сборку",
+    "clearSelection": "Очистить выбор",
+    "selectedCount": "Выбрано: $count",
+    "failedToLoadProjects": "Не удалось загрузить проекты"
+  },
+  "conflicts": {
+    "analysisWillRun": "Анализ конфликтов будет запущен",
+    "whenYouClickGenerate": "когда Вы нажмёте «Создать пак»",
+    "noConflictsDetected": "Конфликтов не обнаружено",
+    "readyToCompile": "Готово к компиляции",
+    "analyzingConflicts": "Анализ конфликтов...",
+    "analysisFailed": "Анализ не удался",
+    "conflictInfo": "Нажмите на название проекта для просмотра подробностей. Снимите флажок, чтобы исключить.",
+    "noAnalysisData": "Нет данных анализа",
+    "noConflictsFound": "Конфликтов не найдено",
+    "errorPrefix": "Ошибка: $error",
+    "bbcodeError": "Ошибка при создании BBCode"
+  }
+}
