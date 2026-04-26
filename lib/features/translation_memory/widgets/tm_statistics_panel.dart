@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
@@ -42,7 +43,7 @@ class TmStatisticsPanel extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Statistics',
+                  t.translationMemory.labels.statistics,
                   style: tokens.fontDisplay.copyWith(
                     fontSize: 14,
                     color: tokens.text,
@@ -97,7 +98,7 @@ class TmStatisticsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Failed to load statistics',
+              t.translationMemory.messages.failedToLoadStatistics,
               style: tokens.fontBody
                   .copyWith(fontSize: 12, color: tokens.textDim),
               textAlign: TextAlign.center,
@@ -121,7 +122,7 @@ class TmStatisticsPanel extends ConsumerWidget {
           // Total Entries
           _buildBigStat(
             tokens,
-            label: 'Total Entries',
+            label: t.translationMemory.labels.totalEntries,
             value: stats.totalEntries.toString(),
             icon: FluentIcons.database_24_regular,
           ),
@@ -129,7 +130,7 @@ class TmStatisticsPanel extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Language Pairs
-          _buildSectionHeader(tokens, 'Language Pairs'),
+          _buildSectionHeader(tokens, t.translationMemory.labels.languagePairs),
           const SizedBox(height: 8),
           ...stats.entriesByLanguagePair.entries.map(
             (entry) => _buildLanguagePairStat(
@@ -142,23 +143,23 @@ class TmStatisticsPanel extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Performance Stats
-          _buildSectionHeader(tokens, 'Performance'),
+          _buildSectionHeader(tokens, t.translationMemory.labels.performance),
           const SizedBox(height: 8),
           _buildSmallStat(
             tokens,
-            label: 'Total Reuse',
+            label: t.translationMemory.labels.totalReuse,
             value: stats.totalReuseCount.toString(),
           ),
           const SizedBox(height: 4),
           _buildSmallStat(
             tokens,
-            label: 'Tokens Saved',
+            label: t.translationMemory.labels.tokensSaved,
             value: _formatNumber(stats.tokensSaved),
           ),
           const SizedBox(height: 4),
           _buildSmallStat(
             tokens,
-            label: 'Reuse Rate',
+            label: t.translationMemory.labels.reuseRate,
             value: '${(stats.reuseRate * 100).toStringAsFixed(1)}%',
           ),
         ],

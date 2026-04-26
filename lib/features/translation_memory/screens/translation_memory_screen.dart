@@ -59,7 +59,7 @@ class _TranslationMemoryScreenState
               Expanded(
                 child: ListSearchField(
                   value: filtersState.searchText,
-                  hintText: 'Search translation memory...',
+                  hintText: t.translationMemory.hints.searchPlaceholder,
                   width: null,
                   onChanged: (value) {
                     filterNotifier.setSearchText(value);
@@ -68,19 +68,19 @@ class _TranslationMemoryScreenState
                 ),
               ),
               SmallTextButton(
-                label: 'Import TMX',
+                label: t.translationMemory.actions.importTmx,
                 icon: FluentIcons.arrow_import_24_regular,
                 tooltip: t.tooltips.tm.import,
                 onTap: _showImportDialog,
               ),
               SmallTextButton(
-                label: 'Export TMX',
+                label: t.translationMemory.actions.exportTmx,
                 icon: FluentIcons.arrow_export_24_regular,
                 tooltip: t.tooltips.tm.export,
                 onTap: _showExportDialog,
               ),
               SmallTextButton(
-                label: 'Cleanup',
+                label: t.translationMemory.actions.cleanup,
                 icon: FluentIcons.broom_24_regular,
                 tooltip: t.tooltips.tm.cleanup,
                 onTap: _showCleanupDialog,
@@ -143,7 +143,7 @@ class _Leading extends StatelessWidget {
     final noun = total == 1 ? 'entry' : 'entries';
     return ListToolbarLeading(
       icon: FluentIcons.database_24_regular,
-      title: 'Translation Memory',
+      title: t.translationMemory.labels.title,
       countLabel: '$total $noun',
     );
   }

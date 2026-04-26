@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../providers/tm_providers.dart';
 
@@ -62,14 +63,14 @@ class TmPaginationBar extends ConsumerWidget {
       TwmtThemeTokens tokens, int currentPage, int totalCount) {
     if (totalCount == 0) {
       return Text(
-        '0 entries',
+        t.translationMemory.pagination.zeroEntries,
         style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
       );
     }
     final startItem = (currentPage - 1) * _itemsPerPage + 1;
     final endItem = (currentPage * _itemsPerPage).clamp(0, totalCount);
     return Text(
-      'Showing $startItem–$endItem of $totalCount',
+      t.translationMemory.pagination.showingRange(start: startItem, end: endItem, total: totalCount),
       style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.textDim),
     );
   }
@@ -89,7 +90,7 @@ class TmPaginationBar extends ConsumerWidget {
       children: [
         _NavIcon(
           icon: FluentIcons.chevron_double_left_20_regular,
-          tooltip: 'First page',
+          tooltip: t.translationMemory.pagination.firstPage,
           tokens: tokens,
           onTap: currentPage > 1
               ? () => ref.read(tmPageStateProvider.notifier).setPage(1)
@@ -98,7 +99,7 @@ class TmPaginationBar extends ConsumerWidget {
         const SizedBox(width: 4),
         _NavIcon(
           icon: FluentIcons.chevron_left_24_regular,
-          tooltip: 'Previous page',
+          tooltip: t.translationMemory.pagination.previousPage,
           tokens: tokens,
           onTap: currentPage > 1
               ? () => ref.read(tmPageStateProvider.notifier).previousPage()
@@ -129,7 +130,7 @@ class TmPaginationBar extends ConsumerWidget {
         const SizedBox(width: 4),
         _NavIcon(
           icon: FluentIcons.chevron_right_24_regular,
-          tooltip: 'Next page',
+          tooltip: t.translationMemory.pagination.nextPage,
           tokens: tokens,
           onTap: currentPage < totalPages
               ? () => ref.read(tmPageStateProvider.notifier).nextPage()
@@ -138,7 +139,7 @@ class TmPaginationBar extends ConsumerWidget {
         const SizedBox(width: 4),
         _NavIcon(
           icon: FluentIcons.chevron_double_right_20_regular,
-          tooltip: 'Last page',
+          tooltip: t.translationMemory.pagination.lastPage,
           tokens: tokens,
           onTap: currentPage < totalPages
               ? () =>

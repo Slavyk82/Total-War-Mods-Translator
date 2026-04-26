@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -30,7 +31,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_import_24_regular,
-      title: 'Import Translation Memory (TMX)',
+      title: t.translationMemory.dialogs.importTitle,
       width: 620,
       body: Column(
         mainAxisSize: MainAxisSize.min,
@@ -59,7 +60,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: importState.isLoading
               ? null
               : () {
@@ -68,7 +69,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
                 },
         ),
         SmallTextButton(
-          label: 'Import',
+          label: t.translationMemory.actions.import,
           icon: FluentIcons.arrow_import_24_regular,
           filled: true,
           onTap: _selectedFilePath == null || importState.isLoading
@@ -84,7 +85,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Select TMX File',
+          t.translationMemory.labels.selectedFile,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -112,7 +113,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _selectedFilePath ?? 'Click to select a .tmx file',
+                      _selectedFilePath ?? t.translationMemory.hints.clickToSelectTmxFile,
                       style: tokens.fontBody.copyWith(
                         fontSize: 13,
                         color: _selectedFilePath != null
@@ -154,7 +155,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Selected File',
+            t.translationMemory.labels.selectedFile,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -183,7 +184,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Size: $sizeInKB KB',
+            t.translationMemory.messages.sizeKb(size: sizeInKB),
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -199,7 +200,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Import Options',
+          t.translationMemory.labels.importOptions,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -210,15 +211,15 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
         _OptionToggle(
           value: _overwriteExisting,
           onChanged: (v) => setState(() => _overwriteExisting = v),
-          title: 'Overwrite existing entries',
-          subtitle: 'Replace existing entries with imported ones',
+          title: t.translationMemory.options.overwriteExisting,
+          subtitle: t.translationMemory.options.overwriteExistingHint,
         ),
         const SizedBox(height: 6),
         _OptionToggle(
           value: _validateEntries,
           onChanged: (v) => setState(() => _validateEntries = v),
-          title: 'Validate entries',
-          subtitle: 'Check for errors before importing',
+          title: t.translationMemory.options.validateEntries,
+          subtitle: t.translationMemory.options.validateEntriesHint,
         ),
       ],
     );
@@ -232,7 +233,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Importing...',
+          t.translationMemory.actions.importing,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -252,7 +253,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
         if (_totalEntries > 0) ...[
           const SizedBox(height: 6),
           Text(
-            'Processed $_processedEntries of $_totalEntries entries',
+            t.translationMemory.messages.processedOf(processed: _processedEntries, total: _totalEntries),
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -283,7 +284,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Import Complete',
+                t.translationMemory.messages.importComplete,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.ok,
@@ -293,13 +294,13 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
             ],
           ),
           const SizedBox(height: 10),
-          _resultRow(tokens, 'Total entries', result.totalEntries.toString()),
-          _resultRow(tokens, 'Imported', result.importedEntries.toString()),
+          _resultRow(tokens, t.translationMemory.importResult.totalEntries, result.totalEntries.toString()),
+          _resultRow(tokens, t.translationMemory.importResult.imported, result.importedEntries.toString()),
           if (result.skippedEntries > 0)
-            _resultRow(tokens, 'Skipped (duplicates)',
+            _resultRow(tokens, t.translationMemory.importResult.skippedDuplicates,
                 result.skippedEntries.toString()),
           if (result.failedEntries > 0)
-            _resultRow(tokens, 'Failed (validation errors)',
+            _resultRow(tokens, t.translationMemory.importResult.failedValidation,
                 result.failedEntries.toString()),
         ],
       ),

@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Translation Memory",
+    "statistics": "Statistics",
+    "totalEntries": "Total Entries",
+    "languagePairs": "Language Pairs",
+    "performance": "Performance",
+    "totalReuse": "Total Reuse",
+    "tokensSaved": "Tokens Saved",
+    "reuseRate": "Reuse Rate",
+    "sourceText": "Source Text",
+    "targetText": "Target Text",
+    "usageCount": "Usage Count",
+    "lastUsed": "Last Used",
+    "created": "Created",
+    "selectedFile": "Selected File",
+    "importOptions": "Import Options",
+    "filters": "Filters",
+    "whatToExport": "What to export",
+    "outputFile": "Output File",
+    "formatOptions": "Format Options",
+    "deleteIfUnusedDays": "Delete if unused for (days)",
+    "deleteAll": "Delete all",
+    "targetLanguage": "Target Language"
+  },
+  "actions": {
+    "importTmx": "Import TMX",
+    "exportTmx": "Export TMX",
+    "cleanup": "Cleanup",
+    "import": "Import",
+    "export": "Export",
+    "importing": "Importing...",
+    "exporting": "Exporting..."
+  },
+  "dialogs": {
+    "importTitle": "Import Translation Memory (TMX)",
+    "exportTitle": "Export Translation Memory (TMX)",
+    "cleanupTitle": "Cleanup Translation Memory",
+    "entryDetailsTitle": "Translation Memory Entry Details",
+    "deleteTmTitle": "Delete TM Entry",
+    "deleteTmMessage": "Are you sure you want to delete this translation memory entry?",
+    "deleteTmWarning": "This action cannot be undone."
+  },
+  "messages": {
+    "noEntries": "No translation memory entries",
+    "importHint": "Import a TMX file or start translating to build your memory",
+    "failedToLoadEntries": "Failed to load entries",
+    "failedToLoadStatistics": "Failed to load statistics",
+    "removeUnusedHint": "Remove unused entries to optimize your translation memory.",
+    "allEntriesWillBeDeleted": "All entries will be deleted - this cannot be undone",
+    "deletedEntries": "Deleted $count entries",
+    "tmEntryDeletedSuccess": "TM entry deleted successfully",
+    "failedToDeleteTmEntry": "Failed to delete TM entry",
+    "deleteEntry": "Delete entry",
+    "importComplete": "Import Complete",
+    "exportComplete": "Export Complete",
+    "exportedEntries": "Exported $count entries",
+    "processedOf": "Processed $processed of $total entries",
+    "sizeKb": "Size: $size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 entries",
+    "showingRange": "Showing $start–$end of $total",
+    "firstPage": "First page",
+    "previousPage": "Previous page",
+    "nextPage": "Next page",
+    "lastPage": "Last page"
+  },
+  "importResult": {
+    "totalEntries": "Total entries",
+    "imported": "Imported",
+    "skippedDuplicates": "Skipped (duplicates)",
+    "failedValidation": "Failed (validation errors)"
+  },
+  "options": {
+    "overwriteExisting": "Overwrite existing entries",
+    "overwriteExistingHint": "Replace existing entries with imported ones",
+    "validateEntries": "Validate entries",
+    "validateEntriesHint": "Check for errors before importing",
+    "includeMetadata": "Include metadata",
+    "includeMetadataHint": "Add quality scores, usage counts, etc.",
+    "includeStats": "Include statistics",
+    "includeStatsHint": "Add export summary and stats to file header",
+    "allEntries": "All entries (matching filters)",
+    "frequentlyUsed": "Frequently used only (>5 times)"
+  },
+  "columns": {
+    "sourceText": "SOURCE TEXT",
+    "targetText": "TARGET TEXT",
+    "usage": "USAGE",
+    "lastUsed": "LAST USED"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Click to select a .tmx file",
+    "clickToSelectSaveLocation": "Click to select save location",
+    "searchPlaceholder": "Search translation memory..."
+  }
+}

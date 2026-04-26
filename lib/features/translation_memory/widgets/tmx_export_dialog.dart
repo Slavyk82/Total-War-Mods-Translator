@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -29,7 +30,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_export_24_regular,
-      title: 'Export Translation Memory (TMX)',
+      title: t.translationMemory.dialogs.exportTitle,
       width: 620,
       body: SizedBox(
         height: 520,
@@ -38,43 +39,43 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _sectionTitle(tokens, 'Filters'),
+              _sectionTitle(tokens, t.translationMemory.labels.filters),
               const SizedBox(height: 10),
               _buildTargetLanguageDropdown(tokens),
               const SizedBox(height: 18),
-              _sectionTitle(tokens, 'What to export'),
+              _sectionTitle(tokens, t.translationMemory.labels.whatToExport),
               const SizedBox(height: 8),
               _ScopeRadio(
                 value: ExportScope.all,
                 groupValue: _exportScope,
-                label: 'All entries (matching filters)',
+                label: t.translationMemory.options.allEntries,
                 onChanged: (v) => setState(() => _exportScope = v),
               ),
               _ScopeRadio(
                 value: ExportScope.frequentlyUsed,
                 groupValue: _exportScope,
-                label: 'Frequently used only (>5 times)',
+                label: t.translationMemory.options.frequentlyUsed,
                 onChanged: (v) => setState(() => _exportScope = v),
               ),
               const SizedBox(height: 18),
-              _sectionTitle(tokens, 'Output File'),
+              _sectionTitle(tokens, t.translationMemory.labels.outputFile),
               const SizedBox(height: 8),
               _buildOutputPathPicker(tokens),
               const SizedBox(height: 18),
-              _sectionTitle(tokens, 'Format Options'),
+              _sectionTitle(tokens, t.translationMemory.labels.formatOptions),
               const SizedBox(height: 10),
               _OptionToggle(
                 value: _includeMetadata,
                 onChanged: (v) => setState(() => _includeMetadata = v),
-                title: 'Include metadata',
-                subtitle: 'Add quality scores, usage counts, etc.',
+                title: t.translationMemory.options.includeMetadata,
+                subtitle: t.translationMemory.options.includeMetadataHint,
               ),
               const SizedBox(height: 6),
               _OptionToggle(
                 value: _includeStats,
                 onChanged: (v) => setState(() => _includeStats = v),
-                title: 'Include statistics',
-                subtitle: 'Add export summary and stats to file header',
+                title: t.translationMemory.options.includeStats,
+                subtitle: t.translationMemory.options.includeStatsHint,
               ),
               const SizedBox(height: 18),
               exportState.when(
@@ -93,7 +94,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: exportState.isLoading
               ? null
               : () {
@@ -102,7 +103,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
                 },
         ),
         SmallTextButton(
-          label: 'Export',
+          label: t.translationMemory.actions.export,
           icon: FluentIcons.arrow_export_24_regular,
           filled: true,
           onTap: _outputPath == null || exportState.isLoading
@@ -131,7 +132,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
       style: tokens.fontBody.copyWith(fontSize: 13, color: tokens.text),
       dropdownColor: tokens.panel,
       decoration: InputDecoration(
-        labelText: 'Target Language',
+        labelText: t.translationMemory.labels.targetLanguage,
         labelStyle: tokens.fontBody.copyWith(
           fontSize: 12,
           color: tokens.textDim,
@@ -187,7 +188,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  _outputPath ?? 'Click to select save location',
+                  _outputPath ?? t.translationMemory.hints.clickToSelectSaveLocation,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color:
@@ -214,7 +215,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Exporting...',
+          t.translationMemory.actions.exporting,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.text,
@@ -254,7 +255,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Export Complete',
+                t.translationMemory.messages.exportComplete,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.ok,
@@ -265,7 +266,7 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Exported ${result.entriesExported} entries',
+            t.translationMemory.messages.exportedEntries(count: result.entriesExported),
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.text,

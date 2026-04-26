@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Mémoire de traduction",
+    "statistics": "Statistiques",
+    "totalEntries": "Total des entrées",
+    "languagePairs": "Paires de langues",
+    "performance": "Performance",
+    "totalReuse": "Réutilisation totale",
+    "tokensSaved": "Tokens économisés",
+    "reuseRate": "Taux de réutilisation",
+    "sourceText": "Texte source",
+    "targetText": "Texte cible",
+    "usageCount": "Nombre d'utilisations",
+    "lastUsed": "Dernière utilisation",
+    "created": "Créé",
+    "selectedFile": "Fichier sélectionné",
+    "importOptions": "Options d'importation",
+    "filters": "Filtres",
+    "whatToExport": "Quoi exporter",
+    "outputFile": "Fichier de sortie",
+    "formatOptions": "Options de format",
+    "deleteIfUnusedDays": "Supprimer si inutilisé depuis (jours)",
+    "deleteAll": "Tout supprimer",
+    "targetLanguage": "Langue cible"
+  },
+  "actions": {
+    "importTmx": "Importer TMX",
+    "exportTmx": "Exporter TMX",
+    "cleanup": "Nettoyer",
+    "import": "Importer",
+    "export": "Exporter",
+    "importing": "Importation en cours…",
+    "exporting": "Exportation en cours…"
+  },
+  "dialogs": {
+    "importTitle": "Importer la mémoire de traduction (TMX)",
+    "exportTitle": "Exporter la mémoire de traduction (TMX)",
+    "cleanupTitle": "Nettoyer la mémoire de traduction",
+    "entryDetailsTitle": "Détails de l'entrée de mémoire de traduction",
+    "deleteTmTitle": "Supprimer l'entrée TM",
+    "deleteTmMessage": "Voulez-vous vraiment supprimer cette entrée de mémoire de traduction ?",
+    "deleteTmWarning": "Cette action est irréversible."
+  },
+  "messages": {
+    "noEntries": "Aucune entrée dans la mémoire de traduction",
+    "importHint": "Importez un fichier TMX ou commencez à traduire pour alimenter votre mémoire",
+    "failedToLoadEntries": "Échec du chargement des entrées",
+    "failedToLoadStatistics": "Échec du chargement des statistiques",
+    "removeUnusedHint": "Supprimez les entrées inutilisées pour optimiser votre mémoire de traduction.",
+    "allEntriesWillBeDeleted": "Toutes les entrées seront supprimées — cette action est irréversible",
+    "deletedEntries": "$count entrées supprimées",
+    "tmEntryDeletedSuccess": "Entrée TM supprimée avec succès",
+    "failedToDeleteTmEntry": "Échec de la suppression de l'entrée TM",
+    "deleteEntry": "Supprimer l'entrée",
+    "importComplete": "Importation terminée",
+    "exportComplete": "Exportation terminée",
+    "exportedEntries": "$count entrées exportées",
+    "processedOf": "$processed sur $total entrées traitées",
+    "sizeKb": "Taille : $size Ko"
+  },
+  "pagination": {
+    "zeroEntries": "0 entrées",
+    "showingRange": "Affichage $start–$end sur $total",
+    "firstPage": "Première page",
+    "previousPage": "Page précédente",
+    "nextPage": "Page suivante",
+    "lastPage": "Dernière page"
+  },
+  "importResult": {
+    "totalEntries": "Total des entrées",
+    "imported": "Importées",
+    "skippedDuplicates": "Ignorées (doublons)",
+    "failedValidation": "Échouées (erreurs de validation)"
+  },
+  "options": {
+    "overwriteExisting": "Écraser les entrées existantes",
+    "overwriteExistingHint": "Remplacer les entrées existantes par les entrées importées",
+    "validateEntries": "Valider les entrées",
+    "validateEntriesHint": "Vérifier les erreurs avant l'importation",
+    "includeMetadata": "Inclure les métadonnées",
+    "includeMetadataHint": "Ajouter les scores de qualité, compteurs d'utilisation, etc.",
+    "includeStats": "Inclure les statistiques",
+    "includeStatsHint": "Ajouter un résumé et des stats dans l'en-tête du fichier",
+    "allEntries": "Toutes les entrées (correspondant aux filtres)",
+    "frequentlyUsed": "Fréquemment utilisées uniquement (> 5 fois)"
+  },
+  "columns": {
+    "sourceText": "TEXTE SOURCE",
+    "targetText": "TEXTE CIBLE",
+    "usage": "UTILISATIONS",
+    "lastUsed": "DERNIÈRE UTIL."
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Cliquez pour sélectionner un fichier .tmx",
+    "clickToSelectSaveLocation": "Cliquez pour sélectionner l'emplacement d'enregistrement",
+    "searchPlaceholder": "Rechercher dans la mémoire de traduction…"
+  }
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -24,14 +25,14 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
 
     return TokenDialog(
       icon: FluentIcons.broom_24_regular,
-      title: 'Cleanup Translation Memory',
+      title: t.translationMemory.dialogs.cleanupTitle,
       width: 520,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Remove unused entries to optimize your translation memory.',
+            t.translationMemory.messages.removeUnusedHint,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -42,7 +43,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Delete if unused for (days)',
+                t.translationMemory.labels.deleteIfUnusedDays,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.text,
@@ -50,7 +51,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
                 ),
               ),
               Text(
-                _unusedDays == 0 ? 'Delete all' : '$_unusedDays',
+                _unusedDays == 0 ? t.translationMemory.labels.deleteAll : '$_unusedDays',
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: _unusedDays == 0 ? tokens.err : tokens.accent,
@@ -79,7 +80,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'All entries will be deleted - this cannot be undone',
+                t.translationMemory.messages.allEntriesWillBeDeleted,
                 style: tokens.fontBody.copyWith(
                   fontSize: 12,
                   color: tokens.err,
@@ -95,7 +96,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
                   color: tokens.ok,
                   bgColor: tokens.okBg,
                   icon: FluentIcons.checkmark_circle_24_filled,
-                  message: 'Deleted $deletedCount entries',
+                  message: t.translationMemory.messages.deletedEntries(count: deletedCount),
                 );
               }
               return const SizedBox.shrink();
@@ -117,7 +118,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
       actions: cleanupState.asData?.value != null
           ? [
               SmallTextButton(
-                label: 'OK',
+                label: t.common.ok,
                 filled: true,
                 onTap: () {
                   ref.read(tmCleanupStateProvider.notifier).reset();
@@ -127,7 +128,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
             ]
           : [
               SmallTextButton(
-                label: 'Cancel',
+                label: t.common.actions.cancel,
                 onTap: cleanupState.isLoading
                     ? null
                     : () {
@@ -136,7 +137,7 @@ class _TmCleanupDialogState extends ConsumerState<TmCleanupDialog> {
                       },
               ),
               SmallTextButton(
-                label: 'Cleanup',
+                label: t.translationMemory.actions.cleanup,
                 icon: FluentIcons.broom_24_regular,
                 filled: true,
                 onTap: cleanupState.isLoading

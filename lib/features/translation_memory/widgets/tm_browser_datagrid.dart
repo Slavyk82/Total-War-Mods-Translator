@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -102,7 +103,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Failed to load entries',
+            t.translationMemory.messages.failedToLoadEntries,
             style: tokens.fontDisplay.copyWith(
               fontSize: 16,
               color: tokens.err,
@@ -142,21 +143,21 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         columns: [
           GridColumn(
             columnName: 'source',
-            label: _headerCell(tokens, 'SOURCE TEXT', Alignment.centerLeft),
+            label: _headerCell(tokens, t.translationMemory.columns.sourceText, Alignment.centerLeft),
           ),
           GridColumn(
             columnName: 'target',
-            label: _headerCell(tokens, 'TARGET TEXT', Alignment.centerLeft),
+            label: _headerCell(tokens, t.translationMemory.columns.targetText, Alignment.centerLeft),
           ),
           GridColumn(
             columnName: 'usage',
             width: 90,
-            label: _headerCell(tokens, 'USAGE', Alignment.centerRight),
+            label: _headerCell(tokens, t.translationMemory.columns.usage, Alignment.centerRight),
           ),
           GridColumn(
             columnName: 'lastUsed',
             width: 120,
-            label: _headerCell(tokens, 'LAST USED', Alignment.centerLeft),
+            label: _headerCell(tokens, t.translationMemory.columns.lastUsed, Alignment.centerLeft),
           ),
           GridColumn(
             columnName: 'actions',
@@ -219,7 +220,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           ),
           const SizedBox(height: 12),
           Text(
-            'No translation memory entries',
+            t.translationMemory.messages.noEntries,
             style: tokens.fontDisplay.copyWith(
               fontSize: 16,
               color: tokens.text,
@@ -228,7 +229,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Import a TMX file or start translating to build your memory',
+            t.translationMemory.messages.importHint,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -245,29 +246,29 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       context: context,
       builder: (ctx) => TokenDialog(
         icon: FluentIcons.info_24_regular,
-        title: 'Translation Memory Entry Details',
+        title: t.translationMemory.dialogs.entryDetailsTitle,
         width: 640,
         body: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow(ctx, 'Source Text', entry.sourceText),
+              _buildDetailRow(ctx, t.translationMemory.labels.sourceText, entry.sourceText),
               const Divider(),
-              _buildDetailRow(ctx, 'Target Text', entry.translatedText),
+              _buildDetailRow(ctx, t.translationMemory.labels.targetText, entry.translatedText),
               const Divider(),
               _buildDetailRow(
-                  ctx, 'Usage Count', entry.usageCount.toString()),
+                  ctx, t.translationMemory.labels.usageCount, entry.usageCount.toString()),
               const Divider(),
               _buildDetailRow(
                 ctx,
-                'Last Used',
+                t.translationMemory.labels.lastUsed,
                 _formatTimestamp(entry.lastUsedAt),
               ),
               const Divider(),
               _buildDetailRow(
                 ctx,
-                'Created',
+                t.translationMemory.labels.created,
                 _formatTimestamp(entry.createdAt),
               ),
             ],
@@ -275,7 +276,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         ),
         actions: [
           SmallTextButton(
-            label: 'Close',
+            label: t.common.actions.close,
             onTap: () => Navigator.of(ctx).pop(),
           ),
         ],
@@ -319,12 +320,11 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
   Future<void> _handleDeleteEntry(TranslationMemoryEntry entry) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Delete TM Entry',
-        message:
-            'Are you sure you want to delete this translation memory entry?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+      builder: (_) => TokenConfirmDialog(
+        title: t.translationMemory.dialogs.deleteTmTitle,
+        message: t.translationMemory.dialogs.deleteTmMessage,
+        warningMessage: t.translationMemory.dialogs.deleteTmWarning,
+        confirmLabel: t.common.actions.delete,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -337,9 +337,9 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
 
       if (mounted) {
         if (success) {
-          FluentToast.success(context, 'TM entry deleted successfully');
+          FluentToast.success(context, t.translationMemory.messages.tmEntryDeletedSuccess);
         } else {
-          FluentToast.error(context, 'Failed to delete TM entry');
+          FluentToast.error(context, t.translationMemory.messages.failedToDeleteTmEntry);
         }
       }
     }
@@ -546,7 +546,7 @@ class _ActionsCell extends StatelessWidget {
         children: [
           SmallIconButton(
             icon: FluentIcons.delete_24_regular,
-            tooltip: 'Delete entry',
+            tooltip: t.translationMemory.messages.deleteEntry,
             foreground: tokens.err,
             background: tokens.errBg,
             borderColor: tokens.err.withValues(alpha: 0.4),
