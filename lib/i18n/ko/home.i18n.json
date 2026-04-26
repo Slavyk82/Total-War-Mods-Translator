@@ -1,0 +1,95 @@
+{
+  "title": "홈",
+  "sections": {
+    "workflow": "워크플로",
+    "needsAttention": "주의 필요"
+  },
+  "status": {
+    "needsAttentionOne": "1개 프로젝트가 주의가 필요합니다",
+    "needsAttentionMany": "$count개 프로젝트가 주의가 필요합니다",
+    "readyToCompileOne": "1개 프로젝트가 컴파일 준비됨",
+    "readyToCompileMany": "$count개 프로젝트가 컴파일 준비됨",
+    "modUpdatesOne": "1개 모드 업데이트 사용 가능",
+    "modUpdatesMany": "$count개 모드 업데이트 사용 가능",
+    "allCaughtUp": "모두 최신 상태"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "검토 대상",
+      "description": "검토가 필요한 단위가 있는 프로젝트"
+    },
+    "readyToCompile": {
+      "label": "컴파일 준비됨",
+      "description": "100% 번역된 프로젝트"
+    },
+    "exportOutdated": {
+      "label": "내보내기 만료됨",
+      "description": "마지막 팩 이후 수정된 프로젝트"
+    },
+    "modUpdates": {
+      "label": "모드 업데이트",
+      "description": "새로운 Workshop 버전 사용 가능"
+    },
+    "readyToPublish": {
+      "label": "게시 준비됨",
+      "description": "Workshop으로 보낼 팩"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "감지",
+      "done": "완료",
+      "startHere": "여기서 시작",
+      "modsDiscovered": "감지된 모드",
+      "noModsYet": "아직 모드가 없습니다",
+      "withUpdates": " · 업데이트 $count개",
+      "cta": "모드 보기"
+    },
+    "translate": {
+      "title": "번역",
+      "inProgress": "진행 중",
+      "idle": "대기 중",
+      "waiting": "대기 중",
+      "subtitle": "진행 중인 프로젝트",
+      "toReview": " · 검토 $count개",
+      "cta": "프로젝트 열기"
+    },
+    "publish": {
+      "title": "게시",
+      "waiting": "대기 중",
+      "waitingCount": "$count개 대기 중",
+      "subtitle": "Workshop 준비 완료된 컴파일된 팩",
+      "cta": "게시"
+    }
+  },
+  "nextAction": {
+    "toReview": "검토 대상",
+    "translate": "번역",
+    "readyToCompile": "컴파일 준비됨",
+    "continue": "계속"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "소스에서 모드 감지",
+      "cta": "소스로 이동"
+    },
+    "step2": {
+      "title": "모드에서 프로젝트 생성",
+      "cta": "소스 열기"
+    },
+    "step3": {
+      "title": "단위 번역",
+      "cta": "프로젝트 열기"
+    },
+    "step4": {
+      "title": "팩 컴파일"
+    },
+    "step5": {
+      "title": "Steam Workshop에 게시"
+    }
+  },
+  "support": {
+    "message": "TWMT가 번역을 깔끔하게 유지하고 모든 모드 업데이트를 견뎌내며 모딩 작업을 더 쉽게 만들어 주었다면, 작은 후원이 큰 도움이 되며 계속 개선해 나가는 데 큰 힘이 됩니다!",
+    "buyMeABeer": "맥주 한 잔 사주기 :-)"
+  }
+}

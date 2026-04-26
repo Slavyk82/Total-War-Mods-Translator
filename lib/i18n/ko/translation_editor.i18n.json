@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "번역 편집기",
+    "crumbWork": "작업",
+    "crumbProjects": "프로젝트"
+  },
+  "toolbar": {
+    "searchHint": "키 · 원본 · 대상 검색",
+    "filterStateLabel": "상태",
+    "filterSeverityLabel": "심각도",
+    "clearLabel": "지우기",
+    "sectionAiContext": "AI 컨텍스트",
+    "sectionOther": "기타",
+    "sectionWorkflow": "워크플로",
+    "autoBatchSize": "자동 배치 크기",
+    "unitsPerBatch": "배치당 단위",
+    "parallelBatches": "병렬 배치",
+    "useTranslationMemory": "번역 메모리 사용",
+    "modSpecificRule": "모드 전용 규칙",
+    "importExternalPack": "외부 팩 가져오기",
+    "openLocalFolder": "로컬 폴더 열기"
+  },
+  "filters": {
+    "pending": "대기 중",
+    "translated": "번역됨",
+    "needsReview": "검토 필요",
+    "errors": "오류",
+    "warnings": "경고"
+  },
+  "sidebar": {
+    "translateSelection": "선택 항목 번역",
+    "translateAll": "모두 번역",
+    "review": "검토",
+    "generatePack": "팩 생성",
+    "unitSingular": "단위",
+    "unitPlural": "단위"
+  },
+  "inspector": {
+    "emptyState": "세부 정보를 보려면 단위를 선택하십시오",
+    "unitsSelected": "$count개 단위 선택됨",
+    "accept": "수락",
+    "reject": "거부",
+    "edit": "편집",
+    "retranslate": "재번역",
+    "deselect": "선택 해제",
+    "validationIssues": "검증 문제",
+    "sourceLabel": "원본 · $lang",
+    "targetLabel": "대상 · $lang — 편집 중",
+    "unitLabel": "단위"
+  },
+  "datagrid": {
+    "columnKey": "키",
+    "columnSource": "원본",
+    "columnTarget": "대상",
+    "errorLoadingTranslations": "번역을 불러오는 중 오류가 발생했습니다"
+  },
+  "statusBar": {
+    "units": "$count개 단위",
+    "translated": "$count개 번역됨 ($pct%)",
+    "needReview": "$count개 검토 필요",
+    "tmReuse": "TM $pct%"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "선택 항목 없음",
+      "message": "번역할 번역 단위를 하나 이상 선택하십시오."
+    },
+    "noUntranslated": {
+      "title": "미번역 단위 없음",
+      "message": "이 프로젝트 언어의 모든 단위가 이미 번역되었습니다."
+    },
+    "allTranslated": {
+      "title": "선택된 모든 단위가 번역됨",
+      "message": "선택한 모든 단위가 이미 번역되었습니다."
+    },
+    "translateAll": {
+      "title": "모두 번역",
+      "message": "$count개의 미번역 단위를 번역하시겠습니까?"
+    },
+    "translateSelected": {
+      "title": "선택 항목 번역",
+      "message": "$count개의 미번역 단위를 번역하시겠습니까? ($skipped개는 이미 번역됨)"
+    },
+    "forceRetranslate": {
+      "title": "강제 재번역",
+      "message": "$count개 단위를 재번역하시겠습니까?\n\n경고: 기존 번역을 덮어씁니다."
+    },
+    "validationRescan": {
+      "title": "검증 재검색",
+      "scanning": "검색 중 $current/$total...",
+      "saving": "$count개 업데이트 저장 중..."
+    },
+    "noIssues": {
+      "title": "검토할 문제 없음",
+      "message": "모든 번역이 검증을 통과했습니다."
+    },
+    "nothingToScan": {
+      "title": "검색할 항목 없음",
+      "message": "번역된 항목을 찾을 수 없습니다."
+    },
+    "clearConfirm": {
+      "title": "지우기 확인",
+      "messageSingle": "이 번역을 지우시겠습니까?",
+      "messageMultiple": "$count개의 번역을 지우시겠습니까?",
+      "clearButton": "지우기",
+      "cannotBeUndone": "이 작업은 되돌릴 수 없습니다."
+    },
+    "deleteConfirm": {
+      "title": "삭제 확인",
+      "messageSingle": "이 번역을 삭제하시겠습니까?",
+      "messageMultiple": "$count개의 번역을 삭제하시겠습니까?",
+      "deleteButton": "삭제",
+      "cannotBeUndone": "이 작업은 되돌릴 수 없습니다."
+    },
+    "clearTranslations": {
+      "title": "번역 지우는 중"
+    },
+    "editTranslation": {
+      "title": "번역 편집",
+      "translationLabel": "번역",
+      "hint": "수정된 번역을 입력하십시오..."
+    },
+    "translationHistory": {
+      "title": "번역 기록",
+      "noHistory": "사용 가능한 기록 없음",
+      "noHistoryDetail": "이 번역에는 아직 기록된 내역이 없습니다.",
+      "errorLoading": "기록을 불러오는 중 오류가 발생했습니다"
+    },
+    "promptPreview": {
+      "title": "프롬프트 미리보기",
+      "subtitle": "LLM에 전송될 정확한 프롬프트를 확인합니다",
+      "tabSystemPrompt": "시스템 프롬프트",
+      "tabUserMessage": "사용자 메시지",
+      "tabApiPayload": "API 페이로드",
+      "systemPromptDesc": "시스템 메시지로 전송되는 지침, 컨텍스트 및 용어집",
+      "userMessageDesc": "원본 텍스트가 포함된 실제 번역 요청",
+      "apiPayloadDesc": "공급자에게 전송되는 형태의 전체 JSON 페이로드",
+      "copyFullPrompt": "전체 프롬프트 복사",
+      "copiedToClipboard": "$title을(를) 클립보드에 복사했습니다",
+      "noPreview": "사용 가능한 미리보기 없음",
+      "errorBuilding": "프롬프트 미리보기를 생성하는 중 오류가 발생했습니다",
+      "keyLabel": "키: $key"
+    },
+    "providerSetup": {
+      "title": "구성된 번역 공급자 없음",
+      "message": "자동 번역을 사용하려면 LLM 공급자를 하나 이상 구성해야 합니다. 설정으로 이동하여 다음 공급자 중 하나를 설정하십시오:",
+      "goToSettings": "설정으로 이동",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "컨텍스트를 인식하는 고품질 번역",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "우수한 번역 품질을 갖춘 다재다능한 언어 모델",
+      "deepl": "DeepL",
+      "deeplDesc": "전문 번역 서비스"
+    },
+    "modRule": {
+      "title": "모드 번역 규칙",
+      "infoBanner": "이 규칙은 이 모드에만 적용되며, 모든 번역 프롬프트에서 전역 규칙 뒤에 추가됩니다.",
+      "ruleTextLabel": "규칙 텍스트",
+      "ruleTextHint": "예: 이 모드는 번역되지 않아야 하는 판타지 이름을 사용합니다...",
+      "ruleActive": "규칙이 활성 상태입니다",
+      "ruleDisabled": "규칙이 비활성 상태입니다",
+      "deleteTitle": "모드 규칙 삭제",
+      "deleteMessage": "이 규칙을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      "savedSuccess": "모드 규칙이 성공적으로 저장되었습니다",
+      "deletedSuccess": "모드 규칙이 삭제되었습니다",
+      "errorSave": "규칙 저장에 실패했습니다",
+      "errorDelete": "규칙 삭제에 실패했습니다",
+      "errorToggle": "규칙 전환에 실패했습니다",
+      "validationEmpty": "규칙 텍스트를 입력하십시오"
+    },
+    "packImport": {
+      "title": ".pack 파일에서 번역 가져오기",
+      "noFileSelected": "선택된 파일 없음",
+      "browse": "찾아보기",
+      "analyzingPack": "팩 파일 분석 중...",
+      "selectPackPrompt": "번역이 포함된 .pack 파일을 선택하십시오",
+      "noMatchingTranslations": "일치하는 번역을 찾을 수 없습니다",
+      "overwriteExisting": "기존 번역 덮어쓰기",
+      "selectAll": "모두 선택",
+      "deselectAll": "모두 선택 해제",
+      "importButton": "가져오기 ($count)",
+      "importing": "가져오는 중...",
+      "cancelImport": "가져오기 취소",
+      "cancelling": "취소 중...",
+      "startingImport": "가져오기 시작 중...",
+      "summaryTitle": "분석 요약",
+      "summaryTotalInPack": "팩 내 총 항목",
+      "summaryMatches": "일치 항목",
+      "summaryNew": "신규",
+      "summaryConflicts": "충돌",
+      "summaryNotFound": "찾을 수 없음",
+      "gridColumnKey": "키",
+      "gridColumnValue": "가져올 값",
+      "gridColumnStatus": "상태",
+      "statusConflict": "충돌",
+      "statusNew": "신규",
+      "importComplete": "가져오기 완료: $imported개의 번역을 가져왔습니다",
+      "importSkipped": ", $count개 건너뜀",
+      "importErrors": ", $count개 오류",
+      "progressEntries": "$current / $total개 항목 처리됨"
+    },
+    "export": {
+      "title": "번역 내보내기",
+      "selectFormat": "내보내기 형식을 선택하십시오:",
+      "packTitle": ".pack (Total War 모드)",
+      "packSubtitle": "게임에 바로 사용 가능한 패키지 파일",
+      "csvTitle": "CSV",
+      "csvSubtitle": "쉼표로 구분된 값",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Microsoft Excel 스프레드시트"
+    },
+    "deleteLanguage": {
+      "title": "언어 삭제",
+      "message": "이 프로젝트에서 \"$name\"을(를) 제거하시겠습니까? $count개의 번역이 삭제됩니다.",
+      "cannotBeUndone": "이 작업은 되돌릴 수 없습니다."
+    },
+    "sourceText": "원본 텍스트"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "팩 생성",
+      "header": "팩 생성 중",
+      "packGenerated": "팩 생성 완료",
+      "translationsIncluded": "$count개의 번역이 포함됨",
+      "languages": "언어: $langs",
+      "steps": {
+        "preparingData": "데이터 준비 중...",
+        "generatingLocFiles": ".loc 파일 생성 중...",
+        "creatingPack": ".pack 파일 만드는 중...",
+        "generatingImage": "팩 이미지 생성 중...",
+        "finalizing": "마무리 중...",
+        "completed": "팩이 생성되었습니다!",
+        "collectingData": "번역 데이터 수집 중...",
+        "writingFile": "출력 파일 쓰는 중..."
+      },
+      "processing": "처리 중: $lang ($current/$total)",
+      "inProgressWarning": "팩 생성이 진행 중입니다. 완료될 때까지 기다리십시오.",
+      "statusFailed": "실패",
+      "statusCompleted": "완료됨",
+      "statusInProgress": "진행 중"
+    },
+    "translation": {
+      "header": "대량 번역",
+      "title": "번역 진행 중",
+      "batchId": "배치 ID: $id",
+      "progress": "진행률",
+      "units": "$processed / $total개 단위",
+      "stop": "중지",
+      "stopping": "중지 중...",
+      "stopWarning": "번역이 진행 중입니다. 안전하게 종료하려면 \"중지\"를 클릭하십시오.",
+      "preparing": "번역 준비 중",
+      "preparingDetail": "배치를 만들고 컨텍스트를 수집하는 중...",
+      "preparationFailed": "번역 배치 준비에 실패했습니다",
+      "preparationError": "준비 오류: $error",
+      "currentPhase": "현재 단계",
+      "paused": "일시 중지됨",
+      "elapsed": {
+        "seconds": "경과: $n초",
+        "minutes": "경과: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "약 $n초 남음",
+        "minutes": "약 $n분 남음",
+        "minutesPlural": "약 $n분 남음"
+      },
+      "logs": {
+        "title": "로그",
+        "autoScroll": "자동 스크롤",
+        "waiting": "로그 대기 중..."
+      },
+      "llmLogs": "LLM 교환 로그 ($count)",
+      "llmLogsEmpty": "아직 LLM 교환이 없습니다. 번역이 진행됨에 따라 로그가 표시됩니다.",
+      "phases": {
+        "initializing": "초기화 중...",
+        "tmExactLookup": "번역 메모리 확인 중 (정확)",
+        "tmFuzzyLookup": "번역 메모리 확인 중 (유사)",
+        "buildingPrompt": "번역 프롬프트 작성 중",
+        "llmTranslation": "LLM으로 번역 중",
+        "validating": "번역 검증 중",
+        "saving": "번역 저장 중",
+        "updatingTm": "번역 메모리 업데이트 중",
+        "finalizing": "배치 마무리 중",
+        "completed": "완료됨"
+      },
+      "stats": {
+        "success": "성공",
+        "failed": "실패",
+        "skipped": "건너뜀"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "모두 선택",
+    "forceRetranslate": "강제 재번역",
+    "forceRetranslateCount": "강제 재번역 ($count)",
+    "markAsTranslated": "번역됨으로 표시",
+    "markAsTranslatedCount": "번역됨으로 표시 ($count)",
+    "clearTranslation": "번역 지우기",
+    "clearTranslationCount": "번역 지우기 ($count)",
+    "viewHistory": "기록 보기",
+    "viewPrompt": "프롬프트 보기",
+    "deleteCount": "삭제 ($count)"
+  },
+  "actions": {
+    "undoSuccess": "실행 취소가 완료되었습니다",
+    "undoFailed": "실행 취소 실패: $error",
+    "redoSuccess": "다시 실행이 완료되었습니다",
+    "redoFailed": "다시 실행 실패: $error",
+    "autoFixApplied": "자동 수정이 적용되었습니다",
+    "translationValidated": "번역이 검증되었습니다",
+    "markedAsTranslated": "$count개의 번역을 번역됨으로 표시했습니다",
+    "cleared": "$count개의 번역을 지웠습니다",
+    "deleted": "$count개의 번역을 삭제했습니다",
+    "copied": "$count개의 행을 클립보드에 복사했습니다",
+    "pasted": "$count개의 번역을 붙여넣었습니다",
+    "noRowsSelected": "선택된 행이 없습니다",
+    "clipboardEmpty": "클립보드가 비어 있습니다",
+    "noValidTranslations": "클립보드에서 유효한 번역을 찾을 수 없습니다",
+    "packGenerationFailed": "팩 생성에 실패했습니다",
+    "failedToOpenModFolder": "모드 폴더를 여는 데 실패했습니다: $error",
+    "gamePathNotConfigured": "게임 설치 경로가 구성되지 않았습니다."
+  },
+  "languageSwitcher": {
+    "noLanguage": "이 프로젝트에 언어가 없습니다",
+    "addLanguage": "+ 언어 추가",
+    "deleteLanguage": "언어 삭제",
+    "cannotDeleteLast": "마지막 언어는 삭제할 수 없습니다"
+  },
+  "validation": {
+    "validationIssuesFound": "검증 문제가 발견됨",
+    "readyToValidate": "검증 준비 완료",
+    "noIssuesFound": "발견된 문제가 없습니다!",
+    "translationPassesAll": "이 번역은 모든 검증 검사를 통과합니다",
+    "selectUnitToView": "검증 문제를 보려면 번역 단위를 선택하십시오",
+    "errorLoadingIssues": "검증 문제를 불러오는 중 오류가 발생했습니다",
+    "validate": "검증",
+    "autoFix": "자동 수정",
+    "errors": "오류",
+    "warnings": "경고",
+    "info": "정보",
+    "noIssues": "발견된 문제가 없습니다"
+  },
+  "issueTypes": {
+    "emptyTranslation": "빈 번역",
+    "lengthDifference": "길이 차이",
+    "missingVariables": "누락된 변수",
+    "whitespaceIssue": "공백 문제",
+    "punctuationMismatch": "구두점 불일치",
+    "caseMismatch": "대소문자 불일치",
+    "missingNumbers": "누락된 숫자",
+    "modifiedNumbers": "수정된 숫자"
+  }
+}

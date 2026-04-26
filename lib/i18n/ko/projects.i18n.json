@@ -1,0 +1,235 @@
+{
+  "title": "프로젝트",
+  "projectCount": "$count개 프로젝트",
+  "stateLabel": "상태",
+  "clearFilters": "지우기",
+  "filters": {
+    "needsUpdate": "업데이트 필요",
+    "needsReview": "검토 필요",
+    "incomplete": "미완료",
+    "completed": "완료됨",
+    "exported": "내보냄",
+    "notExported": "내보내지 않음",
+    "exportOutdated": "내보내기 만료됨"
+  },
+  "emptyStates": {
+    "noMatch": "필터와 일치하는 프로젝트가 없습니다",
+    "noProjects": "프로젝트가 아직 없습니다",
+    "adjustFilters": "필터를 조정해 보십시오",
+    "goToMods": "모드 화면으로 이동하여 모드에서 프로젝트를 생성하십시오",
+    "failedToLoad": "프로젝트 로드 실패"
+  },
+  "loading": "프로젝트 로드 중...",
+  "columns": {
+    "project": "프로젝트",
+    "languagesProgress": "언어 및 진행률",
+    "modified": "수정됨",
+    "status": "상태"
+  },
+  "labels": {
+    "noTargetLanguage": "대상 언어 없음",
+    "localPack": "로컬 팩",
+    "gameTranslation": "게임 번역",
+    "lastModified": "마지막 수정: $date",
+    "lastExport": "마지막 내보내기: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Steam Workshop에서 열기",
+    "resync": "원본 팩 파일과 재동기화",
+    "deleteProject": "프로젝트 삭제",
+    "hideBulkMenu": "대량 메뉴 숨기기",
+    "showBulkMenu": "대량 메뉴 표시",
+    "newTranslations": "+$n개 새 번역 추가",
+    "removedTranslations": "-$n개 번역 제거됨",
+    "changedSources": "~$n개 원본 텍스트 변경됨"
+  },
+  "status": {
+    "modUpdated": "모드 업데이트됨",
+    "upToDate": "최신 상태",
+    "exportOutdated": "내보내기 만료됨",
+    "unpublished": "게시되지 않음",
+    "exported": "내보냄",
+    "draft": "초안"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "프로젝트 삭제",
+      "message": "\"$name\"을(를) 정말 삭제하시겠습니까?",
+      "warning": "이 작업은 되돌릴 수 없습니다.",
+      "confirmLabel": "삭제"
+    },
+    "confirmLeave": {
+      "title": "내보내기 진행 중",
+      "message": "배치 내보내기가 현재 진행 중입니다. 정말 나가시겠습니까? 내보내기가 취소됩니다.",
+      "stay": "머무르기",
+      "leave": "나가기"
+    },
+    "confirmCancelBulk": {
+      "title": "현재 작업을 중지하시겠습니까?",
+      "message": "이미 처리된 프로젝트는 변경 사항이 유지됩니다.",
+      "stop": "중지",
+      "keepRunning": "계속 실행"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "프로젝트가 성공적으로 재동기화되었습니다",
+    "resyncFailed": "재동기화 실패: $error",
+    "deleteSuccess": "프로젝트 \"$name\" 삭제됨",
+    "deleteFailed": "프로젝트 삭제 실패: $error",
+    "projectCreated": "프로젝트가 성공적으로 생성되었습니다",
+    "projectCreatedUnits": "$count개 번역 단위로 프로젝트가 생성되었습니다",
+    "createFailed": "프로젝트 생성 실패: $error",
+    "importFailed": "프로젝트는 생성되었지만 번역 가져오기에 실패했습니다: $error"
+  },
+  "search": {
+    "hint": "프로젝트 검색..."
+  },
+  "batchExport": {
+    "title": "배치 팩 내보내기",
+    "noData": "내보내기 데이터가 없습니다.",
+    "statusComplete": "내보내기 완료",
+    "statusCancelled": "취소됨",
+    "statusExporting": "내보내는 중...",
+    "completedWithErrors": "오류와 함께 내보내기 완료",
+    "allSuccess": "모든 팩이 성공적으로 내보내졌습니다",
+    "summary": "$succeeded개 성공, $failed개 실패",
+    "current": "현재: $name",
+    "sectionProjects": "프로젝트",
+    "sectionLabel": "$count개 프로젝트 • $lang",
+    "progressOf": "$completed / $total개 프로젝트",
+    "entryCount": "$count개 항목"
+  },
+  "bulk": {
+    "sectionSettings": "설정",
+    "sectionActions": "작업",
+    "sectionInfo": "정보 표시",
+    "infoText": "대량 작업은 이미 부분적으로 번역된 프로젝트를 위해 설계되었습니다. 선택된 대상 언어와 일치하는 모든 표시된 프로젝트에 적용됩니다.",
+    "infoHide": "숨기기",
+    "targetLanguageLabel": "대상 언어",
+    "scopeMessage": "표시된 $visible개 프로젝트에 영향을 줍니다 ($matching개가 대상 언어와 일치).",
+    "buttons": {
+      "translateAll": "모두 번역",
+      "rescanReviews": "검토 재스캔",
+      "reviewFlagged": "플래그된 항목 검토",
+      "generatePack": "팩 생성"
+    },
+    "unitCount": "$n개 단위",
+    "tooltips": {
+      "selectLanguage": "대상 언어를 선택하십시오",
+      "alreadyRunning": "작업이 이미 실행 중입니다",
+      "noVisibleProjects": "일치하는 표시된 프로젝트가 없습니다"
+    },
+    "progress": {
+      "titleTranslating": "프로젝트 번역 중",
+      "titleRescanning": "검토 재스캔 중",
+      "titleValidating": "검토 강제 검증 중",
+      "titleGeneratingPacks": "팩 생성 중",
+      "titleRetranslating": "플래그된 단위 재번역 중",
+      "titleDefault": "대량 작업",
+      "targetLanguage": "대상 언어: $code",
+      "projectProgress": "$current / $total개 프로젝트",
+      "cancelling": "취소 중…",
+      "retryFailed": "실패 재시도",
+      "summary": "$succeeded개 성공 · $skipped개 건너뜀 · $failed개 실패"
+    },
+    "review": {
+      "title": "플래그된 번역 검토",
+      "subtitle": "대상: $code · $projects개 프로젝트의 $units개 단위",
+      "loadFailed": "검토 대기열 로드 실패: $error",
+      "working": "처리 중…",
+      "validateAll": "모두 검증",
+      "retranslateAll": "모두 강제 재번역",
+      "emptyTitle": "플래그된 번역이 없습니다",
+      "emptySubtitle": "이 언어에 대해 모든 표시된 프로젝트가 최신 상태입니다.",
+      "noModelSelected": "선택된 LLM 모델이 없습니다",
+      "retranslateFailed": "재번역 실패: $error",
+      "validateFailed": "검증 실패: $error",
+      "validateAllFailed": "전체 검증 실패: $error",
+      "columnSource": "EN",
+      "columnTranslation": "번역",
+      "emptyTranslation": "(비어 있음)",
+      "tooltipValidate": "검증 (검토 플래그 지우기)",
+      "tooltipRetranslate": "이 단위를 강제 재번역"
+    },
+    "languageSelector": {
+      "loadFailed": "언어 로드 실패: $error",
+      "noLanguages": "표시된 프로젝트에서 사용 가능한 대상 언어가 없습니다."
+    },
+    "outcomes": {
+      "noTargetLanguage": "구성된 대상 언어가 없습니다",
+      "noUntranslatedUnits": "미번역 단위가 없습니다",
+      "noLlmModel": "선택된 LLM 모델이 없음",
+      "noFlaggedUnits": "검토를 위해 플래그된 단위가 없습니다",
+      "noUnitsToRescan": "재스캔할 번역된 단위가 없습니다",
+      "unitsTranslated": "$count개 단위 번역됨 · $flagged개 플래그됨",
+      "unitsFlagged": "$count개가 검토를 위해 플래그됨",
+      "flagsCleared": "$count개 플래그 지워짐",
+      "packGenerated": "$entries개 항목 · $size MB",
+      "unitsRetranslated": "$count개 단위 재번역됨"
+    }
+  },
+  "addLanguage": {
+    "title": "대상 언어 추가",
+    "subtitle": "이 프로젝트에 추가할 언어를 선택하십시오",
+    "adding": "추가 중...",
+    "addButton": "언어 추가",
+    "allAdded": "모든 언어가 이미 추가되었습니다",
+    "loadError": "언어 로드 오류",
+    "languageCode": "코드: $code",
+    "addSuccess": "$count개 언어를 각각 $units개 번역 단위로 추가했습니다",
+    "addFailed": "언어 추가 실패: $error"
+  },
+  "createProject": {
+    "title": "새 프로젝트 생성",
+    "steps": {
+      "basicInfo": "기본 정보",
+      "translationSettings": "번역 설정"
+    },
+    "actions": {
+      "close": "닫기",
+      "back": "뒤로",
+      "next": "다음",
+      "create": "생성"
+    },
+    "errors": {
+      "selectGame": "게임 설치를 선택하십시오",
+      "gameMustBeSelected": "게임 설치를 선택해야 합니다",
+      "gamePathNotConfigured": "게임 설치 경로가 구성되지 않았습니다",
+      "rpfmSchemaNotConfigured": "RPFM 스키마 경로가 구성되지 않았습니다.\n\n프로젝트를 생성하기 전에 설정 > RPFM 도구에서 구성하십시오.\n\n스키마 경로는 .pack 파일에서 현지화 파일을 추출하는 데 필요합니다."
+    },
+    "progress": {
+      "extracting": "현지화 파일 추출 및 가져오는 중...",
+      "processing": "처리 중..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "감지된 모드에서 자동으로 채워졌습니다. 검토 후 계속하십시오.",
+      "descriptionManual": "프로젝트 이름을 입력하고 게임 설치를 선택하십시오.",
+      "fieldProjectName": "프로젝트 이름",
+      "fieldSourcePack": "원본 팩",
+      "fieldWorkshopId": "Workshop ID",
+      "fieldGame": "게임",
+      "hintProjectName": "프로젝트 이름 입력",
+      "hintGame": "게임 선택",
+      "errorLoadingGames": "게임 로드 오류: $error"
+    },
+    "translationSettings": {
+      "description": "번역 처리량을 조정하고 선택적으로 추가 프롬프트를 제공하십시오.",
+      "fieldBatchSize": "배치 크기",
+      "fieldParallelBatches": "병렬 배치",
+      "fieldCustomPrompt": "사용자 정의 번역 프롬프트 (선택사항)",
+      "hintBatchSize": "배치당 단위 수 (기본값: 25)",
+      "hintParallelBatches": "병렬로 처리할 배치 수 (기본값: 3)",
+      "hintCustomPrompt": "AI 번역기를 위한 사용자 정의 지침을 입력하십시오"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "프로젝트 초기화 중",
+    "titleFailed": "초기화 실패",
+    "titleComplete": "초기화 완료",
+    "extracting": "현지화 파일 추출 및 가져오는 중...",
+    "successUnits": "$count개 번역 단위를 성공적으로 가져왔습니다",
+    "noLogs": "아직 로그가 없습니다...",
+    "sectionLogs": "로그",
+    "close": "닫기"
+  }
+}

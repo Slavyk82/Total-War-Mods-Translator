@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "팩 컴파일",
+    "new": "새로 만들기",
+    "untitled": "제목 없음",
+    "compilation": "컴파일",
+    "language": "언어",
+    "modified": "수정됨",
+    "status": "상태",
+    "basics": "기본 정보",
+    "output": "출력",
+    "name": "이름",
+    "targetLanguage": "대상 언어",
+    "prefix": "접두사",
+    "packName": "팩 이름",
+    "fileName": "파일 이름",
+    "location": "위치",
+    "publishing": "게시",
+    "selectProjects": "프로젝트 선택",
+    "noLanguage": "언어 없음",
+    "steamWorkshopBbcode": "Steam Workshop BBCode",
+    "bbcodeHint": "Steam Workshop 설명에서 사용할 이 BBCode를 복사하십시오:",
+    "conflictingProjects": "충돌하는 프로젝트",
+    "conflictingKey": "충돌하는 키",
+    "sourceTextThis": "원본 텍스트 (이 프로젝트)",
+    "sourceTextConflicting": "원본 텍스트 (충돌)"
+  },
+  "actions": {
+    "newCompilation": "+ 새 컴파일",
+    "compile": "컴파일하고 팩 생성",
+    "compiling": "컴파일 중...",
+    "forceCompile": "강제 컴파일",
+    "openFolder": "폴더 열기",
+    "stopTooltip": "중지",
+    "cancelling": "취소 중...",
+    "deleteCompilation": "컴파일 삭제"
+  },
+  "status": {
+    "draft": "초안",
+    "regeneratePack": "팩 재생성",
+    "generated": "생성됨",
+    "generatingPack": "팩 생성 중...",
+    "regenerateTooltip": "마지막 팩 생성 이후 하나 이상의 번들 프로젝트가 변경되었습니다."
+  },
+  "messages": {
+    "noCompilationsYet": "아직 컴파일이 없습니다",
+    "createCompilationHint": "여러 프로젝트를 하나의 .pack으로 묶으려면 컴파일을 만드십시오.",
+    "errorLoadingCompilations": "컴파일 로드 오류: $error",
+    "packGenerated": "팩이 생성되었습니다",
+    "deletedSuccess": "\"$name\"이(가) 삭제되었습니다",
+    "deleteFailed": "삭제 실패: $error",
+    "noModsWithWorkshopIds": "Steam Workshop ID가 있는 모드가 선택되지 않았습니다"
+  },
+  "dialogs": {
+    "deleteTitle": "컴파일 삭제",
+    "deleteMessage": "\"$name\"을(를) 삭제하시겠습니까?",
+    "deleteWarning": "이 작업은 되돌릴 수 없습니다.",
+    "conflictsTitle": "해결되지 않은 충돌이 감지되었습니다",
+    "conflictsBody": "선택된 프로젝트 간에 $count개의 충돌이 해결되지 않은 상태입니다. 지금 컴파일하면 영향을 받는 항목의 게임 내 번역 표시가 예측 불가능해질 수 있습니다.\n\n취소하여 먼저 해결하거나, 강제로 컴파일을 진행할 수 있습니다.",
+    "conflictsForProject": "프로젝트의 충돌"
+  },
+  "hints": {
+    "namePlaceholder": "내 한국어 번역",
+    "prefixPlaceholder": "!!!!!!!!!!_ko_compilation_twmt_",
+    "packNamePlaceholder": "my_pack",
+    "selectLanguage": "언어를 선택하십시오...",
+    "noProjectsFound": "프로젝트를 찾을 수 없습니다",
+    "tryDifferentSearch": "다른 검색어를 시도하십시오",
+    "selectGameFirst": "먼저 사이드바에서 게임을 선택하십시오",
+    "selectLanguageFirst": "먼저 언어를 선택하십시오",
+    "noProjectsWithLanguage": "이 언어로 된 번역 프로젝트가 없습니다",
+    "searchProjects": "프로젝트 검색...",
+    "showOnlySelected": "선택된 항목만 표시",
+    "showOnlySelectedTooltip": "이 컴파일에 포함된 프로젝트만 표시",
+    "clearSelection": "선택 지우기",
+    "selectedCount": "$count개 선택됨",
+    "failedToLoadProjects": "프로젝트 로드 실패"
+  },
+  "conflicts": {
+    "analysisWillRun": "충돌 분석이 실행됩니다",
+    "whenYouClickGenerate": "팩 생성을 클릭하면",
+    "noConflictsDetected": "감지된 충돌 없음",
+    "readyToCompile": "컴파일 준비 완료",
+    "analyzingConflicts": "충돌 분석 중...",
+    "analysisFailed": "분석 실패",
+    "conflictInfo": "프로젝트 이름을 클릭하여 세부 정보를 확인하십시오. 제외하려면 선택을 해제하십시오.",
+    "noAnalysisData": "분석 데이터 없음",
+    "noConflictsFound": "충돌이 발견되지 않았습니다",
+    "errorPrefix": "오류: $error",
+    "bbcodeError": "BBCode 생성 오류"
+  }
+}

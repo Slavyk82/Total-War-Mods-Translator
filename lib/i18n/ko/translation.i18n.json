@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "기록 타임라인",
+    "labels": {
+      "current": "현재",
+      "latest": "최신",
+      "versionN": "버전 $index",
+      "reason": "사유: $reason"
+    },
+    "actions": {
+      "restore": "복원",
+      "compare": "비교"
+    },
+    "empty": {
+      "title": "사용 가능한 기록이 없습니다",
+      "subtitle": "편집하면 변경사항이 여기에 표시됩니다"
+    },
+    "errors": {
+      "loadFailed": "기록을 불러오지 못했습니다"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "버전 복원",
+        "message": "이 버전을 복원하시겠습니까?\n\n현재 번역이 다음으로 대체됩니다:\n\"$preview\""
+      }
+    },
+    "toasts": {
+      "restored": "버전이 성공적으로 복원되었습니다",
+      "restoreFailed": "복원에 실패했습니다: $error"
+    }
+  },
+  "comparison": {
+    "title": "버전 비교",
+    "labels": {
+      "oldVersion": "이전 버전",
+      "newVersion": "새 버전",
+      "changes": "변경사항",
+      "charsAdded": "추가된 문자",
+      "charsRemoved": "제거된 문자",
+      "wordsAdded": "추가된 단어",
+      "wordsRemoved": "제거된 단어",
+      "totalChanges": "총 변경사항"
+    },
+    "actions": {
+      "copyOld": "이전 버전 복사",
+      "copyNew": "새 버전 복사",
+      "restoreOld": "이전 버전 복원"
+    },
+    "errors": {
+      "loadFailed": "버전을 비교하지 못했습니다"
+    },
+    "toasts": {
+      "copied": "클립보드에 복사됨",
+      "restored": "버전이 성공적으로 복원되었습니다",
+      "restoreFailed": "복원에 실패했습니다: $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "버전 복원",
+        "message": "이 버전을 복원하시겠습니까?\n\n미리보기:\n\"$preview\""
+      }
+    }
+  }
+}

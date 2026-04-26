@@ -1,0 +1,14 @@
+{
+  "labels": {
+    "resultOf": "$total개 중 $index번째 결과",
+    "pageOf": "$total페이지 중 $current페이지",
+    "keyPrefix": "키: $key",
+    "source": "원본:",
+    "target": "대상:"
+  },
+  "actions": {
+    "goTo": "이동",
+    "previousPage": "이전 페이지",
+    "nextPage": "다음 페이지"
+  }
+}

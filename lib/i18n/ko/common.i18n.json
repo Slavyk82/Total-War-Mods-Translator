@@ -1,0 +1,23 @@
+{
+  "actions": {
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "add": "추가",
+    "remove": "제거",
+    "refresh": "새로고침",
+    "close": "닫기",
+    "back": "뒤로",
+    "confirm": "확인",
+    "apply": "적용",
+    "reset": "재설정",
+    "copy": "복사",
+    "translate": "번역"
+  },
+  "yes": "예",
+  "no": "아니요",
+  "ok": "확인",
+  "loading": "로드 중…",
+  "error": "오류"
+}

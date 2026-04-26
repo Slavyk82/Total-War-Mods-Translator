@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Steam Workshop 폴더에서 로컬라이제이션 파일이 포함된 모드를 다시 스캔합니다",
+    "hiddenToggle": "일반 모드와 숨김 모드 보기를 전환합니다",
+    "importLocalPack": "Steam Workshop에서 가져오지 않은 로컬 .pack 파일을 가져옵니다",
+    "filterAll": "모든 모드를 표시합니다",
+    "filterNotImported": "번역 프로젝트가 없는 모드만 표시합니다",
+    "filterNeedsUpdate": "대기 중인 업데이트나 변경 사항이 있는 모드만 표시합니다"
+  },
+  "projects": {
+    "filterNeedsUpdate": "모드 원본 변경으로 인해 주의가 필요한 프로젝트를 표시합니다",
+    "filterNeedsReview": "검토 필요로 표시된 단위가 하나 이상 있는 프로젝트를 표시합니다",
+    "filterIncomplete": "구성된 모든 언어에서 아직 100% 번역되지 않은 프로젝트를 표시합니다",
+    "filterHasComplete": "하나 이상의 언어가 완전히 번역된 프로젝트를 표시합니다",
+    "filterExportOutdated": "마지막 내보내기 이후 수정된 프로젝트를 표시합니다",
+    "filterExported": "내보낸 프로젝트만 표시합니다",
+    "filterNotExported": "한 번도 내보내지 않은 프로젝트만 표시합니다",
+    "filterClear": "활성 상태 필터를 지웁니다"
+  },
+  "editor": {
+    "modelSelector": "번역에 사용할 AI 모델을 선택합니다",
+    "useTm": "체크 시, AI 모델에 질의하기 전에 번역 메모리를 참조합니다. 체크 해제 시 TM을 우회하고 항상 단위를 모델로 직접 전송합니다.",
+    "batchAuto": "선택된 모델의 토큰 예산에서 배치 크기를 자동으로 계산합니다. 끄면 고정된 단위 / 배치 값을 설정합니다.",
+    "batchUnits": "LLM 요청당 최대 번역 단위 수 (1–1000). 낮은 값은 시간 초과를 줄이는 대신 더 많은 토큰을 소비합니다.",
+    "batchParallel": "동시 LLM 요청 수 (1–20). 높을수록 빠르지만 API 부하가 증가합니다; 일반적으로 3–5입니다.",
+    "modRuleEdit": "모드별 번역 규칙 편집",
+    "modRuleAdd": "모드별 번역 규칙 추가"
+  },
+  "settings": {
+    "detectAllGames": "Steam 설치를 스캔하여 게임 경로를 자동으로 찾습니다",
+    "detectGame": "이 게임 설치 경로를 자동 감지합니다",
+    "browsePath": "폴더를 수동으로 선택합니다",
+    "testRpfm": "RPFM 실행 파일을 검증하고 버전을 표시합니다",
+    "defaultPath": "기본 경로를 사용합니다",
+    "detectWorkshop": "Steam Workshop 콘텐츠 폴더를 자동 감지합니다",
+    "addLanguage": "사용자 정의 언어를 추가합니다",
+    "addIgnoredText": "번역 중 건너뛸 새 원본 텍스트를 추가합니다",
+    "resetIgnoredDefaults": "모든 항목을 삭제하고 기본 무시 텍스트를 복원합니다",
+    "addRule": "새 번역 지침을 추가합니다",
+    "setDefaultModel": "이 공급자의 기본 모델로 설정합니다"
+  },
+  "tm": {
+    "import": "TMX 파일에서 번역 메모리 항목을 가져옵니다",
+    "export": "번역 메모리 항목을 TMX 파일로 내보냅니다",
+    "cleanup": "사용되지 않는 항목을 제거하여 데이터베이스 크기를 줄입니다"
+  },
+  "glossary": {
+    "new": "새 용어집을 생성합니다"
+  }
+}

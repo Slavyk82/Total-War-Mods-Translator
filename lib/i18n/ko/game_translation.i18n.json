@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "게임 번역",
+    "countOne": "$count개 번역",
+    "countMany": "$count개 번역",
+    "toolbar": {
+      "create": "게임 번역 만들기",
+      "noPacksTooltip": "이 게임의 현지화 팩을 찾을 수 없습니다"
+    },
+    "empty": {
+      "title": "아직 게임 번역이 없습니다",
+      "subtitle": "기본 게임을 번역하려면 새 번역을 만드십시오",
+      "noPacksWarning": "이 게임의 현지화 팩을 찾을 수 없습니다",
+      "errorLoadingPacks": "팩 로드 오류"
+    },
+    "loading": "게임 번역을 로드하는 중...",
+    "errors": {
+      "loadFailed": "게임 번역 로드 오류"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "게임 번역 삭제",
+        "message": "\"$name\"을(를) 정말 삭제하시겠습니까?",
+        "warning": "이 작업은 되돌릴 수 없습니다.",
+        "confirm": "삭제"
+      }
+    },
+    "toasts": {
+      "deleted": "게임 번역 \"$name\"이(가) 삭제되었습니다",
+      "deleteFailed": "게임 번역 삭제 실패: $error"
+    }
+  },
+  "wizard": {
+    "title": "게임 번역 만들기",
+    "steps": {
+      "selectSource": "원본 팩 선택",
+      "selectTargets": "대상 언어 선택"
+    },
+    "progress": {
+      "creatingProject": "프로젝트 생성 중...",
+      "extracting": "현지화 파일을 추출하는 중...",
+      "extractingProgress": "추출 중... $percent%",
+      "processing": "처리 중..."
+    },
+    "errors": {
+      "selectSourcePack": "원본 현지화 팩을 선택하십시오",
+      "selectTargetLanguage": "대상 언어를 하나 이상 선택하십시오"
+    },
+    "actions": {
+      "back": "뒤로",
+      "cancel": "취소",
+      "next": "다음",
+      "create": "만들기"
+    }
+  },
+  "stepSource": {
+    "description": "번역의 원본으로 사용할 게임 현지화 팩을 선택하십시오.",
+    "sectionLabel": "사용 가능한 현지화 팩",
+    "noGameSelected": "선택된 게임이 없습니다",
+    "noPacks": {
+      "title": "현지화 팩을 찾을 수 없습니다",
+      "subtitle": "게임이 설치되어 있고 data 폴더에 현지화 파일이 있는지 확인하십시오."
+    }
+  },
+  "stepTargets": {
+    "description": "게임을 번역할 언어를 선택하십시오.",
+    "translatingFrom": "번역 원본: ",
+    "selectionCount": "$count개 언어 선택됨",
+    "noLanguages": {
+      "title": "사용 가능한 언어가 없습니다",
+      "subtitle": "설정에서 대상 언어를 구성하십시오."
+    },
+    "actions": {
+      "selectAll": "모두 선택",
+      "clear": "지우기",
+      "addLanguage": "언어 추가"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "사용자 정의 언어 추가",
+    "description": "번역 프로젝트에서 사용할 수 있는 사용자 정의 언어를 추가합니다.",
+    "fields": {
+      "codeLabel": "언어 코드",
+      "codeHint": "예: pl, ko, ja",
+      "codeHelper": "ISO 639-1 코드 (2-3자)",
+      "codeErrors": {
+        "required": "언어 코드는 필수입니다",
+        "tooShort": "코드는 최소 2자 이상이어야 합니다",
+        "lettersOnly": "코드는 문자만 포함해야 합니다"
+      },
+      "nameLabel": "언어 이름",
+      "nameHint": "예: 폴란드어, 한국어, 일본어",
+      "nameHelper": "이 언어의 표시 이름",
+      "nameErrors": {
+        "required": "언어 이름은 필수입니다"
+      }
+    },
+    "defaultLanguage": {
+      "label": "기본 언어로 설정",
+      "description": "이 언어는 모든 새 모드 번역 프로젝트의 기본 대상 언어가 됩니다."
+    },
+    "info": "사용자 정의 언어는 나중에 설정에서 삭제할 수 있습니다. 시스템 언어(영어, 프랑스어 등)는 수정할 수 없습니다.",
+    "actions": {
+      "add": "추가"
+    },
+    "toasts": {
+      "addedAsDefault": "언어 \"$name\"이(가) 추가되어 기본값으로 설정되었습니다",
+      "addedSuccessfully": "언어 \"$name\"이(가) 성공적으로 추가되었습니다",
+      "addFailed": "언어 추가 실패"
+    }
+  }
+}

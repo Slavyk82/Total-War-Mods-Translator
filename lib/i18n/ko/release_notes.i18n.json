@@ -1,0 +1,20 @@
+{
+  "dialogs": {
+    "whatsNew": {
+      "title": "새로운 기능",
+      "releasePrefix": "릴리스 $version",
+      "noNotes": "이 버전에 사용 가능한 릴리스 노트가 없습니다."
+    },
+    "releaseHistory": {
+      "title": "릴리스 기록",
+      "subtitleOne": "$count개 릴리스",
+      "subtitleMany": "$count개 릴리스",
+      "noNotes": "사용 가능한 릴리스 노트가 없습니다",
+      "noReleasesAvailable": "이 버전에 사용 가능한 릴리스 노트가 없습니다."
+    }
+  },
+  "actions": {
+    "viewOnGitHub": "GitHub에서 보기",
+    "gotIt": "확인"
+  }
+}

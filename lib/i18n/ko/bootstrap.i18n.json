@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "Workshop 모드 스캔 중...",
+    "titleRefreshing": "구독자 수 새로고침 중...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI를 찾을 수 없습니다",
+      "content": "Workshop 스캔에는 모드 팩 파일을 읽기 위해 RPFM-CLI가 필요하지만, 구성된 경로에서 찾을 수 없습니다.\n\n설정 → 폴더 → RPFM을 열어 경로를 업데이트하거나 새 사본을 다운로드하십시오.",
+      "actions": {
+        "close": "닫기",
+        "openSettings": "설정 열기"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "검증 데이터 준비 중",
+      "updating": "검증 데이터 업데이트 중",
+      "resuming": "검증 업데이트 재개 중",
+      "required": "검증 데이터 업데이트 필요"
+    },
+    "labels": {
+      "scanningEntries": "검증 항목 스캔 중...",
+      "normalizedOf": "$total개 중 $processed개 정규화됨",
+      "upgradingLegacy": "레거시 검증 레코드를 새 형식으로 업그레이드합니다.",
+      "preparing": "준비 중...",
+      "startingRescan": "다시 스캔 시작 중...",
+      "rescannedOf": "$total개 중 $done개 다시 스캔됨",
+      "rescannedOfEta": "$total개 중 $done개 다시 스캔됨 — 예상 시간 $eta",
+      "closingWillPause": "앱을 닫으면 업데이트가 일시 중지되며, 다음 실행 시 재개됩니다."
+    },
+    "plan": {
+      "resumeBody": "이전 업데이트가 중단되었습니다. 전체 $totalAll개 단위 중 $already개가 이미 처리되었습니다. 남음: $remaining개 단위 • 예상: 약 $estimated.",
+      "freshBody": "이번 릴리스에서는 번역 검증 진단을 위한 새롭고 더 풍부한 형식을 사용합니다. 이를 활용하려면 모든 기존 번역을 한 번 다시 스캔해야 합니다.\n\n다시 스캔할 단위 $total개 • 예상: 약 $estimated\n\n이 작업은 한 번만 실행됩니다. 완료될 때까지 앱을 닫지 마십시오 — 중단되면 다음 실행 시 업데이트가 재개됩니다."
+    },
+    "actions": {
+      "continue": "계속",
+      "startRescan": "다시 스캔 시작"
+    },
+    "toasts": {
+      "updateComplete": "검증 데이터 업데이트가 완료되었습니다."
+    }
+  }
+}

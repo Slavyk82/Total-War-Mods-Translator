@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "게임 로드 중...",
+    "errorLoadingGames": "게임 로드 중 오류 발생",
+    "configureAGame": "게임 구성",
+    "selectAGame": "게임 선택"
+  },
+  "sidebarUpdateChecker": {
+    "version": "버전: $version",
+    "checking": "확인 중...",
+    "upToDate": "최신 상태",
+    "checkForUpdates": "업데이트 확인",
+    "updateAvailable": "v$version 사용 가능",
+    "dismiss": "무시",
+    "downloading": "다운로드 중...",
+    "installAndRestart": "설치 후 재시작",
+    "downloadWithSize": "다운로드 ($size)",
+    "viewOnGitHub": "GitHub에서 보기",
+    "viewReleaseNotes": "릴리스 노트 보기",
+    "whatsNew": "새로운 소식?",
+    "errors": {
+      "failedToLoadReleaseNotes": "릴리스 노트를 불러오지 못했습니다: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "테마 전환",
+    "selectTheme": "테마 선택",
+    "groups": {
+      "workflow": "워크플로",
+      "tools": "도구",
+      "system": "시스템"
+    },
+    "items": {
+      "home": "홈",
+      "detect": "감지",
+      "translate": "번역",
+      "publish": "게시",
+      "glossary": "용어집",
+      "translationMemory": "번역 메모리",
+      "gameTranslation": "게임 번역",
+      "packCompilation": "팩 컴파일",
+      "settings": "설정"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "데이터베이스 업데이트",
+    "subtitle": "일회성 마이그레이션 필요",
+    "preparing": "준비 중...",
+    "info": "이 과정은 번역 메모리가 올바르게 작동하도록 보장합니다. 애플리케이션을 닫지 마십시오.",
+    "actions": {
+      "retry": "다시 시도"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "클릭하여 열기"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count개 활성"
+  },
+  "nextStepCta": {
+    "next": "다음: $label"
+  },
+  "toolbar": {
+    "back": "뒤로"
+  },
+  "wizardStepHeader": {
+    "step": "단계 $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "지우기"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1시간",
+    "hours": "${hours}시간",
+    "oneDay": "1일",
+    "days": "$days일",
+    "oneMonth": "1개월",
+    "months": "$months개월",
+    "oneYear": "1년",
+    "years": "$years년"
+  }
+}

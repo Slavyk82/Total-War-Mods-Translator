@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "설정",
+    "tabs": {
+      "general": "일반",
+      "folders": "폴더",
+      "llmProviders": "LLM 공급자"
+    }
+  },
+  "errors": {
+    "loadSettings": "설정을 로드하는 중 오류가 발생했습니다: $error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "데이터베이스 백업",
+      "sectionSubtitle": "데이터를 보호하기 위해 백업을 생성하거나 이전 백업에서 복원합니다.",
+      "cardTitle": "백업 작업",
+      "processing": "처리 중...",
+      "exportTitle": "백업 내보내기",
+      "exportDescription": "데이터베이스를 ZIP 파일로 저장합니다",
+      "importTitle": "백업 가져오기",
+      "importDescription": "백업 파일에서 데이터베이스를 복원합니다",
+      "saveDialogTitle": "데이터베이스 백업 저장",
+      "openDialogTitle": "백업 파일 선택",
+      "restoreDialog": {
+        "title": "복원 완료",
+        "message": "데이터베이스가 성공적으로 복원되었습니다. 변경 사항을 적용하기 위해 응용 프로그램이 재시작됩니다.",
+        "restartNow": "지금 재시작"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "데이터베이스 유지 관리",
+      "sectionSubtitle": "데이터베이스 통계와 번역 상태를 유지하고 수정하기 위한 도구입니다.",
+      "cardTitle": "유지 관리 작업",
+      "processing": "처리 중...",
+      "actions": {
+        "reanalyzeTitle": "번역 재분석",
+        "reanalyzeDescription": "상태 불일치를 수정하고 번역되지 않은 단위를 감지합니다",
+        "clearModCacheTitle": "모드 업데이트 캐시 지우기",
+        "clearModCacheDescription": "오래된 \"보류 중인 변경 사항\" 배지를 제거합니다",
+        "rebuildTmTitle": "번역 메모리 재구축",
+        "rebuildTmDescription": "기존 번역에서 누락된 TM 항목을 복구합니다",
+        "migrateTmHashesTitle": "레거시 TM 해시 마이그레이션",
+        "migrateTmHashesDescription": "TM 조회를 위해 이전 정수 해시를 SHA256으로 변환합니다",
+        "resetOnboardingTitle": "온보딩 힌트 재설정",
+        "resetOnboardingDescription": "숨겼던 Workshop 온보딩 카드를 다시 표시합니다"
+      },
+      "toasts": {
+        "onboardingReset": "온보딩 힌트가 다시 표시됩니다."
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "번역 언어 환경설정",
+      "sectionSubtitle": "번역에 사용할 수 있는 언어를 관리하고 기본 대상 언어를 설정합니다",
+      "addLanguage": "언어 추가",
+      "toasts": {
+        "addSuccess": "언어가 성공적으로 추가되었습니다",
+        "addFailed": "언어를 추가하지 못했습니다"
+      },
+      "grid": {
+        "columnDefault": "기본값",
+        "columnCode": "코드",
+        "columnLanguage": "언어",
+        "customBadge": "사용자 정의",
+        "emptyTitle": "사용 가능한 언어가 없습니다",
+        "errorTitle": "언어를 로드하는 중 오류가 발생했습니다",
+        "deleteTooltip": "언어 삭제"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "언어 삭제",
+          "message": "\"$name\"을(를) 삭제하시겠습니까?",
+          "warning": "이 작업은 취소할 수 없습니다.",
+          "confirmLabel": "삭제"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name이(가) 기본 언어로 설정되었습니다",
+        "setDefaultFailed": "기본 언어를 설정하지 못했습니다",
+        "deleteSuccess": "언어가 성공적으로 삭제되었습니다",
+        "deleteFailed": "언어를 삭제하지 못했습니다"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "게임 설치",
+      "sectionSubtitle": "Total War 게임 경로를 구성합니다",
+      "detectingLabel": "감지 중...",
+      "detectAllButton": "모든 게임 자동 감지",
+      "detectAllDescription": "설치된 모든 Total War 게임을 자동으로 찾습니다",
+      "detectButton": "감지",
+      "browseButton": "찾아보기",
+      "pathHint": "$game 설치 경로...",
+      "browseDialogTitle": "$game 설치 폴더 선택",
+      "toasts": {
+        "gameFound": "$game 찾음",
+        "gameNotFound": "$game 을(를) 찾을 수 없음",
+        "detectionFailed": "감지 실패: $error",
+        "allFound": "$count 개의 게임을 찾았습니다",
+        "noneFound": "게임을 찾을 수 없습니다",
+        "saveError": "게임 경로를 저장하는 중 오류가 발생했습니다: $error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "RPFM 도구",
+      "sectionSubtitle": "팩 파일 추출을 위한 RPFM 실행 파일 경로",
+      "executableSubtitle": "RPFM 실행 파일",
+      "schemaSubtitle": "RPFM 스키마 폴더",
+      "schemaDescription": "RPFM 스키마 파일이 있는 폴더 (예: schema_wh3.ron)",
+      "testButton": "테스트",
+      "browseButton": "찾아보기",
+      "defaultButton": "기본값",
+      "browseExeDialogTitle": "RPFM 실행 파일 선택",
+      "browseSchemaDialogTitle": "RPFM 스키마 폴더 선택",
+      "toasts": {
+        "enterPathFirst": "먼저 RPFM 경로를 입력하십시오",
+        "testing": "RPFM 실행 파일을 테스트하는 중...",
+        "validating": "RPFM 실행 파일을 검증하는 중...",
+        "validatedSuccess": "RPFM v$version 이(가) 성공적으로 검증되었습니다",
+        "testSuccess": "RPFM v$version 이(가) 정상적으로 작동합니다",
+        "invalidExe": "잘못된 RPFM 실행 파일: $error",
+        "testFailed": "RPFM 테스트 실패: $error",
+        "usernameNotDetected": "사용자 이름을 감지할 수 없습니다",
+        "defaultPathSet": "기본 스키마 경로로 설정되었습니다",
+        "savePathError": "RPFM 경로를 저장하는 중 오류가 발생했습니다: $error",
+        "saveSchemaPathError": "RPFM 스키마 경로를 저장하는 중 오류가 발생했습니다: $error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Steam Workshop 콘텐츠의 기본 폴더 (게임 ID는 자동으로 추가됩니다)",
+      "folderSubtitle": "Steam Workshop 기본 폴더",
+      "detectingLabel": "감지 중...",
+      "detectButton": "감지",
+      "browseButton": "찾아보기",
+      "browseDialogTitle": "Steam Workshop 폴더 선택",
+      "toasts": {
+        "detected": "Workshop 폴더가 감지되었습니다: $path",
+        "notFound": "Workshop 폴더를 찾을 수 없습니다. 수동으로 선택하십시오.",
+        "detectionFailed": "감지 실패: $error",
+        "detectionError": "감지 오류: $error",
+        "saveError": "Workshop 경로를 저장하는 중 오류가 발생했습니다: $error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "사용자 정의 언어 추가",
+    "description": "번역 프로젝트에서 사용할 수 있는 사용자 정의 언어를 추가합니다.",
+    "codeLabel": "언어 코드 (ISO 639-1, 2-3자)",
+    "nameLabel": "언어 이름",
+    "codeHint": "예: pl, ko, ja",
+    "nameHint": "예: 폴란드어, 한국어, 일본어",
+    "info": "사용자 정의 언어는 나중에 삭제할 수 있습니다. 시스템 언어 (영어, 프랑스어 등) 는 수정할 수 없습니다.",
+    "cancel": "취소",
+    "add": "추가",
+    "errors": {
+      "codeRequired": "언어 코드는 필수입니다",
+      "codeTooShort": "코드는 2자 이상이어야 합니다",
+      "codeLettersOnly": "코드는 문자로만 구성되어야 합니다",
+      "codeTooLong": "코드는 최대 5자까지 가능합니다",
+      "nameRequired": "언어 이름은 필수입니다",
+      "nameTooLong": "이름은 최대 50자까지 가능합니다"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "데이터베이스 백업을 복원하시겠습니까?",
+    "fromLabel": "다음에서 데이터베이스를 복원하려고 합니다:",
+    "warningTitle": "경고: 현재의 모든 데이터가 대체됩니다!",
+    "warningBody": "모든 프로젝트, 번역, 용어집 및 설정이 덮어쓰기됩니다. 이 작업은 취소할 수 없습니다.",
+    "cancel": "취소",
+    "restore": "복원"
+  },
+  "llmProviders": {
+    "title": "LLM 공급자",
+    "subtitle": "번역 공급자를 위한 API 키 및 모델을 구성합니다",
+    "advancedSettings": {
+      "title": "고급 설정",
+      "rateLimitLabel": "속도 제한 (분당 요청 수)",
+      "saveError": "속도 제한을 저장하는 중 오류가 발생했습니다: $error"
+    },
+    "providerSection": {
+      "subtitle": "API 키 및 모델 구성",
+      "apiKeyLabel": "API 키",
+      "apiKeyHint": "API 키 입력...",
+      "testConnectionTooltip": "연결 테스트",
+      "toasts": {
+        "connectionSuccess": "연결 성공!",
+        "connectionFailed": "연결 실패: $error",
+        "saveApiKeyError": "$provider API 키를 저장하는 중 오류가 발생했습니다: $error"
+      }
+    },
+    "models": {
+      "headerTitle": "모델",
+      "footer": "모델을 활성화하려면 체크하십시오. 전역 기본값으로 설정하려면 별표를 클릭하십시오.",
+      "legend": "모델을 번역에 사용할 수 있도록 체크하십시오. 모델을 전역 기본값으로 설정하려면 별표를 클릭하십시오 (모든 공급자를 통틀어 기본값은 하나만 가능).",
+      "errorLoading": "모델을 로드하는 중 오류가 발생했습니다: $error",
+      "noModels": "이 공급자에 사용 가능한 모델이 없습니다",
+      "badges": {
+        "default": "기본값",
+        "archived": "보관됨"
+      },
+      "toasts": {
+        "disabled": "모델이 비활성화되었습니다",
+        "enabled": "모델이 활성화되었습니다",
+        "toggleFailed": "모델 상태를 전환하지 못했습니다: $error",
+        "setDefaultSuccess": "모델이 기본값으로 설정되었습니다",
+        "setDefaultFailed": "기본값을 설정하지 못했습니다: $error"
+      },
+      "dialog": {
+        "titleManage": "$provider 모델 관리",
+        "subtitle": "번역에 사용할 모델을 선택하십시오"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "사용자 정의 번역 규칙",
+    "accordionSubtitle": "번역 프롬프트에 사용자 정의 지침을 추가합니다",
+    "infoText": "사용자 정의 규칙은 LLM에 전송되는 모든 번역 프롬프트에 추가됩니다. 모든 프로젝트에 적용되는 전역 지침, 용어 가이드라인 또는 번역 환경설정을 정의하는 데 사용하십시오.",
+    "addRuleButton": "규칙 추가",
+    "toasts": {
+      "addSuccess": "규칙이 성공적으로 추가되었습니다",
+      "addFailed": "규칙을 추가하지 못했습니다",
+      "updateSuccess": "규칙이 성공적으로 업데이트되었습니다",
+      "updateFailed": "규칙을 업데이트하지 못했습니다",
+      "deleteSuccess": "규칙이 성공적으로 삭제되었습니다",
+      "deleteFailed": "규칙을 삭제하지 못했습니다",
+      "toggleFailed": "규칙 상태를 전환하지 못했습니다"
+    },
+    "grid": {
+      "columnActive": "활성",
+      "columnRuleText": "규칙 텍스트",
+      "columnActions": "작업",
+      "emptyTitle": "정의된 사용자 정의 규칙이 없습니다",
+      "emptySubtitle": "모든 번역 프롬프트를 사용자 정의하기 위한 전역 규칙을 추가하십시오",
+      "errorTitle": "규칙을 로드하는 중 오류가 발생했습니다",
+      "editTooltip": "규칙 편집",
+      "deleteTooltip": "규칙 삭제"
+    },
+    "editorDialog": {
+      "addTitle": "사용자 정의 규칙 추가",
+      "editTitle": "사용자 정의 규칙 편집",
+      "description": "모든 번역 프롬프트에 추가될 규칙 텍스트를 입력하십시오. 이 규칙은 모든 프로젝트에 전역적으로 적용됩니다.",
+      "ruleTextLabel": "규칙 텍스트",
+      "ruleTextHint": "예: 항상 격식체를 사용하고 축약형을 피하십시오...",
+      "tipsTitle": "팁",
+      "tipsText": "• 지침을 구체적이고 명확하게 작성하십시오\n• 여러 규칙에는 글머리 기호를 사용하십시오\n• 규칙은 번역 프롬프트에 순서대로 추가됩니다\n• 규칙을 삭제하지 않고 일시적으로 비활성화할 수 있습니다",
+      "cancel": "취소",
+      "save": "저장",
+      "add": "추가",
+      "errors": {
+        "ruleTextRequired": "규칙 텍스트를 입력하십시오"
+      }
+    },
+    "deleteDialog": {
+      "title": "규칙 삭제",
+      "message": "이 사용자 정의 규칙을 삭제하시겠습니까?",
+      "warning": "이 작업은 취소할 수 없습니다.",
+      "confirmLabel": "삭제"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "무시된 원본 텍스트",
+    "accordionSubtitle": "번역 중 특정 원본 텍스트를 건너뜁니다",
+    "infoText": "이 값과 일치하는 원본 텍스트는 번역에서 제외됩니다. 참고: [PLACEHOLDER]와 같이 완전히 대괄호로 묶인 텍스트는 자동으로 건너뜁니다. 모드에 특화된 사용자 정의 패턴에는 이 목록을 사용하십시오.",
+    "resetButton": "기본값으로 재설정",
+    "addButton": "텍스트 추가",
+    "toasts": {
+      "addSuccess": "텍스트가 성공적으로 추가되었습니다",
+      "addFailed": "텍스트를 추가하지 못했습니다",
+      "updateSuccess": "텍스트가 성공적으로 업데이트되었습니다",
+      "updateFailed": "텍스트를 업데이트하지 못했습니다",
+      "deleteSuccess": "텍스트가 성공적으로 삭제되었습니다",
+      "deleteFailed": "텍스트를 삭제하지 못했습니다",
+      "resetSuccess": "기본값으로 성공적으로 재설정되었습니다",
+      "resetFailed": "기본값으로 재설정하지 못했습니다",
+      "toggleFailed": "텍스트 상태를 전환하지 못했습니다"
+    },
+    "grid": {
+      "columnActive": "활성",
+      "columnSourceText": "원본 텍스트",
+      "columnActions": "작업",
+      "emptyTitle": "정의된 무시 텍스트가 없습니다",
+      "emptySubtitle": "번역 중 건너뛸 원본 텍스트를 추가하십시오",
+      "errorTitle": "무시된 텍스트를 로드하는 중 오류가 발생했습니다",
+      "editTooltip": "편집",
+      "deleteTooltip": "삭제"
+    },
+    "editorDialog": {
+      "addTitle": "무시 텍스트 추가",
+      "editTitle": "무시 텍스트 편집",
+      "description": "번역 중 건너뛸 원본 텍스트를 입력하십시오. 일치는 대소문자를 구분하지 않습니다.",
+      "sourceTextLabel": "원본 텍스트",
+      "sourceTextHint": "예: placeholder, [hidden] 등",
+      "infoTitle": "정보",
+      "infoText": "• 이 텍스트와 일치하는 단위는 번역에서 제외됩니다\n• [unit_name]과 같이 대괄호로 묶인 텍스트는 자동으로 건너뜁니다\n• 모드에 특화된 사용자 정의 자리 표시자에 사용하십시오\n• 변경 사항은 새 번역에 즉시 적용됩니다",
+      "cancel": "취소",
+      "save": "저장",
+      "add": "추가",
+      "errors": {
+        "sourceTextRequired": "원본 텍스트를 입력하십시오"
+      }
+    },
+    "deleteDialog": {
+      "title": "무시 텍스트 삭제",
+      "message": "\"$text\"을(를) 삭제하시겠습니까?",
+      "warning": "이 작업은 취소할 수 없습니다.",
+      "confirmLabel": "삭제"
+    },
+    "resetDialog": {
+      "title": "기본값으로 재설정",
+      "message": "현재의 모든 무시된 텍스트가 삭제되고 기본값이 복원됩니다:\n\n• placeholder\n• dummy\n\n참고: [placeholder]와 같이 대괄호로 완전히 묶인 텍스트는 항상 자동으로 필터링됩니다.\n\n계속하시겠습니까?",
+      "confirmLabel": "재설정"
+    }
+  }
+}
