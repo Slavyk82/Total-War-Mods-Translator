@@ -72,6 +72,32 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
     // Subscribe to the scanner's stream once and forward into our controller.
     final scanLogStream = ref.read(scanLogStreamProvider);
     _scanSub = scanLogStream.listen(_logController.add);
+
+    // Drive phase 2 from a manual subscription with `fireImmediately: true`
+    // so the dialog also handles the case where the scan already settled
+    // before this dialog opened.
+    //
+    // Why this matters: the Home screen renders behind the bootstrap modals
+    // (data migration, glossary migration, validation rescan) and its ribbon
+    // widgets read `detectedModsProvider`, which kicks off the Workshop scan
+    // immediately. After a slow migration the scan is already in `AsyncData`
+    // / `AsyncError` by the time we reach this dialog. A plain `ref.listen`
+    // inside `build` would not fire for the pre-existing value and the
+    // dialog would sit on "Initializing..." forever waiting for a state
+    // change that never comes.
+    ref.listenManual<AsyncValue<List<DetectedMod>>>(
+      detectedModsProvider,
+      fireImmediately: true,
+      (prev, next) {
+        if (next.hasError && next.error is RpfmNotFoundException) {
+          _handleRpfmUnavailable();
+          return;
+        }
+        if ((next.hasValue && !next.isLoading) || next.hasError) {
+          unawaited(_runPhaseTwo());
+        }
+      },
+    );
   }
 
   @override
@@ -186,20 +212,6 @@ class _ModScanBootDialogState extends ConsumerState<ModScanBootDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // Phase 1: subscribe to the mods scan. Once it resolves, kick off phase 2
-    // (subscriber refresh) without closing the dialog. Phase 2 closes the
-    // dialog when it resolves.
-    ref.listen<AsyncValue<List<DetectedMod>>>(detectedModsProvider,
-        (prev, next) {
-      if (next.hasError && next.error is RpfmNotFoundException) {
-        _handleRpfmUnavailable();
-        return;
-      }
-      if ((next.hasValue && !next.isLoading) || next.hasError) {
-        unawaited(_runPhaseTwo());
-      }
-    });
-
     return PopScope(
       canPop: false,
       child: Dialog(
