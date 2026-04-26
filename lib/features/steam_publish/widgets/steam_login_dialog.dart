@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -119,7 +120,7 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
 
     return TokenDialog(
       icon: FluentIcons.person_24_regular,
-      title: 'Steam Login',
+      title: t.steamPublish.loginDialog.title,
       width: 460,
       body: _loading
           ? Padding(
@@ -135,7 +136,7 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Enter your Steam credentials to publish to the Workshop.',
+                    t.steamPublish.loginDialog.description,
                     style: tokens.fontBody.copyWith(
                       fontSize: 13,
                       color: tokens.textDim,
@@ -148,14 +149,14 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                         .copyWith(fontSize: 13, color: tokens.text),
                     decoration: _decoration(
                       tokens,
-                      label: 'Username',
+                      label: t.steamPublish.loginDialog.usernameLabel,
                       prefixIcon: FluentIcons.person_24_regular,
                     ),
                     autofocus: true,
                     textInputAction: TextInputAction.next,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Username is required';
+                        return t.steamPublish.loginDialog.errors.usernameRequired;
                       }
                       return null;
                     },
@@ -167,7 +168,7 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                         .copyWith(fontSize: 13, color: tokens.text),
                     decoration: _decoration(
                       tokens,
-                      label: 'Password',
+                      label: t.steamPublish.loginDialog.passwordLabel,
                       prefixIcon: FluentIcons.lock_closed_24_regular,
                     ).copyWith(
                       suffixIcon: MouseRegion(
@@ -190,14 +191,14 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                     onFieldSubmitted: (_) => _submit(),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Password is required';
+                        return t.steamPublish.loginDialog.errors.passwordRequired;
                       }
                       return null;
                     },
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Steam Guard (optional)',
+                    t.steamPublish.loginDialog.steamGuardSection,
                     style: tokens.fontBody.copyWith(
                       fontSize: 13,
                       color: tokens.text,
@@ -206,9 +207,7 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'If you have Steam Mobile Authenticator, open the Steam '
-                    'app on your phone → Steam Guard → enter the 5-character '
-                    'code.',
+                    t.steamPublish.loginDialog.steamGuardDescription,
                     style: tokens.fontBody.copyWith(
                       fontSize: 11.5,
                       color: tokens.textDim,
@@ -221,9 +220,9 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
                         .copyWith(fontSize: 13, color: tokens.text),
                     decoration: _decoration(
                       tokens,
-                      label: 'Steam Guard Code',
+                      label: t.steamPublish.loginDialog.steamGuardCodeLabel,
                       prefixIcon: FluentIcons.shield_keyhole_24_regular,
-                      hint: 'XXXXX',
+                      hint: t.steamPublish.loginDialog.hintCode,
                     ),
                     textCapitalization: TextCapitalization.characters,
                     inputFormatters: [
@@ -245,11 +244,11 @@ class _SteamLoginDialogState extends State<SteamLoginDialog> {
             ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.steamPublish.loginDialog.cancel,
           onTap: () => Navigator.of(context).pop(null),
         ),
         SmallTextButton(
-          label: 'Login',
+          label: t.steamPublish.loginDialog.login,
           icon: FluentIcons.arrow_right_24_regular,
           filled: true,
           onTap: _loading ? null : _submit,
@@ -336,14 +335,14 @@ class _RememberToggle extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Remember my credentials',
+                      t.steamPublish.loginDialog.rememberCredentials,
                       style: tokens.fontBody.copyWith(
                         fontSize: 13,
                         color: tokens.text,
                       ),
                     ),
                     Text(
-                      'Stored securely on this device',
+                      t.steamPublish.loginDialog.storedSecurely,
                       style: tokens.fontBody.copyWith(
                         fontSize: 11.5,
                         color: tokens.textDim,

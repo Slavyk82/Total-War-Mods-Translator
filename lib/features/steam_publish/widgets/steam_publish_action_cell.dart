@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/platform/game_launcher_opener.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -62,8 +63,8 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
               Expanded(child: _buildGenerateButton(context, padded: false)),
               const SizedBox(width: 6),
               SmallTextButton(
-                label: 'Open in Steam',
-                tooltip: 'Open in Steam Workshop',
+                label: t.steamPublish.actionCell.buttons.openInWorkshop,
+                tooltip: t.steamPublish.actionCell.tooltips.openInWorkshop,
                 icon: FluentIcons.open_24_regular,
                 onTap: _openWorkshop,
               ),
@@ -92,8 +93,8 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     final item = widget.item;
     final core = Tooltip(
       message: item.isCompilation
-          ? 'Open compilation editor to generate'
-          : 'Generate .pack file',
+          ? t.steamPublish.actionCell.tooltips.openCompilationToGenerate
+          : t.steamPublish.actionCell.tooltips.generatePackFile,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
@@ -125,8 +126,8 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                   const SizedBox(width: 6),
                   Text(
                     item.isCompilation
-                        ? 'Open compilation'
-                        : 'Generate pack',
+                        ? t.steamPublish.actionCell.buttons.openCompilation
+                        : t.steamPublish.actionCell.buttons.generatePack,
                     maxLines: 1,
                     softWrap: false,
                     overflow: TextOverflow.clip,
@@ -186,7 +187,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  _generateStep ?? 'Generating...',
+                  _generateStep ?? t.steamPublish.actionCell.progress.generating,
                   overflow: TextOverflow.ellipsis,
                   style: tokens.fontBody.copyWith(
                     fontSize: 11.5,
@@ -232,7 +233,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       if (languages.isEmpty) {
         FluentToast.warning(
           context,
-          'No languages configured for this project.',
+          t.steamPublish.actionCell.toasts.noLanguages,
         );
         return;
       }
@@ -261,7 +262,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     setState(() {
       _isGenerating = true;
       _generateProgress = 0.0;
-      _generateStep = 'Preparing...';
+      _generateStep = t.steamPublish.actionCell.progress.preparing;
     });
 
     try {
@@ -285,18 +286,18 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
       if (result.isOk) {
         FluentToast.success(
           context,
-          'Pack generated: ${result.value.entryCount} entries',
+          t.steamPublish.actionCell.toasts.packGenerated(count: result.value.entryCount),
         );
         ref.invalidate(publishableItemsProvider);
       } else {
         FluentToast.error(
           context,
-          'Failed to generate pack: ${result.error}',
+          t.steamPublish.actionCell.toasts.packFailed(error: result.error),
         );
       }
     } catch (e) {
       if (mounted) {
-        FluentToast.error(context, 'Error generating pack: $e');
+        FluentToast.error(context, t.steamPublish.actionCell.toasts.packError(error: e));
       }
     } finally {
       if (mounted) {
@@ -313,17 +314,17 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     final langSuffix = language != null ? ' ($language)' : '';
     switch (step) {
       case 'preparingData':
-        return 'Preparing data...';
+        return t.steamPublish.actionCell.progress.steps.preparingData;
       case 'generatingLocFiles':
-        return 'Generating .loc files$langSuffix';
+        return t.steamPublish.actionCell.progress.steps.generatingLocFiles(lang: langSuffix);
       case 'creatingPack':
-        return 'Creating .pack$langSuffix';
+        return t.steamPublish.actionCell.progress.steps.creatingPack(lang: langSuffix);
       case 'generatingImage':
-        return 'Generating preview image...';
+        return t.steamPublish.actionCell.progress.steps.generatingPreview;
       case 'finalizing':
-        return 'Finalizing...';
+        return t.steamPublish.actionCell.progress.steps.finalizing;
       case 'completed':
-        return 'Completed';
+        return t.steamPublish.actionCell.progress.steps.completed;
       default:
         return step;
     }
@@ -339,7 +340,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     if (!ok && mounted) {
       FluentToast.warning(
         context,
-        'Could not open the Steam client. Is Steam installed?',
+        t.steamPublish.actionCell.toasts.steamNotFound,
       );
     }
   }
@@ -359,8 +360,8 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     final updateBorder = updateDisabled ? tokens.border : tokens.accent;
     final updateBg = updateDisabled ? tokens.panel2 : tokens.accentBg;
     final updateTooltip = updateDisabled
-        ? 'Set the Steam ID first to enable updating'
-        : 'Update existing Workshop item';
+        ? t.steamPublish.actionCell.tooltips.setIdFirst
+        : t.steamPublish.actionCell.tooltips.updateWorkshop;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -406,7 +407,7 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            'Update',
+                            t.steamPublish.actionCell.buttons.update,
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.clip,
@@ -428,13 +429,13 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
           if (updateDisabled)
             _iconButton(
               icon: FluentIcons.play_24_regular,
-              tooltip: 'Open the in-game launcher',
+              tooltip: t.steamPublish.actionCell.tooltips.openGameLauncher,
               onTap: _openLauncher,
             )
           else
             _iconButton(
               icon: FluentIcons.open_24_regular,
-              tooltip: 'Open in Steam Workshop',
+              tooltip: t.steamPublish.actionCell.tooltips.openInWorkshop,
               onTap: _openWorkshop,
             ),
         ],

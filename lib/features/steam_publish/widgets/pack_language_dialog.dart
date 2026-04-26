@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -40,7 +41,7 @@ class _PackLanguageDialogState extends State<PackLanguageDialog> {
   Widget build(BuildContext context) {
     return TokenDialog(
       icon: FluentIcons.globe_24_regular,
-      title: 'Select languages',
+      title: t.steamPublish.packLanguageDialog.title,
       width: 360,
       body: Column(
         mainAxisSize: MainAxisSize.min,
@@ -64,11 +65,11 @@ class _PackLanguageDialogState extends State<PackLanguageDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.steamPublish.packLanguageDialog.cancel,
           onTap: () => Navigator.of(context).pop(null),
         ),
         SmallTextButton(
-          label: 'Generate',
+          label: t.steamPublish.packLanguageDialog.generate,
           icon: FluentIcons.checkmark_24_regular,
           filled: true,
           onTap: _selected.isEmpty

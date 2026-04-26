@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
@@ -101,13 +102,11 @@ class _BatchWorkshopPublishScreenState
     if (!state.isPublishing) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Publication in Progress',
-        message:
-            'A batch publication is currently in progress. Are you sure you '
-            'want to leave? The remaining uploads will be cancelled.',
-        cancelLabel: 'Stay',
-        confirmLabel: 'Leave',
+      builder: (_) => TokenConfirmDialog(
+        title: t.steamPublish.batchPublish.confirmLeave.title,
+        message: t.steamPublish.batchPublish.confirmLeave.message,
+        cancelLabel: t.steamPublish.batchPublish.confirmLeave.stay,
+        confirmLabel: t.steamPublish.batchPublish.confirmLeave.leave,
         destructive: true,
       ),
     );
@@ -126,13 +125,11 @@ class _BatchWorkshopPublishScreenState
   Future<void> _confirmCancel() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Cancel Batch Publish?',
-        message:
-            'Remaining uploads will be aborted. Already-uploaded items are '
-            'not rolled back.',
-        cancelLabel: 'Keep going',
-        confirmLabel: 'Stop',
+      builder: (_) => TokenConfirmDialog(
+        title: t.steamPublish.batchPublish.confirmCancel.title,
+        message: t.steamPublish.batchPublish.confirmCancel.message,
+        cancelLabel: t.steamPublish.batchPublish.confirmCancel.keepGoing,
+        confirmLabel: t.steamPublish.batchPublish.confirmCancel.stop,
         destructive: true,
       ),
     );
@@ -168,10 +165,10 @@ class _BatchWorkshopPublishScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DetailScreenToolbar(
-              crumbs: const [
-                CrumbSegment('Publishing'),
-                CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
-                CrumbSegment('No items staged'),
+              crumbs: [
+                const CrumbSegment('Publishing'),
+                const CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+                CrumbSegment(t.steamPublish.batchPublish.empty.title),
               ],
               onBack: () {
                 if (context.canPop()) context.pop();
@@ -180,7 +177,7 @@ class _BatchWorkshopPublishScreenState
             Expanded(
               child: Center(
                 child: Text(
-                  'No items to publish.',
+                  t.steamPublish.batchPublish.empty.subtitle,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textDim,
@@ -237,33 +234,33 @@ class _BatchWorkshopPublishScreenState
             label: 'Staging',
             children: [
               _StagingRow(
-                label: 'Packs',
+                label: t.steamPublish.batchPublish.staging.packs,
                 value: '${items.length}',
               ),
-              const _StagingRow(
-                label: 'Total size',
+              _StagingRow(
+                label: t.steamPublish.batchPublish.staging.totalSize,
                 value: '—',
               ),
               _StagingRow(
-                label: 'Publish',
+                label: t.steamPublish.batchPublish.staging.publish,
                 value: '${counts.publish}',
               ),
               _StagingRow(
-                label: 'Update',
+                label: t.steamPublish.batchPublish.staging.update,
                 value: '${counts.update}',
               ),
               _StagingRow(
-                label: 'Account',
+                label: t.steamPublish.batchPublish.staging.account,
                 value: _stagingData!.username.isEmpty
                     ? '—'
                     : _stagingData!.username,
               ),
               _StagingRow(
-                label: 'Elapsed',
+                label: t.steamPublish.batchPublish.staging.elapsed,
                 value: _elapsedTime,
               ),
               _StagingRow(
-                label: 'Completed',
+                label: t.steamPublish.batchPublish.staging.completed,
                 value: '${state.completedItems} / ${state.totalItems}',
               ),
             ],
@@ -272,13 +269,13 @@ class _BatchWorkshopPublishScreenState
         actions: [
           if (state.isPublishing && !state.isCancelled)
             SmallTextButton(
-              label: 'Stop',
+              label: t.steamPublish.batchPublish.actions.stop,
               icon: FluentIcons.stop_24_regular,
               onTap: _confirmCancel,
             )
           else
             SmallTextButton(
-              label: 'Close',
+              label: t.steamPublish.batchPublish.actions.close,
               icon: FluentIcons.dismiss_24_regular,
               onTap: () {
                 ref.invalidate(publishableItemsProvider);
@@ -404,19 +401,19 @@ class _OverallProgressHeader extends StatelessWidget {
     final String heading;
     if (isDone && !hasFailures) {
       accentColor = tokens.ok;
-      heading = 'Batch publish complete';
+      heading = t.steamPublish.batchPublish.progress.complete;
     } else if (isDone && hasFailures) {
       accentColor = tokens.warn;
-      heading = 'Completed with errors';
+      heading = t.steamPublish.batchPublish.progress.completedWithErrors;
     } else if (state.isCancelled) {
       accentColor = tokens.err;
-      heading = 'Cancelled';
+      heading = t.steamPublish.batchPublish.progress.cancelled;
     } else if (state.needsSteamGuard) {
       accentColor = tokens.warn;
-      heading = 'Steam Guard required';
+      heading = t.steamPublish.batchPublish.progress.steamGuardRequired;
     } else {
       accentColor = tokens.accent;
-      heading = 'Publishing...';
+      heading = t.steamPublish.batchPublish.progress.publishing;
     }
 
     return Container(
@@ -478,7 +475,7 @@ class _OverallProgressHeader extends StatelessWidget {
           if (state.currentItemName != null && state.isPublishing) ...[
             const SizedBox(height: 10),
             Text(
-              'Current: ${state.currentItemName}',
+              t.steamPublish.batchPublish.progress.current(name: state.currentItemName!),
               style: tokens.fontMono.copyWith(
                 fontSize: 11,
                 color: tokens.textDim,
@@ -563,7 +560,7 @@ class _BatchPackRow extends StatelessWidget {
                     result!.workshopId != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Workshop ID: ${result!.workshopId}',
+                    t.steamPublish.batchPublish.progress.workshopId(id: result!.workshopId!),
                     style: tokens.fontMono.copyWith(
                       fontSize: 10,
                       color: tokens.textDim,
@@ -613,7 +610,9 @@ class _ModePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final label = isUpdate ? 'UPDATE' : 'PUBLISH';
+    final label = isUpdate
+        ? t.steamPublish.batchPublish.pills.update
+        : t.steamPublish.batchPublish.pills.publish;
     final fg = isUpdate ? tokens.accent : tokens.ok;
     final bg = isUpdate ? tokens.accentBg : tokens.okBg;
     return StatusPill(label: label, foreground: fg, background: bg);
@@ -631,33 +630,33 @@ class _StatusPillFor extends StatelessWidget {
     switch (status) {
       case BatchPublishStatus.pending:
         return StatusPill(
-          label: 'PENDING',
+          label: t.steamPublish.batchPublish.pills.pending,
           foreground: tokens.textDim,
           background: tokens.panel,
         );
       case BatchPublishStatus.inProgress:
         return StatusPill(
-          label: 'UPLOADING',
+          label: t.steamPublish.batchPublish.pills.uploading,
           foreground: tokens.accent,
           background: tokens.accentBg,
         );
       case BatchPublishStatus.success:
         return StatusPill(
-          label: 'DONE',
+          label: t.steamPublish.batchPublish.pills.done,
           foreground: tokens.ok,
           background: tokens.okBg,
           icon: FluentIcons.checkmark_24_regular,
         );
       case BatchPublishStatus.failed:
         return StatusPill(
-          label: 'FAILED',
+          label: t.steamPublish.batchPublish.pills.failed,
           foreground: tokens.err,
           background: tokens.errBg,
           icon: FluentIcons.error_circle_24_regular,
         );
       case BatchPublishStatus.cancelled:
         return StatusPill(
-          label: 'CANCELLED',
+          label: t.steamPublish.batchPublish.pills.cancelled,
           foreground: tokens.textFaint,
           background: tokens.panel,
         );

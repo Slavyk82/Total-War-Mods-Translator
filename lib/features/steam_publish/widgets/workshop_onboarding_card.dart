@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/settings/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import 'package:twmt/providers/shared/service_providers.dart';
@@ -128,7 +129,7 @@ class _WorkshopOnboardingCardState
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Publishing on the Steam Workshop',
+                      t.steamPublish.onboarding.title,
                       style: tokens.fontDisplay.copyWith(
                         fontSize: 14,
                         color: tokens.text,
@@ -141,12 +142,7 @@ class _WorkshopOnboardingCardState
               ),
               const SizedBox(height: 8),
               Text(
-                'This app cannot create a brand-new Workshop entry directly. '
-                'A bug in the game launcher prevents mods uploaded outside of '
-                'it from appearing in subscribers\' launchers, so the very '
-                'first publication of a translation mod must go through the '
-                'original game launcher. Every subsequent update can then be '
-                'pushed straight from this screen.',
+                t.steamPublish.onboarding.description,
                 style: tokens.fontBody.copyWith(
                   fontSize: 12.5,
                   color: tokens.textMid,
@@ -156,26 +152,22 @@ class _WorkshopOnboardingCardState
               const SizedBox(height: 10),
               _OnboardingStep(
                 index: 1,
-                text: 'Publish the mod once through the original game '
-                    'launcher.',
+                text: t.steamPublish.onboarding.step1,
               ),
               const SizedBox(height: 4),
               _OnboardingStep(
                 index: 2,
-                text: 'Copy the Workshop ID assigned by Steam : it appears in '
-                    'the mod\'s Workshop URL (e.g. "3661242610").',
+                text: t.steamPublish.onboarding.step2,
               ),
               const SizedBox(height: 4),
               _OnboardingStep(
                 index: 3,
-                text: 'Paste that ID into the dedicated field for this mod in '
-                    'the app.',
+                text: t.steamPublish.onboarding.step3,
               ),
               const SizedBox(height: 4),
               _OnboardingStep(
                 index: 4,
-                text: 'Use the "Update" button to push every future '
-                    'translation update from this screen.',
+                text: t.steamPublish.onboarding.step4,
               ),
               const SizedBox(height: 10),
               Row(
@@ -193,7 +185,7 @@ class _WorkshopOnboardingCardState
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    "Don't show this again",
+                    t.steamPublish.onboarding.dontShowAgain,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12.5,
                       color: tokens.textMid,
@@ -201,7 +193,7 @@ class _WorkshopOnboardingCardState
                   ),
                   const Spacer(),
                   SmallTextButton(
-                    label: 'Dismiss',
+                    label: t.steamPublish.onboarding.dismiss,
                     icon: FluentIcons.checkmark_24_regular,
                     onTap: _onDismiss,
                   ),

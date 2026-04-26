@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
@@ -176,9 +177,9 @@ class SteamTitleBlock extends StatelessWidget {
     if (outputPath.isNotEmpty) {
       subtitle = p.basename(outputPath);
     } else if (item.isCompilation) {
-      subtitle = 'Compilation · no pack yet';
+      subtitle = t.steamPublish.cells.subtitleCompilation;
     } else {
-      subtitle = 'Project · no pack yet';
+      subtitle = t.steamPublish.cells.subtitleProject;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -251,25 +252,25 @@ class SteamStateCell extends StatelessWidget {
     final IconData? icon;
     final String tooltip;
     if (!hasPack) {
-      label = 'No pack';
+      label = t.steamPublish.cells.status.noPack;
       fg = tokens.warn;
       bg = tokens.warnBg;
       icon = FluentIcons.box_dismiss_24_regular;
       tooltip = hasPublished
-          ? 'Workshop item #$publishedId — no local pack file'
-          : 'No pack file on disk — generate a pack first';
+          ? t.steamPublish.cells.tooltips.workshopNoPack(id: publishedId)
+          : t.steamPublish.cells.tooltips.noPackOnDisk;
     } else if (hasPublished) {
-      label = 'Published';
+      label = t.steamPublish.cells.status.published;
       fg = tokens.ok;
       bg = tokens.okBg;
       icon = FluentIcons.cloud_checkmark_24_regular;
-      tooltip = 'Workshop item #$publishedId';
+      tooltip = t.steamPublish.cells.tooltips.workshopItem(id: publishedId);
     } else {
-      label = 'Unpublished';
+      label = t.steamPublish.cells.status.unpublished;
       fg = tokens.textDim;
       bg = tokens.panel;
       icon = FluentIcons.cloud_dismiss_24_regular;
-      tooltip = 'Pack ready — no Workshop id assigned yet';
+      tooltip = t.steamPublish.cells.tooltips.packReadyNoId;
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -345,8 +346,8 @@ class SteamLastPublishedCell extends ConsumerWidget {
       prefix = '';
     }
     final tooltip = publishedAt != null
-        ? 'Last published: ${formatAbsoluteDate(date)}'
-        : 'Last exported: ${formatAbsoluteDate(date)}';
+        ? t.steamPublish.cells.tooltips.lastPublished(date: formatAbsoluteDate(date) ?? '')
+        : t.steamPublish.cells.tooltips.lastExported(date: formatAbsoluteDate(date) ?? '');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -403,8 +404,8 @@ class SteamSubsCell extends ConsumerWidget {
         : NumberFormat('#,###', 'en_US').format(subs).replaceAll(',', ' ');
 
     final tooltipMessage = (id == null || id.isEmpty)
-        ? 'Not published to the Workshop yet.'
-        : 'Workshop subscribers — last refreshed at app start.';
+        ? t.steamPublish.cells.tooltips.notPublishedYet
+        : t.steamPublish.cells.tooltips.subscribers;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
 
@@ -82,14 +83,14 @@ class _SteamPublishListHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListRowHeader(
       columns: steamPublishColumns,
-      labels: const [
+      labels: [
         '',
         '',
-        'Pack',
-        'Steam ID',
-        'Subs',
-        'Status',
-        'Last published',
+        t.steamPublish.list.columns.pack,
+        t.steamPublish.list.columns.steamId,
+        t.steamPublish.list.columns.subs,
+        t.steamPublish.list.columns.status,
+        t.steamPublish.list.columns.lastPublished,
         '',
       ],
     );
@@ -116,7 +117,7 @@ class SteamPublishEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No projects or compilations yet',
+              t.steamPublish.list.empty.title,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 18,
                 color: tokens.text,
@@ -125,7 +126,7 @@ class SteamPublishEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Create a project or compilation to see it here.',
+              t.steamPublish.list.empty.subtitle,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -158,7 +159,7 @@ class SteamPublishNoMatchesState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'No items match the current filters',
+              t.steamPublish.list.noMatch,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.text,

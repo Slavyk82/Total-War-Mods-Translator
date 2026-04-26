@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 import '../providers/steam_publish_providers.dart';
@@ -78,7 +79,9 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
           _iconButton(
             context: context,
             icon: FluentIcons.edit_24_regular,
-            tooltip: hasId ? 'Edit Workshop id' : 'Set Workshop id',
+            tooltip: hasId
+                ? t.steamPublish.steamId.tooltips.edit
+                : t.steamPublish.steamId.tooltips.set,
             onTap: _beginEdit,
           ),
           const SizedBox(width: 12),
@@ -108,7 +111,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
                   color: tokens.text,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'ID',
+                  hintText: t.steamPublish.steamId.hintId,
                   hintStyle: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textFaint,
@@ -139,7 +142,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
           _iconButton(
             context: context,
             icon: _isSaving ? null : FluentIcons.save_24_regular,
-            tooltip: 'Save Workshop id',
+            tooltip: t.steamPublish.steamId.tooltips.save,
             onTap: _isSaving ? null : _save,
             busy: _isSaving,
             accent: true,
@@ -148,7 +151,7 @@ class _SteamIdCellState extends ConsumerState<SteamIdCell> {
           _iconButton(
             context: context,
             icon: FluentIcons.dismiss_24_regular,
-            tooltip: 'Cancel',
+            tooltip: t.steamPublish.steamId.tooltips.cancel,
             onTap: _isSaving ? null : _cancel,
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -66,8 +67,8 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_download_24_regular,
-      title: 'SteamCMD Required',
-      subtitle: 'Valve command-line tool for Workshop uploads',
+      title: t.steamPublish.steamcmdDialog.title,
+      subtitle: t.steamPublish.steamcmdDialog.subtitle,
       width: 520,
       body: _buildContent(tokens),
       actions: _buildActions(tokens),
@@ -88,8 +89,7 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'SteamCMD was not found on your system. '
-          'It is required to publish mods to the Steam Workshop.',
+          t.steamPublish.steamcmdDialog.confirmText,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -97,8 +97,7 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Would you like to download and install it automatically? '
-          'The download is approximately 3 MB from Valve servers.',
+          t.steamPublish.steamcmdDialog.confirmText2,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -125,7 +124,7 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Downloading SteamCMD...',
+                t.steamPublish.steamcmdDialog.downloading,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.text,
@@ -154,7 +153,7 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Downloading from Valve CDN...',
+            t.steamPublish.steamcmdDialog.downloadingFrom,
             style: tokens.fontBody.copyWith(
               fontSize: 11.5,
               color: tokens.textDim,
@@ -170,8 +169,8 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       icon: FluentIcons.checkmark_circle_24_filled,
       color: tokens.ok,
       bgColor: tokens.okBg,
-      title: 'SteamCMD installed successfully',
-      subtitle: 'You can now publish to the Steam Workshop.',
+      title: t.steamPublish.steamcmdDialog.successTitle,
+      subtitle: t.steamPublish.steamcmdDialog.successMessage,
     );
   }
 
@@ -180,7 +179,7 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       icon: FluentIcons.error_circle_24_filled,
       color: tokens.err,
       bgColor: tokens.errBg,
-      title: 'Installation failed',
+      title: t.steamPublish.steamcmdDialog.errorTitle,
       subtitle: _errorMessage,
     );
   }
@@ -190,11 +189,11 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       case _InstallPhase.confirm:
         return [
           SmallTextButton(
-            label: 'Cancel',
+            label: t.steamPublish.steamcmdDialog.cancel,
             onTap: () => Navigator.of(context).pop(false),
           ),
           SmallTextButton(
-            label: 'Install',
+            label: t.steamPublish.steamcmdDialog.install,
             icon: FluentIcons.arrow_download_24_regular,
             filled: true,
             onTap: _startInstall,
@@ -203,14 +202,14 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       case _InstallPhase.downloading:
         return [
           SmallTextButton(
-            label: 'Cancel',
+            label: t.steamPublish.steamcmdDialog.cancel,
             onTap: () => Navigator.of(context).pop(false),
           ),
         ];
       case _InstallPhase.success:
         return [
           SmallTextButton(
-            label: 'Continue',
+            label: t.steamPublish.steamcmdDialog.kContinue,
             icon: FluentIcons.checkmark_24_regular,
             filled: true,
             onTap: () => Navigator.of(context).pop(true),
@@ -219,11 +218,11 @@ class _SteamCmdInstallDialogState extends ConsumerState<SteamCmdInstallDialog> {
       case _InstallPhase.error:
         return [
           SmallTextButton(
-            label: 'Close',
+            label: t.steamPublish.steamcmdDialog.close,
             onTap: () => Navigator.of(context).pop(false),
           ),
           SmallTextButton(
-            label: 'Retry',
+            label: t.steamPublish.steamcmdDialog.retry,
             icon: FluentIcons.arrow_sync_24_regular,
             filled: true,
             onTap: _startInstall,

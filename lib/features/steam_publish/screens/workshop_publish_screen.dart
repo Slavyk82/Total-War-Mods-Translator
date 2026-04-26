@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/detail/crumb_segment.dart';
@@ -171,13 +172,11 @@ class _WorkshopPublishScreenState
     if (!state.isActive) return true;
     final result = await showDialog<bool>(
       context: context,
-      builder: (_) => const TokenConfirmDialog(
-        title: 'Publication in Progress',
-        message:
-            'A publication is currently in progress. Are you sure you want to '
-            'leave? The upload will be cancelled.',
-        cancelLabel: 'Stay',
-        confirmLabel: 'Leave',
+      builder: (_) => TokenConfirmDialog(
+        title: t.steamPublish.publishScreen.confirmLeave.title,
+        message: t.steamPublish.publishScreen.confirmLeave.message,
+        cancelLabel: t.steamPublish.publishScreen.confirmLeave.stay,
+        confirmLabel: t.steamPublish.publishScreen.confirmLeave.leave,
         destructive: true,
       ),
     );
@@ -247,7 +246,7 @@ class _WorkshopPublishScreenState
       if (previewPath == null) {
         FluentToast.warning(
           context,
-          'Failed to generate preview image for the .pack file',
+          t.steamPublish.publishScreen.warnings.previewFailed,
         );
         return;
       }
@@ -318,10 +317,10 @@ class _WorkshopPublishScreenState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             DetailScreenToolbar(
-              crumbs: const [
-                CrumbSegment('Publishing'),
-                CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
-                CrumbSegment('No pack staged'),
+              crumbs: [
+                const CrumbSegment('Publishing'),
+                const CrumbSegment('Steam Workshop', route: AppRoutes.steamPublish),
+                CrumbSegment(t.steamPublish.publishScreen.warnings.noPackStaged),
               ],
               onBack: () {
                 if (context.canPop()) context.pop();
@@ -330,7 +329,7 @@ class _WorkshopPublishScreenState
             Expanded(
               child: Center(
                 child: Text(
-                  'No pack staged — please set a Workshop ID first.',
+                  t.steamPublish.publishScreen.warnings.noPackStaged,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textDim,
@@ -405,10 +404,10 @@ class _WorkshopPublishScreenState
       formPanel: StickyFormPanel(
         sections: [
           FormSection(
-            label: 'Publication',
+            label: t.steamPublish.publishScreen.formSections.publication,
             children: [
               LabeledField(
-                label: 'Title',
+                label: t.steamPublish.publishScreen.formSections.title,
                 child: TokenTextField(
                   controller: _titleController,
                   hint: 'Workshop item title',
@@ -417,7 +416,7 @@ class _WorkshopPublishScreenState
                 ),
               ),
               LabeledField(
-                label: 'Description',
+                label: t.steamPublish.publishScreen.formSections.description,
                 child: TokenTextField(
                   controller: _descriptionController,
                   hint: 'Describe your translation mod...',
@@ -426,7 +425,7 @@ class _WorkshopPublishScreenState
                 ),
               ),
               LabeledField(
-                label: 'Visibility',
+                label: t.steamPublish.publishScreen.formSections.visibility,
                 child: _VisibilityDropdown(
                   value: _visibility,
                   enabled: isIdle,
@@ -436,7 +435,7 @@ class _WorkshopPublishScreenState
                 ),
               ),
               LabeledField(
-                label: 'Change note',
+                label: t.steamPublish.publishScreen.formSections.changeNote,
                 child: TokenTextField(
                   controller: _changeNoteController,
                   hint: 'What changed in this update...',
@@ -447,51 +446,55 @@ class _WorkshopPublishScreenState
             ],
           ),
           FormSection(
-            label: 'Pack',
+            label: t.steamPublish.publishScreen.formSections.pack,
             children: [
               ReadonlyField(
-                label: 'Pack file',
+                label: t.steamPublish.publishScreen.formSections.packFile,
                 value: _packFilePath,
               ),
               if (_isUpdate)
                 ReadonlyField(
-                  label: 'Steam ID',
+                  label: t.steamPublish.publishScreen.formSections.steamId,
                   value: _item!.publishedSteamId!,
                 ),
             ],
           ),
         ],
         summary: SummaryBox(
-          label: 'Will update',
+          label: t.steamPublish.publishScreen.summary.willUpdate,
           semantics: SummarySemantics.accent,
           lines: [
             SummaryLine(
-              key: 'Mode',
-              value: _isUpdate ? 'Update existing' : 'Publish new',
+              key: t.steamPublish.publishScreen.summary.mode,
+              value: _isUpdate
+                  ? t.steamPublish.publishScreen.summary.modeUpdate
+                  : t.steamPublish.publishScreen.summary.modePublish,
             ),
             SummaryLine(
-              key: 'Pack size',
+              key: t.steamPublish.publishScreen.summary.packSize,
               value: _fileSizeForItem(_item!),
             ),
             SummaryLine(
-              key: 'Visibility',
+              key: t.steamPublish.publishScreen.summary.visibility,
               value: _visibility.label,
             ),
             if (_isUpdate)
               SummaryLine(
-                key: 'Steam ID',
+                key: t.steamPublish.publishScreen.summary.steamId,
                 value: _item!.publishedSteamId!,
               ),
           ],
         ),
         actions: [
           SmallTextButton(
-            label: 'Cancel',
+            label: t.steamPublish.publishScreen.actions.cancel,
             icon: FluentIcons.dismiss_24_regular,
             onTap: isActive ? null : _handleBack,
           ),
           SmallTextButton(
-            label: _isUpdate ? 'Update' : 'Publish',
+            label: _isUpdate
+                ? t.steamPublish.publishScreen.actions.update
+                : t.steamPublish.publishScreen.actions.publish,
             icon: FluentIcons.cloud_arrow_up_24_regular,
             onTap: canSubmit ? _startPublish : null,
           ),
@@ -599,7 +602,9 @@ class _PublishPreview extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            isUpdate ? 'Preview (update)' : 'Preview',
+            isUpdate
+                ? t.steamPublish.publishScreen.preview.labelUpdate
+                : t.steamPublish.publishScreen.preview.label,
             style: tokens.fontMono.copyWith(
               fontSize: 10,
               color: tokens.textDim,
@@ -618,7 +623,9 @@ class _PublishPreview extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title.isEmpty ? 'Untitled' : title,
+                      title.isEmpty
+                          ? t.steamPublish.publishScreen.preview.untitled
+                          : title,
                       style: tokens.fontDisplay.copyWith(
                         fontSize: 18,
                         color: tokens.text,
@@ -667,7 +674,7 @@ class _PublishPreview extends StatelessWidget {
             ),
             child: Text(
               description.isEmpty
-                  ? 'No description provided yet.'
+                  ? t.steamPublish.publishScreen.preview.noDescription
                   : description,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
@@ -817,7 +824,7 @@ class _PublishProgressViewState extends State<_PublishProgressView> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Uploading to Steam Workshop...',
+                      t.steamPublish.publishScreen.upload.uploading,
                       style: tokens.fontDisplay.copyWith(
                         fontSize: 14,
                         color: tokens.text,
@@ -881,7 +888,7 @@ class _PublishProgressViewState extends State<_PublishProgressView> {
         ),
         const SizedBox(height: 16),
         Text(
-          'STEAMCMD OUTPUT',
+          t.steamPublish.publishScreen.upload.outputLabel,
           style: tokens.fontMono.copyWith(
             fontSize: 10,
             color: tokens.textDim,
@@ -963,8 +970,8 @@ class _PublishResultPanel extends StatelessWidget {
                       Expanded(
                         child: Text(
                           state.wasUpdate
-                              ? 'Workshop item updated!'
-                              : 'Workshop item published!',
+                              ? t.steamPublish.publishScreen.result.updatedTitle
+                              : t.steamPublish.publishScreen.result.publishedTitle,
                           style: tokens.fontDisplay.copyWith(
                             fontSize: 15,
                             color: tokens.text,
@@ -977,7 +984,7 @@ class _PublishResultPanel extends StatelessWidget {
                   if (state.publishedWorkshopId != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Workshop ID: ${state.publishedWorkshopId}',
+                      t.steamPublish.publishScreen.result.workshopId(id: state.publishedWorkshopId!),
                       style: tokens.fontMono.copyWith(
                         fontSize: 12,
                         color: tokens.textMid,
@@ -992,7 +999,7 @@ class _PublishResultPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 SmallTextButton(
-                  label: 'Open in Steam',
+                  label: t.steamPublish.publishScreen.result.openInSteam,
                   icon: FluentIcons.open_24_regular,
                   onTap: state.publishedWorkshopId != null
                       ? onOpenInSteam
@@ -1000,7 +1007,7 @@ class _PublishResultPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 SmallTextButton(
-                  label: 'Close',
+                  label: t.steamPublish.publishScreen.actions.close,
                   icon: FluentIcons.checkmark_24_regular,
                   onTap: onClose,
                 ),
@@ -1030,7 +1037,9 @@ class _PublishErrorPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final isCancelled = state.phase == PublishPhase.cancelled;
-    final title = isCancelled ? 'Publication cancelled' : 'Publication failed';
+    final title = isCancelled
+        ? t.steamPublish.publishScreen.status.cancelled
+        : t.steamPublish.publishScreen.status.failed;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -1088,13 +1097,13 @@ class _PublishErrorPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 SmallTextButton(
-                  label: 'Retry',
+                  label: t.steamPublish.publishScreen.actions.retry,
                   icon: FluentIcons.arrow_counterclockwise_24_regular,
                   onTap: onRetry,
                 ),
                 const SizedBox(width: 8),
                 SmallTextButton(
-                  label: 'Close',
+                  label: t.steamPublish.publishScreen.actions.close,
                   icon: FluentIcons.dismiss_24_regular,
                   onTap: onClose,
                 ),

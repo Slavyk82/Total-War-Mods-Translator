@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -90,7 +91,7 @@ class _WorkshopPublishSettingsDialogState
 
     return TokenDialog(
       icon: FluentIcons.settings_24_regular,
-      title: 'Workshop Templates',
+      title: t.steamPublish.settingsDialog.title,
       width: 640,
       body: _loading
           ? SizedBox(
@@ -104,7 +105,7 @@ class _WorkshopPublishSettingsDialogState
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Use \$modName as a placeholder for the project name.',
+                  t.steamPublish.settingsDialog.description(modName: r'$modName'),
                   style: tokens.fontBody.copyWith(
                     fontSize: 12,
                     color: tokens.textDim,
@@ -117,8 +118,8 @@ class _WorkshopPublishSettingsDialogState
                       .copyWith(fontSize: 13, color: tokens.text),
                   decoration: _decoration(
                     tokens,
-                    label: 'Title template',
-                    hint: '\$modName - French translation',
+                    label: t.steamPublish.settingsDialog.titleTemplateLabel,
+                    hint: t.steamPublish.settingsDialog.titleTemplateHint(modName: r'$modName'),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -130,8 +131,8 @@ class _WorkshopPublishSettingsDialogState
                         .copyWith(fontSize: 13, color: tokens.text),
                     decoration: _decoration(
                       tokens,
-                      label: 'Description template',
-                      hint: 'French translation for \$modName',
+                      label: t.steamPublish.settingsDialog.descriptionTemplateLabel,
+                      hint: t.steamPublish.settingsDialog.descriptionTemplateHint(modName: r'$modName'),
                     ),
                     maxLines: null,
                     expands: true,
@@ -146,12 +147,12 @@ class _WorkshopPublishSettingsDialogState
                   dropdownColor: tokens.panel,
                   decoration: _decoration(
                     tokens,
-                    label: 'Default visibility',
+                    label: t.steamPublish.settingsDialog.defaultVisibilityLabel,
                   ),
                   items: [
-                    const DropdownMenuItem<WorkshopVisibility?>(
+                    DropdownMenuItem<WorkshopVisibility?>(
                       value: null,
-                      child: Text('No default'),
+                      child: Text(t.steamPublish.settingsDialog.noDefault),
                     ),
                     ...WorkshopVisibility.values.map((v) {
                       return DropdownMenuItem<WorkshopVisibility?>(
@@ -167,11 +168,11 @@ class _WorkshopPublishSettingsDialogState
             ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.steamPublish.settingsDialog.cancel,
           onTap: () => Navigator.of(context).pop(false),
         ),
         SmallTextButton(
-          label: 'Save',
+          label: t.steamPublish.settingsDialog.save,
           icon: FluentIcons.save_24_regular,
           filled: true,
           onTap: _loading ? null : _save,

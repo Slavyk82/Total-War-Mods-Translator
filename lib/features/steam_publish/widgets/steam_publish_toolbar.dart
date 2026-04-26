@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
@@ -73,27 +74,27 @@ class SteamPublishToolbar extends StatelessWidget {
         child: ListSearchField(
           width: null,
           value: searchQuery,
-          hintText: 'Search packs...',
+          hintText: t.steamPublish.toolbar.searchHint,
           onChanged: onSearchChanged,
           onClear: () => onSearchChanged(''),
         ),
       ),
       SmallTextButton(
-        label: 'Select all',
+        label: t.steamPublish.toolbar.selectAll,
         icon: FluentIcons.checkbox_checked_24_regular,
         tooltip: totalItems == 0
-            ? 'No items to select'
+            ? t.steamPublish.toolbar.tooltips.noItemsToSelect
             : (allSelected
-                ? 'Every listed item is already selected'
-                : 'Select every item currently listed'),
+                ? t.steamPublish.toolbar.tooltips.allAlreadySelected
+                : t.steamPublish.toolbar.tooltips.selectAllListed),
         onTap: (totalItems > 0 && !allSelected) ? onSelectAll : null,
       ),
       SmallTextButton(
-        label: 'Deselect all',
+        label: t.steamPublish.toolbar.deselectAll,
         icon: FluentIcons.checkbox_unchecked_24_regular,
         tooltip: selectedCount == 0
-            ? 'No items selected'
-            : 'Clear the current selection',
+            ? t.steamPublish.toolbar.tooltips.noItemsSelected
+            : t.steamPublish.toolbar.tooltips.clearSelection,
         onTap: onDeselectAll,
       ),
       _PublishSelectionButton(
@@ -103,15 +104,15 @@ class SteamPublishToolbar extends StatelessWidget {
         onPublish: onPublishSelection,
       ),
       SmallTextButton(
-        label: 'Refresh',
+        label: t.steamPublish.toolbar.refresh,
         icon: FluentIcons.arrow_sync_24_regular,
-        tooltip: 'Refresh',
+        tooltip: t.steamPublish.toolbar.refresh,
         onTap: onRefresh,
       ),
       SmallTextButton(
-        label: 'Workshop description template',
+        label: t.steamPublish.toolbar.workshopTemplate,
         icon: FluentIcons.settings_24_regular,
-        tooltip: 'Configure Workshop publish templates and defaults',
+        tooltip: t.steamPublish.toolbar.tooltips.configureTemplates,
         onTap: onOpenSettings,
       ),
     ];
@@ -122,13 +123,13 @@ class SteamPublishToolbar extends StatelessWidget {
       label: 'STATE',
       pills: [
         FilterPill(
-          label: 'All',
+          label: t.steamPublish.toolbar.filters.all,
           selected: currentFilter == SteamPublishDisplayFilter.all,
           tooltip: 'Show every publishable item',
           onToggle: () => onFilterChanged(SteamPublishDisplayFilter.all),
         ),
         FilterPill(
-          label: 'Outdated',
+          label: t.steamPublish.toolbar.filters.outdated,
           selected: currentFilter == SteamPublishDisplayFilter.outdated,
           count: outdatedCount,
           tooltip:
@@ -140,7 +141,7 @@ class SteamPublishToolbar extends StatelessWidget {
           ),
         ),
         FilterPill(
-          label: 'No pack',
+          label: t.steamPublish.toolbar.filters.noPack,
           selected: currentFilter == SteamPublishDisplayFilter.noPackGenerated,
           count: noPackCount,
           tooltip: 'Show only items without a generated pack file',
@@ -151,7 +152,7 @@ class SteamPublishToolbar extends StatelessWidget {
           ),
         ),
         FilterPill(
-          label: 'Compilations',
+          label: t.steamPublish.toolbar.filters.compilations,
           selected: currentFilter == SteamPublishDisplayFilter.compilations,
           count: compilationsCount,
           tooltip: 'Show only pack compilations',
@@ -190,7 +191,9 @@ class SteamPublishToolbarLeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final packLabel = totalItems == 1 ? 'pack' : 'packs';
+    final packLabel = totalItems == 1
+        ? t.steamPublish.toolbar.counts.pack
+        : t.steamPublish.toolbar.counts.packs;
     final base = searchActive
         ? '$filteredItems / $totalItems $packLabel'
         : '$totalItems $packLabel';
@@ -201,7 +204,7 @@ class SteamPublishToolbarLeading extends StatelessWidget {
         : '';
     return ListToolbarLeading(
       icon: FluentIcons.cloud_arrow_up_24_regular,
-      title: 'Publish on Steam',
+      title: t.steamPublish.screen.title,
       countLabel: '$base$selectedSegment$subsSegment',
     );
   }
@@ -228,22 +231,23 @@ class _PublishSelectionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final enabled = onPublish != null && publishableCount > 0;
-    const baseLabel = 'Publish on Steam';
-    final label =
-        publishableCount > 0 ? '$baseLabel ($publishableCount)' : baseLabel;
+    final baseLabel = t.steamPublish.toolbar.publish;
+    final label = publishableCount > 0
+        ? t.steamPublish.toolbar.publishWithCount(count: publishableCount)
+        : baseLabel;
     final String tooltip;
     if (selectedCount == 0) {
-      tooltip = 'Select at least one item to publish';
+      tooltip = t.steamPublish.toolbar.tooltips.selectAtLeastOne;
     } else if (publishableCount == 0) {
       tooltip = disabledTooltip != null && disabledTooltip!.isNotEmpty
           ? disabledTooltip!
-          : 'No selected item has both a generated pack and a Workshop id';
+          : t.steamPublish.toolbar.tooltips.noPackOrWorkshopId;
     } else if (publishableCount < selectedCount) {
       final skipped = selectedCount - publishableCount;
-      tooltip =
-          'Publish $publishableCount item(s) — $skipped without Workshop id will be skipped';
+      tooltip = t.steamPublish.toolbar.tooltips
+          .publishSkipped(count: publishableCount, skipped: skipped);
     } else {
-      tooltip = 'Publish selected items to Steam Workshop';
+      tooltip = t.steamPublish.toolbar.tooltips.publishSelected;
     }
     final core = MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,

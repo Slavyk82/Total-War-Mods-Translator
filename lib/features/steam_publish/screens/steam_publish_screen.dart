@@ -6,6 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:path/path.dart' as path;
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
@@ -75,7 +76,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         .toList(growable: false);
     final canPublish = publishableSelected.isNotEmpty;
     final disabledTooltip = !canPublish && selection.isNotEmpty
-        ? 'No selected item has both a generated pack and a Workshop id'
+        ? t.steamPublish.toolbar.tooltips.noPackOrWorkshopId
         : null;
     final allSelected = filteredItems.isNotEmpty &&
         filteredItems.every((e) => selection.contains(e.itemId));
@@ -186,7 +187,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     if (selectedItems.isEmpty) {
       FluentToast.warning(
         context,
-        'No selected item has both a generated pack and a Workshop id.',
+        t.steamPublish.warnings.noValidItems,
       );
       return;
     }
@@ -302,15 +303,17 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
     if (skippedNoPreview.isNotEmpty) {
       FluentToast.warning(
         context,
-        'Skipped ${skippedNoPreview.length} item(s) without preview image: '
-        '${skippedNoPreview.join(', ')}',
+        t.steamPublish.warnings.skippedNoPreview(
+          count: skippedNoPreview.length,
+          list: skippedNoPreview.join(', '),
+        ),
       );
     }
 
     if (items.isEmpty) {
       FluentToast.warning(
         context,
-        'No items to publish (all missing preview images).',
+        t.steamPublish.warnings.noItemsToPublish,
       );
       return;
     }
@@ -353,7 +356,7 @@ class _ErrorState extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Failed to load publishable items',
+              t.steamPublish.screen.errorLoading,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
@@ -409,7 +412,7 @@ class _RetryButton extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Retry',
+                t.steamPublish.screen.retry,
                 style: tokens.fontBody.copyWith(
                   fontSize: 12.5,
                   color: tokens.accentFg,

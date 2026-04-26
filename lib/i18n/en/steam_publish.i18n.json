@@ -1,0 +1,305 @@
+{
+  "screen": {
+    "title": "Publish on Steam",
+    "errorLoading": "Failed to load publishable items",
+    "retry": "Retry"
+  },
+  "toolbar": {
+    "searchHint": "Search packs...",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "refresh": "Refresh",
+    "workshopTemplate": "Workshop description template",
+    "publish": "Publish on Steam",
+    "publishWithCount": "Publish on Steam ($count)",
+    "filters": {
+      "all": "All",
+      "outdated": "Outdated",
+      "noPack": "No pack",
+      "compilations": "Compilations"
+    },
+    "counts": {
+      "pack": "pack",
+      "packs": "packs"
+    },
+    "tooltips": {
+      "noItemsToSelect": "No items to select",
+      "allAlreadySelected": "Every listed item is already selected",
+      "selectAllListed": "Select every item currently listed",
+      "noItemsSelected": "No items selected",
+      "clearSelection": "Clear the current selection",
+      "configureTemplates": "Configure Workshop publish templates and defaults",
+      "selectAtLeastOne": "Select at least one item to publish",
+      "noPackOrWorkshopId": "No selected item has both a generated pack and a Workshop id",
+      "publishSkipped": "Publish $count item(s) — $skipped without Workshop id will be skipped",
+      "publishSelected": "Publish selected items to Steam Workshop"
+    }
+  },
+  "warnings": {
+    "noValidItems": "No selected item has both a generated pack and a Workshop id.",
+    "skippedNoPreview": "Skipped $count item(s) without preview image: $list",
+    "noItemsToPublish": "No items to publish (all missing preview images)."
+  },
+  "publishScreen": {
+    "formSections": {
+      "publication": "Publication",
+      "title": "Title",
+      "description": "Description",
+      "visibility": "Visibility",
+      "changeNote": "Change note",
+      "pack": "Pack",
+      "packFile": "Pack file",
+      "steamId": "Steam ID"
+    },
+    "summary": {
+      "willUpdate": "Will update",
+      "mode": "Mode",
+      "modeUpdate": "Update existing",
+      "modePublish": "Publish new",
+      "packSize": "Pack size",
+      "visibility": "Visibility",
+      "steamId": "Steam ID"
+    },
+    "preview": {
+      "labelUpdate": "Preview (update)",
+      "label": "Preview",
+      "untitled": "Untitled",
+      "noDescription": "No description provided yet."
+    },
+    "upload": {
+      "uploading": "Uploading to Steam Workshop...",
+      "outputLabel": "STEAMCMD OUTPUT"
+    },
+    "result": {
+      "updatedTitle": "Workshop item updated!",
+      "publishedTitle": "Workshop item published!",
+      "workshopId": "Workshop ID: $id",
+      "openInSteam": "Open in Steam"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "update": "Update",
+      "publish": "Publish",
+      "close": "Close",
+      "retry": "Retry"
+    },
+    "status": {
+      "cancelled": "Publication cancelled",
+      "failed": "Publication failed"
+    },
+    "confirmLeave": {
+      "title": "Publication in Progress",
+      "message": "A publication is currently in progress. Are you sure you want to leave? The upload will be cancelled.",
+      "stay": "Stay",
+      "leave": "Leave"
+    },
+    "warnings": {
+      "previewFailed": "Failed to generate preview image for the .pack file",
+      "noPackStaged": "No pack staged — please set a Workshop ID first."
+    }
+  },
+  "settingsDialog": {
+    "title": "Workshop Templates",
+    "description": "Use $modName as a placeholder for the project name.",
+    "titleTemplateLabel": "Title template",
+    "titleTemplateHint": "$modName - French translation",
+    "descriptionTemplateLabel": "Description template",
+    "descriptionTemplateHint": "French translation for $modName",
+    "defaultVisibilityLabel": "Default visibility",
+    "noDefault": "No default",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "loginDialog": {
+    "title": "Steam Login",
+    "description": "Enter your Steam credentials to publish to the Workshop.",
+    "usernameLabel": "Username",
+    "passwordLabel": "Password",
+    "steamGuardSection": "Steam Guard (optional)",
+    "steamGuardCodeLabel": "Steam Guard Code",
+    "steamGuardDescription": "If you use a Steam Mobile Authenticator, enter the 5-character rotating code here. You can also leave it empty and enter it when prompted.",
+    "rememberCredentials": "Remember my credentials",
+    "storedSecurely": "Stored securely on this device",
+    "cancel": "Cancel",
+    "login": "Login",
+    "hintCode": "XXXXX",
+    "errors": {
+      "usernameRequired": "Username is required",
+      "passwordRequired": "Password is required"
+    }
+  },
+  "steamGuardDialog": {
+    "title": "Steam Guard",
+    "description": "Enter the 5-character code from your Steam Mobile app.\nOpen the Steam app → Steam Guard → use the rotating code shown on screen.",
+    "note": "Note: approving the push notification is not enough — steamcmd requires the code.",
+    "codeLabel": "Steam Guard Code",
+    "hintCode": "XXXXX",
+    "cancel": "Cancel",
+    "verify": "Verify",
+    "errors": {
+      "codeRequired": "Code is required",
+      "codeTooShort": "Code must be 5 characters"
+    }
+  },
+  "steamcmdDialog": {
+    "title": "SteamCMD Required",
+    "subtitle": "Valve command-line tool for Workshop uploads",
+    "confirmText": "SteamCMD (~3 MB) is required to publish items to the Steam Workshop. It will be downloaded from Valve's CDN and installed automatically.",
+    "confirmText2": "This tool is provided by Valve and is safe to use. It will be stored in the application data folder.",
+    "downloading": "Downloading SteamCMD...",
+    "downloadingFrom": "Downloading from Valve CDN...",
+    "successTitle": "SteamCMD installed successfully",
+    "successMessage": "You can now publish to the Steam Workshop.",
+    "errorTitle": "Installation failed",
+    "cancel": "Cancel",
+    "install": "Install",
+    "continue": "Continue",
+    "close": "Close",
+    "retry": "Retry"
+  },
+  "list": {
+    "empty": {
+      "title": "No projects or compilations yet",
+      "subtitle": "Create a project or compilation to see it here."
+    },
+    "noMatch": "No items match the current filters",
+    "columns": {
+      "pack": "Pack",
+      "steamId": "Steam ID",
+      "subs": "Subs",
+      "status": "Status",
+      "lastPublished": "Last published"
+    }
+  },
+  "cells": {
+    "subtitleCompilation": "Compilation · no pack yet",
+    "subtitleProject": "Project · no pack yet",
+    "status": {
+      "noPack": "No pack",
+      "published": "Published",
+      "unpublished": "Unpublished"
+    },
+    "tooltips": {
+      "workshopNoPack": "Workshop item #$id — no local pack file",
+      "noPackOnDisk": "No pack file on disk — generate a pack first",
+      "workshopItem": "Workshop item #$id",
+      "packReadyNoId": "Pack ready — no Workshop id assigned yet",
+      "notPublishedYet": "Not published to the Workshop yet.",
+      "subscribers": "Workshop subscribers — last refreshed at app start.",
+      "lastPublished": "Last published: $date",
+      "lastExported": "Last exported: $date"
+    }
+  },
+  "actionCell": {
+    "buttons": {
+      "openCompilation": "Open compilation",
+      "generatePack": "Generate pack",
+      "openInWorkshop": "Open in Steam Workshop",
+      "update": "Update"
+    },
+    "tooltips": {
+      "openCompilationToGenerate": "Open compilation editor to generate",
+      "generatePackFile": "Generate .pack file",
+      "setIdFirst": "Set the Steam ID first to enable updating",
+      "updateWorkshop": "Update existing Workshop item",
+      "openGameLauncher": "Open the in-game launcher",
+      "openInWorkshop": "Open in Steam Workshop"
+    },
+    "progress": {
+      "generating": "Generating...",
+      "preparing": "Preparing...",
+      "steps": {
+        "preparingData": "Preparing data...",
+        "generatingLocFiles": "Generating .loc files$lang",
+        "creatingPack": "Creating .pack$lang",
+        "generatingPreview": "Generating preview image...",
+        "finalizing": "Finalizing...",
+        "completed": "Completed"
+      }
+    },
+    "toasts": {
+      "packGenerated": "Pack generated: $count entries",
+      "packFailed": "Failed to generate pack: $error",
+      "packError": "Error generating pack: $error",
+      "noLanguages": "No languages configured for this project.",
+      "steamNotFound": "Could not open the Steam client. Is Steam installed?"
+    }
+  },
+  "packLanguageDialog": {
+    "title": "Select languages",
+    "cancel": "Cancel",
+    "generate": "Generate"
+  },
+  "steamId": {
+    "tooltips": {
+      "edit": "Edit Workshop id",
+      "set": "Set Workshop id",
+      "save": "Save Workshop id",
+      "cancel": "Cancel"
+    },
+    "hintId": "ID",
+    "toasts": {
+      "parseWarning": "Couldn't read a Workshop ID from that value.",
+      "saveFailed": "Failed to save Workshop id: $error"
+    }
+  },
+  "onboarding": {
+    "title": "Publishing on the Steam Workshop",
+    "description": "Before publishing through this tool, you need to create your Workshop item through the in-game launcher for the first publication.",
+    "step1": "Open the game launcher and navigate to the Workshop section.",
+    "step2": "Upload your mod for the first time using the in-game tool — this creates the Workshop item and assigns it a Steam ID.",
+    "step3": "Copy the Steam ID from the Workshop URL and paste it here using the Steam ID column.",
+    "step4": "From that point on, you can update your Workshop item directly from this tool.",
+    "dontShowAgain": "Don't show this again",
+    "dismiss": "Dismiss"
+  },
+  "batchPublish": {
+    "confirmLeave": {
+      "title": "Publication in Progress",
+      "message": "A batch publication is currently in progress. Are you sure you want to leave? The upload will be cancelled.",
+      "stay": "Stay",
+      "leave": "Leave"
+    },
+    "confirmCancel": {
+      "title": "Cancel Batch Publish?",
+      "message": "Remaining uploads will be aborted. Already-uploaded items are not rolled back.",
+      "keepGoing": "Keep going",
+      "stop": "Stop"
+    },
+    "empty": {
+      "title": "No items staged",
+      "subtitle": "No items to publish."
+    },
+    "staging": {
+      "packs": "Packs",
+      "totalSize": "Total size",
+      "publish": "Publish",
+      "update": "Update",
+      "account": "Account",
+      "elapsed": "Elapsed",
+      "completed": "Completed"
+    },
+    "actions": {
+      "stop": "Stop",
+      "close": "Close"
+    },
+    "progress": {
+      "complete": "Batch publish complete",
+      "completedWithErrors": "Completed with errors",
+      "cancelled": "Cancelled",
+      "steamGuardRequired": "Steam Guard required",
+      "publishing": "Publishing...",
+      "current": "Current: $name",
+      "workshopId": "Workshop ID: $id"
+    },
+    "pills": {
+      "pending": "PENDING",
+      "uploading": "UPLOADING",
+      "done": "DONE",
+      "failed": "FAILED",
+      "cancelled": "CANCELLED",
+      "update": "UPDATE",
+      "publish": "PUBLISH"
+    }
+  }
+}

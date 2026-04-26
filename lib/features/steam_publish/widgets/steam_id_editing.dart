@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 
@@ -28,7 +29,7 @@ Future<bool> saveWorkshopId({
   if (parsed == null) {
     FluentToast.warning(
       context,
-      "Couldn't read a Workshop ID from that value.",
+      t.steamPublish.steamId.toasts.parseWarning,
     );
     return false;
   }
@@ -58,7 +59,7 @@ Future<bool> saveWorkshopId({
     return true;
   } catch (e) {
     if (context.mounted) {
-      FluentToast.error(context, 'Failed to save Workshop id: $e');
+      FluentToast.error(context, t.steamPublish.steamId.toasts.saveFailed(error: e));
     }
     return false;
   }

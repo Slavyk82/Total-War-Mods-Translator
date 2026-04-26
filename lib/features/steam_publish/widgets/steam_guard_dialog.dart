@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -43,7 +44,7 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
 
     return TokenDialog(
       icon: FluentIcons.shield_keyhole_24_regular,
-      title: 'Steam Guard',
+      title: t.steamPublish.steamGuardDialog.title,
       width: 420,
       body: Form(
         key: _formKey,
@@ -52,8 +53,7 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Enter the 5-character code from your Steam Mobile app.\n'
-              'Open the Steam app → Steam Guard → use the rotating code shown on screen.',
+              t.steamPublish.steamGuardDialog.description,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -61,7 +61,7 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Note: approving the push notification is not enough — steamcmd requires the code.',
+              t.steamPublish.steamGuardDialog.note,
               style: tokens.fontBody.copyWith(
                 fontSize: 11.5,
                 color: tokens.textFaint,
@@ -84,10 +84,10 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
               onFieldSubmitted: (_) => _submit(),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Code is required';
+                  return t.steamPublish.steamGuardDialog.errors.codeRequired;
                 }
                 if (value.trim().length < 5) {
-                  return 'Code must be 5 characters';
+                  return t.steamPublish.steamGuardDialog.errors.codeTooShort;
                 }
                 return null;
               },
@@ -97,11 +97,11 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.steamPublish.steamGuardDialog.cancel,
           onTap: () => Navigator.of(context).pop(null),
         ),
         SmallTextButton(
-          label: 'Verify',
+          label: t.steamPublish.steamGuardDialog.verify,
           icon: FluentIcons.checkmark_24_regular,
           filled: true,
           onTap: _submit,
@@ -112,12 +112,12 @@ class _SteamGuardDialogState extends State<SteamGuardDialog> {
 
   InputDecoration _decoration(TwmtThemeTokens tokens) {
     return InputDecoration(
-      labelText: 'Steam Guard Code',
+      labelText: t.steamPublish.steamGuardDialog.codeLabel,
       labelStyle:
           tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
       floatingLabelStyle:
           tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
-      hintText: 'XXXXX',
+      hintText: t.steamPublish.steamGuardDialog.hintCode,
       hintStyle:
           tokens.fontBody.copyWith(fontSize: 13, color: tokens.textFaint),
       prefixIcon: Icon(
