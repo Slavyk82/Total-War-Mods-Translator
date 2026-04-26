@@ -39,12 +39,12 @@ class GlossaryToolbar extends StatelessWidget {
       trailing: [
         ListSearchField(
           value: searchQuery,
-          hintText: 'Search glossaries...',
+          hintText: t.glossary.hints.searchEntries,
           onChanged: onSearchChanged,
           onClear: () => onSearchChanged(''),
         ),
         SmallTextButton(
-          label: 'New glossary',
+          label: t.glossary.empty.createNewGlossary,
           icon: FluentIcons.add_24_regular,
           tooltip: t.tooltips.glossary.kNew,
           onTap: onNewGlossary,

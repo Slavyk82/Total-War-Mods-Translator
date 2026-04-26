@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
@@ -62,10 +63,10 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const HomeBackToolbar(
+          HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.book_24_regular,
-              title: 'Glossary',
+              title: t.glossary.labels.title,
             ),
           ),
           Expanded(
@@ -76,7 +77,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                 if (game == null) {
                   return _buildCenteredMessage(
                     context,
-                    'Select a game from the sidebar to view its glossary.',
+                    t.glossary.messages.selectGameForGlossary,
                   );
                 }
                 return _buildForGame(context, game);
@@ -99,8 +100,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         if (!hasProjects) {
           return _buildCenteredMessage(
             context,
-            'No projects yet for ${gameLabel(game.name)}. A glossary will be generated '
-            'automatically when you create your first project.',
+            t.glossary.messages.noProjectsYet(game: gameLabel(game.name)),
           );
         }
         return _buildWithProjects(context, game);
@@ -119,9 +119,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
         if (languages.isEmpty) {
           return _buildCenteredMessage(
             context,
-            'No target languages configured for projects of ${gameLabel(game.name)} '
-            'yet. A glossary will be generated when you add a language to '
-            'a project.',
+            t.glossary.messages.noTargetLanguages(game: gameLabel(game.name)),
           );
         }
         return _buildEditor(context, game, languages);
@@ -173,7 +171,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                 // user to pick from the switcher.
                 return _buildCenteredMessage(
                   context,
-                  'Select a target language to view its glossary.',
+                  t.glossary.messages.selectTargetLanguage,
                 );
               }
               return _buildEditorBody(context, glossary, languages);
@@ -216,7 +214,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   Expanded(
                     child: ListSearchField(
                       value: _entrySearchController.text,
-                      hintText: 'Search entries...',
+                      hintText: t.glossary.hints.searchEntries,
                       onChanged: (value) {
                         setState(() {
                           _entrySearchController.text = value;
@@ -235,19 +233,19 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: 'Add Entry',
+                    label: t.glossary.actions.addEntry,
                     icon: FluentIcons.add_24_regular,
                     onTap: () => _showEntryEditor(glossary, targetLanguageCode),
                   ),
                   const SizedBox(width: 6),
                   SmallTextButton(
-                    label: 'Import',
+                    label: t.glossary.actions.import,
                     icon: FluentIcons.arrow_import_24_regular,
                     onTap: () => _showImportDialog(glossary),
                   ),
                   const SizedBox(width: 6),
                   SmallTextButton(
-                    label: 'Export',
+                    label: t.glossary.actions.export,
                     icon: FluentIcons.arrow_export_24_regular,
                     onTap: () => _showExportDialog(glossary),
                   ),
@@ -281,7 +279,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'No entries yet. Import a CSV or add your first entry.',
+              t.glossary.messages.noEntriesYet,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -326,7 +324,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Error loading glossary',
+              t.glossary.messages.errorLoadingGlossary,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
@@ -356,7 +354,7 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     if (targetLanguageCode == null) {
       FluentToast.error(
         context,
-        'Unable to resolve target language for this glossary.',
+        t.glossary.messages.unableToResolveLanguage,
       );
       return;
     }

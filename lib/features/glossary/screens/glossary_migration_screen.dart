@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/glossary/providers/glossary_migration_providers.dart';
 import 'package:twmt/features/glossary/widgets/glossary_migration_universal_row.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/glossary/glossary_migration_service.dart';
@@ -75,9 +76,9 @@ class _GlossaryMigrationScreenState
     );
     if (!mounted) return;
     if (outcome.isErr) {
-      FluentToast.error(context, 'Export failed: ${outcome.error}');
+      FluentToast.error(context, t.glossary.messages.exportFailed(error: outcome.error));
     } else {
-      FluentToast.success(context, 'Exported ${outcome.value} entries');
+      FluentToast.success(context, t.glossary.messages.exportedEntries(count: outcome.value));
     }
   }
 
@@ -98,7 +99,7 @@ class _GlossaryMigrationScreenState
       if (mounted) widget.onDone();
     } catch (e) {
       if (mounted) {
-        FluentToast.error(context, 'Migration failed: $e');
+        FluentToast.error(context, t.glossary.messages.migrationFailed(error: e));
       }
     } finally {
       if (mounted) setState(() => _applying = false);
@@ -113,21 +114,18 @@ class _GlossaryMigrationScreenState
       builder: (_) => TokenConfirmDialog(
         key: const Key('glossary-migration-confirm-delete'),
         icon: FluentIcons.delete_24_regular,
-        title: 'Delete universal glossaries?',
+        title: t.glossary.dialogs.deleteUniversalTitle,
         destructive: true,
-        confirmLabel: 'Delete and continue',
+        confirmLabel: t.glossary.dialogs.deleteUniversalConfirm,
         confirmIcon: FluentIcons.delete_24_regular,
-        cancelLabel: 'Go back',
-        warningMessage:
-            'Deleted glossaries cannot be recovered. Export to CSV first '
-            'if you want a backup.',
+        cancelLabel: t.glossary.dialogs.deleteUniversalCancel,
+        warningMessage: t.glossary.dialogs.deleteUniversalWarning,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'The following ${unconverted.length == 1 ? 'glossary is' : 'glossaries are'} '
-              'marked "— Don\'t convert —" and will be permanently deleted:',
+              t.glossary.dialogs.deleteUniversalBody(glossaryCount: unconverted.length == 1 ? 'glossary is' : 'glossaries are'),
               style: tokens.fontBody
                   .copyWith(fontSize: 13, color: tokens.textDim),
             ),
@@ -157,7 +155,7 @@ class _GlossaryMigrationScreenState
       // place.
       FluentToast.info(
         context,
-        'Please close the browser tab to cancel the migration.',
+        t.glossary.actions.closeTab,
       );
       return;
     }
@@ -203,7 +201,7 @@ class _GlossaryMigrationScreenState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Glossary migration required',
+                        t.glossary.dialogs.migrationTitle,
                         style: tokens.fontDisplay.copyWith(
                           fontSize: 20,
                           color: tokens.text,
@@ -216,8 +214,7 @@ class _GlossaryMigrationScreenState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Glossaries are now strictly game-specific. '
-                  'Resolve the following items to continue.',
+                  t.glossary.dialogs.migrationSubtitle,
                   style: tokens.fontBody
                       .copyWith(fontSize: 13, color: tokens.textDim),
                 ),
@@ -252,13 +249,13 @@ class _GlossaryMigrationScreenState
                   children: [
                     SmallTextButton(
                       key: const Key('glossary-migration-cancel'),
-                      label: 'Cancel migration',
+                      label: t.glossary.actions.cancelMigration,
                       onTap: _applying ? null : _cancel,
                     ),
                     const SizedBox(width: 8),
                     SmallTextButton(
                       key: const Key('glossary-migration-apply'),
-                      label: _applying ? 'Applying…' : 'Apply and continue',
+                      label: _applying ? t.glossary.actions.applying : t.glossary.actions.applyAndContinue,
                       icon: FluentIcons.checkmark_24_regular,
                       filled: true,
                       onTap: _applying ? null : _apply,
@@ -296,7 +293,7 @@ class _UniversalsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Universal glossaries',
+          t.glossary.labels.universalGlossaries,
           style: tokens.fontDisplay.copyWith(
             fontSize: 16,
             color: tokens.text,
@@ -329,8 +326,7 @@ class _UniversalsSection extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Universal glossaries not converted will be deleted '
-                  'permanently.',
+                  t.glossary.messages.universalsWillBeDeleted,
                   style: tokens.fontBody
                       .copyWith(fontSize: 12, color: tokens.warn),
                 ),
@@ -355,7 +351,7 @@ class _DuplicatesSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Duplicate glossaries',
+          t.glossary.labels.duplicateGlossaries,
           style: tokens.fontDisplay.copyWith(
             fontSize: 16,
             color: tokens.text,
@@ -365,9 +361,7 @@ class _DuplicatesSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'These glossaries will be merged automatically. Duplicate entries '
-          '(same source term, case-insensitive) will be deduplicated, keeping '
-          'the most recent one.',
+          t.glossary.messages.duplicatesWillBeMerged,
           style:
               tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
         ),

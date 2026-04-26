@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -65,7 +66,7 @@ class _GlossaryEntryEditorDialogState
       icon: isEditing
           ? FluentIcons.edit_24_regular
           : FluentIcons.add_24_regular,
-      title: isEditing ? 'Edit Entry' : 'Add Entry',
+      title: isEditing ? t.glossary.dialogs.editEntryTitle : t.glossary.dialogs.addEntryTitle,
       width: 620,
       body: SingleChildScrollView(
         child: Form(
@@ -80,16 +81,16 @@ class _GlossaryEntryEditorDialogState
                     .copyWith(fontSize: 13, color: tokens.text),
                 decoration: _decoration(
                   tokens,
-                  label: 'Source Term *',
-                  hint: 'Enter the source term',
+                  label: t.glossary.labels.sourceTermLabel,
+                  hint: null,
                 ),
                 maxLength: 200,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Source term is required';
+                    return t.glossary.errors.sourceTermRequired;
                   }
                   if (value.trim().length > 200) {
-                    return 'Source term must be 200 characters or less';
+                    return t.glossary.errors.sourceTermTooLong;
                   }
                   return null;
                 },
@@ -101,16 +102,16 @@ class _GlossaryEntryEditorDialogState
                     .copyWith(fontSize: 13, color: tokens.text),
                 decoration: _decoration(
                   tokens,
-                  label: 'Target Term *',
-                  hint: 'Enter the target term',
+                  label: t.glossary.labels.targetTermLabel,
+                  hint: null,
                 ),
                 maxLength: 200,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Target term is required';
+                    return t.glossary.errors.targetTermRequired;
                   }
                   if (value.trim().length > 200) {
-                    return 'Target term must be 200 characters or less';
+                    return t.glossary.errors.targetTermTooLong;
                   }
                   return null;
                 },
@@ -122,11 +123,9 @@ class _GlossaryEntryEditorDialogState
                     .copyWith(fontSize: 13, color: tokens.text),
                 decoration: _decoration(
                   tokens,
-                  label: 'Notes (LLM context)',
-                  hint:
-                      'e.g., "Bretonnian is not gendered in English but can be Bretonnien/Bretonnienne in French"',
-                  helper:
-                      'Optional hints for the translator about gender, context, or usage',
+                  label: t.glossary.labels.notes,
+                  hint: t.glossary.labels.notesHint,
+                  helper: t.glossary.labels.notesHelper,
                 ),
                 maxLines: 3,
                 maxLength: 500,
@@ -142,11 +141,11 @@ class _GlossaryEntryEditorDialogState
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: _isSaving ? null : () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: _isSaving ? 'Saving...' : 'Save',
+          label: _isSaving ? t.glossary.actions.saving : t.common.actions.save,
           icon: FluentIcons.save_24_regular,
           filled: true,
           onTap: _isSaving ? null : _saveEntry,
@@ -259,14 +258,14 @@ class _GlossaryEntryEditorDialogState
       FluentToast.success(
         context,
         widget.entry != null
-            ? 'Entry updated successfully'
-            : 'Entry added successfully',
+            ? t.glossary.messages.entryUpdatedSuccess
+            : t.glossary.messages.entryAddedSuccess,
       );
     } catch (e, stackTrace) {
       logging.error(
           '[GlossaryEntryEditor._saveEntry] Exception caught', e, stackTrace);
       if (!mounted) return;
-      FluentToast.error(context, 'Error saving entry: $e');
+      FluentToast.error(context, t.glossary.messages.errorSavingEntry(error: e));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -309,15 +308,14 @@ class _CaseSensitiveToggle extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Case Sensitive',
+                      t.glossary.labels.caseSensitive,
                       style: tokens.fontBody.copyWith(
                         fontSize: 13,
                         color: tokens.text,
                       ),
                     ),
                     Text(
-                      'Match this term with exact case '
-                      '(e.g., "Emperor" vs "emperor")',
+                      t.glossary.labels.caseSensitiveHint,
                       style: tokens.fontBody.copyWith(
                         fontSize: 11.5,
                         color: tokens.textDim,

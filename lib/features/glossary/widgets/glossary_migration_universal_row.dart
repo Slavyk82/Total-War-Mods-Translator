@@ -1,5 +1,6 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/services/glossary/glossary_migration_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -63,7 +64,7 @@ class GlossaryMigrationUniversalRow extends StatelessWidget {
                   ),
                 const SizedBox(height: 4),
                 Text(
-                  'Target: ${info.targetLanguageCode} — ${info.entryCount} entries',
+                  t.glossary.messages.targetLanguageEntries(languageCode: info.targetLanguageCode, count: info.entryCount),
                   style: tokens.fontMono
                       .copyWith(fontSize: 12, color: tokens.textDim),
                 ),
@@ -73,7 +74,7 @@ class GlossaryMigrationUniversalRow extends StatelessWidget {
           const SizedBox(width: 8),
           SmallTextButton(
             key: Key('glossary-migration-export-${info.id}'),
-            label: 'Export CSV',
+            label: t.glossary.actions.exportCsv,
             icon: FluentIcons.arrow_export_24_regular,
             onTap: onExport,
           ),
@@ -82,7 +83,7 @@ class GlossaryMigrationUniversalRow extends StatelessWidget {
             key: Key('glossary-migration-convert-${info.id}'),
             value: selectedGameCode,
             hint: Text(
-              'Convert to…',
+              t.glossary.dialogs.convertTo,
               style: tokens.fontBody
                   .copyWith(fontSize: 12.5, color: tokens.textDim),
             ),
@@ -93,7 +94,7 @@ class GlossaryMigrationUniversalRow extends StatelessWidget {
               DropdownMenuItem<String?>(
                 value: null,
                 child: Text(
-                  "— Don't convert —",
+                  t.glossary.dialogs.dontConvert,
                   style: tokens.fontBody
                       .copyWith(fontSize: 12.5, color: tokens.text),
                 ),

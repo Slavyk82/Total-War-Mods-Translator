@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Empty state when no glossaries exist.
@@ -23,7 +24,7 @@ class GlossaryEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No glossaries yet',
+              t.glossary.empty.noGlossariesYet,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 18,
                 color: tokens.text,
@@ -32,7 +33,7 @@ class GlossaryEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Create a glossary to manage your translation terminology',
+              t.glossary.empty.createGlossaryHint,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -42,7 +43,7 @@ class GlossaryEmptyState extends StatelessWidget {
             const SizedBox(height: 24),
             GlossaryActionButton(
               icon: FluentIcons.add_24_regular,
-              label: 'Create New Glossary',
+              label: t.glossary.empty.createNewGlossary,
               onPressed: onNewGlossary,
             ),
           ],

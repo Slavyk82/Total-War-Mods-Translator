@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -32,7 +33,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_export_24_regular,
-      title: 'Export Glossary (CSV)',
+      title: t.glossary.dialogs.exportTitle,
       width: 620,
       body: SingleChildScrollView(
         child: Column(
@@ -40,7 +41,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Output File',
+              t.glossary.labels.outputFile,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.text,
@@ -66,7 +67,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
                       Expanded(
                         child: Text(
                           _selectedFilePath ??
-                              'Click to select output file...',
+                              t.glossary.hints.clickToSelectOutputFile,
                           style: tokens.fontBody.copyWith(
                             fontSize: 13,
                             color: _selectedFilePath == null
@@ -87,7 +88,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
                 if (result != null) {
                   return _buildSummaryBanner(
                     tokens,
-                    title: 'Export Summary',
+                    title: t.glossary.labels.exportSummary,
                     message: result.summary,
                   );
                 }
@@ -106,7 +107,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Exporting...',
+                    t.glossary.actions.exporting,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12.5,
                       color: tokens.textDim,
@@ -121,11 +122,11 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           onTap: () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: exportState.isLoading ? 'Exporting...' : 'Export',
+          label: exportState.isLoading ? t.glossary.actions.exporting : t.glossary.actions.export,
           icon: FluentIcons.arrow_export_24_regular,
           filled: true,
           onTap: exportState.isLoading ? null : _export,
@@ -228,7 +229,7 @@ class _GlossaryExportDialogState extends ConsumerState<GlossaryExportDialog> {
   Future<void> _export() async {
     if (_selectedFilePath == null) {
       if (mounted) {
-        FluentToast.error(context, 'Please select an output file');
+        FluentToast.error(context, t.glossary.messages.pleaseSelectOutputFile);
       }
       return;
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import '../providers/glossary_providers.dart';
 import 'glossary_entry_editor.dart';
@@ -81,7 +82,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading entries',
+              t.glossary.errors.loadingEntries,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -118,7 +119,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.centerLeft,
             child: Text(
-              'Source Term',
+              t.glossary.labels.sourceTerm,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -131,7 +132,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.centerLeft,
             child: Text(
-              'Target Term',
+              t.glossary.labels.targetTerm,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -145,7 +146,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.center,
             child: Text(
-              'Case sensitive',
+              t.glossary.labels.caseSensitive,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -159,7 +160,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
             padding: const EdgeInsets.all(8.0),
             alignment: Alignment.center,
             child: Text(
-              'Actions',
+              t.glossary.labels.actions,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -188,7 +189,7 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
           ),
           const SizedBox(height: 16),
           Text(
-            hasFilters ? 'No matching entries' : 'No entries yet',
+            hasFilters ? t.glossary.empty.noMatchingEntries : t.glossary.empty.noEntriesYet,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -196,8 +197,8 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
           const SizedBox(height: 8),
           Text(
             hasFilters
-                ? 'Try adjusting your search or filters'
-                : 'Add entries to this glossary to get started',
+                ? t.glossary.empty.adjustSearchOrFilters
+                : t.glossary.empty.addEntriesToStart,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
@@ -221,10 +222,9 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Entry',
-        message:
-            'Are you sure you want to delete the entry "${entry.sourceTerm} → ${entry.targetTerm}"?',
-        confirmLabel: 'Delete',
+        title: t.glossary.dialogs.deleteEntryTitle,
+        message: t.glossary.dialogs.deleteEntryMessage(source: entry.sourceTerm, target: entry.targetTerm),
+        confirmLabel: t.common.actions.delete,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -235,11 +235,11 @@ class _GlossaryDataGridState extends ConsumerState<GlossaryDataGrid> {
         await ref.read(glossaryEntryEditorProvider.notifier).delete(entry.id);
 
         if (mounted) {
-          FluentToast.success(context, 'Entry deleted successfully');
+          FluentToast.success(context, t.glossary.messages.entryDeletedSuccess);
         }
       } catch (e) {
         if (mounted) {
-          FluentToast.error(context, 'Error deleting entry: $e');
+          FluentToast.error(context, t.glossary.messages.errorDeletingEntry(error: e));
         }
       }
     }

@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/glossary/providers/glossary_providers.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
@@ -45,7 +46,7 @@ class GlossaryLanguageSwitcher extends ConsumerWidget {
         if (langs.isEmpty)
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('No languages available',
+            child: Text(t.glossary.labels.noLanguagesAvailable,
                 style: tokens.fontBody
                     .copyWith(fontSize: 12, color: tokens.textDim)),
           )

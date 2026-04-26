@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -34,18 +35,18 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_import_24_regular,
-      title: 'Import Glossary (CSV)',
+      title: t.glossary.dialogs.importTitle,
       width: 620,
       body: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionLabel(tokens, 'File'),
+            _sectionLabel(tokens, t.glossary.labels.file),
             const SizedBox(height: 6),
             _buildFilePicker(tokens),
             const SizedBox(height: 14),
-            _sectionLabel(tokens, 'Target Language'),
+            _sectionLabel(tokens, t.glossary.labels.targetLanguage),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               initialValue: _targetLanguage,
@@ -54,7 +55,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
                 color: tokens.text,
               ),
               dropdownColor: tokens.panel,
-              decoration: _inputDecoration(tokens, 'Target Language'),
+              decoration: _inputDecoration(tokens, t.glossary.labels.targetLanguage),
               items: _languageCodes.map((lang) {
                 return DropdownMenuItem(
                   value: lang,
@@ -65,13 +66,13 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
                   setState(() => _targetLanguage = value ?? 'fr'),
             ),
             const SizedBox(height: 14),
-            _sectionLabel(tokens, 'Options'),
+            _sectionLabel(tokens, t.glossary.labels.options),
             const SizedBox(height: 6),
             _OptionToggle(
               value: _skipDuplicates,
               onChanged: (v) => setState(() => _skipDuplicates = v),
-              title: 'Skip duplicate entries',
-              subtitle: 'Existing entries will not be overwritten',
+              title: t.glossary.hints.skipDuplicates,
+              subtitle: t.glossary.hints.skipDuplicatesHint,
             ),
             const SizedBox(height: 14),
             importState.when(
@@ -80,7 +81,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
                   return _buildSummaryBanner(
                     tokens,
                     icon: FluentIcons.checkmark_circle_24_regular,
-                    title: 'Import Summary',
+                    title: t.glossary.labels.importSummary,
                     message: result.summary,
                   );
                 }
@@ -99,7 +100,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Importing...',
+                    t.glossary.actions.importing,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12.5,
                       color: tokens.textDim,
@@ -114,11 +115,11 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           onTap: () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: importState.isLoading ? 'Importing...' : 'Import',
+          label: importState.isLoading ? t.glossary.actions.importing : t.glossary.actions.import,
           icon: FluentIcons.arrow_import_24_regular,
           filled: true,
           onTap: importState.isLoading ? null : _import,
@@ -156,7 +157,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  _selectedFilePath ?? 'Click to select file...',
+                  _selectedFilePath ?? t.glossary.hints.clickToSelectFile,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: _selectedFilePath == null
@@ -289,7 +290,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
   Future<void> _import() async {
     if (_selectedFilePath == null) {
       if (mounted) {
-        FluentToast.error(context, 'Please select a file to import');
+        FluentToast.error(context, t.glossary.messages.pleaseSelectFile);
       }
       return;
     }
