@@ -87,12 +87,15 @@ class _Dropdown extends ConsumerWidget {
         }),
       ],
       onChanged: (locale) async {
-        await ref.read(appLocaleProvider.notifier).setLocale(locale);
+        // Update slang's runtime first so the global `t` already points at
+        // the new translations by the time the locale-driven app rebuild
+        // (triggered by the Riverpod state change below) reads them.
         if (locale != null) {
           await LocaleSettings.setLocale(locale);
         } else {
           await LocaleSettings.useDeviceLocale();
         }
+        await ref.read(appLocaleProvider.notifier).setLocale(locale);
       },
     );
   }

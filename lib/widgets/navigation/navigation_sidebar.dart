@@ -60,7 +60,9 @@ class NavigationSidebar extends ConsumerWidget {
                 for (var i = 0; i < navigationTree.length; i++) ...[
                   if (i > 0) const SizedBox(height: 12),
                   if (navigationTree[i].label.isNotEmpty)
-                    _GroupHeader(label: navigationTree[i].label),
+                    _GroupHeader(
+                      label: _localizedGroupLabel(navigationTree[i].label),
+                    ),
                   if (navigationTree[i].label == 'Workflow')
                     ..._buildWorkflowCards(context, navigationTree[i], active)
                   else
@@ -256,7 +258,7 @@ class _NavItemTileState extends State<_NavItemTile> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    widget.item.label,
+                    _localizedItemLabel(widget.item.label),
                     style: TextStyle(
                       color: fg,
                       fontWeight: widget.isActive
@@ -335,7 +337,7 @@ class _WorkflowStepCardState extends State<_WorkflowStepCard> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    widget.item.label,
+                    _localizedItemLabel(widget.item.label),
                     style: TextStyle(
                       color: fg,
                       fontWeight: active ? FontWeight.w600 : FontWeight.w500,
@@ -518,6 +520,37 @@ class _ThemeMenuEntry extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Maps the English navigation group identifier from [navigationTree] to its
+/// localized display label. Unknown identifiers fall back to the raw value so
+/// future tree edits never silently render an empty header.
+String _localizedGroupLabel(String label) {
+  final groups = t.widgets.navigationSidebar.groups;
+  return switch (label) {
+    'Workflow' => groups.workflow,
+    'Tools' => groups.tools,
+    'System' => groups.system,
+    _ => label,
+  };
+}
+
+/// Maps the English navigation item identifier from [navigationTree] to its
+/// localized display label. Unknown identifiers fall back to the raw value.
+String _localizedItemLabel(String label) {
+  final items = t.widgets.navigationSidebar.items;
+  return switch (label) {
+    'Home' => items.home,
+    'Detect' => items.detect,
+    'Translate' => items.translate,
+    'Publish' => items.publish,
+    'Glossary' => items.glossary,
+    'Translation Memory' => items.translationMemory,
+    'Game Translation' => items.gameTranslation,
+    'Pack Compilation' => items.packCompilation,
+    'Settings' => items.settings,
+    _ => label,
+  };
 }
 
 class _ThemeSwatch extends StatelessWidget {

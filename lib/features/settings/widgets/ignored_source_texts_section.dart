@@ -140,7 +140,9 @@ class _IgnoredSourceTextsBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        const IgnoredSourceTextsDataGrid(),
+        // Non-const: column headers are translated; see rationale in
+        // `settings_screen.dart`.
+        IgnoredSourceTextsDataGrid(),
       ],
     );
   }

@@ -15,6 +15,7 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/mods/utils/workshop_scan_models.dart';
 import 'package:twmt/services/mods/project_analysis_handler.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 /// Callback type for emitting scan log messages.
 typedef ScanLogEmitter = void Function(String message, [ScanLogLevel level]);
@@ -156,11 +157,11 @@ class DetectedModBuilder {
         if (hasNewSteamUpdate) {
           _logger.info(
               'New Steam update detected for $workshopId, analyzing changes...');
-          emitLog?.call('Update detected: $modTitle - analyzing changes...');
+          emitLog?.call(t.mods.scanLogs.updateDetected(modTitle: modTitle));
         } else {
           _logger.info(
               'Analysis cache invalidated for $workshopId (file re-downloaded), analyzing changes...');
-          emitLog?.call('Re-analyzing: $modTitle');
+          emitLog?.call(t.mods.scanLogs.reanalyzing(modTitle: modTitle));
         }
         final analysisResult = await _analysisHandler.analyzeProjectChanges(
           projectId: existingProject.id,
@@ -174,8 +175,11 @@ class DetectedModBuilder {
           translationStatsChanged = true;
         }
         if (updateAnalysis != null && updateAnalysis.hasChanges) {
-          emitLog?.call(
-              '  -> ${updateAnalysis.newUnitsCount} new, ${updateAnalysis.modifiedUnitsCount} modified, ${updateAnalysis.removedUnitsCount} removed');
+          emitLog?.call(t.mods.scanLogs.analysisCounts(
+            newCount: updateAnalysis.newUnitsCount,
+            modifiedCount: updateAnalysis.modifiedUnitsCount,
+            removedCount: updateAnalysis.removedUnitsCount,
+          ));
         }
 
         // Only sync timeUpdated AFTER analysis if there are NO changes
@@ -253,7 +257,10 @@ class DetectedModBuilder {
       'Workshop title changed for project ${existingProject.id}: '
       '"$storedModTitle" -> "$newTitle"',
     );
-    emitLog?.call('Title updated: "$storedModTitle" -> "$newTitle"');
+    emitLog?.call(t.mods.scanLogs.titleUpdated(
+      oldTitle: storedModTitle,
+      newTitle: newTitle,
+    ));
 
     try {
       final updatedMetadata =

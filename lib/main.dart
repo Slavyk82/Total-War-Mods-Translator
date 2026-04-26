@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:twmt/providers/app_locale_provider.dart';
 import 'package:twmt/providers/theme_name_provider.dart';
 import 'package:twmt/providers/data_migration_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -123,6 +124,11 @@ class MyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeNameAsync = ref.watch(themeNameProvider);
     final router = ref.watch(goRouterProvider);
+    // Force the whole app subtree to rebuild when the user switches the
+    // app-UI locale. Required because every widget reads slang's global `t`
+    // (not `context.t`), so nothing subscribes to TranslationProvider on
+    // its own and stale strings would persist until route navigation.
+    ref.watch(appLocaleProvider);
 
     // Fall back to Atelier while the saved theme name is loading — avoids
     // a flash on first frames. All palettes except Vellum are dark; the

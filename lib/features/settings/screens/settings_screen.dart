@@ -52,7 +52,13 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ]),
             ),
-            const Expanded(
+            // Intentionally non-const. When the user switches the app-UI
+            // locale, MyApp watches `appLocaleProvider` and rebuilds the whole
+            // app tree; the rebuild must reach the tab content so all sections
+            // re-read translations from the global `t`. `const` here would
+            // canonicalize this widget and skip the subtree. Same rationale
+            // applies to the section calls inside each tab.
+            Expanded(
               child: TabBarView(
                 children: [
                   GeneralSettingsTab(),

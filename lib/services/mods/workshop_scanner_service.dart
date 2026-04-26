@@ -21,6 +21,7 @@ import 'package:twmt/services/mods/pack_file_scanner.dart';
 import 'package:twmt/services/mods/detected_mod_builder.dart';
 import 'package:twmt/services/mods/project_analysis_handler.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 /// Service for scanning Steam Workshop folders and discovering mods.
 ///
@@ -106,18 +107,17 @@ class WorkshopScannerService {
   ) async {
     try {
       _logger.info('Scanning Workshop folder for game: $gameCode');
-      _emitLog('Starting scan for game: $gameCode');
+      _emitLog(t.mods.scanLogs.startingScan(gameCode: gameCode));
 
       // Fail fast if RPFM-CLI is missing or has an incompatible version: a
       // scan without RPFM cannot detect localization files and would silently
       // return zero mods, leaving the user without an explanation.
       final rpfmAvailable = await _rpfmService.isRpfmAvailable();
       if (!rpfmAvailable) {
-        const message =
+        _logger.error(
             'RPFM-CLI is not available. Update its path in Settings → '
-            'Folders → RPFM, or download it from there.';
-        _logger.error(message);
-        _emitLog(message, ScanLogLevel.error);
+            'Folders → RPFM, or download it from there.');
+        _emitLog(t.mods.scanLogs.rpfmNotAvailable, ScanLogLevel.error);
         return const Err(RpfmNotFoundException(
           'RPFM-CLI is not available. Please update the path in Settings.',
         ));
@@ -132,7 +132,8 @@ class WorkshopScannerService {
         _logger.error(
             'Game installation not found for $gameCode: ${error.message}');
         _emitLog(
-            'Game installation not found: ${error.message}', ScanLogLevel.error);
+            t.mods.scanLogs.gameInstallationNotFound(message: error.message),
+            ScanLogLevel.error);
         throw ServiceException(
           'Game installation not found: ${error.message}',
           error: error,
@@ -144,26 +145,26 @@ class WorkshopScannerService {
       // Check if Workshop path is configured
       if (!gameInstallation.hasWorkshopPath) {
         _logger.debug('No Workshop path configured for $gameCode');
-        _emitLog('No Workshop path configured', ScanLogLevel.warning);
+        _emitLog(t.mods.scanLogs.noWorkshopPath, ScanLogLevel.warning);
         return const Ok(ModScanResult.empty);
       }
 
       final workshopPath = gameInstallation.steamWorkshopPath!;
       final gameWorkshopDir = Directory(workshopPath);
-      _emitLog('Scanning: $workshopPath');
+      _emitLog(t.mods.scanLogs.scanningPath(path: workshopPath));
 
       if (!await gameWorkshopDir.exists()) {
         _logger.debug('Workshop folder does not exist: $workshopPath');
-        _emitLog('Workshop folder does not exist', ScanLogLevel.warning);
+        _emitLog(t.mods.scanLogs.workshopFolderMissing, ScanLogLevel.warning);
         return const Ok(ModScanResult.empty);
       }
 
       // Get existing projects to mark which mods are already imported
-      _emitLog('Loading existing projects...');
+      _emitLog(t.mods.scanLogs.loadingProjects);
       final existingWorkshopIds = await _getExistingWorkshopIds();
 
       // Scan Workshop folder for mod directories
-      _emitLog('Listing Workshop directories...');
+      _emitLog(t.mods.scanLogs.listingDirectories);
       final modDirs = await gameWorkshopDir
           .list()
           .where((entity) => entity is Directory)
@@ -171,15 +172,15 @@ class WorkshopScannerService {
           .toList();
 
       _logger.info('Found ${modDirs.length} Workshop items');
-      _emitLog('Found ${modDirs.length} Workshop items');
+      _emitLog(t.mods.scanLogs.foundItems(count: modDirs.length));
 
       // Phase 1: Collect pack file info and check cache
-      _emitLog('Scanning pack files for localization data...');
+      _emitLog(t.mods.scanLogs.scanningPackFiles);
       final modDataList = await _packFileScanner.collectModData(
         modDirs,
         emitLog: _emitLog,
       );
-      _emitLog('Found ${modDataList.length} mods with localization files');
+      _emitLog(t.mods.scanLogs.foundLocalizedMods(count: modDataList.length));
 
       // Phase 1.5: Get cached workshop mods to track previous timeUpdated values
       final workshopIds = modDataList.map((m) => m.workshopId).toList();
@@ -189,15 +190,16 @@ class WorkshopScannerService {
       final hiddenWorkshopIds = await _getHiddenWorkshopIds();
 
       // Phase 2: Batch fetch Steam Workshop data (will update cache)
-      _emitLog('Fetching Steam Workshop metadata...');
+      _emitLog(t.mods.scanLogs.fetchingMetadata);
       final workshopModsMap = await _fetchWorkshopData(
         workshopIds,
         gameInstallation.steamAppId,
       );
-      _emitLog('Retrieved data for ${workshopModsMap.length} mods from Steam');
+      _emitLog(
+          t.mods.scanLogs.retrievedMetadata(count: workshopModsMap.length));
 
       // Phase 3: Build DetectedMod list with cached timestamps for comparison
-      _emitLog('Analyzing mod updates...');
+      _emitLog(t.mods.scanLogs.analyzingUpdates);
       final buildResult = await _detectedModBuilder.buildDetectedMods(
         modDataList: modDataList,
         workshopModsMap: workshopModsMap,
@@ -208,15 +210,15 @@ class WorkshopScannerService {
       );
 
       _logger.info('Scan complete: ${buildResult.mods.length} translatable mods');
-      _emitLog('Scan complete: ${buildResult.mods.length} translatable mods');
+      _emitLog(t.mods.scanLogs.scanComplete(count: buildResult.mods.length));
       if (buildResult.translationStatsChanged) {
         _logger.info('Translation statistics changed during scan');
-        _emitLog('Translation statistics updated');
+        _emitLog(t.mods.scanLogs.statsUpdated);
       }
       return Ok(buildResult);
     } catch (e, stackTrace) {
       _logger.error('Failed to scan Workshop folder: $e', stackTrace);
-      _emitLog('Scan failed: $e', ScanLogLevel.error);
+      _emitLog(t.mods.scanLogs.scanFailed(error: '$e'), ScanLogLevel.error);
       return Err(ServiceException(
         'Failed to scan Workshop folder: $e',
         error: e,

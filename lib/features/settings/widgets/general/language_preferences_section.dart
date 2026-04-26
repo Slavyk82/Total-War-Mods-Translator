@@ -41,7 +41,9 @@ class LanguagePreferencesSection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 16),
-        const LanguageSettingsDataGrid(),
+        // Non-const: column headers are translated; see rationale in
+        // `settings_screen.dart`.
+        LanguageSettingsDataGrid(),
       ],
     );
   }

@@ -37,15 +37,20 @@ class GeneralSettingsTab extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            // AppLanguageSection stays const: it watches `appLocaleProvider`
+            // and self-rebuilds on locale change. The other sections must be
+            // non-const so MyApp's locale-driven rebuild propagates here and
+            // refreshes their translated section headers. See the rationale
+            // comment in `settings_screen.dart`.
             const AppLanguageSection(),
             const SizedBox(height: 32),
-            const LanguagePreferencesSection(),
+            LanguagePreferencesSection(),
             const SizedBox(height: 32),
-            const IgnoredSourceTextsSection(),
+            IgnoredSourceTextsSection(),
             const SizedBox(height: 32),
-            const MaintenanceSection(),
+            MaintenanceSection(),
             const SizedBox(height: 32),
-            const BackupSection(),
+            BackupSection(),
           ],
         );
       },

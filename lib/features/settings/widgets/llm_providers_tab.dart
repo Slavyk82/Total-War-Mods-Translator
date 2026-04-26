@@ -185,7 +185,8 @@ class _LlmProvidersTabState extends ConsumerState<LlmProvidersTab> {
             const SizedBox(height: 24),
 
             // Custom Translation Rules Section
-            const LlmCustomRulesSection(),
+            // Non-const: see locale-rebuild rationale in `settings_screen.dart`.
+            LlmCustomRulesSection(),
             const SizedBox(height: 32),
 
             // Advanced Settings

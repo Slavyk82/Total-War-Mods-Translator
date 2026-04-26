@@ -24,7 +24,23 @@
   },
   "navigationSidebar": {
     "themeSwitcher": "Sélecteur de thème",
-    "selectTheme": "Sélectionner un thème"
+    "selectTheme": "Sélectionner un thème",
+    "groups": {
+      "workflow": "Flux de travail",
+      "tools": "Outils",
+      "system": "Système"
+    },
+    "items": {
+      "home": "Accueil",
+      "detect": "Détecter",
+      "translate": "Traduire",
+      "publish": "Publier",
+      "glossary": "Glossaire",
+      "translationMemory": "Mémoire de traduction",
+      "gameTranslation": "Traduction du jeu",
+      "packCompilation": "Compilation de pack",
+      "settings": "Paramètres"
+    }
   },
   "dataMigrationDialog": {
     "title": "Mise à jour de la base de données",

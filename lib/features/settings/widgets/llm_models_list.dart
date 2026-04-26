@@ -95,7 +95,9 @@ class LlmModelsList extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const LlmProviderHeader(),
+            // Non-const: header label is translated; see rationale in
+            // `settings_screen.dart`.
+            LlmProviderHeader(),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(

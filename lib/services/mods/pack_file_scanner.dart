@@ -10,6 +10,7 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/mods/utils/workshop_scan_models.dart';
 import 'package:twmt/services/mods/utils/mod_image_finder.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 /// Callback type for emitting scan log messages.
 typedef ScanLogEmitter = void Function(String message, [ScanLogLevel level]);
@@ -162,7 +163,11 @@ class PackFileScanner {
       } else if (rpfmAvailable) {
         // Cache miss or invalidated - need to scan
         cacheMisses++;
-        emitLog?.call('[$processed/$total] Scanning: ${info.packFileName}.pack');
+        emitLog?.call(t.mods.scanLogs.scanningPack(
+          processed: processed,
+          total: total,
+          name: info.packFileName,
+        ));
         hasLocFiles = await _scanPackForLocFiles(info);
 
         // Update cache with scan result
@@ -202,7 +207,11 @@ class PackFileScanner {
 
     _logger.debug('Cache: hits=$cacheHits, misses=$cacheMisses, skipped=$cacheSkipped');
     if (cacheMisses > 0) {
-      emitLog?.call('Cache: $cacheHits hits, $cacheMisses scans, $cacheSkipped skipped');
+      emitLog?.call(t.mods.scanLogs.cacheStats(
+        hits: cacheHits,
+        scans: cacheMisses,
+        skipped: cacheSkipped,
+      ));
     }
     return modDataList;
   }

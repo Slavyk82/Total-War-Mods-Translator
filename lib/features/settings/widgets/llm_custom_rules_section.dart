@@ -104,7 +104,9 @@ class _LlmCustomRulesBody extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        const LlmCustomRulesDataGrid(),
+        // Non-const: column headers are translated; see rationale in
+        // `settings_screen.dart`.
+        LlmCustomRulesDataGrid(),
       ],
     );
   }

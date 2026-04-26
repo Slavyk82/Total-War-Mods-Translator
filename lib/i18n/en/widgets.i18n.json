@@ -24,7 +24,23 @@
   },
   "navigationSidebar": {
     "themeSwitcher": "Theme switcher",
-    "selectTheme": "Select theme"
+    "selectTheme": "Select theme",
+    "groups": {
+      "workflow": "Workflow",
+      "tools": "Tools",
+      "system": "System"
+    },
+    "items": {
+      "home": "Home",
+      "detect": "Detect",
+      "translate": "Translate",
+      "publish": "Publish",
+      "glossary": "Glossary",
+      "translationMemory": "Translation Memory",
+      "gameTranslation": "Game Translation",
+      "packCompilation": "Pack Compilation",
+      "settings": "Settings"
+    }
   },
   "dataMigrationDialog": {
     "title": "Database Update",

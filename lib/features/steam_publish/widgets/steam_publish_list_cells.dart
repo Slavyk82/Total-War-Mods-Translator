@@ -339,7 +339,7 @@ class SteamLastPublishedCell extends ConsumerWidget {
     } else if (isOutdated) {
       fg = tokens.err;
       icon = FluentIcons.warning_24_filled;
-      prefix = 'Outdated · ';
+      prefix = '${t.steamPublish.cells.outdatedPrefix} · ';
     } else {
       fg = tokens.ok;
       icon = FluentIcons.checkmark_circle_24_regular;

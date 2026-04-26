@@ -7,6 +7,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
 import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 /// Callback type for emitting scan log messages.
 typedef ScanLogEmitter = void Function(String message, [ScanLogLevel level]);
@@ -99,7 +100,8 @@ class ProjectAnalysisHandler {
         // If there are new units, add them automatically
         // This creates TranslationUnit and TranslationVersion records with status 'pending'
         if (analysis.hasNewUnits) {
-          emitLog?.call('  Adding ${analysis.newUnitsCount} new units...');
+          emitLog?.call(t.mods.scanLogs
+              .addingNewUnits(count: analysis.newUnitsCount));
           _logger.info(
             'Auto-adding ${analysis.newUnitsCount} new units for project $projectId',
           );
@@ -107,11 +109,13 @@ class ProjectAnalysisHandler {
             projectId: projectId,
             analysis: analysis,
             onProgress: (processed, total) {
-              emitLog?.call('  Adding new units: $processed/$total');
+              emitLog?.call(t.mods.scanLogs
+                  .addingProgress(processed: processed, total: total));
             },
           );
           if (addResult.isOk && addResult.value > 0) {
-            emitLog?.call('  [OK] Added ${addResult.value} new units');
+            emitLog?.call(
+                t.mods.scanLogs.addedNewUnits(count: addResult.value));
             _logger.info('Added ${addResult.value} new units');
             statsChanged = true;
           } else if (addResult.isErr) {
@@ -124,8 +128,8 @@ class ProjectAnalysisHandler {
         // If there are modified source texts, apply changes automatically
         // This updates source texts and resets translation statuses to pending
         if (analysis.hasModifiedUnits) {
-          emitLog?.call(
-              '  Updating ${analysis.modifiedUnitsCount} modified units...');
+          emitLog?.call(t.mods.scanLogs
+              .updatingModified(count: analysis.modifiedUnitsCount));
           _logger.info(
             'Auto-applying ${analysis.modifiedUnitsCount} source text changes for project $projectId',
           );
@@ -134,13 +138,17 @@ class ProjectAnalysisHandler {
             projectId: projectId,
             analysis: analysis,
             onProgress: (processed, total, phase) {
-              emitLog?.call('  $phase: $processed/$total');
+              emitLog?.call(t.mods.scanLogs.phaseProgress(
+                phase: _localizedPhase(phase),
+                processed: processed,
+                total: total,
+              ));
             },
           );
           if (applyResult.isOk) {
             final result = applyResult.value;
-            emitLog?.call(
-                '  [OK] Updated ${result.sourceTextsUpdated} source texts');
+            emitLog?.call(t.mods.scanLogs
+                .updatedSourceTexts(count: result.sourceTextsUpdated));
             _logger.info(
               'Applied: ${result.sourceTextsUpdated} source texts updated, '
               '${result.translationsReset} translations reset to pending',
@@ -158,8 +166,8 @@ class ProjectAnalysisHandler {
         // If there are removed units, mark them as obsolete
         // This soft-deletes units that no longer exist in the mod pack
         if (analysis.hasRemovedUnits) {
-          emitLog?.call(
-              '  Marking ${analysis.removedUnitsCount} removed units as obsolete...');
+          emitLog?.call(t.mods.scanLogs
+              .markingObsolete(count: analysis.removedUnitsCount));
           _logger.info(
             'Auto-marking ${analysis.removedUnitsCount} removed units as obsolete for project $projectId',
           );
@@ -168,12 +176,13 @@ class ProjectAnalysisHandler {
             projectId: projectId,
             analysis: analysis,
             onProgress: (processed, total) {
-              emitLog?.call('  Marking obsolete: $processed/$total');
+              emitLog?.call(t.mods.scanLogs
+                  .markingObsoleteProgress(processed: processed, total: total));
             },
           );
           if (removeResult.isOk && removeResult.value > 0) {
-            emitLog
-                ?.call('  [OK] Marked ${removeResult.value} units as obsolete');
+            emitLog?.call(
+                t.mods.scanLogs.markedObsolete(count: removeResult.value));
             _logger.info('Marked ${removeResult.value} units as obsolete');
             statsChanged = true;
           } else if (removeResult.isErr) {
@@ -186,8 +195,8 @@ class ProjectAnalysisHandler {
         // If there are reactivated units (previously obsolete, now back in pack),
         // reactivate them and mark translations for review
         if (analysis.hasReactivatedUnits) {
-          emitLog?.call(
-              '  Reactivating ${analysis.reactivatedUnitsCount} units...');
+          emitLog?.call(t.mods.scanLogs
+              .reactivating(count: analysis.reactivatedUnitsCount));
           _logger.info(
             'Auto-reactivating ${analysis.reactivatedUnitsCount} obsolete units for project $projectId',
           );
@@ -196,14 +205,15 @@ class ProjectAnalysisHandler {
             projectId: projectId,
             analysis: analysis,
             onProgress: (processed, total) {
-              emitLog?.call('  Reactivating: $processed/$total');
+              emitLog?.call(t.mods.scanLogs
+                  .reactivatingProgress(processed: processed, total: total));
             },
           );
           if (reactivateResult.isOk) {
             final result = reactivateResult.value;
             if (result.unitsReactivated > 0) {
-              emitLog
-                  ?.call('  [OK] Reactivated ${result.unitsReactivated} units');
+              emitLog?.call(t.mods.scanLogs
+                  .reactivated(count: result.unitsReactivated));
               _logger.info(
                 'Reactivated ${result.unitsReactivated} units, '
                 '${result.translationsMarkedForReview} translations marked for review',
@@ -254,4 +264,15 @@ class ProjectAnalysisHandler {
       },
     );
   }
+}
+
+/// Maps the English phase identifier emitted by [ModUpdateAnalysisService]
+/// onProgress callbacks to its localized label. Falls back to the raw phase
+/// so a renamed phase still surfaces a recognisable string in the log panel.
+String _localizedPhase(String phase) {
+  return switch (phase) {
+    'Updating source texts' => t.mods.scanLogs.phaseUpdatingSourceTexts,
+    'Resetting translations' => t.mods.scanLogs.phaseResettingTranslations,
+    _ => phase,
+  };
 }
