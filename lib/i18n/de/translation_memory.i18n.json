@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Translation Memory",
+    "statistics": "Statistiken",
+    "totalEntries": "Einträge gesamt",
+    "languagePairs": "Sprachpaare",
+    "performance": "Leistung",
+    "totalReuse": "Wiederverwendungen gesamt",
+    "tokensSaved": "Eingesparte Tokens",
+    "reuseRate": "Wiederverwendungsrate",
+    "sourceText": "Ausgangstext",
+    "targetText": "Zieltext",
+    "usageCount": "Nutzungsanzahl",
+    "lastUsed": "Zuletzt verwendet",
+    "created": "Erstellt",
+    "selectedFile": "Ausgewählte Datei",
+    "importOptions": "Importoptionen",
+    "filters": "Filter",
+    "whatToExport": "Was exportiert werden soll",
+    "outputFile": "Ausgabedatei",
+    "formatOptions": "Formatoptionen",
+    "deleteIfUnusedDays": "Löschen, wenn nicht verwendet seit (Tagen)",
+    "deleteAll": "Alle löschen",
+    "targetLanguage": "Zielsprache"
+  },
+  "actions": {
+    "importTmx": "TMX importieren",
+    "exportTmx": "TMX exportieren",
+    "cleanup": "Bereinigen",
+    "import": "Importieren",
+    "export": "Exportieren",
+    "importing": "Importieren...",
+    "exporting": "Exportieren..."
+  },
+  "dialogs": {
+    "importTitle": "Translation Memory importieren (TMX)",
+    "exportTitle": "Translation Memory exportieren (TMX)",
+    "cleanupTitle": "Translation Memory bereinigen",
+    "entryDetailsTitle": "Details des Translation-Memory-Eintrags",
+    "deleteTmTitle": "TM-Eintrag löschen",
+    "deleteTmMessage": "Möchten Sie diesen Translation-Memory-Eintrag wirklich löschen?",
+    "deleteTmWarning": "Diese Aktion kann nicht rückgängig gemacht werden."
+  },
+  "messages": {
+    "noEntries": "Keine Translation-Memory-Einträge",
+    "importHint": "Importieren Sie eine TMX-Datei oder beginnen Sie mit dem Übersetzen, um Ihren Speicher aufzubauen",
+    "failedToLoadEntries": "Einträge konnten nicht geladen werden",
+    "failedToLoadStatistics": "Statistiken konnten nicht geladen werden",
+    "removeUnusedHint": "Entfernen Sie ungenutzte Einträge, um Ihr Translation Memory zu optimieren.",
+    "allEntriesWillBeDeleted": "Alle Einträge werden gelöscht – dies kann nicht rückgängig gemacht werden",
+    "deletedEntries": "$count Einträge gelöscht",
+    "tmEntryDeletedSuccess": "TM-Eintrag erfolgreich gelöscht",
+    "failedToDeleteTmEntry": "TM-Eintrag konnte nicht gelöscht werden",
+    "deleteEntry": "Eintrag löschen",
+    "importComplete": "Import abgeschlossen",
+    "exportComplete": "Export abgeschlossen",
+    "exportedEntries": "$count Einträge exportiert",
+    "processedOf": "$processed von $total Einträgen verarbeitet",
+    "sizeKb": "Größe: $size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 Einträge",
+    "showingRange": "Zeige $start–$end von $total",
+    "firstPage": "Erste Seite",
+    "previousPage": "Vorherige Seite",
+    "nextPage": "Nächste Seite",
+    "lastPage": "Letzte Seite"
+  },
+  "importResult": {
+    "totalEntries": "Einträge gesamt",
+    "imported": "Importiert",
+    "skippedDuplicates": "Übersprungen (Duplikate)",
+    "failedValidation": "Fehlgeschlagen (Validierungsfehler)"
+  },
+  "options": {
+    "overwriteExisting": "Vorhandene Einträge überschreiben",
+    "overwriteExistingHint": "Vorhandene Einträge durch importierte ersetzen",
+    "validateEntries": "Einträge validieren",
+    "validateEntriesHint": "Vor dem Import auf Fehler prüfen",
+    "includeMetadata": "Metadaten einbeziehen",
+    "includeMetadataHint": "Qualitätsbewertungen, Nutzungsanzahl usw. hinzufügen",
+    "includeStats": "Statistiken einbeziehen",
+    "includeStatsHint": "Export-Zusammenfassung und Statistiken zum Datei-Header hinzufügen",
+    "allEntries": "Alle Einträge (passend zu Filtern)",
+    "frequentlyUsed": "Nur häufig genutzte (>5 Mal)"
+  },
+  "columns": {
+    "sourceText": "AUSGANGSTEXT",
+    "targetText": "ZIELTEXT",
+    "usage": "NUTZUNG",
+    "lastUsed": "ZULETZT VERWENDET"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Klicken, um eine .tmx-Datei auszuwählen",
+    "clickToSelectSaveLocation": "Klicken, um Speicherort auszuwählen",
+    "searchPlaceholder": "Translation Memory durchsuchen..."
+  }
+}

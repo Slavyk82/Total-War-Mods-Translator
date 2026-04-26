@@ -1,0 +1,235 @@
+{
+  "title": "Projekte",
+  "projectCount": "$count Projekt(e)",
+  "stateLabel": "STATUS",
+  "clearFilters": "Zurücksetzen",
+  "filters": {
+    "needsUpdate": "Aktualisierung erforderlich",
+    "needsReview": "Überprüfung erforderlich",
+    "incomplete": "Unvollständig",
+    "completed": "Abgeschlossen",
+    "exported": "Exportiert",
+    "notExported": "Nicht exportiert",
+    "exportOutdated": "Export veraltet"
+  },
+  "emptyStates": {
+    "noMatch": "Keine Projekte entsprechen den Filtern",
+    "noProjects": "Noch keine Projekte vorhanden",
+    "adjustFilters": "Versuchen Sie, Ihre Filter anzupassen",
+    "goToMods": "Wechseln Sie zum Mods-Bildschirm, um ein Projekt aus einer Mod zu erstellen",
+    "failedToLoad": "Projekte konnten nicht geladen werden"
+  },
+  "loading": "Projekte werden geladen…",
+  "columns": {
+    "project": "Projekt",
+    "languagesProgress": "Sprachen & Fortschritt",
+    "modified": "Geändert",
+    "status": "Status"
+  },
+  "labels": {
+    "noTargetLanguage": "Keine Zielsprache",
+    "localPack": "Lokales Pack",
+    "gameTranslation": "Spielübersetzung",
+    "lastModified": "Zuletzt geändert: $date",
+    "lastExport": "Letzter Export: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Im Steam Workshop öffnen",
+    "resync": "Mit Quell-Pack-Datei neu synchronisieren",
+    "deleteProject": "Projekt löschen",
+    "hideBulkMenu": "Sammelmenü ausblenden",
+    "showBulkMenu": "Sammelmenü anzeigen",
+    "newTranslations": "+$n neue Übersetzung(en) hinzuzufügen",
+    "removedTranslations": "-$n Übersetzung(en) entfernt",
+    "changedSources": "~$n geänderte(r) Quelltext(e)"
+  },
+  "status": {
+    "modUpdated": "Mod aktualisiert",
+    "upToDate": "Aktuell",
+    "exportOutdated": "Export veraltet",
+    "unpublished": "Nicht veröffentlicht",
+    "exported": "Exportiert",
+    "draft": "Entwurf"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "Projekt löschen",
+      "message": "Möchten Sie „$name“ wirklich löschen?",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirmLabel": "Löschen"
+    },
+    "confirmLeave": {
+      "title": "Export läuft",
+      "message": "Ein Sammelexport läuft derzeit. Möchten Sie wirklich verlassen? Der Export wird abgebrochen.",
+      "stay": "Bleiben",
+      "leave": "Verlassen"
+    },
+    "confirmCancelBulk": {
+      "title": "Aktuellen Vorgang stoppen?",
+      "message": "Bereits verarbeitete Projekte behalten ihre Änderungen.",
+      "stop": "Stoppen",
+      "keepRunning": "Weiter ausführen"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "Projekt erfolgreich neu synchronisiert",
+    "resyncFailed": "Neu-Synchronisierung fehlgeschlagen: $error",
+    "deleteSuccess": "Projekt „$name“ gelöscht",
+    "deleteFailed": "Projekt konnte nicht gelöscht werden: $error",
+    "projectCreated": "Projekt erfolgreich erstellt",
+    "projectCreatedUnits": "Projekt mit $count Übersetzungseinheiten erstellt",
+    "createFailed": "Projekt konnte nicht erstellt werden: $error",
+    "importFailed": "Projekt erstellt, aber Import der Übersetzungen fehlgeschlagen: $error"
+  },
+  "search": {
+    "hint": "Projekte suchen…"
+  },
+  "batchExport": {
+    "title": "Sammel-Pack-Export",
+    "noData": "Keine Exportdaten.",
+    "statusComplete": "Export abgeschlossen",
+    "statusCancelled": "Abgebrochen",
+    "statusExporting": "Export läuft…",
+    "completedWithErrors": "Export mit Fehlern abgeschlossen",
+    "allSuccess": "Alle Packs erfolgreich exportiert",
+    "summary": "$succeeded erfolgreich, $failed fehlgeschlagen",
+    "current": "Aktuell: $name",
+    "sectionProjects": "Projekte",
+    "sectionLabel": "$count Projekte • $lang",
+    "progressOf": "$completed / $total Projekte",
+    "entryCount": "$count Einträge"
+  },
+  "bulk": {
+    "sectionSettings": "Einstellungen",
+    "sectionActions": "Aktionen",
+    "sectionInfo": "Infos anzeigen",
+    "infoText": "Sammelaktionen sind für bereits teilweise übersetzte Projekte gedacht. Sie gelten für alle sichtbaren Projekte, die der ausgewählten Zielsprache entsprechen.",
+    "infoHide": "Ausblenden",
+    "targetLanguageLabel": "Zielsprache",
+    "scopeMessage": "Wirkt sich auf $visible sichtbare Projekte aus ($matching entsprechen der Zielsprache).",
+    "buttons": {
+      "translateAll": "Alle übersetzen",
+      "rescanReviews": "Überprüfungen neu scannen",
+      "reviewFlagged": "Markierte überprüfen",
+      "generatePack": "Pack erstellen"
+    },
+    "unitCount": "$n Einheit(en)",
+    "tooltips": {
+      "selectLanguage": "Wählen Sie eine Zielsprache aus",
+      "alreadyRunning": "Ein Vorgang läuft bereits",
+      "noVisibleProjects": "Keine sichtbaren Projekte entsprechen"
+    },
+    "progress": {
+      "titleTranslating": "Projekte werden übersetzt",
+      "titleRescanning": "Überprüfungen werden neu gescannt",
+      "titleValidating": "Überprüfungen werden zwangsvalidiert",
+      "titleGeneratingPacks": "Packs werden erstellt",
+      "titleRetranslating": "Markierte Einheiten werden neu übersetzt",
+      "titleDefault": "Sammelvorgang",
+      "targetLanguage": "Zielsprache: $code",
+      "projectProgress": "$current / $total Projekte",
+      "cancelling": "Wird abgebrochen…",
+      "retryFailed": "Fehlgeschlagene wiederholen",
+      "summary": "$succeeded erfolgreich · $skipped übersprungen · $failed fehlgeschlagen"
+    },
+    "review": {
+      "title": "Markierte Übersetzungen überprüfen",
+      "subtitle": "Ziel: $code · $units Einheiten in $projects Projekten",
+      "loadFailed": "Überprüfungswarteschlange konnte nicht geladen werden: $error",
+      "working": "Wird verarbeitet…",
+      "validateAll": "Alle validieren",
+      "retranslateAll": "Alle erzwungen neu übersetzen",
+      "emptyTitle": "Keine markierten Übersetzungen",
+      "emptySubtitle": "Alle sichtbaren Projekte sind für diese Sprache aktuell.",
+      "noModelSelected": "Kein LLM-Modell ausgewählt",
+      "retranslateFailed": "Neuübersetzung fehlgeschlagen: $error",
+      "validateFailed": "Validierung fehlgeschlagen: $error",
+      "validateAllFailed": "Validierung aller fehlgeschlagen: $error",
+      "columnSource": "EN",
+      "columnTranslation": "Übersetzung",
+      "emptyTranslation": "(leer)",
+      "tooltipValidate": "Validieren (Überprüfungsmarkierung entfernen)",
+      "tooltipRetranslate": "Diese Einheit erzwungen neu übersetzen"
+    },
+    "languageSelector": {
+      "loadFailed": "Sprachen konnten nicht geladen werden: $error",
+      "noLanguages": "Keine Zielsprache in den sichtbaren Projekten verfügbar."
+    },
+    "outcomes": {
+      "noTargetLanguage": "Keine Zielsprache konfiguriert",
+      "noUntranslatedUnits": "Keine unübersetzten Einheiten",
+      "noLlmModel": "Kein LLM-Modell ausgewählt",
+      "noFlaggedUnits": "Keine zur Überprüfung markierten Einheiten",
+      "noUnitsToRescan": "Keine übersetzten Einheiten zum erneuten Scannen",
+      "unitsTranslated": "$count Einheiten übersetzt · $flagged markiert",
+      "unitsFlagged": "$count zur Überprüfung markiert",
+      "flagsCleared": "$count Markierungen entfernt",
+      "packGenerated": "$entries Einträge · $size MB",
+      "unitsRetranslated": "$count Einheiten neu übersetzt"
+    }
+  },
+  "addLanguage": {
+    "title": "Zielsprachen hinzufügen",
+    "subtitle": "Wählen Sie Sprachen aus, die zu diesem Projekt hinzugefügt werden sollen",
+    "adding": "Wird hinzugefügt…",
+    "addButton": "Sprachen hinzufügen",
+    "allAdded": "Alle Sprachen wurden bereits hinzugefügt",
+    "loadError": "Fehler beim Laden der Sprachen",
+    "languageCode": "Code: $code",
+    "addSuccess": "$count Sprache(n) mit jeweils $units Übersetzungseinheiten hinzugefügt",
+    "addFailed": "Sprachen konnten nicht hinzugefügt werden: $error"
+  },
+  "createProject": {
+    "title": "Neues Projekt erstellen",
+    "steps": {
+      "basicInfo": "Grundinformationen",
+      "translationSettings": "Übersetzungseinstellungen"
+    },
+    "actions": {
+      "close": "Schließen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "create": "Erstellen"
+    },
+    "errors": {
+      "selectGame": "Bitte wählen Sie eine Spielinstallation aus",
+      "gameMustBeSelected": "Eine Spielinstallation muss ausgewählt sein",
+      "gamePathNotConfigured": "Der Pfad zur Spielinstallation ist nicht konfiguriert",
+      "rpfmSchemaNotConfigured": "Der Pfad zum RPFM-Schema ist nicht konfiguriert.\n\nBitte konfigurieren Sie ihn unter Einstellungen > RPFM-Tool, bevor Sie ein Projekt erstellen.\n\nDer Schemapfad wird benötigt, um Lokalisierungsdateien aus .pack-Dateien zu extrahieren."
+    },
+    "progress": {
+      "extracting": "Lokalisierungsdateien werden extrahiert und importiert…",
+      "processing": "Wird verarbeitet…"
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "Aus der erkannten Mod automatisch ausgefüllt. Überprüfen und fortfahren.",
+      "descriptionManual": "Geben Sie den Projektnamen ein und wählen Sie eine Spielinstallation aus.",
+      "fieldProjectName": "PROJEKTNAME",
+      "fieldSourcePack": "QUELL-PACK",
+      "fieldWorkshopId": "WORKSHOP-ID",
+      "fieldGame": "SPIEL",
+      "hintProjectName": "Projektnamen eingeben",
+      "hintGame": "Spiel auswählen",
+      "errorLoadingGames": "Fehler beim Laden der Spiele: $error"
+    },
+    "translationSettings": {
+      "description": "Passen Sie den Übersetzungsdurchsatz an und geben Sie optional einen zusätzlichen Prompt an.",
+      "fieldBatchSize": "BATCH-GRÖSSE",
+      "fieldParallelBatches": "PARALLELE BATCHES",
+      "fieldCustomPrompt": "BENUTZERDEFINIERTER ÜBERSETZUNGS-PROMPT (OPTIONAL)",
+      "hintBatchSize": "Anzahl der Einheiten pro Batch (Standard: 25)",
+      "hintParallelBatches": "Anzahl parallel verarbeiteter Batches (Standard: 3)",
+      "hintCustomPrompt": "Geben Sie benutzerdefinierte Anweisungen für den KI-Übersetzer ein"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "Projekt wird initialisiert",
+    "titleFailed": "Initialisierung fehlgeschlagen",
+    "titleComplete": "Initialisierung abgeschlossen",
+    "extracting": "Lokalisierungsdateien werden extrahiert und importiert…",
+    "successUnits": "$count Übersetzungseinheiten erfolgreich importiert",
+    "noLogs": "Noch keine Protokolle…",
+    "sectionLogs": "Protokolle",
+    "close": "Schließen"
+  }
+}

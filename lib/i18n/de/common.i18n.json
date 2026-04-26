@@ -1,0 +1,23 @@
+{
+  "actions": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "add": "Hinzufügen",
+    "remove": "Entfernen",
+    "refresh": "Aktualisieren",
+    "close": "Schließen",
+    "back": "Zurück",
+    "confirm": "Bestätigen",
+    "apply": "Anwenden",
+    "reset": "Zurücksetzen",
+    "copy": "Kopieren",
+    "translate": "Übersetzen"
+  },
+  "yes": "Ja",
+  "no": "Nein",
+  "ok": "OK",
+  "loading": "Wird geladen…",
+  "error": "Fehler"
+}

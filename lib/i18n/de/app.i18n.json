@@ -1,0 +1,8 @@
+{
+  "language": {
+    "title": "Anwendungssprache",
+    "subtitle": "Sprache der TWMT-Benutzeroberfläche. Unabhängig von den Sprachen, in die Ihre Mods übersetzt werden.",
+    "systemDefault": "Systemstandard",
+    "label": "Sprache"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "Workshop-Mods werden durchsucht...",
+    "titleRefreshing": "Abonnentenzahlen werden aktualisiert...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI nicht gefunden",
+      "content": "Für den Workshop-Scan wird RPFM-CLI zum Lesen der Mod-Pack-Dateien benötigt, es konnte jedoch nicht unter dem konfigurierten Pfad gefunden werden.\n\nÖffnen Sie Einstellungen → Ordner → RPFM, um den Pfad zu aktualisieren oder eine neue Version herunterzuladen.",
+      "actions": {
+        "close": "Schließen",
+        "openSettings": "Einstellungen öffnen"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "Validierungsdaten werden vorbereitet",
+      "updating": "Validierungsdaten werden aktualisiert",
+      "resuming": "Validierungsaktualisierung wird fortgesetzt",
+      "required": "Aktualisierung der Validierungsdaten erforderlich"
+    },
+    "labels": {
+      "scanningEntries": "Validierungseinträge werden durchsucht...",
+      "normalizedOf": "$processed von $total normalisiert",
+      "upgradingLegacy": "Bestehende Validierungsdatensätze werden in das neue Format überführt.",
+      "preparing": "Wird vorbereitet...",
+      "startingRescan": "Erneuter Scan wird gestartet...",
+      "rescannedOf": "$done von $total erneut gescannt",
+      "rescannedOfEta": "$done von $total erneut gescannt — ETA $eta",
+      "closingWillPause": "Beim Schließen der Anwendung wird die Aktualisierung pausiert; sie wird beim nächsten Start fortgesetzt."
+    },
+    "plan": {
+      "resumeBody": "Eine vorherige Aktualisierung wurde unterbrochen. $already von $totalAll Einheiten bereits verarbeitet. Verbleibend: $remaining Einheiten • Geschätzt: ~$estimated.",
+      "freshBody": "Diese Version verwendet ein neues, umfangreicheres Format für Übersetzungs-Validierungsdiagnosen. Alle vorhandenen Übersetzungen müssen einmalig erneut gescannt werden, um davon zu profitieren.\n\n$total Einheiten zu scannen • Geschätzt: ~$estimated\n\nDieser Vorgang wird nur einmal ausgeführt. Schließen Sie die Anwendung nicht, bis er abgeschlossen ist — bei Unterbrechung wird die Aktualisierung beim nächsten Start fortgesetzt."
+    },
+    "actions": {
+      "continue": "Fortfahren",
+      "startRescan": "Erneuten Scan starten"
+    },
+    "toasts": {
+      "updateComplete": "Aktualisierung der Validierungsdaten abgeschlossen."
+    }
+  }
+}

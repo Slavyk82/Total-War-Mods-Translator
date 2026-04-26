@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Steam-Workshop-Ordner erneut nach Mods mit Lokalisierungsdateien durchsuchen",
+    "hiddenToggle": "Zwischen Anzeige normaler und ausgeblendeter Mods wechseln",
+    "importLocalPack": "Lokale .pack-Datei importieren, die nicht aus dem Steam Workshop stammt",
+    "filterAll": "Alle Mods anzeigen",
+    "filterNotImported": "Nur Mods ohne Übersetzungsprojekt anzeigen",
+    "filterNeedsUpdate": "Nur Mods mit ausstehenden Aktualisierungen oder Änderungen anzeigen"
+  },
+  "projects": {
+    "filterNeedsUpdate": "Projekte anzeigen, die aufgrund von Änderungen am Quell-Mod Aufmerksamkeit erfordern",
+    "filterNeedsReview": "Projekte mit mindestens einer zur Überprüfung markierten Einheit anzeigen",
+    "filterIncomplete": "Projekte anzeigen, die in den konfigurierten Sprachen noch nicht zu 100 % übersetzt sind",
+    "filterHasComplete": "Projekte anzeigen, in denen mindestens eine Sprache vollständig übersetzt ist",
+    "filterExportOutdated": "Projekte anzeigen, die seit dem letzten Export geändert wurden",
+    "filterExported": "Nur bereits exportierte Projekte anzeigen",
+    "filterNotExported": "Nur Projekte anzeigen, die noch nie exportiert wurden",
+    "filterClear": "Aktiven Statusfilter zurücksetzen"
+  },
+  "editor": {
+    "modelSelector": "KI-Modell für die Übersetzung auswählen",
+    "useTm": "Wenn aktiviert, wird vor der Anfrage an das KI-Modell die Translation Memory abgefragt. Deaktivieren, um die TM zu umgehen und Einheiten direkt an das Modell zu senden.",
+    "batchAuto": "Stapelgröße automatisch anhand des Token-Budgets des gewählten Modells berechnen. Deaktivieren, um einen festen Wert für Einheiten/Stapel festzulegen.",
+    "batchUnits": "Maximale Anzahl an Übersetzungseinheiten pro LLM-Anfrage (1–1000). Niedrigere Werte verringern Timeouts, verbrauchen jedoch mehr Tokens.",
+    "batchParallel": "Anzahl gleichzeitiger LLM-Anfragen (1–20). Höhere Werte sind schneller, erhöhen aber die API-Last; 3–5 sind üblich.",
+    "modRuleEdit": "Mod-spezifische Übersetzungsregel bearbeiten",
+    "modRuleAdd": "Mod-spezifische Übersetzungsregel hinzufügen"
+  },
+  "settings": {
+    "detectAllGames": "Steam-Installation durchsuchen, um Spielpfade automatisch zu finden",
+    "detectGame": "Installationspfad dieses Spiels automatisch erkennen",
+    "browsePath": "Ordner manuell auswählen",
+    "testRpfm": "RPFM-Programmdatei prüfen und Version anzeigen",
+    "defaultPath": "Standardpfad verwenden",
+    "detectWorkshop": "Steam-Workshop-Inhaltsordner automatisch erkennen",
+    "addLanguage": "Eigene Sprache hinzufügen",
+    "addIgnoredText": "Neuen Quelltext hinzufügen, der bei der Übersetzung übersprungen wird",
+    "resetIgnoredDefaults": "Alle Einträge löschen und ignorierte Standardtexte wiederherstellen",
+    "addRule": "Neue Übersetzungsanweisung hinzufügen",
+    "setDefaultModel": "Als Standardmodell für diesen Anbieter festlegen"
+  },
+  "tm": {
+    "import": "Translation-Memory-Einträge aus einer TMX-Datei importieren",
+    "export": "Translation-Memory-Einträge in eine TMX-Datei exportieren",
+    "cleanup": "Ungenutzte Einträge entfernen, um die Datenbankgröße zu verringern"
+  },
+  "glossary": {
+    "new": "Neues Glossar erstellen"
+  }
+}

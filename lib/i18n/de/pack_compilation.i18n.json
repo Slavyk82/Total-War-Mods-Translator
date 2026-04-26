@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Pack Compilation",
+    "new": "Neu",
+    "untitled": "Unbenannt",
+    "compilation": "Kompilierung",
+    "language": "Sprache",
+    "modified": "Geändert",
+    "status": "Status",
+    "basics": "Grundlagen",
+    "output": "Ausgabe",
+    "name": "Name",
+    "targetLanguage": "Zielsprache",
+    "prefix": "Präfix",
+    "packName": "Pack-Name",
+    "fileName": "Dateiname",
+    "location": "Speicherort",
+    "publishing": "Veröffentlichung",
+    "selectProjects": "Projekte auswählen",
+    "noLanguage": "Keine Sprache",
+    "steamWorkshopBbcode": "Steam Workshop BBCode",
+    "bbcodeHint": "Kopieren Sie diesen BBCode, um ihn in Ihrer Steam-Workshop-Beschreibung zu verwenden:",
+    "conflictingProjects": "Widersprüchliche Projekte",
+    "conflictingKey": "Widersprüchlicher Schlüssel",
+    "sourceTextThis": "Ausgangstext (dieses Projekt)",
+    "sourceTextConflicting": "Ausgangstext (widersprüchlich)"
+  },
+  "actions": {
+    "newCompilation": "+ Neue Kompilierung",
+    "compile": "Kompilieren und Pack erzeugen",
+    "compiling": "Kompilieren...",
+    "forceCompile": "Kompilierung erzwingen",
+    "openFolder": "Ordner öffnen",
+    "stopTooltip": "Stopp",
+    "cancelling": "Abbrechen...",
+    "deleteCompilation": "Kompilierung löschen"
+  },
+  "status": {
+    "draft": "Entwurf",
+    "regeneratePack": "Pack neu erzeugen",
+    "generated": "Erzeugt",
+    "generatingPack": "Pack wird erzeugt...",
+    "regenerateTooltip": "Ein oder mehrere gebündelte Projekte wurden seit der letzten Pack-Erzeugung geändert."
+  },
+  "messages": {
+    "noCompilationsYet": "Noch keine Kompilierungen",
+    "createCompilationHint": "Erstellen Sie eine Kompilierung, um mehrere Projekte in einem .pack zu bündeln.",
+    "errorLoadingCompilations": "Fehler beim Laden der Kompilierungen: $error",
+    "packGenerated": "Pack erzeugt",
+    "deletedSuccess": "\"$name\" gelöscht",
+    "deleteFailed": "Löschen fehlgeschlagen: $error",
+    "noModsWithWorkshopIds": "Keine Mods mit Steam-Workshop-IDs ausgewählt"
+  },
+  "dialogs": {
+    "deleteTitle": "Kompilierung löschen",
+    "deleteMessage": "\"$name\" löschen?",
+    "deleteWarning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+    "conflictsTitle": "Ungelöste Konflikte erkannt",
+    "conflictsBody": "$count Konflikte zwischen den ausgewählten Projekten sind weiterhin ungelöst. Eine Kompilierung jetzt kann zu unvorhersehbarer Anzeige der Übersetzungen im Spiel für die betroffenen Einträge führen.\n\nSie können abbrechen, um sie zuerst zu lösen, oder die Kompilierung trotzdem erzwingen.",
+    "conflictsForProject": "Konflikte für Projekt"
+  },
+  "hints": {
+    "namePlaceholder": "Meine deutschen Übersetzungen",
+    "prefixPlaceholder": "!!!!!!!!!!_de_compilation_twmt_",
+    "packNamePlaceholder": "mein_pack",
+    "selectLanguage": "Sprache auswählen...",
+    "noProjectsFound": "Keine Projekte gefunden",
+    "tryDifferentSearch": "Versuchen Sie einen anderen Suchbegriff",
+    "selectGameFirst": "Wählen Sie zuerst ein Spiel in der Seitenleiste aus",
+    "selectLanguageFirst": "Wählen Sie zuerst eine Sprache aus",
+    "noProjectsWithLanguage": "Keine Projekte mit Übersetzungen in dieser Sprache",
+    "searchProjects": "Projekte suchen...",
+    "showOnlySelected": "Nur ausgewählte anzeigen",
+    "showOnlySelectedTooltip": "Nur Projekte anzeigen, die in dieser Kompilierung enthalten sind",
+    "clearSelection": "Auswahl aufheben",
+    "selectedCount": "$count ausgewählt",
+    "failedToLoadProjects": "Projekte konnten nicht geladen werden"
+  },
+  "conflicts": {
+    "analysisWillRun": "Konfliktanalyse wird ausgeführt",
+    "whenYouClickGenerate": "wenn Sie auf Pack erzeugen klicken",
+    "noConflictsDetected": "Keine Konflikte erkannt",
+    "readyToCompile": "Bereit zur Kompilierung",
+    "analyzingConflicts": "Konflikte werden analysiert...",
+    "analysisFailed": "Analyse fehlgeschlagen",
+    "conflictInfo": "Klicken Sie auf einen Projektnamen, um Details zu sehen. Häkchen entfernen, um auszuschließen.",
+    "noAnalysisData": "Keine Analysedaten",
+    "noConflictsFound": "Keine Konflikte gefunden",
+    "errorPrefix": "Fehler: $error",
+    "bbcodeError": "Fehler beim Erzeugen des BBCode"
+  }
+}

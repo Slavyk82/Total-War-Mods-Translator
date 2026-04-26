@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "Einstellungen",
+    "tabs": {
+      "general": "Allgemein",
+      "folders": "Ordner",
+      "llmProviders": "LLM-Anbieter"
+    }
+  },
+  "errors": {
+    "loadSettings": "Fehler beim Laden der Einstellungen: $error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "Datenbank-Sicherung",
+      "sectionSubtitle": "Erstellen Sie Sicherungen, um Ihre Daten zu schützen, oder stellen Sie eine frühere Sicherung wieder her.",
+      "cardTitle": "Sicherungsaktionen",
+      "processing": "Verarbeitung läuft …",
+      "exportTitle": "Sicherung exportieren",
+      "exportDescription": "Speichern Sie Ihre Datenbank in einer ZIP-Datei",
+      "importTitle": "Sicherung importieren",
+      "importDescription": "Datenbank aus einer Sicherungsdatei wiederherstellen",
+      "saveDialogTitle": "Datenbank-Sicherung speichern",
+      "openDialogTitle": "Sicherungsdatei auswählen",
+      "restoreDialog": {
+        "title": "Wiederherstellung abgeschlossen",
+        "message": "Die Datenbank wurde erfolgreich wiederhergestellt. Die Anwendung wird nun neu gestartet, um die Änderungen anzuwenden.",
+        "restartNow": "Jetzt neu starten"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "Datenbank-Wartung",
+      "sectionSubtitle": "Werkzeuge zur Pflege und Korrektur von Datenbankstatistiken und Übersetzungsstatus.",
+      "cardTitle": "Wartungsaktionen",
+      "processing": "Verarbeitung läuft …",
+      "actions": {
+        "reanalyzeTitle": "Übersetzungen erneut analysieren",
+        "reanalyzeDescription": "Behebt Status-Inkonsistenzen und erkennt nicht übersetzte Einheiten",
+        "clearModCacheTitle": "Mod-Update-Cache leeren",
+        "clearModCacheDescription": "Veraltete Hinweise „Ausstehende Änderungen“ entfernen",
+        "rebuildTmTitle": "Translation Memory neu aufbauen",
+        "rebuildTmDescription": "Fehlende TM-Einträge aus vorhandenen Übersetzungen wiederherstellen",
+        "migrateTmHashesTitle": "Veraltete TM-Hashes migrieren",
+        "migrateTmHashesDescription": "Konvertiert alte Integer-Hashes zu SHA256 für die TM-Suche",
+        "resetOnboardingTitle": "Einführungshinweise zurücksetzen",
+        "resetOnboardingDescription": "Bringt die Workshop-Einführungskarte zurück, falls Sie sie ausgeblendet hatten"
+      },
+      "toasts": {
+        "onboardingReset": "Einführungshinweise werden wieder angezeigt."
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "Übersetzungssprachen-Einstellungen",
+      "sectionSubtitle": "Verwalten Sie die für Übersetzungen verfügbaren Sprachen und legen Sie die Standard-Zielsprache fest",
+      "addLanguage": "Sprache hinzufügen",
+      "toasts": {
+        "addSuccess": "Sprache erfolgreich hinzugefügt",
+        "addFailed": "Sprache konnte nicht hinzugefügt werden"
+      },
+      "grid": {
+        "columnDefault": "Standard",
+        "columnCode": "Code",
+        "columnLanguage": "Sprache",
+        "customBadge": "Benutzerdefiniert",
+        "emptyTitle": "Keine Sprachen verfügbar",
+        "errorTitle": "Fehler beim Laden der Sprachen",
+        "deleteTooltip": "Sprache löschen"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "Sprache löschen",
+          "message": "Möchten Sie „$name“ wirklich löschen?",
+          "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+          "confirmLabel": "Löschen"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name als Standardsprache festgelegt",
+        "setDefaultFailed": "Standardsprache konnte nicht festgelegt werden",
+        "deleteSuccess": "Sprache erfolgreich gelöscht",
+        "deleteFailed": "Sprache konnte nicht gelöscht werden"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "Spielinstallationen",
+      "sectionSubtitle": "Konfigurieren Sie die Pfade zu Ihren Total War-Spielen",
+      "detectingLabel": "Erkennung läuft …",
+      "detectAllButton": "Alle Spiele automatisch erkennen",
+      "detectAllDescription": "Alle installierten Total War-Spiele automatisch finden",
+      "detectButton": "Erkennen",
+      "browseButton": "Durchsuchen",
+      "pathHint": "Pfad zur $game-Installation …",
+      "browseDialogTitle": "Installationsordner für $game auswählen",
+      "toasts": {
+        "gameFound": "$game gefunden",
+        "gameNotFound": "$game nicht gefunden",
+        "detectionFailed": "Erkennung fehlgeschlagen: $error",
+        "allFound": "$count Spiel(e) gefunden",
+        "noneFound": "Keine Spiele gefunden",
+        "saveError": "Fehler beim Speichern des Spielpfads: $error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "RPFM-Werkzeug",
+      "sectionSubtitle": "Pfad zur RPFM-Programmdatei für die Extraktion von Pack-Dateien",
+      "executableSubtitle": "RPFM-Programmdatei",
+      "schemaSubtitle": "RPFM-Schemaordner",
+      "schemaDescription": "Ordner mit RPFM-Schemadateien (z. B. schema_wh3.ron)",
+      "testButton": "Testen",
+      "browseButton": "Durchsuchen",
+      "defaultButton": "Standard",
+      "browseExeDialogTitle": "RPFM-Programmdatei auswählen",
+      "browseSchemaDialogTitle": "RPFM-Schemaordner auswählen",
+      "toasts": {
+        "enterPathFirst": "Bitte geben Sie zuerst den RPFM-Pfad ein",
+        "testing": "RPFM-Programmdatei wird getestet …",
+        "validating": "RPFM-Programmdatei wird überprüft …",
+        "validatedSuccess": "RPFM v$version erfolgreich überprüft",
+        "testSuccess": "RPFM v$version funktioniert korrekt",
+        "invalidExe": "Ungültige RPFM-Programmdatei: $error",
+        "testFailed": "RPFM-Test fehlgeschlagen: $error",
+        "usernameNotDetected": "Benutzername konnte nicht erkannt werden",
+        "defaultPathSet": "Standard-Schemapfad festgelegt",
+        "savePathError": "Fehler beim Speichern des RPFM-Pfads: $error",
+        "saveSchemaPathError": "Fehler beim Speichern des RPFM-Schemapfads: $error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Basisordner für Steam Workshop-Inhalte (Spiel-IDs werden automatisch angehängt)",
+      "folderSubtitle": "Steam Workshop-Basisordner",
+      "detectingLabel": "Erkennung läuft …",
+      "detectButton": "Erkennen",
+      "browseButton": "Durchsuchen",
+      "browseDialogTitle": "Steam Workshop-Ordner auswählen",
+      "toasts": {
+        "detected": "Workshop-Ordner erkannt: $path",
+        "notFound": "Workshop-Ordner nicht gefunden. Bitte manuell auswählen.",
+        "detectionFailed": "Erkennung fehlgeschlagen: $error",
+        "detectionError": "Erkennungsfehler: $error",
+        "saveError": "Fehler beim Speichern des Workshop-Pfads: $error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "Benutzerdefinierte Sprache hinzufügen",
+    "description": "Fügen Sie eine benutzerdefinierte Sprache hinzu, die für Übersetzungsprojekte verfügbar sein wird.",
+    "codeLabel": "Sprachcode (ISO 639-1, 2-3 Buchstaben)",
+    "nameLabel": "Sprachname",
+    "codeHint": "z. B. pl, ko, ja",
+    "nameHint": "z. B. Polnisch, Koreanisch, Japanisch",
+    "info": "Benutzerdefinierte Sprachen können später gelöscht werden. Systemsprachen (Englisch, Französisch usw.) können nicht geändert werden.",
+    "cancel": "Abbrechen",
+    "add": "Hinzufügen",
+    "errors": {
+      "codeRequired": "Sprachcode ist erforderlich",
+      "codeTooShort": "Code muss aus mindestens 2 Zeichen bestehen",
+      "codeLettersOnly": "Code darf nur Buchstaben enthalten",
+      "codeTooLong": "Code darf höchstens 5 Zeichen enthalten",
+      "nameRequired": "Sprachname ist erforderlich",
+      "nameTooLong": "Name darf höchstens 50 Zeichen enthalten"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "Datenbank-Sicherung wiederherstellen?",
+    "fromLabel": "Sie sind dabei, die Datenbank wiederherzustellen aus:",
+    "warningTitle": "Warnung: Hierdurch werden ALLE Ihre aktuellen Daten ersetzt!",
+    "warningBody": "Alle Projekte, Übersetzungen, Glossare und Einstellungen werden überschrieben. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "cancel": "Abbrechen",
+    "restore": "Wiederherstellen"
+  },
+  "llmProviders": {
+    "title": "LLM-Anbieter",
+    "subtitle": "Konfigurieren Sie API-Schlüssel und Modelle für Übersetzungsanbieter",
+    "advancedSettings": {
+      "title": "Erweiterte Einstellungen",
+      "rateLimitLabel": "Anfragelimit (Anfragen pro Minute)",
+      "saveError": "Fehler beim Speichern des Anfragelimits: $error"
+    },
+    "providerSection": {
+      "subtitle": "API-Schlüssel und Modelle konfigurieren",
+      "apiKeyLabel": "API-Schlüssel",
+      "apiKeyHint": "API-Schlüssel eingeben …",
+      "testConnectionTooltip": "Verbindung testen",
+      "toasts": {
+        "connectionSuccess": "Verbindung erfolgreich!",
+        "connectionFailed": "Verbindung fehlgeschlagen: $error",
+        "saveApiKeyError": "Fehler beim Speichern des $provider-API-Schlüssels: $error"
+      }
+    },
+    "models": {
+      "headerTitle": "Modelle",
+      "footer": "Aktivieren Sie Modelle, um sie freizuschalten. Klicken Sie auf den Stern, um ein globales Standardmodell festzulegen.",
+      "legend": "Aktivieren Sie Modelle, um sie für Übersetzungen verfügbar zu machen. Klicken Sie auf den Stern, um ein Modell als globales Standardmodell festzulegen (nur ein Standard für alle Anbieter).",
+      "errorLoading": "Fehler beim Laden der Modelle: $error",
+      "noModels": "Keine Modelle für diesen Anbieter verfügbar",
+      "badges": {
+        "default": "Standard",
+        "archived": "Archiviert"
+      },
+      "toasts": {
+        "disabled": "Modell deaktiviert",
+        "enabled": "Modell aktiviert",
+        "toggleFailed": "Modellstatus konnte nicht geändert werden: $error",
+        "setDefaultSuccess": "Modell als Standard festgelegt",
+        "setDefaultFailed": "Standard konnte nicht festgelegt werden: $error"
+      },
+      "dialog": {
+        "titleManage": "$provider-Modelle verwalten",
+        "subtitle": "Wählen Sie aus, welche Modelle für Übersetzungen verfügbar sein sollen"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "Benutzerdefinierte Übersetzungsregeln",
+    "accordionSubtitle": "Fügen Sie Übersetzungs-Prompts benutzerdefinierte Anweisungen hinzu",
+    "infoText": "Benutzerdefinierte Regeln werden an jeden an das LLM gesendeten Übersetzungs-Prompt angehängt. Verwenden Sie sie, um globale Anweisungen, Terminologierichtlinien oder Übersetzungspräferenzen festzulegen, die für alle Projekte gelten.",
+    "addRuleButton": "Regel hinzufügen",
+    "toasts": {
+      "addSuccess": "Regel erfolgreich hinzugefügt",
+      "addFailed": "Regel konnte nicht hinzugefügt werden",
+      "updateSuccess": "Regel erfolgreich aktualisiert",
+      "updateFailed": "Regel konnte nicht aktualisiert werden",
+      "deleteSuccess": "Regel erfolgreich gelöscht",
+      "deleteFailed": "Regel konnte nicht gelöscht werden",
+      "toggleFailed": "Regelstatus konnte nicht geändert werden"
+    },
+    "grid": {
+      "columnActive": "Aktiv",
+      "columnRuleText": "Regeltext",
+      "columnActions": "Aktionen",
+      "emptyTitle": "Keine benutzerdefinierten Regeln definiert",
+      "emptySubtitle": "Fügen Sie globale Regeln hinzu, um alle Übersetzungs-Prompts anzupassen",
+      "errorTitle": "Fehler beim Laden der Regeln",
+      "editTooltip": "Regel bearbeiten",
+      "deleteTooltip": "Regel löschen"
+    },
+    "editorDialog": {
+      "addTitle": "Benutzerdefinierte Regel hinzufügen",
+      "editTitle": "Benutzerdefinierte Regel bearbeiten",
+      "description": "Geben Sie den Regeltext ein, der an jeden Übersetzungs-Prompt angehängt wird. Diese Regeln gelten global für alle Projekte.",
+      "ruleTextLabel": "Regeltext",
+      "ruleTextHint": "z. B.: Verwenden Sie stets eine formelle Sprache und vermeiden Sie Kontraktionen …",
+      "tipsTitle": "Tipps",
+      "tipsText": "• Formulieren Sie Ihre Anweisungen präzise und klar\n• Verwenden Sie Aufzählungspunkte für mehrere Regeln\n• Regeln werden in der angegebenen Reihenfolge an den Übersetzungs-Prompt angehängt\n• Sie können Regeln vorübergehend deaktivieren, ohne sie zu löschen",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "add": "Hinzufügen",
+      "errors": {
+        "ruleTextRequired": "Bitte geben Sie einen Regeltext ein"
+      }
+    },
+    "deleteDialog": {
+      "title": "Regel löschen",
+      "message": "Möchten Sie diese benutzerdefinierte Regel wirklich löschen?",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirmLabel": "Löschen"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "Ignorierte Quelltexte",
+    "accordionSubtitle": "Bestimmte Quelltexte bei der Übersetzung überspringen",
+    "infoText": "Quelltexte, die diesen Werten entsprechen, werden von der Übersetzung ausgeschlossen. Hinweis: Vollständig in eckige Klammern gesetzte Texte wie [PLACEHOLDER] werden automatisch übersprungen. Verwenden Sie diese Liste für benutzerdefinierte Muster, die für Ihre Mods spezifisch sind.",
+    "resetButton": "Auf Standardwerte zurücksetzen",
+    "addButton": "Text hinzufügen",
+    "toasts": {
+      "addSuccess": "Text erfolgreich hinzugefügt",
+      "addFailed": "Text konnte nicht hinzugefügt werden",
+      "updateSuccess": "Text erfolgreich aktualisiert",
+      "updateFailed": "Text konnte nicht aktualisiert werden",
+      "deleteSuccess": "Text erfolgreich gelöscht",
+      "deleteFailed": "Text konnte nicht gelöscht werden",
+      "resetSuccess": "Erfolgreich auf Standardwerte zurückgesetzt",
+      "resetFailed": "Zurücksetzen auf Standardwerte fehlgeschlagen",
+      "toggleFailed": "Textstatus konnte nicht geändert werden"
+    },
+    "grid": {
+      "columnActive": "Aktiv",
+      "columnSourceText": "Quelltext",
+      "columnActions": "Aktionen",
+      "emptyTitle": "Keine ignorierten Texte definiert",
+      "emptySubtitle": "Fügen Sie Quelltexte hinzu, die bei der Übersetzung übersprungen werden sollen",
+      "errorTitle": "Fehler beim Laden der ignorierten Texte",
+      "editTooltip": "Bearbeiten",
+      "deleteTooltip": "Löschen"
+    },
+    "editorDialog": {
+      "addTitle": "Ignorierten Text hinzufügen",
+      "editTitle": "Ignorierten Text bearbeiten",
+      "description": "Geben Sie einen Quelltext ein, der bei der Übersetzung übersprungen werden soll. Die Übereinstimmung erfolgt ohne Berücksichtigung der Groß-/Kleinschreibung.",
+      "sourceTextLabel": "Quelltext",
+      "sourceTextHint": "z. B. placeholder, [hidden] usw.",
+      "infoTitle": "Info",
+      "infoText": "• Einheiten, die diesen Texten entsprechen, werden von der Übersetzung ausgeschlossen\n• Texte in eckigen Klammern wie [unit_name] werden automatisch übersprungen\n• Verwenden Sie diese Liste für benutzerdefinierte Platzhalter, die für Ihre Mods spezifisch sind\n• Änderungen werden für neue Übersetzungen sofort wirksam",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "add": "Hinzufügen",
+      "errors": {
+        "sourceTextRequired": "Bitte geben Sie einen Quelltext ein"
+      }
+    },
+    "deleteDialog": {
+      "title": "Ignorierten Text löschen",
+      "message": "Möchten Sie „$text“ wirklich löschen?",
+      "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "confirmLabel": "Löschen"
+    },
+    "resetDialog": {
+      "title": "Auf Standardwerte zurücksetzen",
+      "message": "Hierdurch werden alle aktuellen ignorierten Texte gelöscht und die Standardwerte wiederhergestellt:\n\n• placeholder\n• dummy\n\nHinweis: Vollständig in eckige Klammern gesetzte Texte wie [placeholder] werden stets automatisch gefiltert.\n\nMöchten Sie wirklich fortfahren?",
+      "confirmLabel": "Zurücksetzen"
+    }
+  }
+}

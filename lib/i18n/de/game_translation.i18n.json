@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "Spielübersetzung",
+    "countOne": "$count Übersetzung",
+    "countMany": "$count Übersetzungen",
+    "toolbar": {
+      "create": "Spielübersetzung erstellen",
+      "noPacksTooltip": "Keine Lokalisierungs-Packs für dieses Spiel gefunden"
+    },
+    "empty": {
+      "title": "Noch keine Spielübersetzungen",
+      "subtitle": "Erstellen Sie eine neue Übersetzung, um das Basisspiel zu übersetzen",
+      "noPacksWarning": "Keine Lokalisierungs-Packs für dieses Spiel gefunden",
+      "errorLoadingPacks": "Fehler beim Laden der Packs"
+    },
+    "loading": "Spielübersetzungen werden geladen…",
+    "errors": {
+      "loadFailed": "Fehler beim Laden der Spielübersetzungen"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Spielübersetzung löschen",
+        "message": "Möchten Sie „$name“ wirklich löschen?",
+        "warning": "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "confirm": "Löschen"
+      }
+    },
+    "toasts": {
+      "deleted": "Spielübersetzung „$name“ gelöscht",
+      "deleteFailed": "Spielübersetzung konnte nicht gelöscht werden: $error"
+    }
+  },
+  "wizard": {
+    "title": "Spielübersetzung erstellen",
+    "steps": {
+      "selectSource": "Quell-Pack auswählen",
+      "selectTargets": "Zielsprachen auswählen"
+    },
+    "progress": {
+      "creatingProject": "Projekt wird erstellt…",
+      "extracting": "Lokalisierungsdateien werden extrahiert…",
+      "extractingProgress": "Wird extrahiert… $percent%",
+      "processing": "Wird verarbeitet…"
+    },
+    "errors": {
+      "selectSourcePack": "Bitte wählen Sie ein Quell-Lokalisierungs-Pack aus",
+      "selectTargetLanguage": "Bitte wählen Sie mindestens eine Zielsprache aus"
+    },
+    "actions": {
+      "back": "Zurück",
+      "cancel": "Abbrechen",
+      "next": "Weiter",
+      "create": "Erstellen"
+    }
+  },
+  "stepSource": {
+    "description": "Wählen Sie das Spiel-Lokalisierungs-Pack, das als Quelle für die Übersetzung dient.",
+    "sectionLabel": "VERFÜGBARE LOKALISIERUNGS-PACKS",
+    "noGameSelected": "Kein Spiel ausgewählt",
+    "noPacks": {
+      "title": "Keine Lokalisierungs-Packs gefunden",
+      "subtitle": "Stellen Sie sicher, dass das Spiel installiert ist und Lokalisierungsdateien im Datenordner enthält."
+    }
+  },
+  "stepTargets": {
+    "description": "Wählen Sie die Sprachen aus, in die das Spiel übersetzt werden soll.",
+    "translatingFrom": "Übersetzen aus: ",
+    "selectionCount": "$count Sprache(n) ausgewählt",
+    "noLanguages": {
+      "title": "Keine Sprachen verfügbar",
+      "subtitle": "Bitte konfigurieren Sie Zielsprachen in den Einstellungen."
+    },
+    "actions": {
+      "selectAll": "Alle auswählen",
+      "clear": "Zurücksetzen",
+      "addLanguage": "Sprache hinzufügen"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "Benutzerdefinierte Sprache hinzufügen",
+    "description": "Fügen Sie eine benutzerdefinierte Sprache hinzu, die für Übersetzungsprojekte verfügbar sein wird.",
+    "fields": {
+      "codeLabel": "SPRACHCODE",
+      "codeHint": "z. B. pl, ko, ja",
+      "codeHelper": "ISO-639-1-Code (2–3 Zeichen)",
+      "codeErrors": {
+        "required": "Sprachcode ist erforderlich",
+        "tooShort": "Code muss mindestens 2 Zeichen enthalten",
+        "lettersOnly": "Code darf nur Buchstaben enthalten"
+      },
+      "nameLabel": "SPRACHNAME",
+      "nameHint": "z. B. Polnisch, Koreanisch, Japanisch",
+      "nameHelper": "Anzeigename für diese Sprache",
+      "nameErrors": {
+        "required": "Sprachname ist erforderlich"
+      }
+    },
+    "defaultLanguage": {
+      "label": "Als Standardsprache festlegen",
+      "description": "Diese Sprache wird zur Standard-Zielsprache für alle neuen Mod-Übersetzungsprojekte."
+    },
+    "info": "Benutzerdefinierte Sprachen können später über die Einstellungen gelöscht werden. Systemsprachen (Englisch, Französisch usw.) können nicht geändert werden.",
+    "actions": {
+      "add": "Hinzufügen"
+    },
+    "toasts": {
+      "addedAsDefault": "Sprache „$name“ hinzugefügt und als Standard festgelegt",
+      "addedSuccessfully": "Sprache „$name“ erfolgreich hinzugefügt",
+      "addFailed": "Sprache konnte nicht hinzugefügt werden"
+    }
+  }
+}

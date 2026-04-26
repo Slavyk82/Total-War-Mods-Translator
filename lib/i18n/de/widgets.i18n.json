@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Spiele werden geladen...",
+    "errorLoadingGames": "Fehler beim Laden der Spiele",
+    "configureAGame": "Ein Spiel konfigurieren",
+    "selectAGame": "Ein Spiel auswählen"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Version: $version",
+    "checking": "Wird geprüft...",
+    "upToDate": "Aktuell",
+    "checkForUpdates": "Nach Updates suchen",
+    "updateAvailable": "v$version verfügbar",
+    "dismiss": "Schließen",
+    "downloading": "Wird heruntergeladen...",
+    "installAndRestart": "Installieren & Neu starten",
+    "downloadWithSize": "Herunterladen ($size)",
+    "viewOnGitHub": "Auf GitHub anzeigen",
+    "viewReleaseNotes": "Versionshinweise anzeigen",
+    "whatsNew": "Was ist neu?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Versionshinweise konnten nicht geladen werden: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Design-Umschalter",
+    "selectTheme": "Design auswählen",
+    "groups": {
+      "workflow": "Workflow",
+      "tools": "Werkzeuge",
+      "system": "System"
+    },
+    "items": {
+      "home": "Startseite",
+      "detect": "Erkennen",
+      "translate": "Übersetzen",
+      "publish": "Veröffentlichen",
+      "glossary": "Glossar",
+      "translationMemory": "Translation Memory",
+      "gameTranslation": "Spielübersetzung",
+      "packCompilation": "Pack-Kompilierung",
+      "settings": "Einstellungen"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "Datenbank-Update",
+    "subtitle": "Einmalige Migration erforderlich",
+    "preparing": "Wird vorbereitet...",
+    "info": "Dieser Vorgang stellt sicher, dass Translation Memory korrekt funktioniert. Bitte schließen Sie die Anwendung nicht.",
+    "actions": {
+      "retry": "Erneut versuchen"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "klicken zum Öffnen"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count aktiv"
+  },
+  "nextStepCta": {
+    "next": "Weiter: $label"
+  },
+  "toolbar": {
+    "back": "Zurück"
+  },
+  "wizardStepHeader": {
+    "step": "SCHRITT $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Zurücksetzen"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1 Std.",
+    "hours": "${hours} Std.",
+    "oneDay": "1 Tag",
+    "days": "$days Tage",
+    "oneMonth": "1 Monat",
+    "months": "$months Monate",
+    "oneYear": "1 Jahr",
+    "years": "$years Jahre"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "Verlauf",
+    "labels": {
+      "current": "Aktuell",
+      "latest": "Neueste",
+      "versionN": "Version $index",
+      "reason": "Grund: $reason"
+    },
+    "actions": {
+      "restore": "Wiederherstellen",
+      "compare": "Vergleichen"
+    },
+    "empty": {
+      "title": "Kein Verlauf verfügbar",
+      "subtitle": "Änderungen erscheinen hier, sobald Sie bearbeiten"
+    },
+    "errors": {
+      "loadFailed": "Verlauf konnte nicht geladen werden"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Version wiederherstellen",
+        "message": "Möchten Sie diese Version wirklich wiederherstellen?\n\nDie aktuelle Übersetzung wird ersetzt durch:\n\"$preview\""
+      }
+    },
+    "toasts": {
+      "restored": "Version erfolgreich wiederhergestellt",
+      "restoreFailed": "Wiederherstellung fehlgeschlagen: $error"
+    }
+  },
+  "comparison": {
+    "title": "Versionen vergleichen",
+    "labels": {
+      "oldVersion": "Alte Version",
+      "newVersion": "Neue Version",
+      "changes": "Änderungen",
+      "charsAdded": "Hinzugefügte Zeichen",
+      "charsRemoved": "Entfernte Zeichen",
+      "wordsAdded": "Hinzugefügte Wörter",
+      "wordsRemoved": "Entfernte Wörter",
+      "totalChanges": "Änderungen gesamt"
+    },
+    "actions": {
+      "copyOld": "Alte kopieren",
+      "copyNew": "Neue kopieren",
+      "restoreOld": "Alte wiederherstellen"
+    },
+    "errors": {
+      "loadFailed": "Versionen konnten nicht verglichen werden"
+    },
+    "toasts": {
+      "copied": "In Zwischenablage kopiert",
+      "restored": "Version erfolgreich wiederhergestellt",
+      "restoreFailed": "Wiederherstellung fehlgeschlagen: $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Version wiederherstellen",
+        "message": "Möchten Sie diese Version wirklich wiederherstellen?\n\nVorschau:\n\"$preview\""
+      }
+    }
+  }
+}

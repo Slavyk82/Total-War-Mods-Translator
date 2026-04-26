@@ -40,6 +40,11 @@ const Map<AppLocale, AppLocaleInfo> _localeInfo = {
     nativeName: 'Español',
     flagAsset: 'assets/flags/es.png',
   ),
+  AppLocale.de: AppLocaleInfo(
+    locale: AppLocale.de,
+    nativeName: 'Deutsch',
+    flagAsset: 'assets/flags/de.png',
+  ),
 };
 
 /// Returns the display info for [locale]. Throws if the map is missing
