@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -27,7 +28,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
     return TokenDialog(
       icon: FluentIcons.warning_24_regular,
       iconColor: tokens.warn,
-      title: 'Conflicts for Project',
+      title: t.packCompilation.dialogs.conflictsForProject,
       subtitle: projectName,
       width: 900,
       body: SizedBox(
@@ -37,7 +38,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
             if (analysis == null) {
               return Center(
                 child: Text(
-                  'No analysis data',
+                  t.packCompilation.conflicts.noAnalysisData,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textDim,
@@ -55,7 +56,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
             if (conflicts.isEmpty) {
               return Center(
                 child: Text(
-                  'No conflicts found',
+                  t.packCompilation.conflicts.noConflictsFound,
                   style: tokens.fontBody.copyWith(
                     fontSize: 13,
                     color: tokens.textDim,
@@ -71,7 +72,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
           ),
           error: (error, _) => Center(
             child: Text(
-              'Error: $error',
+              t.packCompilation.conflicts.errorPrefix(error: error),
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.err,
@@ -82,7 +83,7 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           filled: true,
           onTap: () => Navigator.of(context).pop(),
         ),
@@ -114,9 +115,9 @@ class ProjectConflictsDetailDialog extends ConsumerWidget {
               ),
             ),
             children: [
-              _buildHeaderCell(tokens, 'Conflicting Key'),
-              _buildHeaderCell(tokens, 'Source Text (This Project)'),
-              _buildHeaderCell(tokens, 'Source Text (Conflicting)'),
+              _buildHeaderCell(tokens, t.packCompilation.labels.conflictingKey),
+              _buildHeaderCell(tokens, t.packCompilation.labels.sourceTextThis),
+              _buildHeaderCell(tokens, t.packCompilation.labels.sourceTextConflicting),
             ],
           ),
           ...conflicts.map((conflict) {

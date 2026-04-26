@@ -20,6 +20,7 @@ import 'package:twmt/widgets/wizard/form_section.dart';
 import 'package:twmt/widgets/wizard/right_sticky_panel.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../models/conflict_analysis_result.dart';
 import '../providers/compilation_conflict_providers.dart';
 import '../providers/pack_compilation_providers.dart';
@@ -170,12 +171,12 @@ class _PackCompilationEditorScreenState
     return WizardScreenLayout(
       toolbar: DetailScreenToolbar(
         crumbs: [
-          const CrumbSegment('Publishing'),
-          const CrumbSegment('Pack compilation', route: AppRoutes.packCompilation),
+          CrumbSegment(t.packCompilation.labels.publishing),
+          CrumbSegment(t.packCompilation.labels.title, route: AppRoutes.packCompilation),
           CrumbSegment(
             state.isEditing
-                ? (state.name.isEmpty ? 'Untitled' : state.name)
-                : 'New',
+                ? (state.name.isEmpty ? t.packCompilation.labels.untitled : state.name)
+                : t.packCompilation.labels.kNew,
           ),
         ],
         onBack: _handleBack,
@@ -184,19 +185,19 @@ class _PackCompilationEditorScreenState
         width: 300,
         sections: [
           FormSection(
-            label: 'Basics',
+            label: t.packCompilation.labels.basics,
             children: [
               _LabeledField(
-                label: 'Name',
+                label: t.packCompilation.labels.name,
                 child: _TokenTextField(
                   controller: _nameCtl,
-                  hint: 'My French Translations',
+                  hint: t.packCompilation.hints.namePlaceholder,
                   enabled: !state.isCompiling,
                   onChanged: notifier.updateName,
                 ),
               ),
               _LabeledField(
-                label: 'Target language',
+                label: t.packCompilation.labels.targetLanguage,
                 child: _LanguageDropdown(
                   languages: languages,
                   selectedId: state.selectedLanguageId,
@@ -207,22 +208,22 @@ class _PackCompilationEditorScreenState
             ],
           ),
           FormSection(
-            label: 'Output',
+            label: t.packCompilation.labels.output,
             children: [
               _LabeledField(
-                label: 'Prefix',
+                label: t.packCompilation.labels.prefix,
                 child: _TokenTextField(
                   controller: _prefixCtl,
-                  hint: '!!!!!!!!!!_fr_compilation_twmt_',
+                  hint: t.packCompilation.hints.prefixPlaceholder,
                   enabled: !state.isCompiling,
                   onChanged: notifier.updatePrefix,
                 ),
               ),
               _LabeledField(
-                label: 'Pack name',
+                label: t.packCompilation.labels.packName,
                 child: _TokenTextField(
                   controller: _packNameCtl,
-                  hint: 'my_pack',
+                  hint: t.packCompilation.hints.packNamePlaceholder,
                   enabled: !state.isCompiling,
                   onChanged: notifier.updatePackName,
                 ),
@@ -233,8 +234,8 @@ class _PackCompilationEditorScreenState
         actions: [
           SmallTextButton(
             label: state.isCompiling
-                ? 'Compiling...'
-                : 'Compile and generate pack',
+                ? t.packCompilation.actions.compiling
+                : t.packCompilation.actions.compile,
             icon: state.isCompiling
                 ? FluentIcons.stop_24_regular
                 : FluentIcons.play_24_regular,
@@ -314,14 +315,9 @@ class _PackCompilationEditorScreenState
         return TokenDialog(
           icon: FluentIcons.warning_24_regular,
           iconColor: tokens.warn,
-          title: 'Unresolved conflicts detected',
+          title: t.packCompilation.dialogs.conflictsTitle,
           body: Text(
-            '$count conflict${count > 1 ? 's' : ''} between the selected '
-            'projects remain unresolved. Compiling now may lead to '
-            'unpredictable in-game translation display for the affected '
-            'entries.\n\n'
-            'You can cancel to resolve them first, or force the compilation '
-            'to proceed anyway.',
+            t.packCompilation.dialogs.conflictsBody(count: count),
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -330,11 +326,11 @@ class _PackCompilationEditorScreenState
           ),
           actions: [
             SmallTextButton(
-              label: 'Cancel',
+              label: t.common.actions.cancel,
               onTap: () => Navigator.of(ctx).pop(false),
             ),
             SmallTextButton(
-              label: 'Force compile',
+              label: t.packCompilation.actions.forceCompile,
               icon: FluentIcons.play_24_regular,
               filled: true,
               onTap: () => Navigator.of(ctx).pop(true),
@@ -359,26 +355,26 @@ class _PackCompilationEditorScreenState
         return TokenDialog(
           icon: FluentIcons.checkmark_circle_24_regular,
           iconColor: tokens.ok,
-          title: 'Pack generated',
+          title: t.packCompilation.messages.packGenerated,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DialogField(label: 'File name', value: packName),
+              _DialogField(label: t.packCompilation.labels.fileName, value: packName),
               const SizedBox(height: 12),
-              _DialogField(label: 'Location', value: folder),
+              _DialogField(label: t.packCompilation.labels.location, value: folder),
             ],
           ),
           leadingActions: [
             SmallTextButton(
-              label: 'Open folder',
+              label: t.packCompilation.actions.openFolder,
               icon: FluentIcons.folder_open_24_regular,
               onTap: () => _openPackFolder(folder),
             ),
           ],
           actions: [
             SmallTextButton(
-              label: 'OK',
+              label: t.common.ok,
               filled: true,
               onTap: () => Navigator.of(ctx).pop(),
             ),
@@ -522,7 +518,7 @@ class _CompilingView extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Generating pack...',
+                      t.packCompilation.status.generatingPack,
                       style: tokens.fontDisplay.copyWith(
                         fontSize: 14,
                         color: tokens.text,
@@ -541,7 +537,7 @@ class _CompilingView extends StatelessWidget {
                   const SizedBox(width: 12),
                   SmallIconButton(
                     icon: FluentIcons.stop_24_regular,
-                    tooltip: state.isCancelled ? 'Cancelling...' : 'Stop',
+                    tooltip: state.isCancelled ? t.packCompilation.actions.cancelling : t.packCompilation.actions.stopTooltip,
                     onTap: state.isCancelled ? () {} : onStop,
                     foreground: tokens.err,
                     background: tokens.errBg,
@@ -710,7 +706,7 @@ class _LanguageDropdown extends StatelessWidget {
           isExpanded: true,
           isDense: true,
           hint: Text(
-            'Select a language...',
+            t.packCompilation.hints.selectLanguage,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textFaint,

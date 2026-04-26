@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Pack Compilation",
+    "new": "New",
+    "untitled": "Untitled",
+    "compilation": "Compilation",
+    "language": "Language",
+    "modified": "Modified",
+    "status": "Status",
+    "basics": "Basics",
+    "output": "Output",
+    "name": "Name",
+    "targetLanguage": "Target language",
+    "prefix": "Prefix",
+    "packName": "Pack name",
+    "fileName": "File name",
+    "location": "Location",
+    "publishing": "Publishing",
+    "selectProjects": "Select Projects",
+    "noLanguage": "No language",
+    "steamWorkshopBbcode": "Steam Workshop BBCode",
+    "bbcodeHint": "Copy this BBCode to use in your Steam Workshop description:",
+    "conflictingProjects": "Conflicting Projects",
+    "conflictingKey": "Conflicting Key",
+    "sourceTextThis": "Source Text (This Project)",
+    "sourceTextConflicting": "Source Text (Conflicting)"
+  },
+  "actions": {
+    "newCompilation": "+ New compilation",
+    "compile": "Compile and generate pack",
+    "compiling": "Compiling...",
+    "forceCompile": "Force compile",
+    "openFolder": "Open folder",
+    "stopTooltip": "Stop",
+    "cancelling": "Cancelling...",
+    "deleteCompilation": "Delete compilation"
+  },
+  "status": {
+    "draft": "Draft",
+    "regeneratePack": "Regenerate pack",
+    "generated": "Generated",
+    "generatingPack": "Generating pack...",
+    "regenerateTooltip": "One or more bundled projects changed after the last pack generation."
+  },
+  "messages": {
+    "noCompilationsYet": "No compilations yet",
+    "createCompilationHint": "Create a compilation to bundle several projects into one .pack.",
+    "errorLoadingCompilations": "Error loading compilations: $error",
+    "packGenerated": "Pack generated",
+    "deletedSuccess": "Deleted \"$name\"",
+    "deleteFailed": "Delete failed: $error",
+    "noModsWithWorkshopIds": "No mods with Steam Workshop IDs selected"
+  },
+  "dialogs": {
+    "deleteTitle": "Delete Compilation",
+    "deleteMessage": "Delete \"$name\"?",
+    "deleteWarning": "This action cannot be undone.",
+    "conflictsTitle": "Unresolved conflicts detected",
+    "conflictsBody": "$count conflicts between the selected projects remain unresolved. Compiling now may lead to unpredictable in-game translation display for the affected entries.\n\nYou can cancel to resolve them first, or force the compilation to proceed anyway.",
+    "conflictsForProject": "Conflicts for Project"
+  },
+  "hints": {
+    "namePlaceholder": "My French Translations",
+    "prefixPlaceholder": "!!!!!!!!!!_fr_compilation_twmt_",
+    "packNamePlaceholder": "my_pack",
+    "selectLanguage": "Select a language...",
+    "noProjectsFound": "No projects found",
+    "tryDifferentSearch": "Try a different search term",
+    "selectGameFirst": "Select a game in the sidebar first",
+    "selectLanguageFirst": "Select a language first",
+    "noProjectsWithLanguage": "No projects with translations in this language",
+    "searchProjects": "Search projects...",
+    "showOnlySelected": "Show only selected",
+    "showOnlySelectedTooltip": "Show only projects included in this compilation",
+    "clearSelection": "Clear selection",
+    "selectedCount": "$count selected",
+    "failedToLoadProjects": "Failed to load projects"
+  },
+  "conflicts": {
+    "analysisWillRun": "Conflict analysis will run",
+    "whenYouClickGenerate": "when you click Generate Pack",
+    "noConflictsDetected": "No conflicts detected",
+    "readyToCompile": "Ready to compile",
+    "analyzingConflicts": "Analyzing conflicts...",
+    "analysisFailed": "Analysis failed",
+    "conflictInfo": "Click on a project name to see details. Uncheck to exclude.",
+    "noAnalysisData": "No analysis data",
+    "noConflictsFound": "No conflicts found",
+    "errorPrefix": "Error: $error",
+    "bbcodeError": "Error generating BBCode"
+  }
+}

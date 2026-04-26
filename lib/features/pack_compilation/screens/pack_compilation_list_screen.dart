@@ -17,6 +17,7 @@ import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 import 'package:twmt/widgets/detail/home_back_toolbar.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../providers/pack_compilation_providers.dart';
 
 /// Column layout shared between [_CompilationRow] and the list header so
@@ -76,7 +77,7 @@ class _PackCompilationListScreenState
           HomeBackToolbar(
             leading: ListToolbarLeading(
               icon: FluentIcons.archive_multiple_24_regular,
-              title: 'Pack Compilation',
+              title: t.packCompilation.labels.title,
               countLabel: '${filtered.length} / ${all.length}',
             ),
           ),
@@ -93,7 +94,7 @@ class _PackCompilationListScreenState
                 ),
               ),
               SmallTextButton(
-                label: '+ New compilation',
+                label: t.packCompilation.actions.newCompilation,
                 icon: FluentIcons.add_24_regular,
                 onTap: () => context.push(AppRoutes.packCompilationNew),
               ),
@@ -105,7 +106,7 @@ class _PackCompilationListScreenState
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => Center(
                 child: Text(
-                  'Error loading compilations: $err',
+                  t.packCompilation.messages.errorLoadingCompilations(error: err.toString()),
                   style: tokens.fontBody.copyWith(color: tokens.err),
                 ),
               ),
@@ -118,12 +119,12 @@ class _PackCompilationListScreenState
                       children: [
                         ListRowHeader(
                           columns: _compilationColumns,
-                          labels: const [
+                          labels: [
                             '',
-                            'Compilation',
-                            'Language',
-                            'Modified',
-                            'Status',
+                            t.packCompilation.labels.compilation,
+                            t.packCompilation.labels.language,
+                            t.packCompilation.labels.modified,
+                            t.packCompilation.labels.status,
                           ],
                           trailingActionWidth:
                               _compilationRowTrailingActionWidth,
@@ -155,10 +156,10 @@ class _PackCompilationListScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => TokenConfirmDialog(
-        title: 'Delete Compilation',
-        message: 'Delete "${d.compilation.name}"?',
-        warningMessage: 'This action cannot be undone.',
-        confirmLabel: 'Delete',
+        title: t.packCompilation.dialogs.deleteTitle,
+        message: t.packCompilation.dialogs.deleteMessage(name: d.compilation.name),
+        warningMessage: t.packCompilation.dialogs.deleteWarning,
+        confirmLabel: t.common.actions.delete,
         confirmIcon: FluentIcons.delete_24_regular,
         destructive: true,
       ),
@@ -170,9 +171,9 @@ class _PackCompilationListScreenState
     if (!mounted) return;
     if (r.isOk) {
       ref.invalidate(compilationsWithDetailsProvider);
-      FluentToast.success(context, 'Deleted "${d.compilation.name}"');
+      FluentToast.success(context, t.packCompilation.messages.deletedSuccess(name: d.compilation.name));
     } else {
-      FluentToast.error(context, 'Delete failed: ${r.error}');
+      FluentToast.error(context, t.packCompilation.messages.deleteFailed(error: r.error.toString()));
     }
   }
 }
@@ -198,7 +199,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'No compilations yet',
+              t.packCompilation.messages.noCompilationsYet,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.textMid,
@@ -207,13 +208,13 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Create a compilation to bundle several projects into one .pack.',
+              t.packCompilation.messages.createCompilationHint,
               style:
                   tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
             ),
             const SizedBox(height: 16),
             SmallTextButton(
-              label: '+ New compilation',
+              label: t.packCompilation.actions.newCompilation,
               icon: FluentIcons.add_24_regular,
               onTap: onNew,
             ),
@@ -276,7 +277,7 @@ class _CompilationRow extends ConsumerWidget {
         child: IconButton(
           key: Key('compilation-row-delete-${compilation.id}'),
           icon: const Icon(FluentIcons.delete_24_regular, size: 16),
-          tooltip: 'Delete compilation',
+          tooltip: t.packCompilation.actions.deleteCompilation,
           onPressed: onDelete,
           color: Theme.of(context).colorScheme.error,
           padding: EdgeInsets.zero,
@@ -349,7 +350,7 @@ class _CompilationRow extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            details.language?.name ?? 'No language',
+            details.language?.name ?? t.packCompilation.labels.noLanguage,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: tokens.fontBody.copyWith(
@@ -404,22 +405,21 @@ class _CompilationStatusPill extends StatelessWidget {
     final tokens = context.tokens;
     if (lastGeneratedAt == null) {
       return StatusPill(
-        label: 'Draft',
+        label: t.packCompilation.status.draft,
         foreground: tokens.textDim,
         background: tokens.panel,
       );
     }
     if (needsRegeneration) {
       return StatusPill(
-        label: 'Regenerate pack',
+        label: t.packCompilation.status.regeneratePack,
         foreground: tokens.warn,
         background: tokens.warnBg,
-        tooltip:
-            'One or more bundled projects changed after the last pack generation.',
+        tooltip: t.packCompilation.status.regenerateTooltip,
       );
     }
     return StatusPill(
-      label: 'Generated',
+      label: t.packCompilation.status.generated,
       foreground: tokens.ok,
       background: tokens.okBg,
     );

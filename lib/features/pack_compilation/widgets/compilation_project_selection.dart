@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/list_row.dart';
@@ -61,7 +62,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Select Projects',
+                  t.packCompilation.labels.selectProjects,
                   style: tokens.fontDisplay.copyWith(
                     fontSize: 18,
                     color: tokens.text,
@@ -77,12 +78,12 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 FilterPill(
-                  label: 'Show only selected',
+                  label: t.packCompilation.hints.showOnlySelected,
                   selected: onlySelected,
                   count: onlySelected
                       ? state.selectedProjectIds.length
                       : null,
-                  tooltip: 'Show only projects included in this compilation',
+                  tooltip: t.packCompilation.hints.showOnlySelectedTooltip,
                   onToggle: () => ref
                       .read(showOnlySelectedProjectsProvider.notifier)
                       .update((v) => !v),
@@ -91,7 +92,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                 Expanded(
                   child: ListSearchField(
                     width: double.infinity,
-                    hintText: 'Search projects...',
+                    hintText: t.packCompilation.hints.searchProjects,
                     value: filter,
                     onChanged: (value) => ref
                         .read(projectFilterProvider.notifier)
@@ -182,7 +183,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
                         ),
                         error: (error, _) => Center(
                           child: Text(
-                            'Failed to load projects',
+                            t.packCompilation.hints.failedToLoadProjects,
                             style: TextStyle(color: tokens.err),
                           ),
                         ),
@@ -205,14 +206,14 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No projects found',
+            t.packCompilation.hints.noProjectsFound,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: tokens.textMid,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Try a different search term',
+            t.packCompilation.hints.tryDifferentSearch,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: tokens.textDim,
             ),
@@ -234,7 +235,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Select a game in the sidebar first',
+            t.packCompilation.hints.selectGameFirst,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: tokens.textDim,
             ),
@@ -256,7 +257,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Select a language first',
+            t.packCompilation.hints.selectLanguageFirst,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: tokens.textDim,
             ),
@@ -278,7 +279,7 @@ class CompilationProjectSelectionSection extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'No projects with translations in this language',
+            t.packCompilation.hints.noProjectsWithLanguage,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: tokens.textDim,
             ),
@@ -318,7 +319,7 @@ class _SelectionCountPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            '$count selected',
+            t.packCompilation.hints.selectedCount(count: count),
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.accentFg,
@@ -334,7 +335,7 @@ class _SelectionCountPill extends StatelessWidget {
     );
     if (!canClear) return pill;
     return Tooltip(
-      message: 'Clear selection',
+      message: t.packCompilation.hints.clearSelection,
       waitDuration: const Duration(milliseconds: 400),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,

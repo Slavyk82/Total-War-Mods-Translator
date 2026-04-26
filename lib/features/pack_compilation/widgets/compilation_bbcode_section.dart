@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import '../providers/pack_compilation_providers.dart';
 
@@ -54,7 +55,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Steam Workshop BBCode',
+                  t.packCompilation.labels.steamWorkshopBbcode,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -75,7 +76,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
           ),
           const SizedBox(height: 12),
           Text(
-            'Copy this BBCode to use in your Steam Workshop description:',
+            t.packCompilation.labels.bbcodeHint,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
             ),
@@ -95,7 +96,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
                       border: Border.all(color: theme.dividerColor),
                     ),
                     child: Text(
-                      'No mods with Steam Workshop IDs selected',
+                      t.packCompilation.messages.noModsWithWorkshopIds,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.textTheme.bodySmall?.color
                             ?.withValues(alpha: 0.5),
@@ -146,7 +147,7 @@ class _CompilationBBCodeSectionState extends ConsumerState<CompilationBBCodeSect
                       Border.all(color: theme.colorScheme.error.withValues(alpha: 0.5)),
                 ),
                 child: Text(
-                  'Error generating BBCode',
+                  t.packCompilation.conflicts.bbcodeError,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.error,
                   ),

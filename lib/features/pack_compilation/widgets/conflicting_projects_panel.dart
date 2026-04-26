@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 
 import '../providers/compilation_conflict_providers.dart';
 import 'project_conflicts_detail_dialog.dart';
@@ -46,7 +47,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Conflicting Projects',
+                    t.packCompilation.labels.conflictingProjects,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -108,14 +109,14 @@ class ConflictingProjectsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Conflict analysis will run',
+              t.packCompilation.conflicts.analysisWillRun,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
             Text(
-              'when you click Generate Pack',
+              t.packCompilation.conflicts.whenYouClickGenerate,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -141,7 +142,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'No conflicts detected',
+              t.packCompilation.conflicts.noConflictsDetected,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: Colors.green.shade700,
                 fontWeight: FontWeight.w500,
@@ -149,7 +150,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Ready to compile',
+              t.packCompilation.conflicts.readyToCompile,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -175,7 +176,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Analyzing conflicts...',
+            t.packCompilation.conflicts.analyzingConflicts,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -199,7 +200,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Analysis failed',
+              t.packCompilation.conflicts.analysisFailed,
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.error,
               ),
@@ -247,7 +248,7 @@ class ConflictingProjectsPanel extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Click on a project name to see details. Uncheck to exclude.',
+                  t.packCompilation.conflicts.conflictInfo,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: Colors.orange.shade700,
                   ),
