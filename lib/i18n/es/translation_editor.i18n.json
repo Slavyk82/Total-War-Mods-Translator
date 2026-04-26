@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "Editor de traducción",
+    "crumbWork": "Trabajo",
+    "crumbProjects": "Proyectos"
+  },
+  "toolbar": {
+    "searchHint": "Buscar clave · origen · destino",
+    "filterStateLabel": "ESTADO",
+    "filterSeverityLabel": "GRAVEDAD",
+    "clearLabel": "Limpiar",
+    "sectionAiContext": "Contexto de IA",
+    "sectionOther": "Otros",
+    "sectionWorkflow": "Flujo de trabajo",
+    "autoBatchSize": "Tamaño de lote automático",
+    "unitsPerBatch": "Unidades / lote",
+    "parallelBatches": "Lotes en paralelo",
+    "useTranslationMemory": "Usar memoria de traducción",
+    "modSpecificRule": "Regla específica del mod",
+    "importExternalPack": "Importar pack externo",
+    "openLocalFolder": "Abrir carpeta local"
+  },
+  "filters": {
+    "pending": "Pendiente",
+    "translated": "Traducido",
+    "needsReview": "Requiere revisión",
+    "errors": "Errores",
+    "warnings": "Advertencias"
+  },
+  "sidebar": {
+    "translateSelection": "Traducir selección",
+    "translateAll": "Traducir todo",
+    "review": "Revisar",
+    "generatePack": "Generar pack",
+    "unitSingular": "unidad",
+    "unitPlural": "unidades"
+  },
+  "inspector": {
+    "emptyState": "Seleccione una unidad para ver los detalles",
+    "unitsSelected": "$count unidades seleccionadas",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "edit": "Editar",
+    "retranslate": "Retraducir",
+    "deselect": "Deseleccionar",
+    "validationIssues": "PROBLEMAS DE VALIDACIÓN",
+    "sourceLabel": "Origen · $lang",
+    "targetLabel": "Destino · $lang — editando",
+    "unitLabel": "Unidad"
+  },
+  "datagrid": {
+    "columnKey": "CLAVE",
+    "columnSource": "ORIGEN",
+    "columnTarget": "DESTINO",
+    "errorLoadingTranslations": "Error al cargar las traducciones"
+  },
+  "statusBar": {
+    "units": "$count unidades",
+    "translated": "$count traducidas ($pct%)",
+    "needReview": "$count requieren revisión",
+    "tmReuse": "TM $pct%"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "Sin selección",
+      "message": "Seleccione una o más unidades de traducción para traducir."
+    },
+    "noUntranslated": {
+      "title": "No hay unidades sin traducir",
+      "message": "Todas las unidades en este idioma del proyecto ya están traducidas."
+    },
+    "allTranslated": {
+      "title": "Todas las unidades seleccionadas están traducidas",
+      "message": "Todas las unidades seleccionadas ya están traducidas."
+    },
+    "translateAll": {
+      "title": "Traducir todo",
+      "message": "¿Traducir $count unidades sin traducir?"
+    },
+    "translateSelected": {
+      "title": "Traducir selección",
+      "message": "¿Traducir $count unidades sin traducir ($skipped ya traducidas)?"
+    },
+    "forceRetranslate": {
+      "title": "Forzar retraducción",
+      "message": "¿Retraducir $count unidad(es)?\n\nAdvertencia: esto sobrescribirá las traducciones existentes."
+    },
+    "validationRescan": {
+      "title": "Reanálisis de validación",
+      "scanning": "Analizando $current/$total...",
+      "saving": "Guardando $count actualizaciones..."
+    },
+    "noIssues": {
+      "title": "No hay problemas que revisar",
+      "message": "Todas las traducciones han pasado la validación."
+    },
+    "nothingToScan": {
+      "title": "Nada que analizar",
+      "message": "No se han encontrado entradas traducidas."
+    },
+    "clearConfirm": {
+      "title": "Confirmar limpieza",
+      "messageSingle": "¿Seguro que desea limpiar esta traducción?",
+      "messageMultiple": "¿Seguro que desea limpiar $count traducciones?",
+      "clearButton": "Limpiar",
+      "cannotBeUndone": "Esta acción no se puede deshacer."
+    },
+    "deleteConfirm": {
+      "title": "Confirmar eliminación",
+      "messageSingle": "¿Seguro que desea eliminar esta traducción?",
+      "messageMultiple": "¿Seguro que desea eliminar $count traducciones?",
+      "deleteButton": "Eliminar",
+      "cannotBeUndone": "Esta acción no se puede deshacer."
+    },
+    "clearTranslations": {
+      "title": "Limpiando traducciones"
+    },
+    "editTranslation": {
+      "title": "Editar traducción",
+      "translationLabel": "Traducción",
+      "hint": "Introduzca la traducción corregida..."
+    },
+    "translationHistory": {
+      "title": "Historial de traducción",
+      "noHistory": "No hay historial disponible",
+      "noHistoryDetail": "Esta traducción aún no tiene historial registrado.",
+      "errorLoading": "Error al cargar el historial"
+    },
+    "promptPreview": {
+      "title": "Vista previa del prompt",
+      "subtitle": "Vea el prompt exacto que se enviará al LLM",
+      "tabSystemPrompt": "Prompt del sistema",
+      "tabUserMessage": "Mensaje del usuario",
+      "tabApiPayload": "Carga útil de la API",
+      "systemPromptDesc": "Instrucciones, contexto y glosario enviados como mensaje del sistema",
+      "userMessageDesc": "La solicitud de traducción real con el texto de origen",
+      "apiPayloadDesc": "Carga útil JSON completa tal como se enviaría al proveedor",
+      "copyFullPrompt": "Copiar prompt completo",
+      "copiedToClipboard": "$title copiado al portapapeles",
+      "noPreview": "No hay vista previa disponible",
+      "errorBuilding": "Error al generar la vista previa del prompt",
+      "keyLabel": "Clave: $key"
+    },
+    "providerSetup": {
+      "title": "Ningún proveedor de traducción configurado",
+      "message": "Para usar la traducción automática, es necesario configurar al menos un proveedor LLM. Vaya a Ajustes y configure uno de los siguientes proveedores:",
+      "goToSettings": "Ir a Ajustes",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "Traducciones de alta calidad con comprensión del contexto",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "Modelo de lenguaje versátil con buenas traducciones",
+      "deepl": "DeepL",
+      "deeplDesc": "Servicio de traducción especializado"
+    },
+    "modRule": {
+      "title": "Regla de traducción del mod",
+      "infoBanner": "Esta regla se aplica únicamente a este mod y se añadirá después de las reglas globales en cada prompt de traducción.",
+      "ruleTextLabel": "Texto de la regla",
+      "ruleTextHint": "Por ejemplo: Este mod usa nombres de fantasía que no deben traducirse...",
+      "ruleActive": "La regla está activa",
+      "ruleDisabled": "La regla está desactivada",
+      "deleteTitle": "Eliminar regla del mod",
+      "deleteMessage": "¿Seguro que desea eliminar esta regla? Esta acción no se puede deshacer.",
+      "savedSuccess": "Regla del mod guardada correctamente",
+      "deletedSuccess": "Regla del mod eliminada",
+      "errorSave": "No se pudo guardar la regla",
+      "errorDelete": "No se pudo eliminar la regla",
+      "errorToggle": "No se pudo cambiar el estado de la regla",
+      "validationEmpty": "Introduzca un texto de regla"
+    },
+    "packImport": {
+      "title": "Importar traducciones desde un archivo .pack",
+      "noFileSelected": "Ningún archivo seleccionado",
+      "browse": "Examinar",
+      "analyzingPack": "Analizando archivo pack...",
+      "selectPackPrompt": "Seleccione un archivo .pack que contenga traducciones",
+      "noMatchingTranslations": "No se han encontrado traducciones coincidentes",
+      "overwriteExisting": "Sobrescribir traducciones existentes",
+      "selectAll": "Seleccionar todo",
+      "deselectAll": "Deseleccionar todo",
+      "importButton": "Importar ($count)",
+      "importing": "Importando...",
+      "cancelImport": "Cancelar importación",
+      "cancelling": "Cancelando...",
+      "startingImport": "Iniciando importación...",
+      "summaryTitle": "Resumen del análisis",
+      "summaryTotalInPack": "Total en el pack",
+      "summaryMatches": "Coincidencias",
+      "summaryNew": "Nuevas",
+      "summaryConflicts": "Conflictos",
+      "summaryNotFound": "No encontradas",
+      "gridColumnKey": "Clave",
+      "gridColumnValue": "Valor a importar",
+      "gridColumnStatus": "Estado",
+      "statusConflict": "Conflicto",
+      "statusNew": "Nueva",
+      "importComplete": "Importación completada: $imported traducciones importadas",
+      "importSkipped": ", $count omitidas",
+      "importErrors": ", $count errores",
+      "progressEntries": "$current / $total entradas procesadas"
+    },
+    "export": {
+      "title": "Exportar traducciones",
+      "selectFormat": "Seleccione el formato de exportación:",
+      "packTitle": ".pack (mod de Total War)",
+      "packSubtitle": "Archivo de paquete listo para el juego",
+      "csvTitle": "CSV",
+      "csvSubtitle": "Valores separados por comas",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Hoja de cálculo de Microsoft Excel"
+    },
+    "deleteLanguage": {
+      "title": "Eliminar idioma",
+      "message": "¿Quitar «$name» de este proyecto? Se eliminarán $count traducciones.",
+      "cannotBeUndone": "Esta acción no se puede deshacer."
+    },
+    "sourceText": "Texto de origen"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "Generación del pack",
+      "header": "Generando pack",
+      "packGenerated": "Pack generado",
+      "translationsIncluded": "$count traducciones incluidas",
+      "languages": "Idiomas: $langs",
+      "steps": {
+        "preparingData": "Preparando datos...",
+        "generatingLocFiles": "Generando archivos .loc...",
+        "creatingPack": "Creando archivo .pack...",
+        "generatingImage": "Generando imagen del pack...",
+        "finalizing": "Finalizando...",
+        "completed": "¡Pack generado!",
+        "collectingData": "Recopilando datos de traducción...",
+        "writingFile": "Escribiendo archivo de salida..."
+      },
+      "processing": "Procesando: $lang ($current/$total)",
+      "inProgressWarning": "Generación del pack en curso. Espere a que termine.",
+      "statusFailed": "Fallido",
+      "statusCompleted": "Completado",
+      "statusInProgress": "En curso"
+    },
+    "translation": {
+      "header": "Traducción masiva",
+      "title": "Traducción en curso",
+      "batchId": "ID del lote: $id",
+      "progress": "Progreso",
+      "units": "$processed / $total unidades",
+      "stop": "Detener",
+      "stopping": "Deteniendo...",
+      "stopWarning": "Traducción en curso. Pulse «Detener» para salir de forma segura.",
+      "preparing": "Preparando traducción",
+      "preparingDetail": "Creando lote y recopilando contexto...",
+      "preparationFailed": "No se pudo preparar el lote de traducción",
+      "preparationError": "Error de preparación: $error",
+      "currentPhase": "Fase actual",
+      "paused": "En pausa",
+      "elapsed": {
+        "seconds": "Transcurrido: $n segundos",
+        "minutes": "Transcurrido: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "Aproximadamente $n segundos restantes",
+        "minutes": "Aproximadamente $n minuto restante",
+        "minutesPlural": "Aproximadamente $n minutos restantes"
+      },
+      "logs": {
+        "title": "Registros",
+        "autoScroll": "Desplazamiento automático",
+        "waiting": "Esperando registros..."
+      },
+      "llmLogs": "Registros de intercambios con el LLM ($count)",
+      "llmLogsEmpty": "Aún no hay intercambios con el LLM. Los registros aparecerán a medida que avance la traducción.",
+      "phases": {
+        "initializing": "Inicializando...",
+        "tmExactLookup": "Comprobando memoria de traducción (exacta)",
+        "tmFuzzyLookup": "Comprobando memoria de traducción (aproximada)",
+        "buildingPrompt": "Construyendo prompt de traducción",
+        "llmTranslation": "Traduciendo con el LLM",
+        "validating": "Validando traducciones",
+        "saving": "Guardando traducciones",
+        "updatingTm": "Actualizando memoria de traducción",
+        "finalizing": "Finalizando lote",
+        "completed": "Completado"
+      },
+      "stats": {
+        "success": "Éxito",
+        "failed": "Fallido",
+        "skipped": "Omitido"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "Seleccionar todo",
+    "forceRetranslate": "Forzar retraducción",
+    "forceRetranslateCount": "Forzar retraducción ($count)",
+    "markAsTranslated": "Marcar como traducido",
+    "markAsTranslatedCount": "Marcar como traducido ($count)",
+    "clearTranslation": "Limpiar traducción",
+    "clearTranslationCount": "Limpiar traducción ($count)",
+    "viewHistory": "Ver historial",
+    "viewPrompt": "Ver prompt",
+    "deleteCount": "Eliminar ($count)"
+  },
+  "actions": {
+    "undoSuccess": "Deshacer realizado correctamente",
+    "undoFailed": "Error al deshacer: $error",
+    "redoSuccess": "Rehacer realizado correctamente",
+    "redoFailed": "Error al rehacer: $error",
+    "autoFixApplied": "Corrección automática aplicada",
+    "translationValidated": "Traducción validada",
+    "markedAsTranslated": "$count traducciones marcadas como traducidas",
+    "cleared": "$count traducciones limpiadas",
+    "deleted": "$count traducciones eliminadas",
+    "copied": "$count filas copiadas al portapapeles",
+    "pasted": "$count traducciones pegadas",
+    "noRowsSelected": "No hay filas seleccionadas",
+    "clipboardEmpty": "El portapapeles está vacío",
+    "noValidTranslations": "No se han encontrado traducciones válidas en el portapapeles",
+    "packGenerationFailed": "La generación del pack ha fallado",
+    "failedToOpenModFolder": "No se pudo abrir la carpeta del mod: $error",
+    "gamePathNotConfigured": "La ruta de instalación del juego no está configurada."
+  },
+  "languageSwitcher": {
+    "noLanguage": "No hay ningún idioma en este proyecto",
+    "addLanguage": "+ Añadir idioma",
+    "deleteLanguage": "Eliminar idioma",
+    "cannotDeleteLast": "No se puede eliminar el último idioma"
+  },
+  "validation": {
+    "validationIssuesFound": "Problemas de validación detectados",
+    "readyToValidate": "Listo para validar",
+    "noIssuesFound": "¡No se han encontrado problemas!",
+    "translationPassesAll": "Esta traducción pasa todas las comprobaciones de validación",
+    "selectUnitToView": "Seleccione una unidad de traducción para ver los problemas de validación",
+    "errorLoadingIssues": "Error al cargar los problemas de validación",
+    "validate": "Validar",
+    "autoFix": "Corrección automática",
+    "errors": "Errores",
+    "warnings": "Advertencias",
+    "info": "Información",
+    "noIssues": "No se han encontrado problemas"
+  },
+  "issueTypes": {
+    "emptyTranslation": "Traducción vacía",
+    "lengthDifference": "Diferencia de longitud",
+    "missingVariables": "Variables faltantes",
+    "whitespaceIssue": "Problema de espacios",
+    "punctuationMismatch": "Puntuación incorrecta",
+    "caseMismatch": "Mayúsculas/minúsculas incorrectas",
+    "missingNumbers": "Números faltantes",
+    "modifiedNumbers": "Números modificados"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "Cronología del historial",
+    "labels": {
+      "current": "Actual",
+      "latest": "Última",
+      "versionN": "Versión $index",
+      "reason": "Motivo: $reason"
+    },
+    "actions": {
+      "restore": "Restaurar",
+      "compare": "Comparar"
+    },
+    "empty": {
+      "title": "No hay historial disponible",
+      "subtitle": "Los cambios aparecerán aquí a medida que edite"
+    },
+    "errors": {
+      "loadFailed": "Error al cargar el historial"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restaurar versión",
+        "message": "¿Está seguro de que desea restaurar esta versión?\n\nEsto reemplazará la traducción actual por:\n«$preview»"
+      }
+    },
+    "toasts": {
+      "restored": "Versión restaurada correctamente",
+      "restoreFailed": "Error al restaurar: $error"
+    }
+  },
+  "comparison": {
+    "title": "Comparar versiones",
+    "labels": {
+      "oldVersion": "Versión antigua",
+      "newVersion": "Versión nueva",
+      "changes": "Cambios",
+      "charsAdded": "Caracteres añadidos",
+      "charsRemoved": "Caracteres eliminados",
+      "wordsAdded": "Palabras añadidas",
+      "wordsRemoved": "Palabras eliminadas",
+      "totalChanges": "Total de cambios"
+    },
+    "actions": {
+      "copyOld": "Copiar antigua",
+      "copyNew": "Copiar nueva",
+      "restoreOld": "Restaurar antigua"
+    },
+    "errors": {
+      "loadFailed": "Error al comparar las versiones"
+    },
+    "toasts": {
+      "copied": "Copiado al portapapeles",
+      "restored": "Versión restaurada correctamente",
+      "restoreFailed": "Error al restaurar: $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Restaurar versión",
+        "message": "¿Está seguro de que desea restaurar esta versión?\n\nVista previa:\n«$preview»"
+      }
+    }
+  }
+}

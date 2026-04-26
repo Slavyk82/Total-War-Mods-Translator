@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Memoria de traducción",
+    "statistics": "Estadísticas",
+    "totalEntries": "Total de entradas",
+    "languagePairs": "Pares de idiomas",
+    "performance": "Rendimiento",
+    "totalReuse": "Reutilización total",
+    "tokensSaved": "Tokens ahorrados",
+    "reuseRate": "Tasa de reutilización",
+    "sourceText": "Texto de origen",
+    "targetText": "Texto de destino",
+    "usageCount": "Número de usos",
+    "lastUsed": "Último uso",
+    "created": "Creado",
+    "selectedFile": "Archivo seleccionado",
+    "importOptions": "Opciones de importación",
+    "filters": "Filtros",
+    "whatToExport": "Qué exportar",
+    "outputFile": "Archivo de salida",
+    "formatOptions": "Opciones de formato",
+    "deleteIfUnusedDays": "Eliminar si no se usa durante (días)",
+    "deleteAll": "Eliminar todo",
+    "targetLanguage": "Idioma de destino"
+  },
+  "actions": {
+    "importTmx": "Importar TMX",
+    "exportTmx": "Exportar TMX",
+    "cleanup": "Limpiar",
+    "import": "Importar",
+    "export": "Exportar",
+    "importing": "Importando...",
+    "exporting": "Exportando..."
+  },
+  "dialogs": {
+    "importTitle": "Importar memoria de traducción (TMX)",
+    "exportTitle": "Exportar memoria de traducción (TMX)",
+    "cleanupTitle": "Limpiar memoria de traducción",
+    "entryDetailsTitle": "Detalles de la entrada de memoria de traducción",
+    "deleteTmTitle": "Eliminar entrada de TM",
+    "deleteTmMessage": "¿Está seguro de que desea eliminar esta entrada de memoria de traducción?",
+    "deleteTmWarning": "Esta acción no se puede deshacer."
+  },
+  "messages": {
+    "noEntries": "No hay entradas en la memoria de traducción",
+    "importHint": "Importe un archivo TMX o comience a traducir para alimentar su memoria",
+    "failedToLoadEntries": "No se pudieron cargar las entradas",
+    "failedToLoadStatistics": "No se pudieron cargar las estadísticas",
+    "removeUnusedHint": "Elimine las entradas no utilizadas para optimizar su memoria de traducción.",
+    "allEntriesWillBeDeleted": "Se eliminarán todas las entradas: esta acción no se puede deshacer",
+    "deletedEntries": "$count entradas eliminadas",
+    "tmEntryDeletedSuccess": "Entrada de TM eliminada correctamente",
+    "failedToDeleteTmEntry": "No se pudo eliminar la entrada de TM",
+    "deleteEntry": "Eliminar entrada",
+    "importComplete": "Importación completada",
+    "exportComplete": "Exportación completada",
+    "exportedEntries": "$count entradas exportadas",
+    "processedOf": "Procesadas $processed de $total entradas",
+    "sizeKb": "Tamaño: $size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 entradas",
+    "showingRange": "Mostrando $start–$end de $total",
+    "firstPage": "Primera página",
+    "previousPage": "Página anterior",
+    "nextPage": "Página siguiente",
+    "lastPage": "Última página"
+  },
+  "importResult": {
+    "totalEntries": "Total de entradas",
+    "imported": "Importadas",
+    "skippedDuplicates": "Omitidas (duplicadas)",
+    "failedValidation": "Fallidas (errores de validación)"
+  },
+  "options": {
+    "overwriteExisting": "Sobrescribir entradas existentes",
+    "overwriteExistingHint": "Reemplazar las entradas existentes por las importadas",
+    "validateEntries": "Validar entradas",
+    "validateEntriesHint": "Comprobar errores antes de importar",
+    "includeMetadata": "Incluir metadatos",
+    "includeMetadataHint": "Añadir puntuaciones de calidad, contadores de uso, etc.",
+    "includeStats": "Incluir estadísticas",
+    "includeStatsHint": "Añadir un resumen y estadísticas en la cabecera del archivo",
+    "allEntries": "Todas las entradas (según los filtros)",
+    "frequentlyUsed": "Solo las usadas con frecuencia (>5 veces)"
+  },
+  "columns": {
+    "sourceText": "TEXTO DE ORIGEN",
+    "targetText": "TEXTO DE DESTINO",
+    "usage": "USOS",
+    "lastUsed": "ÚLTIMO USO"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Pulse para seleccionar un archivo .tmx",
+    "clickToSelectSaveLocation": "Pulse para seleccionar la ubicación de guardado",
+    "searchPlaceholder": "Buscar en la memoria de traducción..."
+  }
+}

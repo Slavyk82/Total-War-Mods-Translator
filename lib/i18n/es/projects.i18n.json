@@ -1,0 +1,235 @@
+{
+  "title": "Proyectos",
+  "projectCount": "$count proyectos",
+  "stateLabel": "ESTADO",
+  "clearFilters": "Limpiar",
+  "filters": {
+    "needsUpdate": "Requiere actualización",
+    "needsReview": "Requiere revisión",
+    "incomplete": "Incompleto",
+    "completed": "Completado",
+    "exported": "Exportado",
+    "notExported": "No exportado",
+    "exportOutdated": "Exportación desactualizada"
+  },
+  "emptyStates": {
+    "noMatch": "Ningún proyecto coincide con los filtros",
+    "noProjects": "Aún no hay proyectos",
+    "adjustFilters": "Pruebe a ajustar los filtros",
+    "goToMods": "Vaya a la pantalla de Mods para crear un proyecto a partir de un mod",
+    "failedToLoad": "No se pudieron cargar los proyectos"
+  },
+  "loading": "Cargando proyectos...",
+  "columns": {
+    "project": "Proyecto",
+    "languagesProgress": "Idiomas y progreso",
+    "modified": "Modificado",
+    "status": "Estado"
+  },
+  "labels": {
+    "noTargetLanguage": "Sin idioma de destino",
+    "localPack": "Pack local",
+    "gameTranslation": "Traducción del juego",
+    "lastModified": "Última modificación: $date",
+    "lastExport": "Última exportación: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Abrir en Steam Workshop",
+    "resync": "Resincronizar con el archivo del pack de origen",
+    "deleteProject": "Eliminar proyecto",
+    "hideBulkMenu": "Ocultar menú masivo",
+    "showBulkMenu": "Mostrar menú masivo",
+    "newTranslations": "+$n nuevas traducciones por añadir",
+    "removedTranslations": "-$n traducciones eliminadas",
+    "changedSources": "~$n textos de origen modificados"
+  },
+  "status": {
+    "modUpdated": "Mod actualizado",
+    "upToDate": "Al día",
+    "exportOutdated": "Exportación desactualizada",
+    "unpublished": "Sin publicar",
+    "exported": "Exportado",
+    "draft": "Borrador"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "Eliminar proyecto",
+      "message": "¿Está seguro de que desea eliminar «$name»?",
+      "warning": "Esta acción no se puede deshacer.",
+      "confirmLabel": "Eliminar"
+    },
+    "confirmLeave": {
+      "title": "Exportación en curso",
+      "message": "Hay una exportación masiva en curso. ¿Está seguro de que desea salir? La exportación se cancelará.",
+      "stay": "Permanecer",
+      "leave": "Salir"
+    },
+    "confirmCancelBulk": {
+      "title": "¿Detener la operación en curso?",
+      "message": "Los proyectos ya procesados conservarán sus cambios.",
+      "stop": "Detener",
+      "keepRunning": "Continuar"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "Proyecto resincronizado correctamente",
+    "resyncFailed": "Error en la resincronización: $error",
+    "deleteSuccess": "Proyecto «$name» eliminado",
+    "deleteFailed": "No se pudo eliminar el proyecto: $error",
+    "projectCreated": "Proyecto creado correctamente",
+    "projectCreatedUnits": "Proyecto creado con $count unidades de traducción",
+    "createFailed": "No se pudo crear el proyecto: $error",
+    "importFailed": "Proyecto creado, pero no se pudieron importar las traducciones: $error"
+  },
+  "search": {
+    "hint": "Buscar proyectos..."
+  },
+  "batchExport": {
+    "title": "Exportación masiva de packs",
+    "noData": "Sin datos de exportación.",
+    "statusComplete": "Exportación completada",
+    "statusCancelled": "Cancelada",
+    "statusExporting": "Exportando...",
+    "completedWithErrors": "Exportación completada con errores",
+    "allSuccess": "Todos los packs se exportaron correctamente",
+    "summary": "$succeeded con éxito, $failed fallidos",
+    "current": "En curso: $name",
+    "sectionProjects": "Proyectos",
+    "sectionLabel": "$count proyectos • $lang",
+    "progressOf": "$completed / $total proyectos",
+    "entryCount": "$count entradas"
+  },
+  "bulk": {
+    "sectionSettings": "Ajustes",
+    "sectionActions": "Acciones",
+    "sectionInfo": "Mostrar información",
+    "infoText": "Las acciones masivas están diseñadas para proyectos ya parcialmente traducidos. Se aplican a todos los proyectos visibles que coincidan con el idioma de destino seleccionado.",
+    "infoHide": "Ocultar",
+    "targetLanguageLabel": "Idioma de destino",
+    "scopeMessage": "Afectará a $visible proyectos visibles ($matching coinciden con el idioma de destino).",
+    "buttons": {
+      "translateAll": "Traducir todo",
+      "rescanReviews": "Volver a escanear revisiones",
+      "reviewFlagged": "Revisar marcados",
+      "generatePack": "Generar pack"
+    },
+    "unitCount": "$n unidades",
+    "tooltips": {
+      "selectLanguage": "Seleccione un idioma de destino",
+      "alreadyRunning": "Ya hay una operación en curso",
+      "noVisibleProjects": "Ningún proyecto visible coincide"
+    },
+    "progress": {
+      "titleTranslating": "Traduciendo proyectos",
+      "titleRescanning": "Volviendo a escanear revisiones",
+      "titleValidating": "Forzando validación de revisiones",
+      "titleGeneratingPacks": "Generando packs",
+      "titleRetranslating": "Retraduciendo unidades marcadas",
+      "titleDefault": "Operación masiva",
+      "targetLanguage": "Idioma de destino: $code",
+      "projectProgress": "$current / $total proyectos",
+      "cancelling": "Cancelando…",
+      "retryFailed": "Reintentar los fallidos",
+      "summary": "$succeeded con éxito · $skipped omitidos · $failed fallidos"
+    },
+    "review": {
+      "title": "Revisar traducciones marcadas",
+      "subtitle": "Destino: $code · $units unidades en $projects proyectos",
+      "loadFailed": "No se pudo cargar la cola de revisión: $error",
+      "working": "Procesando…",
+      "validateAll": "Validar todo",
+      "retranslateAll": "Forzar retraducción de todo",
+      "emptyTitle": "Ninguna traducción marcada",
+      "emptySubtitle": "Todos los proyectos visibles están al día para este idioma.",
+      "noModelSelected": "Ningún modelo LLM seleccionado",
+      "retranslateFailed": "Error al retraducir: $error",
+      "validateFailed": "No se pudo validar: $error",
+      "validateAllFailed": "No se pudo validar todo: $error",
+      "columnSource": "EN",
+      "columnTranslation": "Traducción",
+      "emptyTranslation": "(vacío)",
+      "tooltipValidate": "Validar (quitar marca de revisión)",
+      "tooltipRetranslate": "Forzar retraducción de esta unidad"
+    },
+    "languageSelector": {
+      "loadFailed": "No se pudieron cargar los idiomas: $error",
+      "noLanguages": "No hay ningún idioma de destino disponible en los proyectos visibles."
+    },
+    "outcomes": {
+      "noTargetLanguage": "Ningún idioma de destino configurado",
+      "noUntranslatedUnits": "Ninguna unidad sin traducir",
+      "noLlmModel": "ningún modelo LLM seleccionado",
+      "noFlaggedUnits": "Ninguna unidad marcada para revisión",
+      "noUnitsToRescan": "Ninguna unidad traducida que volver a escanear",
+      "unitsTranslated": "$count unidades traducidas · $flagged marcadas",
+      "unitsFlagged": "$count marcadas para revisión",
+      "flagsCleared": "$count marcas eliminadas",
+      "packGenerated": "$entries entradas · $size MB",
+      "unitsRetranslated": "$count unidades retraducidas"
+    }
+  },
+  "addLanguage": {
+    "title": "Añadir idiomas de destino",
+    "subtitle": "Seleccione los idiomas que desea añadir a este proyecto",
+    "adding": "Añadiendo...",
+    "addButton": "Añadir idiomas",
+    "allAdded": "Todos los idiomas ya se han añadido",
+    "loadError": "Error al cargar los idiomas",
+    "languageCode": "Código: $code",
+    "addSuccess": "Se añadieron $count idiomas con $units unidades de traducción cada uno",
+    "addFailed": "No se pudieron añadir los idiomas: $error"
+  },
+  "createProject": {
+    "title": "Crear nuevo proyecto",
+    "steps": {
+      "basicInfo": "Información básica",
+      "translationSettings": "Ajustes de traducción"
+    },
+    "actions": {
+      "close": "Cerrar",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "create": "Crear"
+    },
+    "errors": {
+      "selectGame": "Seleccione una instalación del juego",
+      "gameMustBeSelected": "Debe seleccionarse una instalación del juego",
+      "gamePathNotConfigured": "La ruta de instalación del juego no está configurada",
+      "rpfmSchemaNotConfigured": "La ruta del esquema RPFM no está configurada.\n\nConfigúrela en Ajustes > Herramienta RPFM antes de crear un proyecto.\n\nLa ruta del esquema es necesaria para extraer los archivos de localización de los archivos .pack."
+    },
+    "progress": {
+      "extracting": "Extrayendo e importando archivos de localización...",
+      "processing": "Procesando..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "Rellenado automáticamente a partir del mod detectado. Revise y continúe.",
+      "descriptionManual": "Introduzca el nombre del proyecto y elija una instalación del juego.",
+      "fieldProjectName": "NOMBRE DEL PROYECTO",
+      "fieldSourcePack": "PACK DE ORIGEN",
+      "fieldWorkshopId": "ID DE WORKSHOP",
+      "fieldGame": "JUEGO",
+      "hintProjectName": "Introduzca el nombre del proyecto",
+      "hintGame": "Seleccione un juego",
+      "errorLoadingGames": "Error al cargar los juegos: $error"
+    },
+    "translationSettings": {
+      "description": "Ajuste el rendimiento de traducción y, opcionalmente, proporcione un prompt adicional.",
+      "fieldBatchSize": "TAMAÑO DE LOTE",
+      "fieldParallelBatches": "LOTES PARALELOS",
+      "fieldCustomPrompt": "PROMPT DE TRADUCCIÓN PERSONALIZADO (OPCIONAL)",
+      "hintBatchSize": "Número de unidades por lote (predeterminado: 25)",
+      "hintParallelBatches": "Número de lotes procesados en paralelo (predeterminado: 3)",
+      "hintCustomPrompt": "Introduzca instrucciones personalizadas para el traductor de IA"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "Inicializando proyecto",
+    "titleFailed": "Error de inicialización",
+    "titleComplete": "Inicialización completada",
+    "extracting": "Extrayendo e importando archivos de localización...",
+    "successUnits": "Se importaron correctamente $count unidades de traducción",
+    "noLogs": "Aún no hay registros...",
+    "sectionLogs": "Registros",
+    "close": "Cerrar"
+  }
+}

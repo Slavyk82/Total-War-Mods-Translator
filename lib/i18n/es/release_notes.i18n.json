@@ -1,0 +1,20 @@
+{
+  "dialogs": {
+    "whatsNew": {
+      "title": "Novedades",
+      "releasePrefix": "Versión $version",
+      "noNotes": "No hay notas de la versión disponibles para esta versión."
+    },
+    "releaseHistory": {
+      "title": "Historial de versiones",
+      "subtitleOne": "$count versión",
+      "subtitleMany": "$count versiones",
+      "noNotes": "No hay notas de la versión disponibles",
+      "noReleasesAvailable": "No hay notas de la versión disponibles para esta versión."
+    }
+  },
+  "actions": {
+    "viewOnGitHub": "Ver en GitHub",
+    "gotIt": "Entendido"
+  }
+}

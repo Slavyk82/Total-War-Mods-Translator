@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Compilación de packs",
+    "new": "Nuevo",
+    "untitled": "Sin título",
+    "compilation": "Compilación",
+    "language": "Idioma",
+    "modified": "Modificado",
+    "status": "Estado",
+    "basics": "General",
+    "output": "Salida",
+    "name": "Nombre",
+    "targetLanguage": "Idioma de destino",
+    "prefix": "Prefijo",
+    "packName": "Nombre del pack",
+    "fileName": "Nombre del archivo",
+    "location": "Ubicación",
+    "publishing": "Publicación",
+    "selectProjects": "Seleccionar proyectos",
+    "noLanguage": "Sin idioma",
+    "steamWorkshopBbcode": "BBCode de Steam Workshop",
+    "bbcodeHint": "Copie este BBCode para usarlo en la descripción de su mod en Steam Workshop:",
+    "conflictingProjects": "Proyectos en conflicto",
+    "conflictingKey": "Clave en conflicto",
+    "sourceTextThis": "Texto de origen (este proyecto)",
+    "sourceTextConflicting": "Texto de origen (en conflicto)"
+  },
+  "actions": {
+    "newCompilation": "+ Nueva compilación",
+    "compile": "Compilar y generar pack",
+    "compiling": "Compilando...",
+    "forceCompile": "Forzar compilación",
+    "openFolder": "Abrir carpeta",
+    "stopTooltip": "Detener",
+    "cancelling": "Cancelando...",
+    "deleteCompilation": "Eliminar compilación"
+  },
+  "status": {
+    "draft": "Borrador",
+    "regeneratePack": "Regenerar pack",
+    "generated": "Generado",
+    "generatingPack": "Generando pack...",
+    "regenerateTooltip": "Uno o más proyectos incluidos han cambiado desde la última generación del pack."
+  },
+  "messages": {
+    "noCompilationsYet": "Aún no hay compilaciones",
+    "createCompilationHint": "Cree una compilación para agrupar varios proyectos en un único archivo .pack.",
+    "errorLoadingCompilations": "Error al cargar las compilaciones: $error",
+    "packGenerated": "Pack generado",
+    "deletedSuccess": "«$name» eliminado",
+    "deleteFailed": "No se pudo eliminar: $error",
+    "noModsWithWorkshopIds": "No hay mods con identificadores de Steam Workshop seleccionados"
+  },
+  "dialogs": {
+    "deleteTitle": "Eliminar compilación",
+    "deleteMessage": "¿Eliminar «$name»?",
+    "deleteWarning": "Esta acción no se puede deshacer.",
+    "conflictsTitle": "Se han detectado conflictos sin resolver",
+    "conflictsBody": "Quedan $count conflictos sin resolver entre los proyectos seleccionados. Compilar ahora puede provocar una visualización imprevisible de las traducciones en el juego para las entradas afectadas.\n\nPuede cancelar para resolverlos primero o forzar la compilación de todos modos.",
+    "conflictsForProject": "Conflictos del proyecto"
+  },
+  "hints": {
+    "namePlaceholder": "Mis traducciones al español",
+    "prefixPlaceholder": "!!!!!!!!!!_es_compilation_twmt_",
+    "packNamePlaceholder": "mi_pack",
+    "selectLanguage": "Seleccione un idioma...",
+    "noProjectsFound": "No se han encontrado proyectos",
+    "tryDifferentSearch": "Pruebe con otro término de búsqueda",
+    "selectGameFirst": "Seleccione primero un juego en la barra lateral",
+    "selectLanguageFirst": "Seleccione primero un idioma",
+    "noProjectsWithLanguage": "No hay proyectos con traducciones en este idioma",
+    "searchProjects": "Buscar proyectos...",
+    "showOnlySelected": "Mostrar solo los seleccionados",
+    "showOnlySelectedTooltip": "Mostrar solo los proyectos incluidos en esta compilación",
+    "clearSelection": "Borrar selección",
+    "selectedCount": "$count seleccionado(s)",
+    "failedToLoadProjects": "No se pudieron cargar los proyectos"
+  },
+  "conflicts": {
+    "analysisWillRun": "El análisis de conflictos se ejecutará",
+    "whenYouClickGenerate": "cuando pulse Generar pack",
+    "noConflictsDetected": "No se han detectado conflictos",
+    "readyToCompile": "Listo para compilar",
+    "analyzingConflicts": "Analizando conflictos...",
+    "analysisFailed": "Análisis fallido",
+    "conflictInfo": "Pulse en el nombre de un proyecto para ver los detalles. Desmarque para excluir.",
+    "noAnalysisData": "No hay datos de análisis",
+    "noConflictsFound": "No se han encontrado conflictos",
+    "errorPrefix": "Error: $error",
+    "bbcodeError": "Error al generar el BBCode"
+  }
+}

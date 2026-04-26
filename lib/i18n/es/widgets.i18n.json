@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Cargando juegos...",
+    "errorLoadingGames": "Error al cargar los juegos",
+    "configureAGame": "Configurar un juego",
+    "selectAGame": "Seleccionar un juego"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Versión: $version",
+    "checking": "Comprobando...",
+    "upToDate": "Al día",
+    "checkForUpdates": "Buscar actualizaciones",
+    "updateAvailable": "v$version disponible",
+    "dismiss": "Descartar",
+    "downloading": "Descargando...",
+    "installAndRestart": "Instalar y reiniciar",
+    "downloadWithSize": "Descargar ($size)",
+    "viewOnGitHub": "Ver en GitHub",
+    "viewReleaseNotes": "Ver notas de la versión",
+    "whatsNew": "¿Qué hay de nuevo?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Error al cargar las notas de la versión: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Selector de tema",
+    "selectTheme": "Seleccionar tema",
+    "groups": {
+      "workflow": "Flujo de trabajo",
+      "tools": "Herramientas",
+      "system": "Sistema"
+    },
+    "items": {
+      "home": "Inicio",
+      "detect": "Detectar",
+      "translate": "Traducir",
+      "publish": "Publicar",
+      "glossary": "Glosario",
+      "translationMemory": "Memoria de traducción",
+      "gameTranslation": "Traducción del juego",
+      "packCompilation": "Compilación de pack",
+      "settings": "Ajustes"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "Actualización de la base de datos",
+    "subtitle": "Migración única requerida",
+    "preparing": "Preparando...",
+    "info": "Este proceso garantiza el correcto funcionamiento de la Memoria de traducción. No cierre la aplicación.",
+    "actions": {
+      "retry": "Reintentar"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "haga clic para abrir"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count activos"
+  },
+  "nextStepCta": {
+    "next": "Siguiente: $label"
+  },
+  "toolbar": {
+    "back": "Atrás"
+  },
+  "wizardStepHeader": {
+    "step": "PASO $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Limpiar"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1h",
+    "hours": "${hours}h",
+    "oneDay": "1 día",
+    "days": "$days días",
+    "oneMonth": "1 mes",
+    "months": "$months meses",
+    "oneYear": "1 año",
+    "years": "$years años"
+  }
+}
