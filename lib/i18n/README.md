@@ -87,6 +87,12 @@ To add namespace `my_feature`:
   `intl` BEFORE injecting them; never inside the template.
 - **Plurals**: use slang's `one`/`other` map syntax.
 - **Never localize**: LLM system prompts, `assets/flags/*` filenames.
+- **Proper nouns are never translated** in any locale. This includes product
+  and brand names, game titles, and platform features. Non-exhaustive list:
+  `Steam Workshop`, `Steam`, `Total War`, `Warhammer`, `Three Kingdoms`,
+  `Empire`, `Napoleon`, `Shogun`, `Attila`, `Rome`, `Medieval`, and any
+  specific Total War game/DLC name. When in doubt, keep the English form
+  rather than coining a translation.
 - **Tone (T-V distinction)**: when the target language has both an
   informal and a formal second-person form, ALWAYS use the **formal**
   one. The app addresses the user with the polite register.
