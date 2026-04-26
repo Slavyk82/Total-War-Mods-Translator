@@ -62,14 +62,14 @@ class ModsToolbar extends StatelessWidget {
         child: ListSearchField(
           width: null,
           value: searchQuery,
-          hintText: 'Search mods...',
+          hintText: t.mods.hints.searchMods,
           onChanged: onSearchChanged,
           onClear: () => onSearchChanged(''),
         ),
       ),
       if (onImportLocalPack != null)
         SmallTextButton(
-          label: 'Import pack',
+          label: t.mods.actions.importPack,
           icon: FluentIcons.folder_add_24_regular,
           tooltip: t.tooltips.mods.importLocalPack,
           onTap: onImportLocalPack,
@@ -84,16 +84,16 @@ class ModsToolbar extends StatelessWidget {
   FilterPillGroup _buildStateGroup() {
     final isAll = currentFilter == ModsFilter.all;
     return FilterPillGroup(
-      label: 'STATE',
+      label: t.mods.filters.stateGroup,
       pills: [
         FilterPill(
-          label: 'All',
+          label: t.mods.filters.all,
           selected: isAll,
           tooltip: t.tooltips.mods.filterAll,
           onToggle: () => onFilterChanged(ModsFilter.all),
         ),
         FilterPill(
-          label: 'Not imported',
+          label: t.mods.filters.notImported,
           selected: currentFilter == ModsFilter.notImported,
           count: notImportedCount,
           tooltip: t.tooltips.mods.filterNotImported,
@@ -104,7 +104,7 @@ class ModsToolbar extends StatelessWidget {
           ),
         ),
         FilterPill(
-          label: 'Needs update',
+          label: t.mods.filters.needsUpdate,
           selected: currentFilter == ModsFilter.needsUpdate,
           count: needsUpdateCount,
           tooltip: t.tooltips.mods.filterNeedsUpdate,
@@ -115,7 +115,7 @@ class ModsToolbar extends StatelessWidget {
           ),
         ),
         FilterPill(
-          label: 'Hidden',
+          label: t.mods.filters.hidden,
           selected: showHidden,
           count: hiddenCount > 0 ? hiddenCount : null,
           tooltip: t.tooltips.mods.hiddenToggle,
@@ -151,11 +151,11 @@ class ModsToolbarLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final countLabel = searchActive
-        ? '$filteredMods / $totalMods ${totalMods == 1 ? 'mod' : 'mods'}'
-        : '$totalMods ${totalMods == 1 ? 'mod' : 'mods'}';
+        ? t.mods.labels.modCountFiltered(filtered: filteredMods, total: totalMods)
+        : t.mods.labels.modCountLabel(count: totalMods);
     return ListToolbarLeading(
       icon: FluentIcons.cube_24_regular,
-      title: 'Mods',
+      title: t.mods.labels.title,
       countLabel: countLabel,
       trailing: [
         if (projectsWithPendingChanges > 0)
@@ -177,11 +177,11 @@ class PendingProjectsBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     return StatusPill(
-      label: '$count project${count > 1 ? 's' : ''} pending',
+      label: t.mods.messages.pendingProjects(count: count),
       foreground: tokens.err,
       background: tokens.errBg,
       icon: FluentIcons.warning_24_filled,
-      tooltip: 'Projects with pending translation changes. Click to view.',
+      tooltip: t.mods.messages.pendingProjectsTooltip,
       onTap: onTap,
     );
   }
@@ -235,7 +235,7 @@ class _RefreshButton extends StatelessWidget {
                       ),
                 const SizedBox(width: 6),
                 Text(
-                  isRefreshing ? 'Rescanning...' : 'Rescan',
+                  isRefreshing ? t.mods.actions.rescanning : t.mods.actions.rescan,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: tokens.textMid,

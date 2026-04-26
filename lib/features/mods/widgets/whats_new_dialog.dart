@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twmt/features/projects/utils/open_project_editor.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -35,9 +36,8 @@ class _WhatsNewDialogState extends ConsumerState<WhatsNewDialog> {
     return TokenDialog(
       icon: FluentIcons.info_24_regular,
       iconColor: tokens.info,
-      title: "What's New in Your Mods",
-      subtitle:
-          '$count ${count == 1 ? 'mod has' : 'mods have'} updates available',
+      title: t.mods.labels.whatsNewTitle,
+      subtitle: t.mods.labels.updatesAvailable(count: count),
       width: 640,
       body: SizedBox(
         height: 400,
@@ -67,11 +67,11 @@ class _WhatsNewDialogState extends ConsumerState<WhatsNewDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Remind Me Later',
+          label: t.mods.actions.remindLater,
           onTap: () => _closeDialog(),
         ),
         SmallTextButton(
-          label: 'Update All',
+          label: t.mods.actions.updateAll,
           icon: FluentIcons.arrow_download_24_regular,
           filled: true,
           onTap: _updateAll,
@@ -140,7 +140,7 @@ class _DontShowAgainToggle extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Text(
-              "Don't show this again",
+              t.mods.messages.dontShowAgain,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -217,7 +217,7 @@ class _ModUpdateItemState extends State<_ModUpdateItem> {
                     borderRadius: BorderRadius.circular(tokens.radiusSm),
                   ),
                   child: Text(
-                    'NEW',
+                    t.mods.hints.newBadge,
                     style: tokens.fontBody.copyWith(
                       fontSize: 10.5,
                       color: tokens.ok,
@@ -229,7 +229,7 @@ class _ModUpdateItemState extends State<_ModUpdateItem> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Current version: ${widget.project.modVersion ?? 'Unknown'}',
+              t.mods.labels.currentVersion(version: widget.project.modVersion ?? 'Unknown'),
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -237,7 +237,7 @@ class _ModUpdateItemState extends State<_ModUpdateItem> {
             ),
             const SizedBox(height: 10),
             SmallTextButton(
-              label: 'View Details',
+              label: t.mods.actions.viewDetails,
               icon: FluentIcons.arrow_right_24_regular,
               onTap: widget.onViewDetails,
             ),

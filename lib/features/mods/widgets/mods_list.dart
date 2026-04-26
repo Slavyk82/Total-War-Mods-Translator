@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' show NumberFormat;
 import 'package:twmt/features/mods/models/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
@@ -62,17 +63,17 @@ class ModsList extends StatelessWidget {
       if (scanLogStream != null) {
         return ScanTerminalWidget(
           logStream: scanLogStream!,
-          title: 'Scanning Workshop...',
+          title: t.mods.messages.scanningWorkshop,
         );
       }
-      return _LoadingIndicator(message: 'Scanning Workshop folder...');
+      return _LoadingIndicator(message: t.mods.messages.scanningWorkshopFolder);
     }
 
     if (mods.isEmpty) {
       if (isScanning && scanLogStream != null) {
         return ScanTerminalWidget(
           logStream: scanLogStream!,
-          title: 'Scanning Workshop...',
+          title: t.mods.messages.scanningWorkshop,
         );
       }
       return _EmptyState(showingHidden: showingHidden);
@@ -123,7 +124,7 @@ class ModsList extends StatelessWidget {
           Opacity(opacity: 0.4, child: list),
           ScanTerminalWidget(
             logStream: scanLogStream!,
-            title: 'Refreshing...',
+            title: t.mods.messages.refreshing,
           ),
         ],
       );
@@ -159,7 +160,7 @@ class _ModsListHeader extends ConsumerWidget {
           Expanded(
             flex: 3,
             child: _SortableHeaderCell(
-              label: 'Mod',
+              label: t.mods.labels.mod,
               field: ModsSortField.name,
               sort: sort,
               onTap: () => notifier.toggle(ModsSortField.name),
@@ -168,7 +169,7 @@ class _ModsListHeader extends ConsumerWidget {
           SizedBox(
             width: 100,
             child: _SortableHeaderCell(
-              label: 'Subs',
+              label: t.mods.labels.subs,
               field: ModsSortField.subscribers,
               sort: sort,
               onTap: () => notifier.toggle(ModsSortField.subscribers),
@@ -177,14 +178,14 @@ class _ModsListHeader extends ConsumerWidget {
           SizedBox(
             width: 140,
             child: _SortableHeaderCell(
-              label: 'Updated',
+              label: t.mods.labels.updated,
               field: ModsSortField.updated,
               sort: sort,
               onTap: () => notifier.toggle(ModsSortField.updated),
             ),
           ),
-          SizedBox(width: 160, child: _PlainHeaderText('Status')),
-          SizedBox(width: 200, child: _PlainHeaderText('Changes')),
+          SizedBox(width: 160, child: _PlainHeaderText(t.mods.labels.status)),
+          SizedBox(width: 200, child: _PlainHeaderText(t.mods.labels.changes)),
           // hide toggle column (no label)
           const SizedBox(width: 56),
         ],
@@ -414,12 +415,12 @@ class _UpdatedCell extends ConsumerWidget {
     final lines = <String>[];
     if (mod.timeUpdated != null && mod.timeUpdated! > 0) {
       lines.add(
-        'Steam Workshop: ${formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000))}',
+        t.mods.steamTooltip.steamWorkshop(date: formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.timeUpdated! * 1000)) ?? ''),
       );
     }
     if (mod.localFileLastModified != null && mod.localFileLastModified! > 0) {
       lines.add(
-        'Local file: ${formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.localFileLastModified! * 1000))}',
+        t.mods.steamTooltip.localFile(date: formatAbsoluteDate(DateTime.fromMillisecondsSinceEpoch(mod.localFileLastModified! * 1000)) ?? ''),
       );
     }
     return lines.join('\n');
@@ -455,8 +456,7 @@ class _UpdatedCell extends ConsumerWidget {
       fg = tokens.err;
       weight = FontWeight.w600;
       tooltipLines = [
-        'Steam version is newer than local file.',
-        'Launch the game to download the update.',
+        ...t.mods.steamTooltip.needsDownload.split('\n'),
         '',
         _buildTooltip(),
       ];
@@ -465,8 +465,7 @@ class _UpdatedCell extends ConsumerWidget {
       fg = tokens.warn;
       weight = FontWeight.w600;
       tooltipLines = [
-        'Translation differences detected between source and project.',
-        'Review changes to synchronize your translations.',
+        ...t.mods.steamTooltip.hasChanges.split('\n'),
         '',
         _buildTooltip(),
       ];
@@ -517,7 +516,7 @@ class _ImportedCell extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: StatusPill(
-          label: imported ? 'Imported' : 'Not Imported',
+          label: imported ? t.mods.labels.imported : t.mods.labels.notImported,
           foreground: fg,
           background: bg,
           icon: imported ? FluentIcons.checkmark_circle_24_regular : null,
@@ -576,7 +575,7 @@ class _ChangesCell extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'Up to date',
+              t.mods.labels.upToDate,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.ok,
@@ -618,11 +617,11 @@ class _NeedsDownloadBadge extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: StatusPill(
-          label: 'Download required',
+          label: t.mods.labels.downloadRequired,
           foreground: tokens.err,
           background: tokens.errBg,
           icon: FluentIcons.arrow_download_24_filled,
-          tooltip: 'Click to delete local file and force redownload',
+          tooltip: t.mods.messages.downloadRequiredTooltip,
           onTap: enabled ? () => onTap!(packFilePath) : null,
         ),
       ),
@@ -692,8 +691,8 @@ class _HideCellState extends State<_HideCell> {
         ? FluentIcons.eye_24_regular
         : FluentIcons.eye_off_24_regular;
     final tooltip = isHidden
-        ? 'Show this mod in the main list'
-        : 'Hide this mod from the main list';
+        ? t.mods.messages.showModTooltip
+        : t.mods.messages.hideModTooltip;
     final fg = _hovered ? tokens.accent : tokens.textDim;
 
     return Center(
@@ -750,7 +749,7 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            showingHidden ? 'No hidden mods' : 'No mods found',
+            showingHidden ? t.mods.messages.noHiddenMods : t.mods.messages.noModsFound,
             style: tokens.fontDisplay.copyWith(
               fontSize: 18,
               color: tokens.text,
@@ -760,8 +759,8 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             showingHidden
-                ? 'Use the checkbox to hide mods from the list'
-                : 'Subscribe to mods on Steam Workshop or download them manually',
+                ? t.mods.messages.useCheckboxToHide
+                : t.mods.messages.subscribeHint,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,

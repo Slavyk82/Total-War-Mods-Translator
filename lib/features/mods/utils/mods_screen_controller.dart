@@ -6,6 +6,7 @@ import 'package:path/path.dart' as path;
 import 'package:file_picker/file_picker.dart';
 
 import 'package:twmt/config/router/app_router.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
@@ -74,16 +75,16 @@ class ModsScreenController {
         if (!context.mounted) return;
         FluentToast.success(
           context,
-          'Pack file deleted. Launch the game to redownload.',
+          t.mods.messages.packFileDeleted,
         );
         handleRefresh();
       } else {
         if (!context.mounted) return;
-        FluentToast.warning(context, 'File not found: $packFilePath');
+        FluentToast.warning(context, t.mods.messages.fileNotFound(path: packFilePath));
       }
     } catch (e) {
       if (!context.mounted) return;
-      FluentToast.error(context, 'Failed to delete file: $e');
+      FluentToast.error(context, t.mods.messages.failedToDeleteFile(error: e));
     }
   }
 
@@ -126,7 +127,7 @@ class ModsScreenController {
     final selectedGame = await _ref.read(selectedGameProvider.future);
     if (selectedGame == null) {
       if (context.mounted) {
-        FluentToast.warning(context, 'No game selected. Please select a game first.');
+        FluentToast.warning(context, t.mods.messages.noGameSelected);
       }
       return;
     }
@@ -136,7 +137,7 @@ class ModsScreenController {
       type: FileType.custom,
       allowedExtensions: ['pack'],
       initialDirectory: defaultPath,
-      dialogTitle: 'Select a .pack file',
+      dialogTitle: t.mods.hints.selectPackFile,
     );
 
     if (result == null || result.files.isEmpty) return;
@@ -195,7 +196,7 @@ class ModsScreenController {
 
       if (projectId == null) {
         if (!context.mounted) return;
-        FluentToast.error(context, 'Failed to create project');
+        FluentToast.error(context, t.mods.messages.failedToCreateProjectSimple);
         return;
       }
 
@@ -219,7 +220,7 @@ class ModsScreenController {
         if (context.mounted) {
           FluentToast.warning(
             context,
-            'Project not created: no localization files found in the mod.',
+            t.mods.messages.noLocalizationFiles,
           );
         }
       }
@@ -228,7 +229,7 @@ class ModsScreenController {
         await service.deleteProject(projectId);
       }
       if (context.mounted) {
-        FluentToast.error(context, 'Failed to create project: $e');
+        FluentToast.error(context, t.mods.messages.failedToCreateProject(error: e));
       }
     }
   }
@@ -275,7 +276,7 @@ class ModsScreenController {
 
       if (projectId == null) {
         if (!context.mounted) return;
-        FluentToast.error(context, 'Failed to create project');
+        FluentToast.error(context, t.mods.messages.failedToCreateProjectSimple);
         return;
       }
 
@@ -297,7 +298,7 @@ class ModsScreenController {
         if (context.mounted) {
           FluentToast.warning(
             context,
-            'Project not created: no localization files found in the pack.',
+            t.mods.messages.noLocalizationFilesInPack,
           );
         }
       }
@@ -306,7 +307,7 @@ class ModsScreenController {
         await service.deleteProject(projectId);
       }
       if (context.mounted) {
-        FluentToast.error(context, 'Failed to create project: $e');
+        FluentToast.error(context, t.mods.messages.failedToCreateProject(error: e));
       }
     }
   }

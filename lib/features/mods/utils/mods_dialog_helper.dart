@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -12,14 +13,10 @@ class ModsDialogHelper {
   static Future<bool> showLocalPackWarning(BuildContext context) {
     return TokenDialog.showConfirm(
       context,
-      title: 'Local Pack File',
-      message:
-          'This pack file is not linked to the Steam Workshop.\n\n'
-          'The mod will not be automatically updated when the author releases '
-          'a new version. You will need to manually reimport the pack file to '
-          'get updates.',
+      title: t.mods.dialogs.localPackTitle,
+      message: t.mods.dialogs.localPackMessage,
       icon: FluentIcons.warning_24_regular,
-      confirmLabel: 'Import Anyway',
+      confirmLabel: t.mods.dialogs.localPackConfirm,
       destructive: true,
     );
   }
@@ -39,7 +36,7 @@ class ModsDialogHelper {
         final tokens = ctx.tokens;
         return TokenDialog(
           icon: FluentIcons.edit_24_regular,
-          title: 'Project Name',
+          title: t.mods.dialogs.projectNameTitle,
           width: 440,
           body: TextField(
             controller: controller,
@@ -52,11 +49,11 @@ class ModsDialogHelper {
           ),
           actions: [
             SmallTextButton(
-              label: 'Cancel',
+              label: t.common.actions.cancel,
               onTap: () => Navigator.of(ctx).pop(null),
             ),
             SmallTextButton(
-              label: 'Create Project',
+              label: t.mods.actions.createProject,
               icon: FluentIcons.checkmark_24_regular,
               filled: true,
               onTap: () =>
@@ -70,12 +67,12 @@ class ModsDialogHelper {
 
   static InputDecoration _decoration(TwmtThemeTokens tokens) {
     return InputDecoration(
-      labelText: 'Name',
+      labelText: t.mods.labels.name,
       labelStyle:
           tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
       floatingLabelStyle:
           tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
-      hintText: 'Enter project name',
+      hintText: t.mods.dialogs.enterProjectName,
       hintStyle:
           tokens.fontBody.copyWith(fontSize: 13, color: tokens.textFaint),
       filled: true,

@@ -5,6 +5,7 @@ import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/utils/mods_screen_controller.dart';
 import 'package:twmt/features/mods/widgets/mods_list.dart';
 import 'package:twmt/features/mods/widgets/mods_toolbar.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/detail/home_back_toolbar.dart';
@@ -161,7 +162,7 @@ class _ModsErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Failed to load mods',
+              t.mods.messages.failedToLoadMods,
               style: tokens.fontDisplay.copyWith(
                 fontSize: 16,
                 color: tokens.err,
@@ -215,7 +216,7 @@ class _RetryButton extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'Retry',
+                t.mods.actions.retry,
                 style: tokens.fontBody.copyWith(
                   fontSize: 12.5,
                   color: tokens.accentFg,

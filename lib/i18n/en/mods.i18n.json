@@ -1,0 +1,102 @@
+{
+  "labels": {
+    "title": "Mods",
+    "mod": "Mod",
+    "subs": "Subs",
+    "updated": "Updated",
+    "status": "Status",
+    "changes": "Changes",
+    "imported": "Imported",
+    "notImported": "Not Imported",
+    "upToDate": "Up to date",
+    "downloadRequired": "Download required",
+    "projectName": "Project Name",
+    "name": "Name",
+    "currentVersion": "Current version: $version",
+    "noUpdates": "No Updates",
+    "noModsInQueue": "No mods in update queue",
+    "updatingMods": "Updating Mods",
+    "updatingCount": "Updating $count mods...",
+    "allUpdatesProcessed": "All updates have been processed",
+    "updatesComplete": "Updates Complete",
+    "whatsNewTitle": "What's New in Your Mods",
+    "updatesAvailable": "$count mods have updates available",
+    "modCountLabel": "$count mods",
+    "modCountFiltered": "$filtered / $total mods"
+  },
+  "actions": {
+    "importPack": "Import pack",
+    "rescan": "Rescan",
+    "rescanning": "Rescanning...",
+    "retry": "Retry",
+    "updateAll": "Update All",
+    "remindLater": "Remind Me Later",
+    "viewDetails": "View Details",
+    "hide": "Hide",
+    "createProject": "Create Project"
+  },
+  "filters": {
+    "all": "All",
+    "notImported": "Not imported",
+    "needsUpdate": "Needs update",
+    "hidden": "Hidden",
+    "stateGroup": "STATE"
+  },
+  "messages": {
+    "failedToLoadMods": "Failed to load mods",
+    "scanningWorkshop": "Scanning Workshop...",
+    "scanningWorkshopFolder": "Scanning Workshop folder...",
+    "refreshing": "Refreshing...",
+    "noModsFound": "No mods found",
+    "noHiddenMods": "No hidden mods",
+    "subscribeHint": "Subscribe to mods on Steam Workshop or download them manually",
+    "useCheckboxToHide": "Use the checkbox to hide mods from the main list",
+    "packFileDeleted": "Pack file deleted. Launch the game to redownload.",
+    "fileNotFound": "File not found: $path",
+    "failedToDeleteFile": "Failed to delete file: $error",
+    "failedToCreateProject": "Failed to create project: $error",
+    "failedToCreateProjectSimple": "Failed to create project",
+    "noLocalizationFiles": "Project not created: no localization files found in the mod.",
+    "noLocalizationFilesInPack": "Project not created: no localization files found in the pack.",
+    "noGameSelected": "No game selected. Please select a game first.",
+    "pendingProjects": "$count projects pending",
+    "pendingProjectsTooltip": "Projects with pending translation changes. Click to view.",
+    "downloadRequiredTooltip": "Click to delete local file and force redownload",
+    "dontShowAgain": "Don't show this again",
+    "showModTooltip": "Show this mod in the main list",
+    "hideModTooltip": "Hide this mod from the main list"
+  },
+  "hints": {
+    "searchMods": "Search mods...",
+    "newBadge": "NEW",
+    "selectPackFile": "Select a .pack file"
+  },
+  "updateStatus": {
+    "waitingToStart": "Waiting to start...",
+    "downloading": "Downloading from Steam Workshop...",
+    "detectingChanges": "Detecting changes...",
+    "updatingDatabase": "Updating database...",
+    "successfullyUpdated": "Successfully updated",
+    "updateFailed": "Update failed",
+    "cancelled": "Cancelled",
+    "updatedToVersion": "Updated to version $version",
+    "pending": "PENDING",
+    "inProgress": "IN PROGRESS",
+    "completed": "COMPLETED",
+    "failed": "FAILED",
+    "cancelledBadge": "CANCELLED"
+  },
+  "dialogs": {
+    "localPackTitle": "Local Pack File",
+    "localPackMessage": "This pack file is not linked to the Steam Workshop.\n\nThe mod will not be automatically updated when the author releases a new version. You will need to manually reimport the pack file to get updates.",
+    "localPackConfirm": "Import Anyway",
+    "projectNameTitle": "Project Name",
+    "enterProjectName": "Enter project name"
+  },
+  "steamTooltip": {
+    "steamWorkshop": "Steam Workshop: $date",
+    "localFile": "Local file: $date",
+    "needsDownload": "Steam version is newer than local file.\nLaunch the game to download the update.",
+    "hasChanges": "Translation differences detected between source and project.\nReview changes to synchronize your translations."
+  }
+}

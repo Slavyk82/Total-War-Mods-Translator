@@ -1,0 +1,102 @@
+{
+  "labels": {
+    "title": "Mods",
+    "mod": "Mod",
+    "subs": "Abonnés",
+    "updated": "Mis à jour",
+    "status": "Statut",
+    "changes": "Modifications",
+    "imported": "Importé",
+    "notImported": "Non importé",
+    "upToDate": "À jour",
+    "downloadRequired": "Téléchargement requis",
+    "projectName": "Nom du projet",
+    "name": "Nom",
+    "currentVersion": "Version actuelle : $version",
+    "noUpdates": "Aucune mise à jour",
+    "noModsInQueue": "Aucun mod dans la file de mise à jour",
+    "updatingMods": "Mise à jour des mods",
+    "updatingCount": "Mise à jour de $count mods…",
+    "allUpdatesProcessed": "Toutes les mises à jour ont été traitées",
+    "updatesComplete": "Mises à jour terminées",
+    "whatsNewTitle": "Nouveautés de vos mods",
+    "updatesAvailable": "$count mods avec des mises à jour disponibles",
+    "modCountLabel": "$count mods",
+    "modCountFiltered": "$filtered / $total mods"
+  },
+  "actions": {
+    "importPack": "Importer un pack",
+    "rescan": "Relancer l'analyse",
+    "rescanning": "Analyse en cours…",
+    "retry": "Réessayer",
+    "updateAll": "Tout mettre à jour",
+    "remindLater": "Me rappeler plus tard",
+    "viewDetails": "Voir les détails",
+    "hide": "Masquer",
+    "createProject": "Créer le projet"
+  },
+  "filters": {
+    "all": "Tous",
+    "notImported": "Non importés",
+    "needsUpdate": "Mise à jour nécessaire",
+    "hidden": "Masqués",
+    "stateGroup": "ÉTAT"
+  },
+  "messages": {
+    "failedToLoadMods": "Échec du chargement des mods",
+    "scanningWorkshop": "Analyse du Workshop en cours…",
+    "scanningWorkshopFolder": "Analyse du dossier Workshop en cours…",
+    "refreshing": "Actualisation en cours…",
+    "noModsFound": "Aucun mod trouvé",
+    "noHiddenMods": "Aucun mod masqué",
+    "subscribeHint": "Abonnez-vous à des mods sur Steam Workshop ou téléchargez-les manuellement",
+    "useCheckboxToHide": "Utilisez la case à cocher pour masquer des mods de la liste",
+    "packFileDeleted": "Fichier pack supprimé. Lancez le jeu pour le retélécharger.",
+    "fileNotFound": "Fichier introuvable : $path",
+    "failedToDeleteFile": "Échec de la suppression du fichier : $error",
+    "failedToCreateProject": "Échec de la création du projet : $error",
+    "failedToCreateProjectSimple": "Échec de la création du projet",
+    "noLocalizationFiles": "Projet non créé : aucun fichier de localisation trouvé dans le mod.",
+    "noLocalizationFilesInPack": "Projet non créé : aucun fichier de localisation trouvé dans le pack.",
+    "noGameSelected": "Aucun jeu sélectionné. Veuillez sélectionner un jeu d'abord.",
+    "pendingProjects": "$count projets en attente",
+    "pendingProjectsTooltip": "Projets avec des modifications de traduction en attente. Cliquez pour afficher.",
+    "downloadRequiredTooltip": "Cliquez pour supprimer le fichier local et forcer le retéléchargement",
+    "dontShowAgain": "Ne plus afficher",
+    "showModTooltip": "Afficher ce mod dans la liste principale",
+    "hideModTooltip": "Masquer ce mod de la liste principale"
+  },
+  "hints": {
+    "searchMods": "Rechercher des mods…",
+    "newBadge": "NOUVEAU",
+    "selectPackFile": "Sélectionner un fichier .pack"
+  },
+  "updateStatus": {
+    "waitingToStart": "En attente de démarrage…",
+    "downloading": "Téléchargement depuis Steam Workshop…",
+    "detectingChanges": "Détection des modifications…",
+    "updatingDatabase": "Mise à jour de la base de données…",
+    "successfullyUpdated": "Mis à jour avec succès",
+    "updateFailed": "Échec de la mise à jour",
+    "cancelled": "Annulé",
+    "updatedToVersion": "Mis à jour vers la version $version",
+    "pending": "EN ATTENTE",
+    "inProgress": "EN COURS",
+    "completed": "TERMINÉ",
+    "failed": "ÉCHOUÉ",
+    "cancelledBadge": "ANNULÉ"
+  },
+  "dialogs": {
+    "localPackTitle": "Fichier pack local",
+    "localPackMessage": "Ce fichier pack n'est pas lié à Steam Workshop.\n\nLe mod ne sera pas mis à jour automatiquement lors de la publication d'une nouvelle version. Vous devrez réimporter manuellement le fichier pack pour obtenir les mises à jour.",
+    "localPackConfirm": "Importer quand même",
+    "projectNameTitle": "Nom du projet",
+    "enterProjectName": "Saisir le nom du projet"
+  },
+  "steamTooltip": {
+    "steamWorkshop": "Steam Workshop : $date",
+    "localFile": "Fichier local : $date",
+    "needsDownload": "La version Steam est plus récente que le fichier local.\nLancez le jeu pour télécharger la mise à jour.",
+    "hasChanges": "Des différences de traduction ont été détectées entre la source et le projet.\nRevisez les modifications pour synchroniser vos traductions."
+  }
+}

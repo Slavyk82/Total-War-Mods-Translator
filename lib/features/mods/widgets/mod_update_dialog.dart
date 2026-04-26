@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -22,10 +23,10 @@ class ModUpdateDialog extends ConsumerWidget {
           ? FluentIcons.checkmark_circle_24_regular
           : FluentIcons.arrow_download_24_regular,
       iconColor: allComplete ? tokens.ok : tokens.accent,
-      title: allComplete ? 'Updates Complete' : 'Updating Mods',
+      title: allComplete ? t.mods.labels.updatesComplete : t.mods.labels.updatingMods,
       subtitle: allComplete
-          ? 'All updates have been processed'
-          : 'Updating $total ${total == 1 ? 'mod' : 'mods'}...',
+          ? t.mods.labels.allUpdatesProcessed
+          : t.mods.labels.updatingCount(count: total),
       width: 720,
       body: SizedBox(
         height: 420,
@@ -57,7 +58,7 @@ class ModUpdateDialog extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Updates',
+            t.mods.labels.noUpdates,
             style: tokens.fontBody.copyWith(
               fontSize: 14,
               color: tokens.text,
@@ -66,7 +67,7 @@ class ModUpdateDialog extends ConsumerWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'No mods in update queue',
+            t.mods.labels.noModsInQueue,
             style: tokens.fontBody.copyWith(
               fontSize: 12,
               color: tokens.textDim,
@@ -86,12 +87,12 @@ class ModUpdateDialog extends ConsumerWidget {
     return [
       if (!allComplete)
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: () =>
               ref.read(modUpdateQueueProvider.notifier).cancelAll(),
         ),
       SmallTextButton(
-        label: allComplete ? 'Close' : 'Hide',
+        label: allComplete ? t.common.actions.close : t.mods.actions.hide,
         filled: true,
         onTap: () => Navigator.of(context).pop(),
       ),
@@ -198,7 +199,7 @@ class _UpdateItem extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             SmallTextButton(
-              label: 'Retry',
+              label: t.mods.actions.retry,
               icon: FluentIcons.arrow_clockwise_24_regular,
               onTap: () => ref
                   .read(modUpdateQueueProvider.notifier)
@@ -224,8 +225,7 @@ class _UpdateItem extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Updated to version '
-                      '${updateInfo.newVersion!.versionString}',
+                      t.mods.updateStatus.updatedToVersion(version: updateInfo.newVersion!.versionString),
                       style: tokens.fontBody.copyWith(
                         fontSize: 12,
                         color: tokens.ok,
@@ -244,19 +244,19 @@ class _UpdateItem extends ConsumerWidget {
   String _getStatusMessage(ModUpdateStatus status) {
     switch (status) {
       case ModUpdateStatus.pending:
-        return 'Waiting to start...';
+        return t.mods.updateStatus.waitingToStart;
       case ModUpdateStatus.downloading:
-        return 'Downloading from Steam Workshop...';
+        return t.mods.updateStatus.downloading;
       case ModUpdateStatus.detectingChanges:
-        return 'Detecting changes...';
+        return t.mods.updateStatus.detectingChanges;
       case ModUpdateStatus.updatingDatabase:
-        return 'Updating database...';
+        return t.mods.updateStatus.updatingDatabase;
       case ModUpdateStatus.completed:
-        return 'Successfully updated';
+        return t.mods.updateStatus.successfullyUpdated;
       case ModUpdateStatus.failed:
-        return 'Update failed';
+        return t.mods.updateStatus.updateFailed;
       case ModUpdateStatus.cancelled:
-        return 'Cancelled';
+        return t.mods.updateStatus.cancelled;
     }
   }
 }
@@ -278,29 +278,29 @@ class _StatusBadge extends StatelessWidget {
       case ModUpdateStatus.pending:
         color = tokens.textDim;
         icon = FluentIcons.clock_24_regular;
-        label = 'PENDING';
+        label = t.mods.updateStatus.pending;
         break;
       case ModUpdateStatus.downloading:
       case ModUpdateStatus.detectingChanges:
       case ModUpdateStatus.updatingDatabase:
         color = tokens.accent;
         icon = FluentIcons.arrow_download_24_regular;
-        label = 'IN PROGRESS';
+        label = t.mods.updateStatus.inProgress;
         break;
       case ModUpdateStatus.completed:
         color = tokens.ok;
         icon = FluentIcons.checkmark_circle_24_regular;
-        label = 'COMPLETED';
+        label = t.mods.updateStatus.completed;
         break;
       case ModUpdateStatus.failed:
         color = tokens.err;
         icon = FluentIcons.error_circle_24_regular;
-        label = 'FAILED';
+        label = t.mods.updateStatus.failed;
         break;
       case ModUpdateStatus.cancelled:
         color = tokens.textFaint;
         icon = FluentIcons.dismiss_circle_24_regular;
-        label = 'CANCELLED';
+        label = t.mods.updateStatus.cancelledBadge;
         break;
     }
 
