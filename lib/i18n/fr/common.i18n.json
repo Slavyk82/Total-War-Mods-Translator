@@ -11,7 +11,9 @@
     "back": "Retour",
     "confirm": "Confirmer",
     "apply": "Appliquer",
-    "reset": "Réinitialiser"
+    "reset": "Réinitialiser",
+    "copy": "Copier",
+    "translate": "Traduire"
   },
   "yes": "Oui",
   "no": "Non",

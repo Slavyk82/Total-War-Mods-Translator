@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -96,8 +97,8 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
 
     return TokenDialog(
       icon: FluentIcons.code_24_regular,
-      title: 'Prompt Preview',
-      subtitle: 'View the exact prompt that will be sent to the LLM',
+      title: t.translationEditor.dialogs.promptPreview.title,
+      subtitle: t.translationEditor.dialogs.promptPreview.subtitle,
       width: 900,
       body: SizedBox(
         height: 580,
@@ -125,13 +126,13 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
       actions: [
         if (_preview != null)
           SmallTextButton(
-            label: 'Copy Full Prompt',
+            label: t.translationEditor.dialogs.promptPreview.copyFullPrompt,
             icon: FluentIcons.copy_24_regular,
             onTap: () =>
-                _copyToClipboard(_preview!.fullPrompt, 'Full prompt'),
+                _copyToClipboard(_preview!.fullPrompt, t.translationEditor.dialogs.promptPreview.copyFullPrompt),
           ),
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           filled: true,
           onTap: () => Navigator.of(context).pop(),
         ),
@@ -161,7 +162,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Key: ${widget.unit.key}',
+                  t.translationEditor.dialogs.promptPreview.keyLabel(key: widget.unit.key),
                   style: tokens.fontBody.copyWith(
                     fontSize: 12,
                     color: tokens.text,
@@ -205,7 +206,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
             ),
             const SizedBox(height: 16),
             Text(
-              'Error building prompt preview',
+              t.translationEditor.dialogs.promptPreview.errorBuilding,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -229,7 +230,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
     if (_preview == null) {
       return Center(
         child: Text(
-          'No preview available',
+          t.translationEditor.dialogs.promptPreview.noPreview,
           style: tokens.fontBody.copyWith(
             fontSize: 13,
             color: tokens.textDim,
@@ -254,10 +255,10 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
           ),
           child: TabBar(
             controller: _tabController,
-            tabs: const [
-              Tab(text: 'System Prompt'),
-              Tab(text: 'User Message'),
-              Tab(text: 'API Payload'),
+            tabs: [
+              Tab(text: t.translationEditor.dialogs.promptPreview.tabSystemPrompt),
+              Tab(text: t.translationEditor.dialogs.promptPreview.tabUserMessage),
+              Tab(text: t.translationEditor.dialogs.promptPreview.tabApiPayload),
             ],
           ),
         ),
@@ -268,17 +269,15 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
             children: [
               _buildPromptSection(
                 tokens: tokens,
-                title: 'System Prompt',
+                title: t.translationEditor.dialogs.promptPreview.tabSystemPrompt,
                 content: _preview!.systemMessage,
-                description:
-                    'Instructions, context, and glossary sent as the system message',
+                description: t.translationEditor.dialogs.promptPreview.systemPromptDesc,
               ),
               _buildPromptSection(
                 tokens: tokens,
-                title: 'User Message',
+                title: t.translationEditor.dialogs.promptPreview.tabUserMessage,
                 content: _preview!.userMessage,
-                description:
-                    'The actual translation request with source text',
+                description: t.translationEditor.dialogs.promptPreview.userMessageDesc,
               ),
               _buildApiPayloadSection(tokens),
             ],
@@ -294,10 +293,9 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
         payloads.isEmpty ? _preview!.formattedPayload : payloads.first.payload;
     return _buildPromptSection(
       tokens: tokens,
-      title: 'API Payload',
+      title: t.translationEditor.dialogs.promptPreview.tabApiPayload,
       content: content,
-      description:
-          'Complete JSON payload as it would be sent to the provider',
+      description: t.translationEditor.dialogs.promptPreview.apiPayloadDesc,
       isJson: true,
     );
   }
@@ -326,7 +324,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
               ),
             ),
             SmallTextButton(
-              label: 'Copy',
+              label: t.common.actions.copy,
               icon: FluentIcons.copy_24_regular,
               onTap: () => _copyToClipboard(content, title),
             ),
@@ -360,7 +358,7 @@ class _PromptPreviewDialogState extends ConsumerState<PromptPreviewDialog>
 
   void _copyToClipboard(String content, String title) {
     Clipboard.setData(ClipboardData(text: content));
-    FluentToast.success(context, '$title copied to clipboard');
+    FluentToast.success(context, t.translationEditor.dialogs.promptPreview.copiedToClipboard(title: title));
   }
 }
 

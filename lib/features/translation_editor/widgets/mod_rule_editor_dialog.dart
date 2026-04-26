@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/labeled_field.dart';
@@ -110,7 +111,7 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Mod Translation Rule',
+                    t.translationEditor.dialogs.modRule.title,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
@@ -135,11 +136,10 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
         _buildInfoBanner(tokens),
         const SizedBox(height: 16),
         LabeledField(
-          label: 'Rule text',
+          label: t.translationEditor.dialogs.modRule.ruleTextLabel,
           child: TokenTextField(
             controller: _textController,
-            hint:
-                'e.g., This mod uses fantasy names that should not be translated...',
+            hint: t.translationEditor.dialogs.modRule.ruleTextHint,
             enabled: !_isLoading,
             minLines: 10,
             maxLines: 10,
@@ -171,19 +171,19 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
           children: [
             if (existingRule != null) ...[
               SmallTextButton(
-                label: 'Delete',
+                label: t.common.actions.delete,
                 icon: FluentIcons.delete_24_regular,
                 onTap: _isLoading ? null : _deleteRule,
               ),
               const Spacer(),
             ],
             SmallTextButton(
-              label: 'Cancel',
+              label: t.common.actions.cancel,
               onTap: _isLoading ? null : () => Navigator.pop(context),
             ),
             const SizedBox(width: 8),
             SmallTextButton(
-              label: 'Save',
+              label: t.common.actions.save,
               icon: FluentIcons.save_24_regular,
               filled: true,
               onTap: _isLoading ? null : _save,
@@ -213,8 +213,7 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'This rule applies only to this mod and will be appended '
-              'after the global rules in every translation prompt.',
+              t.translationEditor.dialogs.modRule.infoBanner,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -243,7 +242,7 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
             ),
             const SizedBox(width: 8),
             Text(
-              rule.isEnabled ? 'Rule is active' : 'Rule is disabled',
+              rule.isEnabled ? t.translationEditor.dialogs.modRule.ruleActive : t.translationEditor.dialogs.modRule.ruleDisabled,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,
@@ -258,7 +257,7 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
   Future<void> _save() async {
     final value = _textController.text.trim();
     if (value.isEmpty) {
-      setState(() => _errorText = 'Please enter a rule text');
+      setState(() => _errorText = t.translationEditor.dialogs.modRule.validationEmpty);
       return;
     }
 
@@ -273,10 +272,10 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
     setState(() => _isLoading = false);
 
     if (success) {
-      FluentToast.success(context, 'Mod rule saved successfully');
+      FluentToast.success(context, t.translationEditor.dialogs.modRule.savedSuccess);
       Navigator.pop(context, true);
     } else {
-      FluentToast.error(context, error ?? 'Failed to save rule');
+      FluentToast.error(context, error ?? t.translationEditor.dialogs.modRule.errorSave);
     }
   }
 
@@ -299,10 +298,10 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
     setState(() => _isLoading = false);
 
     if (success) {
-      FluentToast.success(context, 'Mod rule deleted');
+      FluentToast.success(context, t.translationEditor.dialogs.modRule.deletedSuccess);
       Navigator.pop(context, true);
     } else {
-      FluentToast.error(context, error ?? 'Failed to delete rule');
+      FluentToast.error(context, error ?? t.translationEditor.dialogs.modRule.errorDelete);
     }
   }
 
@@ -313,7 +312,7 @@ class _ModRuleEditorDialogState extends ConsumerState<ModRuleEditorDialog> {
     final (success, error) = await notifier.toggleEnabled();
 
     if (mounted && !success) {
-      FluentToast.error(context, error ?? 'Failed to toggle rule');
+      FluentToast.error(context, error ?? t.translationEditor.dialogs.modRule.errorToggle);
     }
   }
 }
@@ -348,7 +347,7 @@ class _DeleteConfirmationDialog extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Delete Mod Rule',
+                    t.translationEditor.dialogs.modRule.deleteTitle,
                     style: tokens.fontDisplay.copyWith(
                       fontSize: 18,
                       color: tokens.text,
@@ -360,8 +359,7 @@ class _DeleteConfirmationDialog extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                'Are you sure you want to delete this rule? This action '
-                'cannot be undone.',
+                t.translationEditor.dialogs.modRule.deleteMessage,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -372,12 +370,12 @@ class _DeleteConfirmationDialog extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   SmallTextButton(
-                    label: 'Cancel',
+                    label: t.common.actions.cancel,
                     onTap: () => Navigator.pop(context, false),
                   ),
                   const SizedBox(width: 8),
                   SmallTextButton(
-                    label: 'Delete',
+                    label: t.common.actions.delete,
                     icon: FluentIcons.delete_24_regular,
                     filled: true,
                     onTap: () => Navigator.pop(context, true),

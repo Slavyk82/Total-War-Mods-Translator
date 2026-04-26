@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -25,26 +26,29 @@ class EditorDialogs {
   }
 
   static Future<void> showNoSelectionDialog(BuildContext context) {
+    final d = t.translationEditor.dialogs.noSelection;
     return TokenDialog.showWarning(
       context,
-      title: 'No Selection',
-      message: 'Please select one or more translation units to translate.',
+      title: d.title,
+      message: d.message,
     );
   }
 
   static Future<void> showNoUntranslatedDialog(BuildContext context) {
+    final d = t.translationEditor.dialogs.noUntranslated;
     return TokenDialog.showInfo(
       context,
-      title: 'No Untranslated Units',
-      message: 'All units in this project language are already translated.',
+      title: d.title,
+      message: d.message,
     );
   }
 
   static Future<void> showAllTranslatedDialog(BuildContext context) {
+    final d = t.translationEditor.dialogs.allTranslated;
     return TokenDialog.showInfo(
       context,
-      title: 'All Selected Units Translated',
-      message: 'All selected units are already translated.',
+      title: d.title,
+      message: d.message,
     );
   }
 
@@ -71,7 +75,7 @@ class EditorDialogs {
       message: message,
       icon: FluentIcons.translate_24_regular,
       confirmIcon: FluentIcons.translate_24_regular,
-      confirmLabel: 'Translate',
+      confirmLabel: t.common.actions.translate,
     );
   }
 
@@ -92,15 +96,16 @@ class EditorDialogs {
       context: context,
       builder: (ctx) {
         final tokens = ctx.tokens;
+        final d = t.translationEditor.dialogs.export;
         return TokenDialog(
           icon: FluentIcons.arrow_export_24_regular,
-          title: 'Export Translations',
+          title: d.title,
           body: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Select export format:',
+                d.selectFormat,
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -109,27 +114,27 @@ class EditorDialogs {
               const SizedBox(height: 12),
               _ExportOption(
                 icon: FluentIcons.document_24_regular,
-                title: '.pack (Total War Mod)',
-                subtitle: 'Game-ready package file',
+                title: d.packTitle,
+                subtitle: d.packSubtitle,
                 onTap: () => Navigator.of(ctx).pop('pack'),
               ),
               _ExportOption(
                 icon: FluentIcons.table_24_regular,
-                title: 'CSV',
-                subtitle: 'Comma-separated values',
+                title: d.csvTitle,
+                subtitle: d.csvSubtitle,
                 onTap: () => Navigator.of(ctx).pop('csv'),
               ),
               _ExportOption(
                 icon: FluentIcons.document_table_24_regular,
-                title: 'Excel',
-                subtitle: 'Microsoft Excel spreadsheet',
+                title: d.excelTitle,
+                subtitle: d.excelSubtitle,
                 onTap: () => Navigator.of(ctx).pop('excel'),
               ),
             ],
           ),
           actions: [
             SmallTextButton(
-              label: 'Cancel',
+              label: t.common.actions.cancel,
               onTap: () => Navigator.of(ctx).pop(),
             ),
           ],

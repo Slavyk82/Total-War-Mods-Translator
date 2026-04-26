@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../providers/editor_providers.dart';
 import '../../../../providers/shared/logging_providers.dart';
@@ -80,15 +81,15 @@ class ContextMenuBuilder {
         buildItem(
           value: 'select_all',
           icon: FluentIcons.select_all_on_24_regular,
-          label: 'Select All',
+          label: t.translationEditor.contextMenu.selectAll,
         ),
         if (onForceRetranslate != null)
           buildItem(
             value: 'force_retranslate',
             icon: FluentIcons.arrow_sync_24_regular,
             label: selectionCount > 1
-                ? 'Force Retranslate ($selectionCount)'
-                : 'Force Retranslate',
+                ? t.translationEditor.contextMenu.forceRetranslateCount(count: selectionCount)
+                : t.translationEditor.contextMenu.forceRetranslate,
             enabled: hasSelection,
           ),
         if (onMarkAsTranslated != null)
@@ -96,8 +97,8 @@ class ContextMenuBuilder {
             value: 'mark_as_translated',
             icon: FluentIcons.checkmark_circle_24_regular,
             label: selectionCount > 1
-                ? 'Mark as Translated ($selectionCount)'
-                : 'Mark as Translated',
+                ? t.translationEditor.contextMenu.markAsTranslatedCount(count: selectionCount)
+                : t.translationEditor.contextMenu.markAsTranslated,
             enabled: hasSelection,
             iconColor: tokens.ok,
             labelColor: tokens.ok,
@@ -106,8 +107,8 @@ class ContextMenuBuilder {
           value: 'clear',
           icon: FluentIcons.delete_24_regular,
           label: selectionCount > 1
-              ? 'Clear Translation ($selectionCount)'
-              : 'Clear Translation',
+              ? t.translationEditor.contextMenu.clearTranslationCount(count: selectionCount)
+              : t.translationEditor.contextMenu.clearTranslation,
           enabled: hasSelection,
         ),
         PopupMenuDivider(height: 8, color: tokens.border),
@@ -115,20 +116,22 @@ class ContextMenuBuilder {
           buildItem(
             value: 'history',
             icon: FluentIcons.history_24_regular,
-            label: 'View History',
+            label: t.translationEditor.contextMenu.viewHistory,
           ),
         if (isSingleSelection && onViewPrompt != null)
           buildItem(
             value: 'view_prompt',
             icon: FluentIcons.code_24_regular,
-            label: 'View Prompt',
+            label: t.translationEditor.contextMenu.viewPrompt,
           ),
         if (isSingleSelection)
           PopupMenuDivider(height: 8, color: tokens.border),
         buildItem(
           value: 'delete',
           icon: FluentIcons.delete_24_regular,
-          label: selectionCount > 1 ? 'Delete ($selectionCount)' : 'Delete',
+          label: selectionCount > 1
+              ? t.translationEditor.contextMenu.deleteCount(count: selectionCount)
+              : t.common.actions.delete,
           enabled: hasSelection,
           iconColor: tokens.err,
           labelColor: tokens.err,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/translation/models/translation_context.dart';
@@ -33,8 +34,8 @@ mixin EditorActionsTranslation on EditorActionsBase {
       if (!context.mounted) return;
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
-        title: 'Translate All',
-        message: 'Translate ${unitIds.length} untranslated units?',
+        title: t.translationEditor.dialogs.translateAll.title,
+        message: t.translationEditor.dialogs.translateAll.message(count: unitIds.length),
       );
 
       if (!confirmed) return;
@@ -77,9 +78,11 @@ mixin EditorActionsTranslation on EditorActionsBase {
       if (!context.mounted) return;
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
-        title: 'Translate Selected',
-        message: 'Translate ${untranslatedIds.length} untranslated units '
-            '(${selectedIds.length - untranslatedIds.length} already translated)?',
+        title: t.translationEditor.dialogs.translateSelected.title,
+        message: t.translationEditor.dialogs.translateSelected.message(
+          count: untranslatedIds.length,
+          skipped: selectedIds.length - untranslatedIds.length,
+        ),
       );
 
       if (!confirmed) return;
@@ -132,9 +135,8 @@ mixin EditorActionsTranslation on EditorActionsBase {
       logging.debug('Showing confirmation dialog...');
       final confirmed = await EditorDialogs.showTranslateConfirmationDialog(
         context,
-        title: 'Force Retranslate',
-        message: 'Retranslate ${selectedIds.length} unit(s)?\n\n'
-            'Warning: This will overwrite existing translations.',
+        title: t.translationEditor.dialogs.forceRetranslate.title,
+        message: t.translationEditor.dialogs.forceRetranslate.message(count: selectedIds.length),
       );
       logging.debug('Confirmation result', {'confirmed': confirmed});
 

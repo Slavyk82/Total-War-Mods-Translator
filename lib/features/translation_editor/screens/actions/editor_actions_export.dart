@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
@@ -56,7 +57,7 @@ mixin EditorActionsExport on EditorActionsBase {
         stackTrace,
       );
       if (!context.mounted) return;
-      EditorDialogs.showErrorDialog(context, 'Pack generation failed', e.toString());
+      EditorDialogs.showErrorDialog(context, t.translationEditor.actions.packGenerationFailed, e.toString());
     }
   }
 }

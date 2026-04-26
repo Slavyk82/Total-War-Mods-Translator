@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/workflow/pipeline_timeline.dart';
 
@@ -60,7 +61,7 @@ class EditorActionSidebar extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SectionHeader(label: 'AI Context', tokens: tokens),
+            _SectionHeader(label: t.translationEditor.toolbar.sectionAiContext, tokens: tokens),
             const SizedBox(height: 10),
             const EditorToolbarModelSelector(),
             const SizedBox(height: 8),
@@ -70,21 +71,21 @@ class EditorActionSidebar extends ConsumerWidget {
             const SizedBox(height: 10),
             const EditorToolbarBatchSettings(),
             const SizedBox(height: 20),
-            _SectionHeader(label: 'Other', tokens: tokens),
+            _SectionHeader(label: t.translationEditor.toolbar.sectionOther, tokens: tokens),
             const SizedBox(height: 10),
             _SidebarActionButton(
               icon: FluentIcons.arrow_import_24_regular,
-              label: 'Import external pack',
+              label: t.translationEditor.toolbar.importExternalPack,
               onTap: onImportPack,
             ),
             const SizedBox(height: 8),
             _SidebarActionButton(
               icon: FluentIcons.folder_open_24_regular,
-              label: 'Open local folder',
+              label: t.translationEditor.toolbar.openLocalFolder,
               onTap: onOpenModFolder,
             ),
             const SizedBox(height: 20),
-            _SectionHeader(label: 'Workflow', tokens: tokens),
+            _SectionHeader(label: t.translationEditor.toolbar.sectionWorkflow, tokens: tokens),
             const SizedBox(height: 10),
             // Workflow pipeline — same layout pattern as the main navigation
             // sidebar's Workflow group: a single vertical timeline rail
@@ -100,8 +101,9 @@ class EditorActionSidebar extends ConsumerWidget {
                 builder: (context, ref, _) {
                   final selection = ref.watch(editorSelectionProvider);
                   final hasSelection = selection.hasSelection;
-                  final label =
-                      hasSelection ? 'Translate selection' : 'Translate all';
+                  final label = hasSelection
+                      ? t.translationEditor.sidebar.translateSelection
+                      : t.translationEditor.sidebar.translateAll;
                   final button = _SidebarActionButton(
                     icon: FluentIcons.translate_24_regular,
                     label: label,
@@ -124,14 +126,16 @@ class EditorActionSidebar extends ConsumerWidget {
                   }
                   if (count <= 0) return button;
 
-                  final suffix = count == 1 ? 'unit' : 'units';
+                  final unitLabel = count == 1
+                      ? t.translationEditor.sidebar.unitSingular
+                      : t.translationEditor.sidebar.unitPlural;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       button,
                       const SizedBox(height: 4),
                       Text(
-                        '$count $suffix',
+                        '$count $unitLabel',
                         textAlign: TextAlign.center,
                         style: tokens.fontBody.copyWith(
                           fontSize: 10.5,
@@ -156,7 +160,7 @@ class EditorActionSidebar extends ConsumerWidget {
                 builder: (context, ref, _) {
                   final button = _SidebarActionButton(
                     icon: FluentIcons.checkmark_circle_24_regular,
-                    label: 'Review',
+                    label: t.translationEditor.sidebar.review,
                     onTap: onValidate,
                   );
 
@@ -166,14 +170,16 @@ class EditorActionSidebar extends ConsumerWidget {
                       statsAsync.asData?.value.needsReviewCount ?? 0;
                   if (needsReview <= 0) return button;
 
-                  final suffix = needsReview == 1 ? 'unit' : 'units';
+                  final reviewLabel = needsReview == 1
+                      ? t.translationEditor.sidebar.unitSingular
+                      : t.translationEditor.sidebar.unitPlural;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       button,
                       const SizedBox(height: 4),
                       Text(
-                        '$needsReview $suffix',
+                        '$needsReview $reviewLabel',
                         textAlign: TextAlign.center,
                         style: tokens.fontBody.copyWith(
                           fontSize: 10.5,
@@ -194,7 +200,7 @@ class EditorActionSidebar extends ConsumerWidget {
               rail: const TimelineRail(step: 3, lineBelow: false),
               child: _SidebarActionButton(
                 icon: FluentIcons.box_24_regular,
-                label: 'Generate pack',
+                label: t.translationEditor.sidebar.generatePack,
                 onTap: onExport,
               ),
             ),

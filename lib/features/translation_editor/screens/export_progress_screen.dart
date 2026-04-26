@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
 import 'progress/progress_widgets.dart';
 
-/// Step labels for progress display
-const _exportStepLabels = <String, String>{
-  'preparingData': 'Preparing data...',
-  'generatingLocFiles': 'Generating .loc files...',
-  'creatingPack': 'Creating .pack file...',
-  'generatingImage': 'Generating pack image...',
-  'finalizing': 'Finalizing...',
-  'completed': 'Pack generated!',
-  'collectingData': 'Collecting translation data...',
-  'writingFile': 'Writing output file...',
-};
+/// Step labels for progress display — resolved lazily via slang to support locale changes.
+String _getExportStepLabel(String step) {
+  final steps = t.translationEditor.progress.generatingPack.steps;
+  switch (step) {
+    case 'preparingData': return steps.preparingData;
+    case 'generatingLocFiles': return steps.generatingLocFiles;
+    case 'creatingPack': return steps.creatingPack;
+    case 'generatingImage': return steps.generatingImage;
+    case 'finalizing': return steps.finalizing;
+    case 'completed': return steps.completed;
+    case 'collectingData': return steps.collectingData;
+    case 'writingFile': return steps.writingFile;
+    default: return step;
+  }
+}
 
 /// Full-screen export progress display
 ///
@@ -138,7 +143,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
         if (!didPop && !_isComplete && mounted) {
           FluentToast.warning(
             context,
-            'Pack generation in progress. Wait for completion.',
+            t.translationEditor.progress.generatingPack.inProgressWarning,
           );
         }
       },
@@ -151,7 +156,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
 
   FluentHeader _buildHeader() {
     return FluentHeader(
-      title: 'Generating Pack',
+      title: t.translationEditor.progress.generatingPack.header,
       leading: null,
       actions: const [],
     );
@@ -219,14 +224,14 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Pack Generation',
+                t.translationEditor.progress.generatingPack.title,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Languages: ${widget.languageCodes.join(", ")}',
+                t.translationEditor.progress.generatingPack.languages(langs: widget.languageCodes.join(', ')),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
@@ -239,7 +244,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
   }
 
   Widget _buildProgressSection(ThemeData theme) {
-    final stepLabel = _exportStepLabels[_currentStep] ?? _currentStep;
+    final stepLabel = _getExportStepLabel(_currentStep);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -289,7 +294,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
           if (_currentLanguage != null && _currentIndex != null && _total != null) ...[
             const SizedBox(height: 12),
             Text(
-              'Processing: $_currentLanguage (${_currentIndex! + 1}/$_total)',
+              t.translationEditor.progress.generatingPack.processing(lang: _currentLanguage!, current: _currentIndex! + 1, total: _total!),
               style: theme.textTheme.bodyLarge?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
@@ -316,8 +321,10 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
           icon: FluentIcons.status_24_regular,
           label: 'Status',
           value: _isComplete
-              ? (_errorMessage != null ? 'Failed' : 'Completed')
-              : 'In Progress',
+              ? (_errorMessage != null
+                  ? t.translationEditor.progress.generatingPack.statusFailed
+                  : t.translationEditor.progress.generatingPack.statusCompleted)
+              : t.translationEditor.progress.generatingPack.statusInProgress,
           color: _isComplete
               ? (_errorMessage != null
                   ? theme.colorScheme.error
@@ -376,7 +383,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
     return Center(
       child: _ExportControlButton(
         icon: FluentIcons.checkmark_24_filled,
-        label: 'Close',
+        label: t.common.actions.close,
         color: _errorMessage != null
             ? theme.colorScheme.error
             : Colors.green.shade700,
@@ -409,7 +416,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Pack Generated',
+                      t.translationEditor.progress.generatingPack.packGenerated,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.green.shade700,
                         fontWeight: FontWeight.w600,
@@ -417,7 +424,7 @@ class _ExportProgressScreenState extends ConsumerState<ExportProgressScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_result!.entryCount} translations included',
+                      t.translationEditor.progress.generatingPack.translationsIncluded(count: _result!.entryCount),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.green.shade700,
                       ),

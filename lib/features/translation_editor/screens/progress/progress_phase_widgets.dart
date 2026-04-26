@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/translation/models/llm_exchange_log.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -44,7 +45,7 @@ Widget buildPhaseSection(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Current Phase',
+                t.translationEditor.progress.translation.currentPhase,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                   fontWeight: FontWeight.w500,
@@ -52,7 +53,7 @@ Widget buildPhaseSection(
               ),
               const SizedBox(height: 4),
               Text(
-                isPaused ? 'Paused' : getPhaseDisplayName(phase),
+                isPaused ? t.translationEditor.progress.translation.paused : getPhaseDisplayName(phase),
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -127,7 +128,7 @@ Widget buildLlmLogsSection(
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'LLM Exchange Logs (${logs.length})',
+                  t.translationEditor.progress.translation.llmLogs(count: logs.length),
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: theme.colorScheme.primary,
@@ -162,7 +163,7 @@ Widget buildLlmLogsSection(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Text(
-                        'No LLM exchanges yet. Logs will appear as translation progresses.',
+                        t.translationEditor.progress.translation.llmLogsEmpty,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color:
                               theme.colorScheme.onSurface.withValues(alpha: 0.6),
@@ -213,39 +214,41 @@ Widget buildLlmLogsSection(
 
 /// Get display name for translation phase
 String getPhaseDisplayName(TranslationPhase? phase) {
-  if (phase == null) return 'Initializing...';
+  final phases = t.translationEditor.progress.translation.phases;
+  if (phase == null) return phases.initializing;
 
   switch (phase) {
     case TranslationPhase.initializing:
-      return 'Initializing...';
+      return phases.initializing;
     case TranslationPhase.tmExactLookup:
-      return 'Checking Translation Memory (Exact)';
+      return phases.tmExactLookup;
     case TranslationPhase.tmFuzzyLookup:
-      return 'Checking Translation Memory (Fuzzy)';
+      return phases.tmFuzzyLookup;
     case TranslationPhase.buildingPrompt:
-      return 'Building Translation Prompt';
+      return phases.buildingPrompt;
     case TranslationPhase.llmTranslation:
-      return 'Translating with LLM';
+      return phases.llmTranslation;
     case TranslationPhase.validating:
-      return 'Validating Translations';
+      return phases.validating;
     case TranslationPhase.saving:
-      return 'Saving Translations';
+      return phases.saving;
     case TranslationPhase.updatingTm:
-      return 'Updating Translation Memory';
+      return phases.updatingTm;
     case TranslationPhase.finalizing:
-      return 'Finalizing Batch';
+      return phases.finalizing;
     case TranslationPhase.completed:
-      return 'Completed';
+      return phases.completed;
   }
 }
 
 /// Get estimated time display string
 String getEstimatedTimeDisplay(int seconds) {
+  final est = t.translationEditor.progress.translation.estimatedRemaining;
   if (seconds < 60) {
-    return 'About $seconds seconds remaining';
+    return est.seconds(n: seconds);
   } else {
     final minutes = (seconds / 60).ceil();
-    return 'About $minutes minute${minutes > 1 ? 's' : ''} remaining';
+    return minutes > 1 ? est.minutesPlural(n: minutes) : est.minutes(n: minutes);
   }
 }
 
@@ -253,12 +256,13 @@ String getEstimatedTimeDisplay(int seconds) {
 String getElapsedTimeDisplay(DateTime startTime) {
   final elapsed = DateTime.now().difference(startTime);
   final seconds = elapsed.inSeconds;
+  final el = t.translationEditor.progress.translation.elapsed;
 
   if (seconds < 60) {
-    return 'Elapsed: $seconds seconds';
+    return el.seconds(n: seconds);
   } else {
     final minutes = (seconds / 60).floor();
     final remainingSeconds = seconds % 60;
-    return 'Elapsed: $minutes:${remainingSeconds.toString().padLeft(2, '0')}';
+    return el.minutes(m: minutes, s: remainingSeconds.toString().padLeft(2, '0'));
   }
 }

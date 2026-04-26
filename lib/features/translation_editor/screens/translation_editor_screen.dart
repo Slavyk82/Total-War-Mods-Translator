@@ -14,6 +14,7 @@ import 'package:twmt/widgets/lists/filter_pill.dart';
 import 'package:twmt/widgets/lists/filter_toolbar.dart';
 import 'package:twmt/widgets/lists/list_search_field.dart';
 import 'package:twmt/widgets/lists/list_toolbar_leading.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../providers/translation_settings_provider.dart';
@@ -212,9 +213,9 @@ class _TranslationEditorScreenState
             children: [
               DetailScreenToolbar(
                 crumbs: [
-                  const CrumbSegment('Work'),
-                  const CrumbSegment('Projects', route: AppRoutes.projects),
-                  const CrumbSegment('Translation Editor'),
+                  CrumbSegment(t.translationEditor.screen.crumbWork),
+                  CrumbSegment(t.translationEditor.screen.crumbProjects, route: AppRoutes.projects),
+                  CrumbSegment(t.translationEditor.screen.title),
                 ],
                 onBack: () {
                   if (context.canPop()) {
@@ -242,7 +243,7 @@ class _TranslationEditorScreenState
                       value: filter.searchQuery,
                       focusNode: _searchFocus,
                       width: null,
-                      hintText: 'Search key · source · target',
+                      hintText: t.translationEditor.toolbar.searchHint,
                       onChanged: (value) => ref
                           .read(editorFilterProvider.notifier)
                           .setSearchQuery(value),
@@ -364,16 +365,16 @@ class _TranslationEditorScreenState
     }
 
     return FilterPillGroup(
-      label: 'STATE',
-      clearLabel: 'Clear',
+      label: t.translationEditor.toolbar.filterStateLabel,
+      clearLabel: t.translationEditor.toolbar.clearLabel,
       onClear: () => ref
           .read(editorFilterProvider.notifier)
           .setStatusFilter(null),
       pills: [
-        pill('Pending', TranslationVersionStatus.pending, stats?.pendingCount),
-        pill('Translated', TranslationVersionStatus.translated,
+        pill(t.translationEditor.filters.pending, TranslationVersionStatus.pending, stats?.pendingCount),
+        pill(t.translationEditor.filters.translated, TranslationVersionStatus.translated,
             stats?.translatedCount),
-        pill('Needs review', TranslationVersionStatus.needsReview,
+        pill(t.translationEditor.filters.needsReview, TranslationVersionStatus.needsReview,
             stats?.needsReviewCount),
       ],
     );
@@ -402,14 +403,14 @@ class _TranslationEditorScreenState
     }
 
     return FilterPillGroup(
-      label: 'SEVERITY',
-      clearLabel: 'Clear',
+      label: t.translationEditor.toolbar.filterSeverityLabel,
+      clearLabel: t.translationEditor.toolbar.clearLabel,
       onClear: () => ref
           .read(editorFilterProvider.notifier)
           .setSeverityFilter(null),
       pills: [
-        pill('Errors', ValidationSeverity.error, counts.errors),
-        pill('Warnings', ValidationSeverity.warning, counts.warnings),
+        pill(t.translationEditor.filters.errors, ValidationSeverity.error, counts.errors),
+        pill(t.translationEditor.filters.warnings, ValidationSeverity.warning, counts.warnings),
       ],
     );
   }

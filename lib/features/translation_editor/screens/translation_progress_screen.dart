@@ -6,6 +6,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
@@ -114,7 +115,7 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
         } else if (mounted) {
           setState(() {
             _isPreparingBatch = false;
-            _errorMessage = 'Failed to prepare translation batch';
+            _errorMessage = t.translationEditor.progress.translation.preparationFailed;
           });
         }
       } catch (e) {
@@ -145,7 +146,7 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
         if (!didPop && !_canClose && mounted) {
           FluentToast.warning(
             context,
-            'Translation in progress. Click "Stop" to exit safely.',
+            t.translationEditor.progress.translation.stopWarning,
           );
         }
       },
@@ -164,7 +165,7 @@ class _TranslationProgressScreenState extends ConsumerState<TranslationProgressS
 
   FluentHeader _buildHeader() {
     return FluentHeader(
-      title: 'Translation in Progress',
+      title: t.translationEditor.progress.translation.title,
       leading: null,
       actions: const [],
     );

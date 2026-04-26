@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -38,7 +39,7 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
 
     return TokenDialog(
       icon: FluentIcons.edit_24_regular,
-      title: 'Edit Translation',
+      title: t.translationEditor.dialogs.editTranslation.title,
       subtitle: widget.issue.unitKey,
       width: 800,
       body: Column(
@@ -50,10 +51,10 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
           _buildSourceTextSection(tokens),
           const SizedBox(height: 16),
           LabeledField(
-            label: 'Translation',
+            label: t.translationEditor.dialogs.editTranslation.translationLabel,
             child: TokenTextField(
               controller: _controller,
-              hint: 'Enter corrected translation...',
+              hint: t.translationEditor.dialogs.editTranslation.hint,
               enabled: true,
               minLines: 4,
               maxLines: 8,
@@ -64,11 +65,11 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: 'Save',
+          label: t.common.actions.save,
           icon: FluentIcons.checkmark_24_regular,
           filled: true,
           onTap: () {
@@ -123,7 +124,7 @@ class _ValidationEditDialogState extends State<ValidationEditDialog> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Source Text',
+          t.translationEditor.dialogs.sourceText,
           style: tokens.fontBody.copyWith(
             fontSize: 12,
             color: tokens.textDim,

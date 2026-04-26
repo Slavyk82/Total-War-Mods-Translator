@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
@@ -110,7 +111,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
       _errorMessage = null;
       _importCurrent = 0;
       _importTotal = _selectedKeys.length;
-      _importMessage = 'Starting import...';
+      _importMessage = t.translationEditor.dialogs.packImport.startingImport;
     });
 
     final entriesToImport = _preview!.matchingEntries
@@ -164,20 +165,19 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   void _cancelImport() {
     setState(() {
       _isCancelled = true;
-      _importMessage = 'Cancelling...';
+      _importMessage = t.translationEditor.dialogs.packImport.cancelling;
     });
   }
 
   void _showResultToast(BuildContext toastContext, PackImportResult result) {
+    final p = t.translationEditor.dialogs.packImport;
     final message = StringBuffer();
-    message.write(
-      'Import complete: ${result.importedCount} translation(s) imported',
-    );
+    message.write(p.importComplete(imported: result.importedCount));
     if (result.skippedCount > 0) {
-      message.write(', ${result.skippedCount} skipped');
+      message.write(p.importSkipped(count: result.skippedCount));
     }
     if (result.errorCount > 0) {
-      message.write(', ${result.errorCount} error(s)');
+      message.write(p.importErrors(count: result.errorCount));
     }
 
     if (result.hasErrors) {
@@ -206,7 +206,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
 
     return TokenDialog(
       icon: FluentIcons.arrow_import_24_regular,
-      title: 'Import translations from a .pack file',
+      title: t.translationEditor.dialogs.packImport.title,
       width: 900,
       body: SizedBox(
         height: 600,
@@ -255,7 +255,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                       CircularProgressIndicator(color: tokens.accent),
                       const SizedBox(height: 16),
                       Text(
-                        'Analyzing pack file...',
+                        t.translationEditor.dialogs.packImport.analyzingPack,
                         style: tokens.fontBody.copyWith(
                           fontSize: 13,
                           color: tokens.textDim,
@@ -277,7 +277,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Overwrite existing translations',
+                    t.translationEditor.dialogs.packImport.overwriteExisting,
                     style: tokens.fontBody.copyWith(
                       fontSize: 13,
                       color: tokens.text,
@@ -285,7 +285,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                   ),
                   const Spacer(),
                   SmallTextButton(
-                    label: allSelected ? 'Deselect all' : 'Select all',
+                    label: allSelected ? t.translationEditor.dialogs.packImport.deselectAll : t.translationEditor.dialogs.packImport.selectAll,
                     icon: allSelected
                         ? FluentIcons.checkbox_unchecked_24_regular
                         : FluentIcons.checkbox_checked_24_regular,
@@ -309,7 +309,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Select a .pack file containing translations',
+                        t.translationEditor.dialogs.packImport.selectPackPrompt,
                         style: tokens.fontBody.copyWith(
                           fontSize: 13,
                           color: tokens.textDim,
@@ -329,16 +329,16 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
       actions: [
         SmallTextButton(
           label: _isImporting
-              ? (_isCancelled ? 'Cancelling...' : 'Cancel Import')
-              : 'Cancel',
+              ? (_isCancelled ? t.translationEditor.dialogs.packImport.cancelling : t.translationEditor.dialogs.packImport.cancelImport)
+              : t.common.actions.cancel,
           onTap: _isImporting
               ? (_isCancelled ? null : _cancelImport)
               : () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
           label: _isImporting
-              ? 'Importing...'
-              : 'Import (${_selectedKeys.length})',
+              ? t.translationEditor.dialogs.packImport.importing
+              : t.translationEditor.dialogs.packImport.importButton(count: _selectedKeys.length),
           icon: FluentIcons.arrow_import_24_regular,
           filled: true,
           onTap: _preview != null &&
@@ -363,7 +363,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               borderRadius: BorderRadius.circular(tokens.radiusSm),
             ),
             child: Text(
-              _selectedFilePath ?? 'No file selected',
+              _selectedFilePath ?? t.translationEditor.dialogs.packImport.noFileSelected,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: _selectedFilePath == null
@@ -376,7 +376,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
         ),
         const SizedBox(width: 12),
         SmallTextButton(
-          label: 'Browse',
+          label: t.translationEditor.dialogs.packImport.browse,
           icon: FluentIcons.folder_open_24_regular,
           onTap: _isLoading || _isImporting ? null : _selectFile,
         ),
@@ -430,7 +430,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
           ),
           const SizedBox(height: 8),
           Text(
-            '$_importCurrent / $_importTotal entries processed',
+            t.translationEditor.dialogs.packImport.progressEntries(current: _importCurrent, total: _importTotal),
             style: tokens.fontBody.copyWith(
               fontSize: 11.5,
               color: tokens.textDim,
@@ -457,7 +457,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Analysis Summary',
+            t.translationEditor.dialogs.packImport.summaryTitle,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.text,
@@ -469,7 +469,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
             children: [
               _buildStatCard(
                 tokens,
-                'Total in pack',
+                t.translationEditor.dialogs.packImport.summaryTotalInPack,
                 preview.totalEntriesInPack.toString(),
                 FluentIcons.document_24_regular,
                 tokens.info,
@@ -477,7 +477,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               const SizedBox(width: 10),
               _buildStatCard(
                 tokens,
-                'Matches',
+                t.translationEditor.dialogs.packImport.summaryMatches,
                 preview.matchingCount.toString(),
                 FluentIcons.checkmark_circle_24_regular,
                 tokens.ok,
@@ -485,7 +485,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               const SizedBox(width: 10),
               _buildStatCard(
                 tokens,
-                'New',
+                t.translationEditor.dialogs.packImport.summaryNew,
                 newCount.toString(),
                 FluentIcons.add_circle_24_regular,
                 tokens.accent,
@@ -493,7 +493,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               const SizedBox(width: 10),
               _buildStatCard(
                 tokens,
-                'Conflicts',
+                t.translationEditor.dialogs.packImport.summaryConflicts,
                 conflictCount.toString(),
                 FluentIcons.warning_24_regular,
                 tokens.warn,
@@ -501,7 +501,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               const SizedBox(width: 10),
               _buildStatCard(
                 tokens,
-                'Not found',
+                t.translationEditor.dialogs.packImport.summaryNotFound,
                 preview.unmatchedCount.toString(),
                 FluentIcons.dismiss_circle_24_regular,
                 tokens.textFaint,
@@ -574,7 +574,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
             ),
             const SizedBox(height: 12),
             Text(
-              'No matching translations found',
+              t.translationEditor.dialogs.packImport.noMatchingTranslations,
               style: tokens.fontBody.copyWith(
                 fontSize: 13,
                 color: tokens.textDim,
@@ -615,7 +615,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Key',
+                  t.translationEditor.dialogs.packImport.gridColumnKey,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: tokens.text,
@@ -631,7 +631,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Value to import',
+                  t.translationEditor.dialogs.packImport.gridColumnValue,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: tokens.text,
@@ -646,7 +646,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               label: Container(
                 alignment: Alignment.center,
                 child: Text(
-                  'Status',
+                  t.translationEditor.dialogs.packImport.gridColumnStatus,
                   style: tokens.fontBody.copyWith(
                     fontSize: 12.5,
                     color: tokens.text,
@@ -785,7 +785,7 @@ class _PackImportDataSource extends DataGridSource {
               ),
             ),
             child: Text(
-              hasConflict ? 'Conflict' : 'New',
+              hasConflict ? t.translationEditor.dialogs.packImport.statusConflict : t.translationEditor.dialogs.packImport.statusNew,
               style: tokens.fontBody.copyWith(
                 fontSize: 11,
                 color: hasConflict ? tokens.warn : tokens.ok,

@@ -163,7 +163,7 @@ class _EditorToolbarBatchSettingsState
         children: [
           Expanded(
             child: Text(
-              'Auto batch size',
+              t.translationEditor.toolbar.autoBatchSize,
               overflow: TextOverflow.ellipsis,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
@@ -194,7 +194,7 @@ class _EditorToolbarBatchSettingsState
         children: [
           Expanded(
             child: Text(
-              'Units / batch',
+              t.translationEditor.toolbar.unitsPerBatch,
               overflow: TextOverflow.ellipsis,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
@@ -229,7 +229,7 @@ class _EditorToolbarBatchSettingsState
         children: [
           Expanded(
             child: Text(
-              'Parallel batches',
+              t.translationEditor.toolbar.parallelBatches,
               overflow: TextOverflow.ellipsis,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,

@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "Translation Editor",
+    "crumbWork": "Work",
+    "crumbProjects": "Projects"
+  },
+  "toolbar": {
+    "searchHint": "Search key · source · target",
+    "filterStateLabel": "STATE",
+    "filterSeverityLabel": "SEVERITY",
+    "clearLabel": "Clear",
+    "sectionAiContext": "AI Context",
+    "sectionOther": "Other",
+    "sectionWorkflow": "Workflow",
+    "autoBatchSize": "Auto batch size",
+    "unitsPerBatch": "Units / batch",
+    "parallelBatches": "Parallel batches",
+    "useTranslationMemory": "Use Translation Memory",
+    "modSpecificRule": "Mod-specific rule",
+    "importExternalPack": "Import external pack",
+    "openLocalFolder": "Open local folder"
+  },
+  "filters": {
+    "pending": "Pending",
+    "translated": "Translated",
+    "needsReview": "Needs review",
+    "errors": "Errors",
+    "warnings": "Warnings"
+  },
+  "sidebar": {
+    "translateSelection": "Translate selection",
+    "translateAll": "Translate all",
+    "review": "Review",
+    "generatePack": "Generate pack",
+    "unitSingular": "unit",
+    "unitPlural": "units"
+  },
+  "inspector": {
+    "emptyState": "Select a unit to view details",
+    "unitsSelected": "$count units selected",
+    "accept": "Accept",
+    "reject": "Reject",
+    "edit": "Edit",
+    "retranslate": "Retranslate",
+    "deselect": "Deselect",
+    "validationIssues": "VALIDATION ISSUES",
+    "sourceLabel": "Source · $lang",
+    "targetLabel": "Target · $lang — editing",
+    "unitLabel": "Unit"
+  },
+  "datagrid": {
+    "columnKey": "KEY",
+    "columnSource": "SOURCE",
+    "columnTarget": "TARGET",
+    "errorLoadingTranslations": "Error loading translations"
+  },
+  "statusBar": {
+    "units": "$count units",
+    "translated": "$count translated ($pct%)",
+    "needReview": "$count need review",
+    "tmReuse": "TM $pct%"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "No Selection",
+      "message": "Please select one or more translation units to translate."
+    },
+    "noUntranslated": {
+      "title": "No Untranslated Units",
+      "message": "All units in this project language are already translated."
+    },
+    "allTranslated": {
+      "title": "All Selected Units Translated",
+      "message": "All selected units are already translated."
+    },
+    "translateAll": {
+      "title": "Translate All",
+      "message": "Translate $count untranslated units?"
+    },
+    "translateSelected": {
+      "title": "Translate Selected",
+      "message": "Translate $count untranslated units ($skipped already translated)?"
+    },
+    "forceRetranslate": {
+      "title": "Force Retranslate",
+      "message": "Retranslate $count unit(s)?\n\nWarning: This will overwrite existing translations."
+    },
+    "validationRescan": {
+      "title": "Validation Rescan",
+      "scanning": "Scanning $current/$total...",
+      "saving": "Saving $count updates..."
+    },
+    "noIssues": {
+      "title": "No issues to review",
+      "message": "All translations have passed validation."
+    },
+    "nothingToScan": {
+      "title": "Nothing to scan",
+      "message": "No translated entries found."
+    },
+    "clearConfirm": {
+      "title": "Confirm Clear",
+      "messageSingle": "Are you sure you want to clear this translation?",
+      "messageMultiple": "Are you sure you want to clear $count translations?",
+      "clearButton": "Clear",
+      "cannotBeUndone": "This action cannot be undone."
+    },
+    "deleteConfirm": {
+      "title": "Confirm Deletion",
+      "messageSingle": "Are you sure you want to delete this translation?",
+      "messageMultiple": "Are you sure you want to delete $count translations?",
+      "deleteButton": "Delete",
+      "cannotBeUndone": "This action cannot be undone."
+    },
+    "clearTranslations": {
+      "title": "Clearing Translations"
+    },
+    "editTranslation": {
+      "title": "Edit Translation",
+      "translationLabel": "Translation",
+      "hint": "Enter corrected translation..."
+    },
+    "translationHistory": {
+      "title": "Translation History",
+      "noHistory": "No history available",
+      "noHistoryDetail": "This translation has no recorded history yet.",
+      "errorLoading": "Error loading history"
+    },
+    "promptPreview": {
+      "title": "Prompt Preview",
+      "subtitle": "View the exact prompt that will be sent to the LLM",
+      "tabSystemPrompt": "System Prompt",
+      "tabUserMessage": "User Message",
+      "tabApiPayload": "API Payload",
+      "systemPromptDesc": "Instructions, context, and glossary sent as the system message",
+      "userMessageDesc": "The actual translation request with source text",
+      "apiPayloadDesc": "Complete JSON payload as it would be sent to the provider",
+      "copyFullPrompt": "Copy Full Prompt",
+      "copiedToClipboard": "$title copied to clipboard",
+      "noPreview": "No preview available",
+      "errorBuilding": "Error building prompt preview",
+      "keyLabel": "Key: $key"
+    },
+    "providerSetup": {
+      "title": "No Translation Provider Configured",
+      "message": "To use automatic translation, you need to configure at least one LLM provider. Please go to Settings and set up one of the following providers:",
+      "goToSettings": "Go to Settings",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "High-quality translations with context awareness",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "Versatile language model with good translations",
+      "deepl": "DeepL",
+      "deeplDesc": "Specialized translation service"
+    },
+    "modRule": {
+      "title": "Mod Translation Rule",
+      "infoBanner": "This rule applies only to this mod and will be appended after the global rules in every translation prompt.",
+      "ruleTextLabel": "Rule text",
+      "ruleTextHint": "e.g., This mod uses fantasy names that should not be translated...",
+      "ruleActive": "Rule is active",
+      "ruleDisabled": "Rule is disabled",
+      "deleteTitle": "Delete Mod Rule",
+      "deleteMessage": "Are you sure you want to delete this rule? This action cannot be undone.",
+      "savedSuccess": "Mod rule saved successfully",
+      "deletedSuccess": "Mod rule deleted",
+      "errorSave": "Failed to save rule",
+      "errorDelete": "Failed to delete rule",
+      "errorToggle": "Failed to toggle rule",
+      "validationEmpty": "Please enter a rule text"
+    },
+    "packImport": {
+      "title": "Import translations from a .pack file",
+      "noFileSelected": "No file selected",
+      "browse": "Browse",
+      "analyzingPack": "Analyzing pack file...",
+      "selectPackPrompt": "Select a .pack file containing translations",
+      "noMatchingTranslations": "No matching translations found",
+      "overwriteExisting": "Overwrite existing translations",
+      "selectAll": "Select all",
+      "deselectAll": "Deselect all",
+      "importButton": "Import ($count)",
+      "importing": "Importing...",
+      "cancelImport": "Cancel Import",
+      "cancelling": "Cancelling...",
+      "startingImport": "Starting import...",
+      "summaryTitle": "Analysis Summary",
+      "summaryTotalInPack": "Total in pack",
+      "summaryMatches": "Matches",
+      "summaryNew": "New",
+      "summaryConflicts": "Conflicts",
+      "summaryNotFound": "Not found",
+      "gridColumnKey": "Key",
+      "gridColumnValue": "Value to import",
+      "gridColumnStatus": "Status",
+      "statusConflict": "Conflict",
+      "statusNew": "New",
+      "importComplete": "Import complete: $imported translation(s) imported",
+      "importSkipped": ", $count skipped",
+      "importErrors": ", $count error(s)",
+      "progressEntries": "$current / $total entries processed"
+    },
+    "export": {
+      "title": "Export Translations",
+      "selectFormat": "Select export format:",
+      "packTitle": ".pack (Total War Mod)",
+      "packSubtitle": "Game-ready package file",
+      "csvTitle": "CSV",
+      "csvSubtitle": "Comma-separated values",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Microsoft Excel spreadsheet"
+    },
+    "deleteLanguage": {
+      "title": "Delete Language",
+      "message": "Remove \"$name\" from this project? $count translations will be deleted.",
+      "cannotBeUndone": "This action cannot be undone."
+    },
+    "sourceText": "Source Text"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "Pack Generation",
+      "header": "Generating Pack",
+      "packGenerated": "Pack Generated",
+      "translationsIncluded": "$count translations included",
+      "languages": "Languages: $langs",
+      "steps": {
+        "preparingData": "Preparing data...",
+        "generatingLocFiles": "Generating .loc files...",
+        "creatingPack": "Creating .pack file...",
+        "generatingImage": "Generating pack image...",
+        "finalizing": "Finalizing...",
+        "completed": "Pack generated!",
+        "collectingData": "Collecting translation data...",
+        "writingFile": "Writing output file..."
+      },
+      "processing": "Processing: $lang ($current/$total)",
+      "inProgressWarning": "Pack generation in progress. Wait for completion.",
+      "statusFailed": "Failed",
+      "statusCompleted": "Completed",
+      "statusInProgress": "In Progress"
+    },
+    "translation": {
+      "header": "Mass Translation",
+      "title": "Translation in Progress",
+      "batchId": "Batch ID: $id",
+      "progress": "Progress",
+      "units": "$processed / $total units",
+      "stop": "Stop",
+      "stopping": "Stopping...",
+      "stopWarning": "Translation in progress. Click \"Stop\" to exit safely.",
+      "preparing": "Preparing Translation",
+      "preparingDetail": "Creating batch and gathering context...",
+      "preparationFailed": "Failed to prepare translation batch",
+      "preparationError": "Preparation error: $error",
+      "currentPhase": "Current Phase",
+      "paused": "Paused",
+      "elapsed": {
+        "seconds": "Elapsed: $n seconds",
+        "minutes": "Elapsed: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "About $n seconds remaining",
+        "minutes": "About $n minute remaining",
+        "minutesPlural": "About $n minutes remaining"
+      },
+      "logs": {
+        "title": "Logs",
+        "autoScroll": "Auto-scroll",
+        "waiting": "Waiting for logs..."
+      },
+      "llmLogs": "LLM Exchange Logs ($count)",
+      "llmLogsEmpty": "No LLM exchanges yet. Logs will appear as translation progresses.",
+      "phases": {
+        "initializing": "Initializing...",
+        "tmExactLookup": "Checking Translation Memory (Exact)",
+        "tmFuzzyLookup": "Checking Translation Memory (Fuzzy)",
+        "buildingPrompt": "Building Translation Prompt",
+        "llmTranslation": "Translating with LLM",
+        "validating": "Validating Translations",
+        "saving": "Saving Translations",
+        "updatingTm": "Updating Translation Memory",
+        "finalizing": "Finalizing Batch",
+        "completed": "Completed"
+      },
+      "stats": {
+        "success": "Success",
+        "failed": "Failed",
+        "skipped": "Skipped"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "Select All",
+    "forceRetranslate": "Force Retranslate",
+    "forceRetranslateCount": "Force Retranslate ($count)",
+    "markAsTranslated": "Mark as Translated",
+    "markAsTranslatedCount": "Mark as Translated ($count)",
+    "clearTranslation": "Clear Translation",
+    "clearTranslationCount": "Clear Translation ($count)",
+    "viewHistory": "View History",
+    "viewPrompt": "View Prompt",
+    "deleteCount": "Delete ($count)"
+  },
+  "actions": {
+    "undoSuccess": "Undo successful",
+    "undoFailed": "Undo failed: $error",
+    "redoSuccess": "Redo successful",
+    "redoFailed": "Redo failed: $error",
+    "autoFixApplied": "Auto-fix applied",
+    "translationValidated": "Translation validated",
+    "markedAsTranslated": "Marked $count translation(s) as translated",
+    "cleared": "Cleared $count translation(s)",
+    "deleted": "Deleted $count translation(s)",
+    "copied": "Copied $count row(s) to clipboard",
+    "pasted": "Pasted $count translation(s)",
+    "noRowsSelected": "No rows selected",
+    "clipboardEmpty": "Clipboard is empty",
+    "noValidTranslations": "No valid translations found in clipboard",
+    "packGenerationFailed": "Pack generation failed",
+    "failedToOpenModFolder": "Failed to open mod folder: $error",
+    "gamePathNotConfigured": "Game installation path is not configured."
+  },
+  "languageSwitcher": {
+    "noLanguage": "No language in this project",
+    "addLanguage": "+ Add language",
+    "deleteLanguage": "Delete language",
+    "cannotDeleteLast": "Cannot delete the last language"
+  },
+  "validation": {
+    "validationIssuesFound": "Validation Issues Found",
+    "readyToValidate": "Ready to Validate",
+    "noIssuesFound": "No issues found!",
+    "translationPassesAll": "This translation passes all validation checks",
+    "selectUnitToView": "Select a translation unit to view validation issues",
+    "errorLoadingIssues": "Error loading validation issues",
+    "validate": "Validate",
+    "autoFix": "Auto-fix",
+    "errors": "Errors",
+    "warnings": "Warnings",
+    "info": "Info",
+    "noIssues": "No issues found"
+  },
+  "issueTypes": {
+    "emptyTranslation": "Empty Translation",
+    "lengthDifference": "Length Difference",
+    "missingVariables": "Missing Variables",
+    "whitespaceIssue": "Whitespace Issue",
+    "punctuationMismatch": "Punctuation Mismatch",
+    "caseMismatch": "Case Mismatch",
+    "missingNumbers": "Missing Numbers",
+    "modifiedNumbers": "Modified Numbers"
+  }
+}

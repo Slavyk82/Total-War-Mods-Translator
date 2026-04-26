@@ -92,7 +92,7 @@ class EditorToolbarModRule extends ConsumerWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Mod-specific rule',
+              t.translationEditor.toolbar.modSpecificRule,
               overflow: TextOverflow.ellipsis,
               style: tokens.fontBody.copyWith(
                 fontSize: 12.5,

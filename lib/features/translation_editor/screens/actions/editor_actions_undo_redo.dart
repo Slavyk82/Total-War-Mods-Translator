@@ -1,3 +1,4 @@
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../../services/toast_notification_service.dart';
 import '../../providers/editor_providers.dart';
 import 'editor_actions_base.dart';
@@ -11,11 +12,11 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
       final success = await undoRedoManager.undo();
       if (!context.mounted) return;
       if (success) {
-        ToastNotificationService.showSuccess(context, 'Undo successful');
+        ToastNotificationService.showSuccess(context, t.translationEditor.actions.undoSuccess);
       }
     } catch (e) {
       if (!context.mounted) return;
-      ToastNotificationService.showError(context, 'Undo failed: $e');
+      ToastNotificationService.showError(context, t.translationEditor.actions.undoFailed(error: e.toString()));
     }
   }
 
@@ -26,11 +27,11 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
       final success = await undoRedoManager.redo();
       if (!context.mounted) return;
       if (success) {
-        ToastNotificationService.showSuccess(context, 'Redo successful');
+        ToastNotificationService.showSuccess(context, t.translationEditor.actions.redoSuccess);
       }
     } catch (e) {
       if (!context.mounted) return;
-      ToastNotificationService.showError(context, 'Redo failed: $e');
+      ToastNotificationService.showError(context, t.translationEditor.actions.redoFailed(error: e.toString()));
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 import '../../../../providers/shared/logging_providers.dart';
@@ -32,7 +33,7 @@ mixin EditorActionsOpenFolder on EditorActionsBase {
         if (!context.mounted) return;
         FluentToast.warning(
           context,
-          'Game installation path is not configured.',
+          t.translationEditor.actions.gamePathNotConfigured,
         );
         return;
       }
@@ -66,7 +67,7 @@ mixin EditorActionsOpenFolder on EditorActionsBase {
     } catch (e, stackTrace) {
       logger.error('Failed to open mod folder', e, stackTrace);
       if (!context.mounted) return;
-      FluentToast.error(context, 'Failed to open mod folder: $e');
+      FluentToast.error(context, t.translationEditor.actions.failedToOpenModFolder(error: e.toString()));
     }
   }
 }

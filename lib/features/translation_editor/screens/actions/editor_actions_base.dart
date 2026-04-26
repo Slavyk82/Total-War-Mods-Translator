@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import '../../../../services/validation/models/validation_issue.dart' as validation;
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../projects/providers/projects_screen_providers.dart'
@@ -47,23 +48,24 @@ mixin EditorActionsBase {
 
   /// Convert validation issue type to readable label
   String getIssueTypeLabel(validation.ValidationIssueType type) {
+    final types = t.translationEditor.issueTypes;
     switch (type) {
       case validation.ValidationIssueType.emptyTranslation:
-        return 'Empty Translation';
+        return types.emptyTranslation;
       case validation.ValidationIssueType.lengthDifference:
-        return 'Length Difference';
+        return types.lengthDifference;
       case validation.ValidationIssueType.missingVariables:
-        return 'Missing Variables';
+        return types.missingVariables;
       case validation.ValidationIssueType.whitespaceIssue:
-        return 'Whitespace Issue';
+        return types.whitespaceIssue;
       case validation.ValidationIssueType.punctuationMismatch:
-        return 'Punctuation Mismatch';
+        return types.punctuationMismatch;
       case validation.ValidationIssueType.caseMismatch:
-        return 'Case Mismatch';
+        return types.caseMismatch;
       case validation.ValidationIssueType.missingNumbers:
-        return 'Missing Numbers';
+        return types.missingNumbers;
       case validation.ValidationIssueType.modifiedNumbers:
-        return 'Modified Numbers';
+        return types.modifiedNumbers;
     }
   }
 

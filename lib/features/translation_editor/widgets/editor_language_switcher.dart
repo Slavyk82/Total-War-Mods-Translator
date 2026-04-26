@@ -9,6 +9,7 @@ import 'package:twmt/features/projects/providers/project_detail_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/features/projects/widgets/add_language_dialog.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
@@ -60,7 +61,7 @@ class EditorLanguageSwitcher extends ConsumerWidget {
         if (langs.isEmpty)
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('No language in this project',
+            child: Text(t.translationEditor.languageSwitcher.noLanguage,
                 style: tokens.fontBody
                     .copyWith(fontSize: 12, color: tokens.textDim)),
           )
@@ -98,14 +99,16 @@ class EditorLanguageSwitcher extends ConsumerWidget {
         return TokenDialog(
           icon: FluentIcons.warning_24_regular,
           iconColor: tokens.err,
-          title: 'Delete Language',
+          title: t.translationEditor.dialogs.deleteLanguage.title,
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Remove "${details.language.name}" from this project? '
-                '${details.translatedUnits} translations will be deleted.',
+                t.translationEditor.dialogs.deleteLanguage.message(
+                  name: details.language.name,
+                  count: details.translatedUnits,
+                ),
                 style: tokens.fontBody.copyWith(
                   fontSize: 13,
                   color: tokens.textDim,
@@ -131,7 +134,7 @@ class EditorLanguageSwitcher extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'This action cannot be undone.',
+                        t.translationEditor.dialogs.deleteLanguage.cannotBeUndone,
                         style: tokens.fontBody.copyWith(
                           fontSize: 12,
                           color: tokens.warn,
@@ -146,11 +149,11 @@ class EditorLanguageSwitcher extends ConsumerWidget {
           ),
           actions: [
             SmallTextButton(
-              label: 'Cancel',
+              label: t.common.actions.cancel,
               onTap: () => Navigator.of(ctx).pop(false),
             ),
             SmallTextButton(
-              label: 'Delete',
+              label: t.common.actions.delete,
               icon: FluentIcons.delete_24_regular,
               filled: true,
               onTap: () => Navigator.of(ctx).pop(true),
@@ -306,8 +309,8 @@ class _LanguageMenuItem extends StatelessWidget {
             icon: Icon(FluentIcons.delete_24_regular,
                 size: 16, color: canDelete ? tokens.err : tokens.textFaint),
             tooltip: canDelete
-                ? 'Delete language'
-                : 'Cannot delete the last language',
+                ? t.translationEditor.languageSwitcher.deleteLanguage
+                : t.translationEditor.languageSwitcher.cannotDeleteLast,
             onPressed: canDelete ? onDelete : null,
           ),
         ],
@@ -333,7 +336,7 @@ class _AddLanguageMenuItem extends StatelessWidget {
             children: [
               Icon(FluentIcons.add_24_regular, size: 16, color: tokens.accent),
               const SizedBox(width: 8),
-              Text('+ Add language',
+              Text(t.translationEditor.languageSwitcher.addLanguage,
                   style: tokens.fontBody.copyWith(
                       fontSize: 13,
                       color: tokens.accent,

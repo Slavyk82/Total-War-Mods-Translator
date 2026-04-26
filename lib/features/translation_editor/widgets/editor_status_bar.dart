@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
 import 'package:twmt/features/translation_editor/providers/tm_reuse_stats_provider.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
@@ -89,22 +90,25 @@ class _EditorStatusBarState extends ConsumerState<EditorStatusBar> {
       final stats = statsAsync.value!;
       final reuse = reuseAsync.value!;
       leftChildren.addAll([
-        Text('${stats.totalUnits} units', style: monoStyle),
+        Text(t.translationEditor.statusBar.units(count: stats.totalUnits), style: monoStyle),
         const SizedBox(width: 22),
         separator,
         const SizedBox(width: 22),
         Text(
-          '${stats.translatedCount} translated (${stats.completionPercentage.round()}%)',
+          t.translationEditor.statusBar.translated(
+            count: stats.translatedCount,
+            pct: stats.completionPercentage.round(),
+          ),
           style: accentMonoStyle,
         ),
         const SizedBox(width: 22),
         separator,
         const SizedBox(width: 22),
-        Text('${stats.needsReviewCount} need review', style: monoStyle),
+        Text(t.translationEditor.statusBar.needReview(count: stats.needsReviewCount), style: monoStyle),
         const SizedBox(width: 22),
         separator,
         const SizedBox(width: 22),
-        Text('TM ${reuse.reusePercentage.round()}%', style: monoStyle),
+        Text(t.translationEditor.statusBar.tmReuse(pct: reuse.reusePercentage.round()), style: monoStyle),
       ]);
     }
 

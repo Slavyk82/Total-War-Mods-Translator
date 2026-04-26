@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -80,8 +81,8 @@ class _TranslationHistoryDialogState
     final tokens = context.tokens;
     return TokenDialog(
       icon: FluentIcons.history_24_regular,
-      title: 'Translation History',
-      subtitle: 'Key: ${widget.unitKey}',
+      title: t.translationEditor.dialogs.translationHistory.title,
+      subtitle: t.translationEditor.dialogs.promptPreview.keyLabel(key: widget.unitKey),
       width: 720,
       body: SizedBox(
         height: 480,
@@ -96,7 +97,7 @@ class _TranslationHistoryDialogState
       ),
       actions: [
         SmallTextButton(
-          label: 'Close',
+          label: t.common.actions.close,
           filled: true,
           onTap: () => Navigator.of(context).pop(),
         ),
@@ -123,7 +124,7 @@ class _TranslationHistoryDialogState
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading history',
+              t.translationEditor.dialogs.translationHistory.errorLoading,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -156,7 +157,7 @@ class _TranslationHistoryDialogState
             ),
             const SizedBox(height: 16),
             Text(
-              'No history available',
+              t.translationEditor.dialogs.translationHistory.noHistory,
               style: tokens.fontBody.copyWith(
                 fontSize: 14,
                 color: tokens.text,
@@ -165,7 +166,7 @@ class _TranslationHistoryDialogState
             ),
             const SizedBox(height: 8),
             Text(
-              'This translation has no recorded history yet.',
+              t.translationEditor.dialogs.translationHistory.noHistoryDetail,
               style: tokens.fontBody.copyWith(
                 fontSize: 12,
                 color: tokens.textDim,

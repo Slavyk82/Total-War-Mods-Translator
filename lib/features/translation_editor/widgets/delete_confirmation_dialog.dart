@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -20,14 +21,13 @@ class DeleteConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final message = count == 1
-        ? 'Are you sure you want to delete this translation?'
-        : 'Are you sure you want to delete $count translations?';
+    final d = t.translationEditor.dialogs.deleteConfirm;
+    final message = count == 1 ? d.messageSingle : d.messageMultiple(count: count);
 
     return TokenDialog(
       icon: FluentIcons.warning_24_regular,
       iconColor: tokens.err,
-      title: 'Confirm Deletion',
+      title: d.title,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -58,7 +58,7 @@ class DeleteConfirmationDialog extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'This action cannot be undone.',
+                    d.cannotBeUndone,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12,
                       color: tokens.warn,
@@ -73,11 +73,11 @@ class DeleteConfirmationDialog extends StatelessWidget {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: () => Navigator.of(context).pop(false),
         ),
         SmallTextButton(
-          label: 'Delete',
+          label: d.deleteButton,
           icon: FluentIcons.delete_24_regular,
           filled: true,
           onTap: () => Navigator.of(context).pop(true),

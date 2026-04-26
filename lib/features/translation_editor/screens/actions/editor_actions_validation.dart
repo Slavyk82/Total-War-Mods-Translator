@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import '../../../../models/domain/translation_version.dart';
@@ -43,8 +44,8 @@ mixin EditorActionsValidation on EditorActionsBase {
       if (!context.mounted) return;
       EditorDialogs.showInfoDialog(
         context,
-        'No issues to review',
-        'All translations have passed validation.',
+        t.translationEditor.dialogs.noIssues.title,
+        t.translationEditor.dialogs.noIssues.message,
       );
       return;
     }
@@ -82,7 +83,7 @@ mixin EditorActionsValidation on EditorActionsBase {
     BuildContext? progressDialogContext;
     // Created up front so the `finally` block can always dispose it, even
     // on early-exit paths (e.g. "Nothing to scan") or thrown errors.
-    final progressNotifier = ValueNotifier<String>('Scanning...');
+    final progressNotifier = ValueNotifier<String>(t.translationEditor.dialogs.validationRescan.scanning(current: 0, total: 0));
     try {
       final projectLanguageId = await getProjectLanguageId();
       final versionRepo =
@@ -123,8 +124,8 @@ mixin EditorActionsValidation on EditorActionsBase {
         if (!context.mounted) return null;
         EditorDialogs.showInfoDialog(
           context,
-          'Nothing to scan',
-          'No translated entries found.',
+          t.translationEditor.dialogs.nothingToScan.title,
+          t.translationEditor.dialogs.nothingToScan.message,
         );
         return null;
       }

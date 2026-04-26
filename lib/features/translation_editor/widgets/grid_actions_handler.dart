@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
 import '../providers/editor_providers.dart';
@@ -36,7 +37,7 @@ class GridActionsHandler {
   Future<void> handleCopy(List<dynamic> selectedRows) async {
     if (selectedRows.isEmpty) {
       if (context.mounted) {
-        FluentToast.warning(context, 'No rows selected');
+        FluentToast.warning(context, t.translationEditor.actions.noRowsSelected);
       }
       return;
     }
@@ -63,7 +64,7 @@ class GridActionsHandler {
     if (context.mounted) {
       FluentToast.success(
         context,
-        'Copied ${selectedTranslations.length} row(s) to clipboard',
+        t.translationEditor.actions.copied(count: selectedTranslations.length),
       );
     }
   }
@@ -75,7 +76,7 @@ class GridActionsHandler {
 
     if (clipboardData?.text == null || clipboardData!.text!.isEmpty) {
       if (context.mounted) {
-        FluentToast.warning(context, 'Clipboard is empty');
+        FluentToast.warning(context, t.translationEditor.actions.clipboardEmpty);
       }
       return;
     }
@@ -109,7 +110,7 @@ class GridActionsHandler {
 
     if (updates.isEmpty) {
       if (context.mounted) {
-        FluentToast.warning(context, 'No valid translations found in clipboard');
+        FluentToast.warning(context, t.translationEditor.actions.noValidTranslations);
       }
       return;
     }
@@ -121,7 +122,7 @@ class GridActionsHandler {
 
     // Show confirmation
     if (context.mounted) {
-      FluentToast.success(context, 'Pasted $validLines translation(s)');
+      FluentToast.success(context, t.translationEditor.actions.pasted(count: validLines));
     }
   }
 
@@ -155,7 +156,7 @@ class GridActionsHandler {
       if (context.mounted) {
         FluentToast.success(
           context,
-          'Marked $successCount translation(s) as translated',
+          t.translationEditor.actions.markedAsTranslated(count: successCount),
         );
         
         // Refresh the data
@@ -258,7 +259,7 @@ class GridActionsHandler {
       if (context.mounted) {
         result.when(
           ok: (count) {
-            FluentToast.success(context, 'Cleared $count translation(s)');
+            FluentToast.success(context, t.translationEditor.actions.cleared(count: count));
             _refreshProviders();
           },
           err: (error) {
@@ -303,8 +304,8 @@ class GridActionsHandler {
       onDeleteComplete();
 
       if (context.mounted) {
-        FluentToast.success(context, 'Deleted $successCount translation(s)');
-        
+        FluentToast.success(context, t.translationEditor.actions.deleted(count: successCount));
+
         // Refresh the data
         _refreshProviders();
       }

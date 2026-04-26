@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/token_data_grid_header.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
@@ -227,7 +228,7 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
             ),
             const SizedBox(height: 16),
             Text(
-              'Error loading translations',
+              t.translationEditor.datagrid.errorLoadingTranslations,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -303,19 +304,19 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
                     columnName: 'key',
                     width: 150,
                     allowSorting: false,
-                    label: _buildColumnHeader('KEY'),
+                    label: _buildColumnHeader(t.translationEditor.datagrid.columnKey),
                   ),
                   GridColumn(
                     columnName: 'sourceText',
                     columnWidthMode: ColumnWidthMode.fill,
                     allowSorting: false,
-                    label: _buildColumnHeader('SOURCE'),
+                    label: _buildColumnHeader(t.translationEditor.datagrid.columnSource),
                   ),
                   GridColumn(
                     columnName: 'translatedText',
                     columnWidthMode: ColumnWidthMode.fill,
                     allowSorting: false,
-                    label: _buildColumnHeader('TARGET'),
+                    label: _buildColumnHeader(t.translationEditor.datagrid.columnTarget),
                   ),
                 ],
             ),

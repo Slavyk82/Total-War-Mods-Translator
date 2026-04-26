@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
@@ -32,14 +33,14 @@ Widget buildPreparationView(
           ),
           const SizedBox(height: 32),
           Text(
-            'Preparing Translation',
+            t.translationEditor.progress.translation.preparing,
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            'Creating batch and gathering context...',
+            t.translationEditor.progress.translation.preparingDetail,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -78,7 +79,7 @@ Widget buildPreparationView(
               const SizedBox(height: 24),
               FluentButton(
                 onPressed: onClose,
-                child: const Text('Close'),
+                child: Text(t.common.actions.close),
               ),
             ],
           ],
@@ -108,14 +109,14 @@ Widget buildProgressHeader(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Mass Translation',
+              t.translationEditor.progress.translation.header,
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Batch ID: ${batchId.length > 8 ? '${batchId.substring(0, 8)}...' : batchId}',
+              t.translationEditor.progress.translation.batchId(id: batchId.length > 8 ? '${batchId.substring(0, 8)}...' : batchId),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
@@ -158,7 +159,7 @@ Widget buildProgressSection(
               child: Row(
                 children: [
                   Text(
-                    'Progress',
+                    t.translationEditor.progress.translation.progress,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -216,7 +217,7 @@ Widget buildProgressSection(
         ),
         const SizedBox(height: 12),
         Text(
-          '${progress?.processedUnits ?? 0} / ${progress?.totalUnits ?? 0} units',
+          t.translationEditor.progress.translation.units(processed: progress?.processedUnits ?? 0, total: progress?.totalUnits ?? 0),
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
           ),
@@ -286,7 +287,7 @@ class _SmallStopButtonState extends State<_SmallStopButton> {
                 ),
               const SizedBox(width: 6),
               Text(
-                widget.isStopping ? 'Stopping...' : 'Stop',
+                widget.isStopping ? t.translationEditor.progress.translation.stopping : t.translationEditor.progress.translation.stop,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -355,7 +356,7 @@ Widget buildStatsSection(
         child: buildStatCard(
           context,
           icon: FluentIcons.checkmark_circle_24_regular,
-          label: 'Success',
+          label: t.translationEditor.progress.translation.stats.success,
           value: progress?.successfulUnits.toString() ?? '0',
           color: Colors.green.shade700,
         ),
@@ -365,7 +366,7 @@ Widget buildStatsSection(
         child: buildStatCard(
           context,
           icon: FluentIcons.dismiss_circle_24_regular,
-          label: 'Failed',
+          label: t.translationEditor.progress.translation.stats.failed,
           value: progress?.failedUnits.toString() ?? '0',
           color: theme.colorScheme.error,
         ),
@@ -375,7 +376,7 @@ Widget buildStatsSection(
         child: buildStatCard(
           context,
           icon: FluentIcons.fast_forward_24_regular,
-          label: 'Skipped',
+          label: t.translationEditor.progress.translation.stats.skipped,
           value: progress?.skippedUnits.toString() ?? '0',
           color: Colors.blue.shade700,
         ),
@@ -412,7 +413,7 @@ Widget buildErrorSection(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Error',
+                t.common.error,
                 style: theme.textTheme.titleSmall?.copyWith(
                   color: errorColor,
                   fontWeight: FontWeight.w600,
@@ -551,7 +552,7 @@ class _LogTerminalState extends ConsumerState<LogTerminal> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Logs',
+                  t.translationEditor.progress.translation.logs.title,
                   style: TextStyle(
                     color: headerTextColor,
                     fontFamily: 'Consolas, monospace',
@@ -591,7 +592,7 @@ class _LogTerminalState extends ConsumerState<LogTerminal> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Auto-scroll',
+                            t.translationEditor.progress.translation.logs.autoScroll,
                             style: TextStyle(
                               color: _autoScroll
                                   ? Colors.green.shade600
@@ -647,7 +648,7 @@ class _LogTerminalState extends ConsumerState<LogTerminal> {
       child: _logs.isEmpty
           ? Center(
               child: Text(
-                'Waiting for logs...',
+                t.translationEditor.progress.translation.logs.waiting,
                 style: TextStyle(
                   color: placeholderColor,
                   fontFamily: 'Consolas, monospace',

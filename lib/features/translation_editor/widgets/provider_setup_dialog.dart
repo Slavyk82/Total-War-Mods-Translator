@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -22,16 +23,14 @@ class ProviderSetupDialog extends StatelessWidget {
     return TokenDialog(
       icon: FluentIcons.warning_24_regular,
       iconColor: tokens.warn,
-      title: 'No Translation Provider Configured',
+      title: t.translationEditor.dialogs.providerSetup.title,
       width: 480,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'To use automatic translation, you need to configure at least '
-            'one LLM provider. Please go to Settings and set up one of the '
-            'following providers:',
+            t.translationEditor.dialogs.providerSetup.message,
             style: tokens.fontBody.copyWith(
               fontSize: 13,
               color: tokens.textDim,
@@ -46,25 +45,23 @@ class ProviderSetupDialog extends StatelessWidget {
               border: Border.all(color: tokens.border),
             ),
             child: Column(
-              children: const [
+              children: [
                 _ProviderItem(
                   icon: FluentIcons.brain_circuit_24_regular,
-                  name: 'Anthropic Claude',
-                  description:
-                      'High-quality translations with context awareness',
+                  name: t.translationEditor.dialogs.providerSetup.anthropic,
+                  description: t.translationEditor.dialogs.providerSetup.anthropicDesc,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 _ProviderItem(
                   icon: FluentIcons.bot_24_regular,
-                  name: 'OpenAI GPT',
-                  description:
-                      'Versatile language model with good translations',
+                  name: t.translationEditor.dialogs.providerSetup.openai,
+                  description: t.translationEditor.dialogs.providerSetup.openaiDesc,
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 _ProviderItem(
                   icon: FluentIcons.translate_24_regular,
-                  name: 'DeepL',
-                  description: 'Specialized translation service',
+                  name: t.translationEditor.dialogs.providerSetup.deepl,
+                  description: t.translationEditor.dialogs.providerSetup.deeplDesc,
                 ),
               ],
             ),
@@ -73,11 +70,11 @@ class ProviderSetupDialog extends StatelessWidget {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
-          label: 'Go to Settings',
+          label: t.translationEditor.dialogs.providerSetup.goToSettings,
           icon: FluentIcons.settings_24_regular,
           filled: true,
           onTap: () {

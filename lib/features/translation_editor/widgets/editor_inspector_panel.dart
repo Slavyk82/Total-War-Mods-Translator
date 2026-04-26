@@ -5,6 +5,7 @@ import 'package:twmt/features/translation_editor/providers/editor_inspector_widt
 import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/utils/display_escape.dart';
 import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/providers/batch/batch_operations_provider.dart' as batch;
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -234,7 +235,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Select a unit to view details',
+              t.translationEditor.inspector.emptyState,
               textAlign: TextAlign.center,
               style: TextStyle(color: tokens.textMid, fontSize: 13),
             ),
@@ -266,7 +267,7 @@ class _MultiSelectHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$count units selected',
+          t.translationEditor.inspector.unitsSelected(count: count),
           style: tokens.fontDisplay.copyWith(
             fontStyle: tokens.fontDisplayStyle,
             fontSize: 16,
@@ -284,7 +285,7 @@ class _MultiSelectHeader extends StatelessWidget {
           SizedBox(
             height: _bulkButtonHeight,
             child: _InspectorActionButton(
-              label: 'Accept',
+              label: t.translationEditor.inspector.accept,
               icon: FluentIcons.checkmark_24_regular,
               color: tokens.accent,
               onTap: onBulkAccept,
@@ -296,7 +297,7 @@ class _MultiSelectHeader extends StatelessWidget {
           SizedBox(
             height: _bulkButtonHeight,
             child: _InspectorActionButton(
-              label: 'Retranslate',
+              label: t.translationEditor.inspector.retranslate,
               icon: FluentIcons.arrow_sync_24_regular,
               color: tokens.warn,
               onTap: onBulkRetranslate,
@@ -307,7 +308,7 @@ class _MultiSelectHeader extends StatelessWidget {
         SizedBox(
           height: _bulkButtonHeight,
           child: _InspectorActionButton(
-            label: 'Deselect',
+            label: t.translationEditor.inspector.deselect,
             icon: FluentIcons.dismiss_circle_24_regular,
             color: tokens.textMid,
             onTap: onBulkDeselect,
@@ -422,7 +423,7 @@ class _Header extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Unit',
+            t.translationEditor.inspector.unitLabel,
             style: tokens.fontDisplay.copyWith(
               fontStyle: tokens.fontDisplayStyle,
               fontSize: 14,
@@ -478,7 +479,7 @@ class _SourceBlock extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _Label(text: 'Source · $lang', tokens: tokens),
+          _Label(text: t.translationEditor.inspector.sourceLabel(lang: lang), tokens: tokens),
           const SizedBox(height: 6),
           Expanded(
             child: Container(
@@ -525,7 +526,7 @@ class _TargetBlock extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _Label(
-            text: 'Target · $lang — editing',
+            text: t.translationEditor.inspector.targetLabel(lang: lang),
             tokens: tokens,
             withBullet: true,
           ),
@@ -716,7 +717,7 @@ class _ValidationIssuesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'VALIDATION ISSUES',
+            t.translationEditor.inspector.validationIssues,
             style: tokens.fontMono.copyWith(
               fontSize: 9.5,
               color: tokens.textFaint,
@@ -733,7 +734,7 @@ class _ValidationIssuesSection extends StatelessWidget {
             children: [
               Expanded(
                 child: _InspectorActionButton(
-                  label: 'Accept',
+                  label: t.translationEditor.inspector.accept,
                   icon: FluentIcons.checkmark_24_regular,
                   color: tokens.accent,
                   onTap: onAccept == null
@@ -744,7 +745,7 @@ class _ValidationIssuesSection extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _InspectorActionButton(
-                  label: 'Reject',
+                  label: t.translationEditor.inspector.reject,
                   icon: FluentIcons.dismiss_24_regular,
                   color: tokens.err,
                   onTap: onReject == null
@@ -755,7 +756,7 @@ class _ValidationIssuesSection extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _InspectorActionButton(
-                  label: 'Edit',
+                  label: t.translationEditor.inspector.edit,
                   icon: FluentIcons.edit_24_regular,
                   color: tokens.accent,
                   onTap:

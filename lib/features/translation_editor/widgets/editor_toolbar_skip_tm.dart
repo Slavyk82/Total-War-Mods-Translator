@@ -89,7 +89,7 @@ class EditorToolbarSkipTm extends ConsumerWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Use Translation Memory',
+              t.translationEditor.toolbar.useTranslationMemory,
               overflow: TextOverflow.ellipsis,
               style: tokens.fontBody.copyWith(
                 fontSize: 12.5,

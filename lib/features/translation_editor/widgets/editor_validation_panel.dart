@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../providers/editor_providers.dart';
@@ -36,7 +37,7 @@ class _EditorValidationPanelState
     if (widget.sourceText == null || widget.translatedText == null) {
       return _buildEmptyState(
         icon: FluentIcons.warning_24_regular,
-        message: 'Select a translation unit to view validation issues',
+        message: t.translationEditor.validation.selectUnitToView,
       );
     }
 
@@ -49,7 +50,7 @@ class _EditorValidationPanelState
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => _buildEmptyState(
         icon: FluentIcons.error_circle_24_regular,
-        message: 'Error loading validation issues',
+        message: t.translationEditor.validation.errorLoadingIssues,
       ),
       data: (issues) => _buildValidationList(issues),
     );
@@ -90,7 +91,7 @@ class _EditorValidationPanelState
             children: [
               // Errors
               if (errors.isNotEmpty) ...[
-                _buildSectionHeader('Errors', errors.length, Colors.red),
+                _buildSectionHeader(t.translationEditor.validation.errors, errors.length, Colors.red),
                 const SizedBox(height: 8),
                 ...errors.map((issue) => _buildIssueCard(issue)),
                 const SizedBox(height: 16),
@@ -98,7 +99,7 @@ class _EditorValidationPanelState
 
               // Warnings
               if (warnings.isNotEmpty) ...[
-                _buildSectionHeader('Warnings', warnings.length, Colors.orange),
+                _buildSectionHeader(t.translationEditor.validation.warnings, warnings.length, Colors.orange),
                 const SizedBox(height: 8),
                 ...warnings.map((issue) => _buildIssueCard(issue)),
                 const SizedBox(height: 16),
@@ -106,7 +107,7 @@ class _EditorValidationPanelState
 
               // Info
               if (infos.isNotEmpty) ...[
-                _buildSectionHeader('Info', infos.length, Colors.blue),
+                _buildSectionHeader(t.translationEditor.validation.info, infos.length, Colors.blue),
                 const SizedBox(height: 8),
                 ...infos.map((issue) => _buildIssueCard(issue)),
               ],
@@ -156,7 +157,7 @@ class _EditorValidationPanelState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  hasErrors ? 'Validation Issues Found' : 'Ready to Validate',
+                  hasErrors ? t.translationEditor.validation.validationIssuesFound : t.translationEditor.validation.readyToValidate,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -194,17 +195,17 @@ class _EditorValidationPanelState
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(color: Colors.green, width: 1),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         FluentIcons.checkmark_24_regular,
                         size: 14,
                         color: Colors.green,
                       ),
-                      SizedBox(width: 6),
+                      const SizedBox(width: 6),
                       Text(
-                        'Validate',
+                        t.translationEditor.validation.validate,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -356,17 +357,17 @@ class _EditorValidationPanelState
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(color: Colors.blue, width: 1),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             FluentIcons.wrench_24_regular,
                             size: 12,
                             color: Colors.blue,
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            'Auto-fix',
+                            t.translationEditor.validation.autoFix,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
@@ -389,14 +390,14 @@ class _EditorValidationPanelState
   void _handleApplyFix(ValidationIssue issue) {
     if (widget.onApplyFix != null && issue.autoFixValue != null) {
       widget.onApplyFix!(issue.autoFixValue!);
-      FluentToast.success(context, 'Auto-fix applied');
+      FluentToast.success(context, t.translationEditor.actions.autoFixApplied);
     }
   }
 
   void _handleValidate() {
     if (widget.onValidate != null) {
       widget.onValidate!();
-      FluentToast.success(context, 'Translation validated');
+      FluentToast.success(context, t.translationEditor.actions.translationValidated);
     }
   }
 
@@ -433,9 +434,9 @@ class _EditorValidationPanelState
             color: Colors.green.withValues(alpha: 0.8),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No issues found!',
-            style: TextStyle(
+          Text(
+            t.translationEditor.validation.noIssuesFound,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.green,
@@ -443,7 +444,7 @@ class _EditorValidationPanelState
           ),
           const SizedBox(height: 8),
           Text(
-            'This translation passes all validation checks',
+            t.translationEditor.validation.translationPassesAll,
             style: TextStyle(
               fontSize: 13,
               color: Colors.grey.withValues(alpha: 0.8),

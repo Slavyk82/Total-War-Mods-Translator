@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -21,14 +22,13 @@ class ClearConfirmationDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final message = count == 1
-        ? 'Are you sure you want to clear this translation?'
-        : 'Are you sure you want to clear $count translations?';
+    final d = t.translationEditor.dialogs.clearConfirm;
+    final message = count == 1 ? d.messageSingle : d.messageMultiple(count: count);
 
     return TokenDialog(
       icon: FluentIcons.warning_24_regular,
       iconColor: tokens.err,
-      title: 'Confirm Clear',
+      title: d.title,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -59,7 +59,7 @@ class ClearConfirmationDialog extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'This action cannot be undone.',
+                    d.cannotBeUndone,
                     style: tokens.fontBody.copyWith(
                       fontSize: 12,
                       color: tokens.warn,
@@ -74,11 +74,11 @@ class ClearConfirmationDialog extends StatelessWidget {
       ),
       actions: [
         SmallTextButton(
-          label: 'Cancel',
+          label: t.common.actions.cancel,
           onTap: () => Navigator.of(context).pop(false),
         ),
         SmallTextButton(
-          label: 'Clear',
+          label: d.clearButton,
           icon: FluentIcons.eraser_24_regular,
           filled: true,
           onTap: () => Navigator.of(context).pop(true),
