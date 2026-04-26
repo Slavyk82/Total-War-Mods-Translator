@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:twmt/features/home/widgets/action_grid.dart';
 import 'package:twmt/features/home/widgets/empty_state_guide.dart';
+import 'package:twmt/features/home/widgets/home_language_switcher.dart';
 import 'package:twmt/features/home/widgets/home_page_header.dart';
 import 'package:twmt/features/home/widgets/support_link.dart';
 import 'package:twmt/features/home/widgets/workflow_ribbon.dart';
@@ -27,41 +28,50 @@ class HomeScreen extends ConsumerWidget {
     return FluentScaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: IntrinsicHeight(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const HomePageHeader(),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _SectionLabel(t.home.sections.workflow),
-                          const SizedBox(height: 10),
-                          const WorkflowRibbon(),
-                          const SizedBox(height: 28),
-                          _SectionLabel(t.home.sections.needsAttention),
-                          const SizedBox(height: 10),
-                          const ActionGrid(),
-                          const SizedBox(height: 28),
-                          if (isEmpty) const EmptyStateGuide(),
-                        ],
-                      ),
+          return Stack(
+            children: [
+              SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const HomePageHeader(),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _SectionLabel(t.home.sections.workflow),
+                              const SizedBox(height: 10),
+                              const WorkflowRibbon(),
+                              const SizedBox(height: 28),
+                              _SectionLabel(t.home.sections.needsAttention),
+                              const SizedBox(height: 10),
+                              const ActionGrid(),
+                              const SizedBox(height: 28),
+                              if (isEmpty) const EmptyStateGuide(),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        const Padding(
+                          padding: EdgeInsets.fromLTRB(28, 16, 28, 24),
+                          child: SupportLink(),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(28, 16, 28, 24),
-                      child: SupportLink(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              const Positioned(
+                top: 16,
+                right: 20,
+                child: HomeLanguageSwitcher(),
+              ),
+            ],
           );
         },
       ),

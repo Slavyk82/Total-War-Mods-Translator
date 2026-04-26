@@ -54,10 +54,13 @@ class SidebarUpdateChecker extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 8),
-              Text(
-                t.widgets.sidebarUpdateChecker.version(version: version),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              Flexible(
+                child: Text(
+                  t.widgets.sidebarUpdateChecker.version(version: version),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(width: 8),
