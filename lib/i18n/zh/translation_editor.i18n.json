@@ -88,7 +88,8 @@
     "validationRescan": {
       "title": "验证重新扫描",
       "scanning": "正在扫描 $current/$total...",
-      "saving": "正在保存 $count 个更新..."
+      "saving": "正在保存 $count 个更新...",
+      "failedTitle": "重新扫描失败"
     },
     "noIssues": {
       "title": "无需审核的问题",

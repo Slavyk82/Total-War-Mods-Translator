@@ -88,7 +88,8 @@
     "validationRescan": {
       "title": "Reanálise de validação",
       "scanning": "Analisando $current/$total...",
-      "saving": "Salvando $count atualizações..."
+      "saving": "Salvando $count atualizações...",
+      "failedTitle": "Falha na reanálise"
     },
     "noIssues": {
       "title": "Sem problemas para revisar",

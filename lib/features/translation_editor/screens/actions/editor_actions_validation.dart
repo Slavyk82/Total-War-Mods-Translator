@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -84,6 +85,14 @@ mixin EditorActionsValidation on EditorActionsBase {
     // Created up front so the `finally` block can always dispose it, even
     // on early-exit paths (e.g. "Nothing to scan") or thrown errors.
     final progressNotifier = ValueNotifier<String>(t.translationEditor.dialogs.validationRescan.scanning(current: 0, total: 0));
+    // Completes when the dialog's builder fires for the first time. We
+    // await this before starting the rescan so that fast paths (clean
+    // dataset → no `updateValidationBatch` await) cannot finish before
+    // the dialog mounts. Without it, `progressDialogContext` stays null
+    // when `Navigator.pop` runs and the dialog later builds against an
+    // already-disposed `progressNotifier`, leaving the spinner on screen
+    // forever.
+    final dialogShown = Completer<void>();
     try {
       final projectLanguageId = await getProjectLanguageId();
       final versionRepo =
@@ -138,17 +147,23 @@ mixin EditorActionsValidation on EditorActionsBase {
       // Show progress dialog
       if (!context.mounted) return null;
       progressNotifier.value =
-          'Scanning 0/${translatedVersions.length}...';
+          t.translationEditor.dialogs.validationRescan.scanning(
+        current: 0,
+        total: translatedVersions.length,
+      );
 
       showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (dialogContext) {
           progressDialogContext = dialogContext;
+          if (!dialogShown.isCompleted) {
+            dialogShown.complete();
+          }
           final tokens = dialogContext.tokens;
           return TokenDialog(
             icon: FluentIcons.shield_checkmark_24_regular,
-            title: 'Validation Rescan',
+            title: t.translationEditor.dialogs.validationRescan.title,
             width: 460,
             body: Row(
               children: [
@@ -179,6 +194,15 @@ mixin EditorActionsValidation on EditorActionsBase {
         },
       );
 
+      // Wait for the dialog's builder to fire so `progressDialogContext`
+      // is set and the `ValueListenableBuilder` has registered its
+      // listener BEFORE the rescan starts. Skipping this would let a
+      // fast rescan (clean dataset, no save batch) finish before the
+      // dialog mounts — `Navigator.pop` would run with a null context,
+      // the dialog would later build against a disposed notifier, and
+      // the spinner would stay on screen until the editor is closed.
+      await dialogShown.future;
+
       // Load all units in batch
       final unitIds =
           translatedVersions.map((v) => v.unitId).toSet().toList();
@@ -207,7 +231,10 @@ mixin EditorActionsValidation on EditorActionsBase {
         scanned++;
         if (scanned % 100 == 0 || scanned == translatedVersions.length) {
           progressNotifier.value =
-              'Scanning $scanned/${translatedVersions.length}...';
+              t.translationEditor.dialogs.validationRescan.scanning(
+            current: scanned,
+            total: translatedVersions.length,
+          );
           // Yield to UI thread for progress updates
           await Future<void>.delayed(Duration.zero);
         }
@@ -271,7 +298,10 @@ mixin EditorActionsValidation on EditorActionsBase {
 
       // Batch write all updates in a single transaction
       if (pendingUpdates.isNotEmpty) {
-        progressNotifier.value = 'Saving ${pendingUpdates.length} updates...';
+        progressNotifier.value =
+            t.translationEditor.dialogs.validationRescan.saving(
+          count: pendingUpdates.length,
+        );
         await versionRepo.updateValidationBatch(pendingUpdates);
       }
 
@@ -313,7 +343,7 @@ mixin EditorActionsValidation on EditorActionsBase {
       if (!context.mounted) return null;
       EditorDialogs.showErrorDialog(
         context,
-        'Rescan Failed',
+        t.translationEditor.dialogs.validationRescan.failedTitle,
         e.toString(),
       );
       return null;

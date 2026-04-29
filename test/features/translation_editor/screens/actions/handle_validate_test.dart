@@ -222,23 +222,10 @@ void main() {
       await handleFuture;
       await tester.pump();
 
-      // The progress dialog's `ValueListenableBuilder` races with the
-      // `finally` block that disposes the notifier: in this tight test
-      // harness the rescan finishes before the dialog's builder is first
-      // invoked, so the builder trips
-      // `ChangeNotifier.debugAssertNotDisposed` when it calls
-      // `addListener`. Drain that known assertion so the test harness
-      // doesn't fail on it — it does not occur in production where the
-      // rescan takes milliseconds and the dialog mounts first.
-      final swallowed = tester.takeException();
-      if (swallowed != null) {
-        expect(
-          swallowed.toString(),
-          contains('ValueNotifier'),
-          reason:
-              'Only the expected dispose-race assertion should be drained.',
-        );
-      }
+      // No exception is expected: `_performRescan` now awaits the
+      // dialog's first build before starting the scan, so the dialog
+      // mounts before `progressNotifier` is ever disposed.
+      expect(tester.takeException(), isNull);
 
       final finalFilter = container.read(editorFilterProvider);
       expect(

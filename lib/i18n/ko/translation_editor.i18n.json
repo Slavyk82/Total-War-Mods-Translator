@@ -88,7 +88,8 @@
     "validationRescan": {
       "title": "검증 재검색",
       "scanning": "검색 중 $current/$total...",
-      "saving": "$count개 업데이트 저장 중..."
+      "saving": "$count개 업데이트 저장 중...",
+      "failedTitle": "재검색 실패"
     },
     "noIssues": {
       "title": "검토할 문제 없음",

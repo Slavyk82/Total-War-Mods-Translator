@@ -88,7 +88,8 @@
     "validationRescan": {
       "title": "Validierung erneut ausführen",
       "scanning": "Scannen $current/$total ...",
-      "saving": "Speichern von $count Aktualisierungen ..."
+      "saving": "Speichern von $count Aktualisierungen ...",
+      "failedTitle": "Erneute Validierung fehlgeschlagen"
     },
     "noIssues": {
       "title": "Keine Probleme zur Überprüfung",

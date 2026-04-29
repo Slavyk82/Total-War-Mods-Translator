@@ -88,7 +88,8 @@
     "validationRescan": {
       "title": "Doğrulama yeniden taraması",
       "scanning": "Taranıyor $current/$total...",
-      "saving": "$count güncelleme kaydediliyor..."
+      "saving": "$count güncelleme kaydediliyor...",
+      "failedTitle": "Yeniden tarama başarısız"
     },
     "noIssues": {
       "title": "İncelenecek sorun yok",
