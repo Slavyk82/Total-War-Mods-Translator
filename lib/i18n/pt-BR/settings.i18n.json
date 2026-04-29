@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "Configurações",
+    "tabs": {
+      "general": "Geral",
+      "folders": "Pastas",
+      "llmProviders": "Provedores LLM"
+    }
+  },
+  "errors": {
+    "loadSettings": "Erro ao carregar configurações: $error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "Cópia de segurança do banco de dados",
+      "sectionSubtitle": "Crie cópias de segurança para proteger seus dados ou restaure a partir de cópias anteriores.",
+      "cardTitle": "Ações de cópia de segurança",
+      "processing": "Processando...",
+      "exportTitle": "Exportar cópia de segurança",
+      "exportDescription": "Salvar o banco de dados em um arquivo ZIP",
+      "importTitle": "Importar cópia de segurança",
+      "importDescription": "Restaurar o banco de dados a partir de um arquivo de cópia de segurança",
+      "saveDialogTitle": "Salvar cópia de segurança do banco de dados",
+      "openDialogTitle": "Selecionar arquivo de cópia de segurança",
+      "restoreDialog": {
+        "title": "Restauração concluída",
+        "message": "O banco de dados foi restaurado com sucesso. O aplicativo será reiniciado para aplicar as alterações.",
+        "restartNow": "Reiniciar agora"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "Manutenção do banco de dados",
+      "sectionSubtitle": "Ferramentas para manter e corrigir estatísticas do banco de dados e estados de tradução.",
+      "cardTitle": "Ações de manutenção",
+      "processing": "Processando...",
+      "actions": {
+        "reanalyzeTitle": "Reanalisar traduções",
+        "reanalyzeDescription": "Corrigir inconsistências de status e detectar unidades por traduzir",
+        "clearModCacheTitle": "Limpar cache de atualizações de mods",
+        "clearModCacheDescription": "Remover marcadores de \"alterações pendentes\" obsoletos",
+        "rebuildTmTitle": "Reconstruir memória de tradução",
+        "rebuildTmDescription": "Recuperar entradas em falta da TM a partir das traduções existentes",
+        "migrateTmHashesTitle": "Migrar hashes legacy da TM",
+        "migrateTmHashesDescription": "Converter os hashes inteiros antigos para SHA256 na pesquisa da TM",
+        "resetOnboardingTitle": "Redefinir dicas de boas-vindas",
+        "resetOnboardingDescription": "Voltar a exibir o cartão de boas-vindas do Workshop, caso você o tenha ocultado"
+      },
+      "toasts": {
+        "onboardingReset": "As dicas de boas-vindas voltarão a ser exibidas."
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "Preferências de idiomas de tradução",
+      "sectionSubtitle": "Gerenciar os idiomas disponíveis para traduções e definir o idioma de destino padrão",
+      "addLanguage": "Adicionar idioma",
+      "toasts": {
+        "addSuccess": "Idioma adicionado com sucesso",
+        "addFailed": "Falha ao adicionar idioma"
+      },
+      "grid": {
+        "columnDefault": "Padrão",
+        "columnCode": "Código",
+        "columnLanguage": "Idioma",
+        "customBadge": "Personalizado",
+        "emptyTitle": "Nenhum idioma disponível",
+        "errorTitle": "Erro ao carregar idiomas",
+        "deleteTooltip": "Excluir idioma"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "Excluir idioma",
+          "message": "Tem certeza de que deseja excluir \"$name\"?",
+          "warning": "Esta ação não pode ser desfeita.",
+          "confirmLabel": "Excluir"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name definido como idioma padrão",
+        "setDefaultFailed": "Falha ao definir o idioma padrão",
+        "deleteSuccess": "Idioma excluído com sucesso",
+        "deleteFailed": "Falha ao excluir o idioma"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "Instalações de jogos",
+      "sectionSubtitle": "Configurar caminhos para seus jogos Total War",
+      "detectingLabel": "Detectando...",
+      "detectAllButton": "Detectar todos os jogos automaticamente",
+      "detectAllDescription": "Encontrar automaticamente todos os jogos Total War instalados",
+      "detectButton": "Detectar",
+      "browseButton": "Procurar",
+      "pathHint": "Caminho da instalação de $game...",
+      "browseDialogTitle": "Selecionar pasta de instalação de $game",
+      "toasts": {
+        "gameFound": "$game encontrado",
+        "gameNotFound": "$game não encontrado",
+        "detectionFailed": "Detecção falhou: $error",
+        "allFound": "Encontrados $count jogo(s)",
+        "noneFound": "Nenhum jogo encontrado",
+        "saveError": "Erro ao salvar o caminho do jogo: $error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "Ferramenta RPFM",
+      "sectionSubtitle": "Caminho para o executável RPFM utilizado na extração de arquivos pack",
+      "executableSubtitle": "Executável RPFM",
+      "schemaSubtitle": "Pasta de schemas RPFM",
+      "schemaDescription": "Pasta que contém os arquivos de schema RPFM (ex.: schema_wh3.ron)",
+      "testButton": "Testar",
+      "browseButton": "Procurar",
+      "defaultButton": "Padrão",
+      "browseExeDialogTitle": "Selecionar executável RPFM",
+      "browseSchemaDialogTitle": "Selecionar pasta de schemas RPFM",
+      "toasts": {
+        "enterPathFirst": "Informe primeiro o caminho do RPFM",
+        "testing": "Testando executável RPFM...",
+        "validating": "Validando executável RPFM...",
+        "validatedSuccess": "RPFM v$version validado com sucesso",
+        "testSuccess": "RPFM v$version está funcionando corretamente",
+        "invalidExe": "Executável RPFM inválido: $error",
+        "testFailed": "Teste do RPFM falhou: $error",
+        "usernameNotDetected": "Não foi possível detectar o nome de usuário",
+        "defaultPathSet": "Definido o caminho de schema padrão",
+        "savePathError": "Erro ao salvar o caminho RPFM: $error",
+        "saveSchemaPathError": "Erro ao salvar o caminho do schema RPFM: $error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Pasta base para conteúdos do Steam Workshop (os IDs de jogo serão acrescentados automaticamente)",
+      "folderSubtitle": "Pasta base do Steam Workshop",
+      "detectingLabel": "Detectando...",
+      "detectButton": "Detectar",
+      "browseButton": "Procurar",
+      "browseDialogTitle": "Selecionar pasta do Steam Workshop",
+      "toasts": {
+        "detected": "Pasta do Workshop detectada: $path",
+        "notFound": "Pasta do Workshop não encontrada. Selecione manualmente.",
+        "detectionFailed": "Detecção falhou: $error",
+        "detectionError": "Erro de detecção: $error",
+        "saveError": "Erro ao salvar o caminho do Workshop: $error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "Adicionar idioma personalizado",
+    "description": "Adicione um idioma personalizado que ficará disponível para os projetos de tradução.",
+    "codeLabel": "Código do idioma (ISO 639-1, 2-3 letras)",
+    "nameLabel": "Nome do idioma",
+    "codeHint": "ex.: pl, ko, ja",
+    "nameHint": "ex.: Polonês, Coreano, Japonês",
+    "info": "Os idiomas personalizados podem ser excluídos posteriormente. Os idiomas do sistema (Inglês, Francês, etc.) não podem ser modificados.",
+    "cancel": "Cancelar",
+    "add": "Adicionar",
+    "errors": {
+      "codeRequired": "O código do idioma é obrigatório",
+      "codeTooShort": "O código deve ter pelo menos 2 caracteres",
+      "codeLettersOnly": "O código deve conter apenas letras",
+      "codeTooLong": "O código deve ter no máximo 5 caracteres",
+      "nameRequired": "O nome do idioma é obrigatório",
+      "nameTooLong": "O nome deve ter no máximo 50 caracteres"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "Restaurar cópia de segurança do banco de dados?",
+    "fromLabel": "Você está prestes a restaurar o banco de dados a partir de:",
+    "warningTitle": "Aviso: isto substituirá TODOS os seus dados atuais!",
+    "warningBody": "Todos os projetos, traduções, glossários e configurações serão substituídos. Esta ação não pode ser desfeita.",
+    "cancel": "Cancelar",
+    "restore": "Restaurar"
+  },
+  "llmProviders": {
+    "title": "Provedores LLM",
+    "subtitle": "Configure as chaves de API e os modelos dos provedores de tradução",
+    "advancedSettings": {
+      "title": "Configurações avançadas",
+      "rateLimitLabel": "Limite de taxa (requisições por minuto)",
+      "saveError": "Erro ao salvar o limite de taxa: $error"
+    },
+    "providerSection": {
+      "subtitle": "Configurar a chave de API e os modelos",
+      "apiKeyLabel": "Chave de API",
+      "apiKeyHint": "Informe a chave de API...",
+      "testConnectionTooltip": "Testar conexão",
+      "toasts": {
+        "connectionSuccess": "Conexão realizada com sucesso!",
+        "connectionFailed": "Conexão falhou: $error",
+        "saveApiKeyError": "Erro ao salvar a chave de API de $provider: $error"
+      }
+    },
+    "models": {
+      "headerTitle": "Modelos",
+      "footer": "Selecione modelos para ativá-los. Clique na estrela para defini-lo como padrão global.",
+      "legend": "Selecione modelos para que fiquem disponíveis para traduções. Clique na estrela para definir um modelo como padrão global (apenas um padrão entre todos os provedores).",
+      "errorLoading": "Erro ao carregar modelos: $error",
+      "noModels": "Não há modelos disponíveis para este provedor",
+      "badges": {
+        "default": "Padrão",
+        "archived": "Arquivado"
+      },
+      "toasts": {
+        "disabled": "Modelo desativado",
+        "enabled": "Modelo ativado",
+        "toggleFailed": "Falha ao alternar o modelo: $error",
+        "setDefaultSuccess": "Modelo definido como padrão",
+        "setDefaultFailed": "Falha ao definir como padrão: $error"
+      },
+      "dialog": {
+        "titleManage": "Gerenciar modelos de $provider",
+        "subtitle": "Selecione quais os modelos disponíveis para traduções"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "Regras de tradução personalizadas",
+    "accordionSubtitle": "Adicionar instruções personalizadas aos prompts de tradução",
+    "infoText": "As regras personalizadas são acrescentadas a todos os prompts de tradução enviados ao LLM. Utilize-as para definir instruções globais, diretrizes terminológicas ou preferências de tradução aplicáveis a todos os projetos.",
+    "addRuleButton": "Adicionar regra",
+    "toasts": {
+      "addSuccess": "Regra adicionada com sucesso",
+      "addFailed": "Falha ao adicionar regra",
+      "updateSuccess": "Regra atualizada com sucesso",
+      "updateFailed": "Falha ao atualizar regra",
+      "deleteSuccess": "Regra excluída com sucesso",
+      "deleteFailed": "Falha ao excluir regra",
+      "toggleFailed": "Falha ao alternar regra"
+    },
+    "grid": {
+      "columnActive": "Ativa",
+      "columnRuleText": "Texto da regra",
+      "columnActions": "Ações",
+      "emptyTitle": "Nenhuma regra personalizada definida",
+      "emptySubtitle": "Adicione regras globais para personalizar todos os prompts de tradução",
+      "errorTitle": "Erro ao carregar regras",
+      "editTooltip": "Editar regra",
+      "deleteTooltip": "Excluir regra"
+    },
+    "editorDialog": {
+      "addTitle": "Adicionar regra personalizada",
+      "editTitle": "Editar regra personalizada",
+      "description": "Informe o texto da regra que será acrescentado a cada prompt de tradução. Estas regras se aplicam globalmente a todos os projetos.",
+      "ruleTextLabel": "Texto da regra",
+      "ruleTextHint": "ex.: Utilizar sempre uma linguagem formal e evitar contrações...",
+      "tipsTitle": "Dicas",
+      "tipsText": "• Seja específico e claro nas suas instruções\n• Utilize tópicos para várias regras\n• As regras são acrescentadas em ordem ao prompt de tradução\n• Você pode desativar regras temporariamente sem excluí-las",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "add": "Adicionar",
+      "errors": {
+        "ruleTextRequired": "Informe o texto da regra"
+      }
+    },
+    "deleteDialog": {
+      "title": "Excluir regra",
+      "message": "Tem certeza de que deseja excluir esta regra personalizada?",
+      "warning": "Esta ação não pode ser desfeita.",
+      "confirmLabel": "Excluir"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "Textos de origem ignorados",
+    "accordionSubtitle": "Ignorar textos de origem específicos durante a tradução",
+    "infoText": "Os textos de origem que correspondam a estes valores serão excluídos da tradução. Observação: textos totalmente entre colchetes como [PLACEHOLDER] são ignorados automaticamente. Utilize esta lista para padrões personalizados específicos dos seus mods.",
+    "resetButton": "Restaurar padrões",
+    "addButton": "Adicionar texto",
+    "toasts": {
+      "addSuccess": "Texto adicionado com sucesso",
+      "addFailed": "Falha ao adicionar texto",
+      "updateSuccess": "Texto atualizado com sucesso",
+      "updateFailed": "Falha ao atualizar texto",
+      "deleteSuccess": "Texto excluído com sucesso",
+      "deleteFailed": "Falha ao excluir texto",
+      "resetSuccess": "Padrões restaurados com sucesso",
+      "resetFailed": "Falha ao restaurar padrões",
+      "toggleFailed": "Falha ao alternar texto"
+    },
+    "grid": {
+      "columnActive": "Ativo",
+      "columnSourceText": "Texto de origem",
+      "columnActions": "Ações",
+      "emptyTitle": "Nenhum texto ignorado definido",
+      "emptySubtitle": "Adicione textos de origem a ignorar durante a tradução",
+      "errorTitle": "Erro ao carregar textos ignorados",
+      "editTooltip": "Editar",
+      "deleteTooltip": "Excluir"
+    },
+    "editorDialog": {
+      "addTitle": "Adicionar texto ignorado",
+      "editTitle": "Editar texto ignorado",
+      "description": "Informe um texto de origem que deva ser ignorado durante a tradução. A correspondência ignora maiúsculas/minúsculas.",
+      "sourceTextLabel": "Texto de origem",
+      "sourceTextHint": "ex.: placeholder, [hidden], etc.",
+      "infoTitle": "Informação",
+      "infoText": "• As unidades que correspondam a estes textos são excluídas da tradução\n• Os textos entre colchetes como [unit_name] são ignorados automaticamente\n• Utilize-os para placeholders personalizados específicos dos seus mods\n• As alterações têm efeito imediato para novas traduções",
+      "cancel": "Cancelar",
+      "save": "Salvar",
+      "add": "Adicionar",
+      "errors": {
+        "sourceTextRequired": "Informe um texto de origem"
+      }
+    },
+    "deleteDialog": {
+      "title": "Excluir texto ignorado",
+      "message": "Tem certeza de que deseja excluir \"$text\"?",
+      "warning": "Esta ação não pode ser desfeita.",
+      "confirmLabel": "Excluir"
+    },
+    "resetDialog": {
+      "title": "Restaurar padrões",
+      "message": "Isto excluirá todos os textos ignorados atuais e restaurará os valores padrão:\n\n• placeholder\n• dummy\n\nObservação: os textos totalmente entre colchetes como [placeholder] são sempre filtrados automaticamente.\n\nTem certeza de que deseja continuar?",
+      "confirmLabel": "Restaurar"
+    }
+  }
+}

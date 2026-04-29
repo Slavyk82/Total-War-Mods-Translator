@@ -1,0 +1,8 @@
+{
+  "language": {
+    "title": "Uygulama dili",
+    "subtitle": "TWMT arayüzünün kullandığı dil. Modlarınızın çevrildiği dillerden bağımsızdır.",
+    "systemDefault": "Sistem varsayılanı",
+    "label": "Dil"
+  }
+}

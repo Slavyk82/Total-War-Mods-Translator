@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "A carregar jogos...",
+    "errorLoadingGames": "Erro ao carregar jogos",
+    "configureAGame": "Configurar um jogo",
+    "selectAGame": "Selecionar um jogo"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Versão: $version",
+    "checking": "A verificar...",
+    "upToDate": "Atualizado",
+    "checkForUpdates": "Verificar atualizações",
+    "updateAvailable": "v$version disponível",
+    "dismiss": "Ignorar",
+    "downloading": "A descarregar...",
+    "installAndRestart": "Instalar e reiniciar",
+    "downloadWithSize": "Descarregar ($size)",
+    "viewOnGitHub": "Ver no GitHub",
+    "viewReleaseNotes": "Ver notas de versão",
+    "whatsNew": "Novidades?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Falha ao carregar as notas de versão: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Alternador de tema",
+    "selectTheme": "Selecionar tema",
+    "groups": {
+      "workflow": "Fluxo de trabalho",
+      "tools": "Ferramentas",
+      "system": "Sistema"
+    },
+    "items": {
+      "home": "Início",
+      "detect": "Detetar",
+      "translate": "Traduzir",
+      "publish": "Publicar",
+      "glossary": "Glossário",
+      "translationMemory": "Memória de tradução",
+      "gameTranslation": "Tradução do jogo",
+      "packCompilation": "Compilação de pack",
+      "settings": "Definições"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "Atualização da base de dados",
+    "subtitle": "Migração única necessária",
+    "preparing": "A preparar...",
+    "info": "Este processo garante o funcionamento correto da memória de tradução. Não feche a aplicação.",
+    "actions": {
+      "retry": "Tentar novamente"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "clicar para abrir"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count ativos"
+  },
+  "nextStepCta": {
+    "next": "Seguinte: $label"
+  },
+  "toolbar": {
+    "back": "Voltar"
+  },
+  "wizardStepHeader": {
+    "step": "PASSO $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Limpar"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1h",
+    "hours": "${hours}h",
+    "oneDay": "1 dia",
+    "days": "$days dias",
+    "oneMonth": "1 mês",
+    "months": "$months meses",
+    "oneYear": "1 ano",
+    "years": "$years anos"
+  }
+}

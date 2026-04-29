@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "Oyun çevirisi",
+    "countOne": "$count çeviri",
+    "countMany": "$count çeviri",
+    "toolbar": {
+      "create": "Oyun çevirisi oluştur",
+      "noPacksTooltip": "Bu oyun için yerelleştirme pack'i bulunamadı"
+    },
+    "empty": {
+      "title": "Henüz oyun çevirisi yok",
+      "subtitle": "Temel oyunu çevirmek için yeni bir çeviri oluşturun",
+      "noPacksWarning": "Bu oyun için yerelleştirme pack'i bulunamadı",
+      "errorLoadingPacks": "Pack'ler yüklenirken hata"
+    },
+    "loading": "Oyun çevirileri yükleniyor...",
+    "errors": {
+      "loadFailed": "Oyun çevirileri yüklenirken hata"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Oyun çevirisini sil",
+        "message": "\"$name\" silmek istediğinizden emin misiniz?",
+        "warning": "Bu işlem geri alınamaz.",
+        "confirm": "Sil"
+      }
+    },
+    "toasts": {
+      "deleted": "\"$name\" oyun çevirisi silindi",
+      "deleteFailed": "Oyun çevirisi silinemedi: $error"
+    }
+  },
+  "wizard": {
+    "title": "Oyun çevirisi oluştur",
+    "steps": {
+      "selectSource": "Kaynak pack'i seç",
+      "selectTargets": "Hedef dilleri seç"
+    },
+    "progress": {
+      "creatingProject": "Proje oluşturuluyor...",
+      "extracting": "Yerelleştirme dosyaları çıkarılıyor...",
+      "extractingProgress": "Çıkarılıyor... %$percent",
+      "processing": "İşleniyor..."
+    },
+    "errors": {
+      "selectSourcePack": "Lütfen bir kaynak yerelleştirme pack'i seçin",
+      "selectTargetLanguage": "Lütfen en az bir hedef dil seçin"
+    },
+    "actions": {
+      "back": "Geri",
+      "cancel": "İptal",
+      "next": "İleri",
+      "create": "Oluştur"
+    }
+  },
+  "stepSource": {
+    "description": "Çeviri için kaynak olarak hizmet edecek oyun yerelleştirme pack'ini seçin.",
+    "sectionLabel": "KULLANILABİLİR YERELLEŞTİRME PACK'LERİ",
+    "noGameSelected": "Seçili oyun yok",
+    "noPacks": {
+      "title": "Yerelleştirme pack'i bulunamadı",
+      "subtitle": "Oyunun kurulu olduğundan ve data klasöründe yerelleştirme dosyalarının bulunduğundan emin olun."
+    }
+  },
+  "stepTargets": {
+    "description": "Oyunu çevirmek istediğiniz dilleri seçin.",
+    "translatingFrom": "Şu dilden çevriliyor: ",
+    "selectionCount": "$count dil seçildi",
+    "noLanguages": {
+      "title": "Kullanılabilir dil yok",
+      "subtitle": "Lütfen Ayarlar bölümünden hedef dilleri yapılandırın."
+    },
+    "actions": {
+      "selectAll": "Tümünü seç",
+      "clear": "Temizle",
+      "addLanguage": "Dil ekle"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "Özel dil ekle",
+    "description": "Çeviri projeleri için kullanılabilir olacak özel bir dil ekleyin.",
+    "fields": {
+      "codeLabel": "DİL KODU",
+      "codeHint": "örn. pl, ko, ja",
+      "codeHelper": "ISO 639-1 kodu (2-3 karakter)",
+      "codeErrors": {
+        "required": "Dil kodu zorunludur",
+        "tooShort": "Kod en az 2 karakter olmalı",
+        "lettersOnly": "Kod yalnızca harf içermeli"
+      },
+      "nameLabel": "DİL ADI",
+      "nameHint": "örn. Lehçe, Korece, Japonca",
+      "nameHelper": "Bu dil için görünen ad",
+      "nameErrors": {
+        "required": "Dil adı zorunludur"
+      }
+    },
+    "defaultLanguage": {
+      "label": "Varsayılan dil olarak ayarla",
+      "description": "Bu dil, tüm yeni mod çeviri projeleri için varsayılan hedef dil olur."
+    },
+    "info": "Özel diller daha sonra Ayarlar'dan silinebilir. Sistem dilleri (İngilizce, Fransızca vb.) değiştirilemez.",
+    "actions": {
+      "add": "Ekle"
+    },
+    "toasts": {
+      "addedAsDefault": "\"$name\" dili eklendi ve varsayılan olarak ayarlandı",
+      "addedSuccessfully": "\"$name\" dili başarıyla eklendi",
+      "addFailed": "Dil eklenemedi"
+    }
+  }
+}

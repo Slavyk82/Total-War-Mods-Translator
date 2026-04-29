@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Reanalisar pastas do Steam Workshop em busca de mods com ficheiros de localização",
+    "hiddenToggle": "Alternar entre ver mods normais e mods ocultos",
+    "importLocalPack": "Importar um ficheiro .pack local que não seja proveniente do Steam Workshop",
+    "filterAll": "Mostrar todos os mods",
+    "filterNotImported": "Mostrar apenas mods sem projetos de tradução",
+    "filterNeedsUpdate": "Mostrar apenas mods com atualizações ou alterações pendentes"
+  },
+  "projects": {
+    "filterNeedsUpdate": "Mostrar projetos que requerem atenção devido a alterações no mod de origem",
+    "filterNeedsReview": "Mostrar projetos com, pelo menos, uma unidade marcada para revisão",
+    "filterIncomplete": "Mostrar projetos ainda não 100% traduzidos em todos os idiomas configurados",
+    "filterHasComplete": "Mostrar projetos com, pelo menos, um idioma totalmente traduzido",
+    "filterExportOutdated": "Mostrar projetos modificados desde a última exportação",
+    "filterExported": "Mostrar apenas projetos já exportados",
+    "filterNotExported": "Mostrar apenas projetos que nunca foram exportados",
+    "filterClear": "Limpar o filtro de estado ativo"
+  },
+  "editor": {
+    "modelSelector": "Selecionar o modelo de IA a utilizar para a tradução",
+    "useTm": "Quando ativado, consulta a memória de tradução antes de consultar o modelo de IA. Desative para ignorar a TM e enviar sempre as unidades diretamente para o modelo.",
+    "batchAuto": "Calcular automaticamente o tamanho do lote a partir do orçamento de tokens do modelo selecionado. Desative para fixar um valor de Unidades/lote.",
+    "batchUnits": "Máximo de unidades de tradução por pedido LLM (1–1000). Valores mais baixos reduzem timeouts à custa de mais tokens consumidos.",
+    "batchParallel": "Número de pedidos LLM em simultâneo (1–20). Mais alto é mais rápido, mas aumenta a carga da API; 3–5 é o típico.",
+    "modRuleEdit": "Editar regra de tradução específica do mod",
+    "modRuleAdd": "Adicionar regra de tradução específica do mod"
+  },
+  "settings": {
+    "detectAllGames": "Analisar a instalação do Steam para encontrar automaticamente os caminhos dos jogos",
+    "detectGame": "Detetar automaticamente o caminho de instalação deste jogo",
+    "browsePath": "Selecionar pasta manualmente",
+    "testRpfm": "Validar o executável RPFM e mostrar a versão",
+    "defaultPath": "Utilizar o caminho predefinido",
+    "detectWorkshop": "Detetar automaticamente a pasta de conteúdos do Steam Workshop",
+    "addLanguage": "Adicionar um idioma personalizado",
+    "addIgnoredText": "Adicionar um novo texto de origem a ignorar durante a tradução",
+    "resetIgnoredDefaults": "Eliminar todas as entradas e restaurar os textos ignorados predefinidos",
+    "addRule": "Adicionar uma nova instrução de tradução",
+    "setDefaultModel": "Definir como modelo predefinido para este fornecedor"
+  },
+  "tm": {
+    "import": "Importar entradas da memória de tradução a partir de um ficheiro TMX",
+    "export": "Exportar entradas da memória de tradução para um ficheiro TMX",
+    "cleanup": "Remover entradas não utilizadas para reduzir o tamanho da base de dados"
+  },
+  "glossary": {
+    "new": "Criar um novo glossário"
+  }
+}

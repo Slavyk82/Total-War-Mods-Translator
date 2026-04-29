@@ -1,0 +1,95 @@
+{
+  "title": "Ana sayfa",
+  "sections": {
+    "workflow": "İş akışı",
+    "needsAttention": "İlgi gerekiyor"
+  },
+  "status": {
+    "needsAttentionOne": "1 proje ilginizi bekliyor",
+    "needsAttentionMany": "$count proje ilginizi bekliyor",
+    "readyToCompileOne": "1 proje derlemeye hazır",
+    "readyToCompileMany": "$count proje derlemeye hazır",
+    "modUpdatesOne": "1 mod güncellemesi mevcut",
+    "modUpdatesMany": "$count mod güncellemesi mevcut",
+    "allCaughtUp": "Her şey güncel"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "İncelenecek",
+      "description": "inceleme bekleyen birimleri olan projeler"
+    },
+    "readyToCompile": {
+      "label": "Derlemeye hazır",
+      "description": "%100 çevrilmiş projeler"
+    },
+    "exportOutdated": {
+      "label": "Dışa aktarım güncel değil",
+      "description": "son pack'ten beri değiştirilmiş projeler"
+    },
+    "modUpdates": {
+      "label": "Mod güncellemeleri",
+      "description": "yeni Workshop sürümü mevcut"
+    },
+    "readyToPublish": {
+      "label": "Yayına hazır",
+      "description": "Workshop'a gönderilecek pack(ler)"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "Algıla",
+      "done": "Tamamlandı",
+      "startHere": "Buradan başlayın",
+      "modsDiscovered": "mod bulundu",
+      "noModsYet": "henüz mod yok",
+      "withUpdates": " · $count tanesi güncellemeli",
+      "cta": "Modları görüntüle"
+    },
+    "translate": {
+      "title": "Çevir",
+      "inProgress": "Devam ediyor",
+      "idle": "Boşta",
+      "waiting": "Bekleniyor",
+      "subtitle": "devam eden projeler",
+      "toReview": " · $count incelenecek",
+      "cta": "Projeleri aç"
+    },
+    "publish": {
+      "title": "Yayınla",
+      "waiting": "Bekleniyor",
+      "waitingCount": "$count bekliyor",
+      "subtitle": "Workshop için hazır derlenmiş pack'ler",
+      "cta": "Yayınla"
+    }
+  },
+  "nextAction": {
+    "toReview": "İncelenecek",
+    "translate": "Çevir",
+    "readyToCompile": "Derlemeye hazır",
+    "continue": "Devam et"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "Modlarınızı Kaynaklar bölümünde algılayın",
+      "cta": "Kaynaklara git"
+    },
+    "step2": {
+      "title": "Bir moddan proje oluşturun",
+      "cta": "Kaynakları aç"
+    },
+    "step3": {
+      "title": "Birimleri çevirin",
+      "cta": "Projeleri aç"
+    },
+    "step4": {
+      "title": "Pack'inizi derleyin"
+    },
+    "step5": {
+      "title": "Steam Workshop'ta yayınlayın"
+    }
+  },
+  "support": {
+    "message": "Eğer TWMT, çevirilerinizi düzenli tutarak ve her mod güncellemesinde hayatta kalmasını sağlayarak modlama hayatınızı kolaylaştırdıysa, küçük bir bağış büyük takdir görür ve onu geliştirmeye devam etmemi sağlar!",
+    "buyMeABeer": "Bana bir bira ısmarlayın :-)"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "gameSelectorDropdown": {
+    "loadingGames": "Oyunlar yükleniyor...",
+    "errorLoadingGames": "Oyunlar yüklenirken hata",
+    "configureAGame": "Bir oyun yapılandırın",
+    "selectAGame": "Bir oyun seçin"
+  },
+  "sidebarUpdateChecker": {
+    "version": "Sürüm: $version",
+    "checking": "Kontrol ediliyor...",
+    "upToDate": "Güncel",
+    "checkForUpdates": "Güncellemeleri denetle",
+    "updateAvailable": "v$version mevcut",
+    "dismiss": "Kapat",
+    "downloading": "İndiriliyor...",
+    "installAndRestart": "Kur ve yeniden başlat",
+    "downloadWithSize": "İndir ($size)",
+    "viewOnGitHub": "GitHub'da görüntüle",
+    "viewReleaseNotes": "Sürüm notlarını görüntüle",
+    "whatsNew": "Yenilikler nelerdir?",
+    "errors": {
+      "failedToLoadReleaseNotes": "Sürüm notları yüklenemedi: $message"
+    }
+  },
+  "navigationSidebar": {
+    "themeSwitcher": "Tema değiştirici",
+    "selectTheme": "Tema seç",
+    "groups": {
+      "workflow": "İş akışı",
+      "tools": "Araçlar",
+      "system": "Sistem"
+    },
+    "items": {
+      "home": "Ana sayfa",
+      "detect": "Algıla",
+      "translate": "Çevir",
+      "publish": "Yayınla",
+      "glossary": "Sözlük",
+      "translationMemory": "Çeviri belleği",
+      "gameTranslation": "Oyun çevirisi",
+      "packCompilation": "Pack derlemesi",
+      "settings": "Ayarlar"
+    }
+  },
+  "dataMigrationDialog": {
+    "title": "Veritabanı güncellemesi",
+    "subtitle": "Tek seferlik geçiş gerekiyor",
+    "preparing": "Hazırlanıyor...",
+    "info": "Bu işlem, çeviri belleğinin doğru çalışmasını sağlar. Lütfen uygulamayı kapatmayın.",
+    "actions": {
+      "retry": "Yeniden dene"
+    }
+  },
+  "actionCard": {
+    "clickToOpen": "açmak için tıklayın"
+  },
+  "settingsAccordion": {
+    "activeCount": "$count etkin"
+  },
+  "nextStepCta": {
+    "next": "Sonraki: $label"
+  },
+  "toolbar": {
+    "back": "Geri"
+  },
+  "wizardStepHeader": {
+    "step": "ADIM $stepNumber/$totalSteps"
+  },
+  "filterPill": {
+    "clear": "Temizle"
+  },
+  "relativeDate": {
+    "lessThanOneHour": "< 1sa",
+    "hours": "${hours}sa",
+    "oneDay": "1 gün",
+    "days": "$days gün",
+    "oneMonth": "1 ay",
+    "months": "$months ay",
+    "oneYear": "1 yıl",
+    "years": "$years yıl"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "screen": {
+    "title": "Tradução do jogo",
+    "countOne": "$count tradução",
+    "countMany": "$count traduções",
+    "toolbar": {
+      "create": "Criar tradução do jogo",
+      "noPacksTooltip": "Nenhum pack de localização encontrado para este jogo"
+    },
+    "empty": {
+      "title": "Ainda sem traduções do jogo",
+      "subtitle": "Crie uma nova tradução para traduzir o jogo base",
+      "noPacksWarning": "Nenhum pack de localização encontrado para este jogo",
+      "errorLoadingPacks": "Erro ao carregar packs"
+    },
+    "loading": "A carregar traduções do jogo...",
+    "errors": {
+      "loadFailed": "Erro ao carregar traduções do jogo"
+    },
+    "dialogs": {
+      "delete": {
+        "title": "Eliminar tradução do jogo",
+        "message": "Tem a certeza de que pretende eliminar \"$name\"?",
+        "warning": "Esta ação não pode ser anulada.",
+        "confirm": "Eliminar"
+      }
+    },
+    "toasts": {
+      "deleted": "Tradução do jogo \"$name\" eliminada",
+      "deleteFailed": "Falha ao eliminar a tradução do jogo: $error"
+    }
+  },
+  "wizard": {
+    "title": "Criar tradução do jogo",
+    "steps": {
+      "selectSource": "Selecionar pack de origem",
+      "selectTargets": "Selecionar idiomas de destino"
+    },
+    "progress": {
+      "creatingProject": "A criar projeto...",
+      "extracting": "A extrair ficheiros de localização...",
+      "extractingProgress": "A extrair... $percent%",
+      "processing": "A processar..."
+    },
+    "errors": {
+      "selectSourcePack": "Selecione um pack de localização de origem",
+      "selectTargetLanguage": "Selecione pelo menos um idioma de destino"
+    },
+    "actions": {
+      "back": "Voltar",
+      "cancel": "Cancelar",
+      "next": "Seguinte",
+      "create": "Criar"
+    }
+  },
+  "stepSource": {
+    "description": "Escolha o pack de localização do jogo que servirá como origem da tradução.",
+    "sectionLabel": "PACKS DE LOCALIZAÇÃO DISPONÍVEIS",
+    "noGameSelected": "Nenhum jogo selecionado",
+    "noPacks": {
+      "title": "Nenhum pack de localização encontrado",
+      "subtitle": "Confirme que o jogo está instalado e que tem ficheiros de localização na pasta data."
+    }
+  },
+  "stepTargets": {
+    "description": "Escolha os idiomas para os quais pretende traduzir o jogo.",
+    "translatingFrom": "A traduzir a partir de: ",
+    "selectionCount": "$count idioma(s) selecionado(s)",
+    "noLanguages": {
+      "title": "Nenhum idioma disponível",
+      "subtitle": "Configure os idiomas de destino em Definições."
+    },
+    "actions": {
+      "selectAll": "Selecionar tudo",
+      "clear": "Limpar",
+      "addLanguage": "Adicionar idioma"
+    }
+  },
+  "addLanguageDialog": {
+    "title": "Adicionar idioma personalizado",
+    "description": "Adicione um idioma personalizado que ficará disponível para os projetos de tradução.",
+    "fields": {
+      "codeLabel": "CÓDIGO DO IDIOMA",
+      "codeHint": "ex.: pl, ko, ja",
+      "codeHelper": "Código ISO 639-1 (2-3 caracteres)",
+      "codeErrors": {
+        "required": "O código do idioma é obrigatório",
+        "tooShort": "O código deve ter pelo menos 2 caracteres",
+        "lettersOnly": "O código deve conter apenas letras"
+      },
+      "nameLabel": "NOME DO IDIOMA",
+      "nameHint": "ex.: Polaco, Coreano, Japonês",
+      "nameHelper": "Nome de apresentação deste idioma",
+      "nameErrors": {
+        "required": "O nome do idioma é obrigatório"
+      }
+    },
+    "defaultLanguage": {
+      "label": "Definir como idioma predefinido",
+      "description": "Este idioma passará a ser o idioma de destino predefinido para todos os novos projetos de tradução de mods."
+    },
+    "info": "Os idiomas personalizados podem ser eliminados mais tarde nas Definições. Os idiomas do sistema (Inglês, Francês, etc.) não podem ser modificados.",
+    "actions": {
+      "add": "Adicionar"
+    },
+    "toasts": {
+      "addedAsDefault": "Idioma \"$name\" adicionado e definido como predefinido",
+      "addedSuccessfully": "Idioma \"$name\" adicionado com sucesso",
+      "addFailed": "Falha ao adicionar idioma"
+    }
+  }
+}

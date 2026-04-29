@@ -1,0 +1,20 @@
+{
+  "dialogs": {
+    "whatsNew": {
+      "title": "Yenilikler",
+      "releasePrefix": "Sürüm $version",
+      "noNotes": "Bu sürüm için sürüm notu bulunmuyor."
+    },
+    "releaseHistory": {
+      "title": "Sürüm geçmişi",
+      "subtitleOne": "$count sürüm",
+      "subtitleMany": "$count sürüm",
+      "noNotes": "Sürüm notu bulunmuyor",
+      "noReleasesAvailable": "Bu sürüm için sürüm notu bulunmuyor."
+    }
+  },
+  "actions": {
+    "viewOnGitHub": "GitHub'da görüntüle",
+    "gotIt": "Anladım"
+  }
+}

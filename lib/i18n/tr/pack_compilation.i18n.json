@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Pack derlemesi",
+    "new": "Yeni",
+    "untitled": "Başlıksız",
+    "compilation": "Derleme",
+    "language": "Dil",
+    "modified": "Değiştirilme",
+    "status": "Durum",
+    "basics": "Genel",
+    "output": "Çıktı",
+    "name": "Ad",
+    "targetLanguage": "Hedef dil",
+    "prefix": "Ön ek",
+    "packName": "Pack adı",
+    "fileName": "Dosya adı",
+    "location": "Konum",
+    "publishing": "Yayınlama",
+    "selectProjects": "Projeleri seç",
+    "noLanguage": "Dil yok",
+    "steamWorkshopBbcode": "Steam Workshop BBCode",
+    "bbcodeHint": "Bu BBCode'u Steam Workshop açıklamanızda kullanmak için kopyalayın:",
+    "conflictingProjects": "Çakışan projeler",
+    "conflictingKey": "Çakışan anahtar",
+    "sourceTextThis": "Kaynak metin (bu proje)",
+    "sourceTextConflicting": "Kaynak metin (çakışan)"
+  },
+  "actions": {
+    "newCompilation": "+ Yeni derleme",
+    "compile": "Derle ve pack oluştur",
+    "compiling": "Derleniyor...",
+    "forceCompile": "Derlemeyi zorla",
+    "openFolder": "Klasörü aç",
+    "stopTooltip": "Durdur",
+    "cancelling": "İptal ediliyor...",
+    "deleteCompilation": "Derlemeyi sil"
+  },
+  "status": {
+    "draft": "Taslak",
+    "regeneratePack": "Pack'i yeniden oluştur",
+    "generated": "Oluşturuldu",
+    "generatingPack": "Pack oluşturuluyor...",
+    "regenerateTooltip": "Son pack oluşturulduktan sonra dahil edilen bir veya daha fazla proje değişti."
+  },
+  "messages": {
+    "noCompilationsYet": "Henüz derleme yok",
+    "createCompilationHint": "Birden fazla projeyi tek bir .pack içinde birleştirmek için bir derleme oluşturun.",
+    "errorLoadingCompilations": "Derlemeler yüklenirken hata: $error",
+    "packGenerated": "Pack oluşturuldu",
+    "deletedSuccess": "\"$name\" silindi",
+    "deleteFailed": "Silme başarısız: $error",
+    "noModsWithWorkshopIds": "Steam Workshop ID'si olan seçili mod yok"
+  },
+  "dialogs": {
+    "deleteTitle": "Derlemeyi sil",
+    "deleteMessage": "\"$name\" silinsin mi?",
+    "deleteWarning": "Bu işlem geri alınamaz.",
+    "conflictsTitle": "Çözümlenmemiş çakışmalar tespit edildi",
+    "conflictsBody": "Seçili projeler arasında $count çakışma çözümlenmemiş durumda. Şimdi derlemek, etkilenen girdiler için oyun içi çevirilerin öngörülemeyen biçimde görüntülenmesine yol açabilir.\n\nÖnce çözümlemek için iptal edebilir veya derlemeyi zorlayarak yine de devam edebilirsiniz.",
+    "conflictsForProject": "Proje için çakışmalar"
+  },
+  "hints": {
+    "namePlaceholder": "Türkçe çevirilerim",
+    "prefixPlaceholder": "!!!!!!!!!!_tr_compilation_twmt_",
+    "packNamePlaceholder": "benim_pack",
+    "selectLanguage": "Bir dil seçin...",
+    "noProjectsFound": "Proje bulunamadı",
+    "tryDifferentSearch": "Farklı bir arama terimi deneyin",
+    "selectGameFirst": "Önce kenar çubuğundan bir oyun seçin",
+    "selectLanguageFirst": "Önce bir dil seçin",
+    "noProjectsWithLanguage": "Bu dilde çevirisi olan proje yok",
+    "searchProjects": "Projelerde ara...",
+    "showOnlySelected": "Yalnızca seçilenleri göster",
+    "showOnlySelectedTooltip": "Yalnızca bu derlemeye dahil olan projeleri göster",
+    "clearSelection": "Seçimi temizle",
+    "selectedCount": "$count seçildi",
+    "failedToLoadProjects": "Projeler yüklenemedi"
+  },
+  "conflicts": {
+    "analysisWillRun": "Çakışma analizi çalıştırılacak",
+    "whenYouClickGenerate": "Pack Oluştur'a tıkladığınızda",
+    "noConflictsDetected": "Çakışma tespit edilmedi",
+    "readyToCompile": "Derlemeye hazır",
+    "analyzingConflicts": "Çakışmalar analiz ediliyor...",
+    "analysisFailed": "Analiz başarısız",
+    "conflictInfo": "Ayrıntıları görmek için bir proje adına tıklayın. Hariç tutmak için işareti kaldırın.",
+    "noAnalysisData": "Analiz verisi yok",
+    "noConflictsFound": "Çakışma bulunamadı",
+    "errorPrefix": "Hata: $error",
+    "bbcodeError": "BBCode oluşturulurken hata"
+  }
+}

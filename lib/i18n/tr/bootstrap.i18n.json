@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "Workshop modları taranıyor...",
+    "titleRefreshing": "Abone sayıları yenileniyor...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI bulunamadı",
+      "content": "Workshop taraması, mod pack dosyalarını okumak için RPFM-CLI'a ihtiyaç duyar; ancak yapılandırılan yolda bulunamadı.\n\nYolu güncellemek veya yeni bir kopya indirmek için Ayarlar → Klasörler → RPFM bölümünü açın.",
+      "actions": {
+        "close": "Kapat",
+        "openSettings": "Ayarları aç"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "Doğrulama verileri hazırlanıyor",
+      "updating": "Doğrulama verileri güncelleniyor",
+      "resuming": "Doğrulama güncellemesi sürdürülüyor",
+      "required": "Doğrulama verisi güncellemesi gerekiyor"
+    },
+    "labels": {
+      "scanningEntries": "Doğrulama girdileri taranıyor...",
+      "normalizedOf": "$processed / $total normalize edildi",
+      "upgradingLegacy": "Eski doğrulama kayıtları yeni biçime yükseltiliyor.",
+      "preparing": "Hazırlanıyor...",
+      "startingRescan": "Yeniden tarama başlatılıyor...",
+      "rescannedOf": "$total üzerinden $done yeniden tarandı",
+      "rescannedOfEta": "$total üzerinden $done yeniden tarandı — Tahmini süre $eta",
+      "closingWillPause": "Uygulamayı kapatmak güncellemeyi duraklatır; bir sonraki başlatmada devam eder."
+    },
+    "plan": {
+      "resumeBody": "Önceki bir güncelleme yarıda kaldı. $totalAll birimden $already tanesi zaten işlendi. Kalan: $remaining birim • Tahmini: ~$estimated.",
+      "freshBody": "Bu sürüm, çeviri doğrulama tanılarının daha zengin yeni bir biçimini kullanır. Mevcut tüm çevirilerin bundan yararlanabilmesi için bir kez yeniden taranması gerekir.\n\nYeniden taranacak $total birim • Tahmini: ~$estimated\n\nBu yalnızca bir kez çalışır. Tamamlanana kadar uygulamayı kapatmayın — kesintiye uğrarsa güncelleme bir sonraki başlatmada devam eder."
+    },
+    "actions": {
+      "continue": "Devam et",
+      "startRescan": "Yeniden taramayı başlat"
+    },
+    "toasts": {
+      "updateComplete": "Doğrulama verisi güncellemesi tamamlandı."
+    }
+  }
+}

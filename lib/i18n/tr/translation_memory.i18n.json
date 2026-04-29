@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Çeviri belleği",
+    "statistics": "İstatistikler",
+    "totalEntries": "Toplam girdi",
+    "languagePairs": "Dil çiftleri",
+    "performance": "Performans",
+    "totalReuse": "Toplam yeniden kullanım",
+    "tokensSaved": "Tasarruf edilen token",
+    "reuseRate": "Yeniden kullanım oranı",
+    "sourceText": "Kaynak metin",
+    "targetText": "Hedef metin",
+    "usageCount": "Kullanım sayısı",
+    "lastUsed": "Son kullanım",
+    "created": "Oluşturulma",
+    "selectedFile": "Seçilen dosya",
+    "importOptions": "İçe aktarma seçenekleri",
+    "filters": "Filtreler",
+    "whatToExport": "Ne dışa aktarılsın",
+    "outputFile": "Çıktı dosyası",
+    "formatOptions": "Biçim seçenekleri",
+    "deleteIfUnusedDays": "Şu kadar gündür kullanılmıyorsa sil (gün)",
+    "deleteAll": "Tümünü sil",
+    "targetLanguage": "Hedef dil"
+  },
+  "actions": {
+    "importTmx": "TMX'i içe aktar",
+    "exportTmx": "TMX'e dışa aktar",
+    "cleanup": "Temizle",
+    "import": "İçe aktar",
+    "export": "Dışa aktar",
+    "importing": "İçe aktarılıyor...",
+    "exporting": "Dışa aktarılıyor..."
+  },
+  "dialogs": {
+    "importTitle": "Çeviri belleğini içe aktar (TMX)",
+    "exportTitle": "Çeviri belleğini dışa aktar (TMX)",
+    "cleanupTitle": "Çeviri belleğini temizle",
+    "entryDetailsTitle": "Çeviri belleği girdisi ayrıntıları",
+    "deleteTmTitle": "TM girdisini sil",
+    "deleteTmMessage": "Bu çeviri belleği girdisini silmek istediğinizden emin misiniz?",
+    "deleteTmWarning": "Bu işlem geri alınamaz."
+  },
+  "messages": {
+    "noEntries": "Çeviri belleği girdisi yok",
+    "importHint": "Belleğinizi oluşturmak için bir TMX dosyasını içe aktarın veya çevirmeye başlayın",
+    "failedToLoadEntries": "Girdiler yüklenemedi",
+    "failedToLoadStatistics": "İstatistikler yüklenemedi",
+    "removeUnusedHint": "Çeviri belleğinizi optimize etmek için kullanılmayan girdileri kaldırın.",
+    "allEntriesWillBeDeleted": "Tüm girdiler silinecek — bu işlem geri alınamaz",
+    "deletedEntries": "$count girdi silindi",
+    "tmEntryDeletedSuccess": "TM girdisi başarıyla silindi",
+    "failedToDeleteTmEntry": "TM girdisi silinemedi",
+    "deleteEntry": "Girdiyi sil",
+    "importComplete": "İçe aktarım tamamlandı",
+    "exportComplete": "Dışa aktarım tamamlandı",
+    "exportedEntries": "$count girdi dışa aktarıldı",
+    "processedOf": "$total girdiden $processed işlendi",
+    "sizeKb": "Boyut: $size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 girdi",
+    "showingRange": "$total girdiden $start–$end gösteriliyor",
+    "firstPage": "İlk sayfa",
+    "previousPage": "Önceki sayfa",
+    "nextPage": "Sonraki sayfa",
+    "lastPage": "Son sayfa"
+  },
+  "importResult": {
+    "totalEntries": "Toplam girdi",
+    "imported": "İçe aktarıldı",
+    "skippedDuplicates": "Atlandı (yinelenen)",
+    "failedValidation": "Başarısız (doğrulama hataları)"
+  },
+  "options": {
+    "overwriteExisting": "Mevcut girdilerin üzerine yaz",
+    "overwriteExistingHint": "Mevcut girdileri içe aktarılanlarla değiştir",
+    "validateEntries": "Girdileri doğrula",
+    "validateEntriesHint": "İçe aktarmadan önce hataları denetle",
+    "includeMetadata": "Üst veriyi dahil et",
+    "includeMetadataHint": "Kalite puanları, kullanım sayıları vb. ekle",
+    "includeStats": "İstatistikleri dahil et",
+    "includeStatsHint": "Dosya başlığına dışa aktarım özeti ve istatistikleri ekle",
+    "allEntries": "Tüm girdiler (filtrelerle eşleşen)",
+    "frequentlyUsed": "Yalnızca sık kullanılanlar (>5 kez)"
+  },
+  "columns": {
+    "sourceText": "KAYNAK METİN",
+    "targetText": "HEDEF METİN",
+    "usage": "KULLANIM",
+    "lastUsed": "SON KULLANIM"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Bir .tmx dosyası seçmek için tıklayın",
+    "clickToSelectSaveLocation": "Kaydetme konumunu seçmek için tıklayın",
+    "searchPlaceholder": "Çeviri belleğinde ara..."
+  }
+}

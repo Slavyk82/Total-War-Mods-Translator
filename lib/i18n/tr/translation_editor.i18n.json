@@ -1,0 +1,353 @@
+{
+  "screen": {
+    "title": "Çeviri düzenleyici",
+    "crumbWork": "Çalışma",
+    "crumbProjects": "Projeler"
+  },
+  "toolbar": {
+    "searchHint": "Anahtar · kaynak · hedef ara",
+    "filterStateLabel": "DURUM",
+    "filterSeverityLabel": "ÖNEM",
+    "clearLabel": "Temizle",
+    "sectionAiContext": "Yapay zekâ bağlamı",
+    "sectionOther": "Diğer",
+    "sectionWorkflow": "İş akışı",
+    "autoBatchSize": "Otomatik yığın boyutu",
+    "unitsPerBatch": "Birim / yığın",
+    "parallelBatches": "Paralel yığınlar",
+    "useTranslationMemory": "Çeviri belleğini kullan",
+    "modSpecificRule": "Moda özgü kural",
+    "importExternalPack": "Harici pack içe aktar",
+    "openLocalFolder": "Yerel klasörü aç"
+  },
+  "filters": {
+    "pending": "Beklemede",
+    "translated": "Çevrildi",
+    "needsReview": "İncelenecek",
+    "errors": "Hatalar",
+    "warnings": "Uyarılar"
+  },
+  "sidebar": {
+    "translateSelection": "Seçimi çevir",
+    "translateAll": "Tümünü çevir",
+    "review": "İncele",
+    "generatePack": "Pack oluştur",
+    "unitSingular": "birim",
+    "unitPlural": "birim"
+  },
+  "inspector": {
+    "emptyState": "Ayrıntıları görüntülemek için bir birim seçin",
+    "unitsSelected": "$count birim seçildi",
+    "accept": "Kabul et",
+    "reject": "Reddet",
+    "edit": "Düzenle",
+    "retranslate": "Yeniden çevir",
+    "deselect": "Seçimi kaldır",
+    "validationIssues": "DOĞRULAMA SORUNLARI",
+    "sourceLabel": "Kaynak · $lang",
+    "targetLabel": "Hedef · $lang — düzenleniyor",
+    "unitLabel": "Birim"
+  },
+  "datagrid": {
+    "columnKey": "ANAHTAR",
+    "columnSource": "KAYNAK",
+    "columnTarget": "HEDEF",
+    "errorLoadingTranslations": "Çeviriler yüklenirken hata"
+  },
+  "statusBar": {
+    "units": "$count birim",
+    "translated": "$count çevrildi (%$pct)",
+    "needReview": "$count incelenecek",
+    "tmReuse": "TM %$pct"
+  },
+  "dialogs": {
+    "noSelection": {
+      "title": "Seçim yok",
+      "message": "Lütfen çevirmek için bir veya daha fazla çeviri birimi seçin."
+    },
+    "noUntranslated": {
+      "title": "Çevrilmemiş birim yok",
+      "message": "Bu proje dilindeki tüm birimler zaten çevrildi."
+    },
+    "allTranslated": {
+      "title": "Seçilen tüm birimler çevrilmiş",
+      "message": "Seçilen tüm birimler zaten çevrildi."
+    },
+    "translateAll": {
+      "title": "Tümünü çevir",
+      "message": "$count çevrilmemiş birim çevrilsin mi?"
+    },
+    "translateSelected": {
+      "title": "Seçilenleri çevir",
+      "message": "$count çevrilmemiş birim çevrilsin mi ($skipped zaten çevrildi)?"
+    },
+    "forceRetranslate": {
+      "title": "Yeniden çevirmeyi zorla",
+      "message": "$count birim yeniden çevrilsin mi?\n\nUyarı: bu işlem mevcut çevirilerin üzerine yazacaktır."
+    },
+    "validationRescan": {
+      "title": "Doğrulama yeniden taraması",
+      "scanning": "Taranıyor $current/$total...",
+      "saving": "$count güncelleme kaydediliyor..."
+    },
+    "noIssues": {
+      "title": "İncelenecek sorun yok",
+      "message": "Tüm çeviriler doğrulamadan geçti."
+    },
+    "nothingToScan": {
+      "title": "Taranacak bir şey yok",
+      "message": "Çevrilmiş girdi bulunamadı."
+    },
+    "clearConfirm": {
+      "title": "Temizlemeyi onayla",
+      "messageSingle": "Bu çeviriyi temizlemek istediğinizden emin misiniz?",
+      "messageMultiple": "$count çeviriyi temizlemek istediğinizden emin misiniz?",
+      "clearButton": "Temizle",
+      "cannotBeUndone": "Bu işlem geri alınamaz."
+    },
+    "deleteConfirm": {
+      "title": "Silmeyi onayla",
+      "messageSingle": "Bu çeviriyi silmek istediğinizden emin misiniz?",
+      "messageMultiple": "$count çeviriyi silmek istediğinizden emin misiniz?",
+      "deleteButton": "Sil",
+      "cannotBeUndone": "Bu işlem geri alınamaz."
+    },
+    "clearTranslations": {
+      "title": "Çeviriler temizleniyor"
+    },
+    "editTranslation": {
+      "title": "Çeviriyi düzenle",
+      "translationLabel": "Çeviri",
+      "hint": "Düzeltilmiş çeviriyi girin..."
+    },
+    "translationHistory": {
+      "title": "Çeviri geçmişi",
+      "noHistory": "Geçmiş bulunmuyor",
+      "noHistoryDetail": "Bu çeviri için henüz kayıtlı bir geçmiş yok.",
+      "errorLoading": "Geçmiş yüklenirken hata"
+    },
+    "promptPreview": {
+      "title": "Komut önizlemesi",
+      "subtitle": "LLM'e gönderilecek komutun tam halini görüntüleyin",
+      "tabSystemPrompt": "Sistem komutu",
+      "tabUserMessage": "Kullanıcı mesajı",
+      "tabApiPayload": "API yükü",
+      "systemPromptDesc": "Sistem mesajı olarak gönderilen yönergeler, bağlam ve sözlük",
+      "userMessageDesc": "Kaynak metni içeren gerçek çeviri isteği",
+      "apiPayloadDesc": "Sağlayıcıya gönderileceği şekliyle eksiksiz JSON yükü",
+      "copyFullPrompt": "Tam komutu kopyala",
+      "copiedToClipboard": "$title panoya kopyalandı",
+      "noPreview": "Önizleme bulunmuyor",
+      "errorBuilding": "Komut önizlemesi oluşturulurken hata",
+      "keyLabel": "Anahtar: $key"
+    },
+    "providerSetup": {
+      "title": "Yapılandırılmış çeviri sağlayıcısı yok",
+      "message": "Otomatik çeviriyi kullanmak için en az bir LLM sağlayıcısı yapılandırmanız gerekir. Lütfen Ayarlar'a gidin ve aşağıdaki sağlayıcılardan birini ayarlayın:",
+      "goToSettings": "Ayarlara git",
+      "anthropic": "Anthropic Claude",
+      "anthropicDesc": "Bağlam farkındalığı olan yüksek kaliteli çeviriler",
+      "openai": "OpenAI GPT",
+      "openaiDesc": "İyi çeviriler sunan çok yönlü dil modeli",
+      "deepl": "DeepL",
+      "deeplDesc": "Uzmanlaşmış çeviri hizmeti"
+    },
+    "modRule": {
+      "title": "Mod çeviri kuralı",
+      "infoBanner": "Bu kural yalnızca bu mod için geçerlidir ve her çeviri komutunda genel kurallardan sonra eklenir.",
+      "ruleTextLabel": "Kural metni",
+      "ruleTextHint": "örn. Bu mod, çevrilmemesi gereken fantastik adlar kullanır...",
+      "ruleActive": "Kural etkin",
+      "ruleDisabled": "Kural devre dışı",
+      "deleteTitle": "Mod kuralını sil",
+      "deleteMessage": "Bu kuralı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "savedSuccess": "Mod kuralı başarıyla kaydedildi",
+      "deletedSuccess": "Mod kuralı silindi",
+      "errorSave": "Kural kaydedilemedi",
+      "errorDelete": "Kural silinemedi",
+      "errorToggle": "Kural değiştirilemedi",
+      "validationEmpty": "Lütfen bir kural metni girin"
+    },
+    "packImport": {
+      "title": "Bir .pack dosyasından çevirileri içe aktar",
+      "noFileSelected": "Seçili dosya yok",
+      "browse": "Gözat",
+      "analyzingPack": "Pack dosyası analiz ediliyor...",
+      "selectPackPrompt": "Çeviri içeren bir .pack dosyası seçin",
+      "noMatchingTranslations": "Eşleşen çeviri bulunamadı",
+      "overwriteExisting": "Mevcut çevirilerin üzerine yaz",
+      "selectAll": "Tümünü seç",
+      "deselectAll": "Seçimi temizle",
+      "importButton": "İçe aktar ($count)",
+      "importing": "İçe aktarılıyor...",
+      "cancelImport": "İçe aktarımı iptal et",
+      "cancelling": "İptal ediliyor...",
+      "startingImport": "İçe aktarım başlatılıyor...",
+      "summaryTitle": "Analiz özeti",
+      "summaryTotalInPack": "Pack içindeki toplam",
+      "summaryMatches": "Eşleşmeler",
+      "summaryNew": "Yeni",
+      "summaryConflicts": "Çakışmalar",
+      "summaryNotFound": "Bulunamayan",
+      "gridColumnKey": "Anahtar",
+      "gridColumnValue": "İçe aktarılacak değer",
+      "gridColumnStatus": "Durum",
+      "statusConflict": "Çakışma",
+      "statusNew": "Yeni",
+      "importComplete": "İçe aktarım tamamlandı: $imported çeviri içe aktarıldı",
+      "importSkipped": ", $count atlandı",
+      "importErrors": ", $count hata",
+      "progressEntries": "$current / $total girdi işlendi"
+    },
+    "export": {
+      "title": "Çevirileri dışa aktar",
+      "selectFormat": "Dışa aktarım biçimini seçin:",
+      "packTitle": ".pack (Total War Modu)",
+      "packSubtitle": "Oyuna hazır paket dosyası",
+      "csvTitle": "CSV",
+      "csvSubtitle": "Virgülle ayrılmış değerler",
+      "excelTitle": "Excel",
+      "excelSubtitle": "Microsoft Excel elektronik tablosu"
+    },
+    "deleteLanguage": {
+      "title": "Dili sil",
+      "message": "\"$name\" bu projeden kaldırılsın mı? $count çeviri silinecek.",
+      "cannotBeUndone": "Bu işlem geri alınamaz."
+    },
+    "sourceText": "Kaynak metin"
+  },
+  "progress": {
+    "generatingPack": {
+      "title": "Pack oluşturma",
+      "header": "Pack oluşturuluyor",
+      "packGenerated": "Pack oluşturuldu",
+      "translationsIncluded": "$count çeviri dahil edildi",
+      "languages": "Diller: $langs",
+      "steps": {
+        "preparingData": "Veriler hazırlanıyor...",
+        "generatingLocFiles": ".loc dosyaları oluşturuluyor...",
+        "creatingPack": ".pack dosyası oluşturuluyor...",
+        "generatingImage": "Pack görseli oluşturuluyor...",
+        "finalizing": "Sonlandırılıyor...",
+        "completed": "Pack oluşturuldu!",
+        "collectingData": "Çeviri verileri toplanıyor...",
+        "writingFile": "Çıktı dosyası yazılıyor..."
+      },
+      "processing": "İşleniyor: $lang ($current/$total)",
+      "inProgressWarning": "Pack oluşturma devam ediyor. Tamamlanmasını bekleyin.",
+      "statusFailed": "Başarısız",
+      "statusCompleted": "Tamamlandı",
+      "statusInProgress": "Devam ediyor"
+    },
+    "translation": {
+      "header": "Toplu çeviri",
+      "title": "Çeviri devam ediyor",
+      "batchId": "Yığın kimliği: $id",
+      "progress": "İlerleme",
+      "units": "$processed / $total birim",
+      "stop": "Durdur",
+      "stopping": "Durduruluyor...",
+      "stopWarning": "Çeviri devam ediyor. Güvenli çıkış için \"Durdur\"a tıklayın.",
+      "preparing": "Çeviri hazırlanıyor",
+      "preparingDetail": "Yığın oluşturuluyor ve bağlam toplanıyor...",
+      "preparationFailed": "Çeviri yığını hazırlanamadı",
+      "preparationError": "Hazırlama hatası: $error",
+      "currentPhase": "Geçerli aşama",
+      "paused": "Duraklatıldı",
+      "elapsed": {
+        "seconds": "Geçen süre: $n saniye",
+        "minutes": "Geçen süre: $m:$s"
+      },
+      "estimatedRemaining": {
+        "seconds": "Yaklaşık $n saniye kaldı",
+        "minutes": "Yaklaşık $n dakika kaldı",
+        "minutesPlural": "Yaklaşık $n dakika kaldı"
+      },
+      "logs": {
+        "title": "Günlükler",
+        "autoScroll": "Otomatik kaydır",
+        "waiting": "Günlükler bekleniyor..."
+      },
+      "llmLogs": "LLM iletişim günlükleri ($count)",
+      "llmLogsEmpty": "Henüz LLM iletişimi yok. Çeviri ilerledikçe günlükler görünecek.",
+      "phases": {
+        "initializing": "Başlatılıyor...",
+        "tmExactLookup": "Çeviri belleği denetleniyor (kesin)",
+        "tmFuzzyLookup": "Çeviri belleği denetleniyor (yaklaşık)",
+        "buildingPrompt": "Çeviri komutu oluşturuluyor",
+        "llmTranslation": "LLM ile çevriliyor",
+        "validating": "Çeviriler doğrulanıyor",
+        "saving": "Çeviriler kaydediliyor",
+        "updatingTm": "Çeviri belleği güncelleniyor",
+        "finalizing": "Yığın sonlandırılıyor",
+        "completed": "Tamamlandı"
+      },
+      "stats": {
+        "success": "Başarılı",
+        "failed": "Başarısız",
+        "skipped": "Atlandı"
+      }
+    }
+  },
+  "contextMenu": {
+    "selectAll": "Tümünü seç",
+    "forceRetranslate": "Yeniden çevirmeyi zorla",
+    "forceRetranslateCount": "Yeniden çevirmeyi zorla ($count)",
+    "markAsTranslated": "Çevrildi olarak işaretle",
+    "markAsTranslatedCount": "Çevrildi olarak işaretle ($count)",
+    "clearTranslation": "Çeviriyi temizle",
+    "clearTranslationCount": "Çeviriyi temizle ($count)",
+    "viewHistory": "Geçmişi görüntüle",
+    "viewPrompt": "Komutu görüntüle",
+    "deleteCount": "Sil ($count)"
+  },
+  "actions": {
+    "undoSuccess": "Geri alma başarılı",
+    "undoFailed": "Geri alma başarısız: $error",
+    "redoSuccess": "Yineleme başarılı",
+    "redoFailed": "Yineleme başarısız: $error",
+    "autoFixApplied": "Otomatik düzeltme uygulandı",
+    "translationValidated": "Çeviri doğrulandı",
+    "markedAsTranslated": "$count çeviri çevrildi olarak işaretlendi",
+    "cleared": "$count çeviri temizlendi",
+    "deleted": "$count çeviri silindi",
+    "copied": "$count satır panoya kopyalandı",
+    "pasted": "$count çeviri yapıştırıldı",
+    "noRowsSelected": "Seçili satır yok",
+    "clipboardEmpty": "Pano boş",
+    "noValidTranslations": "Panoda geçerli çeviri bulunamadı",
+    "packGenerationFailed": "Pack oluşturma başarısız",
+    "failedToOpenModFolder": "Mod klasörü açılamadı: $error",
+    "gamePathNotConfigured": "Oyun kurulum yolu yapılandırılmamış."
+  },
+  "languageSwitcher": {
+    "noLanguage": "Bu projede dil yok",
+    "addLanguage": "+ Dil ekle",
+    "deleteLanguage": "Dili sil",
+    "cannotDeleteLast": "Son dil silinemez"
+  },
+  "validation": {
+    "validationIssuesFound": "Doğrulama sorunları bulundu",
+    "readyToValidate": "Doğrulamaya hazır",
+    "noIssuesFound": "Sorun bulunamadı!",
+    "translationPassesAll": "Bu çeviri tüm doğrulama denetimlerinden geçer",
+    "selectUnitToView": "Doğrulama sorunlarını görüntülemek için bir çeviri birimi seçin",
+    "errorLoadingIssues": "Doğrulama sorunları yüklenirken hata",
+    "validate": "Doğrula",
+    "autoFix": "Otomatik düzelt",
+    "errors": "Hatalar",
+    "warnings": "Uyarılar",
+    "info": "Bilgi",
+    "noIssues": "Sorun bulunamadı"
+  },
+  "issueTypes": {
+    "emptyTranslation": "Boş çeviri",
+    "lengthDifference": "Uzunluk farkı",
+    "missingVariables": "Eksik değişkenler",
+    "whitespaceIssue": "Boşluk sorunu",
+    "punctuationMismatch": "Noktalama uyuşmazlığı",
+    "caseMismatch": "Büyük/küçük harf uyuşmazlığı",
+    "missingNumbers": "Eksik sayılar",
+    "modifiedNumbers": "Değiştirilmiş sayılar"
+  }
+}

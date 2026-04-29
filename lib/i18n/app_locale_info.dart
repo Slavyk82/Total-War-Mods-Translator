@@ -50,6 +50,21 @@ const Map<AppLocale, AppLocaleInfo> _localeInfo = {
     nativeName: 'Русский',
     flagAsset: 'assets/flags/ru.png',
   ),
+  AppLocale.pt: AppLocaleInfo(
+    locale: AppLocale.pt,
+    nativeName: 'Português',
+    flagAsset: 'assets/flags/pt.png',
+  ),
+  AppLocale.ptBr: AppLocaleInfo(
+    locale: AppLocale.ptBr,
+    nativeName: 'Português (Brasil)',
+    flagAsset: 'assets/flags/br.png',
+  ),
+  AppLocale.tr: AppLocaleInfo(
+    locale: AppLocale.tr,
+    nativeName: 'Türkçe',
+    flagAsset: 'assets/flags/tr.png',
+  ),
 };
 
 /// Returns the display info for [locale]. Throws if the map is missing

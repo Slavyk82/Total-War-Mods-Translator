@@ -1,0 +1,14 @@
+{
+  "labels": {
+    "resultOf": "$total sonuçtan $index. sonuç",
+    "pageOf": "$total sayfadan $current. sayfa",
+    "keyPrefix": "Anahtar: $key",
+    "source": "Kaynak:",
+    "target": "Hedef:"
+  },
+  "actions": {
+    "goTo": "Git",
+    "previousPage": "Önceki sayfa",
+    "nextPage": "Sonraki sayfa"
+  }
+}

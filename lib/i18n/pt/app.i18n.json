@@ -1,0 +1,8 @@
+{
+  "language": {
+    "title": "Idioma da aplicação",
+    "subtitle": "Idioma utilizado pela interface do TWMT. É independente dos idiomas para os quais os seus mods são traduzidos.",
+    "systemDefault": "Padrão do sistema",
+    "label": "Idioma"
+  }
+}

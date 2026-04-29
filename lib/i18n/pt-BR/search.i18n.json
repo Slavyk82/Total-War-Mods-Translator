@@ -1,0 +1,14 @@
+{
+  "labels": {
+    "resultOf": "Resultado $index de $total",
+    "pageOf": "Página $current de $total",
+    "keyPrefix": "Chave: $key",
+    "source": "Origem:",
+    "target": "Destino:"
+  },
+  "actions": {
+    "goTo": "Ir para",
+    "previousPage": "Página anterior",
+    "nextPage": "Próxima página"
+  }
+}

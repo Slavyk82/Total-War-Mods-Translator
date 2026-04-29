@@ -1,0 +1,95 @@
+{
+  "title": "Início",
+  "sections": {
+    "workflow": "Fluxo de trabalho",
+    "needsAttention": "Requer atenção"
+  },
+  "status": {
+    "needsAttentionOne": "1 projeto requer sua atenção",
+    "needsAttentionMany": "$count projetos requerem sua atenção",
+    "readyToCompileOne": "1 projeto pronto para compilar",
+    "readyToCompileMany": "$count projetos prontos para compilar",
+    "modUpdatesOne": "1 atualização de mod disponível",
+    "modUpdatesMany": "$count atualizações de mod disponíveis",
+    "allCaughtUp": "Tudo em dia"
+  },
+  "actionGrid": {
+    "toReview": {
+      "label": "A revisar",
+      "description": "projetos com unidades a revisar"
+    },
+    "readyToCompile": {
+      "label": "Prontos para compilar",
+      "description": "projetos 100% traduzidos"
+    },
+    "exportOutdated": {
+      "label": "Exportação desatualizada",
+      "description": "projetos modificados desde o último pack"
+    },
+    "modUpdates": {
+      "label": "Atualizações de mod",
+      "description": "nova versão do Workshop disponível"
+    },
+    "readyToPublish": {
+      "label": "Prontos para publicar",
+      "description": "pack(s) para enviar ao Workshop"
+    }
+  },
+  "workflow": {
+    "detect": {
+      "title": "Detectar",
+      "done": "Concluído",
+      "startHere": "Comece aqui",
+      "modsDiscovered": "mods encontrados",
+      "noModsYet": "ainda sem mods",
+      "withUpdates": " · $count com atualizações",
+      "cta": "Ver mods"
+    },
+    "translate": {
+      "title": "Traduzir",
+      "inProgress": "Em andamento",
+      "idle": "Inativo",
+      "waiting": "Aguardando",
+      "subtitle": "projetos em andamento",
+      "toReview": " · $count a revisar",
+      "cta": "Abrir projetos"
+    },
+    "publish": {
+      "title": "Publicar",
+      "waiting": "Aguardando",
+      "waitingCount": "$count aguardando",
+      "subtitle": "packs compilados prontos para o Workshop",
+      "cta": "Publicar"
+    }
+  },
+  "nextAction": {
+    "toReview": "A revisar",
+    "translate": "Traduzir",
+    "readyToCompile": "Pronto para compilar",
+    "continue": "Continuar"
+  },
+  "emptyState": {
+    "step1": {
+      "title": "Detecte seus mods em Fontes",
+      "cta": "Ir para Fontes"
+    },
+    "step2": {
+      "title": "Crie um projeto a partir de um mod",
+      "cta": "Abrir Fontes"
+    },
+    "step3": {
+      "title": "Traduza as unidades",
+      "cta": "Abrir Projetos"
+    },
+    "step4": {
+      "title": "Compile seu pack"
+    },
+    "step5": {
+      "title": "Publique no Steam Workshop"
+    }
+  },
+  "support": {
+    "message": "Se o TWMT facilitou sua vida de modder, mantendo as traduções organizadas e sobrevivendo a cada atualização de mod, uma pequena gorjeta seria muito apreciada e me ajuda a continuar melhorando-o!",
+    "buyMeABeer": "Me pague uma cerveja :-)"
+  }
+}

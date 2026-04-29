@@ -1,0 +1,92 @@
+{
+  "labels": {
+    "title": "Compilação de pack",
+    "new": "Nova",
+    "untitled": "Sem título",
+    "compilation": "Compilação",
+    "language": "Idioma",
+    "modified": "Modificada",
+    "status": "Estado",
+    "basics": "Geral",
+    "output": "Saída",
+    "name": "Nome",
+    "targetLanguage": "Idioma de destino",
+    "prefix": "Prefixo",
+    "packName": "Nome do pack",
+    "fileName": "Nome do ficheiro",
+    "location": "Localização",
+    "publishing": "Publicação",
+    "selectProjects": "Selecionar projetos",
+    "noLanguage": "Sem idioma",
+    "steamWorkshopBbcode": "BBCode para Steam Workshop",
+    "bbcodeHint": "Copie este BBCode para utilizar na descrição do Steam Workshop:",
+    "conflictingProjects": "Projetos em conflito",
+    "conflictingKey": "Chave em conflito",
+    "sourceTextThis": "Texto de origem (este projeto)",
+    "sourceTextConflicting": "Texto de origem (em conflito)"
+  },
+  "actions": {
+    "newCompilation": "+ Nova compilação",
+    "compile": "Compilar e gerar pack",
+    "compiling": "A compilar...",
+    "forceCompile": "Forçar compilação",
+    "openFolder": "Abrir pasta",
+    "stopTooltip": "Parar",
+    "cancelling": "A cancelar...",
+    "deleteCompilation": "Eliminar compilação"
+  },
+  "status": {
+    "draft": "Rascunho",
+    "regeneratePack": "Regenerar pack",
+    "generated": "Gerado",
+    "generatingPack": "A gerar pack...",
+    "regenerateTooltip": "Um ou mais projetos incluídos foram alterados após a última geração do pack."
+  },
+  "messages": {
+    "noCompilationsYet": "Ainda não existem compilações",
+    "createCompilationHint": "Crie uma compilação para agrupar vários projetos num único .pack.",
+    "errorLoadingCompilations": "Erro ao carregar compilações: $error",
+    "packGenerated": "Pack gerado",
+    "deletedSuccess": "Eliminada \"$name\"",
+    "deleteFailed": "Falha ao eliminar: $error",
+    "noModsWithWorkshopIds": "Nenhum mod com ID do Steam Workshop selecionado"
+  },
+  "dialogs": {
+    "deleteTitle": "Eliminar compilação",
+    "deleteMessage": "Eliminar \"$name\"?",
+    "deleteWarning": "Esta ação não pode ser anulada.",
+    "conflictsTitle": "Conflitos não resolvidos detetados",
+    "conflictsBody": "Existem $count conflitos não resolvidos entre os projetos selecionados. Compilar agora pode causar uma apresentação imprevisível das traduções no jogo para as entradas afetadas.\n\nPode cancelar para os resolver primeiro ou forçar a compilação para prosseguir mesmo assim.",
+    "conflictsForProject": "Conflitos do projeto"
+  },
+  "hints": {
+    "namePlaceholder": "As minhas traduções em português",
+    "prefixPlaceholder": "!!!!!!!!!!_pt_compilation_twmt_",
+    "packNamePlaceholder": "meu_pack",
+    "selectLanguage": "Selecione um idioma...",
+    "noProjectsFound": "Nenhum projeto encontrado",
+    "tryDifferentSearch": "Experimente outro termo de pesquisa",
+    "selectGameFirst": "Selecione primeiro um jogo na barra lateral",
+    "selectLanguageFirst": "Selecione primeiro um idioma",
+    "noProjectsWithLanguage": "Sem projetos com traduções neste idioma",
+    "searchProjects": "Pesquisar projetos...",
+    "showOnlySelected": "Mostrar apenas selecionados",
+    "showOnlySelectedTooltip": "Mostrar apenas os projetos incluídos nesta compilação",
+    "clearSelection": "Limpar seleção",
+    "selectedCount": "$count selecionados",
+    "failedToLoadProjects": "Falha ao carregar projetos"
+  },
+  "conflicts": {
+    "analysisWillRun": "A análise de conflitos será executada",
+    "whenYouClickGenerate": "ao clicar em Gerar pack",
+    "noConflictsDetected": "Nenhum conflito detetado",
+    "readyToCompile": "Pronto para compilar",
+    "analyzingConflicts": "A analisar conflitos...",
+    "analysisFailed": "Análise falhada",
+    "conflictInfo": "Clique no nome de um projeto para ver detalhes. Desmarque para excluir.",
+    "noAnalysisData": "Sem dados de análise",
+    "noConflictsFound": "Nenhum conflito encontrado",
+    "errorPrefix": "Erro: $error",
+    "bbcodeError": "Erro ao gerar BBCode"
+  }
+}

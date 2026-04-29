@@ -1,0 +1,306 @@
+{
+  "screen": {
+    "title": "Publicar no Steam",
+    "errorLoading": "Falha ao carregar itens publicáveis",
+    "retry": "Tentar novamente"
+  },
+  "toolbar": {
+    "searchHint": "Pesquisar packs...",
+    "selectAll": "Selecionar tudo",
+    "deselectAll": "Limpar seleção",
+    "refresh": "Atualizar",
+    "workshopTemplate": "Modelo de descrição do Workshop",
+    "publish": "Publicar no Steam",
+    "publishWithCount": "Publicar no Steam ($count)",
+    "filters": {
+      "all": "Todos",
+      "outdated": "Desatualizados",
+      "noPack": "Sem pack",
+      "compilations": "Compilações"
+    },
+    "counts": {
+      "pack": "pack",
+      "packs": "packs"
+    },
+    "tooltips": {
+      "noItemsToSelect": "Nenhum item para selecionar",
+      "allAlreadySelected": "Todos os itens listados já estão selecionados",
+      "selectAllListed": "Selecionar todos os itens atualmente listados",
+      "noItemsSelected": "Nenhum item selecionado",
+      "clearSelection": "Limpar a seleção atual",
+      "configureTemplates": "Configurar modelos e predefinições de publicação no Workshop",
+      "selectAtLeastOne": "Selecione pelo menos um item para publicar",
+      "noPackOrWorkshopId": "Nenhum item selecionado tem simultaneamente um pack gerado e um ID de Workshop",
+      "publishSkipped": "Publicar $count item(ns) — $skipped sem ID de Workshop serão ignorados",
+      "publishSelected": "Publicar os itens selecionados no Steam Workshop"
+    }
+  },
+  "warnings": {
+    "noValidItems": "Nenhum item selecionado tem simultaneamente um pack gerado e um ID de Workshop.",
+    "skippedNoPreview": "Ignorados $count item(ns) sem imagem de pré-visualização: $list",
+    "noItemsToPublish": "Nenhum item para publicar (todos sem imagem de pré-visualização)."
+  },
+  "publishScreen": {
+    "formSections": {
+      "publication": "Publicação",
+      "title": "Título",
+      "description": "Descrição",
+      "visibility": "Visibilidade",
+      "changeNote": "Nota de alteração",
+      "pack": "Pack",
+      "packFile": "Ficheiro pack",
+      "steamId": "ID do Steam"
+    },
+    "summary": {
+      "willUpdate": "Será atualizado",
+      "mode": "Modo",
+      "modeUpdate": "Atualizar existente",
+      "modePublish": "Publicar novo",
+      "packSize": "Tamanho do pack",
+      "visibility": "Visibilidade",
+      "steamId": "ID do Steam"
+    },
+    "preview": {
+      "labelUpdate": "Pré-visualização (atualização)",
+      "label": "Pré-visualização",
+      "untitled": "Sem título",
+      "noDescription": "Ainda não foi indicada uma descrição."
+    },
+    "upload": {
+      "uploading": "A enviar para o Steam Workshop...",
+      "outputLabel": "SAÍDA DO STEAMCMD"
+    },
+    "result": {
+      "updatedTitle": "Item do Workshop atualizado!",
+      "publishedTitle": "Item do Workshop publicado!",
+      "workshopId": "ID do Workshop: $id",
+      "openInSteam": "Abrir no Steam"
+    },
+    "actions": {
+      "cancel": "Cancelar",
+      "update": "Atualizar",
+      "publish": "Publicar",
+      "close": "Fechar",
+      "retry": "Tentar novamente"
+    },
+    "status": {
+      "cancelled": "Publicação cancelada",
+      "failed": "Publicação falhada"
+    },
+    "confirmLeave": {
+      "title": "Publicação em curso",
+      "message": "Há uma publicação em curso. Tem a certeza de que pretende sair? O envio será cancelado.",
+      "stay": "Ficar",
+      "leave": "Sair"
+    },
+    "warnings": {
+      "previewFailed": "Falha ao gerar a imagem de pré-visualização para o ficheiro .pack",
+      "noPackStaged": "Nenhum pack preparado — defina primeiro um ID de Workshop."
+    }
+  },
+  "settingsDialog": {
+    "title": "Modelos do Workshop",
+    "description": "Utilize $modName como marcador de posição para o nome do projeto.",
+    "titleTemplateLabel": "Modelo de título",
+    "titleTemplateHint": "$modName - tradução portuguesa",
+    "descriptionTemplateLabel": "Modelo de descrição",
+    "descriptionTemplateHint": "Tradução portuguesa de $modName",
+    "defaultVisibilityLabel": "Visibilidade predefinida",
+    "noDefault": "Sem predefinição",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  },
+  "loginDialog": {
+    "title": "Iniciar sessão no Steam",
+    "description": "Indique as suas credenciais Steam para publicar no Workshop.",
+    "usernameLabel": "Nome de utilizador",
+    "passwordLabel": "Palavra-passe",
+    "steamGuardSection": "Steam Guard (opcional)",
+    "steamGuardCodeLabel": "Código Steam Guard",
+    "steamGuardDescription": "Se utiliza um Steam Mobile Authenticator, indique aqui o código rotativo de 5 caracteres. Pode também deixar em branco e indicá-lo quando for solicitado.",
+    "rememberCredentials": "Memorizar as minhas credenciais",
+    "storedSecurely": "Armazenadas de forma segura neste dispositivo",
+    "cancel": "Cancelar",
+    "login": "Iniciar sessão",
+    "hintCode": "XXXXX",
+    "errors": {
+      "usernameRequired": "O nome de utilizador é obrigatório",
+      "passwordRequired": "A palavra-passe é obrigatória"
+    }
+  },
+  "steamGuardDialog": {
+    "title": "Steam Guard",
+    "description": "Indique o código de 5 caracteres da sua aplicação Steam Mobile.\nAbra a aplicação Steam → Steam Guard → utilize o código rotativo apresentado no ecrã.",
+    "note": "Nota: aprovar a notificação push não é suficiente — o steamcmd exige o código.",
+    "codeLabel": "Código Steam Guard",
+    "hintCode": "XXXXX",
+    "cancel": "Cancelar",
+    "verify": "Verificar",
+    "errors": {
+      "codeRequired": "O código é obrigatório",
+      "codeTooShort": "O código deve ter 5 caracteres"
+    }
+  },
+  "steamcmdDialog": {
+    "title": "SteamCMD necessário",
+    "subtitle": "Ferramenta de linha de comandos da Valve para envios para o Workshop",
+    "confirmText": "É necessário o SteamCMD (~3 MB) para publicar itens no Steam Workshop. Será descarregado a partir da CDN da Valve e instalado automaticamente.",
+    "confirmText2": "Esta ferramenta é fornecida pela Valve e é segura. Será armazenada na pasta de dados da aplicação.",
+    "downloading": "A descarregar SteamCMD...",
+    "downloadingFrom": "A descarregar a partir da CDN da Valve...",
+    "successTitle": "SteamCMD instalado com sucesso",
+    "successMessage": "Já pode publicar no Steam Workshop.",
+    "errorTitle": "Instalação falhada",
+    "cancel": "Cancelar",
+    "install": "Instalar",
+    "continue": "Continuar",
+    "close": "Fechar",
+    "retry": "Tentar novamente"
+  },
+  "list": {
+    "empty": {
+      "title": "Ainda sem projetos ou compilações",
+      "subtitle": "Crie um projeto ou compilação para o ver aqui."
+    },
+    "noMatch": "Nenhum item corresponde aos filtros atuais",
+    "columns": {
+      "pack": "Pack",
+      "steamId": "ID do Steam",
+      "subs": "Subs",
+      "status": "Estado",
+      "lastPublished": "Última publicação"
+    }
+  },
+  "cells": {
+    "subtitleCompilation": "Compilação · ainda sem pack",
+    "subtitleProject": "Projeto · ainda sem pack",
+    "outdatedPrefix": "Desatualizado",
+    "status": {
+      "noPack": "Sem pack",
+      "published": "Publicado",
+      "unpublished": "Não publicado"
+    },
+    "tooltips": {
+      "workshopNoPack": "Item do Workshop n.º$id — sem ficheiro pack local",
+      "noPackOnDisk": "Sem ficheiro pack no disco — gere primeiro um pack",
+      "workshopItem": "Item do Workshop n.º$id",
+      "packReadyNoId": "Pack pronto — ainda sem ID de Workshop atribuído",
+      "notPublishedYet": "Ainda não publicado no Workshop.",
+      "subscribers": "Subscritores do Workshop — atualizados pela última vez no arranque da aplicação.",
+      "lastPublished": "Última publicação: $date",
+      "lastExported": "Última exportação: $date"
+    }
+  },
+  "actionCell": {
+    "buttons": {
+      "openCompilation": "Abrir compilação",
+      "generatePack": "Gerar pack",
+      "openInWorkshop": "Abrir no Steam Workshop",
+      "update": "Atualizar"
+    },
+    "tooltips": {
+      "openCompilationToGenerate": "Abrir editor de compilação para gerar",
+      "generatePackFile": "Gerar ficheiro .pack",
+      "setIdFirst": "Defina primeiro o ID do Steam para permitir a atualização",
+      "updateWorkshop": "Atualizar item existente no Workshop",
+      "openGameLauncher": "Abrir o launcher do jogo",
+      "openInWorkshop": "Abrir no Steam Workshop"
+    },
+    "progress": {
+      "generating": "A gerar...",
+      "preparing": "A preparar...",
+      "steps": {
+        "preparingData": "A preparar dados...",
+        "generatingLocFiles": "A gerar ficheiros .loc$lang",
+        "creatingPack": "A criar .pack$lang",
+        "generatingPreview": "A gerar imagem de pré-visualização...",
+        "finalizing": "A finalizar...",
+        "completed": "Concluído"
+      }
+    },
+    "toasts": {
+      "packGenerated": "Pack gerado: $count entradas",
+      "packFailed": "Falha ao gerar pack: $error",
+      "packError": "Erro ao gerar pack: $error",
+      "noLanguages": "Não há idiomas configurados para este projeto.",
+      "steamNotFound": "Não foi possível abrir o cliente Steam. O Steam está instalado?"
+    }
+  },
+  "packLanguageDialog": {
+    "title": "Selecionar idiomas",
+    "cancel": "Cancelar",
+    "generate": "Gerar"
+  },
+  "steamId": {
+    "tooltips": {
+      "edit": "Editar ID do Workshop",
+      "set": "Definir ID do Workshop",
+      "save": "Guardar ID do Workshop",
+      "cancel": "Cancelar"
+    },
+    "hintId": "ID",
+    "toasts": {
+      "parseWarning": "Não foi possível ler um ID de Workshop a partir desse valor.",
+      "saveFailed": "Falha ao guardar ID do Workshop: $error"
+    }
+  },
+  "onboarding": {
+    "title": "Publicar no Steam Workshop",
+    "description": "Esta aplicação não consegue criar uma entrada totalmente nova no Workshop diretamente. Um problema no launcher do jogo impede que os mods enviados fora dele apareçam nos launchers dos subscritores, pelo que a primeira publicação de um mod de tradução tem de passar pelo launcher original do jogo. Cada atualização posterior pode então ser enviada diretamente a partir deste ecrã.",
+    "step1": "Publique o mod uma vez através do launcher original do jogo.",
+    "step2": "Copie o ID do Workshop atribuído pelo Steam: aparece no URL do mod no Workshop (ex.: \"3661242610\").",
+    "step3": "Cole esse ID no campo dedicado para este mod na aplicação.",
+    "step4": "Utilize o botão \"Atualizar\" para enviar todas as atualizações de tradução futuras a partir deste ecrã.",
+    "dontShowAgain": "Não mostrar novamente",
+    "dismiss": "Ignorar"
+  },
+  "batchPublish": {
+    "confirmLeave": {
+      "title": "Publicação em curso",
+      "message": "Há uma publicação em lote em curso. Tem a certeza de que pretende sair? O envio será cancelado.",
+      "stay": "Ficar",
+      "leave": "Sair"
+    },
+    "confirmCancel": {
+      "title": "Cancelar publicação em lote?",
+      "message": "Os envios restantes serão abortados. Os itens já enviados não são revertidos.",
+      "keepGoing": "Continuar",
+      "stop": "Parar"
+    },
+    "empty": {
+      "title": "Nenhum item preparado",
+      "subtitle": "Sem itens para publicar."
+    },
+    "staging": {
+      "packs": "Packs",
+      "totalSize": "Tamanho total",
+      "publish": "Publicar",
+      "update": "Atualizar",
+      "account": "Conta",
+      "elapsed": "Decorrido",
+      "completed": "Concluído"
+    },
+    "actions": {
+      "stop": "Parar",
+      "close": "Fechar"
+    },
+    "progress": {
+      "complete": "Publicação em lote concluída",
+      "completedWithErrors": "Concluída com erros",
+      "cancelled": "Cancelada",
+      "steamGuardRequired": "Steam Guard necessário",
+      "publishing": "A publicar...",
+      "current": "Atual: $name",
+      "workshopId": "ID do Workshop: $id"
+    },
+    "pills": {
+      "pending": "PENDENTE",
+      "uploading": "A ENVIAR",
+      "done": "CONCLUÍDO",
+      "failed": "FALHADO",
+      "cancelled": "CANCELADO",
+      "update": "ATUALIZAR",
+      "publish": "PUBLICAR"
+    }
+  }
+}

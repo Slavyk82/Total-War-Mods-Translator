@@ -1,0 +1,64 @@
+{
+  "history": {
+    "title": "Geçmiş zaman çizelgesi",
+    "labels": {
+      "current": "Geçerli",
+      "latest": "En son",
+      "versionN": "Sürüm $index",
+      "reason": "Sebep: $reason"
+    },
+    "actions": {
+      "restore": "Geri yükle",
+      "compare": "Karşılaştır"
+    },
+    "empty": {
+      "title": "Geçmiş bulunmuyor",
+      "subtitle": "Düzenleme yaptıkça değişiklikler burada görünecek"
+    },
+    "errors": {
+      "loadFailed": "Geçmiş yüklenemedi"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Sürümü geri yükle",
+        "message": "Bu sürümü geri yüklemek istediğinizden emin misiniz?\n\nMevcut çeviri şununla değiştirilecek:\n\"$preview\""
+      }
+    },
+    "toasts": {
+      "restored": "Sürüm başarıyla geri yüklendi",
+      "restoreFailed": "Geri yüklenemedi: $error"
+    }
+  },
+  "comparison": {
+    "title": "Sürümleri karşılaştır",
+    "labels": {
+      "oldVersion": "Eski sürüm",
+      "newVersion": "Yeni sürüm",
+      "changes": "Değişiklikler",
+      "charsAdded": "Eklenen karakter",
+      "charsRemoved": "Kaldırılan karakter",
+      "wordsAdded": "Eklenen kelime",
+      "wordsRemoved": "Kaldırılan kelime",
+      "totalChanges": "Toplam değişiklik"
+    },
+    "actions": {
+      "copyOld": "Eskiyi kopyala",
+      "copyNew": "Yeniyi kopyala",
+      "restoreOld": "Eskiyi geri yükle"
+    },
+    "errors": {
+      "loadFailed": "Sürümler karşılaştırılamadı"
+    },
+    "toasts": {
+      "copied": "Panoya kopyalandı",
+      "restored": "Sürüm başarıyla geri yüklendi",
+      "restoreFailed": "Geri yüklenemedi: $error"
+    },
+    "dialogs": {
+      "restore": {
+        "title": "Sürümü geri yükle",
+        "message": "Bu sürümü geri yüklemek istediğinizden emin misiniz?\n\nÖnizleme:\n\"$preview\""
+      }
+    }
+  }
+}

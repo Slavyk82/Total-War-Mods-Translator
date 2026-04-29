@@ -1,0 +1,98 @@
+{
+  "labels": {
+    "title": "Memória de tradução",
+    "statistics": "Estatísticas",
+    "totalEntries": "Total de entradas",
+    "languagePairs": "Pares de idiomas",
+    "performance": "Desempenho",
+    "totalReuse": "Reutilização total",
+    "tokensSaved": "Tokens economizados",
+    "reuseRate": "Taxa de reutilização",
+    "sourceText": "Texto de origem",
+    "targetText": "Texto traduzido",
+    "usageCount": "Contagem de uso",
+    "lastUsed": "Último uso",
+    "created": "Criada",
+    "selectedFile": "Arquivo selecionado",
+    "importOptions": "Opções de importação",
+    "filters": "Filtros",
+    "whatToExport": "O que exportar",
+    "outputFile": "Arquivo de saída",
+    "formatOptions": "Opções de formato",
+    "deleteIfUnusedDays": "Excluir se não utilizada há (dias)",
+    "deleteAll": "Excluir tudo",
+    "targetLanguage": "Idioma de destino"
+  },
+  "actions": {
+    "importTmx": "Importar TMX",
+    "exportTmx": "Exportar TMX",
+    "cleanup": "Limpar",
+    "import": "Importar",
+    "export": "Exportar",
+    "importing": "Importando...",
+    "exporting": "Exportando..."
+  },
+  "dialogs": {
+    "importTitle": "Importar memória de tradução (TMX)",
+    "exportTitle": "Exportar memória de tradução (TMX)",
+    "cleanupTitle": "Limpar memória de tradução",
+    "entryDetailsTitle": "Detalhes da entrada da memória de tradução",
+    "deleteTmTitle": "Excluir entrada da TM",
+    "deleteTmMessage": "Tem certeza de que deseja excluir esta entrada da memória de tradução?",
+    "deleteTmWarning": "Esta ação não pode ser desfeita."
+  },
+  "messages": {
+    "noEntries": "Sem entradas na memória de tradução",
+    "importHint": "Importe um arquivo TMX ou comece a traduzir para construir sua memória",
+    "failedToLoadEntries": "Falha ao carregar entradas",
+    "failedToLoadStatistics": "Falha ao carregar estatísticas",
+    "removeUnusedHint": "Remova as entradas não utilizadas para otimizar a memória de tradução.",
+    "allEntriesWillBeDeleted": "Todas as entradas serão excluídas — esta ação não pode ser desfeita",
+    "deletedEntries": "$count entradas excluídas",
+    "tmEntryDeletedSuccess": "Entrada da TM excluída com sucesso",
+    "failedToDeleteTmEntry": "Falha ao excluir a entrada da TM",
+    "deleteEntry": "Excluir entrada",
+    "importComplete": "Importação concluída",
+    "exportComplete": "Exportação concluída",
+    "exportedEntries": "$count entradas exportadas",
+    "processedOf": "Processadas $processed de $total entradas",
+    "sizeKb": "Tamanho: $size KB"
+  },
+  "pagination": {
+    "zeroEntries": "0 entradas",
+    "showingRange": "Exibindo $start–$end de $total",
+    "firstPage": "Primeira página",
+    "previousPage": "Página anterior",
+    "nextPage": "Próxima página",
+    "lastPage": "Última página"
+  },
+  "importResult": {
+    "totalEntries": "Total de entradas",
+    "imported": "Importadas",
+    "skippedDuplicates": "Ignoradas (duplicadas)",
+    "failedValidation": "Falhas (erros de validação)"
+  },
+  "options": {
+    "overwriteExisting": "Substituir entradas existentes",
+    "overwriteExistingHint": "Substituir as entradas existentes pelas importadas",
+    "validateEntries": "Validar entradas",
+    "validateEntriesHint": "Verificar erros antes de importar",
+    "includeMetadata": "Incluir metadados",
+    "includeMetadataHint": "Adicionar pontuações de qualidade, contagens de uso, etc.",
+    "includeStats": "Incluir estatísticas",
+    "includeStatsHint": "Adicionar resumo e estatísticas de exportação ao cabeçalho do arquivo",
+    "allEntries": "Todas as entradas (com os filtros aplicados)",
+    "frequentlyUsed": "Apenas frequentemente utilizadas (>5 vezes)"
+  },
+  "columns": {
+    "sourceText": "TEXTO DE ORIGEM",
+    "targetText": "TEXTO TRADUZIDO",
+    "usage": "USO",
+    "lastUsed": "ÚLTIMO USO"
+  },
+  "hints": {
+    "clickToSelectTmxFile": "Clique para selecionar um arquivo .tmx",
+    "clickToSelectSaveLocation": "Clique para selecionar o local de salvamento",
+    "searchPlaceholder": "Pesquisar na memória de tradução..."
+  }
+}

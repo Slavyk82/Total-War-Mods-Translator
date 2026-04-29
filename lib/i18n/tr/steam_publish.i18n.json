@@ -1,0 +1,306 @@
+{
+  "screen": {
+    "title": "Steam'de yayınla",
+    "errorLoading": "Yayınlanabilir öğeler yüklenemedi",
+    "retry": "Yeniden dene"
+  },
+  "toolbar": {
+    "searchHint": "Pack'lerde ara...",
+    "selectAll": "Tümünü seç",
+    "deselectAll": "Seçimi temizle",
+    "refresh": "Yenile",
+    "workshopTemplate": "Workshop açıklama şablonu",
+    "publish": "Steam'de yayınla",
+    "publishWithCount": "Steam'de yayınla ($count)",
+    "filters": {
+      "all": "Tümü",
+      "outdated": "Güncel değil",
+      "noPack": "Pack yok",
+      "compilations": "Derlemeler"
+    },
+    "counts": {
+      "pack": "pack",
+      "packs": "pack"
+    },
+    "tooltips": {
+      "noItemsToSelect": "Seçilecek öğe yok",
+      "allAlreadySelected": "Listelenen her öğe zaten seçili",
+      "selectAllListed": "Şu anda listelenen tüm öğeleri seç",
+      "noItemsSelected": "Seçili öğe yok",
+      "clearSelection": "Geçerli seçimi temizle",
+      "configureTemplates": "Workshop yayın şablonlarını ve varsayılanları yapılandır",
+      "selectAtLeastOne": "Yayınlamak için en az bir öğe seçin",
+      "noPackOrWorkshopId": "Seçili öğelerin hiçbirinde hem oluşturulmuş bir pack hem de Workshop kimliği yok",
+      "publishSkipped": "$count öğeyi yayınla — Workshop kimliği olmayan $skipped öğe atlanacak",
+      "publishSelected": "Seçili öğeleri Steam Workshop'ta yayınla"
+    }
+  },
+  "warnings": {
+    "noValidItems": "Seçili öğelerin hiçbirinde hem oluşturulmuş bir pack hem de Workshop kimliği yok.",
+    "skippedNoPreview": "Önizleme görseli olmayan $count öğe atlandı: $list",
+    "noItemsToPublish": "Yayınlanacak öğe yok (tümünde önizleme görseli eksik)."
+  },
+  "publishScreen": {
+    "formSections": {
+      "publication": "Yayın",
+      "title": "Başlık",
+      "description": "Açıklama",
+      "visibility": "Görünürlük",
+      "changeNote": "Değişiklik notu",
+      "pack": "Pack",
+      "packFile": "Pack dosyası",
+      "steamId": "Steam kimliği"
+    },
+    "summary": {
+      "willUpdate": "Güncellenecek",
+      "mode": "Mod",
+      "modeUpdate": "Mevcut olanı güncelle",
+      "modePublish": "Yeni yayınla",
+      "packSize": "Pack boyutu",
+      "visibility": "Görünürlük",
+      "steamId": "Steam kimliği"
+    },
+    "preview": {
+      "labelUpdate": "Önizleme (güncelleme)",
+      "label": "Önizleme",
+      "untitled": "Başlıksız",
+      "noDescription": "Henüz bir açıklama girilmedi."
+    },
+    "upload": {
+      "uploading": "Steam Workshop'a yükleniyor...",
+      "outputLabel": "STEAMCMD ÇIKTISI"
+    },
+    "result": {
+      "updatedTitle": "Workshop öğesi güncellendi!",
+      "publishedTitle": "Workshop öğesi yayınlandı!",
+      "workshopId": "Workshop kimliği: $id",
+      "openInSteam": "Steam'de aç"
+    },
+    "actions": {
+      "cancel": "İptal",
+      "update": "Güncelle",
+      "publish": "Yayınla",
+      "close": "Kapat",
+      "retry": "Yeniden dene"
+    },
+    "status": {
+      "cancelled": "Yayın iptal edildi",
+      "failed": "Yayın başarısız"
+    },
+    "confirmLeave": {
+      "title": "Yayın devam ediyor",
+      "message": "Şu anda devam eden bir yayın var. Çıkmak istediğinizden emin misiniz? Yükleme iptal edilecek.",
+      "stay": "Kal",
+      "leave": "Çık"
+    },
+    "warnings": {
+      "previewFailed": ".pack dosyası için önizleme görseli oluşturulamadı",
+      "noPackStaged": "Hazırlanmış pack yok — önce bir Workshop kimliği belirleyin."
+    }
+  },
+  "settingsDialog": {
+    "title": "Workshop şablonları",
+    "description": "Proje adı için yer tutucu olarak $modName kullanın.",
+    "titleTemplateLabel": "Başlık şablonu",
+    "titleTemplateHint": "$modName - Türkçe çeviri",
+    "descriptionTemplateLabel": "Açıklama şablonu",
+    "descriptionTemplateHint": "$modName için Türkçe çeviri",
+    "defaultVisibilityLabel": "Varsayılan görünürlük",
+    "noDefault": "Varsayılan yok",
+    "cancel": "İptal",
+    "save": "Kaydet"
+  },
+  "loginDialog": {
+    "title": "Steam girişi",
+    "description": "Workshop'ta yayınlamak için Steam kimlik bilgilerinizi girin.",
+    "usernameLabel": "Kullanıcı adı",
+    "passwordLabel": "Parola",
+    "steamGuardSection": "Steam Guard (isteğe bağlı)",
+    "steamGuardCodeLabel": "Steam Guard kodu",
+    "steamGuardDescription": "Steam Mobile Authenticator kullanıyorsanız 5 karakterli değişen kodu buraya girin. Boş bırakıp istendiğinde de girebilirsiniz.",
+    "rememberCredentials": "Kimlik bilgilerimi hatırla",
+    "storedSecurely": "Bu cihazda güvenli biçimde saklanır",
+    "cancel": "İptal",
+    "login": "Giriş yap",
+    "hintCode": "XXXXX",
+    "errors": {
+      "usernameRequired": "Kullanıcı adı zorunludur",
+      "passwordRequired": "Parola zorunludur"
+    }
+  },
+  "steamGuardDialog": {
+    "title": "Steam Guard",
+    "description": "Steam Mobile uygulamanızdaki 5 karakterli kodu girin.\nSteam uygulamasını açın → Steam Guard → ekrandaki değişen kodu kullanın.",
+    "note": "Not: anlık bildirimi onaylamak yeterli değildir — steamcmd kodu gerektirir.",
+    "codeLabel": "Steam Guard kodu",
+    "hintCode": "XXXXX",
+    "cancel": "İptal",
+    "verify": "Doğrula",
+    "errors": {
+      "codeRequired": "Kod zorunludur",
+      "codeTooShort": "Kod 5 karakter olmalıdır"
+    }
+  },
+  "steamcmdDialog": {
+    "title": "SteamCMD gerekiyor",
+    "subtitle": "Workshop yüklemeleri için Valve komut satırı aracı",
+    "confirmText": "Steam Workshop'ta öğe yayınlamak için SteamCMD (~3 MB) gereklidir. Valve CDN'inden indirilip otomatik olarak kurulur.",
+    "confirmText2": "Bu araç Valve tarafından sağlanır ve güvenli kullanılır. Uygulama veri klasöründe saklanır.",
+    "downloading": "SteamCMD indiriliyor...",
+    "downloadingFrom": "Valve CDN'inden indiriliyor...",
+    "successTitle": "SteamCMD başarıyla kuruldu",
+    "successMessage": "Artık Steam Workshop'ta yayınlayabilirsiniz.",
+    "errorTitle": "Kurulum başarısız",
+    "cancel": "İptal",
+    "install": "Kur",
+    "continue": "Devam et",
+    "close": "Kapat",
+    "retry": "Yeniden dene"
+  },
+  "list": {
+    "empty": {
+      "title": "Henüz proje veya derleme yok",
+      "subtitle": "Burada görüntülemek için bir proje veya derleme oluşturun."
+    },
+    "noMatch": "Geçerli filtrelerle eşleşen öğe yok",
+    "columns": {
+      "pack": "Pack",
+      "steamId": "Steam kimliği",
+      "subs": "Aboneler",
+      "status": "Durum",
+      "lastPublished": "Son yayın"
+    }
+  },
+  "cells": {
+    "subtitleCompilation": "Derleme · henüz pack yok",
+    "subtitleProject": "Proje · henüz pack yok",
+    "outdatedPrefix": "Güncel değil",
+    "status": {
+      "noPack": "Pack yok",
+      "published": "Yayınlandı",
+      "unpublished": "Yayınlanmadı"
+    },
+    "tooltips": {
+      "workshopNoPack": "Workshop öğesi #$id — yerel pack dosyası yok",
+      "noPackOnDisk": "Diskte pack dosyası yok — önce bir pack oluşturun",
+      "workshopItem": "Workshop öğesi #$id",
+      "packReadyNoId": "Pack hazır — henüz Workshop kimliği atanmadı",
+      "notPublishedYet": "Henüz Workshop'ta yayınlanmadı.",
+      "subscribers": "Workshop aboneleri — uygulama başlatıldığında en son yenilendi.",
+      "lastPublished": "Son yayın: $date",
+      "lastExported": "Son dışa aktarım: $date"
+    }
+  },
+  "actionCell": {
+    "buttons": {
+      "openCompilation": "Derlemeyi aç",
+      "generatePack": "Pack oluştur",
+      "openInWorkshop": "Steam Workshop'ta aç",
+      "update": "Güncelle"
+    },
+    "tooltips": {
+      "openCompilationToGenerate": "Oluşturmak için derleme düzenleyicisini aç",
+      "generatePackFile": ".pack dosyası oluştur",
+      "setIdFirst": "Güncellemeyi etkinleştirmek için önce Steam kimliğini belirleyin",
+      "updateWorkshop": "Mevcut Workshop öğesini güncelle",
+      "openGameLauncher": "Oyun başlatıcısını aç",
+      "openInWorkshop": "Steam Workshop'ta aç"
+    },
+    "progress": {
+      "generating": "Oluşturuluyor...",
+      "preparing": "Hazırlanıyor...",
+      "steps": {
+        "preparingData": "Veriler hazırlanıyor...",
+        "generatingLocFiles": ".loc dosyaları oluşturuluyor$lang",
+        "creatingPack": ".pack oluşturuluyor$lang",
+        "generatingPreview": "Önizleme görseli oluşturuluyor...",
+        "finalizing": "Sonlandırılıyor...",
+        "completed": "Tamamlandı"
+      }
+    },
+    "toasts": {
+      "packGenerated": "Pack oluşturuldu: $count girdi",
+      "packFailed": "Pack oluşturulamadı: $error",
+      "packError": "Pack oluşturulurken hata: $error",
+      "noLanguages": "Bu proje için yapılandırılmış dil yok.",
+      "steamNotFound": "Steam istemcisi açılamadı. Steam kurulu mu?"
+    }
+  },
+  "packLanguageDialog": {
+    "title": "Dilleri seç",
+    "cancel": "İptal",
+    "generate": "Oluştur"
+  },
+  "steamId": {
+    "tooltips": {
+      "edit": "Workshop kimliğini düzenle",
+      "set": "Workshop kimliği belirle",
+      "save": "Workshop kimliğini kaydet",
+      "cancel": "İptal"
+    },
+    "hintId": "Kimlik",
+    "toasts": {
+      "parseWarning": "Bu değerden bir Workshop kimliği okunamadı.",
+      "saveFailed": "Workshop kimliği kaydedilemedi: $error"
+    }
+  },
+  "onboarding": {
+    "title": "Steam Workshop'ta yayınlama",
+    "description": "Bu uygulama doğrudan tamamen yeni bir Workshop girdisi oluşturamaz. Oyun başlatıcısındaki bir hata, dışarıdan yüklenen modların abonelerin başlatıcılarında görünmesini engellediği için bir çeviri modunun ilk yayınının orijinal oyun başlatıcısı üzerinden yapılması gerekir. Sonraki her güncelleme bu ekrandan doğrudan gönderilebilir.",
+    "step1": "Modu önce orijinal oyun başlatıcısı üzerinden bir kez yayınlayın.",
+    "step2": "Steam tarafından atanan Workshop kimliğini kopyalayın: modun Workshop URL'sinde görünür (örn. \"3661242610\").",
+    "step3": "Bu kimliği uygulamadaki ilgili modun özel alanına yapıştırın.",
+    "step4": "Sonraki tüm çeviri güncellemelerini bu ekrandan göndermek için \"Güncelle\" düğmesini kullanın.",
+    "dontShowAgain": "Bunu bir daha gösterme",
+    "dismiss": "Kapat"
+  },
+  "batchPublish": {
+    "confirmLeave": {
+      "title": "Yayın devam ediyor",
+      "message": "Şu anda devam eden bir toplu yayın var. Çıkmak istediğinizden emin misiniz? Yükleme iptal edilecek.",
+      "stay": "Kal",
+      "leave": "Çık"
+    },
+    "confirmCancel": {
+      "title": "Toplu yayın iptal edilsin mi?",
+      "message": "Kalan yüklemeler iptal edilecek. Halihazırda yüklenmiş öğeler geri alınmaz.",
+      "keepGoing": "Devam et",
+      "stop": "Durdur"
+    },
+    "empty": {
+      "title": "Hazırlanmış öğe yok",
+      "subtitle": "Yayınlanacak öğe yok."
+    },
+    "staging": {
+      "packs": "Pack'ler",
+      "totalSize": "Toplam boyut",
+      "publish": "Yayınla",
+      "update": "Güncelle",
+      "account": "Hesap",
+      "elapsed": "Geçen süre",
+      "completed": "Tamamlandı"
+    },
+    "actions": {
+      "stop": "Durdur",
+      "close": "Kapat"
+    },
+    "progress": {
+      "complete": "Toplu yayın tamamlandı",
+      "completedWithErrors": "Hatalarla tamamlandı",
+      "cancelled": "İptal edildi",
+      "steamGuardRequired": "Steam Guard gerekiyor",
+      "publishing": "Yayınlanıyor...",
+      "current": "Geçerli: $name",
+      "workshopId": "Workshop kimliği: $id"
+    },
+    "pills": {
+      "pending": "BEKLEMEDE",
+      "uploading": "YÜKLENİYOR",
+      "done": "TAMAMLANDI",
+      "failed": "BAŞARISIZ",
+      "cancelled": "İPTAL EDİLDİ",
+      "update": "GÜNCELLE",
+      "publish": "YAYINLA"
+    }
+  }
+}

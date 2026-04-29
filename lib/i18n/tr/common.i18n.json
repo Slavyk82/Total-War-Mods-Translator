@@ -1,0 +1,23 @@
+{
+  "actions": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "remove": "Kaldır",
+    "refresh": "Yenile",
+    "close": "Kapat",
+    "back": "Geri",
+    "confirm": "Onayla",
+    "apply": "Uygula",
+    "reset": "Sıfırla",
+    "copy": "Kopyala",
+    "translate": "Çevir"
+  },
+  "yes": "Evet",
+  "no": "Hayır",
+  "ok": "Tamam",
+  "loading": "Yükleniyor…",
+  "error": "Hata"
+}

@@ -1,0 +1,50 @@
+{
+  "mods": {
+    "refresh": "Yerelleştirme dosyaları içeren modlar için Steam Workshop klasörlerini yeniden tarar",
+    "hiddenToggle": "Normal modlar ile gizli modların görünümü arasında geçiş yapar",
+    "importLocalPack": "Steam Workshop'tan olmayan yerel bir .pack dosyasını içe aktarır",
+    "filterAll": "Tüm modları gösterir",
+    "filterNotImported": "Yalnızca çeviri projesi olmayan modları gösterir",
+    "filterNeedsUpdate": "Yalnızca güncelleme veya değişiklik bekleyen modları gösterir"
+  },
+  "projects": {
+    "filterNeedsUpdate": "Mod kaynağındaki değişiklikler nedeniyle ilgilenilmesi gereken projeleri gösterir",
+    "filterNeedsReview": "İncelemeye işaretlenmiş en az bir birim içeren projeleri gösterir",
+    "filterIncomplete": "Yapılandırılmış tüm dillerde henüz %100 çevrilmemiş projeleri gösterir",
+    "filterHasComplete": "En az bir dilde tamamen çevrilmiş projeleri gösterir",
+    "filterExportOutdated": "Son dışa aktarımdan beri değiştirilmiş projeleri gösterir",
+    "filterExported": "Yalnızca dışa aktarılmış projeleri gösterir",
+    "filterNotExported": "Yalnızca hiç dışa aktarılmamış projeleri gösterir",
+    "filterClear": "Etkin durum filtresini temizler"
+  },
+  "editor": {
+    "modelSelector": "Çeviri için kullanılacak yapay zekâ modelini seçin",
+    "useTm": "Etkin olduğunda, yapay zekâ modeline sormadan önce Çeviri Belleği'ne danışılır. TM'i atlamak ve birimleri her zaman doğrudan modele göndermek için devre dışı bırakın.",
+    "batchAuto": "Yığın boyutunu seçilen modelin token bütçesinden otomatik olarak hesaplar. Sabit bir Birim/yığın değeri belirlemek için kapatın.",
+    "batchUnits": "LLM isteği başına azami çeviri birimi sayısı (1–1000). Düşük değerler, daha fazla token tüketimi pahasına zaman aşımlarını azaltır.",
+    "batchParallel": "Eşzamanlı LLM istek sayısı (1–20). Daha yüksek değerler hızlıdır ancak API yükünü artırır; tipik değer 3–5'tir.",
+    "modRuleEdit": "Moda özgü çeviri kuralını düzenle",
+    "modRuleAdd": "Moda özgü çeviri kuralı ekle"
+  },
+  "settings": {
+    "detectAllGames": "Oyun yollarını otomatik bulmak için Steam kurulumunu tarar",
+    "detectGame": "Bu oyunun kurulum yolunu otomatik algılar",
+    "browsePath": "Klasörü manuel olarak seçer",
+    "testRpfm": "RPFM yürütülebilir dosyasını doğrular ve sürümünü görüntüler",
+    "defaultPath": "Varsayılan yolu kullanır",
+    "detectWorkshop": "Steam Workshop içerik klasörünü otomatik algılar",
+    "addLanguage": "Özel bir dil ekler",
+    "addIgnoredText": "Çeviri sırasında atlanacak yeni bir kaynak metin ekler",
+    "resetIgnoredDefaults": "Tüm girdileri silip varsayılan yok sayılan metinleri geri yükler",
+    "addRule": "Yeni bir çeviri yönergesi ekler",
+    "setDefaultModel": "Bu sağlayıcı için varsayılan model olarak ayarlar"
+  },
+  "tm": {
+    "import": "Bir TMX dosyasından çeviri belleği girdilerini içe aktarır",
+    "export": "Çeviri belleği girdilerini bir TMX dosyasına dışa aktarır",
+    "cleanup": "Veritabanı boyutunu azaltmak için kullanılmayan girdileri kaldırır"
+  },
+  "glossary": {
+    "new": "Yeni bir sözlük oluşturur"
+  }
+}

@@ -1,0 +1,314 @@
+{
+  "screen": {
+    "title": "Ayarlar",
+    "tabs": {
+      "general": "Genel",
+      "folders": "Klasörler",
+      "llmProviders": "LLM Sağlayıcıları"
+    }
+  },
+  "errors": {
+    "loadSettings": "Ayarlar yüklenirken hata: $error"
+  },
+  "general": {
+    "backup": {
+      "sectionTitle": "Veritabanı yedeği",
+      "sectionSubtitle": "Verilerinizi korumak için yedek oluşturun veya önceki yedeklerden geri yükleyin.",
+      "cardTitle": "Yedekleme işlemleri",
+      "processing": "İşleniyor...",
+      "exportTitle": "Yedeği dışa aktar",
+      "exportDescription": "Veritabanını bir ZIP dosyasına kaydet",
+      "importTitle": "Yedeği içe aktar",
+      "importDescription": "Veritabanını bir yedek dosyasından geri yükle",
+      "saveDialogTitle": "Veritabanı yedeğini kaydet",
+      "openDialogTitle": "Yedek dosyasını seç",
+      "restoreDialog": {
+        "title": "Geri yükleme tamamlandı",
+        "message": "Veritabanı başarıyla geri yüklendi. Değişikliklerin uygulanması için uygulama şimdi yeniden başlatılacak.",
+        "restartNow": "Şimdi yeniden başlat"
+      }
+    },
+    "maintenance": {
+      "sectionTitle": "Veritabanı bakımı",
+      "sectionSubtitle": "Veritabanı istatistiklerini ve çeviri durumlarını korumak ve onarmak için araçlar.",
+      "cardTitle": "Bakım işlemleri",
+      "processing": "İşleniyor...",
+      "actions": {
+        "reanalyzeTitle": "Çevirileri yeniden analiz et",
+        "reanalyzeDescription": "Durum tutarsızlıklarını düzelt ve çevrilmemiş birimleri algıla",
+        "clearModCacheTitle": "Mod güncelleme önbelleğini temizle",
+        "clearModCacheDescription": "Eski \"bekleyen değişiklikler\" rozetlerini kaldır",
+        "rebuildTmTitle": "Çeviri belleğini yeniden oluştur",
+        "rebuildTmDescription": "Mevcut çevirilerden eksik TM girdilerini kurtar",
+        "migrateTmHashesTitle": "Eski TM özet değerlerini geçir",
+        "migrateTmHashesDescription": "TM aramaları için eski tamsayı özetleri SHA256'ya dönüştür",
+        "resetOnboardingTitle": "Tanıtım ipuçlarını sıfırla",
+        "resetOnboardingDescription": "Workshop tanıtım kartını gizlediyseniz tekrar görüntülenmesini sağla"
+      },
+      "toasts": {
+        "onboardingReset": "Tanıtım ipuçları yeniden gösterilecek."
+      }
+    },
+    "languagePreferences": {
+      "sectionTitle": "Çeviri dili tercihleri",
+      "sectionSubtitle": "Çeviriler için kullanılabilir dilleri yönetin ve varsayılan hedef dili belirleyin",
+      "addLanguage": "Dil ekle",
+      "toasts": {
+        "addSuccess": "Dil başarıyla eklendi",
+        "addFailed": "Dil eklenemedi"
+      },
+      "grid": {
+        "columnDefault": "Varsayılan",
+        "columnCode": "Kod",
+        "columnLanguage": "Dil",
+        "customBadge": "Özel",
+        "emptyTitle": "Kullanılabilir dil yok",
+        "errorTitle": "Diller yüklenirken hata",
+        "deleteTooltip": "Dili sil"
+      },
+      "dialogs": {
+        "deleteLanguage": {
+          "title": "Dili sil",
+          "message": "\"$name\" silmek istediğinizden emin misiniz?",
+          "warning": "Bu işlem geri alınamaz.",
+          "confirmLabel": "Sil"
+        }
+      },
+      "toastsGrid": {
+        "setDefaultSuccess": "$name varsayılan dil olarak ayarlandı",
+        "setDefaultFailed": "Varsayılan dil ayarlanamadı",
+        "deleteSuccess": "Dil başarıyla silindi",
+        "deleteFailed": "Dil silinemedi"
+      }
+    },
+    "gameInstallations": {
+      "sectionTitle": "Oyun kurulumları",
+      "sectionSubtitle": "Total War oyunlarınız için yolları yapılandırın",
+      "detectingLabel": "Algılanıyor...",
+      "detectAllButton": "Tüm oyunları otomatik algıla",
+      "detectAllDescription": "Kurulu tüm Total War oyunlarını otomatik olarak bul",
+      "detectButton": "Algıla",
+      "browseButton": "Gözat",
+      "pathHint": "$game kurulum yolu...",
+      "browseDialogTitle": "$game kurulum klasörünü seçin",
+      "toasts": {
+        "gameFound": "$game bulundu",
+        "gameNotFound": "$game bulunamadı",
+        "detectionFailed": "Algılama başarısız: $error",
+        "allFound": "$count oyun bulundu",
+        "noneFound": "Oyun bulunamadı",
+        "saveError": "Oyun yolu kaydedilirken hata: $error"
+      }
+    },
+    "rpfm": {
+      "sectionTitle": "RPFM aracı",
+      "sectionSubtitle": "Pack dosyası çıkarımı için RPFM yürütülebilir dosyasının yolu",
+      "executableSubtitle": "RPFM yürütülebilir dosyası",
+      "schemaSubtitle": "RPFM şema klasörü",
+      "schemaDescription": "RPFM şema dosyalarını içeren klasör (örn. schema_wh3.ron)",
+      "testButton": "Test",
+      "browseButton": "Gözat",
+      "defaultButton": "Varsayılan",
+      "browseExeDialogTitle": "RPFM yürütülebilir dosyasını seçin",
+      "browseSchemaDialogTitle": "RPFM şema klasörünü seçin",
+      "toasts": {
+        "enterPathFirst": "Lütfen önce RPFM yolunu girin",
+        "testing": "RPFM yürütülebilir dosyası test ediliyor...",
+        "validating": "RPFM yürütülebilir dosyası doğrulanıyor...",
+        "validatedSuccess": "RPFM v$version başarıyla doğrulandı",
+        "testSuccess": "RPFM v$version düzgün çalışıyor",
+        "invalidExe": "Geçersiz RPFM yürütülebilir dosyası: $error",
+        "testFailed": "RPFM testi başarısız: $error",
+        "usernameNotDetected": "Kullanıcı adı algılanamadı",
+        "defaultPathSet": "Varsayılan şema yoluna ayarlandı",
+        "savePathError": "RPFM yolu kaydedilirken hata: $error",
+        "saveSchemaPathError": "RPFM şema yolu kaydedilirken hata: $error"
+      }
+    },
+    "workshop": {
+      "sectionTitle": "Steam Workshop",
+      "sectionSubtitle": "Steam Workshop içerikleri için temel klasör (oyun kimlikleri otomatik olarak eklenecek)",
+      "folderSubtitle": "Steam Workshop temel klasörü",
+      "detectingLabel": "Algılanıyor...",
+      "detectButton": "Algıla",
+      "browseButton": "Gözat",
+      "browseDialogTitle": "Steam Workshop klasörünü seçin",
+      "toasts": {
+        "detected": "Workshop klasörü algılandı: $path",
+        "notFound": "Workshop klasörü bulunamadı. Lütfen manuel olarak seçin.",
+        "detectionFailed": "Algılama başarısız: $error",
+        "detectionError": "Algılama hatası: $error",
+        "saveError": "Workshop yolu kaydedilirken hata: $error"
+      }
+    }
+  },
+  "addCustomLanguage": {
+    "title": "Özel dil ekle",
+    "description": "Çeviri projeleri için kullanılabilir olacak özel bir dil ekleyin.",
+    "codeLabel": "Dil kodu (ISO 639-1, 2-3 harf)",
+    "nameLabel": "Dil adı",
+    "codeHint": "örn. pl, ko, ja",
+    "nameHint": "örn. Lehçe, Korece, Japonca",
+    "info": "Özel diller daha sonra silinebilir. Sistem dilleri (İngilizce, Fransızca vb.) değiştirilemez.",
+    "cancel": "İptal",
+    "add": "Ekle",
+    "errors": {
+      "codeRequired": "Dil kodu zorunludur",
+      "codeTooShort": "Kod en az 2 karakter olmalı",
+      "codeLettersOnly": "Kod yalnızca harf içermeli",
+      "codeTooLong": "Kod en fazla 5 karakter olmalı",
+      "nameRequired": "Dil adı zorunludur",
+      "nameTooLong": "Ad en fazla 50 karakter olmalı"
+    }
+  },
+  "backupRestoreDialog": {
+    "title": "Veritabanı yedeği geri yüklensin mi?",
+    "fromLabel": "Veritabanını şuradan geri yüklemek üzeresiniz:",
+    "warningTitle": "Uyarı: bu işlem mevcut TÜM verilerinizin üzerine yazacak!",
+    "warningBody": "Tüm projeler, çeviriler, sözlükler ve ayarların üzerine yazılacak. Bu işlem geri alınamaz.",
+    "cancel": "İptal",
+    "restore": "Geri yükle"
+  },
+  "llmProviders": {
+    "title": "LLM Sağlayıcıları",
+    "subtitle": "Çeviri sağlayıcıları için API anahtarlarını ve modelleri yapılandırın",
+    "advancedSettings": {
+      "title": "Gelişmiş ayarlar",
+      "rateLimitLabel": "Hız sınırı (dakika başına istek)",
+      "saveError": "Hız sınırı kaydedilirken hata: $error"
+    },
+    "providerSection": {
+      "subtitle": "API anahtarını ve modelleri yapılandır",
+      "apiKeyLabel": "API anahtarı",
+      "apiKeyHint": "API anahtarını girin...",
+      "testConnectionTooltip": "Bağlantıyı test et",
+      "toasts": {
+        "connectionSuccess": "Bağlantı başarılı!",
+        "connectionFailed": "Bağlantı başarısız: $error",
+        "saveApiKeyError": "$provider API anahtarı kaydedilirken hata: $error"
+      }
+    },
+    "models": {
+      "headerTitle": "Modeller",
+      "footer": "Modelleri etkinleştirmek için işaretleyin. Genel varsayılan olarak ayarlamak için yıldıza tıklayın.",
+      "legend": "Modelleri çeviriler için kullanılabilir kılmak üzere işaretleyin. Bir modeli genel varsayılan olarak ayarlamak için yıldıza tıklayın (tüm sağlayıcılarda yalnızca tek bir varsayılan).",
+      "errorLoading": "Modeller yüklenirken hata: $error",
+      "noModels": "Bu sağlayıcı için kullanılabilir model yok",
+      "badges": {
+        "default": "Varsayılan",
+        "archived": "Arşivlendi"
+      },
+      "toasts": {
+        "disabled": "Model devre dışı bırakıldı",
+        "enabled": "Model etkinleştirildi",
+        "toggleFailed": "Model değiştirilemedi: $error",
+        "setDefaultSuccess": "Model varsayılan olarak ayarlandı",
+        "setDefaultFailed": "Varsayılan ayarlanamadı: $error"
+      },
+      "dialog": {
+        "titleManage": "$provider modellerini yönet",
+        "subtitle": "Çeviriler için kullanılabilir modelleri seçin"
+      }
+    }
+  },
+  "customRules": {
+    "accordionTitle": "Özel çeviri kuralları",
+    "accordionSubtitle": "Çeviri komutlarına özel yönergeler ekleyin",
+    "infoText": "Özel kurallar, LLM'e gönderilen her çeviri komutuna eklenir. Tüm projelere uygulanan genel yönergeler, terminoloji rehberi veya çeviri tercihleri tanımlamak için bunu kullanın.",
+    "addRuleButton": "Kural ekle",
+    "toasts": {
+      "addSuccess": "Kural başarıyla eklendi",
+      "addFailed": "Kural eklenemedi",
+      "updateSuccess": "Kural başarıyla güncellendi",
+      "updateFailed": "Kural güncellenemedi",
+      "deleteSuccess": "Kural başarıyla silindi",
+      "deleteFailed": "Kural silinemedi",
+      "toggleFailed": "Kural değiştirilemedi"
+    },
+    "grid": {
+      "columnActive": "Etkin",
+      "columnRuleText": "Kural metni",
+      "columnActions": "İşlemler",
+      "emptyTitle": "Tanımlanmış özel kural yok",
+      "emptySubtitle": "Tüm çeviri komutlarını özelleştirmek için genel kurallar ekleyin",
+      "errorTitle": "Kurallar yüklenirken hata",
+      "editTooltip": "Kuralı düzenle",
+      "deleteTooltip": "Kuralı sil"
+    },
+    "editorDialog": {
+      "addTitle": "Özel kural ekle",
+      "editTitle": "Özel kuralı düzenle",
+      "description": "Her çeviri komutuna eklenecek kural metnini girin. Bu kurallar tüm projelere genel olarak uygulanır.",
+      "ruleTextLabel": "Kural metni",
+      "ruleTextHint": "örn. Her zaman resmi dil kullan ve kısaltmalardan kaçın...",
+      "tipsTitle": "İpuçları",
+      "tipsText": "• Yönergelerinizde belirgin ve net olun\n• Birden fazla kural için maddeler kullanın\n• Kurallar çeviri komutuna sırayla eklenir\n• Kuralları silmeden geçici olarak devre dışı bırakabilirsiniz",
+      "cancel": "İptal",
+      "save": "Kaydet",
+      "add": "Ekle",
+      "errors": {
+        "ruleTextRequired": "Lütfen bir kural metni girin"
+      }
+    },
+    "deleteDialog": {
+      "title": "Kuralı sil",
+      "message": "Bu özel kuralı silmek istediğinizden emin misiniz?",
+      "warning": "Bu işlem geri alınamaz.",
+      "confirmLabel": "Sil"
+    }
+  },
+  "ignoredTexts": {
+    "accordionTitle": "Yok sayılan kaynak metinler",
+    "accordionSubtitle": "Çeviri sırasında belirli kaynak metinleri atla",
+    "infoText": "Bu değerlerle eşleşen kaynak metinler çeviriden hariç tutulur. Not: [PLACEHOLDER] gibi tamamen köşeli ayraç içindeki metinler otomatik olarak atlanır. Modlarınıza özgü özel desenler için bu listeyi kullanın.",
+    "resetButton": "Varsayılanlara sıfırla",
+    "addButton": "Metin ekle",
+    "toasts": {
+      "addSuccess": "Metin başarıyla eklendi",
+      "addFailed": "Metin eklenemedi",
+      "updateSuccess": "Metin başarıyla güncellendi",
+      "updateFailed": "Metin güncellenemedi",
+      "deleteSuccess": "Metin başarıyla silindi",
+      "deleteFailed": "Metin silinemedi",
+      "resetSuccess": "Varsayılanlara başarıyla sıfırlandı",
+      "resetFailed": "Varsayılanlara sıfırlanamadı",
+      "toggleFailed": "Metin değiştirilemedi"
+    },
+    "grid": {
+      "columnActive": "Etkin",
+      "columnSourceText": "Kaynak metin",
+      "columnActions": "İşlemler",
+      "emptyTitle": "Tanımlanmış yok sayılan metin yok",
+      "emptySubtitle": "Çeviri sırasında atlanacak kaynak metinler ekleyin",
+      "errorTitle": "Yok sayılan metinler yüklenirken hata",
+      "editTooltip": "Düzenle",
+      "deleteTooltip": "Sil"
+    },
+    "editorDialog": {
+      "addTitle": "Yok sayılan metin ekle",
+      "editTitle": "Yok sayılan metni düzenle",
+      "description": "Çeviri sırasında atlanması gereken bir kaynak metin girin. Eşleştirme büyük/küçük harfe duyarsızdır.",
+      "sourceTextLabel": "Kaynak metin",
+      "sourceTextHint": "örn. placeholder, [hidden] vb.",
+      "infoTitle": "Bilgi",
+      "infoText": "• Bu metinlerle eşleşen birimler çeviriden hariç tutulur\n• [unit_name] gibi köşeli ayraç içindeki metinler otomatik olarak atlanır\n• Modlarınıza özgü özel yer tutucular için kullanın\n• Değişiklikler yeni çeviriler için anında geçerli olur",
+      "cancel": "İptal",
+      "save": "Kaydet",
+      "add": "Ekle",
+      "errors": {
+        "sourceTextRequired": "Lütfen bir kaynak metin girin"
+      }
+    },
+    "deleteDialog": {
+      "title": "Yok sayılan metni sil",
+      "message": "\"$text\" silmek istediğinizden emin misiniz?",
+      "warning": "Bu işlem geri alınamaz.",
+      "confirmLabel": "Sil"
+    },
+    "resetDialog": {
+      "title": "Varsayılanlara sıfırla",
+      "message": "Bu işlem mevcut tüm yok sayılan metinleri silip varsayılan değerleri geri yükler:\n\n• placeholder\n• dummy\n\nNot: [placeholder] gibi tamamen köşeli ayraç içindeki metinler her zaman otomatik olarak filtrelenir.\n\nDevam etmek istediğinizden emin misiniz?",
+      "confirmLabel": "Sıfırla"
+    }
+  }
+}

@@ -1,0 +1,235 @@
+{
+  "title": "Projeler",
+  "projectCount": "$count proje",
+  "stateLabel": "DURUM",
+  "clearFilters": "Temizle",
+  "filters": {
+    "needsUpdate": "Güncelleme gerekiyor",
+    "needsReview": "İncelenecek",
+    "incomplete": "Tamamlanmamış",
+    "completed": "Tamamlandı",
+    "exported": "Dışa aktarılmış",
+    "notExported": "Dışa aktarılmamış",
+    "exportOutdated": "Dışa aktarım güncel değil"
+  },
+  "emptyStates": {
+    "noMatch": "Filtrelerle eşleşen proje yok",
+    "noProjects": "Henüz proje yok",
+    "adjustFilters": "Filtrelerinizi ayarlamayı deneyin",
+    "goToMods": "Bir moddan proje oluşturmak için Modlar ekranına gidin",
+    "failedToLoad": "Projeler yüklenemedi"
+  },
+  "loading": "Projeler yükleniyor...",
+  "columns": {
+    "project": "Proje",
+    "languagesProgress": "Diller ve ilerleme",
+    "modified": "Değiştirilme",
+    "status": "Durum"
+  },
+  "labels": {
+    "noTargetLanguage": "Hedef dil yok",
+    "localPack": "Yerel pack",
+    "gameTranslation": "Oyun çevirisi",
+    "lastModified": "Son değişiklik: $date",
+    "lastExport": "Son dışa aktarım: $date"
+  },
+  "tooltips": {
+    "openInWorkshop": "Steam Workshop'ta aç",
+    "resync": "Kaynak pack dosyasıyla yeniden eşitle",
+    "deleteProject": "Projeyi sil",
+    "hideBulkMenu": "Toplu işlem menüsünü gizle",
+    "showBulkMenu": "Toplu işlem menüsünü göster",
+    "newTranslations": "+$n yeni çeviri eklenecek",
+    "removedTranslations": "-$n çeviri kaldırıldı",
+    "changedSources": "~$n kaynak metin değişti"
+  },
+  "status": {
+    "modUpdated": "Mod güncellendi",
+    "upToDate": "Güncel",
+    "exportOutdated": "Dışa aktarım güncel değil",
+    "unpublished": "Yayınlanmamış",
+    "exported": "Dışa aktarıldı",
+    "draft": "Taslak"
+  },
+  "dialogs": {
+    "deleteProject": {
+      "title": "Projeyi sil",
+      "message": "\"$name\" silmek istediğinizden emin misiniz?",
+      "warning": "Bu işlem geri alınamaz.",
+      "confirmLabel": "Sil"
+    },
+    "confirmLeave": {
+      "title": "Dışa aktarım devam ediyor",
+      "message": "Şu anda toplu bir dışa aktarım devam ediyor. Çıkmak istediğinizden emin misiniz? Dışa aktarım iptal edilecek.",
+      "stay": "Kal",
+      "leave": "Çık"
+    },
+    "confirmCancelBulk": {
+      "title": "Geçerli işlem durdurulsun mu?",
+      "message": "Zaten işlenmiş projeler değişikliklerini koruyacaktır.",
+      "stop": "Durdur",
+      "keepRunning": "Devam ettir"
+    }
+  },
+  "messages": {
+    "resyncSuccess": "Proje başarıyla yeniden eşitlendi",
+    "resyncFailed": "Yeniden eşitleme başarısız: $error",
+    "deleteSuccess": "\"$name\" projesi silindi",
+    "deleteFailed": "Proje silinemedi: $error",
+    "projectCreated": "Proje başarıyla oluşturuldu",
+    "projectCreatedUnits": "Proje $count çeviri birimiyle oluşturuldu",
+    "createFailed": "Proje oluşturulamadı: $error",
+    "importFailed": "Proje oluşturuldu ancak çeviriler içe aktarılamadı: $error"
+  },
+  "search": {
+    "hint": "Projelerde ara..."
+  },
+  "batchExport": {
+    "title": "Toplu pack dışa aktarımı",
+    "noData": "Dışa aktarım verisi yok.",
+    "statusComplete": "Dışa aktarım tamamlandı",
+    "statusCancelled": "İptal edildi",
+    "statusExporting": "Dışa aktarılıyor...",
+    "completedWithErrors": "Dışa aktarım hatalarla tamamlandı",
+    "allSuccess": "Tüm pack'ler başarıyla dışa aktarıldı",
+    "summary": "$succeeded başarılı, $failed başarısız",
+    "current": "Geçerli: $name",
+    "sectionProjects": "Projeler",
+    "sectionLabel": "$count proje • $lang",
+    "progressOf": "$completed / $total proje",
+    "entryCount": "$count girdi"
+  },
+  "bulk": {
+    "sectionSettings": "Ayarlar",
+    "sectionActions": "İşlemler",
+    "sectionInfo": "Bilgileri göster",
+    "infoText": "Toplu işlemler, halihazırda kısmen çevrilmiş projeler için tasarlanmıştır. Seçilen hedef dile uyan, görünür tüm projelere uygulanır.",
+    "infoHide": "Gizle",
+    "targetLanguageLabel": "Hedef dil",
+    "scopeMessage": "Görünür $visible projeyi etkileyecek (hedef dile uyan: $matching).",
+    "buttons": {
+      "translateAll": "Tümünü çevir",
+      "rescanReviews": "İncelemeleri yeniden tara",
+      "reviewFlagged": "İşaretlenenleri incele",
+      "generatePack": "Pack oluştur"
+    },
+    "unitCount": "$n birim",
+    "tooltips": {
+      "selectLanguage": "Bir hedef dil seçin",
+      "alreadyRunning": "Zaten çalışan bir işlem var",
+      "noVisibleProjects": "Eşleşen görünür proje yok"
+    },
+    "progress": {
+      "titleTranslating": "Projeler çevriliyor",
+      "titleRescanning": "İncelemeler yeniden taranıyor",
+      "titleValidating": "İncelemeler zorla doğrulanıyor",
+      "titleGeneratingPacks": "Pack'ler oluşturuluyor",
+      "titleRetranslating": "İşaretli birimler yeniden çevriliyor",
+      "titleDefault": "Toplu işlem",
+      "targetLanguage": "Hedef dil: $code",
+      "projectProgress": "$current / $total proje",
+      "cancelling": "İptal ediliyor…",
+      "retryFailed": "Başarısızları yeniden dene",
+      "summary": "$succeeded başarılı · $skipped atlandı · $failed başarısız"
+    },
+    "review": {
+      "title": "İşaretli çevirileri incele",
+      "subtitle": "Hedef: $code · $projects projede $units birim",
+      "loadFailed": "İnceleme kuyruğu yüklenemedi: $error",
+      "working": "Çalışıyor…",
+      "validateAll": "Tümünü doğrula",
+      "retranslateAll": "Tümünü zorla yeniden çevir",
+      "emptyTitle": "İşaretli çeviri yok",
+      "emptySubtitle": "Bu dil için tüm görünür projeler güncel.",
+      "noModelSelected": "LLM modeli seçilmedi",
+      "retranslateFailed": "Yeniden çeviri başarısız: $error",
+      "validateFailed": "Doğrulama başarısız: $error",
+      "validateAllFailed": "Tümü doğrulanamadı: $error",
+      "columnSource": "EN",
+      "columnTranslation": "Çeviri",
+      "emptyTranslation": "(boş)",
+      "tooltipValidate": "Doğrula (inceleme işaretini kaldır)",
+      "tooltipRetranslate": "Bu birimi zorla yeniden çevir"
+    },
+    "languageSelector": {
+      "loadFailed": "Diller yüklenemedi: $error",
+      "noLanguages": "Görünür projelerde kullanılabilir hedef dil yok."
+    },
+    "outcomes": {
+      "noTargetLanguage": "Yapılandırılmış hedef dil yok",
+      "noUntranslatedUnits": "Çevrilmemiş birim yok",
+      "noLlmModel": "LLM modeli seçilmedi",
+      "noFlaggedUnits": "İncelemeye işaretli birim yok",
+      "noUnitsToRescan": "Yeniden taranacak çevrilmiş birim yok",
+      "unitsTranslated": "$count birim çevrildi · $flagged işaretli",
+      "unitsFlagged": "$count incelemeye işaretlendi",
+      "flagsCleared": "$count işaret kaldırıldı",
+      "packGenerated": "$entries girdi · $size MB",
+      "unitsRetranslated": "$count birim yeniden çevrildi"
+    }
+  },
+  "addLanguage": {
+    "title": "Hedef dil ekle",
+    "subtitle": "Bu projeye eklenecek dilleri seçin",
+    "adding": "Ekleniyor...",
+    "addButton": "Dil ekle",
+    "allAdded": "Tüm diller zaten eklenmiş",
+    "loadError": "Diller yüklenirken hata",
+    "languageCode": "Kod: $code",
+    "addSuccess": "Her biri $units çeviri birimiyle $count dil eklendi",
+    "addFailed": "Diller eklenemedi: $error"
+  },
+  "createProject": {
+    "title": "Yeni proje oluştur",
+    "steps": {
+      "basicInfo": "Temel bilgiler",
+      "translationSettings": "Çeviri ayarları"
+    },
+    "actions": {
+      "close": "Kapat",
+      "back": "Geri",
+      "next": "İleri",
+      "create": "Oluştur"
+    },
+    "errors": {
+      "selectGame": "Lütfen bir oyun kurulumu seçin",
+      "gameMustBeSelected": "Bir oyun kurulumu seçilmelidir",
+      "gamePathNotConfigured": "Oyun kurulum yolu yapılandırılmamış",
+      "rpfmSchemaNotConfigured": "RPFM şema yolu yapılandırılmamış.\n\nProje oluşturmadan önce Ayarlar > RPFM Aracı altında yapılandırın.\n\n.pack dosyalarından yerelleştirme dosyalarını çıkarmak için şema yolu gereklidir."
+    },
+    "progress": {
+      "extracting": "Yerelleştirme dosyaları çıkarılıp içe aktarılıyor...",
+      "processing": "İşleniyor..."
+    },
+    "basicInfo": {
+      "descriptionAutoFilled": "Algılanan moddan otomatik dolduruldu. İnceleyip devam edin.",
+      "descriptionManual": "Proje adını girin ve bir oyun kurulumu seçin.",
+      "fieldProjectName": "PROJE ADI",
+      "fieldSourcePack": "KAYNAK PACK",
+      "fieldWorkshopId": "WORKSHOP KİMLİĞİ",
+      "fieldGame": "OYUN",
+      "hintProjectName": "Proje adını girin",
+      "hintGame": "Bir oyun seçin",
+      "errorLoadingGames": "Oyunlar yüklenirken hata: $error"
+    },
+    "translationSettings": {
+      "description": "Çeviri verimliliğini ayarlayın ve isteğe bağlı olarak ek bir komut ekleyin.",
+      "fieldBatchSize": "YIĞIN BOYUTU",
+      "fieldParallelBatches": "PARALEL YIĞINLAR",
+      "fieldCustomPrompt": "ÖZEL ÇEVİRİ KOMUTU (İSTEĞE BAĞLI)",
+      "hintBatchSize": "Yığın başına birim sayısı (varsayılan: 25)",
+      "hintParallelBatches": "Paralel olarak işlenecek yığın sayısı (varsayılan: 3)",
+      "hintCustomPrompt": "Yapay zekâ çevirmenine özel yönergeler girin"
+    }
+  },
+  "initialization": {
+    "titleInProgress": "Proje başlatılıyor",
+    "titleFailed": "Başlatma başarısız",
+    "titleComplete": "Başlatma tamamlandı",
+    "extracting": "Yerelleştirme dosyaları çıkarılıp içe aktarılıyor...",
+    "successUnits": "$count çeviri birimi başarıyla içe aktarıldı",
+    "noLogs": "Henüz günlük yok...",
+    "sectionLogs": "Günlükler",
+    "close": "Kapat"
+  }
+}

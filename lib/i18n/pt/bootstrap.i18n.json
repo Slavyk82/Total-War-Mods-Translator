@@ -1,0 +1,43 @@
+{
+  "modScan": {
+    "titleScanning": "A analisar mods do Workshop...",
+    "titleRefreshing": "A atualizar contagens de assinantes...",
+    "rpfmDialog": {
+      "title": "RPFM-CLI não encontrado",
+      "content": "A análise do Workshop precisa do RPFM-CLI para ler os ficheiros de mods, mas não foi possível localizá-lo no caminho configurado.\n\nAbra Definições → Pastas → RPFM para atualizar o caminho ou descarregar uma nova cópia.",
+      "actions": {
+        "close": "Fechar",
+        "openSettings": "Abrir definições"
+      }
+    }
+  },
+  "validationRescan": {
+    "titles": {
+      "preparing": "A preparar dados de validação",
+      "updating": "A atualizar dados de validação",
+      "resuming": "A retomar atualização de validação",
+      "required": "Atualização dos dados de validação necessária"
+    },
+    "labels": {
+      "scanningEntries": "A analisar entradas de validação...",
+      "normalizedOf": "Normalizadas $processed de $total",
+      "upgradingLegacy": "A atualizar registos de validação antigos para o novo formato.",
+      "preparing": "A preparar...",
+      "startingRescan": "A iniciar nova análise...",
+      "rescannedOf": "Analisadas $done de $total",
+      "rescannedOfEta": "Analisadas $done de $total — ETA $eta",
+      "closingWillPause": "Fechar a aplicação irá pausar a atualização; será retomada no próximo arranque."
+    },
+    "plan": {
+      "resumeBody": "Uma atualização anterior foi interrompida. $already de $totalAll unidades já processadas. Restantes: $remaining unidades • Estimado: ~$estimated.",
+      "freshBody": "Esta versão utiliza um novo formato, mais rico, para o diagnóstico de validação de traduções. Todas as traduções existentes precisam de ser reanalisadas uma vez para beneficiarem dele.\n\n$total unidades a reanalisar • Estimado: ~$estimated\n\nIsto só será executado uma vez. Não feche a aplicação até concluir — se for interrompido, a atualização será retomada no próximo arranque."
+    },
+    "actions": {
+      "continue": "Continuar",
+      "startRescan": "Iniciar análise"
+    },
+    "toasts": {
+      "updateComplete": "Atualização dos dados de validação concluída."
+    }
+  }
+}

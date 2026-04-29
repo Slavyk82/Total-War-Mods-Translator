@@ -1,0 +1,23 @@
+{
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "refresh": "Atualizar",
+    "close": "Fechar",
+    "back": "Voltar",
+    "confirm": "Confirmar",
+    "apply": "Aplicar",
+    "reset": "Redefinir",
+    "copy": "Copiar",
+    "translate": "Traduzir"
+  },
+  "yes": "Sim",
+  "no": "Não",
+  "ok": "OK",
+  "loading": "Carregando…",
+  "error": "Erro"
+}
