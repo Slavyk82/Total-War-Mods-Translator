@@ -77,7 +77,6 @@ class ModsScreenController {
           context,
           t.mods.messages.packFileDeleted,
         );
-        handleRefresh();
       } else {
         if (!context.mounted) return;
         FluentToast.warning(context, t.mods.messages.fileNotFound(path: packFilePath));
