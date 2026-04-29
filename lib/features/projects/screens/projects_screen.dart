@@ -963,19 +963,19 @@ class _StatusPill extends StatelessWidget {
         tooltip: _buildChangesTooltip(analysis),
       );
     }
-    if (analysis != null) {
-      return _pill(
-        label: t.projects.status.upToDate,
-        fg: tokens.ok,
-        bg: tokens.okBg,
-      );
-    }
     if (details.isModifiedSinceLastExport) {
       return _pill(
         label: t.projects.status.exportOutdated,
         fg: tokens.warn,
         bg: tokens.warnBg,
         tooltip: t.tooltips.projects.filterExportOutdated,
+      );
+    }
+    if (analysis != null) {
+      return _pill(
+        label: t.projects.status.upToDate,
+        fg: tokens.ok,
+        bg: tokens.okBg,
       );
     }
     if (details.hasBeenExported) {
