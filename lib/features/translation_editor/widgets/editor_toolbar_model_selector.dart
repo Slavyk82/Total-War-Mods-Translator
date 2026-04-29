@@ -69,13 +69,15 @@ class _EditorToolbarModelSelectorState
             : _findBestDefaultModel(models, activeProvider);
 
         // Seed the provider once with the best default when no model is set.
+        // Uses the non-persisting seeder so we don't overwrite a stored
+        // selection that's still being loaded asynchronously.
         if (selectedModelId == null && !_seeded) {
           _seeded = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             ref
                 .read(selectedLlmModelProvider.notifier)
-                .setModel(currentModel.id);
+                .seedDefaultIfEmpty(currentModel.id);
           });
         }
 

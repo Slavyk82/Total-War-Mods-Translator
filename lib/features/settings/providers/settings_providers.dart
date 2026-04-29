@@ -65,6 +65,10 @@ class SettingsKeys {
   // Workshop onboarding
   static const String workshopOnboardingCardHidden =
       'workshop_onboarding_card_hidden';
+
+  // Translation editor preferences
+  static const String editorSelectedLlmModelId =
+      'editor_selected_llm_model_id';
 }
 
 /// Provider for settings service
