@@ -184,6 +184,7 @@
       "workshopNoPack": "Workshop item #$id — no local pack file",
       "noPackOnDisk": "No pack file on disk — generate a pack first",
       "workshopItem": "Workshop item #$id",
+      "openOnWorkshop": "Open on Steam Workshop",
       "packReadyNoId": "Pack ready — no Workshop id assigned yet",
       "notPublishedYet": "Not published to the Workshop yet.",
       "subscribers": "Workshop subscribers — last refreshed at app start.",

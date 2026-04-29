@@ -184,6 +184,7 @@
       "workshopNoPack": "创意工坊项 #$id —— 无本地包文件",
       "noPackOnDisk": "磁盘上没有包文件 —— 请先生成一个包",
       "workshopItem": "创意工坊项 #$id",
+      "openOnWorkshop": "在 Steam Workshop 中打开",
       "packReadyNoId": "包已就绪 —— 尚未分配创意工坊 ID",
       "notPublishedYet": "尚未发布到创意工坊。",
       "subscribers": "创意工坊订阅数 —— 上次刷新于应用启动时。",

@@ -184,6 +184,7 @@
       "workshopNoPack": "Élément Workshop #$id — aucun fichier pack local",
       "noPackOnDisk": "Aucun fichier pack sur le disque — générez d'abord un pack",
       "workshopItem": "Élément Workshop #$id",
+      "openOnWorkshop": "Ouvrir sur Steam Workshop",
       "packReadyNoId": "Pack prêt — aucun ID Workshop assigné",
       "notPublishedYet": "Pas encore publié sur le Workshop.",
       "subscribers": "Abonnés Workshop — dernière actualisation au démarrage de l'application.",

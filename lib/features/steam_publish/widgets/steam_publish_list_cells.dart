@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/providers/clock_provider.dart';
@@ -93,6 +94,10 @@ class SteamSelectionCheckbox extends StatelessWidget {
 // =============================================================================
 
 /// Pack preview image (or fallback icon) rendered in column 2.
+///
+/// Clicking the cover opens the published mod on the Steam Workshop when
+/// [PublishableItem.publishedSteamId] is set; otherwise the tap falls
+/// through to the row's selection toggle.
 class SteamCoverCell extends StatelessWidget {
   final PublishableItem item;
 
@@ -142,7 +147,7 @@ class SteamCoverCell extends StatelessWidget {
       );
     }
 
-    return Center(
+    final cover = Center(
       child: Container(
         width: 80,
         height: 80,
@@ -156,6 +161,8 @@ class SteamCoverCell extends StatelessWidget {
         child: inner,
       ),
     );
+
+    return _maybeWrapWithWorkshopLink(item: item, child: cover);
   }
 }
 
@@ -225,6 +232,34 @@ class SteamTitleBlock extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Wraps [child] with a click affordance that opens the published mod on the
+/// Steam Workshop, when [PublishableItem.publishedSteamId] is set. When no id
+/// is assigned, [child] is returned untouched so the parent row's tap (which
+/// toggles selection) keeps working.
+Widget _maybeWrapWithWorkshopLink({
+  required PublishableItem item,
+  required Widget child,
+}) {
+  final id = item.publishedSteamId;
+  if (id == null || id.isEmpty) return child;
+  return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: Tooltip(
+      message: t.steamPublish.cells.tooltips.openOnWorkshop,
+      waitDuration: const Duration(milliseconds: 400),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => launchUrl(
+          Uri.parse(
+            'https://steamcommunity.com/sharedfiles/filedetails/?id=$id',
+          ),
+        ),
+        child: child,
+      ),
+    ),
+  );
 }
 
 // =============================================================================

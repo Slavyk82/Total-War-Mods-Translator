@@ -184,6 +184,7 @@
       "workshopNoPack": "Элемент Workshop #$id — нет локального файла пака",
       "noPackOnDisk": "На диске нет файла пака — сначала сгенерируйте пак",
       "workshopItem": "Элемент Workshop #$id",
+      "openOnWorkshop": "Открыть в Steam Workshop",
       "packReadyNoId": "Пак готов — Workshop ID ещё не назначен",
       "notPublishedYet": "Ещё не опубликовано в Workshop.",
       "subscribers": "Подписчики Workshop — последнее обновление при запуске приложения.",

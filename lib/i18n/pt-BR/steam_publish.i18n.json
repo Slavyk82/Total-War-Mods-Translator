@@ -184,6 +184,7 @@
       "workshopNoPack": "Item do Workshop nº$id — sem arquivo pack local",
       "noPackOnDisk": "Sem arquivo pack no disco — gere primeiro um pack",
       "workshopItem": "Item do Workshop nº$id",
+      "openOnWorkshop": "Abrir no Steam Workshop",
       "packReadyNoId": "Pack pronto — ainda sem ID de Workshop atribuído",
       "notPublishedYet": "Ainda não publicado no Workshop.",
       "subscribers": "Inscritos do Workshop — atualizados pela última vez na inicialização do aplicativo.",

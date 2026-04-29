@@ -184,6 +184,7 @@
       "workshopNoPack": "Workshop öğesi #$id — yerel pack dosyası yok",
       "noPackOnDisk": "Diskte pack dosyası yok — önce bir pack oluşturun",
       "workshopItem": "Workshop öğesi #$id",
+      "openOnWorkshop": "Steam Workshop'ta aç",
       "packReadyNoId": "Pack hazır — henüz Workshop kimliği atanmadı",
       "notPublishedYet": "Henüz Workshop'ta yayınlanmadı.",
       "subscribers": "Workshop aboneleri — uygulama başlatıldığında en son yenilendi.",
