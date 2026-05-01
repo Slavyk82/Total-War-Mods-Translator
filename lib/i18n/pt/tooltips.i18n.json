@@ -42,7 +42,8 @@
   "tm": {
     "import": "Importar entradas da memória de tradução a partir de um ficheiro TMX",
     "export": "Exportar entradas da memória de tradução para um ficheiro TMX",
-    "cleanup": "Remover entradas não utilizadas para reduzir o tamanho da base de dados"
+    "cleanup": "Remover entradas não utilizadas para reduzir o tamanho da base de dados",
+    "deleteSelection": "Eliminar as entradas atualmente marcadas na tabela"
   },
   "glossary": {
     "new": "Criar um novo glossário"

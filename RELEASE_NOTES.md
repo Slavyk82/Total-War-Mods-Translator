@@ -1,8 +1,7 @@
-## What's New — v2.0.1
+## What's New — v2.0.2
 
-### Languages
-- Added Portuguese, Brazilian Portuguese, and Turkish locales
+### Translation Memory
+- Added bulk deletion of translation memory entries
 
 ### Bug Fixes
-- The translation editor now remembers the last selected LLM model across restarts
-- Deleting a local mod pack no longer triggers an unnecessary mods rescan
+- Fixed sorting in the translation memory table

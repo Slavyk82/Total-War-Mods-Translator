@@ -30,7 +30,8 @@
     "import": "İçe aktar",
     "export": "Dışa aktar",
     "importing": "İçe aktarılıyor...",
-    "exporting": "Dışa aktarılıyor..."
+    "exporting": "Dışa aktarılıyor...",
+    "deleteSelection": "Seçimi sil"
   },
   "dialogs": {
     "importTitle": "Çeviri belleğini içe aktar (TMX)",

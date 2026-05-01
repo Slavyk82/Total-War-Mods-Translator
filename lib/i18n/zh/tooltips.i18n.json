@@ -42,7 +42,8 @@
   "tm": {
     "import": "从 TMX 文件导入翻译记忆库条目",
     "export": "将翻译记忆库条目导出到 TMX 文件",
-    "cleanup": "移除未使用的条目以减小数据库大小"
+    "cleanup": "移除未使用的条目以减小数据库大小",
+    "deleteSelection": "删除当前表格中已勾选的条目"
   },
   "glossary": {
     "new": "创建新术语表"

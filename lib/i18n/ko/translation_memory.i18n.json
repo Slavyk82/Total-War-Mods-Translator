@@ -30,7 +30,8 @@
     "import": "가져오기",
     "export": "내보내기",
     "importing": "가져오는 중...",
-    "exporting": "내보내는 중..."
+    "exporting": "내보내는 중...",
+    "deleteSelection": "선택 항목 삭제"
   },
   "dialogs": {
     "importTitle": "번역 메모리 가져오기 (TMX)",

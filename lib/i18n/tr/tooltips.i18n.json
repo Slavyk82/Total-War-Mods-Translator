@@ -42,7 +42,8 @@
   "tm": {
     "import": "Bir TMX dosyasından çeviri belleği girdilerini içe aktarır",
     "export": "Çeviri belleği girdilerini bir TMX dosyasına dışa aktarır",
-    "cleanup": "Veritabanı boyutunu azaltmak için kullanılmayan girdileri kaldırır"
+    "cleanup": "Veritabanı boyutunu azaltmak için kullanılmayan girdileri kaldırır",
+    "deleteSelection": "Tabloda şu anda işaretli olan girdileri siler"
   },
   "glossary": {
     "new": "Yeni bir sözlük oluşturur"

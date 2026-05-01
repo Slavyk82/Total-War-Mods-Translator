@@ -57,14 +57,18 @@ class _FakeTmService implements ITranslationMemoryService {
   /// Riverpod sees a new list reference after [deleteEntry] mutates this.
   final List<TranslationMemoryEntry> _entries;
 
+  int getEntriesCallCount = 0;
+
   @override
   Future<Result<List<TranslationMemoryEntry>, TmServiceException>> getEntries({
     String? targetLanguageCode,
     int limit = 50,
     int offset = 0,
     String orderBy = 'usage_count DESC',
-  }) async =>
-      Ok(List.of(_entries));
+  }) async {
+    getEntriesCallCount++;
+    return Ok(List.of(_entries));
+  }
 
   @override
   Future<Result<int, TmServiceException>> countEntries({
@@ -255,16 +259,18 @@ void main() {
     int tick = 0;
 
     await t.pumpWidget(createThemedTestableWidget(
-      StatefulBuilder(
-        builder: (context, setState) {
-          forceRebuild = setState;
-          return Column(
-            children: [
-              Text('tick=$tick'),
-              const Expanded(child: TmBrowserDataGrid()),
-            ],
-          );
-        },
+      Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) {
+            forceRebuild = setState;
+            return Column(
+              children: [
+                Text('tick=$tick'),
+                const Expanded(child: TmBrowserDataGrid()),
+              ],
+            );
+          },
+        ),
       ),
       theme: AppTheme.atelierDarkTheme,
       overrides: _overrides(entries),
@@ -404,7 +410,7 @@ void main() {
     ]);
 
     await t.pumpWidget(createThemedTestableWidget(
-      const TmBrowserDataGrid(),
+      const Scaffold(body: TmBrowserDataGrid()),
       theme: AppTheme.atelierDarkTheme,
       overrides: [
         clockProvider.overrideWithValue(
@@ -443,5 +449,128 @@ void main() {
     // Drain the toast timer to satisfy the framework's "no dangling timers"
     // invariant.
     await t.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets(
+      'deleteEntries removes selected rows from the grid immediately '
+      '(bulk-delete invalidation must reach SfDataGrid._effectiveRows)',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final service = _FakeTmService([
+      _entry('tm1', 'Hello', 'Bonjour'),
+      _entry('tm2', 'World', 'Monde'),
+      _entry('tm3', 'Foo', 'Bar'),
+    ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        clockProvider.overrideWithValue(
+          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+              .add(const Duration(days: 1)),
+        ),
+        translationMemoryServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: const Scaffold(body: TmBrowserDataGrid()),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.text('Hello'), findsOneWidget);
+    expect(find.text('World'), findsOneWidget);
+    expect(find.text('Foo'), findsOneWidget);
+
+    // Bulk-delete two rows in one shot — same call shape the sidebar button
+    // makes after the user confirms the dialog.
+    await container
+        .read(tmDeleteStateProvider.notifier)
+        .deleteEntries(['tm1', 'tm3']);
+    await t.pumpAndSettle();
+
+    expect(find.text('Hello'), findsNothing,
+        reason: 'Bulk-deleted rows must vanish from the grid immediately');
+    expect(find.text('Foo'), findsNothing,
+        reason: 'Bulk-deleted rows must vanish from the grid immediately');
+    expect(find.text('World'), findsOneWidget);
+  });
+
+  testWidgets(
+      'Triggering a sort does not enter an infinite refetch loop '
+      '(re-entry guard in _handleSortChanged)',
+      (t) async {
+    await t.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => t.binding.setSurfaceSize(null));
+
+    final service = _FakeTmService([
+      _entry('tm1', 'Hello', 'Bonjour'),
+      _entry('tm2', 'World', 'Monde'),
+    ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        clockProvider.overrideWithValue(
+          () => DateTime.fromMillisecondsSinceEpoch(_baseEpoch * 1000)
+              .add(const Duration(days: 1)),
+        ),
+        translationMemoryServiceProvider.overrideWithValue(service),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await t.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: const Scaffold(body: TmBrowserDataGrid()),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    // Initial load = exactly one getEntries call.
+    expect(service.getEntriesCallCount, 1);
+
+    // Simulate what Syncfusion does when the user clicks a sortable header:
+    // populate `sortedColumns` and call `sort()`, which invokes
+    // `_TmDataSource.performSorting`. The data source then schedules a
+    // microtask that pushes the new sort into the Riverpod provider, which
+    // refetches the entries. Once the refetch lands, `updateEntries`
+    // notifies the grid, and Syncfusion re-applies the sort by calling
+    // `performSorting` again with the SAME (column, ascending). The
+    // re-entry guard in `_handleSortChanged` must short-circuit that second
+    // call so the loop closes.
+    final source = t.widget<SfDataGrid>(find.byType(SfDataGrid)).source;
+    source.sortedColumns
+      ..clear()
+      ..add(SortColumnDetails(
+        name: 'source',
+        sortDirection: DataGridSortDirection.ascending,
+      ));
+    source.sort();
+
+    // Pump enough frames for the microtasks, the refetch, the
+    // updateEntries -> notifyListeners cycle, and any re-entrant
+    // performSorting to drain. If the guard is missing the call count
+    // explodes within these frames.
+    await t.pumpAndSettle();
+
+    // Allowed: 1 initial + 1 for the sort change. We tolerate a small slack
+    // for any extra rebuild Syncfusion may schedule, but the count must be
+    // bounded — anything ≥ 5 means the loop has come back.
+    expect(service.getEntriesCallCount, lessThan(5),
+        reason:
+            'Sorting must not retrigger getEntries in a loop. Got '
+            '${service.getEntriesCallCount} calls.');
   });
 }

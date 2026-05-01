@@ -16,6 +16,7 @@ import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../providers/tm_providers.dart';
+import '../providers/tm_selection_notifier.dart';
 
 /// Tokenised [SfDataGrid] for browsing Translation Memory entries.
 ///
@@ -45,10 +46,30 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       entries: const [],
       onDeleteEntry: _handleDeleteEntry,
       onSortChanged: _handleSortChanged,
+      onCheckboxTap: _handleCheckboxTap,
+      isSelected: _isSelected,
     );
   }
 
+  bool _isSelected(String entryId) {
+    return ref.read(tmSelectionProvider).contains(entryId);
+  }
+
+  void _handleCheckboxTap(String entryId) {
+    ref.read(tmSelectionProvider.notifier).toggle(entryId);
+  }
+
   void _handleSortChanged(String column, bool ascending) {
+    // Re-entry guard. Syncfusion re-applies the configured sort on every
+    // `notifyListeners()` from the data source: when our refetch lands and
+    // `updateEntries` notifies, the grid calls `performSorting` again, which
+    // schedules another microtask through this callback with the SAME
+    // (column, ascending). Without this guard each call would build a fresh
+    // `TmSort` instance — `TmSort` has no value equality — and Riverpod
+    // would re-fire `tmEntriesProvider`, looping forever and flickering the
+    // grid between loading and data.
+    final current = ref.read(tmSortStateProvider);
+    if (current.column == column && current.ascending == ascending) return;
     ref.read(tmSortStateProvider.notifier).setSort(column, ascending);
     // Reset to first page when sort changes
     ref.read(tmPageStateProvider.notifier).setPage(1);
@@ -59,6 +80,13 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     final filtersState = ref.watch(tmFilterStateProvider);
     final pageState = ref.watch(tmPageStateProvider);
     // sortState is watched inside tmEntriesProvider, no need to watch here
+
+    // Re-render rows whenever the selection set changes so the row checkbox
+    // ticks track the provider state.
+    ref.listen<Set<String>>(tmSelectionProvider, (_, _) {
+      _dataSource.refresh();
+      if (mounted) setState(() {});
+    });
 
     // Use search provider when there's search text, otherwise use entries provider
     final entriesAsync = filtersState.searchText.isEmpty
@@ -81,6 +109,9 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         // noticeable at TM scale (thousands of rows). `updateEntries` is
         // a no-op when the upstream list reference hasn't changed.
         _dataSource.updateEntries(entries);
+        // Drop any stale ids from a previous page/filter so the selection
+        // can't outlive the entries it points to.
+        _retainSelectionToVisible(entries);
         return _buildDataGrid(context, entries);
       },
       loading: () => const Center(
@@ -88,6 +119,17 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
       ),
       error: (error, stack) => _buildError(context, error),
     );
+  }
+
+  /// Schedule a post-frame retain so the selection set never references
+  /// entry ids that are no longer in the displayed list. Done in a
+  /// post-frame callback so we never mutate provider state during a build.
+  void _retainSelectionToVisible(List<TranslationMemoryEntry> entries) {
+    final ids = entries.map((e) => e.id);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(tmSelectionProvider.notifier).retain(ids);
+    });
   }
 
   Widget _buildError(BuildContext context, Object error) {
@@ -142,6 +184,12 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         headerRowHeight: 32,
         columns: [
           GridColumn(
+            columnName: 'checkbox',
+            width: 50,
+            allowSorting: false,
+            label: _buildSelectAllHeader(tokens, entries),
+          ),
+          GridColumn(
             columnName: 'source',
             label: _headerCell(tokens, t.translationMemory.columns.sourceText, Alignment.centerLeft),
           ),
@@ -168,9 +216,11 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         ],
         onCellTap: (details) {
           // Header rows have rowIndex 0; body rows start at 1. The actions
-          // column handles its own taps via embedded GestureDetectors.
+          // and checkbox columns handle their own taps via embedded
+          // GestureDetectors.
           if (details.rowColumnIndex.rowIndex <= 0) return;
           if (details.column.columnName == 'actions') return;
+          if (details.column.columnName == 'checkbox') return;
           // Resolve the row via the data source rather than subtracting
           // header offsets from the upstream entries list. This keeps
           // callbacks insulated from any future frozen-row arithmetic
@@ -183,11 +233,59 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
         onCellDoubleTap: (details) {
           if (details.rowColumnIndex.rowIndex <= 0) return;
           if (details.column.columnName == 'actions') return;
+          if (details.column.columnName == 'checkbox') return;
           final entry =
               _dataSource.rowAt(details.rowColumnIndex.rowIndex - 1);
           if (entry == null) return;
           _showDetailsDialog(context, entry);
         },
+      ),
+    );
+  }
+
+  Widget _buildSelectAllHeader(
+    TwmtThemeTokens tokens,
+    List<TranslationMemoryEntry> entries,
+  ) {
+    final selected = ref.watch(tmSelectionProvider);
+    final visibleIds = entries.map((e) => e.id).toSet();
+    final selectedVisibleCount =
+        selected.where(visibleIds.contains).length;
+    final bool? value;
+    if (selectedVisibleCount == 0) {
+      value = false;
+    } else if (selectedVisibleCount == visibleIds.length &&
+        visibleIds.isNotEmpty) {
+      value = true;
+    } else {
+      value = null;
+    }
+
+    void toggle() {
+      final notifier = ref.read(tmSelectionProvider.notifier);
+      if (value == true) {
+        notifier.clear();
+      } else {
+        notifier.selectAll(visibleIds);
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      alignment: Alignment.center,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: toggle,
+          child: Checkbox(
+            value: value,
+            tristate: true,
+            onChanged: (_) => toggle(),
+            activeColor: tokens.accent,
+            checkColor: tokens.accentFg,
+            side: BorderSide(color: tokens.border, width: 1),
+          ),
+        ),
       ),
     );
   }
@@ -360,6 +458,8 @@ class _TmDataSource extends DataGridSource {
     required List<TranslationMemoryEntry> entries,
     required this.onDeleteEntry,
     required this.onSortChanged,
+    required this.onCheckboxTap,
+    required this.isSelected,
   }) {
     _entries = entries;
     _rows = _buildRowsFrom(entries);
@@ -369,6 +469,8 @@ class _TmDataSource extends DataGridSource {
   List<DataGridRow> _rows = const [];
   final void Function(TranslationMemoryEntry) onDeleteEntry;
   final void Function(String column, bool ascending) onSortChanged;
+  final void Function(String entryId) onCheckboxTap;
+  final bool Function(String entryId) isSelected;
 
   @override
   List<DataGridRow> get rows => _rows;
@@ -385,11 +487,20 @@ class _TmDataSource extends DataGridSource {
     notifyListeners();
   }
 
+  /// Force the grid to re-query [buildRow] without rebuilding the cell list.
+  /// Used when only the selection changes — the cells themselves are stable
+  /// but their checkbox tick must redraw.
+  void refresh() {
+    notifyListeners();
+  }
+
   static List<DataGridRow> _buildRowsFrom(
     List<TranslationMemoryEntry> entries,
   ) {
     return entries
         .map((entry) => DataGridRow(cells: [
+              DataGridCell<TranslationMemoryEntry>(
+                  columnName: 'checkbox', value: entry),
               DataGridCell<TranslationMemoryEntry>(
                   columnName: 'source', value: entry),
               DataGridCell<TranslationMemoryEntry>(
@@ -440,6 +551,12 @@ class _TmDataSource extends DataGridSource {
 
     return DataGridRowAdapter(
       cells: [
+        RepaintBoundary(
+          child: _CheckboxCell(
+            isSelected: isSelected(entry.id),
+            onTap: () => onCheckboxTap(entry.id),
+          ),
+        ),
         RepaintBoundary(child: _TextCell(text: entry.sourceText)),
         RepaintBoundary(child: _TextCell(text: entry.translatedText)),
         RepaintBoundary(child: _UsageCell(count: entry.usageCount)),
@@ -458,6 +575,35 @@ class _TmDataSource extends DataGridSource {
 // =============================================================================
 // Cells
 // =============================================================================
+
+class _CheckboxCell extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CheckboxCell({required this.isSelected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(8.0),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Checkbox(
+            value: isSelected,
+            onChanged: (_) => onTap(),
+            activeColor: tokens.accent,
+            checkColor: tokens.accentFg,
+            side: BorderSide(color: tokens.border, width: 1),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _TextCell extends StatelessWidget {
   final String text;
@@ -557,4 +703,3 @@ class _ActionsCell extends StatelessWidget {
     );
   }
 }
-

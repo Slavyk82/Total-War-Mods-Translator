@@ -42,7 +42,8 @@
   "tm": {
     "import": "Import translation memory entries from a TMX file",
     "export": "Export translation memory entries to a TMX file",
-    "cleanup": "Remove unused entries to reduce database size"
+    "cleanup": "Remove unused entries to reduce database size",
+    "deleteSelection": "Delete the entries currently checked in the table"
   },
   "glossary": {
     "new": "Create a new glossary"

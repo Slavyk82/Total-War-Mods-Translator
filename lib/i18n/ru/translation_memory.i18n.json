@@ -30,7 +30,8 @@
     "import": "Импортировать",
     "export": "Экспортировать",
     "importing": "Импорт...",
-    "exporting": "Экспорт..."
+    "exporting": "Экспорт...",
+    "deleteSelection": "Удалить выбранное"
   },
   "dialogs": {
     "importTitle": "Импорт Translation Memory (TMX)",

@@ -30,7 +30,8 @@
     "import": "Importer",
     "export": "Exporter",
     "importing": "Importation en cours…",
-    "exporting": "Exportation en cours…"
+    "exporting": "Exportation en cours…",
+    "deleteSelection": "Supprimer la sélection"
   },
   "dialogs": {
     "importTitle": "Importer la mémoire de traduction (TMX)",

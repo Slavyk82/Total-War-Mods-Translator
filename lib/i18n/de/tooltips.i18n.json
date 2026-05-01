@@ -42,7 +42,8 @@
   "tm": {
     "import": "Translation-Memory-Einträge aus einer TMX-Datei importieren",
     "export": "Translation-Memory-Einträge in eine TMX-Datei exportieren",
-    "cleanup": "Ungenutzte Einträge entfernen, um die Datenbankgröße zu verringern"
+    "cleanup": "Ungenutzte Einträge entfernen, um die Datenbankgröße zu verringern",
+    "deleteSelection": "Die in der Tabelle aktuell ausgewählten Einträge löschen"
   },
   "glossary": {
     "new": "Neues Glossar erstellen"

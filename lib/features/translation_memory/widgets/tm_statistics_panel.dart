@@ -5,7 +5,11 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/translation_memory/i_translation_memory_service.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
+import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
+import 'package:twmt/widgets/fluent/fluent_widgets.dart';
+import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../providers/tm_providers.dart';
+import '../providers/tm_selection_notifier.dart';
 
 /// Statistics panel showing Translation Memory metrics and insights.
 ///
@@ -78,6 +82,14 @@ class TmStatisticsPanel extends ConsumerWidget {
               loading: () => const Center(child: FluentSpinner()),
               error: (error, stack) => _buildError(tokens),
             ),
+          ),
+
+          Container(height: 1, color: tokens.border),
+
+          // Selection actions
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _DeleteSelectionButton(),
           ),
         ],
       ),
@@ -289,5 +301,78 @@ class TmStatisticsPanel extends ConsumerWidget {
       return '${(number / 1000).toStringAsFixed(1)}K';
     }
     return number.toString();
+  }
+}
+
+/// Footer-button that bulk-deletes the currently checked TM rows.
+///
+/// Reuses the same TokenConfirmDialog the per-row trash icon shows, so the
+/// confirmation chrome stays uniform whether the user removes one entry or
+/// many.
+class _DeleteSelectionButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(tmSelectionProvider);
+    final hasSelection = selected.isNotEmpty;
+
+    return SizedBox(
+      width: double.infinity,
+      child: SmallTextButton(
+        label: t.translationMemory.actions.deleteSelection,
+        icon: FluentIcons.delete_24_regular,
+        tooltip: t.tooltips.tm.deleteSelection,
+        onTap: hasSelection ? () => _confirmAndDelete(context, ref) : null,
+      ),
+    );
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context, WidgetRef ref) async {
+    final ids = ref.read(tmSelectionProvider).toList(growable: false);
+    if (ids.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => TokenConfirmDialog(
+        title: t.translationMemory.dialogs.deleteTmTitle,
+        message: t.translationMemory.dialogs.deleteTmMessage,
+        warningMessage: t.translationMemory.dialogs.deleteTmWarning,
+        confirmLabel: t.common.actions.delete,
+        confirmIcon: FluentIcons.delete_24_regular,
+        destructive: true,
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    // Drop the selection up-front so the row checkboxes flip back to
+    // unticked the moment the user confirms — gives an immediate visual
+    // signal that the action was accepted.
+    ref.read(tmSelectionProvider.notifier).clear();
+
+    final deleteState = ref.read(tmDeleteStateProvider.notifier);
+    final deleted = await deleteState.deleteEntries(ids);
+
+    // The notifier's `if (ref.mounted)` guards skip the invalidate calls
+    // if it auto-disposed during the await loop. Re-fire from the widget's
+    // own ref so the grid always re-fetches and the deleted rows vanish
+    // immediately, never sticking around until the next manual refresh.
+    ref.invalidate(tmEntriesProvider);
+    ref.invalidate(tmSearchResultsProvider);
+    ref.invalidate(tmEntriesCountProvider);
+    ref.invalidate(tmStatisticsProvider);
+
+    if (!context.mounted) return;
+    if (deleted == ids.length) {
+      FluentToast.success(
+        context,
+        t.translationMemory.messages.tmEntryDeletedSuccess,
+      );
+    } else {
+      FluentToast.error(
+        context,
+        t.translationMemory.messages.failedToDeleteTmEntry,
+      );
+    }
   }
 }

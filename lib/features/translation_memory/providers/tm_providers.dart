@@ -472,6 +472,44 @@ class TmDeleteState extends _$TmDeleteState {
     }
   }
 
+  /// Delete a batch of entries in a single user-facing operation. Returns the
+  /// number of entries that were actually removed; the caller surfaces a
+  /// toast based on the deltas. Providers are invalidated once at the end so
+  /// the grid only re-fetches a single time even when many rows are dropped.
+  Future<int> deleteEntries(Iterable<String> entryIds) async {
+    final ids = entryIds.toList(growable: false);
+    if (ids.isEmpty) return 0;
+
+    state = const AsyncValue.loading();
+
+    final service = ref.read(translationMemoryServiceProvider);
+    var deleted = 0;
+
+    try {
+      for (final id in ids) {
+        final result = await service.deleteEntry(entryId: id);
+        if (result.isOk) deleted++;
+      }
+
+      if (ref.mounted) {
+        state = AsyncValue.data(deleted == ids.length);
+
+        if (deleted > 0) {
+          ref.invalidate(tmEntriesProvider);
+          ref.invalidate(tmSearchResultsProvider);
+          ref.invalidate(tmEntriesCountProvider);
+          ref.invalidate(tmStatisticsProvider);
+        }
+      }
+    } catch (e, st) {
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
+    }
+
+    return deleted;
+  }
+
   void reset() {
     state = const AsyncValue.data(null);
   }

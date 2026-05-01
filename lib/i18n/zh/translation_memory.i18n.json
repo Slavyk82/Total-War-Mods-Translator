@@ -30,7 +30,8 @@
     "import": "导入",
     "export": "导出",
     "importing": "正在导入……",
-    "exporting": "正在导出……"
+    "exporting": "正在导出……",
+    "deleteSelection": "删除所选"
   },
   "dialogs": {
     "importTitle": "导入翻译记忆库（TMX）",
