@@ -37,7 +37,7 @@
     "importTitle": "Импорт Translation Memory (TMX)",
     "exportTitle": "Экспорт Translation Memory (TMX)",
     "cleanupTitle": "Очистка Translation Memory",
-    "entryDetailsTitle": "Сведения о записи Translation Memory",
+    "editTmTitle": "Редактировать запись TM",
     "deleteTmTitle": "Удалить запись TM",
     "deleteTmMessage": "Вы уверены, что хотите удалить эту запись памяти переводов?",
     "deleteTmWarning": "Это действие нельзя отменить."
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "Запись TM успешно удалена",
     "failedToDeleteTmEntry": "Не удалось удалить запись TM",
     "deleteEntry": "Удалить запись",
+    "editEntry": "Редактировать запись",
+    "tmEntryEditedSuccess": "Запись TM успешно обновлена",
+    "failedToEditTmEntry": "Не удалось обновить запись TM",
     "importComplete": "Импорт завершён",
     "exportComplete": "Экспорт завершён",
     "exportedEntries": "Экспортировано записей: $count",

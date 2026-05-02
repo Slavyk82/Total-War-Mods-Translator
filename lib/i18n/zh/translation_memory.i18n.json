@@ -37,7 +37,7 @@
     "importTitle": "导入翻译记忆库（TMX）",
     "exportTitle": "导出翻译记忆库（TMX）",
     "cleanupTitle": "清理翻译记忆库",
-    "entryDetailsTitle": "翻译记忆库条目详情",
+    "editTmTitle": "编辑 TM 条目",
     "deleteTmTitle": "删除 TM 条目",
     "deleteTmMessage": "确定要删除此翻译记忆库条目吗？",
     "deleteTmWarning": "此操作无法撤销。"
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "TM 条目删除成功",
     "failedToDeleteTmEntry": "删除 TM 条目失败",
     "deleteEntry": "删除条目",
+    "editEntry": "编辑条目",
+    "tmEntryEditedSuccess": "TM 条目更新成功",
+    "failedToEditTmEntry": "更新 TM 条目失败",
     "importComplete": "导入完成",
     "exportComplete": "导出完成",
     "exportedEntries": "已导出 $count 条条目",

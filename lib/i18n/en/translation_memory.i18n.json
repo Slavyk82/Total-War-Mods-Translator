@@ -37,7 +37,7 @@
     "importTitle": "Import Translation Memory (TMX)",
     "exportTitle": "Export Translation Memory (TMX)",
     "cleanupTitle": "Cleanup Translation Memory",
-    "entryDetailsTitle": "Translation Memory Entry Details",
+    "editTmTitle": "Edit TM entry",
     "deleteTmTitle": "Delete TM Entry",
     "deleteTmMessage": "Are you sure you want to delete this translation memory entry?",
     "deleteTmWarning": "This action cannot be undone."
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "TM entry deleted successfully",
     "failedToDeleteTmEntry": "Failed to delete TM entry",
     "deleteEntry": "Delete entry",
+    "editEntry": "Edit entry",
+    "tmEntryEditedSuccess": "TM entry updated successfully",
+    "failedToEditTmEntry": "Failed to update TM entry",
     "importComplete": "Import Complete",
     "exportComplete": "Export Complete",
     "exportedEntries": "Exported $count entries",

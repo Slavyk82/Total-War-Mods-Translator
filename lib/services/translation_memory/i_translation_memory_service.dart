@@ -153,6 +153,20 @@ abstract class ITranslationMemoryService {
     Map<String, int> usageCounts,
   );
 
+  /// Update the target (translated) text of an existing TM entry.
+  ///
+  /// Only `translated_text` and `updated_at` change; source text, source
+  /// hash, usage count and `last_used_at` are preserved.
+  ///
+  /// [entryId]: TM entry identifier
+  /// [newTargetText]: New translated text (must be non-empty)
+  ///
+  /// Returns the updated entry.
+  Future<Result<TranslationMemoryEntry, TmServiceException>> updateTargetText({
+    required String entryId,
+    required String newTargetText,
+  });
+
   /// Delete a TM entry
   ///
   /// [entryId]: TM entry identifier

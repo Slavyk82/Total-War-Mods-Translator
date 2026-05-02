@@ -37,7 +37,7 @@
     "importTitle": "Importer la mémoire de traduction (TMX)",
     "exportTitle": "Exporter la mémoire de traduction (TMX)",
     "cleanupTitle": "Nettoyer la mémoire de traduction",
-    "entryDetailsTitle": "Détails de l'entrée de mémoire de traduction",
+    "editTmTitle": "Modifier l'entrée TM",
     "deleteTmTitle": "Supprimer l'entrée TM",
     "deleteTmMessage": "Voulez-vous vraiment supprimer cette entrée de mémoire de traduction ?",
     "deleteTmWarning": "Cette action est irréversible."
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "Entrée TM supprimée avec succès",
     "failedToDeleteTmEntry": "Échec de la suppression de l'entrée TM",
     "deleteEntry": "Supprimer l'entrée",
+    "editEntry": "Modifier l'entrée",
+    "tmEntryEditedSuccess": "Entrée TM mise à jour avec succès",
+    "failedToEditTmEntry": "Échec de la mise à jour de l'entrée TM",
     "importComplete": "Importation terminée",
     "exportComplete": "Exportation terminée",
     "exportedEntries": "$count entrées exportées",

@@ -9,14 +9,13 @@ import 'package:twmt/providers/clock_provider.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/common/fluent_spinner.dart';
 import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
-import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../providers/tm_providers.dart';
 import '../providers/tm_selection_notifier.dart';
+import 'tm_edit_dialog.dart';
 
 /// Tokenised [SfDataGrid] for browsing Translation Memory entries.
 ///
@@ -45,6 +44,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     _dataSource = _TmDataSource(
       entries: const [],
       onDeleteEntry: _handleDeleteEntry,
+      onEditEntry: _handleEditEntry,
       onSortChanged: _handleSortChanged,
       onCheckboxTap: _handleCheckboxTap,
       isSelected: _isSelected,
@@ -209,7 +209,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           ),
           GridColumn(
             columnName: 'actions',
-            width: 88,
+            width: 100,
             allowSorting: false,
             label: _headerCell(tokens, '', Alignment.center),
           ),
@@ -237,7 +237,7 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
           final entry =
               _dataSource.rowAt(details.rowColumnIndex.rowIndex - 1);
           if (entry == null) return;
-          _showDetailsDialog(context, entry);
+          _handleEditEntry(entry);
         },
       ),
     );
@@ -339,80 +339,20 @@ class _TmBrowserDataGridState extends ConsumerState<TmBrowserDataGrid> {
     );
   }
 
-  void _showDetailsDialog(BuildContext context, TranslationMemoryEntry entry) {
-    showDialog(
+  Future<void> _handleEditEntry(TranslationMemoryEntry entry) async {
+    final newTargetText = await showDialog<String>(
       context: context,
-      builder: (ctx) => TokenDialog(
-        icon: FluentIcons.info_24_regular,
-        title: t.translationMemory.dialogs.entryDetailsTitle,
-        width: 640,
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow(ctx, t.translationMemory.labels.sourceText, entry.sourceText),
-              const Divider(),
-              _buildDetailRow(ctx, t.translationMemory.labels.targetText, entry.translatedText),
-              const Divider(),
-              _buildDetailRow(
-                  ctx, t.translationMemory.labels.usageCount, entry.usageCount.toString()),
-              const Divider(),
-              _buildDetailRow(
-                ctx,
-                t.translationMemory.labels.lastUsed,
-                _formatTimestamp(entry.lastUsedAt),
-              ),
-              const Divider(),
-              _buildDetailRow(
-                ctx,
-                t.translationMemory.labels.created,
-                _formatTimestamp(entry.createdAt),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          SmallTextButton(
-            label: t.common.actions.close,
-            onTap: () => Navigator.of(ctx).pop(),
-          ),
-        ],
-      ),
+      builder: (_) => TmEditDialog(entry: entry),
     );
-  }
-
-  Widget _buildDetailRow(BuildContext context, String label, String value) {
-    final tokens = context.tokens;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: tokens.fontMono.copyWith(
-              fontSize: 11,
-              color: tokens.textDim,
-              letterSpacing: 0.8,
-            ),
-          ),
-          const SizedBox(height: 4),
-          SelectableText(
-            value,
-            style: tokens.fontBody.copyWith(
-              fontSize: 13,
-              color: tokens.text,
-            ),
-          ),
-        ],
-      ),
+    if (newTargetText == null || !mounted) return;
+    // Optimistic patch: the provider invalidation triggered by the save is
+    // racing with the next frame; updating the data source in place avoids
+    // a flash of stale data and guarantees the new translation shows up
+    // immediately.
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    _dataSource.patchEntry(
+      entry.copyWith(translatedText: newTargetText, updatedAt: now),
     );
-  }
-
-  String _formatTimestamp(int timestamp) {
-    final date = DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
-    return formatAbsoluteDate(date) ?? '';
   }
 
   Future<void> _handleDeleteEntry(TranslationMemoryEntry entry) async {
@@ -457,6 +397,7 @@ class _TmDataSource extends DataGridSource {
   _TmDataSource({
     required List<TranslationMemoryEntry> entries,
     required this.onDeleteEntry,
+    required this.onEditEntry,
     required this.onSortChanged,
     required this.onCheckboxTap,
     required this.isSelected,
@@ -468,6 +409,7 @@ class _TmDataSource extends DataGridSource {
   List<TranslationMemoryEntry> _entries = const [];
   List<DataGridRow> _rows = const [];
   final void Function(TranslationMemoryEntry) onDeleteEntry;
+  final void Function(TranslationMemoryEntry) onEditEntry;
   final void Function(String column, bool ascending) onSortChanged;
   final void Function(String entryId) onCheckboxTap;
   final bool Function(String entryId) isSelected;
@@ -491,6 +433,24 @@ class _TmDataSource extends DataGridSource {
   /// Used when only the selection changes — the cells themselves are stable
   /// but their checkbox tick must redraw.
   void refresh() {
+    notifyListeners();
+  }
+
+  /// Replace a single entry in place and rebuild only the affected row.
+  ///
+  /// Called as an optimistic update right after the edit dialog confirms a
+  /// successful save: the provider invalidation is already in flight, but
+  /// patching locally guarantees the grid reflects the change on the very
+  /// next frame instead of waiting for the DB roundtrip + refetch. The
+  /// upstream refetch will eventually overwrite [_entries] with a new list
+  /// that carries the same value, so the patch is idempotent.
+  void patchEntry(TranslationMemoryEntry updated) {
+    final index = _entries.indexWhere((e) => e.id == updated.id);
+    if (index < 0) return;
+    final newEntries = List<TranslationMemoryEntry>.from(_entries);
+    newEntries[index] = updated;
+    _entries = newEntries;
+    _rows = _buildRowsFrom(newEntries);
     notifyListeners();
   }
 
@@ -564,6 +524,7 @@ class _TmDataSource extends DataGridSource {
         RepaintBoundary(
           child: _ActionsCell(
             entry: entry,
+            onEdit: onEditEntry,
             onDelete: onDeleteEntry,
           ),
         ),
@@ -677,9 +638,14 @@ class _LastUsedCell extends ConsumerWidget {
 
 class _ActionsCell extends StatelessWidget {
   final TranslationMemoryEntry entry;
+  final void Function(TranslationMemoryEntry) onEdit;
   final void Function(TranslationMemoryEntry) onDelete;
 
-  const _ActionsCell({required this.entry, required this.onDelete});
+  const _ActionsCell({
+    required this.entry,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -690,6 +656,12 @@ class _ActionsCell extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          SmallIconButton(
+            icon: FluentIcons.edit_24_regular,
+            tooltip: t.translationMemory.messages.editEntry,
+            onTap: () => onEdit(entry),
+          ),
+          const SizedBox(width: 6),
           SmallIconButton(
             icon: FluentIcons.delete_24_regular,
             tooltip: t.translationMemory.messages.deleteEntry,

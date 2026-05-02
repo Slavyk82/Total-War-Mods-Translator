@@ -151,6 +151,24 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       _crudService.incrementUsageCountBatch(usageCounts);
 
   @override
+  Future<Result<TranslationMemoryEntry, TmServiceException>> updateTargetText({
+    required String entryId,
+    required String newTargetText,
+  }) async {
+    final result = await _crudService.updateTargetText(
+      entryId: entryId,
+      newTargetText: newTargetText,
+    );
+
+    // Clear cache so subsequent lookups see the new target text.
+    if (result.isOk) {
+      await clearCache();
+    }
+
+    return result;
+  }
+
+  @override
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
   }) =>

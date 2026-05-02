@@ -37,7 +37,7 @@
     "importTitle": "번역 메모리 가져오기 (TMX)",
     "exportTitle": "번역 메모리 내보내기 (TMX)",
     "cleanupTitle": "번역 메모리 정리",
-    "entryDetailsTitle": "번역 메모리 항목 세부 정보",
+    "editTmTitle": "TM 항목 편집",
     "deleteTmTitle": "TM 항목 삭제",
     "deleteTmMessage": "이 번역 메모리 항목을 정말 삭제하시겠습니까?",
     "deleteTmWarning": "이 작업은 되돌릴 수 없습니다."
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "TM 항목이 성공적으로 삭제되었습니다",
     "failedToDeleteTmEntry": "TM 항목 삭제 실패",
     "deleteEntry": "항목 삭제",
+    "editEntry": "항목 편집",
+    "tmEntryEditedSuccess": "TM 항목이 성공적으로 업데이트되었습니다",
+    "failedToEditTmEntry": "TM 항목 업데이트 실패",
     "importComplete": "가져오기 완료",
     "exportComplete": "내보내기 완료",
     "exportedEntries": "$count개 항목이 내보내졌습니다",

@@ -1,7 +1,10 @@
-## What's New — v2.0.2
+## What's New — v2.0.3
 
 ### Translation Memory
-- Added bulk deletion of translation memory entries
+- Added inline editing of the "target" column
 
-### Bug Fixes
-- Fixed sorting in the translation memory table
+### Models
+- Restored DeepSeek 3.2 as a selectable model
+
+### Translation Quality
+- Reinforced prompting to better enforce target language selection

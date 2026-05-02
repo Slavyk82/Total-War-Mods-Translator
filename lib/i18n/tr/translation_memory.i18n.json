@@ -37,7 +37,7 @@
     "importTitle": "Çeviri belleğini içe aktar (TMX)",
     "exportTitle": "Çeviri belleğini dışa aktar (TMX)",
     "cleanupTitle": "Çeviri belleğini temizle",
-    "entryDetailsTitle": "Çeviri belleği girdisi ayrıntıları",
+    "editTmTitle": "TM girdisini düzenle",
     "deleteTmTitle": "TM girdisini sil",
     "deleteTmMessage": "Bu çeviri belleği girdisini silmek istediğinizden emin misiniz?",
     "deleteTmWarning": "Bu işlem geri alınamaz."
@@ -53,6 +53,9 @@
     "tmEntryDeletedSuccess": "TM girdisi başarıyla silindi",
     "failedToDeleteTmEntry": "TM girdisi silinemedi",
     "deleteEntry": "Girdiyi sil",
+    "editEntry": "Girdiyi düzenle",
+    "tmEntryEditedSuccess": "TM girdisi başarıyla güncellendi",
+    "failedToEditTmEntry": "TM girdisi güncellenemedi",
     "importComplete": "İçe aktarım tamamlandı",
     "exportComplete": "Dışa aktarım tamamlandı",
     "exportedEntries": "$count girdi dışa aktarıldı",

@@ -54,6 +54,7 @@ class TranslationServiceLocator {
         locator<TokenCalculator>(),
         locator<GlossaryRepository>(),
         locator<LlmCustomRulesService>(),
+        locator<LanguageRepository>(),
       ),
     );
 

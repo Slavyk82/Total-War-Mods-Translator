@@ -2,6 +2,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/services/glossary/models/glossary_term_with_variants.dart';
 import 'package:twmt/services/glossary/utils/glossary_matcher.dart';
 import 'package:twmt/services/llm/llm_custom_rules_service.dart';
@@ -23,11 +24,13 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
   final TokenCalculator _tokenCalculator;
   final GlossaryRepository? _glossaryRepository;
   final LlmCustomRulesService? _customRulesService;
+  final LanguageRepository? _languageRepository;
 
   PromptBuilderServiceImpl(
     this._tokenCalculator, [
     this._glossaryRepository,
     this._customRulesService,
+    this._languageRepository,
   ]);
 
   @override
@@ -138,9 +141,13 @@ class PromptBuilderServiceImpl implements IPromptBuilderService {
   Future<String> buildSystemPrompt({
     required TranslationContext context,
   }) async {
+    final targetLanguageLabel = await _resolveTargetLanguageLabel(
+      context.targetLanguage,
+    );
+
     return '''You are a professional translator specializing in Total War games.
 
-Your task is to translate game text to ${context.targetLanguage}.
+Your task is to translate game text to $targetLanguageLabel.
 
 CRITICAL RULES:
 1. Preserve ALL formatting tags EXACTLY as they appear:
@@ -534,6 +541,22 @@ OUTPUT FORMAT (JSON only, no other text):
     if (customRules.isNotEmpty) sections.add(customRules);
 
     return sections.join('\n');
+  }
+
+  /// Resolve a human-readable label for the target language code.
+  ///
+  /// Returns the English language name followed by the ISO 639-1 code in
+  /// parentheses (e.g. "French (fr)") to disambiguate regional variants like
+  /// `pt-BR` vs `pt-PT`. Falls back to the uppercase code if the language
+  /// cannot be resolved (custom languages, missing repository).
+  Future<String> _resolveTargetLanguageLabel(String code) async {
+    final fallback = code.toUpperCase();
+    if (_languageRepository == null) return fallback;
+
+    final result = await _languageRepository.getByCode(code);
+    if (result.isErr) return fallback;
+
+    return '${result.unwrap().name} ($code)';
   }
 
   /// Build custom rules section from user-defined rules

@@ -168,6 +168,13 @@ class _FakeTmService implements ITranslationMemoryService {
       const Ok(0);
 
   @override
+  Future<Result<TranslationMemoryEntry, TmServiceException>> updateTargetText({
+    required String entryId,
+    required String newTargetText,
+  }) async =>
+      Err(const TmServiceException('not implemented'));
+
+  @override
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
   }) async {

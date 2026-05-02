@@ -429,6 +429,58 @@ class TmExportResult {
   String get summary => 'Exported $entriesExported entries to $filePath';
 }
 
+/// Edit TM entry state — currently scoped to target-text edits.
+@riverpod
+class TmUpdateState extends _$TmUpdateState {
+  @override
+  AsyncValue<bool?> build() => const AsyncValue.data(null);
+
+  Future<bool> updateTargetText({
+    required String entryId,
+    required String newTargetText,
+  }) async {
+    state = const AsyncValue.loading();
+
+    try {
+      final service = ref.read(translationMemoryServiceProvider);
+
+      final result = await service.updateTargetText(
+        entryId: entryId,
+        newTargetText: newTargetText,
+      );
+
+      final success = result.when(
+        ok: (_) => true,
+        err: (error) => throw error,
+      );
+
+      if (ref.mounted) {
+        state = AsyncValue.data(success);
+
+        if (success) {
+          // Count and stats are unaffected by a target-text edit, but the
+          // grid swaps between [tmEntriesProvider] and
+          // [tmSearchResultsProvider] depending on whether a search
+          // filter is active, so both must be invalidated.
+          ref.invalidate(tmEntriesProvider);
+          ref.invalidate(tmSearchResultsProvider);
+        }
+      }
+
+      return success;
+    } catch (e, st) {
+      if (ref.mounted) {
+        state = AsyncValue.error(e, st);
+      }
+      return false;
+    }
+  }
+
+  void reset() {
+    state = const AsyncValue.data(null);
+  }
+}
+
 /// Delete TM entry state
 @riverpod
 class TmDeleteState extends _$TmDeleteState {

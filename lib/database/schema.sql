@@ -1011,11 +1011,12 @@ VALUES
 ('model_deepl_free', 'deepl', 'deepl-free', 'DeepL Free', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
 ('model_deepl_pro', 'deepl', 'deepl-pro', 'DeepL Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
 
--- DeepSeek models (V4 family — 1M context, 384K max output)
+-- DeepSeek models (V4 family — 1M context, 384K max output; V3.2 retained as legacy option)
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
 VALUES
 ('model_deepseek_v4_flash', 'deepseek', 'deepseek-v4-flash', 'DeepSeek V4 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
-('model_deepseek_v4_pro', 'deepseek', 'deepseek-v4-pro', 'DeepSeek V4 Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+('model_deepseek_v4_pro', 'deepseek', 'deepseek-v4-pro', 'DeepSeek V4 Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_deepseek_chat', 'deepseek', 'deepseek-chat', 'DeepSeek V3.2', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
 
 -- Google Gemini models
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)

@@ -431,6 +431,69 @@ class TmCrudService {
     }
   }
 
+  /// Update the target text of an existing TM entry.
+  ///
+  /// Only the translated text and `updated_at` are mutated. Source text,
+  /// source hash, usage count and `last_used_at` are preserved — editing
+  /// is a correction, not a usage event.
+  Future<Result<TranslationMemoryEntry, TmServiceException>> updateTargetText({
+    required String entryId,
+    required String newTargetText,
+  }) async {
+    try {
+      if (newTargetText.trim().isEmpty) {
+        return const Err(
+          TmServiceException('Target text cannot be empty'),
+        );
+      }
+
+      final getResult = await _repository.getById(entryId);
+      if (getResult.isErr) {
+        return Err(
+          TmServiceException(
+            'Failed to get entry: ${getResult.error}',
+            error: getResult.error,
+          ),
+        );
+      }
+
+      final entry = getResult.value;
+
+      // No-op when the value is unchanged: avoid bumping `updated_at` for
+      // a save that did not actually change anything.
+      if (entry.translatedText == newTargetText) {
+        return Ok(entry);
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final updatedEntry = entry.copyWith(
+        translatedText: newTargetText,
+        updatedAt: now,
+      );
+
+      final updateResult = await _repository.update(updatedEntry);
+      if (updateResult.isErr) {
+        return Err(
+          TmServiceException(
+            'Failed to update target text: ${updateResult.error}',
+            error: updateResult.error,
+          ),
+        );
+      }
+
+      _logger.debug('Updated TM target text', {'entryId': entryId});
+      return Ok(updateResult.value);
+    } catch (e, stackTrace) {
+      return Err(
+        TmServiceException(
+          'Unexpected error updating target text: ${e.toString()}',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
+    }
+  }
+
   /// Delete a TM entry
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
