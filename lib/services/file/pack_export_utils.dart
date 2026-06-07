@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
+import 'package:twmt/services/file/i_loc_file_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Utility functions for .pack file export operations
@@ -40,30 +41,87 @@ class PackExportUtils {
 
   /// Copy TSV files to pack structure maintaining internal path
   ///
-  /// Reconstructs the directory structure from the encoded filename.
-  /// TSV filename format: text__db__!!!!!!!!!!_FR_something.loc.tsv
-  /// Internal path: text/db/!!!!!!!!!!_FR_something.loc.tsv
+  /// The internal .loc path is carried explicitly on each [GeneratedLocFile]
+  /// (no lossy filename encoding/decoding), so paths containing double
+  /// underscores are preserved exactly.
+  ///
+  /// When two projects produce a TSV for the SAME internal path, the rows are
+  /// MERGED by key instead of the later file silently overwriting the earlier
+  /// one. The first file's header + metadata row are kept; for duplicate keys
+  /// the first file's row wins and a warning is logged.
   Future<void> copyTsvFilesToPackStructure(
-    List<String> tsvPaths,
+    List<GeneratedLocFile> tsvFiles,
     Directory tempDir,
   ) async {
-    for (final generatedTsvPath in tsvPaths) {
-      final tsvFile = File(generatedTsvPath);
-      final tsvFileName = path.basename(generatedTsvPath);
-
-      // Reconstruct directory structure from filename
-      final internalPath = tsvFileName.replaceAll('__', '/');
-      final targetDir = path.dirname(internalPath);
-      final targetDirPath = path.join(tempDir.path, targetDir);
-      await Directory(targetDirPath).create(recursive: true);
+    for (final genFile in tsvFiles) {
+      final tsvFile = File(genFile.tsvPath);
+      final internalPath = genFile.internalPath;
 
       final targetPath = path.join(tempDir.path, internalPath);
-      await tsvFile.copy(targetPath);
+      final targetFile = File(targetPath);
+      await targetFile.parent.create(recursive: true);
+
+      if (!await targetFile.exists()) {
+        await tsvFile.copy(targetPath);
+
+        _logger.info('TSV file prepared for pack', {
+          'source': genFile.tsvPath,
+          'target': targetPath,
+          'internalPath': internalPath,
+        });
+        continue;
+      }
+
+      // Target already exists -> merge rows by key.
+      final existingLines = await targetFile.readAsLines();
+      final incomingLines = await tsvFile.readAsLines();
+
+      String keyOf(String line) {
+        final tab = line.indexOf('\t');
+        return tab >= 0 ? line.substring(0, tab) : line;
+      }
+
+      // Existing file: line 0 = header, line 1 = metadata, rest = data rows.
+      final mergedLines = <String>[];
+      final seenKeys = <String>{};
+      for (var i = 0; i < existingLines.length; i++) {
+        final line = existingLines[i];
+        if (i < 2) {
+          mergedLines.add(line);
+          continue;
+        }
+        if (line.isEmpty) continue;
+        seenKeys.add(keyOf(line));
+        mergedLines.add(line);
+      }
+
+      // Incoming file: skip its own header + metadata rows, append new keys.
+      for (var i = 2; i < incomingLines.length; i++) {
+        final line = incomingLines[i];
+        if (line.isEmpty) continue;
+        final key = keyOf(line);
+        if (seenKeys.contains(key)) {
+          _logger.warning('Duplicate loc key on merge; keeping first', {
+            'internalPath': internalPath,
+            'key': key,
+            'source': genFile.tsvPath,
+          });
+          continue;
+        }
+        seenKeys.add(key);
+        mergedLines.add(line);
+      }
+
+      await targetFile.writeAsString(
+        '${mergedLines.join('\n')}\n',
+        flush: true,
+      );
 
       _logger.info('TSV file prepared for pack', {
-        'source': generatedTsvPath,
+        'source': genFile.tsvPath,
         'target': targetPath,
         'internalPath': internalPath,
+        'merged': true,
       });
     }
   }

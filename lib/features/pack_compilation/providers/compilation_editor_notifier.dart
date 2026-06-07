@@ -13,8 +13,10 @@ import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/shared/service_providers.dart';
 import '../../../services/file/pack_export_utils.dart';
+import '../models/compilation_conflict.dart';
 import '../models/compilation_editor_state.dart';
 import '../models/compilation_with_details.dart';
+import 'compilation_conflict_providers.dart';
 
 /// Notifier for compilation editor state management.
 ///
@@ -190,6 +192,45 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     }
   }
 
+  /// Builds the set of translation keys to exclude per project, derived from
+  /// the current conflict analysis and the user's resolutions.
+  ///
+  /// For each resolved key-collision conflict the losing project's key is
+  /// excluded (`useFirst` drops the second project's key, `useSecond` drops the
+  /// first); `skip` drops the key from both involved projects. Unresolved
+  /// conflicts are left untouched (default merge behavior).
+  Map<String, Set<String>> _buildExcludedKeysByProject() {
+    final analysis = ref.read(compilationConflictAnalysisProvider).asData?.value;
+    if (analysis == null) return const {};
+
+    final resolutions = ref.read(compilationConflictResolutionsStateProvider);
+    final excluded = <String, Set<String>>{};
+
+    void exclude(String projectId, String key) {
+      excluded.putIfAbsent(projectId, () => <String>{}).add(key);
+    }
+
+    for (final conflict in analysis.conflicts) {
+      final resolution = resolutions.getResolution(conflict.id);
+      if (resolution == null) continue;
+
+      final firstProjectId = conflict.firstEntry.projectId;
+      final secondProjectId = conflict.secondEntry.projectId;
+
+      switch (resolution) {
+        case CompilationConflictResolution.useFirst:
+          exclude(secondProjectId, conflict.key);
+        case CompilationConflictResolution.useSecond:
+          exclude(firstProjectId, conflict.key);
+        case CompilationConflictResolution.skip:
+          exclude(firstProjectId, conflict.key);
+          exclude(secondProjectId, conflict.key);
+      }
+    }
+
+    return excluded;
+  }
+
   /// Generates the pack file. Returns the absolute path of the produced
   /// `.pack` on success, or `null` on failure/cancellation.
   Future<String?> generatePack(String gameInstallationId) async {
@@ -252,6 +293,20 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
       var processedCount = 0;
       var totalFilesGenerated = 0;
 
+      // Apply user conflict resolutions at the source: the pack assembler merges
+      // .loc files last-writer-wins, so the only reliable way to honor "use
+      // first / use second / skip" is to drop the losing/skipped key from the
+      // generated TSV of every project that did not win the conflict.
+      final excludedKeysByProject = _buildExcludedKeysByProject();
+      if (excludedKeysByProject.isNotEmpty) {
+        final totalExcluded = excludedKeysByProject.values
+            .fold<int>(0, (sum, keys) => sum + keys.length);
+        logger.info('Applying conflict resolutions', {
+          'projectsWithExclusions': excludedKeysByProject.length,
+          'excludedKeyCount': totalExcluded,
+        });
+      }
+
       logger.info('Processing ${projectIds.length} projects...');
 
       // Process each project - only for the selected language
@@ -285,11 +340,13 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
         logger.info('Processing project: ${project.displayName}');
 
-        // Generate TSV files for the selected language only
+        // Generate TSV files for the selected language only, dropping any keys
+        // this project lost (or that were skipped) during conflict resolution.
         final result = await locFileService.generateLocFilesGroupedBySource(
           projectId: projectId,
           languageCode: language.code,
           validatedOnly: false,
+          excludeKeys: excludedKeysByProject[projectId] ?? const {},
         );
 
         if (result.isOk) {

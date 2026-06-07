@@ -342,16 +342,18 @@ class LocFileServiceImpl implements ILocFileService {
   }
 
   @override
-  Future<Result<List<String>, FileServiceException>> generateLocFilesGroupedBySource({
+  Future<Result<List<GeneratedLocFile>, FileServiceException>> generateLocFilesGroupedBySource({
     required String projectId,
     required String languageCode,
     required bool validatedOnly,
+    Set<String> excludeKeys = const {},
   }) async {
     try {
       _logger.info('Generating TSV files grouped by source .loc file', {
         'projectId': projectId,
         'languageCode': languageCode,
         'validatedOnly': validatedOnly,
+        'excludeKeys': excludeKeys.length,
       });
 
       // Get project language ID
@@ -409,6 +411,11 @@ class LocFileServiceImpl implements ILocFileService {
       int translatedCount = 0;
 
       for (final unit in units) {
+        // Skip keys excluded by conflict resolution (losing/skipped entries).
+        if (excludeKeys.contains(unit.key)) {
+          continue;
+        }
+
         // Get translation version for this unit and language
         final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
           unitId: unit.id,
@@ -469,7 +476,7 @@ class LocFileServiceImpl implements ILocFileService {
 
       // Generate a TSV file for each source .loc file
       final tempDir = await getTemporaryDirectory();
-      final generatedFiles = <String>[];
+      final generatedFiles = <GeneratedLocFile>[];
 
       for (final entry in groupedUnits.entries) {
         final sourceLocFile = entry.key;
@@ -505,7 +512,10 @@ class LocFileServiceImpl implements ILocFileService {
         // Write with UTF-8 encoding (no BOM) and LF line endings
         await file.writeAsString(buffer.toString(), flush: true);
 
-        generatedFiles.add(filePath);
+        generatedFiles.add(GeneratedLocFile(
+          tsvPath: filePath,
+          internalPath: outputLocPath,
+        ));
 
         _logger.info('TSV file generated', {
           'sourceFile': sourceLocFile,

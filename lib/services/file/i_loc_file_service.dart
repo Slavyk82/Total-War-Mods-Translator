@@ -1,6 +1,16 @@
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
 
+/// A generated TSV file together with its real internal .loc path inside the
+/// pack (e.g. `text/db/!!!!!!!!!!_fr_twmt_something.loc`). The internal path is
+/// carried explicitly rather than encoded in the file name, which previously
+/// corrupted paths containing double underscores.
+class GeneratedLocFile {
+  final String tsvPath;
+  final String internalPath;
+  const GeneratedLocFile({required this.tsvPath, required this.internalPath});
+}
+
 /// Service interface for Total War .loc file operations
 ///
 /// Handles generation and parsing of Total War localization files
@@ -70,11 +80,15 @@ abstract class ILocFileService {
   /// [projectId]: ID of the project to export
   /// [languageCode]: Language code (e.g., 'en', 'fr', 'de')
   /// [validatedOnly]: If true, only export validated translations
+  /// [excludeKeys]: Translation keys to omit from the output. Used by pack
+  ///   compilation to drop the losing/skipped entries of resolved key conflicts
+  ///   so only the winning project's value survives the pack merge.
   ///
-  /// Returns a list of generated TSV file paths
-  Future<Result<List<String>, FileServiceException>> generateLocFilesGroupedBySource({
+  /// Returns a list of generated TSV files paired with their internal .loc path
+  Future<Result<List<GeneratedLocFile>, FileServiceException>> generateLocFilesGroupedBySource({
     required String projectId,
     required String languageCode,
     required bool validatedOnly,
+    Set<String> excludeKeys = const {},
   });
 }

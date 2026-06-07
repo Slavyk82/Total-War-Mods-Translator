@@ -162,7 +162,7 @@ class ExportOrchestratorService {
         }
 
         final generatedTsvPaths =
-            (result as Ok<List<String>, FileServiceException>).value;
+            (result as Ok<List<GeneratedLocFile>, FileServiceException>).value;
 
         // Copy TSV files to pack structure directory
         await _packUtils.copyTsvFilesToPackStructure(generatedTsvPaths, tempDir);
