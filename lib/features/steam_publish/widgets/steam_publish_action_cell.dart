@@ -5,8 +5,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/i18n/strings.g.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/platform/game_launcher_opener.dart';
+import 'package:twmt/services/steam/models/game_definitions.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
@@ -330,13 +332,25 @@ class _SteamActionCellState extends ConsumerState<SteamActionCell> {
     }
   }
 
-  /// Launches the in-game Workshop publisher for Total War: WARHAMMER III.
+  /// Launches the in-game Workshop publisher for the currently selected game.
   ///
-  /// The app id is hard-coded to match parity with the workshop publish screen
-  /// (single-game scope). If Steam cannot handle the `steam://run/...` URI the
-  /// user is informed via a warning toast rather than silently failing.
+  /// The app id is resolved from [selectedGameProvider] rather than hardcoded,
+  /// so the correct game launches across all supported titles. If Steam cannot
+  /// handle the `steam://run/...` URI the user is informed via a warning toast
+  /// rather than silently failing.
   Future<void> _openLauncher() async {
-    final ok = await openGameLauncher('1142710'); // TW:WH3
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (!mounted) return;
+    final appId =
+        selectedGame != null ? getGameByCode(selectedGame.code)?.steamAppId : null;
+    if (appId == null) {
+      FluentToast.warning(
+        context,
+        t.steamPublish.actionCell.toasts.steamNotFound,
+      );
+      return;
+    }
+    final ok = await openGameLauncher(appId);
     if (!ok && mounted) {
       FluentToast.warning(
         context,

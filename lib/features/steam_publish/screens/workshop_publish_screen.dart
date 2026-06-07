@@ -28,7 +28,9 @@ import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
 
 import '../../../features/settings/providers/settings_providers.dart'
     hide settingsServiceProvider;
+import '../../../providers/selected_game_provider.dart';
 import '../../../providers/shared/service_providers.dart';
+import '../../../services/steam/models/game_definitions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
 import '../../../widgets/fluent/fluent_toast.dart';
@@ -252,10 +254,25 @@ class _WorkshopPublishScreenState
       }
     }
 
+    // Resolve the Steam App ID for the currently selected game rather than
+    // hardcoding TW:WH3 — publishing to the wrong app silently corrupts/rejects
+    // Workshop items for the other 8 supported games.
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (!mounted) return;
+    final appId =
+        selectedGame != null ? getGameByCode(selectedGame.code)?.steamAppId : null;
+    if (appId == null) {
+      FluentToast.warning(
+        context,
+        t.steamPublish.publishScreen.warnings.gameNotResolved,
+      );
+      return;
+    }
+
     final packDir = File(_packFilePath).parent.path;
 
     final params = WorkshopPublishParams(
-      appId: '1142710', // TW:WH3
+      appId: appId,
       publishedFileId: _item!.publishedSteamId!,
       contentFolder: packDir,
       previewFile: previewPath,

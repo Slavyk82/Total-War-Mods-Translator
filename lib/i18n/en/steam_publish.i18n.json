@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": "Failed to generate preview image for the .pack file",
-      "noPackStaged": "No pack staged — please set a Workshop ID first."
+      "noPackStaged": "No pack staged — please set a Workshop ID first.",
+      "gameNotResolved": "Could not determine the Steam App ID for the selected game."
     }
   },
   "settingsDialog": {

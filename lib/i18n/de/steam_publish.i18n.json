@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": "Vorschaubild für die .pack-Datei konnte nicht erzeugt werden",
-      "noPackStaged": "Kein Pack vorbereitet — bitte legen Sie zuerst eine Workshop-ID fest."
+      "noPackStaged": "Kein Pack vorbereitet — bitte legen Sie zuerst eine Workshop-ID fest.",
+      "gameNotResolved": "Die Steam-App-ID für das ausgewählte Spiel konnte nicht ermittelt werden."
     }
   },
   "settingsDialog": {

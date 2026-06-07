@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": ".pack dosyası için önizleme görseli oluşturulamadı",
-      "noPackStaged": "Hazırlanmış pack yok — önce bir Workshop kimliği belirleyin."
+      "noPackStaged": "Hazırlanmış pack yok — önce bir Workshop kimliği belirleyin.",
+      "gameNotResolved": "Seçili oyun için Steam Uygulama Kimliği belirlenemedi."
     }
   },
   "settingsDialog": {

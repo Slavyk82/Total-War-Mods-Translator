@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": "无法为 .pack 文件生成预览图",
-      "noPackStaged": "没有暂存的包 —— 请先设置创意工坊 ID。"
+      "noPackStaged": "没有暂存的包 —— 请先设置创意工坊 ID。",
+      "gameNotResolved": "无法确定所选游戏的 Steam App ID。"
     }
   },
   "settingsDialog": {

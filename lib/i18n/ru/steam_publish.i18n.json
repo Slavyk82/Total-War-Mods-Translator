@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": "Не удалось сгенерировать изображение предпросмотра для файла .pack",
-      "noPackStaged": "Пак не подготовлен — пожалуйста, сначала укажите Workshop ID."
+      "noPackStaged": "Пак не подготовлен — пожалуйста, сначала укажите Workshop ID.",
+      "gameNotResolved": "Не удалось определить Steam App ID для выбранной игры."
     }
   },
   "settingsDialog": {

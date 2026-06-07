@@ -95,7 +95,8 @@
     },
     "warnings": {
       "previewFailed": "Falha ao gerar a imagem de pré-visualização para o ficheiro .pack",
-      "noPackStaged": "Nenhum pack preparado — defina primeiro um ID de Workshop."
+      "noPackStaged": "Nenhum pack preparado — defina primeiro um ID de Workshop.",
+      "gameNotResolved": "Não foi possível determinar o ID de aplicação Steam do jogo selecionado."
     }
   },
   "settingsDialog": {

@@ -7,7 +7,9 @@ import 'package:path/path.dart' as path;
 
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/i18n/strings.g.dart';
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/services/steam/models/game_definitions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
@@ -223,6 +225,21 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
             .firstOrNull ??
         WorkshopVisibility.public_;
 
+    // Resolve the Steam App ID for the currently selected game rather than
+    // hardcoding TW:WH3 — publishing to the wrong app silently corrupts/rejects
+    // Workshop items for the other 8 supported games.
+    final selectedGame = await ref.read(selectedGameProvider.future);
+    if (!mounted) return;
+    final appId =
+        selectedGame != null ? getGameByCode(selectedGame.code)?.steamAppId : null;
+    if (appId == null) {
+      FluentToast.warning(
+        context,
+        t.steamPublish.publishScreen.warnings.gameNotResolved,
+      );
+      return;
+    }
+
     final items = <BatchPublishItemInfo>[];
     final skippedNoPreview = <String>[];
     final imageGenerator = ref.read(packImageGeneratorServiceProvider);
@@ -269,7 +286,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       final modName = item.displayName;
 
       final params = WorkshopPublishParams(
-        appId: '1142710',
+        appId: appId,
         publishedFileId: item.publishedSteamId!,
         contentFolder: packDir,
         previewFile: previewPath,
