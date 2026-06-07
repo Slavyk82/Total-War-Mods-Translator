@@ -63,85 +63,96 @@ class ProjectLanguageDeletionService {
         return const Ok(null);
       }
 
-      // Step 1: Optimize PRAGMA settings
+      // Step 1: Optimize PRAGMA settings. foreign_keys / synchronous are
+      // connection-level and cannot be changed inside a transaction, so set
+      // them BEFORE opening one.
       await db.execute('PRAGMA foreign_keys = OFF');
       await db.execute('PRAGMA synchronous = OFF');
 
-      // Step 2: Delete cache entries for this project language
-      _logger.debug('Deleting cache entries');
-      await db.rawDelete(
-        'DELETE FROM translation_view_cache WHERE project_language_id = ?',
-        [projectLanguageId],
-      );
-
-      // Step 3: Disable triggers
-      _logger.debug('Disabling triggers');
-      await _disableTriggers(db);
-
-      // Step 4: Delete translation_version_tm_usage
-      await db.rawDelete(
-        '''
-        DELETE FROM translation_version_tm_usage
-        WHERE version_id IN (
-          SELECT id FROM translation_versions WHERE project_language_id = ?
-        )
-        ''',
-        [projectLanguageId],
-      );
-
-      // Step 5: Delete translation_version_history
-      await db.rawDelete(
-        '''
-        DELETE FROM translation_version_history
-        WHERE version_id IN (
-          SELECT id FROM translation_versions WHERE project_language_id = ?
-        )
-        ''',
-        [projectLanguageId],
-      );
-
-      // Step 6: Delete translation_batch_units
-      await db.rawDelete(
-        '''
-        DELETE FROM translation_batch_units
-        WHERE batch_id IN (
-          SELECT id FROM translation_batches WHERE project_language_id = ?
-        )
-        ''',
-        [projectLanguageId],
-      );
-
-      // Step 7: Delete translation_batches
-      await db.rawDelete(
-        'DELETE FROM translation_batches WHERE project_language_id = ?',
-        [projectLanguageId],
-      );
-
-      // Step 8: Delete translation_versions in batches
-      _logger.debug('Deleting translation versions');
-      await _deleteVersionsInBatches(db, projectLanguageId);
-
-      // Step 9: Delete the project_language itself
-      final deleted = await db.delete(
-        'project_languages',
-        where: 'id = ?',
-        whereArgs: [projectLanguageId],
-      );
-
-      if (deleted == 0) {
-        throw TWMTDatabaseException(
-          'Project language not found: $projectLanguageId',
+      // Steps 2-11 run inside a single transaction so the deletion is atomic: a
+      // mid-way failure rolls back every DELETE *and* restores the triggers that
+      // were dropped. The transaction also serializes against other writers on
+      // the shared connection, so no concurrent write slips through the window
+      // where the global FTS/cache triggers are absent and corrupts an
+      // unrelated project language's search index or view cache.
+      await db.transaction((txn) async {
+        // Step 2: Delete cache entries for this project language
+        _logger.debug('Deleting cache entries');
+        await txn.rawDelete(
+          'DELETE FROM translation_view_cache WHERE project_language_id = ?',
+          [projectLanguageId],
         );
-      }
 
-      // Step 10: Re-enable triggers
-      _logger.debug('Re-enabling triggers');
-      await _enableTriggers(db);
+        // Step 3: Disable triggers
+        _logger.debug('Disabling triggers');
+        await _disableTriggers(txn);
 
-      // Step 11: Rebuild FTS5 for translation_versions (contentless - managed by triggers)
-      // No rebuild needed for contentless FTS5
+        // Step 4: Delete translation_version_tm_usage
+        await txn.rawDelete(
+          '''
+          DELETE FROM translation_version_tm_usage
+          WHERE version_id IN (
+            SELECT id FROM translation_versions WHERE project_language_id = ?
+          )
+          ''',
+          [projectLanguageId],
+        );
 
-      // Step 12: Restore PRAGMA settings
+        // Step 5: Delete translation_version_history
+        await txn.rawDelete(
+          '''
+          DELETE FROM translation_version_history
+          WHERE version_id IN (
+            SELECT id FROM translation_versions WHERE project_language_id = ?
+          )
+          ''',
+          [projectLanguageId],
+        );
+
+        // Step 6: Delete translation_batch_units
+        await txn.rawDelete(
+          '''
+          DELETE FROM translation_batch_units
+          WHERE batch_id IN (
+            SELECT id FROM translation_batches WHERE project_language_id = ?
+          )
+          ''',
+          [projectLanguageId],
+        );
+
+        // Step 7: Delete translation_batches
+        await txn.rawDelete(
+          'DELETE FROM translation_batches WHERE project_language_id = ?',
+          [projectLanguageId],
+        );
+
+        // Step 8: Delete translation_versions in batches
+        _logger.debug('Deleting translation versions');
+        await _deleteVersionsInBatches(txn, projectLanguageId);
+
+        // Step 9: Delete the project_language itself
+        final deleted = await txn.delete(
+          'project_languages',
+          where: 'id = ?',
+          whereArgs: [projectLanguageId],
+        );
+
+        if (deleted == 0) {
+          throw TWMTDatabaseException(
+            'Project language not found: $projectLanguageId',
+          );
+        }
+
+        // Step 10: Re-enable triggers (inside the txn so a later failure rolls
+        // these back to a consistent state).
+        _logger.debug('Re-enabling triggers');
+        await _enableTriggers(txn);
+
+        // Step 11: translation_versions_fts is contentless and managed by
+        // triggers, so no FTS rebuild is needed.
+      });
+
+      // Step 12: Restore PRAGMA settings (after the transaction has committed).
       await db.execute('PRAGMA foreign_keys = ON');
       await db.execute('PRAGMA synchronous = NORMAL');
 
@@ -156,14 +167,15 @@ class ProjectLanguageDeletionService {
     } catch (e, stackTrace) {
       _logger.error('Project language deletion failed', e, stackTrace);
 
-      // Ensure triggers and PRAGMA are restored on error
+      // The transaction has already rolled back any DELETEs and restored the
+      // dropped triggers. All that remains is to restore the connection-level
+      // PRAGMA settings.
       try {
         final db = DatabaseService.database;
-        await _enableTriggers(db);
         await db.execute('PRAGMA foreign_keys = ON');
         await db.execute('PRAGMA synchronous = NORMAL');
       } catch (restoreError) {
-        _logger.error('Failed to restore triggers/PRAGMA', restoreError);
+        _logger.error('Failed to restore PRAGMA settings', restoreError);
       }
 
       return Err(
@@ -178,7 +190,7 @@ class ProjectLanguageDeletionService {
 
   /// Delete translation_versions in batches
   Future<void> _deleteVersionsInBatches(
-    Database db,
+    DatabaseExecutor db,
     String projectLanguageId,
   ) async {
     const batchSize = 5000;
@@ -205,7 +217,7 @@ class ProjectLanguageDeletionService {
   }
 
   /// Disable triggers that fire on DELETE
-  Future<void> _disableTriggers(Database db) async {
+  Future<void> _disableTriggers(DatabaseExecutor db) async {
     // FTS5 triggers on translation_versions
     await db.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_insert');
     await db.execute('DROP TRIGGER IF EXISTS trg_translation_versions_fts_update');
@@ -224,7 +236,7 @@ class ProjectLanguageDeletionService {
   }
 
   /// Re-enable triggers
-  Future<void> _enableTriggers(Database db) async {
+  Future<void> _enableTriggers(DatabaseExecutor db) async {
     // FTS5 triggers on translation_versions (contentless mode)
     await db.execute('''
       CREATE TRIGGER trg_translation_versions_fts_insert
@@ -359,7 +371,7 @@ class ProjectLanguageDeletionService {
 
   /// Get counts of related data
   Future<Map<String, dynamic>> _getProjectLanguageCounts(
-    Database db,
+    DatabaseExecutor db,
     String projectLanguageId,
   ) async {
     final counts = <String, dynamic>{};
