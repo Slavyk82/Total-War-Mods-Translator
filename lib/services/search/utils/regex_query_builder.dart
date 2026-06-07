@@ -45,7 +45,7 @@ class RegexQueryBuilder {
           ELSE 'translated_text'
         END as matched_field
       FROM translation_units tu
-      LEFT JOIN translation_versions tv ON tv.translation_unit_id = tu.id
+      LEFT JOIN translation_versions tv ON tv.unit_id = tu.id
       LEFT JOIN projects p ON tu.project_id = p.id
       WHERE $regexCondition
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
