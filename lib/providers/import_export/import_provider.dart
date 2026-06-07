@@ -75,6 +75,7 @@ class ImportPreviewData extends _$ImportPreviewData {
       ref.read(translationUnitRepositoryProvider),
       ref.read(translationVersionRepositoryProvider),
       ref.read(historyServiceProvider),
+      ref.read(projectLanguageRepositoryProvider),
     );
 
     final result = await service.previewImport(filePath, settings);
@@ -107,6 +108,7 @@ class ImportConflictsData extends _$ImportConflictsData {
       ref.read(translationUnitRepositoryProvider),
       ref.read(translationVersionRepositoryProvider),
       ref.read(historyServiceProvider),
+      ref.read(projectLanguageRepositoryProvider),
     );
 
     final result = await service.detectConflicts(preview, settings);
@@ -189,6 +191,7 @@ class ImportResultData extends _$ImportResultData {
       ref.read(translationUnitRepositoryProvider),
       ref.read(translationVersionRepositoryProvider),
       ref.read(historyServiceProvider),
+      ref.read(projectLanguageRepositoryProvider),
     );
 
     final result = await service.executeImport(
@@ -229,6 +232,7 @@ Future<ImportValidationResult> importValidation(
     ref.watch(translationUnitRepositoryProvider),
     ref.watch(translationVersionRepositoryProvider),
     ref.watch(historyServiceProvider),
+    ref.watch(projectLanguageRepositoryProvider),
   );
 
   final result = await service.validateImport(preview, settings);

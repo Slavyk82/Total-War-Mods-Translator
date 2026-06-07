@@ -2,6 +2,7 @@ import 'dart:io';
 import '../../../models/common/result.dart';
 import '../../../models/common/service_exception.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/file/i_file_service.dart';
@@ -26,6 +27,7 @@ class ImportExportService {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final IHistoryService _historyService;
+  final ProjectLanguageRepository _projectLanguageRepository;
 
   late final ImportFileReader _fileReader;
   late final ImportPreviewService _previewService;
@@ -37,6 +39,7 @@ class ImportExportService {
     this._unitRepository,
     this._versionRepository,
     this._historyService,
+    this._projectLanguageRepository,
   ) {
     _fileReader = ImportFileReader(_fileService);
     _previewService = ImportPreviewService(_fileReader);
@@ -106,12 +109,10 @@ class ImportExportService {
     final startTime = DateTime.now();
 
     try {
-      final versionsResult = await _versionRepository.getAll();
+      final versionsResult = await _loadFilteredVersions(settings);
 
       if (versionsResult.isErr) {
-        return Err(
-          ServiceException('Failed to fetch translations: ${versionsResult.error}'),
-        );
+        return Err(versionsResult.error);
       }
 
       final versions = versionsResult.value;
@@ -125,6 +126,8 @@ class ImportExportService {
         if (unitResult.isErr) continue;
 
         final unit = unitResult.value;
+        if (!_unitPassesFilter(unit, settings.filterOptions)) continue;
+
         final row = _buildExportRow(version, unit, settings.columns);
         data.add(row);
       }
@@ -161,38 +164,42 @@ class ImportExportService {
     ExportSettings settings,
   ) async {
     try {
-      final versionsResult = await _versionRepository.getAll();
+      final versionsResult = await _loadFilteredVersions(settings);
 
       if (versionsResult.isErr) {
-        return Err(
-          ServiceException('Failed to fetch data: ${versionsResult.error}'),
-        );
+        return Err(versionsResult.error);
       }
 
-      final versions = versionsResult.value;
+      final allVersions = versionsResult.value;
       final previewRows = <Map<String, String>>[];
       final headers = _buildExportHeaders(settings.columns);
 
-      for (int i = 0; i < versions.length && i < 10; i++) {
-        final version = versions[i];
+      // Apply the unit-level (context) filter while building the matching set so
+      // the reported totalRows reflects the real export size, not the raw
+      // version count.
+      var matchedRows = 0;
+      for (final version in allVersions) {
         final unitResult = await _unitRepository.getById(version.unitId);
-
         if (unitResult.isErr) continue;
 
         final unit = unitResult.value;
-        final row = _buildExportRow(version, unit, settings.columns);
-        previewRows.add(row);
+        if (!_unitPassesFilter(unit, settings.filterOptions)) continue;
+
+        matchedRows++;
+        if (previewRows.length < 10) {
+          previewRows.add(_buildExportRow(version, unit, settings.columns));
+        }
       }
 
       final avgRowSize = previewRows.isEmpty
           ? 100
           : previewRows.first.values.join(',').length;
-      final estimatedSize = avgRowSize * versions.length;
+      final estimatedSize = avgRowSize * matchedRows;
 
       return Ok(
         ExportPreview(
           previewRows: previewRows,
-          totalRows: versions.length,
+          totalRows: matchedRows,
           estimatedSize: estimatedSize,
           headers: headers,
         ),
@@ -202,6 +209,81 @@ class ImportExportService {
         ServiceException('Failed to generate preview: $e', stackTrace: stackTrace),
       );
     }
+  }
+
+  /// Load the translation versions that belong to the export's project +
+  /// target language, applying the version-level filter options.
+  ///
+  /// Previously this used `getAll()` which returned EVERY version of EVERY
+  /// project/language, ignoring [ExportSettings.projectId] /
+  /// [ExportSettings.targetLanguageId] / [ExportSettings.filterOptions] — a
+  /// cross-project data leak and an enormous, wrong export.
+  Future<Result<List<TranslationVersion>, ServiceException>>
+      _loadFilteredVersions(ExportSettings settings) async {
+    final projectLanguageResult =
+        await _projectLanguageRepository.getByProjectAndLanguage(
+      settings.projectId,
+      settings.targetLanguageId,
+    );
+
+    if (projectLanguageResult.isErr) {
+      return Err(ServiceException(
+        'Failed to resolve project language: ${projectLanguageResult.error}',
+      ));
+    }
+
+    final projectLanguage = projectLanguageResult.value;
+
+    final versionsResult =
+        await _versionRepository.getByProjectLanguage(projectLanguage.id);
+
+    if (versionsResult.isErr) {
+      return Err(ServiceException(
+        'Failed to fetch translations: ${versionsResult.error}',
+      ));
+    }
+
+    final filtered = versionsResult.value
+        .where((v) => _versionPassesFilter(v, settings.filterOptions))
+        .toList();
+
+    return Ok(filtered);
+  }
+
+  /// Whether a version satisfies the version-level filter options.
+  bool _versionPassesFilter(TranslationVersion version, ExportFilterOptions f) {
+    if (f.validatedOnly &&
+        version.status != TranslationVersionStatus.translated) {
+      return false;
+    }
+    if (f.translationsOnly &&
+        (version.translatedText == null || version.translatedText!.isEmpty)) {
+      return false;
+    }
+    if (f.statusFilter != null &&
+        f.statusFilter!.isNotEmpty &&
+        !f.statusFilter!.contains(version.status.toDbValue)) {
+      return false;
+    }
+    if (f.createdAfter != null && version.createdAt < f.createdAfter!) {
+      return false;
+    }
+    if (f.updatedAfter != null && version.updatedAt < f.updatedAfter!) {
+      return false;
+    }
+    return true;
+  }
+
+  /// Whether a unit satisfies the unit-level (context) filter.
+  bool _unitPassesFilter(dynamic unit, ExportFilterOptions f) {
+    final contextFilter = f.contextFilter;
+    if (contextFilter != null && contextFilter.isNotEmpty) {
+      final context = (unit.context as String?) ?? '';
+      if (!context.toLowerCase().contains(contextFilter.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Build export row data from version and unit

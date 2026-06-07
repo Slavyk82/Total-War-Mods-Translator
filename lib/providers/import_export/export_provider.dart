@@ -79,6 +79,7 @@ class ExportPreviewData extends _$ExportPreviewData {
       ref.read(translationUnitRepositoryProvider),
       ref.read(translationVersionRepositoryProvider),
       ref.read(historyServiceProvider),
+      ref.read(projectLanguageRepositoryProvider),
     );
 
     final result = await service.previewExport(settings);
@@ -141,6 +142,7 @@ class ExportResultData extends _$ExportResultData {
       ref.read(translationUnitRepositoryProvider),
       ref.read(translationVersionRepositoryProvider),
       ref.read(historyServiceProvider),
+      ref.read(projectLanguageRepositoryProvider),
     );
 
     final result = await service.executeExport(
