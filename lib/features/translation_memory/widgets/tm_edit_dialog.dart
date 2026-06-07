@@ -120,7 +120,7 @@ class _TmEditDialogState extends ConsumerState<TmEditDialog> {
       actions: [
         SmallTextButton(
           label: t.common.actions.cancel,
-          onTap: _saving ? null : () => Navigator.of(context).pop(false),
+          onTap: _saving ? null : () => Navigator.of(context).pop(),
         ),
         SmallTextButton(
           label: t.common.actions.save,
