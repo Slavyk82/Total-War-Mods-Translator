@@ -11,6 +11,14 @@
     "loadSettings": "설정을 로드하는 중 오류가 발생했습니다: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "팩 접두사",
+      "sectionSubtitle": "생성되는 .pack 파일과 그 안의 .loc 파일에 추가되는 접두사를 사용자 지정합니다.",
+      "warning": "변경은 권장하지 않습니다. 기본값 \"!!!!!!!!!!\"은 번역 팩이 높은 우선순위로 로드되어 게임의 원본 텍스트를 덮어쓰도록 강제합니다. 약한 접두사는 게임 내에서 번역이 적용되지 않게 할 수 있습니다.",
+      "fieldLabel": "기본 접두사",
+      "previewLabel": "미리 보기",
+      "resetButton": "기본값으로 재설정"
+    },
     "backup": {
       "sectionTitle": "데이터베이스 백업",
       "sectionSubtitle": "데이터를 보호하기 위해 백업을 생성하거나 이전 백업에서 복원합니다.",

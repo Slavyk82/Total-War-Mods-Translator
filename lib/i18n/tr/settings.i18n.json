@@ -11,6 +11,14 @@
     "loadSettings": "Ayarlar yüklenirken hata: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Pack ön eki",
+      "sectionSubtitle": "Oluşturulan .pack dosyalarına ve içlerindeki .loc dosyalarına eklenen ön eki özelleştirin.",
+      "warning": "Bunu değiştirmeniz önerilmez. Varsayılan «!!!!!!!!!!» ön eki, çeviri pack'lerinin yüksek öncelikle yüklenmesini ve oyunun özgün metnini geçersiz kılmasını sağlar. Daha zayıf bir ön ek, çevirinizin oyunda uygulanmasını engelleyebilir.",
+      "fieldLabel": "Varsayılan ön ek",
+      "previewLabel": "Önizleme",
+      "resetButton": "Varsayılana sıfırla"
+    },
     "backup": {
       "sectionTitle": "Veritabanı yedeği",
       "sectionSubtitle": "Verilerinizi korumak için yedek oluşturun veya önceki yedeklerden geri yükleyin.",

@@ -11,6 +11,14 @@
     "loadSettings": "Error loading settings: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Pack prefix",
+      "sectionSubtitle": "Customize the prefix added to generated .pack files and to the .loc files inside them.",
+      "warning": "Changing this is not recommended. The default \"!!!!!!!!!!\" forces translation packs to load with high priority so they override the game's original text. A weaker prefix may prevent your translation from applying in-game.",
+      "fieldLabel": "Default prefix",
+      "previewLabel": "Preview",
+      "resetButton": "Reset to default"
+    },
     "backup": {
       "sectionTitle": "Database Backup",
       "sectionSubtitle": "Create backups to protect your data or restore from previous backups.",

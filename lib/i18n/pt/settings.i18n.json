@@ -11,6 +11,14 @@
     "loadSettings": "Erro ao carregar definições: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Prefixo do pack",
+      "sectionSubtitle": "Personalize o prefixo adicionado aos ficheiros .pack gerados e aos ficheiros .loc que contêm.",
+      "warning": "Não é recomendável alterar isto. O prefixo predefinido «!!!!!!!!!!» força os packs de tradução a carregar com prioridade alta para substituir o texto original do jogo. Um prefixo mais fraco pode impedir que a sua tradução seja aplicada no jogo.",
+      "fieldLabel": "Prefixo predefinido",
+      "previewLabel": "Pré-visualização",
+      "resetButton": "Repor predefinição"
+    },
     "backup": {
       "sectionTitle": "Cópia de segurança da base de dados",
       "sectionSubtitle": "Crie cópias de segurança para proteger os seus dados ou restaure a partir de cópias anteriores.",

@@ -11,6 +11,14 @@
     "loadSettings": "Erreur lors du chargement des paramètres : $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Préfixe de pack",
+      "sectionSubtitle": "Personnalisez le préfixe ajouté aux fichiers .pack générés et aux fichiers .loc qu'ils contiennent.",
+      "warning": "Modifier ce réglage est déconseillé. Le préfixe par défaut « !!!!!!!!!! » force les packs de traduction à se charger en priorité afin d'écraser le texte d'origine du jeu. Un préfixe affaibli peut empêcher votre traduction de s'appliquer en jeu.",
+      "fieldLabel": "Préfixe par défaut",
+      "previewLabel": "Aperçu",
+      "resetButton": "Réinitialiser au défaut"
+    },
     "backup": {
       "sectionTitle": "Sauvegarde de la base de données",
       "sectionSubtitle": "Créez des sauvegardes pour protéger vos données ou restaurez une sauvegarde précédente.",

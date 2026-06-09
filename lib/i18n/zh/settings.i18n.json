@@ -11,6 +11,14 @@
     "loadSettings": "加载设置时出错：$error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Pack 前缀",
+      "sectionSubtitle": "自定义添加到生成的 .pack 文件及其内部 .loc 文件的前缀。",
+      "warning": "不建议修改此项。默认前缀 \"!!!!!!!!!!\" 会强制翻译 pack 以高优先级加载，从而覆盖游戏的原始文本。较弱的前缀可能导致翻译在游戏中无法生效。",
+      "fieldLabel": "默认前缀",
+      "previewLabel": "预览",
+      "resetButton": "重置为默认值"
+    },
     "backup": {
       "sectionTitle": "数据库备份",
       "sectionSubtitle": "创建备份以保护您的数据，或从先前的备份中恢复。",

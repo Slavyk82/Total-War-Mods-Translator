@@ -11,6 +11,14 @@
     "loadSettings": "Fehler beim Laden der Einstellungen: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Pack-Präfix",
+      "sectionSubtitle": "Passen Sie das Präfix an, das generierten .pack-Dateien und den darin enthaltenen .loc-Dateien vorangestellt wird.",
+      "warning": "Diese Änderung wird nicht empfohlen. Das Standardpräfix „!!!!!!!!!!“ erzwingt, dass Übersetzungs-Packs mit hoher Priorität geladen werden und so den Originaltext des Spiels überschreiben. Ein schwächeres Präfix kann verhindern, dass Ihre Übersetzung im Spiel angewendet wird.",
+      "fieldLabel": "Standardpräfix",
+      "previewLabel": "Vorschau",
+      "resetButton": "Auf Standard zurücksetzen"
+    },
     "backup": {
       "sectionTitle": "Datenbank-Sicherung",
       "sectionSubtitle": "Erstellen Sie Sicherungen, um Ihre Daten zu schützen, oder stellen Sie eine frühere Sicherung wieder her.",

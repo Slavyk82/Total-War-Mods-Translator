@@ -11,6 +11,14 @@
     "loadSettings": "Error al cargar los ajustes: $error"
   },
   "general": {
+    "packPrefix": {
+      "sectionTitle": "Prefijo del pack",
+      "sectionSubtitle": "Personaliza el prefijo añadido a los archivos .pack generados y a los archivos .loc que contienen.",
+      "warning": "No se recomienda cambiar esto. El prefijo predeterminado «!!!!!!!!!!» obliga a que los packs de traducción se carguen con alta prioridad para sobrescribir el texto original del juego. Un prefijo más débil puede impedir que tu traducción se aplique en el juego.",
+      "fieldLabel": "Prefijo predeterminado",
+      "previewLabel": "Vista previa",
+      "resetButton": "Restablecer el valor predeterminado"
+    },
     "backup": {
       "sectionTitle": "Copia de seguridad de la base de datos",
       "sectionSubtitle": "Cree copias de seguridad para proteger sus datos o restaure desde copias anteriores.",
