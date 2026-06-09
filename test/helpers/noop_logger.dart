@@ -19,4 +19,7 @@ class NoopLogger implements ILoggingService {
 
   @override
   List<LogEntry> get recentLogs => const [];
+
+  @override
+  String? get logFilePath => null;
 }

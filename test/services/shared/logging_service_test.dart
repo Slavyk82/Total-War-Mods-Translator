@@ -5,6 +5,7 @@ import 'package:twmt/services/shared/log_entry.dart';
 void main() {
   group('LoggingService recent-logs buffer', () {
     setUp(() => LoggingService.instance.clearRecentLogs());
+    tearDown(() => LoggingService.instance.clearRecentLogs());
 
     test('caps recentLogs at maxRecentLogs and evicts oldest', () {
       expect(LoggingService.maxRecentLogs, 5000);
