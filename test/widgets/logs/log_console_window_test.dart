@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/theme/app_theme.dart';
+import 'package:twmt/providers/log_window_provider.dart';
+import 'package:twmt/widgets/logs/log_console_overlay.dart';
 import 'package:twmt/widgets/logs/log_console_window.dart';
 
 class _FakeLogger implements ILoggingService {
@@ -118,5 +120,51 @@ void main() {
     await tester.pump();
 
     expect(find.textContaining('will-be-cleared'), findsNothing);
+  });
+
+  // Regression: in the real app the overlay is mounted in the MaterialApp.router
+  // builder, a sibling of the routed child, so it has NO ambient Navigator
+  // Overlay ancestor. Toolbar tooltips and the search field / selectable log
+  // lines all need an Overlay, so LogConsoleOverlay must provide its own.
+  // This reproduces that context (Localizations + Directionality + Theme + a
+  // Stack, but deliberately no Overlay) and asserts the window builds cleanly.
+  testWidgets('overlay provides its own Overlay when no ambient one exists',
+      (tester) async {
+    final fake = _FakeLogger()..seed(_entry('INFO', 'overlay-line'));
+    addTearDown(fake.close);
+    final container = ProviderContainer(
+      overrides: [loggingServiceProvider.overrideWithValue(fake)],
+    );
+    addTearDown(container.dispose);
+    // Open the window so the overlay mounts it.
+    container.read(logWindowControllerProvider.notifier).open();
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: Localizations(
+          locale: const Locale('en'),
+          delegates: const [
+            DefaultMaterialLocalizations.delegate,
+            DefaultWidgetsLocalizations.delegate,
+          ],
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: MediaQuery(
+              data: const MediaQueryData(size: Size(1200, 800)),
+              child: Theme(
+                data: AppTheme.atelierDarkTheme,
+                child: const Stack(children: [LogConsoleOverlay()]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Overlay), findsOneWidget);
+    expect(find.textContaining('overlay-line'), findsOneWidget);
   });
 }
