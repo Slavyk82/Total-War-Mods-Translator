@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/services/file/pack_export_utils.dart';
+import 'package:twmt/services/file/loc_file_service_impl.dart';
 
 import '../../../helpers/noop_logger.dart';
 
@@ -32,6 +33,25 @@ void main() {
         prefix: 'zzz_',
       );
       expect(name, 'zzz__fr_twmt_game_translation.pack');
+    });
+  });
+
+  group('buildLocInternalPath', () {
+    test('uses the default prefix when none is provided', () {
+      final p = LocFileServiceImpl.buildLocInternalPath(
+        'text/db/Something.loc',
+        'fr',
+      );
+      expect(p, 'text/db/!!!!!!!!!!_fr_twmt_something.loc');
+    });
+
+    test('uses a custom prefix when provided', () {
+      final p = LocFileServiceImpl.buildLocInternalPath(
+        'text/db/Something.loc',
+        'fr',
+        prefix: 'zzz',
+      );
+      expect(p, 'text/db/zzz_fr_twmt_something.loc');
     });
   });
 }

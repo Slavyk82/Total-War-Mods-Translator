@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_version.dart';
@@ -347,6 +348,7 @@ class LocFileServiceImpl implements ILocFileService {
     required String languageCode,
     required bool validatedOnly,
     Set<String> excludeKeys = const {},
+    String prefix = AppConstants.defaultPackPrefix,
   }) async {
     try {
       _logger.info('Generating TSV files grouped by source .loc file', {
@@ -490,7 +492,8 @@ class LocFileServiceImpl implements ILocFileService {
         
         // Generate the output .loc path with language prefix (lowercase)
         // Original: text/db/something.loc -> text/db/!!!!!!!!!!_fr_twmt_something.loc
-        final outputLocPath = _generateOutputLocPath(sourceLocFile, langLower);
+        final outputLocPath =
+            buildLocInternalPath(sourceLocFile, langLower, prefix: prefix);
         
         // Metadata row - RPFM format: #Loc;version;internal_path
         buffer.writeln('#Loc;1;$outputLocPath\t\t');
@@ -547,23 +550,28 @@ class LocFileServiceImpl implements ILocFileService {
 
   /// Generate output .loc path with language prefix (all lowercase)
   ///
-  /// Transforms the original .loc path to include the language prefix.
-  /// Example: text/db/Something.loc -> text/db/!!!!!!!!!!_fr_twmt_something.loc
-  String _generateOutputLocPath(String sourceLocFile, String langLower) {
+  /// Transforms the original .loc path to include the configured load-order
+  /// [prefix]. Example with the default prefix:
+  /// text/db/Something.loc -> text/db/!!!!!!!!!!_fr_twmt_something.loc
+  static String buildLocInternalPath(
+    String sourceLocFile,
+    String langLower, {
+    String prefix = AppConstants.defaultPackPrefix,
+  }) {
     // Get the directory and filename parts
     final dir = path.dirname(sourceLocFile).replaceAll('\\', '/').toLowerCase();
     final fileName = path.basename(sourceLocFile);
-    
+
     // Remove .loc extension if present and convert to lowercase
     String baseName = fileName;
     if (baseName.toLowerCase().endsWith('.loc')) {
       baseName = baseName.substring(0, baseName.length - 4);
     }
     baseName = baseName.toLowerCase();
-    
-    // Build new filename with prefix (all lowercase): !!!!!!!!!!_fr_twmt_originalname.loc
-    final newFileName = '!!!!!!!!!!_${langLower}_twmt_$baseName.loc';
-    
+
+    // Build new filename with prefix (all lowercase)
+    final newFileName = '${prefix}_${langLower}_twmt_$baseName.loc';
+
     // Combine directory and new filename
     if (dir.isEmpty || dir == '.') {
       return newFileName;
