@@ -34,6 +34,23 @@ void main() {
         'zzz_FR_units.loc',
       );
     });
+
+    test('strips a custom prefix that contains underscores', () {
+      expect(
+        LocalizationFile.generatePrefixedFileName(
+            'zzz_grp_EN_units.loc', 'fr',
+            prefix: 'zzz_grp'),
+        'zzz_grp_FR_units.loc',
+      );
+    });
+
+    test('generates with an empty prefix', () {
+      expect(
+        LocalizationFile.generatePrefixedFileName('units.loc', 'fr',
+            prefix: ''),
+        '_FR_units.loc',
+      );
+    });
   });
 
   group('extractLanguageCode (detection unchanged)', () {

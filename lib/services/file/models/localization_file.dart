@@ -112,6 +112,9 @@ class LocalizationFile {
   /// Total War convention: !!!!!!!!!!_{LANG}_filename.loc
   ///
   /// Example: "units.loc" with "fr" → "!!!!!!!!!!_FR_units.loc"
+  ///
+  /// [prefix] is the configurable leading load-order token
+  /// (default `AppConstants.defaultPackPrefix` = `"!!!!!!!!!!"`).
   static String generatePrefixedFileName(
     String baseName,
     String langCode, {
@@ -122,12 +125,18 @@ class LocalizationFile {
     // Remove an existing prefix if present. Recognize BOTH the standard
     // prefix and the configured one so a file generated with a custom prefix
     // is not double-prefixed.
+    // Use string offsets (not split('_')) so a configured prefix that itself
+    // contains underscores is stripped correctly.
     String cleanName = baseName;
     for (final existing in {'!!!!!!!!!!', prefix}) {
       if (existing.isNotEmpty && baseName.startsWith('${existing}_')) {
-        final parts = baseName.split('_');
-        if (parts.length >= 3) {
-          cleanName = parts.sublist(2).join('_');
+        // Drop the matched "PREFIX_" segment, then the following "LANG_"
+        // segment. Done with string offsets (not split('_')) so a configured
+        // prefix that itself contains underscores is stripped correctly.
+        final afterPrefix = baseName.substring('${existing}_'.length);
+        final langSep = afterPrefix.indexOf('_');
+        if (langSep != -1) {
+          cleanName = afterPrefix.substring(langSep + 1);
         }
         break;
       }
