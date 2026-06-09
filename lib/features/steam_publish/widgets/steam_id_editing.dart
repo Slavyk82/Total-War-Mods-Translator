@@ -47,13 +47,10 @@ Future<bool> saveWorkshopId({
       }
     } else if (item is CompilationPublishItem) {
       final compilationRepo = ref.read(compilationRepositoryProvider);
-      // Preserve existing fallback semantics from SteamActionCell — when an
-      // item has never been published, publishedAt is null and we write 0.
-      await compilationRepo.updateAfterPublish(
-        item.compilation.id,
-        parsed,
-        item.publishedAt ?? 0,
-      );
+      // Only associate the Workshop id; do NOT touch published_at. Writing 0
+      // for a never-published compilation would mark it permanently outdated
+      // (the outdated filter is publishedAt != null && exportedAt > publishedAt).
+      await compilationRepo.setWorkshopId(item.compilation.id, parsed);
     }
     ref.invalidate(publishableItemsProvider);
     return true;

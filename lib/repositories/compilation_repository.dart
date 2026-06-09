@@ -300,6 +300,36 @@ class CompilationRepository extends BaseRepository<Compilation> {
     });
   }
 
+  /// Associate a Workshop id with a compilation WITHOUT changing its
+  /// `published_at`.
+  ///
+  /// Used when the user manually enters a Workshop id for a compilation that
+  /// may never have been published. Writing `published_at = 0` here (as a
+  /// publish would) makes the "outdated" filter
+  /// (`publishedAt != null && exportedAt > publishedAt`) treat every generated
+  /// compilation as permanently outdated, so leave `published_at` untouched.
+  Future<Result<void, TWMTDatabaseException>> setWorkshopId(
+    String compilationId,
+    String publishedSteamId,
+  ) async {
+    return executeQuery(() async {
+      final rowsAffected = await database.update(
+        tableName,
+        {
+          'published_steam_id': publishedSteamId,
+          'updated_at': DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        },
+        where: 'id = ?',
+        whereArgs: [compilationId],
+      );
+
+      if (rowsAffected == 0) {
+        throw TWMTDatabaseException(
+            'Compilation not found for workshop id update: $compilationId');
+      }
+    });
+  }
+
   /// Get compilation count for statistics.
   Future<Result<int, TWMTDatabaseException>> getCount() async {
     return executeQuery(() async {
