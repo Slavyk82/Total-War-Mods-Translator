@@ -4,6 +4,7 @@ import 'package:path/path.dart' as path;
 import 'package:archive/archive.dart';
 import 'package:twmt/config/database_config.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/rpfm/rpfm_cli_manager.dart' show isSafeExtractionTarget;
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -261,7 +262,18 @@ class SteamCmdManager {
 
     for (final file in archive) {
       final filename = file.name;
-      final filePath = path.join(outputDir, filename);
+
+      // Guard against zip-slip path traversal: reject any entry whose
+      // resolved path escapes the intended output directory (e.g.
+      // "..\\..\\Windows\\evil.exe" or an absolute path).
+      if (!isSafeExtractionTarget(outputDir, filename)) {
+        _logger.warning(
+          'Skipping unsafe ZIP entry (path traversal): $filename',
+        );
+        continue;
+      }
+
+      final filePath = path.normalize(path.join(outputDir, filename));
 
       if (file.isFile) {
         final data = file.content as List<int>;
