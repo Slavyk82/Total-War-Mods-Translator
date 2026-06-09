@@ -318,28 +318,34 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     _isCancelled = false;
     final startTime = DateTime.now();
 
-    // Ensure steamcmd is available
-    final steamCmdPathResult = await _manager.getSteamCmdPath();
-    if (steamCmdPathResult.isErr) {
-      throw steamCmdPathResult.error;
-    }
-    final steamCmdPath = steamCmdPathResult.value;
-
-    // Check cached credentials
-    final cachedLoginOk =
-        await _hasCachedCredentials(steamCmdPath, username);
-
-    if (!cachedLoginOk && steamGuardCode == null) {
-      throw const SteamGuardRequiredException(
-        'Steam Guard code is required to authenticate',
-      );
-    }
-
-    // --- Prepare all items: temp dirs, pack copies, VDF generation ---
+    // Declared before the try so the finally can always clean them up.
     final prepared = <int, _BatchPreparedItem>{};
     final tempDirs = <Directory>[];
 
     try {
+      // Ensure steamcmd is available. NOTE: these pre-flight checks MUST stay
+      // inside the try so the finally resets _isRunning. The Steam Guard path
+      // is a normal flow (no cached creds -> throw SteamGuardRequiredException
+      // -> caller retries with a code); if it threw outside the try,
+      // _isRunning would stay true forever and the retry would be rejected by
+      // the re-entrance guard, permanently locking the service.
+      final steamCmdPathResult = await _manager.getSteamCmdPath();
+      if (steamCmdPathResult.isErr) {
+        throw steamCmdPathResult.error;
+      }
+      final steamCmdPath = steamCmdPathResult.value;
+
+      // Check cached credentials
+      final cachedLoginOk =
+          await _hasCachedCredentials(steamCmdPath, username);
+
+      if (!cachedLoginOk && steamGuardCode == null) {
+        throw const SteamGuardRequiredException(
+          'Steam Guard code is required to authenticate',
+        );
+      }
+
+      // --- Prepare all items: temp dirs, pack copies, VDF generation ---
       for (var i = 0; i < items.length; i++) {
         final item = items[i];
         try {

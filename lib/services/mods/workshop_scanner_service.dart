@@ -48,16 +48,6 @@ class WorkshopScannerService {
   /// Stream of scan log messages for UI consumption
   Stream<ScanLogMessage> get scanLogStream => _scanLogController.stream;
 
-  /// Re-entrancy guard: true while a [scanMods] call is in progress.
-  ///
-  /// The scan-log stream is a single shared broadcast controller, so two
-  /// overlapping scans (e.g. a rapid game switch or a refresh during an
-  /// in-flight scan) would interleave their progress lines on the same
-  /// stream, showing the user a garbled, out-of-order log. We serialize by
-  /// rejecting a second scan while one is already running rather than mixing
-  /// the two outputs. The DB writes are independent per pack and unaffected.
-  bool _isScanning = false;
-
   /// Emit a log message to the scan log stream
   void _emitLog(String message, [ScanLogLevel level = ScanLogLevel.info]) {
     if (!_scanLogController.isClosed) {
@@ -115,16 +105,6 @@ class WorkshopScannerService {
   Future<Result<ModScanResult, ServiceException>> scanMods(
     String gameCode,
   ) async {
-    // Reject a concurrent scan so its log lines don't interleave with the
-    // running scan's on the shared broadcast controller.
-    if (_isScanning) {
-      _logger.warning(
-          'Ignoring scanMods($gameCode): a scan is already in progress');
-      return Err(ServiceException(
-        'A Workshop scan is already in progress. Please wait for it to finish.',
-      ));
-    }
-    _isScanning = true;
     try {
       _logger.info('Scanning Workshop folder for game: $gameCode');
       _emitLog(t.mods.scanLogs.startingScan(gameCode: gameCode));
@@ -244,9 +224,6 @@ class WorkshopScannerService {
         error: e,
         stackTrace: stackTrace,
       ));
-    } finally {
-      // Always release the re-entrancy guard so the next scan can run.
-      _isScanning = false;
     }
   }
 

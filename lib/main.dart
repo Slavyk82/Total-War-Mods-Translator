@@ -54,14 +54,6 @@ void main() async {
         await windowManager.show();
         await windowManager.focus();
       });
-
-      // Intercept the window close so we can run an AWAITED shutdown
-      // (WAL checkpoint + dispose) before the process is destroyed. Relying on
-      // AppLifecycleState.detached alone is unreliable on Windows desktop: it
-      // is delivered (if at all) just before process teardown, which can exit
-      // before the async checkpoint completes. setPreventClose(true) keeps the
-      // window alive until _AppLifecycleObserver.onWindowClose calls destroy().
-      await windowManager.setPreventClose(true);
     }
 
     // Initialize all services via Service Locator
@@ -101,6 +93,13 @@ void main() async {
     WidgetsBinding.instance.addObserver(lifecycleObserver);
     if (Platform.isWindows) {
       windowManager.addListener(lifecycleObserver);
+      // Enable prevent-close ONLY after the onWindowClose listener is attached,
+      // otherwise the close button would be inert during startup (DB migrations
+      // etc.) with no handler to run destroy(). This keeps the window alive
+      // until _AppLifecycleObserver.onWindowClose runs an AWAITED shutdown
+      // (WAL checkpoint + dispose) — more reliable than the unreliable
+      // AppLifecycleState.detached signal on Windows.
+      await windowManager.setPreventClose(true);
     }
 
     // Apply persisted app-UI locale (or fall back to device locale).

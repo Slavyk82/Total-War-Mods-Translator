@@ -123,8 +123,13 @@ class ProcessService {
         }
 
         // Drain stdout/stderr to completion before reading the buffers so we
-        // capture any output still buffered in the pipes after exit.
-        await Future.wait([stdoutDone.future, stderrDone.future]);
+        // capture any output still buffered in the pipes after exit. Bound the
+        // wait: a surviving child process that inherited the stdout/stderr
+        // pipe can keep it open after the parent exits, so onDone may never
+        // fire. After a short grace period we proceed with whatever was
+        // buffered rather than hang the caller forever.
+        await Future.wait([stdoutDone.future, stderrDone.future])
+            .timeout(const Duration(seconds: 5), onTimeout: () => const []);
 
         final executionTime = DateTime.now().difference(startTime);
 
@@ -267,8 +272,13 @@ class ProcessService {
         }
 
         // Drain stdout/stderr to completion before reading the buffers so we
-        // capture any output still buffered in the pipes after exit.
-        await Future.wait([stdoutDone.future, stderrDone.future]);
+        // capture any output still buffered in the pipes after exit. Bound the
+        // wait: a surviving child process that inherited the stdout/stderr
+        // pipe can keep it open after the parent exits, so onDone may never
+        // fire. After a short grace period we proceed with whatever was
+        // buffered rather than hang the caller forever.
+        await Future.wait([stdoutDone.future, stderrDone.future])
+            .timeout(const Duration(seconds: 5), onTimeout: () => const []);
 
         final executionTime = DateTime.now().difference(startTime);
 
