@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:csv/csv.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/file/file_import_export_service.dart';
@@ -59,9 +60,15 @@ class GlossaryImportService {
         );
       }
 
-      // Read CSV file
-      final lines = await file.readAsLines();
-      if (lines.isEmpty) {
+      // Read and parse CSV with an RFC-4180 aware parser. CsvToListConverter
+      // respects double-quoted fields and doubled-quote escaping ("" -> ") and
+      // handles fields that themselves contain commas, quotes or newlines —
+      // unlike a naive split(','). shouldParseNumbers is disabled so terms stay
+      // strings (e.g. a term of "2024" is not coerced to an int).
+      final content = await file.readAsString(encoding: utf8);
+      const converter = CsvToListConverter(shouldParseNumbers: false);
+      final rows = converter.convert(content);
+      if (rows.isEmpty) {
         return Ok(0);
       }
 
@@ -69,20 +76,23 @@ class GlossaryImportService {
       final errors = <String>[];
 
       // Skip header row
-      for (int i = 1; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
+      for (int i = 1; i < rows.length; i++) {
+        final row = rows[i];
+        // Drop fully blank rows (e.g. a trailing newline produces [''] or []).
+        if (row.isEmpty ||
+            row.every((cell) => cell.toString().trim().isEmpty)) {
+          continue;
+        }
 
-        final parts = line.split(',');
-        if (parts.length < 2) {
+        if (row.length < 2) {
           errors.add('Line $i: Invalid format (need at least 2 columns)');
           continue;
         }
 
-        final sourceTerm = parts[0].trim();
-        final targetTerm = parts[1].trim();
+        final sourceTerm = row[0].toString().trim();
+        final targetTerm = row[1].toString().trim();
         // Optional 3rd column for notes (LLM context)
-        final notes = parts.length > 2 ? parts[2].trim() : null;
+        final notes = row.length > 2 ? row[2].toString().trim() : null;
 
         if (sourceTerm.isEmpty || targetTerm.isEmpty) {
           errors.add('Line $i: Empty term');

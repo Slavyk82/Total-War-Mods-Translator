@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:csv/csv.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
@@ -45,21 +46,21 @@ class GlossaryExportService {
         targetLanguageCode: targetLanguageCode,
       );
 
+      // Build rows with RFC-4180 quoting. ListToCsvConverter quotes any field
+      // containing a comma, double-quote, CR or LF and escapes embedded
+      // double-quotes by doubling them, for every column (source_term,
+      // target_term, notes) — keeping export/import round-trips lossless.
+      final rows = <List<String>>[
+        ['source_term', 'target_term', 'notes'],
+        for (final entry in entries)
+          [entry.sourceTerm, entry.targetTerm, entry.notes ?? ''],
+      ];
+
+      const converter = ListToCsvConverter();
+      final csvContent = converter.convert(rows);
+
       final file = File(filePath);
-      final sink = file.openWrite();
-
-      // Write header
-      sink.writeln('source_term,target_term,notes');
-
-      // Write entries
-      for (final entry in entries) {
-        // Escape commas in notes by wrapping in quotes
-        final notes = entry.notes ?? '';
-        final escapedNotes = notes.contains(',') ? '"$notes"' : notes;
-        sink.writeln('${entry.sourceTerm},${entry.targetTerm},$escapedNotes');
-      }
-
-      await sink.close();
+      await file.writeAsString(csvContent, encoding: utf8);
 
       return Ok(entries.length);
     } catch (e) {
