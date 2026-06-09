@@ -5,6 +5,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
 import '../providers/editor_providers.dart';
+import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
@@ -154,17 +155,31 @@ class GridActionsHandler {
         result.when(
           ok: (_) => successCount++,
           err: (error) {
-            // Log error but continue with other rows
+            // Log the failure but continue with the remaining rows.
+            ref.read(loggingServiceProvider).error(
+                  'Failed to mark row ${row.version.id} as translated',
+                  error,
+                );
           },
         );
       }
 
       if (context.mounted) {
-        FluentToast.success(
-          context,
-          t.translationEditor.actions.markedAsTranslated(count: successCount),
-        );
-        
+        if (successCount == selectedRows.length) {
+          FluentToast.success(
+            context,
+            t.translationEditor.actions.markedAsTranslated(count: successCount),
+          );
+        } else {
+          // Surface partial failure so the user is not misled by a
+          // fully-successful-looking toast.
+          FluentToast.warning(
+            context,
+            '${t.translationEditor.actions.markedAsTranslated(count: successCount)} '
+            '(${selectedRows.length - successCount} failed)',
+          );
+        }
+
         // Refresh the data
         _refreshProviders();
       }
@@ -302,7 +317,11 @@ class GridActionsHandler {
         result.when(
           ok: (_) => successCount++,
           err: (error) {
-            // Log error but continue with other rows
+            // Log the failure but continue with the remaining rows.
+            ref.read(loggingServiceProvider).error(
+                  'Failed to delete row ${row.version.id}',
+                  error,
+                );
           },
         );
       }
@@ -310,7 +329,20 @@ class GridActionsHandler {
       onDeleteComplete();
 
       if (context.mounted) {
-        FluentToast.success(context, t.translationEditor.actions.deleted(count: successCount));
+        if (successCount == selectedRows.length) {
+          FluentToast.success(
+            context,
+            t.translationEditor.actions.deleted(count: successCount),
+          );
+        } else {
+          // Surface partial failure so the user is not misled by a
+          // fully-successful-looking toast.
+          FluentToast.warning(
+            context,
+            '${t.translationEditor.actions.deleted(count: successCount)} '
+            '(${selectedRows.length - successCount} failed)',
+          );
+        }
 
         // Refresh the data
         _refreshProviders();
