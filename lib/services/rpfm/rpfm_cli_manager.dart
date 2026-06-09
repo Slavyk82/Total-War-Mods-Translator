@@ -371,7 +371,18 @@ class RpfmCliManager {
 
     for (final file in archive) {
       final filename = file.name;
-      final filePath = path.join(outputDir, filename);
+
+      // Guard against zip-slip path traversal: reject any entry whose
+      // resolved path escapes the intended output directory (e.g.
+      // "..\\..\\Windows\\evil.exe" or an absolute path).
+      if (!isSafeExtractionTarget(outputDir, filename)) {
+        _logger.warning(
+          'Skipping unsafe ZIP entry (path traversal): $filename',
+        );
+        continue;
+      }
+
+      final filePath = path.normalize(path.join(outputDir, filename));
 
       if (file.isFile) {
         final data = file.content as List<int>;
@@ -499,4 +510,20 @@ class RpfmCliManager {
       ));
     }
   }
+}
+
+/// Returns `true` if extracting an archive entry named [entryName] into
+/// [outputDir] is safe, i.e. the resolved target path stays within
+/// [outputDir].
+///
+/// This guards against "zip-slip" path traversal, where a crafted archive
+/// entry such as `../../Windows/evil.exe` or an absolute path would otherwise
+/// be written outside the intended output directory.
+bool isSafeExtractionTarget(String outputDir, String entryName) {
+  final normalized = path.normalize(path.join(outputDir, entryName));
+  final normalizedDir = path.normalize(outputDir);
+
+  // The target itself must not equal the output dir (entries should be nested),
+  // and it must resolve to a location inside the output dir.
+  return path.isWithin(normalizedDir, normalized);
 }

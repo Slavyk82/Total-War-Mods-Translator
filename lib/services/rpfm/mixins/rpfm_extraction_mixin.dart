@@ -351,17 +351,12 @@ mixin RpfmExtractionMixin {
         runInShell: false,
       );
 
-      // Capture output with UTF-8 decoding for proper Unicode support
-      final stdout = StringBuffer();
-      final stderr = StringBuffer();
-
-      currentProcess!.stdout.transform(utf8.decoder).listen((data) {
-        stdout.write(data);
-      });
-
-      currentProcess!.stderr.transform(utf8.decoder).listen((data) {
-        stderr.write(data);
-      });
+      // Capture output with UTF-8 decoding for proper Unicode support.
+      // Start draining stdout/stderr as Futures BEFORE awaiting exitCode so
+      // the streams are fully consumed (avoids deadlock and truncation) and no
+      // StreamSubscriptions are leaked.
+      final stdoutFuture = currentProcess!.stdout.transform(utf8.decoder).join();
+      final stderrFuture = currentProcess!.stderr.transform(utf8.decoder).join();
 
       // Wait with timeout
       final exitCode = await currentProcess!.exitCode.timeout(
@@ -379,8 +374,14 @@ mixin RpfmExtractionMixin {
         ));
       }
 
+      // Ensure the output streams are fully drained before reading them.
+      // stdout is drained to avoid leaking the subscription / blocking the
+      // process, even though only stderr is parsed for error messages.
+      await stdoutFuture;
+      final stderrStr = await stderrFuture;
+
       if (exitCode != 0) {
-        final error = RpfmOutputParser.parseErrorMessage(stderr.toString());
+        final error = RpfmOutputParser.parseErrorMessage(stderrStr);
         return Err(RpfmExtractionException(
           error,
           packFilePath: packFilePath,
