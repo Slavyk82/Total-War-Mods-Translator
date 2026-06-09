@@ -187,7 +187,13 @@ class MigrationService {
     bool inString = false;
     bool inComment = false;
     bool inMultiLineComment = false;
+    // Depth of open trigger bodies (BEGIN...END). A statement only terminates
+    // on `;` when this is 0.
     int beginEndDepth = 0;
+    // Depth of open CASE...END expressions. These also close with `END` but
+    // must NOT affect [beginEndDepth]. An `END` first closes the nearest open
+    // CASE; only when no CASE is open does it close a BEGIN/trigger body.
+    int caseDepth = 0;
 
     for (int i = 0; i < script.length; i++) {
       final char = script[i];
@@ -233,12 +239,22 @@ class MigrationService {
         continue;
       }
 
-      // Track BEGIN...END blocks
+      // Track BEGIN...END (trigger bodies) and CASE...END (expressions).
+      // Both close with `END`, but only trigger bodies must suppress `;`
+      // splitting. An `END` first closes the nearest open CASE; if none is
+      // open it closes a BEGIN/trigger body. [beginEndDepth] is clamped at 0
+      // as a defensive guard against malformed input.
       if (!inString && !inComment && !inMultiLineComment) {
-        if (_isKeywordAt(script, i, 'BEGIN')) {
+        if (_isKeywordAt(script, i, 'CASE')) {
+          caseDepth++;
+        } else if (_isKeywordAt(script, i, 'BEGIN')) {
           beginEndDepth++;
         } else if (_isKeywordAt(script, i, 'END')) {
-          beginEndDepth--;
+          if (caseDepth > 0) {
+            caseDepth--;
+          } else if (beginEndDepth > 0) {
+            beginEndDepth--;
+          }
         }
       }
 
