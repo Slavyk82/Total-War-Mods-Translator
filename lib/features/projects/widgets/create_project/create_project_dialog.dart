@@ -250,7 +250,20 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
         createdAt: now,
         updatedAt: now,
       );
-      await projectLangRepo.insert(projectLanguage);
+      final projectLangResult = await projectLangRepo.insert(projectLanguage);
+
+      if (projectLangResult.isErr) {
+        // The project row is already committed but it has no target language.
+        // Proceeding would provision a glossary / init files on a project that
+        // later opens to "no target language". Roll back the project (the
+        // delete cascades through any related rows) before surfacing the error.
+        try {
+          await projectRepo.delete(projectId);
+        } catch (_) {
+          // Best-effort rollback; surface the original insert error below.
+        }
+        throw Exception(projectLangResult.error);
+      }
 
       // Best-effort: provision an empty glossary for the new project's target
       // language. Internally error-swallowed — never blocks project creation.

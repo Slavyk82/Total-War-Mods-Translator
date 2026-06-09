@@ -10,6 +10,8 @@ import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/wizard_step_header.dart';
 
+import '../../../../models/common/result.dart';
+import '../../../../models/common/service_exception.dart';
 import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
@@ -103,10 +105,15 @@ class _CreateGameTranslationDialogState
       _progressMessage = t.gameTranslation.wizard.progress.creatingProject;
     });
 
-    try {
-      final projectRepo = ref.read(projectRepositoryProvider);
-      final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
+    final projectRepo = ref.read(projectRepositoryProvider);
+    final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
 
+    // Tracks the project once its row is committed so any later failure
+    // (project_language insert or initialization) can roll it back instead of
+    // leaving an orphaned, uninitialized project behind.
+    String? createdProjectId;
+
+    try {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       const uuid = Uuid();
 
@@ -178,6 +185,7 @@ class _CreateGameTranslationDialogState
       if (result.isErr) {
         throw Exception(result.error);
       }
+      createdProjectId = projectId;
 
       // Create project languages
       for (final languageId in _state.selectedLanguageIds) {
@@ -190,7 +198,13 @@ class _CreateGameTranslationDialogState
           updatedAt: now,
         );
 
-        await projectLangRepo.insert(projectLanguage);
+        final langResult = await projectLangRepo.insert(projectLanguage);
+
+        if (langResult.isErr) {
+          // Surface the failure; the catch below rolls back the project (the
+          // delete cascades to any project_languages already inserted).
+          throw Exception(langResult.error);
+        }
       }
 
       // Best-effort: provision empty glossaries for each new target language.
@@ -229,14 +243,23 @@ class _CreateGameTranslationDialogState
           }
         });
 
+        final Result<int, ServiceException> initResult;
         try {
-          await initService.initializeProject(
+          initResult = await initService.initializeProject(
             projectId: project.id,
             packFilePath: project.sourceFilePath!,
           );
         } finally {
           await progressSub.cancel();
           await logSub.cancel();
+        }
+
+        // initializeProject returns a Result (it does not throw on failure).
+        // If it failed, the project exists but was never initialized — surface
+        // the error so the catch below rolls it back instead of reporting
+        // success and leaving an orphaned, empty project.
+        if (initResult.isErr) {
+          throw Exception(initResult.error);
         }
       }
 
@@ -247,6 +270,17 @@ class _CreateGameTranslationDialogState
         Navigator.of(context).pop(projectId);
       }
     } catch (e) {
+      // Roll back a partially-created project so a failed creation never leaves
+      // an orphaned, uninitialized project behind (mirrors the rollback in
+      // ModsScreenController._createProjectFromMod). Deleting the project
+      // cascades to its project_languages and any imported rows.
+      if (createdProjectId != null) {
+        try {
+          await projectRepo.delete(createdProjectId);
+        } catch (_) {
+          // Best-effort cleanup; surface the original error below.
+        }
+      }
       if (mounted) {
         setState(() {
           _isLoading = false;

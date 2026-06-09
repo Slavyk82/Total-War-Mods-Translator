@@ -236,44 +236,71 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
 
       final languageIdsList = _selectedLanguageIds.toList();
 
-      for (final languageId in languageIdsList) {
-        final projectLanguageId = uuid.v4();
-        final projectLanguage = ProjectLanguage(
-          id: projectLanguageId,
-          projectId: widget.projectId,
-          languageId: languageId,
-          progressPercent: 0.0,
-          createdAt: now,
-          updatedAt: now,
-        );
+      // Track the project_language rows created in this run so that a failure
+      // partway through can roll them back. Each insert here is a separate,
+      // independently-committed write (the repositories manage their own
+      // connections), so without explicit rollback a mid-loop failure would
+      // leave half-created languages — and a project_language with no
+      // translation versions is itself an orphan that the UI cannot use.
+      final createdProjectLanguageIds = <String>[];
 
-        final result = await projectLangRepo.insert(projectLanguage);
-
-        if (result.isErr) {
-          throw Exception('Failed to add language: ${result.error}');
-        }
-
-        final versionsToInsert = <TranslationVersion>[];
-        for (final unit in translationUnits) {
-          versionsToInsert.add(TranslationVersion(
-            id: uuid.v4(),
-            unitId: unit.id,
-            projectLanguageId: projectLanguageId,
-            translatedText: null,
-            isManuallyEdited: false,
-            status: TranslationVersionStatus.pending,
+      try {
+        for (final languageId in languageIdsList) {
+          final projectLanguageId = uuid.v4();
+          final projectLanguage = ProjectLanguage(
+            id: projectLanguageId,
+            projectId: widget.projectId,
+            languageId: languageId,
+            progressPercent: 0.0,
             createdAt: now,
             updatedAt: now,
-          ));
-        }
+          );
 
-        final versionResult =
-            await translationVersionRepo.insertBatch(versionsToInsert);
+          final result = await projectLangRepo.insert(projectLanguage);
 
-        if (versionResult.isErr) {
-          throw Exception(
-              'Failed to create translation versions: ${versionResult.error}');
+          if (result.isErr) {
+            throw Exception('Failed to add language: ${result.error}');
+          }
+          createdProjectLanguageIds.add(projectLanguageId);
+
+          final versionsToInsert = <TranslationVersion>[];
+          for (final unit in translationUnits) {
+            versionsToInsert.add(TranslationVersion(
+              id: uuid.v4(),
+              unitId: unit.id,
+              projectLanguageId: projectLanguageId,
+              translatedText: null,
+              isManuallyEdited: false,
+              status: TranslationVersionStatus.pending,
+              createdAt: now,
+              updatedAt: now,
+            ));
+          }
+
+          final versionResult =
+              await translationVersionRepo.insertBatch(versionsToInsert);
+
+          if (versionResult.isErr) {
+            // The project_language is already committed but its versions
+            // failed to insert. Roll it back together with the languages
+            // created earlier in this run before surfacing the error.
+            throw Exception(
+                'Failed to create translation versions: ${versionResult.error}');
+          }
         }
+      } catch (_) {
+        // Roll back every project_language created in this run. Deleting a
+        // project_language cascades to any versions that were inserted for it,
+        // so no orphaned languages or versions remain. Rollback failures are
+        // swallowed so the original error is the one surfaced to the user.
+        for (final createdId in createdProjectLanguageIds) {
+          try {
+            await projectLangRepo.delete(createdId);
+          } catch (_) {
+            // Best-effort cleanup; ignore so the original error surfaces.
+          }
+        }
+        rethrow;
       }
 
       // Best-effort: provision an empty glossary per (gameCode, languageId)
