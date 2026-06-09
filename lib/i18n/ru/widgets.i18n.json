@@ -39,7 +39,28 @@
       "translationMemory": "Translation Memory",
       "gameTranslation": "Перевод игры",
       "packCompilation": "Компиляция пакета",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "logs": "Журналы"
+    }
+  },
+  "logConsole": {
+    "title": "Журналы",
+    "search": "Поиск по журналам...",
+    "copyAll": "Копировать всё",
+    "clear": "Очистить",
+    "openFolder": "Открыть папку журналов",
+    "minimize": "Свернуть",
+    "restore": "Восстановить",
+    "close": "Закрыть",
+    "empty": "Журналов для этого сеанса пока нет",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Ошибка"
+    },
+    "errors": {
+      "openFolderFailed": "Не удалось открыть папку журналов"
     }
   },
   "dataMigrationDialog": {

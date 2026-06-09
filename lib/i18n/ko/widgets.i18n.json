@@ -39,7 +39,28 @@
       "translationMemory": "번역 메모리",
       "gameTranslation": "게임 번역",
       "packCompilation": "팩 컴파일",
-      "settings": "설정"
+      "settings": "설정",
+      "logs": "로그"
+    }
+  },
+  "logConsole": {
+    "title": "로그",
+    "search": "로그 검색...",
+    "copyAll": "모두 복사",
+    "clear": "지우기",
+    "openFolder": "로그 폴더 열기",
+    "minimize": "최소화",
+    "restore": "복원",
+    "close": "닫기",
+    "empty": "이 세션에 대한 로그가 아직 없습니다",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "오류"
+    },
+    "errors": {
+      "openFolderFailed": "로그 폴더를 열 수 없습니다"
     }
   },
   "dataMigrationDialog": {

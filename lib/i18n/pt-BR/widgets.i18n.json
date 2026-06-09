@@ -39,7 +39,28 @@
       "translationMemory": "Memória de tradução",
       "gameTranslation": "Tradução do jogo",
       "packCompilation": "Compilação de pack",
-      "settings": "Configurações"
+      "settings": "Configurações",
+      "logs": "Registros"
+    }
+  },
+  "logConsole": {
+    "title": "Registros",
+    "search": "Pesquisar registros...",
+    "copyAll": "Copiar tudo",
+    "clear": "Limpar",
+    "openFolder": "Abrir pasta de registros",
+    "minimize": "Minimizar",
+    "restore": "Restaurar",
+    "close": "Fechar",
+    "empty": "Ainda não há registros para esta sessão",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Erro"
+    },
+    "errors": {
+      "openFolderFailed": "Não foi possível abrir a pasta de registros"
     }
   },
   "dataMigrationDialog": {
