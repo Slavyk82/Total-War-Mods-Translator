@@ -154,53 +154,59 @@ class SettingsRepository extends BaseRepository<Setting> {
   ) async {
     return executeQuery(() async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final valueTypeValue = _settingValueTypeToDb(valueType);
 
-      // Try to find existing setting
-      final existingMaps = await database.query(
+      // Candidate id used only when the row does not yet exist.
+      // Generate a simple UUID-like ID (in production, use uuid package).
+      final newId = '${DateTime.now().millisecondsSinceEpoch}-$key';
+
+      // Atomic upsert: a single statement avoids the read-then-write race
+      // where two concurrent calls for the same new key both INSERT and the
+      // second violates the UNIQUE(key) constraint. On conflict we preserve
+      // the existing row's id while updating value/value_type/updated_at.
+      await database.rawInsert(
+        'INSERT INTO $tableName (id, key, value, value_type, updated_at) '
+        'VALUES (?, ?, ?, ?, ?) '
+        'ON CONFLICT(key) DO UPDATE SET '
+        'value = excluded.value, '
+        'value_type = excluded.value_type, '
+        'updated_at = excluded.updated_at',
+        [newId, key, value, valueTypeValue, now],
+      );
+
+      // Read back the canonical row to return the persisted id (which is the
+      // pre-existing one when the row already existed).
+      final maps = await database.query(
         tableName,
         where: 'key = ?',
         whereArgs: [key],
         limit: 1,
       );
 
-      Setting setting;
-
-      if (existingMaps.isNotEmpty) {
-        // Update existing setting
-        final existing = fromMap(existingMaps.first);
-        setting = existing.copyWith(
-          value: value,
-          valueType: valueType,
-          updatedAt: now,
-        );
-
-        await database.update(
-          tableName,
-          toMap(setting),
-          where: 'id = ?',
-          whereArgs: [existing.id],
-        );
-      } else {
-        // Create new setting
-        // Generate a simple UUID-like ID (in production, use uuid package)
-        final id = '${DateTime.now().millisecondsSinceEpoch}-$key';
-
-        setting = Setting(
-          id: id,
-          key: key,
-          value: value,
-          valueType: valueType,
-          updatedAt: now,
-        );
-
-        await database.insert(
-          tableName,
-          toMap(setting),
-          conflictAlgorithm: ConflictAlgorithm.abort,
+      if (maps.isEmpty) {
+        throw TWMTDatabaseException(
+          'Setting not found after upsert for key: $key',
         );
       }
 
-      return setting;
+      return fromMap(maps.first);
     });
+  }
+
+  /// Maps a [SettingValueType] to its database string representation.
+  ///
+  /// Mirrors the JSON enum mapping used by [Setting] serialization so the
+  /// raw upsert writes the same `value_type` values as the model would.
+  String _settingValueTypeToDb(SettingValueType valueType) {
+    switch (valueType) {
+      case SettingValueType.string:
+        return 'string';
+      case SettingValueType.integer:
+        return 'integer';
+      case SettingValueType.boolean:
+        return 'boolean';
+      case SettingValueType.json:
+        return 'json';
+    }
   }
 }
