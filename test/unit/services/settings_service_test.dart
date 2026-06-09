@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/setting.dart';
@@ -702,6 +703,7 @@ void main() {
     // =========================================================================
     group('getPackPrefix', () {
       test('should return stored prefix when setting exists', () async {
+        // Arrange
         const setting = Setting(
           id: 'setting-1',
           key: 'pack_prefix',
@@ -712,21 +714,44 @@ void main() {
         when(() => mockRepository.getByKey('pack_prefix'))
             .thenAnswer((_) async => const Ok(setting));
 
+        // Act
         final result = await service.getPackPrefix();
 
+        // Assert
         expect(result, 'zzz_');
       });
 
-      test('should return default "!!!!!!!!!!" when setting does not exist',
-          () async {
+      test('should return default when setting does not exist', () async {
+        // Arrange
         when(() => mockRepository.getByKey('pack_prefix'))
             .thenAnswer((_) async => const Err(
                   TWMTDatabaseException('Setting not found'),
                 ));
 
+        // Act
         final result = await service.getPackPrefix();
 
-        expect(result, '!!!!!!!!!!');
+        // Assert
+        expect(result, AppConstants.defaultPackPrefix);
+      });
+
+      test('should return default when setting has wrong type', () async {
+        // Arrange
+        const setting = Setting(
+          id: 'setting-1',
+          key: 'pack_prefix',
+          value: '42',
+          valueType: SettingValueType.integer,
+          updatedAt: 1234567890,
+        );
+        when(() => mockRepository.getByKey('pack_prefix'))
+            .thenAnswer((_) async => const Ok(setting));
+
+        // Act
+        final result = await service.getPackPrefix();
+
+        // Assert
+        expect(result, AppConstants.defaultPackPrefix);
       });
     });
 

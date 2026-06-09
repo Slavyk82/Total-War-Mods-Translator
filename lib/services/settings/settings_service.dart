@@ -184,19 +184,14 @@ class SettingsService {
 
   /// Get the configured pack prefix for generated .pack and .loc filenames.
   ///
-  /// Returns the stored value or [AppConstants.defaultPackPrefix] when unset.
-  /// An empty stored value is returned as-is (the user may intentionally
-  /// clear the prefix).
+  /// Returns the stored value or [AppConstants.defaultPackPrefix] when unset or
+  /// stored with the wrong type. An empty stored value is returned as-is (the
+  /// user may intentionally clear the prefix), because [getString] only falls
+  /// back to the default when the key is missing or not a string.
   Future<String> getPackPrefix() async {
-    final result = await _repository.getByKey('pack_prefix');
-    return result.when(
-      ok: (setting) {
-        if (setting.valueType != SettingValueType.string) {
-          return AppConstants.defaultPackPrefix;
-        }
-        return setting.value;
-      },
-      err: (_) => AppConstants.defaultPackPrefix,
+    return await getString(
+      'pack_prefix',
+      defaultValue: AppConstants.defaultPackPrefix,
     );
   }
 
