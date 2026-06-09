@@ -280,8 +280,11 @@ class GlossaryEntryDataSource extends DataGridSource {
 
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {
-    final entry = entries[_dataGridRows.indexOf(row)];
     final cells = row.getCells();
+    // Read the backing entry directly from the cell that already carries it
+    // (the 'actions' cell at index 3) — O(1), avoiding an O(n) indexOf scan
+    // per row on every rebuild (mirrors _TmDataSource.rowAt).
+    final entry = cells[3].value as GlossaryEntry;
 
     // Performance: Wrap each cell in RepaintBoundary to isolate repaints
     return DataGridRowAdapter(

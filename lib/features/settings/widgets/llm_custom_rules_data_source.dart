@@ -40,10 +40,10 @@ class LlmCustomRulesDataSource extends DataGridSource {
 
   @override
   DataGridRowAdapter buildRow(DataGridRow row) {
-    final rule = rules.firstWhere(
-      (r) => r.ruleText == row.getCells()[1].value,
-      orElse: () => rules.first,
-    );
+    // Read the backing rule directly from the cell that carries the full
+    // model (the 'actions' cell at index 2). ruleText is not unique, so
+    // matching on it could toggle the wrong rule's id for duplicate rows.
+    final rule = row.getCells()[2].value as LlmCustomRule;
 
     return DataGridRowAdapter(
       cells: row.getCells().map<Widget>((cell) {

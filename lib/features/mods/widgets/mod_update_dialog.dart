@@ -32,12 +32,18 @@ class ModUpdateDialog extends ConsumerWidget {
         height: 420,
         child: updateQueue.isEmpty
             ? _buildEmptyState(tokens)
-            : ListView.separated(
-                itemCount: updateQueue.values.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, index) {
-                  return _UpdateItem(
-                    updateInfo: updateQueue.values.toList()[index],
+            : Builder(
+                builder: (_) {
+                  // Materialize the values iterable once instead of per item
+                  // (the itemBuilder runs O(n) times, and modUpdateQueue is
+                  // watched so every progress tick rebuilds this list).
+                  final items = updateQueue.values.toList();
+                  return ListView.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (_, index) {
+                      return _UpdateItem(updateInfo: items[index]);
+                    },
                   );
                 },
               ),
