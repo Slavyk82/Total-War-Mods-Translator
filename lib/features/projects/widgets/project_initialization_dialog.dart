@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
@@ -29,6 +31,7 @@ class _ProjectInitializationDialogState
     extends State<ProjectInitializationDialog> {
   final List<InitializationLogMessage> _logs = [];
   final ScrollController _scrollController = ScrollController();
+  StreamSubscription<InitializationLogMessage>? _logSub;
   bool _isInitializing = true;
   String? _errorMessage;
   int? _unitsImported;
@@ -42,12 +45,13 @@ class _ProjectInitializationDialogState
 
   @override
   void dispose() {
+    _logSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _listenToLogs() {
-    widget.logStream.listen((logMessage) {
+    _logSub = widget.logStream.listen((logMessage) {
       if (mounted) {
         setState(() => _logs.add(logMessage));
         Future.delayed(const Duration(milliseconds: 50), () {
@@ -87,16 +91,16 @@ class _ProjectInitializationDialogState
     final icon = _isInitializing
         ? FluentIcons.arrow_sync_24_regular
         : (_errorMessage != null
-            ? FluentIcons.error_circle_24_regular
-            : FluentIcons.checkmark_circle_24_regular);
+              ? FluentIcons.error_circle_24_regular
+              : FluentIcons.checkmark_circle_24_regular);
     final iconColor = _errorMessage != null
         ? tokens.err
         : (_isInitializing ? tokens.accent : tokens.ok);
     final title = _isInitializing
         ? t.projects.initialization.titleInProgress
         : (_errorMessage != null
-            ? t.projects.initialization.titleFailed
-            : t.projects.initialization.titleComplete);
+              ? t.projects.initialization.titleFailed
+              : t.projects.initialization.titleComplete);
 
     return PopScope(
       canPop: !_isInitializing,
@@ -185,8 +189,7 @@ class _ProjectInitializationDialogState
                   label: t.common.actions.close,
                   icon: FluentIcons.checkmark_24_regular,
                   filled: true,
-                  onTap: () =>
-                      Navigator.of(context).pop(_errorMessage == null),
+                  onTap: () => Navigator.of(context).pop(_errorMessage == null),
                 ),
               ],
       ),
@@ -242,10 +245,7 @@ class _ProjectInitializationDialogState
           Expanded(
             child: Text(
               t.projects.initialization.successUnits(count: _unitsImported!),
-              style: tokens.fontBody.copyWith(
-                fontSize: 12.5,
-                color: tokens.ok,
-              ),
+              style: tokens.fontBody.copyWith(fontSize: 12.5, color: tokens.ok),
             ),
           ),
         ],
@@ -253,10 +253,7 @@ class _ProjectInitializationDialogState
     );
   }
 
-  Widget _buildLogEntry(
-    TwmtThemeTokens tokens,
-    InitializationLogMessage log,
-  ) {
+  Widget _buildLogEntry(TwmtThemeTokens tokens, InitializationLogMessage log) {
     Color color;
     IconData? icon;
 
