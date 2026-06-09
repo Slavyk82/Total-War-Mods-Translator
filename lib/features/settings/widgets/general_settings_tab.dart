@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/common/fluent_spinner.dart';
@@ -8,6 +9,7 @@ import 'general/app_language_section.dart';
 import 'general/backup_section.dart';
 import 'general/language_preferences_section.dart';
 import 'general/maintenance_section.dart';
+import 'general/pack_prefix_section.dart';
 import 'ignored_source_texts_section.dart';
 
 /// General settings tab for configuring languages and maintenance.
@@ -51,6 +53,11 @@ class GeneralSettingsTab extends ConsumerWidget {
             MaintenanceSection(),
             const SizedBox(height: 32),
             BackupSection(),
+            const SizedBox(height: 32),
+            PackPrefixSection(
+              initialPrefix: settings[SettingsKeys.packPrefix] ??
+                  AppConstants.defaultPackPrefix,
+            ),
           ],
         );
       },
