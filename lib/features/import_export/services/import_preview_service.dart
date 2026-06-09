@@ -91,21 +91,33 @@ class ImportPreviewService {
             .key;
 
         if (keyColumn.isNotEmpty) {
-          final keys = <String>{};
+          // Scan the entire file for duplicate keys, not just the preview
+          // rows. The preview is capped at 10 rows while the import processes
+          // the whole file, so duplicate keys beyond the first 10 rows would
+          // otherwise go unreported. Re-read the full file using the same
+          // reader the executor uses.
+          final fileDataResult =
+              await _fileReader.readFile(preview.filePath, settings);
 
-          for (final row in preview.previewRows) {
+          if (fileDataResult.isErr) {
+            return Err(fileDataResult.error);
+          }
+
+          final seenKeys = <String>{};
+          final reportedKeys = <String>{};
+
+          for (final row in fileDataResult.value.rows) {
             final key = row[keyColumn];
             if (key != null && key.isNotEmpty) {
-              if (keys.contains(key)) {
+              if (!seenKeys.add(key) && reportedKeys.add(key)) {
                 duplicateKeys.add(key);
               }
-              keys.add(key);
             }
           }
 
           if (duplicateKeys.isNotEmpty) {
             warnings.add(
-              'Found ${duplicateKeys.length} duplicate keys in preview',
+              'Found ${duplicateKeys.length} duplicate keys in the import',
             );
           }
         }
