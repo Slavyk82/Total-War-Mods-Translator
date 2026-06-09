@@ -17,6 +17,7 @@ import 'package:twmt/services/file/models/file_exceptions.dart';
 import 'package:twmt/services/file/pack_export_utils.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation_memory/tmx_service.dart';
 
@@ -121,6 +122,9 @@ class ExportOrchestratorService {
         'validatedOnly': validatedOnly,
       });
 
+      final packPrefix =
+          await ServiceLocator.get<SettingsService>().getPackPrefix();
+
       onProgress?.call('preparingData', 0.0);
       await _historyRecorder.ensureTableExists();
 
@@ -155,6 +159,7 @@ class ExportOrchestratorService {
           projectId: projectId,
           languageCode: languageCode,
           validatedOnly: validatedOnly,
+          prefix: packPrefix,
         );
 
         if (result is Err) {
@@ -185,6 +190,7 @@ class ExportOrchestratorService {
       final packFileName = _packUtils.buildPackFileName(
         languageCodes.first,
         project.sourceFilePath,
+        prefix: packPrefix,
       );
       final packPath = path.join(gameDataPath, packFileName);
 
