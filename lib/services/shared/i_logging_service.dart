@@ -18,4 +18,8 @@ abstract class ILoggingService {
 
   /// Snapshot of recent log entries (most-recent last).
   List<LogEntry> get recentLogs;
+
+  /// Absolute path of the current day's log file, or null if logging has not
+  /// been initialized. Its parent directory holds all session log files.
+  String? get logFilePath;
 }

@@ -34,7 +34,7 @@ class LoggingService implements ILoggingService {
   final List<LogEntry> _recentLogs = [];
 
   /// Maximum number of recent logs to keep in memory.
-  static const int maxRecentLogs = 500;
+  static const int maxRecentLogs = 5000;
 
   /// Get recent log entries (for initial display when opening terminal).
   @override
@@ -176,6 +176,7 @@ class LoggingService implements ILoggingService {
   }
 
   /// Get the current log file path.
+  @override
   String? get logFilePath => _logFile?.path;
 
   /// Check if logging is initialized.
