@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -38,6 +40,8 @@ class _PackPrefixSectionState extends ConsumerState<PackPrefixSection> {
   }
 
   Future<void> _save(String value) async {
+    // Sanitize locally so the live preview shows exactly what will be stored.
+    // The notifier's updatePackPrefix re-sanitizes authoritatively on persist.
     final clean = sanitizePackPrefix(value);
     setState(() => _preview = clean);
     await ref.read(generalSettingsProvider.notifier).updatePackPrefix(clean);
@@ -45,7 +49,7 @@ class _PackPrefixSectionState extends ConsumerState<PackPrefixSection> {
 
   void _reset() {
     _controller.text = AppConstants.defaultPackPrefix;
-    _save(AppConstants.defaultPackPrefix);
+    unawaited(_save(AppConstants.defaultPackPrefix));
   }
 
   @override
