@@ -53,7 +53,14 @@ class _PendingEntry {
 /// - Deduplication across parallel batches (wait for pending translations)
 /// - Short-term caching of recent translations
 ///
-/// Thread-safe for concurrent access from multiple batches.
+/// Dart runs each isolate on a single thread, so the synchronous methods on
+/// this class are not interrupted mid-execution and need no real locking.
+/// Note this does NOT serialize logical operations that span `await`
+/// boundaries: two parallel batches can each observe a [CacheMiss] for the same
+/// source text (between a [lookup] and a later [registerPending]) and both
+/// translate it. That is a benign redundancy (extra LLM work, correct results),
+/// not state corruption — the first batch to call [registerPending] wins and
+/// the rest see [CachePending] on their next lookup.
 class BatchTranslationCache {
   /// Singleton instance
   static final BatchTranslationCache _instance = BatchTranslationCache._();
@@ -89,7 +96,7 @@ class BatchTranslationCache {
   /// - [CachePending] if another batch is translating this text (with future to wait)
   /// - [CacheMiss] if not cached and not pending
   CacheResult lookup(String sourceHash) {
-    synchronized(_lock, () {
+    return synchronized(_lock, () {
       // Check completed cache first
       final cached = _cache[sourceHash];
       if (cached != null) {
@@ -111,20 +118,6 @@ class BatchTranslationCache {
 
       return CacheMiss();
     });
-
-    // Default return (should not reach here due to synchronized block)
-    final cached = _cache[sourceHash];
-    if (cached != null && DateTime.now().difference(cached.createdAt) < _cacheTtl) {
-      cached.useCount++;
-      return CacheHit(cached.translation);
-    }
-
-    final pending = _pending[sourceHash];
-    if (pending != null) {
-      return CachePending(pending.completer.future);
-    }
-
-    return CacheMiss();
   }
 
   /// Register that a batch is starting to translate this source text
@@ -275,5 +268,12 @@ class CacheStats {
       'CacheStats(cached: $cachedEntries, pending: $pendingEntries, uses: $totalUseCount)';
 }
 
-/// Simple synchronized block helper (Dart is single-threaded but this helps with async clarity)
+/// Runs [action] and returns its result.
+///
+/// This is NOT a mutex and provides no mutual exclusion. Dart executes each
+/// isolate on a single thread, so a purely synchronous [action] already runs to
+/// completion without interruption. The [lock] parameter is unused and kept only
+/// to document which state the call is meant to touch. It cannot serialize logic
+/// that spans `await` boundaries — use it only around synchronous critical
+/// sections.
 T synchronized<T>(Object lock, T Function() action) => action();
