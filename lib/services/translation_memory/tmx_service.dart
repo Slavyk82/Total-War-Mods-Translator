@@ -397,7 +397,20 @@ class TmxService {
         }
       }
 
-      // Extract source and target text variants
+      // Extract source and target text variants.
+      //
+      // Real-world TMX files routinely use regional variants in tuv
+      // xml:lang (e.g. srclang='en' but a tuv with xml:lang='en-US' or
+      // 'en-GB'), so comparing by exact string equality silently drops
+      // otherwise valid units. We compare languages by their base subtag,
+      // case-insensitively (the part before '-'), to match the source tuv
+      // and, consistently, to distinguish targets from the source.
+      //
+      // When a unit contains multiple non-source tuvs, we keep the FIRST
+      // matching target rather than letting later ones overwrite it; this
+      // service is given only a file path (no requested target language),
+      // so first-wins is the simplest deterministic behavior.
+      final normalizedSourceLang = _baseLang(defaultSourceLang);
       for (final tuv in tu.findElements('tuv')) {
         final lang = tuv.getAttribute('xml:lang') ?? '';
         final seg = tuv.findElements('seg').firstOrNull;
@@ -405,10 +418,14 @@ class TmxService {
         if (seg != null && lang.isNotEmpty) {
           final text = seg.innerText;
 
-          if (lang == defaultSourceLang) {
-            sourceText = text;
-            sourceLanguage = lang;
-          } else {
+          if (_baseLang(lang) == normalizedSourceLang) {
+            // First source tuv wins; ignore any later duplicate source.
+            if (sourceText == null) {
+              sourceText = text;
+              sourceLanguage = lang;
+            }
+          } else if (targetText == null) {
+            // Keep the first target only; later targets are ignored.
             targetText = text;
             targetLanguage = lang;
           }
@@ -445,6 +462,18 @@ class TmxService {
       _logger.warning('Failed to parse translation unit', e);
       return null;
     }
+  }
+
+  /// Normalize a BCP-47 / xml:lang code to its base subtag for comparison.
+  ///
+  /// Lowercases the value and drops any regional/script suffix after the
+  /// first '-' (e.g. 'en-US' -> 'en', 'fr-FR' -> 'fr'). This lets a tuv
+  /// tagged with a regional variant match a header srclang that uses only
+  /// the base language.
+  String _baseLang(String lang) {
+    final trimmed = lang.trim().toLowerCase();
+    final dash = trimmed.indexOf('-');
+    return dash == -1 ? trimmed : trimmed.substring(0, dash);
   }
 
   /// Persist imported TMX entries to the database.
