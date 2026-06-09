@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart' as path;
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/services/file/i_loc_file_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
@@ -131,16 +132,20 @@ class PackExportUtils {
   /// Format for mod translations: !!!!!!!!!!_{lang}_twmt_{original_pack_name}.pack (all lowercase)
   /// Format for game translations: !!!!!!!!!!_{lang}_twmt_game_translation.pack (all lowercase)
   /// The exclamation marks ensure the mod loads with high priority.
-  String buildPackFileName(String languageCode, String? sourceFilePath) {
+  String buildPackFileName(
+    String languageCode,
+    String? sourceFilePath, {
+    String prefix = AppConstants.defaultPackPrefix,
+  }) {
     final langCode = languageCode.toLowerCase();
 
     // Check if this is a game localization pack (local_*.pack)
     if (isGameLocalizationPack(sourceFilePath)) {
-      return '!!!!!!!!!!_${langCode}_twmt_game_translation.pack';
+      return '${prefix}_${langCode}_twmt_game_translation.pack';
     }
 
     final originalPackName = extractOriginalPackName(sourceFilePath);
-    return '!!!!!!!!!!_${langCode}_twmt_$originalPackName.pack';
+    return '${prefix}_${langCode}_twmt_$originalPackName.pack';
   }
 
   /// Check if the source file path is a game localization pack (local_*.pack)
