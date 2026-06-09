@@ -70,8 +70,11 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     String newPrefix = state.prefix;
     if (result.isOk) {
       final language = result.unwrap();
-      newPrefix =
-          CompilationEditorState.defaultPrefixForLanguage(language.code);
+      final marker = await ref.read(settingsServiceProvider).getPackPrefix();
+      newPrefix = CompilationEditorState.defaultPrefixForLanguage(
+        language.code,
+        marker: marker,
+      );
     }
 
     state = state.copyWith(
@@ -249,6 +252,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
     final projectRepo = ref.read(projectRepositoryProvider);
     final gameRepo = ref.read(gameInstallationRepositoryProvider);
     final langRepo = ref.read(languageRepositoryProvider);
+    final packPrefix = await ref.read(settingsServiceProvider).getPackPrefix();
     final packUtils = PackExportUtils(logger: logger);
 
     state = state.copyWith(
@@ -347,6 +351,7 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
           languageCode: language.code,
           validatedOnly: false,
           excludeKeys: excludedKeysByProject[projectId] ?? const {},
+          prefix: packPrefix,
         );
 
         if (result.isOk) {
