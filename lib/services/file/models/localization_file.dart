@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/config/app_constants.dart';
 import 'localization_entry.dart';
 
 part 'localization_file.g.dart';
@@ -111,15 +112,24 @@ class LocalizationFile {
   /// Total War convention: !!!!!!!!!!_{LANG}_filename.loc
   ///
   /// Example: "units.loc" with "fr" → "!!!!!!!!!!_FR_units.loc"
-  static String generatePrefixedFileName(String baseName, String langCode) {
+  static String generatePrefixedFileName(
+    String baseName,
+    String langCode, {
+    String prefix = AppConstants.defaultPackPrefix,
+  }) {
     final upperLang = langCode.toUpperCase();
 
-    // Remove existing prefix if present
+    // Remove an existing prefix if present. Recognize BOTH the standard
+    // prefix and the configured one so a file generated with a custom prefix
+    // is not double-prefixed.
     String cleanName = baseName;
-    if (baseName.startsWith('!!!!!!!!!!_')) {
-      final parts = baseName.split('_');
-      if (parts.length >= 3) {
-        cleanName = parts.sublist(2).join('_');
+    for (final existing in {'!!!!!!!!!!', prefix}) {
+      if (existing.isNotEmpty && baseName.startsWith('${existing}_')) {
+        final parts = baseName.split('_');
+        if (parts.length >= 3) {
+          cleanName = parts.sublist(2).join('_');
+        }
+        break;
       }
     }
 
@@ -128,7 +138,7 @@ class LocalizationFile {
       cleanName = '$cleanName.loc';
     }
 
-    return '!!!!!!!!!!_${upperLang}_$cleanName';
+    return '${prefix}_${upperLang}_$cleanName';
   }
 
   /// Extract language code from prefixed filename
