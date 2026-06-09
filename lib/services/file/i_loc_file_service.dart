@@ -1,3 +1,4 @@
+import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
 
@@ -83,6 +84,9 @@ abstract class ILocFileService {
   /// [excludeKeys]: Translation keys to omit from the output. Used by pack
   ///   compilation to drop the losing/skipped entries of resolved key conflicts
   ///   so only the winning project's value survives the pack merge.
+  /// [prefix]: Load-order prefix prepended to each generated .loc filename
+  ///   inside the pack (default [AppConstants.defaultPackPrefix]). Controls Total
+  ///   War load priority; see Settings/General.
   ///
   /// Returns a list of generated TSV files paired with their internal .loc path
   Future<Result<List<GeneratedLocFile>, FileServiceException>> generateLocFilesGroupedBySource({
@@ -90,6 +94,6 @@ abstract class ILocFileService {
     required String languageCode,
     required bool validatedOnly,
     Set<String> excludeKeys = const {},
-    String prefix = '!!!!!!!!!!',
+    String prefix = AppConstants.defaultPackPrefix,
   });
 }

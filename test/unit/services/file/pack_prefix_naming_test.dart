@@ -53,5 +53,14 @@ void main() {
       );
       expect(p, 'text/db/zzz_fr_twmt_something.loc');
     });
+
+    test('handles a flat path with no directory', () {
+      final p = LocFileServiceImpl.buildLocInternalPath(
+        'Something.loc',
+        'fr',
+        prefix: 'zzz',
+      );
+      expect(p, 'zzz_fr_twmt_something.loc');
+    });
   });
 }
