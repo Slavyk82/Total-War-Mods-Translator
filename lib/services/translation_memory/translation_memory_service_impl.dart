@@ -141,8 +141,14 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
 
   @override
   Future<Result<TranslationMemoryEntry, TmServiceException>>
-      incrementUsageCount({required String entryId}) =>
-          _crudService.incrementUsageCount(entryId: entryId);
+      incrementUsageCount({required String entryId}) async {
+    final result = await _crudService.incrementUsageCount(entryId: entryId);
+    // Clear cache so a cached exact-match doesn't keep a stale usage count.
+    if (result.isOk) {
+      await clearCache();
+    }
+    return result;
+  }
 
   @override
   Future<Result<int, TmServiceException>> incrementUsageCountBatch(
@@ -171,8 +177,14 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
   @override
   Future<Result<void, TmServiceException>> deleteEntry({
     required String entryId,
-  }) =>
-      _crudService.deleteEntry(entryId: entryId);
+  }) async {
+    final result = await _crudService.deleteEntry(entryId: entryId);
+    // Clear cache so a deleted entry isn't re-applied from a cached match.
+    if (result.isOk) {
+      await clearCache();
+    }
+    return result;
+  }
 
   // ========== SEARCH OPERATIONS (Delegated to TmSearchService) ==========
 
