@@ -50,7 +50,8 @@ class ImportFileReader {
           if (data is List) {
             rows = data
                 .whereType<Map>()
-                .map((e) => e.map((k, v) => MapEntry(k.toString(), v.toString())))
+                .map((e) => e.map((k, v) =>
+                    MapEntry(k.toString(), v == null ? '' : v.toString())))
                 .toList();
             if (rows.isNotEmpty) {
               headers = rows.first.keys.toList();

@@ -157,7 +157,6 @@ class LanguageSettings extends _$LanguageSettings {
   /// This will also delete all translation memory entries associated with this language.
   Future<(bool, String?)> deleteLanguage(String languageId) async {
     final repository = ref.read(settingsLanguageRepositoryProvider);
-    final tmRepository = ref.read(translationMemoryRepositoryProvider);
 
     // First verify it's a custom language
     final languageResult = await repository.getById(languageId);
@@ -176,14 +175,47 @@ class LanguageSettings extends _$LanguageSettings {
       return (false, 'Cannot delete the default language. Please select a different default first.');
     }
 
-    // Clean up translation memory entries referencing this language
-    // This must be done before deleting the language due to foreign key constraints
-    final tmCleanupResult = await tmRepository.deleteByLanguageId(languageId);
-    if (tmCleanupResult.isErr) {
-      return (false, 'Failed to clean up translation memory: ${tmCleanupResult.unwrapErr().message}');
+    // Pre-check usages that hold an ON DELETE RESTRICT FK to languages so we
+    // can return precise error messages. Projects (project_languages) and
+    // glossaries (target_language_id) both block the delete. These checks are
+    // advisory only: the delete below is transactional, so even an
+    // unanticipated FK cannot cost the user their translation memory.
+    final projectLanguageRepository = ref.read(projectLanguageRepositoryProvider);
+    final usageResult = await projectLanguageRepository.countByLanguageId(languageId);
+    if (usageResult.isErr) {
+      return (false, 'Failed to check language usage: ${usageResult.unwrapErr().message}');
+    }
+    if (usageResult.unwrap() > 0) {
+      return (
+        false,
+        'This language is used in one or more projects. '
+            'Remove it from all projects before deleting.',
+      );
     }
 
-    final deleteResult = await repository.delete(languageId);
+    final glossaryRepository = ref.read(glossaryRepositoryProvider);
+    final glossaryUsageResult =
+        await glossaryRepository.countByTargetLanguageId(languageId);
+    if (glossaryUsageResult.isErr) {
+      return (
+        false,
+        'Failed to check glossary usage: ${glossaryUsageResult.unwrapErr().message}'
+      );
+    }
+    if (glossaryUsageResult.unwrap() > 0) {
+      return (
+        false,
+        'This language is the target of one or more glossaries. '
+            'Delete those glossaries before deleting the language.',
+      );
+    }
+
+    // Delete the language and its translation-memory entries in ONE
+    // transaction: if any FK still blocks the language delete, the TM
+    // cleanup rolls back too (a blocked delete must be a true no-op, never
+    // an irreversible TM wipe followed by an error).
+    final deleteResult =
+        await repository.deleteWithTranslationMemoryCleanup(languageId);
 
     return deleteResult.when(
       ok: (_) {

@@ -318,7 +318,18 @@ class TmLookupHandler {
       );
 
       if (exactMatchResult.isOk && exactMatchResult.unwrap() != null) {
-        return exactMatchResult.unwrap()!;
+        final match = exactMatchResult.unwrap()!;
+        // The TM service downgrades normalization-only hash collisions
+        // (e.g. `Attack` vs `ATTACK`, markup differences) to
+        // matchType=fuzzy + autoApplied=false so they are never silently
+        // applied. Honour those flags: only a true exact match may skip the
+        // fuzzy phase and be written as status=translated. Anything else
+        // falls through to the genuine fuzzy lookup, where the
+        // autoAcceptTmThreshold gate applies.
+        if (match.matchType == TmMatchType.exact) {
+          return match;
+        }
+        return null;
       }
     } catch (e) {
       _logger.warning('Error in exact TM match', {'unitId': unit.id, 'error': e});
@@ -365,7 +376,10 @@ class TmLookupHandler {
   }) async {
     if (matches.isEmpty) return {};
 
-    final now = DateTime.now().millisecondsSinceEpoch;
+    // `*_at` columns store Unix SECONDS (triggers use strftime('%s','now'));
+    // milliseconds would push timestamps ~1000x into the future and corrupt
+    // recency sorting and translation_view_cache.version_updated_at.
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     // Build TranslationVersion entities aligned by index with `matches`.
     final versions = <TranslationVersion>[];
@@ -466,8 +480,9 @@ class TmLookupHandler {
         translatedText: normalizedText,
         status: TranslationVersionStatus.translated,
         translationSource: translationSource,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
+        // Unix SECONDS, per repo convention for `*_at` columns.
+        createdAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
       );
 
       await _versionRepository.insert(version);

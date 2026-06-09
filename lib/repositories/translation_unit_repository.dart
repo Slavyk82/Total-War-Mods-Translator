@@ -148,6 +148,31 @@ class TranslationUnitRepository extends BaseRepository<TranslationUnit> {
     });
   }
 
+  /// Find a translation unit by project and key, returning `null` when no row
+  /// matches.
+  ///
+  /// Unlike [getByKey], a missing row is NOT an error: callers can distinguish
+  /// "definitely not found" (Ok(null)) from a real database failure (Err).
+  /// This prevents transient DB errors from being misread as "create a new
+  /// unit", which would attempt a duplicate (project_id, key) insert.
+  Future<Result<TranslationUnit?, TWMTDatabaseException>> findByKey(
+      String projectId, String key) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'project_id = ? AND key = ?',
+        whereArgs: [projectId, key],
+        limit: 1,
+      );
+
+      if (maps.isEmpty) {
+        return null;
+      }
+
+      return fromMap(maps.first);
+    });
+  }
+
   /// Mark a translation unit as obsolete.
   ///
   /// Returns [Ok] with the updated entity, [Err] with exception if update fails.

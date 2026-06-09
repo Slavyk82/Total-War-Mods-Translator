@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
@@ -9,10 +10,10 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
-import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/i_localization_parser.dart';
+import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'i_project_initialization_service.dart';
@@ -26,7 +27,6 @@ class ProjectInitializationServiceImpl
   final IRpfmService _rpfmService;
   final ILocalizationParser _locParser;
   final TranslationUnitRepository _unitRepository;
-  final TranslationVersionRepository _versionRepository;
   final ProjectLanguageRepository _languageRepository;
   final ModUpdateAnalysisCacheRepository _analysisCacheRepository;
   final ILoggingService _logger;
@@ -41,14 +41,12 @@ class ProjectInitializationServiceImpl
     required IRpfmService rpfmService,
     required ILocalizationParser locParser,
     required TranslationUnitRepository unitRepository,
-    required TranslationVersionRepository versionRepository,
     required ProjectLanguageRepository languageRepository,
     required ModUpdateAnalysisCacheRepository analysisCacheRepository,
     ILoggingService? logger,
   })  : _rpfmService = rpfmService,
         _locParser = locParser,
         _unitRepository = unitRepository,
-        _versionRepository = versionRepository,
         _languageRepository = languageRepository,
         _analysisCacheRepository = analysisCacheRepository,
         _logger = logger ?? ServiceLocator.get<ILoggingService>();
@@ -146,6 +144,21 @@ class ProjectInitializationServiceImpl
           ? languagesResult.value
           : <ProjectLanguage>[];
 
+      // Fetch the project's existing unit keys ONCE up front instead of a
+      // getByKey SELECT per parsed entry. For a brand-new project this is
+      // empty, but a re-init / overlapping import could already have rows;
+      // this single query lets us de-dup in memory and avoid N round-trips.
+      final existingUnitsResult = await _unitRepository.getByProject(projectId);
+      if (existingUnitsResult.isErr) {
+        _logger.warning('Failed to load existing project units', {
+          'projectId': projectId,
+          'error': existingUnitsResult.error,
+        });
+      }
+      final existingKeys = existingUnitsResult.isOk
+          ? existingUnitsResult.value.map((u) => u.key).toSet()
+          : <String>{};
+
       for (int i = 0; i < locFiles.length; i++) {
         if (_isCancelled) {
           return Err(ServiceException('Initialization cancelled'));
@@ -194,26 +207,23 @@ class ProjectInitializationServiceImpl
         });
         _addLog('Importing ${locFile.entries.length} entries from $fileName', InitializationLogLevel.info);
 
-        // Step 3: Create translation_units in database
+        // Step 3: Build the new translation units for this file in memory,
+        // de-duplicating against keys already in the project AND keys already
+        // seen in this import run. We no longer issue a getByKey SELECT per
+        // entry; existence is checked against the in-memory set fetched once.
+        final unitsToInsert = <TranslationUnit>[];
         for (final entry in locFile.entries) {
           if (_isCancelled) {
             return Err(ServiceException('Initialization cancelled'));
           }
 
-          // Check if unit already exists (avoid duplicates)
-          final existingResult = await _unitRepository.getByKey(
-            projectId,
-            entry.key,
-          );
-
-          if (existingResult.isOk) {
-            // Unit already exists, skip
+          // Skip duplicates (already in DB or already queued this run).
+          if (!existingKeys.add(entry.key)) {
             _logger.debug('Skipping existing unit', {'key': entry.key});
             continue;
           }
 
-          // Create new translation unit
-          final unit = TranslationUnit(
+          unitsToInsert.add(TranslationUnit(
             id: uuid.v4(),
             projectId: projectId,
             key: entry.key,
@@ -224,43 +234,67 @@ class ProjectInitializationServiceImpl
             isObsolete: false,
             createdAt: now,
             updatedAt: now,
-          );
+          ));
+        }
 
-          final insertResult = await _unitRepository.insert(unit);
+        // Insert every unit for this file plus its per-language versions in a
+        // SINGLE transaction. This replaces the previous per-row awaited
+        // inserts (O(entries x languages) round-trips with per-insert trigger
+        // firing). ConflictAlgorithm.abort rolls the whole file's batch back
+        // on an unexpected key collision, so we never leave partial
+        // unit/version sets. Mirrors addNewUnits in
+        // mod_update_analysis_service.dart.
+        if (unitsToInsert.isNotEmpty) {
+          try {
+            await DatabaseService.transaction((txn) async {
+              for (final unit in unitsToInsert) {
+                await txn.insert(
+                  'translation_units',
+                  unit.toJson(),
+                  conflictAlgorithm: ConflictAlgorithm.abort,
+                );
 
-          if (insertResult.isErr) {
-            _logger.warning('Failed to insert translation unit', {
-              'key': entry.key,
-              'error': insertResult.error,
+                // Create translation versions for all project languages.
+                // Uses the languages cached once before the loop above.
+                for (final language in projectLanguages) {
+                  final version = TranslationVersion(
+                    id: uuid.v4(),
+                    unitId: unit.id,
+                    projectLanguageId: language.id,
+                    translatedText: null, // Empty for new imports
+                    isManuallyEdited: false,
+                    status: TranslationVersionStatus.pending,
+                    validationIssues: null,
+                    createdAt: now,
+                    updatedAt: now,
+                  );
+
+                  await txn.insert(
+                    'translation_versions',
+                    version.toJson(),
+                    conflictAlgorithm: ConflictAlgorithm.abort,
+                  );
+                }
+              }
             });
-            continue;
-          }
-
-          totalUnitsImported++;
-
-          // Create translation versions for all project languages.
-          // Uses the languages cached once before the loop above.
-          for (final language in projectLanguages) {
-            final version = TranslationVersion(
-              id: uuid.v4(),
-              unitId: unit.id,
-              projectLanguageId: language.id,
-              translatedText: null, // Empty for new imports
-              isManuallyEdited: false,
-              status: TranslationVersionStatus.pending,
-              validationIssues: null,
-              createdAt: now,
-              updatedAt: now,
-            );
-
-            final versionResult = await _versionRepository.insert(version);
-            if (versionResult.isErr) {
-              _logger.warning('Failed to insert translation version', {
-                'unitId': unit.id,
-                'projectLanguageId': language.id,
-                'error': versionResult.error,
-              });
+            totalUnitsImported += unitsToInsert.length;
+          } catch (e, stackTrace) {
+            // The batch for this file rolled back. Keep behavior resilient:
+            // log and continue with the next file (previously a single failed
+            // insert was logged-and-skipped without aborting the whole import).
+            // Roll back the in-memory key reservations for this file so they
+            // are not falsely considered imported.
+            for (final unit in unitsToInsert) {
+              existingKeys.remove(unit.key);
             }
+            _logger.warning('Failed to insert unit batch, rolled back', {
+              'file': tsvFilePath,
+              'units': unitsToInsert.length,
+              'error': e,
+              'stackTrace': stackTrace.toString(),
+            });
+            _addLog('Failed to import entries from $fileName: $e',
+                InitializationLogLevel.warning);
           }
         }
 

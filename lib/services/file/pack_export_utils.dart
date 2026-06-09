@@ -58,7 +58,12 @@ class PackExportUtils {
       final tsvFile = File(genFile.tsvPath);
       final internalPath = genFile.internalPath;
 
-      final targetPath = path.join(tempDir.path, internalPath);
+      // Write the file under its internal .loc path but with a trailing
+      // `.tsv` extension. `createPack` only converts files ending in `.tsv`
+      // (via `--tsv-to-binary`); stripping that suffix recovers the binary
+      // `.loc` internal path. Writing it as a bare `.loc` here would make the
+      // `.tsv` filter empty and dump raw TSV text into the pack (corruption).
+      final targetPath = path.join(tempDir.path, '$internalPath.tsv');
       final targetFile = File(targetPath);
       await targetFile.parent.create(recursive: true);
 
@@ -222,7 +227,10 @@ class PackExportUtils {
   /// Wait for a file to be fully released by the system
   ///
   /// On Windows, files may remain locked briefly after a process exits.
-  /// This method waits until the file is fully accessible for reading.
+  /// This method waits until the file is accessible for WRITING (append mode,
+  /// which does not truncate). A write-access probe is required because a
+  /// read-only open succeeds even while another process still holds a write
+  /// lock, so it cannot detect that the writer has released the file.
   ///
   /// [filePath] - Path to the file to check
   /// [maxRetries] - Maximum number of retry attempts (default: 10)
@@ -238,11 +246,15 @@ class PackExportUtils {
 
     for (var attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Try to open the file for reading with exclusive access
-        // This will fail if the file is still locked by another process
-        final randomAccessFile = await file.open(mode: FileMode.read);
+        // Open the file requesting WRITE access (append mode, which does NOT
+        // truncate or clobber existing contents). A read-only open on Windows
+        // uses shared access and succeeds even while another process holds the
+        // file open for writing, so it cannot actually detect a writer's lock.
+        // Requesting write access fails with FileSystemException while a writer
+        // (RPFM/AV) still holds the file, letting us truly detect release.
+        final randomAccessFile = await file.open(mode: FileMode.append);
 
-        // Successfully opened - file is released
+        // Successfully opened for writing - file is released
         await randomAccessFile.close();
 
         if (attempt > 0) {

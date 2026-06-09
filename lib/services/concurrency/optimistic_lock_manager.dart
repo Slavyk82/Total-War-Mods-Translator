@@ -245,14 +245,21 @@ class OptimisticLockManager {
     String recordId,
   ) async {
     try {
-      // Use atomic SQL increment to prevent race conditions
       final now = DateTime.now().millisecondsSinceEpoch;
-      final count = await _db.rawUpdate(
-        'UPDATE $tableName SET version = version + 1, updated_at = ? WHERE id = ?',
+
+      // Increment AND read back the new version in a single atomic statement
+      // using SQLite's UPDATE ... RETURNING. This couples the read to this
+      // caller's own increment, so two concurrent callers each receive the
+      // distinct version their UPDATE produced (no duplicated/skipped numbers).
+      // A separate SELECT (as before) could observe another caller's increment
+      // and report the wrong version.
+      final rows = await _db.rawQuery(
+        'UPDATE $tableName SET version = version + 1, updated_at = ? '
+        'WHERE id = ? RETURNING version',
         [now, recordId],
       );
 
-      if (count == 0) {
+      if (rows.isEmpty) {
         return Err(ConcurrencyException(
           'Record not found',
           code: 'RECORD_NOT_FOUND',
@@ -260,13 +267,8 @@ class OptimisticLockManager {
         ));
       }
 
-      // Fetch the new version after atomic increment
-      final versionResult = await getCurrentVersion(tableName, recordId);
-      if (versionResult is Err) {
-        return Err(versionResult.error);
-      }
-
-      return Ok((versionResult as Ok<int, ConcurrencyException>).value);
+      // RETURNING yields the post-increment version for the row this call updated.
+      return Ok(rows.first['version'] as int);
     } on DatabaseException catch (e) {
       return Err(ConcurrencyException(
         'Failed to increment version: ${e.toString()}',

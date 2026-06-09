@@ -72,21 +72,56 @@ class RateLimiter {
     return true;
   }
 
+  /// Default maximum time a caller will wait in [acquire] before giving up.
+  static const Duration defaultAcquireTimeout = Duration(seconds: 60);
+
   /// Wait for permission to make a request (async)
   ///
   /// Returns a Future that completes when request can proceed.
   /// Queues the request and waits for rate limit tokens to be available.
   ///
   /// [estimatedTokens] - Estimated tokens for the request
+  /// [timeout] - Maximum time to wait before failing with [TimeoutException].
+  ///   Defaults to [defaultAcquireTimeout]. This guarantees a queued caller
+  ///   can never block forever (e.g. when the limiter is starved or disposed).
   ///
-  /// Returns Future that completes when request can proceed
-  Future<void> acquire({int estimatedTokens = 0}) async {
+  /// Returns Future that completes when request can proceed.
+  ///
+  /// Throws [StateError] if the request can never be satisfied because
+  /// [estimatedTokens] exceeds the token bucket capacity, and
+  /// [TimeoutException] if the wait exceeds [timeout].
+  Future<void> acquire({
+    int estimatedTokens = 0,
+    Duration timeout = defaultAcquireTimeout,
+  }) {
+    // Guard against an un-satisfiable head-of-queue item: if a request asks
+    // for more tokens than the bucket can ever hold, tryAcquire will never
+    // succeed and would block the whole queue. Reject it up front.
+    final tokenCapacity = tokensPerMinute;
+    if (tokenCapacity != null && estimatedTokens > tokenCapacity) {
+      return Future.error(StateError(
+        'Requested $estimatedTokens tokens exceeds token bucket capacity '
+        '($tokenCapacity); request can never be satisfied.',
+      ));
+    }
+
     final completer = Completer<void>();
-    _queue.add(_PendingRequest(
+    final request = _PendingRequest(
       completer: completer,
       estimatedTokens: estimatedTokens,
-    ));
-    return completer.future;
+    );
+    _queue.add(request);
+
+    // Bound the wait so a starved/disposed limiter can't hang the caller.
+    return completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        // Remove the abandoned request so it doesn't leak in the queue.
+        _queue.remove(request);
+        throw TimeoutException(
+          'RateLimiter.acquire timed out after $timeout', timeout);
+      },
+    );
   }
 
   /// Calculate wait time for a request
@@ -120,7 +155,23 @@ class RateLimiter {
   void reset() {
     _requestBucket.reset();
     _tokenBucket?.reset();
+    // Fail any in-flight waiters before dropping them so callers don't hang.
+    _failPendingRequests(StateError('RateLimiter reset'));
+  }
+
+  /// Complete every queued request with [error], then empty the queue.
+  ///
+  /// Used by [reset] and [dispose] so that awaiting callers are released with
+  /// an error instead of leaking their completers (which would block forever).
+  void _failPendingRequests(Object error) {
+    if (_queue.isEmpty) return;
+    final pending = List<_PendingRequest>.from(_queue);
     _queue.clear();
+    for (final request in pending) {
+      if (!request.completer.isCompleted) {
+        request.completer.completeError(error);
+      }
+    }
   }
 
   /// Get current rate limit status
@@ -164,7 +215,9 @@ class RateLimiter {
   /// Dispose rate limiter
   void dispose() {
     _queueTimer?.cancel();
-    _queue.clear();
+    // Release any awaiting callers with an error instead of leaving their
+    // futures uncompleted (which would hang them forever).
+    _failPendingRequests(StateError('RateLimiter disposed'));
   }
 
   @override

@@ -60,6 +60,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   Process? _currentProcess;
   bool _isCancelled = false;
 
+  // This service is a lazy singleton with mutable per-run state
+  // (_currentProcess / _isCancelled). Guard against concurrent runs so a
+  // second publish cannot stomp the first's process handle or cancellation
+  // flag. Set before entering the try block; cleared in finally.
+  bool _isRunning = false;
+
   @override
   Stream<double> get progressStream => _progressController.stream;
 
@@ -74,6 +80,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     String? steamGuardCode,
   }) async {
     final startTime = DateTime.now();
+    if (_isRunning) {
+      return Err(WorkshopPublishException(
+        'A publish operation is already in progress.',
+      ));
+    }
+    _isRunning = true;
     _isCancelled = false;
     Directory? tempContentDir;
 
@@ -275,6 +287,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     } finally {
       _currentProcess = null;
       _isCancelled = false;
+      _isRunning = false;
       if (tempContentDir != null) {
         try {
           await tempContentDir.delete(recursive: true);
@@ -296,31 +309,43 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
             Result<WorkshopPublishResult, SteamServiceException> result)?
         onItemComplete,
   }) async {
+    if (_isRunning) {
+      throw WorkshopPublishException(
+        'A publish operation is already in progress.',
+      );
+    }
+    _isRunning = true;
     _isCancelled = false;
     final startTime = DateTime.now();
 
-    // Ensure steamcmd is available
-    final steamCmdPathResult = await _manager.getSteamCmdPath();
-    if (steamCmdPathResult.isErr) {
-      throw steamCmdPathResult.error;
-    }
-    final steamCmdPath = steamCmdPathResult.value;
-
-    // Check cached credentials
-    final cachedLoginOk =
-        await _hasCachedCredentials(steamCmdPath, username);
-
-    if (!cachedLoginOk && steamGuardCode == null) {
-      throw const SteamGuardRequiredException(
-        'Steam Guard code is required to authenticate',
-      );
-    }
-
-    // --- Prepare all items: temp dirs, pack copies, VDF generation ---
+    // Declared before the try so the finally can always clean them up.
     final prepared = <int, _BatchPreparedItem>{};
     final tempDirs = <Directory>[];
 
     try {
+      // Ensure steamcmd is available. NOTE: these pre-flight checks MUST stay
+      // inside the try so the finally resets _isRunning. The Steam Guard path
+      // is a normal flow (no cached creds -> throw SteamGuardRequiredException
+      // -> caller retries with a code); if it threw outside the try,
+      // _isRunning would stay true forever and the retry would be rejected by
+      // the re-entrance guard, permanently locking the service.
+      final steamCmdPathResult = await _manager.getSteamCmdPath();
+      if (steamCmdPathResult.isErr) {
+        throw steamCmdPathResult.error;
+      }
+      final steamCmdPath = steamCmdPathResult.value;
+
+      // Check cached credentials
+      final cachedLoginOk =
+          await _hasCachedCredentials(steamCmdPath, username);
+
+      if (!cachedLoginOk && steamGuardCode == null) {
+        throw const SteamGuardRequiredException(
+          'Steam Guard code is required to authenticate',
+        );
+      }
+
+      // --- Prepare all items: temp dirs, pack copies, VDF generation ---
       for (var i = 0; i < items.length; i++) {
         final item = items[i];
         try {
@@ -471,6 +496,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         } catch (_) {}
       }
       _currentProcess = null;
+      _isRunning = false;
     }
   }
 
@@ -517,147 +543,175 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
+    String stdoutBuffer = '';
+
+    // Process one COMPLETE output line. Extracted into a function so the
+    // trailing partial line buffered in [stdoutBuffer] can be flushed on done.
+    void processStdoutLine(String line) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) return;
+
+      _outputController.add(trimmed);
+
+      // Check for auth failure (affects entire session)
+      if (trimmed.contains('Login Failure') ||
+          trimmed.contains('Invalid Password') ||
+          trimmed.contains('FAILED login')) {
+        authFailed = true;
+        return;
+      }
+
+      if (currentChunkPos >= chunk.length) return;
+      final currentIdx = chunk[currentChunkPos];
+
+      // Progress tracking
+      final progressMatch = RegExp(r'(\d+)%').firstMatch(trimmed);
+      if (progressMatch != null) {
+        final pct = int.parse(progressMatch.group(1)!);
+        onItemProgress?.call(currentIdx, pct / 100.0);
+      }
+
+      // Workshop ID detection
+      final idMatch =
+          RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(trimmed);
+      if (idMatch != null) {
+        currentWorkshopId = idMatch.group(1);
+      }
+
+      // Success: item completed
+      if (trimmed.contains('Success.') ||
+          trimmed.contains('Item Updated') ||
+          (currentWorkshopId != null && trimmed.contains('PublishFileID'))) {
+        // Determine final workshop ID
+        final workshopId =
+            currentWorkshopId ?? items[currentIdx].params.publishedFileId;
+
+        completedInChunk.add(currentIdx);
+        final duration = DateTime.now().difference(startTime).inMilliseconds;
+        onItemComplete?.call(
+          currentIdx,
+          Ok(WorkshopPublishResult(
+            workshopId: workshopId,
+            wasUpdate: true,
+            durationMs: duration,
+            timestamp: DateTime.now(),
+            rawOutput: rawOutput.toString(),
+          )),
+        );
+        _activityLogger?.log(
+          ActivityEventType.projectPublished,
+          projectId: null,
+          gameCode: null,
+          payload: {
+            'projectName': items[currentIdx].params.title,
+            'workshopId': workshopId,
+          },
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+
+      // Failure: item not found on Steam
+      if (trimmed.contains('Failed to update workshop item')) {
+        completedInChunk.add(currentIdx);
+        onItemComplete?.call(
+          currentIdx,
+          Err(WorkshopItemNotFoundException(
+            'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
+            workshopId: items[currentIdx].params.publishedFileId,
+          )),
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+
+      // Generic error for current item
+      if (trimmed.contains('ERROR!') &&
+          !trimmed.contains('Login') &&
+          !completedInChunk.contains(currentIdx)) {
+        completedInChunk.add(currentIdx);
+        onItemComplete?.call(
+          currentIdx,
+          Err(WorkshopPublishException(
+            'steamcmd error: $trimmed',
+          )),
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+    }
+
     _currentProcess!.stdout.listen(
       (data) {
         lastOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         rawOutput.write(output);
 
-        for (final line in output.split(RegExp(r'[\r\n]+'))) {
-          final trimmed = line.trim();
-          if (trimmed.isEmpty) continue;
-
-          _outputController.add(trimmed);
-
-          // Check for auth failure (affects entire session)
-          if (trimmed.contains('Login Failure') ||
-              trimmed.contains('Invalid Password') ||
-              trimmed.contains('FAILED login')) {
-            authFailed = true;
-            continue;
-          }
-
-          if (currentChunkPos >= chunk.length) continue;
-          final currentIdx = chunk[currentChunkPos];
-
-          // Progress tracking
-          final progressMatch =
-              RegExp(r'(\d+)%').firstMatch(trimmed);
-          if (progressMatch != null) {
-            final pct = int.parse(progressMatch.group(1)!);
-            onItemProgress?.call(currentIdx, pct / 100.0);
-          }
-
-          // Workshop ID detection
-          final idMatch =
-              RegExp(r'PublishFileID\s*[:=]?\s*(\d+)')
-                  .firstMatch(trimmed);
-          if (idMatch != null) {
-            currentWorkshopId = idMatch.group(1);
-          }
-
-          // Success: item completed
-          if (trimmed.contains('Success.') ||
-              trimmed.contains('Item Updated') ||
-              (currentWorkshopId != null &&
-                  trimmed.contains('PublishFileID'))) {
-            // Determine final workshop ID
-            final workshopId = currentWorkshopId ??
-                items[currentIdx].params.publishedFileId;
-
-            completedInChunk.add(currentIdx);
-            final duration =
-                DateTime.now().difference(startTime).inMilliseconds;
-            onItemComplete?.call(
-              currentIdx,
-              Ok(WorkshopPublishResult(
-                workshopId: workshopId,
-                wasUpdate: true,
-                durationMs: duration,
-                timestamp: DateTime.now(),
-                rawOutput: rawOutput.toString(),
-              )),
-            );
-            _activityLogger?.log(
-              ActivityEventType.projectPublished,
-              projectId: null,
-              gameCode: null,
-              payload: {
-                'projectName': items[currentIdx].params.title,
-                'workshopId': workshopId,
-              },
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
-
-          // Failure: item not found on Steam
-          if (trimmed.contains('Failed to update workshop item')) {
-            completedInChunk.add(currentIdx);
-            onItemComplete?.call(
-              currentIdx,
-              Err(WorkshopItemNotFoundException(
-                'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
-                workshopId: items[currentIdx].params.publishedFileId,
-              )),
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
-
-          // Generic error for current item
-          if (trimmed.contains('ERROR!') &&
-              !trimmed.contains('Login') &&
-              !completedInChunk.contains(currentIdx)) {
-            completedInChunk.add(currentIdx);
-            onItemComplete?.call(
-              currentIdx,
-              Err(WorkshopPublishException(
-                'steamcmd error: $trimmed',
-              )),
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
+        // A line can be split across two stdout reads. Buffer the trailing
+        // partial line and only process complete lines, so a split
+        // "Success."/"PublishFileID" line is still recognized and
+        // currentChunkPos stays aligned with the item being published.
+        stdoutBuffer += output;
+        final segments = stdoutBuffer.split(RegExp(r'[\r\n]+'));
+        stdoutBuffer = segments.removeLast();
+        for (final line in segments) {
+          processStdoutLine(line);
         }
       },
       onDone: () {
+        // Flush any final line that arrived without a trailing newline.
+        if (stdoutBuffer.isNotEmpty) {
+          processStdoutLine(stdoutBuffer);
+          stdoutBuffer = '';
+        }
         stdoutDone = true;
         checkDone();
       },
     );
+
+    String stderrBuffer = '';
+    void processStderrLine(String line) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty) {
+        _outputController.add('[stderr] $trimmed');
+      }
+    }
 
     _currentProcess!.stderr.listen(
       (data) {
         lastOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         rawOutput.write(output);
-        for (final line in output.split('\n')) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add('[stderr] $trimmed');
-          }
+        stderrBuffer += output;
+        final segments = stderrBuffer.split(RegExp(r'[\r\n]+'));
+        stderrBuffer = segments.removeLast();
+        for (final line in segments) {
+          processStderrLine(line);
         }
       },
       onDone: () {
+        if (stderrBuffer.isNotEmpty) {
+          processStderrLine(stderrBuffer);
+          stderrBuffer = '';
+        }
         stderrDone = true;
         checkDone();
       },
@@ -673,7 +727,36 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     });
 
-    final exitCode = await _currentProcess!.exitCode;
+    // Global (overall) timeout. The inactivity timer above only fires after 3
+    // minutes of TOTAL output silence, so a steamcmd that keeps emitting
+    // periodic heartbeat/progress output but never finishes an item would
+    // never trip it and `await exitCode` could block forever. Add a hard upper
+    // bound, mirroring the single-publish path's 5-minute cap, scaled by the
+    // number of items in this chunk. We budget 5 minutes per item, clamped to
+    // a sane floor/ceiling, then kill the process on expiry — the
+    // uncompleted-items loop below reports the failures consistently with the
+    // inactivity-timeout path (both just kill the process and let the post-exit
+    // reconciliation mark unfinished items as errors).
+    const perItemBudget = Duration(minutes: 5);
+    const minBatchTimeout = Duration(minutes: 5);
+    const maxBatchTimeout = Duration(minutes: 90);
+    var globalTimeout = perItemBudget * chunk.length;
+    if (globalTimeout < minBatchTimeout) globalTimeout = minBatchTimeout;
+    if (globalTimeout > maxBatchTimeout) globalTimeout = maxBatchTimeout;
+
+    final exitCode = await _currentProcess!.exitCode.timeout(
+      globalTimeout,
+      onTimeout: () {
+        _logger.warning(
+          'Batch steamcmd global timeout (${globalTimeout.inMinutes} min) '
+          'for chunk of ${chunk.length} item(s) — killing process',
+        );
+        _currentProcess?.kill();
+        // Return a sentinel exit code; the uncompleted-items loop reports the
+        // affected items as failed.
+        return -1;
+      },
+    );
     inactivityTimer.cancel();
     await outputCompleter.future.timeout(
       const Duration(seconds: 5),
@@ -859,12 +942,29 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         return false;
       }
 
-      // Check that this specific username has a cached entry
-      final lowerUsername = username.toLowerCase();
+      // Check that this specific username has a cached entry.
+      //
+      // Previously this did a naive `lowerConfig.contains(lowerUsername)`
+      // substring test, which false-positives when the username happens to be
+      // a substring of another account name, a path, or a token field. Match
+      // the username as a properly quoted VDF key instead — steamcmd writes
+      // accounts as a quoted key (e.g. `"username"` under the Accounts /
+      // ConnectCache sections). We require the quoted token to appear, and
+      // that it is delimited by a non-word boundary so e.g. "sam" does not
+      // match "samuel". This stays best-effort (an optimization, not a
+      // security boundary): on failure we fall back to a full login.
       final lowerConfig = configContent.toLowerCase();
-      if (!lowerConfig.contains(lowerUsername)) {
+      // RegExp.escape the username so usernames with regex-special characters
+      // are matched literally.
+      final quotedUser = RegExp.escape('"${username.toLowerCase()}"');
+      // The quoted name must be followed by whitespace/brace (a VDF key is
+      // followed by either a nested object `{` or an inline value), not more
+      // word characters — guarding against partial matches inside a longer
+      // quoted string.
+      final userKeyPattern = RegExp('$quotedUser(?![\\w"])');
+      if (!userKeyPattern.hasMatch(lowerConfig)) {
         _logger.info(
-            'config.vdf has no entry for $username — no cached credentials');
+            'config.vdf has no quoted entry for $username — no cached credentials');
         return false;
       }
 
@@ -907,10 +1007,30 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     }
   }
 
-  /// Dispose resources
+  /// Dispose resources held by this service.
+  ///
+  /// Closes the broadcast [_progressController]/[_outputController] and kills
+  /// any in-flight process. This service is a lazy app-lifetime singleton, so
+  /// in normal operation this is effectively never called and the controllers
+  /// live for the process lifetime (the per-operation subscribers cancel their
+  /// own subscriptions, so there is no growing leak). This method exists for
+  /// teardown/tests and for locator resets / hot restart, where the old
+  /// controllers would otherwise leak.
+  ///
+  /// To wire this up, register the service with a dispose callback, e.g.:
+  /// ```
+  /// registerLazySingleton<IWorkshopPublishService>(
+  ///   ...,
+  ///   dispose: (s) => (s as WorkshopPublishServiceImpl).dispose(),
+  /// );
+  /// ```
+  /// (Not declared on [IWorkshopPublishService]; the interface does not expose
+  /// a dispose contract, so callers must downcast or the interface should add
+  /// one if disposal becomes part of the contract.)
   void dispose() {
-    _progressController.close();
-    _outputController.close();
+    // Guard against double-close (e.g. dispose called twice in tests).
+    if (!_progressController.isClosed) _progressController.close();
+    if (!_outputController.isClosed) _outputController.close();
     _currentProcess?.kill();
   }
 }

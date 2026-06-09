@@ -10,6 +10,7 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
+import '../../../../services/translation/utils/translation_text_utils.dart';
 import '../../../../services/validation/validation_schema.dart';
 import '../../providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
@@ -421,9 +422,9 @@ mixin EditorActionsValidation on EditorActionsBase {
 
     final version = versionResult.unwrap();
     final clearedVersion = version.copyWith(
-      translatedText: null,
+      clearTranslatedText: true,
       status: TranslationVersionStatus.pending,
-      validationIssues: null,
+      clearValidationIssues: true,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
 
@@ -484,8 +485,13 @@ mixin EditorActionsValidation on EditorActionsBase {
     }
 
     final version = versionResult.unwrap();
+    // Normalize escape sequences (\\n → \n, etc.) before persisting, matching
+    // every other write path (handleCellEdit/handleApplySuggestion). This keeps
+    // the editor invariant that stored target text holds real whitespace, so the
+    // inspector's display round-trip stays unambiguous.
+    final normalizedText = TranslationTextUtils.normalizeTranslation(newText);
     final editedVersion = version.copyWith(
-      translatedText: newText,
+      translatedText: normalizedText,
       status: TranslationVersionStatus.translated,
       validationIssues: null,
       isManuallyEdited: true,

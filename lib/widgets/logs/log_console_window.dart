@@ -36,6 +36,19 @@ class _LogConsoleWindowState extends ConsumerState<LogConsoleWindow> {
   final Set<String> _activeLevels = {..._allLevels};
   String _search = '';
   final List<LogEntry> _entries = [];
+
+  // Memoised view of the filtered entries. Recomputing the filter on every
+  // streamed log line (and again on every frame via the [_visible] getter) is
+  // O(n) per entry — with up to [_maxEntries] (5000) buffered and a non-empty
+  // search forcing format()+toLowerCase on each, that is wasteful on the UI
+  // thread. Instead we cache the filtered list and only rebuild it when the
+  // entries, level filter, or search text actually change (tracked via
+  // [_filterDirty]). Per-entry lowercased text is cached in [_lowerCache] so
+  // format()+toLowerCase runs once per entry rather than once per frame.
+  List<LogEntry>? _visibleCache;
+  bool _filterDirty = true;
+  final Map<LogEntry, String> _lowerCache = {};
+
   final ScrollController _scroll = ScrollController();
   final TextEditingController _searchCtrl = TextEditingController();
   StreamSubscription<LogEntry>? _sub;
@@ -64,8 +77,15 @@ class _LogConsoleWindowState extends ConsumerState<LogConsoleWindow> {
     setState(() {
       _entries.add(e);
       if (_entries.length > _maxEntries) {
+        final removed = _entries.sublist(0, _entries.length - _maxEntries);
         _entries.removeRange(0, _entries.length - _maxEntries);
+        // Drop evicted entries from the per-entry lowercase cache so it does
+        // not grow unbounded.
+        for (final old in removed) {
+          _lowerCache.remove(old);
+        }
       }
+      _filterDirty = true;
     });
     if (_stickToBottom) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
@@ -87,18 +107,30 @@ class _LogConsoleWindowState extends ConsumerState<LogConsoleWindow> {
     }
   }
 
+  /// Lazily computed, memoised filtered view. Only recomputes the O(n) scan
+  /// when [_filterDirty] is set (entries appended/cleared, level filter toggled,
+  /// or search text changed); otherwise returns the cached list so reading it
+  /// once per frame is O(1).
   List<LogEntry> get _visible {
+    if (!_filterDirty && _visibleCache != null) return _visibleCache!;
     final q = _search.trim().toLowerCase();
-    return _entries.where((e) {
+    final result = _entries.where((e) {
       if (!_activeLevels.contains(e.level)) return false;
       if (q.isEmpty) return true;
-      return e.format().toLowerCase().contains(q);
+      // Cache format()+toLowerCase per entry so it is computed once rather than
+      // on every filter pass.
+      final lower = _lowerCache[e] ??= e.format().toLowerCase();
+      return lower.contains(q);
     }).toList();
+    _visibleCache = result;
+    _filterDirty = false;
+    return result;
   }
 
   void _toggleLevel(String level) {
     setState(() {
       if (!_activeLevels.remove(level)) _activeLevels.add(level);
+      _filterDirty = true;
     });
   }
 
@@ -107,7 +139,11 @@ class _LogConsoleWindowState extends ConsumerState<LogConsoleWindow> {
     await Clipboard.setData(ClipboardData(text: text));
   }
 
-  void _clear() => setState(_entries.clear);
+  void _clear() => setState(() {
+        _entries.clear();
+        _lowerCache.clear();
+        _filterDirty = true;
+      });
 
   void _openLogsFolder() {
     final path = ref.read(loggingServiceProvider).logFilePath;
@@ -235,7 +271,10 @@ class _LogConsoleWindowState extends ConsumerState<LogConsoleWindow> {
               child: TextField(
                 key: LogConsoleWindow.searchFieldKey,
                 controller: _searchCtrl,
-                onChanged: (v) => setState(() => _search = v),
+                onChanged: (v) => setState(() {
+                  _search = v;
+                  _filterDirty = true;
+                }),
                 style: tokens.fontMono.copyWith(fontSize: 12, color: tokens.text),
                 decoration: InputDecoration(
                   isDense: true,

@@ -162,10 +162,12 @@ class TranslationVersion {
     String? unitId,
     String? projectLanguageId,
     String? translatedText,
+    bool clearTranslatedText = false,
     bool? isManuallyEdited,
     TranslationVersionStatus? status,
     TranslationSource? translationSource,
     String? validationIssues,
+    bool clearValidationIssues = false,
     int? validationSchemaVersion,
     int? createdAt,
     int? updatedAt,
@@ -174,11 +176,14 @@ class TranslationVersion {
       id: id ?? this.id,
       unitId: unitId ?? this.unitId,
       projectLanguageId: projectLanguageId ?? this.projectLanguageId,
-      translatedText: translatedText ?? this.translatedText,
+      translatedText:
+          clearTranslatedText ? null : (translatedText ?? this.translatedText),
       isManuallyEdited: isManuallyEdited ?? this.isManuallyEdited,
       status: status ?? this.status,
       translationSource: translationSource ?? this.translationSource,
-      validationIssues: validationIssues ?? this.validationIssues,
+      validationIssues: clearValidationIssues
+          ? null
+          : (validationIssues ?? this.validationIssues),
       validationSchemaVersion:
           validationSchemaVersion ?? this.validationSchemaVersion,
       createdAt: createdAt ?? this.createdAt,
@@ -203,6 +208,9 @@ class TranslationVersion {
         other.status == status &&
         other.translationSource == translationSource &&
         other.validationIssues == validationIssues &&
+        // Included so two versions differing only by schema version (e.g. after
+        // a validation rescan bumps it) compare as not-equal.
+        other.validationSchemaVersion == validationSchemaVersion &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -217,6 +225,7 @@ class TranslationVersion {
       status.hashCode ^
       translationSource.hashCode ^
       validationIssues.hashCode ^
+      validationSchemaVersion.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
 

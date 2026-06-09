@@ -143,7 +143,10 @@ class TmImportExportService {
           }
           return Ok(0);
         }
-        tgtLang = peekResult.value.first.targetLanguageId;
+        // The DB stores the repo id form (`lang_fr`); strip the prefix so the
+        // TMX xml:lang attribute carries a bare ISO code (`fr`), matching the
+        // explicit-target branch above (which already uses the bare code).
+        tgtLang = stripLanguagePrefix(peekResult.value.first.targetLanguageId);
       }
 
       final srcLang = sourceLanguageCode ?? 'en';

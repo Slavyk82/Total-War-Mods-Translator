@@ -18,6 +18,10 @@ CompilationConflictService compilationConflictService(Ref ref) {
 /// State for conflict analysis results.
 @riverpod
 class CompilationConflictAnalysis extends _$CompilationConflictAnalysis {
+  /// Monotonically increasing token to discard results from stale analyze
+  /// calls when selection changes trigger overlapping requests.
+  int _analyzeRequestId = 0;
+
   @override
   AsyncValue<ConflictAnalysisResult?> build() => const AsyncData(null);
 
@@ -26,6 +30,7 @@ class CompilationConflictAnalysis extends _$CompilationConflictAnalysis {
     required List<String> projectIds,
     required String languageId,
   }) async {
+    final requestId = ++_analyzeRequestId;
     state = const AsyncLoading();
 
     final service = ref.read(compilationConflictServiceProvider);
@@ -33,6 +38,9 @@ class CompilationConflictAnalysis extends _$CompilationConflictAnalysis {
       projectIds: projectIds,
       languageId: languageId,
     );
+
+    // Discard if a newer analyze started or the notifier was disposed.
+    if (requestId != _analyzeRequestId || !ref.mounted) return;
 
     result.when(
       ok: (analysis) => state = AsyncData(analysis),

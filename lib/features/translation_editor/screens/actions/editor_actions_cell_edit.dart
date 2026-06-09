@@ -16,18 +16,20 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final undoRedoManager = ref.read(undoRedoManagerProvider);
 
-      // Get current version and unit
-      final versionsResult = await versionRepo.getByUnit(unitId);
+      // Resolve the version for the language currently shown in the editor.
+      // `getByUnit` returns versions for ALL project languages (all stamped
+      // with the same created_at), so `.first` could target a sibling
+      // language and silently corrupt it in multi-target projects.
+      final projectLanguageId = await getProjectLanguageId();
+      final versionsResult = await versionRepo.getByUnitAndProjectLanguage(
+        unitId: unitId,
+        projectLanguageId: projectLanguageId,
+      );
       if (versionsResult.isErr) {
         throw Exception('Failed to get translation version');
       }
 
-      final versions = versionsResult.unwrap();
-      if (versions.isEmpty) {
-        throw Exception('No translation version found for unit');
-      }
-
-      final currentVersion = versions.first;
+      final currentVersion = versionsResult.unwrap();
       final oldText = currentVersion.translatedText ?? '';
 
       // Normalize: \\n → \n
@@ -100,18 +102,19 @@ mixin EditorActionsCellEdit on EditorActionsBase {
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
       final undoRedoManager = ref.read(undoRedoManagerProvider);
 
-      // Get current version and unit
-      final versionsResult = await versionRepo.getByUnit(unitId);
+      // Resolve the version for the language currently shown in the editor
+      // (see handleCellEdit) so a TM suggestion never overwrites a sibling
+      // language's translation in a multi-target project.
+      final projectLanguageId = await getProjectLanguageId();
+      final versionsResult = await versionRepo.getByUnitAndProjectLanguage(
+        unitId: unitId,
+        projectLanguageId: projectLanguageId,
+      );
       if (versionsResult.isErr) {
         throw Exception('Failed to get translation version');
       }
 
-      final versions = versionsResult.unwrap();
-      if (versions.isEmpty) {
-        throw Exception('No translation version found for unit');
-      }
-
-      final currentVersion = versions.first;
+      final currentVersion = versionsResult.unwrap();
       final oldText = currentVersion.translatedText ?? '';
 
       // Normalize: \\n → \n

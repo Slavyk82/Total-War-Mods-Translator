@@ -108,6 +108,7 @@ mixin RpfmPackOperationsMixin {
         if (locFiles.isNotEmpty) {
           logger.warning('No TSV files found, falling back to .loc files (may cause issues)');
           final totalLocFiles = locFiles.length;
+          var locAddedOk = 0;
           for (var i = 0; i < locFiles.length; i++) {
             // Check for cancellation at the start of each iteration
             if (isCancelled) {
@@ -153,10 +154,25 @@ mixin RpfmPackOperationsMixin {
               final stderr = await stderrFuture;
               final error = RpfmOutputParser.parseErrorMessage(stderr);
               logger.warning('Failed to add .loc file: $error');
+            } else {
+              locAddedOk++;
             }
           }
           // Final progress
           onProgress?.call(totalLocFiles, totalLocFiles, '');
+
+          // Fail loudly if RPFM rejected every file: otherwise we would
+          // return Ok for an essentially empty pack (the empty pack created in
+          // step 1 still exists), silently producing a translation-less pack.
+          if (locAddedOk == 0) {
+            try {
+              await File(outputPackPath).delete();
+            } catch (_) {}
+            return Err(RpfmPackingException(
+              'Failed to add any .loc file to pack ($totalLocFiles attempted).',
+              outputPath: outputPackPath,
+            ));
+          }
         }
       } else {
         // Add TSV files with --tsv-to-binary conversion
@@ -176,8 +192,13 @@ mixin RpfmPackOperationsMixin {
           // Get relative path from input directory
           final relativePath = path.relative(tsvFilePath, from: inputDirectory);
 
-          // Remove .tsv extension to get the target .loc path
-          final targetPath = relativePath.replaceAll('.tsv', '').replaceAll('\\', '/');
+          // Remove the trailing .tsv extension to get the target .loc path.
+          // Only the suffix is stripped so paths that legitimately contain
+          // ".tsv" earlier are preserved.
+          final withoutTsv = relativePath.toLowerCase().endsWith('.tsv')
+              ? relativePath.substring(0, relativePath.length - 4)
+              : relativePath;
+          final targetPath = withoutTsv.replaceAll('\\', '/');
 
           logger.info('Adding TSV: $relativePath -> $targetPath');
 

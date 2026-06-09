@@ -284,15 +284,32 @@ class GlossaryImportService {
     }
   }
 
-  /// Parse TBX term entries from the body element
+  /// Normalize an `xml:lang` tag for comparison.
+  ///
+  /// Lower-cases and strips any region/script subtag (e.g. `en-US` -> `en`,
+  /// `pt-BR` -> `pt`) so that a langSet tagged `en-GB` still matches a source
+  /// language declared as `en` on the martif root.
+  String _normalizeLang(String lang) {
+    final lower = lang.trim().toLowerCase();
+    final sep = lower.indexOf(RegExp(r'[-_]'));
+    return sep == -1 ? lower : lower.substring(0, sep);
+  }
+
+  /// Parse TBX term entries from the body element.
+  ///
+  /// [defaultLang] is the source language declared on the `martif` root
+  /// (`xml:lang`). LangSets are matched to source/target by their own
+  /// `xml:lang` rather than by position, so files that list languages in any
+  /// order, or contain more than two langSets (multilingual term bases), are
+  /// handled correctly: the langSet whose language matches [defaultLang] is the
+  /// source, and every other langSet produces its own target entry.
   List<TbxEntry> _parseTbxEntries(XmlElement body, String defaultLang) {
     final entries = <TbxEntry>[];
+    final normalizedSourceLang = _normalizeLang(defaultLang);
 
     for (final termEntry in body.findElements('termEntry')) {
       final id = termEntry.getAttribute('id') ?? '';
       String? sourceTerm;
-      String? targetTerm;
-      String? targetLanguage;
       bool caseSensitive = false;
       String? notes;
 
@@ -318,39 +335,41 @@ class GlossaryImportService {
         }
       }
 
-      // Extract terms from langSet elements
-      final langSets = termEntry.findElements('langSet').toList();
-      for (int i = 0; i < langSets.length; i++) {
-        final langSet = langSets[i];
+      // Extract terms from langSet elements, keyed by their declared language.
+      // Each candidate target is (language, term); the source is whichever
+      // langSet matches the term base's source language (defaultLang).
+      final targetCandidates = <MapEntry<String, String>>[];
+      for (final langSet in termEntry.findElements('langSet')) {
         final lang = langSet.getAttribute('xml:lang') ?? defaultLang;
         final tig = langSet.findElements('tig').firstOrNull;
+        if (tig == null) continue;
 
-        if (tig != null) {
-          final term = tig.findElements('term').firstOrNull?.innerText.trim();
+        final term = tig.findElements('term').firstOrNull?.innerText.trim();
+        if (term == null || term.isEmpty) continue;
 
-          // Determine if source or target based on order
-          // First langSet is source, second is target
-          if (i == 0 && term != null && term.isNotEmpty) {
-            sourceTerm = term;
-          } else if (i == 1 && term != null && term.isNotEmpty) {
-            targetTerm = term;
-            targetLanguage = lang;
-          }
+        if (_normalizeLang(lang) == normalizedSourceLang && sourceTerm == null) {
+          // First langSet matching the source language is the source term.
+          sourceTerm = term;
+        } else {
+          // Any non-source langSet is a target. Preserve its real xml:lang so
+          // the target language is labelled correctly (not derived from order).
+          targetCandidates.add(MapEntry(lang, term));
         }
       }
 
-      // Create entry if we have both source and target
-      if (sourceTerm != null &&
-          targetTerm != null &&
-          targetLanguage != null) {
-        entries.add(TbxEntry(
-          id: id.isEmpty ? 'tbx_${entries.length + 1}' : id,
-          targetLanguage: targetLanguage,
-          sourceTerm: sourceTerm,
-          targetTerm: targetTerm,
-          caseSensitive: caseSensitive,
-          notes: notes,
-        ));
+      // Emit one entry per target language so multilingual term entries are not
+      // silently dropped beyond the first two langSets.
+      if (sourceTerm != null && targetCandidates.isNotEmpty) {
+        for (final candidate in targetCandidates) {
+          entries.add(TbxEntry(
+            id: id.isEmpty ? 'tbx_${entries.length + 1}' : id,
+            targetLanguage: candidate.key,
+            sourceTerm: sourceTerm,
+            targetTerm: candidate.value,
+            caseSensitive: caseSensitive,
+            notes: notes,
+          ));
+        }
       }
     }
 

@@ -1,3 +1,5 @@
+import 'package:path/path.dart' as p;
+
 /// Validation utilities for common input validation patterns.
 ///
 /// Provides static methods for validating common types of input data
@@ -180,17 +182,44 @@ class Validators {
       return 'File path is required';
     }
 
-    // 1. Check for path traversal sequences
-    if (path.contains('..') || path.contains('..\\') || path.contains('../')) {
+    // Split on both separators so the segment-based checks below are correct
+    // regardless of the platform the path string was authored on.
+    final segments = path.split(RegExp(r'[\\/]+'));
+
+    // 1. Check for path traversal.
+    //
+    // Use a segment-based check (a whole segment equal to '..') instead of a
+    // naive `contains('..')` substring test. The substring test wrongly
+    // rejected legitimate names that merely contain two consecutive dots
+    // (e.g. 'my..backup.csv') and was order-sensitive/redundant.
+    if (segments.contains('..')) {
       return 'Path traversal not allowed';
     }
 
-    // 2. Prevent absolute paths (Windows-specific)
-    if (path.contains(':') || path.startsWith('\\\\')) {
+    // 2. Prevent absolute paths.
+    //
+    // - Reject a Windows drive letter only when it is an actual drive prefix
+    //   (e.g. 'C:...') at the start, rather than any ':' anywhere in the path.
+    // - Reject POSIX-absolute paths and UNC/network roots.
+    final isWindowsAbsolute = RegExp(r'^[a-zA-Z]:').hasMatch(path);
+    final isRooted = path.startsWith('/') || path.startsWith('\\');
+    if (isWindowsAbsolute || isRooted) {
       return 'Absolute paths not allowed';
     }
 
-    // 3. Check for invalid characters (common across platforms)
+    // 3. If a base directory is supplied, normalize the resolved path and
+    //    confirm it stays within that base (defense in depth beyond the
+    //    segment check above, e.g. against odd separator combinations).
+    if (baseDirectory != null && baseDirectory.isNotEmpty) {
+      final base = p.normalize(baseDirectory);
+      final resolved = p.normalize(p.join(base, path));
+      // `isWithin` is false for identical paths; allow the base itself too.
+      if (resolved != base && !p.isWithin(base, resolved)) {
+        return 'Path traversal not allowed';
+      }
+    }
+
+    // 4. Check for invalid characters (common across platforms)
     final invalidChars = ['<', '>', '|', '\x00', '*', '?'];
     for (final char in invalidChars) {
       if (path.contains(char)) {
@@ -198,7 +227,7 @@ class Validators {
       }
     }
 
-    // 4. Check extension if specified
+    // 5. Check extension if specified
     if (allowedExtensions != null && allowedExtensions.isNotEmpty) {
       final hasValidExtension = allowedExtensions.any((ext) {
         return path.toLowerCase().endsWith(ext.toLowerCase());

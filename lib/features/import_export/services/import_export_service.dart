@@ -47,12 +47,14 @@ class ImportExportService {
       _fileReader,
       _unitRepository,
       _versionRepository,
+      _projectLanguageRepository,
     );
     _executor = ImportExecutor(
       _fileReader,
       _unitRepository,
       _versionRepository,
       _historyService,
+      _projectLanguageRepository,
     );
   }
 

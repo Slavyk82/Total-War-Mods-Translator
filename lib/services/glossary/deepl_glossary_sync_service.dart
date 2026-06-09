@@ -122,35 +122,70 @@ class DeepLGlossarySyncService {
 
       final deeplGlossaryId = createResult.value;
 
-      // 6. Get glossary name for the mapping
-      final glossary = await _glossaryRepository.getGlossaryById(glossaryId);
-      final glossaryName = glossary?.name ?? 'Unknown';
-      final deeplGlossaryName = '${glossaryName}_${sourceLanguageCode}_$targetLanguageCode';
+      // Steps 6-7 happen AFTER the server-side glossary already exists. If any
+      // of them throws (e.g. getGlossaryById, or insertDeepLMapping hitting a
+      // constraint), the freshly created DeepL glossary would be orphaned on
+      // DeepL's servers (consuming a limited slot) with no local mapping
+      // tracking it. Wrap the post-creation accounting so we compensate by
+      // deleting the server-side glossary before propagating the error.
+      try {
+        // 6. Get glossary name for the mapping
+        final glossary = await _glossaryRepository.getGlossaryById(glossaryId);
+        final glossaryName = glossary?.name ?? 'Unknown';
+        final deeplGlossaryName =
+            '${glossaryName}_${sourceLanguageCode}_$targetLanguageCode';
 
-      // 7. Store the mapping
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final mapping = DeepLGlossaryMapping(
-        id: _uuid.v4(),
-        twmtGlossaryId: glossaryId,
-        sourceLanguageCode: sourceLanguageCode,
-        targetLanguageCode: targetLanguageCode,
-        deeplGlossaryId: deeplGlossaryId,
-        deeplGlossaryName: deeplGlossaryName,
-        entryCount: entryCount,
-        syncStatus: 'synced',
-        syncedAt: now,
-        createdAt: now,
-        updatedAt: now,
-      );
+        // 7. Store the mapping
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final mapping = DeepLGlossaryMapping(
+          id: _uuid.v4(),
+          twmtGlossaryId: glossaryId,
+          sourceLanguageCode: sourceLanguageCode,
+          targetLanguageCode: targetLanguageCode,
+          deeplGlossaryId: deeplGlossaryId,
+          deeplGlossaryName: deeplGlossaryName,
+          entryCount: entryCount,
+          syncStatus: 'synced',
+          syncedAt: now,
+          createdAt: now,
+          updatedAt: now,
+        );
 
-      await _glossaryRepository.insertDeepLMapping(mapping);
+        await _glossaryRepository.insertDeepLMapping(mapping);
 
-      _logging.info('[DeepLGlossarySyncService] Glossary synced successfully', {
-        'deeplGlossaryId': deeplGlossaryId,
-        'entryCount': entryCount,
-      });
+        _logging.info('[DeepLGlossarySyncService] Glossary synced successfully', {
+          'deeplGlossaryId': deeplGlossaryId,
+          'entryCount': entryCount,
+        });
 
-      return Ok(deeplGlossaryId);
+        return Ok(deeplGlossaryId);
+      } catch (e, stackTrace) {
+        // Compensating action: the server-side glossary was created but we could
+        // not persist the local mapping. Delete it so it does not leak/orphan.
+        _logging.error(
+          '[DeepLGlossarySyncService] Failed to persist mapping after creating '
+          'DeepL glossary; cleaning up server-side glossary',
+          e,
+          stackTrace,
+        );
+
+        final cleanupResult =
+            await _deeplService.deleteDeepLGlossary(deeplGlossaryId);
+        if (cleanupResult.isErr) {
+          _logging.warning(
+            '[DeepLGlossarySyncService] Failed to clean up orphaned DeepL glossary',
+            {
+              'deeplGlossaryId': deeplGlossaryId,
+              'error': cleanupResult.error.message,
+            },
+          );
+        }
+
+        return Err(GlossarySyncException(
+          'Failed to persist DeepL glossary mapping: $e',
+          e,
+        ));
+      }
     } catch (e, stackTrace) {
       _logging.error('[DeepLGlossarySyncService] Error syncing glossary', e, stackTrace);
       return Err(GlossarySyncException(

@@ -213,8 +213,10 @@ class TranslationValidationService implements ITranslationValidationService {
           suggestion:
               'Ensure all variables from the source text are present in the translation. '
               'Variables: $missingVarsStr',
-          autoFixable: true,
-          autoFixValue: '$translatedText ${missingVariables.join(' ')}',
+          // Report-only: do NOT auto-fix. Blindly appending placeholders at the
+          // end of the string corrupts Total War strings, where placeholder
+          // position is semantically significant (interpolated at runtime).
+          autoFixable: false,
           metadata: {
             'missing_variables': missingVariables,
           },

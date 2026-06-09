@@ -87,6 +87,14 @@ class GridActionsHandler {
     final updates = <String, String>{}; // Map of unitId -> translatedText
     int validLines = 0;
 
+    // Build a key -> row index once so each pasted line is an O(1) lookup
+    // instead of an O(n) firstWhere scan (with a thrown/caught StateError for
+    // every unmatched key). For large grids and large pastes the previous
+    // approach was O(linesPasted * rowCount) plus per-miss exception churn.
+    final rowsByKey = <String, TranslationRow>{
+      for (final row in dataSource.translationRows) row.key: row,
+    };
+
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
 
@@ -95,17 +103,14 @@ class GridActionsHandler {
         final key = parts[0].trim();
         final translation = parts[2].trim();
 
-        // Find the unit ID by key
-        try {
-          final matchingRow = dataSource.translationRows.firstWhere(
-            (row) => row.key == key,
-          );
-          updates[matchingRow.id] = translation;
-          validLines++;
-        } catch (e) {
+        // Find the unit ID by key (O(1) map lookup; null when absent).
+        final matchingRow = rowsByKey[key];
+        if (matchingRow == null) {
           // Key not found, skip this line
           continue;
         }
+        updates[matchingRow.id] = translation;
+        validLines++;
       }
     }
 

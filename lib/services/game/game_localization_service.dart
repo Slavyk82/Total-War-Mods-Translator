@@ -101,10 +101,13 @@ class GameLocalizationService {
 
           // Match local_xx.pack pattern
           if (fileName.startsWith('local_') && fileName.endsWith('.pack')) {
-            // Extract language code (e.g., 'en' from 'local_en.pack')
-            final languageCode = fileName
-                .substring(6) // Remove 'local_'
-                .replaceAll('.pack', '');
+            // Extract language code (e.g., 'en' from 'local_en.pack').
+            // Strip only the trailing '.pack' extension (not every '.pack'
+            // substring) so a name like 'local_xx.pack.pack' is not corrupted.
+            final languageCode = fileName.substring(
+              6, // after 'local_'
+              fileName.length - 5, // before trailing '.pack'
+            );
 
             if (languageCode.isNotEmpty) {
               final stat = await entity.stat();
@@ -164,7 +167,9 @@ class GameLocalizationService {
     final fileName = path.basename(packFilePath).toLowerCase();
 
     if (fileName.startsWith('local_') && fileName.endsWith('.pack')) {
-      return fileName.substring(6).replaceAll('.pack', '');
+      // Strip only the trailing '.pack' extension (5 chars), not every
+      // '.pack' substring, to avoid corrupting unusual codes.
+      return fileName.substring(6, fileName.length - 5);
     }
 
     return null;

@@ -525,6 +525,99 @@ void main() {
       );
     });
 
+    test('persisted TM versions carry Unix-SECONDS timestamps '
+        '(repo convention; ms would corrupt recency sorting)', () async {
+      final units = [_fakeUnit('a', 'Hello')];
+      when(() => tmService.findExactMatch(
+            sourceText: 'Hello',
+            targetLanguageCode: 'fr',
+          )).thenAnswer((_) async => Ok(_fakeTmMatch(
+            sourceText: 'Hello',
+            targetText: 'Bonjour',
+            similarity: 1.0,
+            matchType: TmMatchType.exact,
+          )));
+
+      final beforeSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      await handler.performLookup(
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+      final afterSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      expect(persistedVersions, hasLength(1));
+      final version = persistedVersions.single;
+      // `*_at` columns store Unix SECONDS everywhere (triggers use
+      // strftime('%s','now')). A milliseconds value would be ~1000x larger
+      // and land in year ~33000, corrupting ORDER BY created_at DESC.
+      expect(version.createdAt,
+          inInclusiveRange(beforeSeconds, afterSeconds),
+          reason: 'createdAt must be Unix seconds, not milliseconds');
+      expect(version.updatedAt,
+          inInclusiveRange(beforeSeconds, afterSeconds),
+          reason: 'updatedAt must be Unix seconds, not milliseconds');
+    });
+
+    test('a downgraded exact lookup (normalization collision: matchType=fuzzy, '
+        'autoApplied=false) is NOT auto-applied; the unit falls through to the '
+        'real fuzzy phase instead', () async {
+      // findExactMatch's anti-collision guard downgrades `ATTACK` hitting a
+      // stored `Attack` entry to matchType=fuzzy + autoApplied=false "so the
+      // wrong translation is never silently applied". The handler must honour
+      // those flags instead of writing the match as status=translated.
+      final units = [_fakeUnit('a', 'ATTACK')];
+      final downgraded = TmMatch(
+        entryId: 'entry-attack',
+        sourceText: 'Attack', // stored source differs by case only
+        targetText: 'Attaque',
+        targetLanguageCode: 'fr',
+        similarityScore: 0.60,
+        matchType: TmMatchType.fuzzy,
+        breakdown: const SimilarityBreakdown(
+          levenshteinScore: 0.6,
+          jaroWinklerScore: 0.6,
+          tokenScore: 0.6,
+          contextBoost: 0.0,
+          weights: ScoreWeights.defaultWeights,
+        ),
+        usageCount: 1,
+        lastUsedAt: DateTime.now(),
+        autoApplied: false,
+      );
+      when(() => tmService.findExactMatch(
+            sourceText: 'ATTACK',
+            targetLanguageCode: 'fr',
+          )).thenAnswer((_) async => Ok(downgraded));
+      // Real fuzzy phase finds nothing good (default Ok(const [])).
+
+      final (_, matchedIds) = await handler.performLookup(
+        batchId: _batchId,
+        units: units,
+        context: _fakeContext(),
+        currentProgress: _initialProgress(total: units.length),
+        checkPauseOrCancel: noopCheckPauseOrCancel,
+        onProgressUpdate: noopProgressUpdate,
+      );
+
+      // The downgraded match must never be written (in any phase): it would
+      // bypass the autoAcceptTmThreshold gate with a 60% match.
+      expect(persistedVersions, isEmpty,
+          reason: 'downgraded collision match must not be auto-applied');
+      expect(matchedIds, isEmpty);
+      // The unit must instead go through the genuine fuzzy lookup.
+      verify(() => tmService.findFuzzyMatchesIsolate(
+            sourceText: 'ATTACK',
+            targetLanguageCode: any(named: 'targetLanguageCode'),
+            minSimilarity: any(named: 'minSimilarity'),
+            maxResults: any(named: 'maxResults'),
+            category: any(named: 'category'),
+          )).called(1);
+    });
+
     test('cancellation: a throwing checkPauseOrCancel propagates out of '
         'performLookup; fuzzy phase is never reached after the abort',
         () async {

@@ -93,6 +93,7 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
               } else {
                 _selectedKeys.remove(key);
               }
+              _dataSource?.updateSelection(_selectedKeys);
             });
           },
         );

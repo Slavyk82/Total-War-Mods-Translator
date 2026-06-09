@@ -164,7 +164,11 @@ void main() {
           (i) => i.type == ValidationIssueType.missingVariables,
         );
         expect(variableIssue.severity, ValidationSeverity.error);
-        expect(variableIssue.autoFixable, true);
+        // Missing variables are report-only: auto-fixing by appending the
+        // placeholders at the end would corrupt game strings (placeholder
+        // position is significant), so this issue is intentionally NOT
+        // auto-fixable.
+        expect(variableIssue.autoFixable, false);
         expect(variableIssue.description, contains('{0}'));
         expect(variableIssue.description, contains('{1}'));
       });

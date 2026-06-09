@@ -25,6 +25,7 @@ import '../../../../services/service_locator.dart';
 import '../../../../utils/game_label.dart';
 import '../../providers/game_translation_providers.dart';
 import 'game_translation_creation_state.dart';
+import 'source_language_resolver.dart';
 import 'step_select_source.dart';
 import 'step_select_targets.dart';
 
@@ -141,6 +142,25 @@ class _CreateGameTranslationDialogState
 
       // Get target language names for the project name
       final langRepo = ref.read(languageRepositoryProvider);
+
+      // Defensive guard: never insert the source language as a translation
+      // target. Step 2 already filters it out of the picker, but pack file
+      // codes (cn, tw, jp, ...) do not match DB ISO codes (zh, ja, ...), so a
+      // stale/mismatched selection must never slip through here. Resolve the
+      // source pack to its DB language id and drop it from the targets.
+      final sourcePackCode = _state.selectedSourcePack?.languageCode;
+      if (sourcePackCode != null) {
+        final sourceDbCode =
+            SourceLanguageResolver.mapPackCodeToDbCode(sourcePackCode);
+        final sourceLangResult = await langRepo.getByCode(sourceDbCode);
+        if (sourceLangResult.isOk) {
+          _state.selectedLanguageIds.remove(sourceLangResult.unwrap().id);
+        }
+      }
+      if (_state.selectedLanguageIds.isEmpty) {
+        throw Exception(t.gameTranslation.wizard.errors.selectTargetLanguage);
+      }
+
       final targetLanguageNames = <String>[];
       for (final langId in _state.selectedLanguageIds) {
         final langResult = await langRepo.getById(langId);

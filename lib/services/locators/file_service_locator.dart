@@ -132,7 +132,6 @@ class FileServiceLocator {
         rpfmService: locator<IRpfmService>(),
         locParser: locator<ILocalizationParser>(),
         unitRepository: locator<TranslationUnitRepository>(),
-        versionRepository: locator<TranslationVersionRepository>(),
         languageRepository: locator<ProjectLanguageRepository>(),
         analysisCacheRepository: locator<ModUpdateAnalysisCacheRepository>(),
       ),

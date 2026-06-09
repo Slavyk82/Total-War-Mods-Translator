@@ -343,25 +343,18 @@ class ModUpdateAnalysisService {
 
       final total = analysis.modifiedUnitsCount;
 
-      // Step 1: Update source texts in translation_units
-      final updateResult = await _unitRepository.updateSourceTexts(
-        projectId: projectId,
-        sourceTextUpdates: analysis.modifiedSourceTexts,
-        onProgress: onProgress != null
-            ? (processed, batchTotal) =>
-                onProgress(processed, total, 'Updating source texts')
-            : null,
-      );
+      // These two writes are not wrapped in a single transaction (the repo
+      // helpers each autocommit), so ORDER matters for crash-safety. We reset
+      // the version statuses FIRST and update the source texts SECOND.
+      //
+      // If the second step fails or the process crashes between them, the
+      // units keep their OLD source_text, so the next Workshop scan still
+      // detects them as modified and re-applies both steps — the operation is
+      // self-healing. The reverse order (source first) would update
+      // source_text, making the unit no longer look "modified", so a failed
+      // status reset would never re-run, leaving a permanent inconsistency.
 
-      if (updateResult.isErr) {
-        return Err(ServiceException(
-          'Failed to update source texts: ${updateResult.error}',
-        ));
-      }
-
-      final sourceTextsUpdated = updateResult.value;
-
-      // Step 2: Reset status to pending for all translation versions of modified units
+      // Step 1: Reset status to pending for all translation versions of modified units
       final resetResult = await _versionRepository.resetStatusForUnitKeys(
         projectId: projectId,
         unitKeys: analysis.modifiedUnitKeys,
@@ -378,6 +371,25 @@ class ModUpdateAnalysisService {
       }
 
       final translationsReset = resetResult.value;
+
+      // Step 2: Update source texts in translation_units (last, so a failure
+      // here leaves the units still detectable as modified for a retry).
+      final updateResult = await _unitRepository.updateSourceTexts(
+        projectId: projectId,
+        sourceTextUpdates: analysis.modifiedSourceTexts,
+        onProgress: onProgress != null
+            ? (processed, batchTotal) =>
+                onProgress(processed, total, 'Updating source texts')
+            : null,
+      );
+
+      if (updateResult.isErr) {
+        return Err(ServiceException(
+          'Failed to update source texts: ${updateResult.error}',
+        ));
+      }
+
+      final sourceTextsUpdated = updateResult.value;
 
       _logger.info(
         'Applied mod update: $sourceTextsUpdated source texts updated, '
@@ -433,25 +445,28 @@ class ModUpdateAnalysisService {
 
       final languages = languagesResult.value;
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final total = analysis.newUnitsData.length;
-      int unitsAdded = 0;
-      int processed = 0;
-      int lastReportedProgress = 0;
 
-      // Report progress every ~100 units to avoid spamming the log
-      const progressReportInterval = 100;
+      // Fetch existing keys ONCE rather than a getByKey SELECT per unit.
+      // analysis already classified these as new; this single query is a
+      // defensive de-dup that also avoids N round-trips on the UI isolate.
+      final existingResult = await _unitRepository.getByProject(projectId);
+      if (existingResult.isErr) {
+        return Err(ServiceException(
+          'Failed to load existing units: ${existingResult.error}',
+        ));
+      }
+      final existingKeys = existingResult.value.map((u) => u.key).toSet();
 
+      // Build the units to insert, skipping keys that already exist or repeat
+      // within the incoming batch.
+      final unitsToInsert = <TranslationUnit>[];
+      final seenKeys = <String>{};
       for (final newUnit in analysis.newUnitsData) {
-        // Check if unit already exists (shouldn't happen but safety check)
-        final existingResult = await _unitRepository.getByKey(projectId, newUnit.key);
-        if (existingResult.isOk) {
+        if (existingKeys.contains(newUnit.key) || !seenKeys.add(newUnit.key)) {
           _logger.debug('Unit already exists, skipping: ${newUnit.key}');
-          processed++;
           continue;
         }
-
-        // Create translation unit
-        final unit = TranslationUnit(
+        unitsToInsert.add(TranslationUnit(
           id: _uuid.v4(),
           projectId: projectId,
           key: newUnit.key,
@@ -462,17 +477,27 @@ class ModUpdateAnalysisService {
           isObsolete: false,
           createdAt: now,
           updatedAt: now,
-        );
+        ));
+      }
 
-        // Insert the unit and one translation version per project language
-        // atomically. The per-version view-cache rows are materialized by an
-        // INSERT trigger, and the rest of the app assumes every unit has a
-        // complete set of versions. If any insert fails (or a scan is
-        // interrupted mid-loop), the whole transaction rolls back so we never
-        // leave a unit with a missing/partial set of versions — and we do not
-        // count it as added.
-        try {
-          await DatabaseService.transaction((txn) async {
+      if (unitsToInsert.isEmpty) {
+        _logger.info('No genuinely-new units to add for project $projectId');
+        return Ok(0);
+      }
+
+      final total = unitsToInsert.length;
+
+      // Insert every new unit and its per-language versions in a SINGLE
+      // transaction. Previously each unit ran its own getByKey SELECT plus its
+      // own transaction (N+1 round-trips), which made large-mod scans crawl on
+      // the UI isolate. ConflictAlgorithm.abort rolls the whole batch back if a
+      // key unexpectedly collides, so we never leave partial unit/version sets.
+      try {
+        await DatabaseService.transaction((txn) async {
+          var processed = 0;
+          var lastReportedProgress = 0;
+          const progressReportInterval = 100;
+          for (final unit in unitsToInsert) {
             await txn.insert(
               'translation_units',
               unit.toJson(),
@@ -498,32 +523,27 @@ class ModUpdateAnalysisService {
                 conflictAlgorithm: ConflictAlgorithm.abort,
               );
             }
-          });
-        } catch (e) {
-          // Transaction rolled back: the unit and any versions inserted for it
-          // were discarded. Skip it without counting it as added.
-          _logger.warning(
-            'Failed to insert new unit and its versions, rolled back: '
-            '${newUnit.key} ($e)',
-          );
-          processed++;
-          continue;
-        }
 
-        unitsAdded++;
-        processed++;
-
-        // Report progress at intervals to avoid spamming the log
-        if (onProgress != null &&
-            (processed - lastReportedProgress >= progressReportInterval ||
-                processed == total)) {
-          onProgress(processed, total);
-          lastReportedProgress = processed;
-        }
+            processed++;
+            if (onProgress != null &&
+                (processed - lastReportedProgress >= progressReportInterval ||
+                    processed == total)) {
+              onProgress(processed, total);
+              lastReportedProgress = processed;
+            }
+          }
+        });
+      } catch (e, stackTrace) {
+        _logger.error('Failed to insert new units, rolled back', e, stackTrace);
+        return Err(ServiceException(
+          'Failed to add new units: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ));
       }
 
-      _logger.info('Added $unitsAdded new units for project $projectId');
-      return Ok(unitsAdded);
+      _logger.info('Added $total new units for project $projectId');
+      return Ok(total);
     } catch (e, stackTrace) {
       _logger.error('Failed to add new units', e, stackTrace);
       return Err(ServiceException(

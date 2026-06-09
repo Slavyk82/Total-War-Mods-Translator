@@ -93,7 +93,11 @@ void main() {
         expect(result.isOk, true);
         expect(result.value.length, 1);
         expect(result.value.first.sourceTerm, 'cavalry');
-        verify(() => mockRepository.incrementUsageCount([entry.id])).called(1);
+        // findMatchingTerms is a pure read by default: it must NOT bump the
+        // persistent usage_count (that would inflate counts on every
+        // consistency/validation pass). Usage is only incremented on actual
+        // substitution, or when trackUsage:true is explicitly requested.
+        verifyNever(() => mockRepository.incrementUsageCount(any()));
       });
 
       test('should return empty list when no terms match', () async {

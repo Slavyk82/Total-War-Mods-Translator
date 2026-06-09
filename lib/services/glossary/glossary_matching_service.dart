@@ -25,6 +25,11 @@ class GlossaryMatchingService {
   /// [targetLanguageCode]: Target language code
   /// [glossaryIds]: Optional specific glossaries to search (null = all applicable)
   /// [gameCode]: Game code to restrict applicable glossaries (null = all games)
+  /// [trackUsage]: When true, persistently increments `usage_count` for matched
+  ///   entries. Defaults to false so that pure read paths (consistency checks,
+  ///   validation, previews) do NOT inflate usage statistics or churn
+  ///   `updated_at` (which feeds DeepL resync timestamp comparison). Real usage
+  ///   tracking happens in [applySubstitutions] at actual translation time.
   ///
   /// Returns list of matching glossary entries
   Future<Result<List<GlossaryEntry>, GlossaryException>> findMatchingTerms({
@@ -33,6 +38,7 @@ class GlossaryMatchingService {
     required String targetLanguageCode,
     List<String>? glossaryIds,
     String? gameCode,
+    bool trackUsage = false,
   }) async {
     try {
       // Get applicable glossaries
@@ -60,8 +66,10 @@ class GlossaryMatchingService {
       // Extract unique entries from matches
       final matchedEntries = matches.map((m) => m.entry).toSet().toList();
 
-      // Increment usage count for matched entries
-      if (matchedEntries.isNotEmpty) {
+      // Increment usage count ONLY when explicitly requested. Matching itself is
+      // a pure read; consistency/validation callers (trackUsage=false) must not
+      // bump usage_count/updated_at as a side effect.
+      if (trackUsage && matchedEntries.isNotEmpty) {
         final entryIds = matchedEntries.map((e) => e.id).toList();
         await _repository.incrementUsageCount(entryIds);
       }

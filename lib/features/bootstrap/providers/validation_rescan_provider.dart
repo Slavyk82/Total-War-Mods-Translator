@@ -46,13 +46,20 @@ class RescanState {
     bool? isNormalizing,
     int? normalizeProcessed,
     int? normalizeTotal,
+    // Explicit clear flags (cf. LlmCustomRule.clearProjectId): the
+    // null-coalescing idiom below cannot reset a nullable field back to null,
+    // so a stale error/plan/progress could never be cleared. These flags allow
+    // it. Default false keeps every existing caller backward-compatible.
+    bool clearError = false,
+    bool clearPlan = false,
+    bool clearProgress = false,
   }) =>
       RescanState(
-        plan: plan ?? this.plan,
-        progress: progress ?? this.progress,
+        plan: clearPlan ? null : (plan ?? this.plan),
+        progress: clearProgress ? null : (progress ?? this.progress),
         isRunning: isRunning ?? this.isRunning,
         isDone: isDone ?? this.isDone,
-        error: error ?? this.error,
+        error: clearError ? null : (error ?? this.error),
         isNormalizing: isNormalizing ?? this.isNormalizing,
         normalizeProcessed: normalizeProcessed ?? this.normalizeProcessed,
         normalizeTotal: normalizeTotal ?? this.normalizeTotal,
@@ -169,7 +176,9 @@ class ValidationRescanController extends _$ValidationRescanController {
   void start() {
     if (state.isRunning || state.plan == null || state.isDone) return;
     final svc = ref.read(validationRescanServiceProvider);
-    state = state.copyWith(isRunning: true);
+    // Clear any stale error from a previous failed attempt so a fresh run does
+    // not appear to start already-failed (the keepAlive controller is reused).
+    state = state.copyWith(isRunning: true, clearError: true);
     _sub = svc.run().listen(
       (p) => state = state.copyWith(progress: p),
       onError: (Object e) =>

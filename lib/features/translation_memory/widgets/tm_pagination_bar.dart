@@ -20,6 +20,17 @@ class TmPaginationBar extends ConsumerWidget {
     final tokens = context.tokens;
     final pageState = ref.watch(tmPageStateProvider);
     final filterState = ref.watch(tmFilterStateProvider);
+
+    // While a search is active the grid is driven by [tmSearchResultsProvider],
+    // which ignores page/offset and returns an unpaginated (capped) result set.
+    // The pagination controls and the "showing X-Y of Z" counts derive from the
+    // unfiltered [tmEntriesCountProvider], so they would be both non-functional
+    // (clicking a page does nothing) and misleading. Hide the bar entirely while
+    // a search is in effect so the UI stays coherent with what the grid shows.
+    if (filterState.searchText.trim().isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final countAsync = ref.watch(tmEntriesCountProvider(
       targetLang: filterState.targetLanguage,
     ));

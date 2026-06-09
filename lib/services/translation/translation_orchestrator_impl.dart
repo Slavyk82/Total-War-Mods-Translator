@@ -414,13 +414,22 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       }
 
       // Mark as completed
-      final successRate = units.isNotEmpty 
-          ? ((currentProgress.successfulUnits / units.length) * 100).round() 
+      // `successfulUnits` is only incremented by ValidationPersistenceHandler
+      // for LLM/cache translations. TM exact/fuzzy matches are persisted
+      // separately by TmLookupHandler and never bump `successfulUnits`, so we
+      // must add them back here to report true completion. We only count TM
+      // matches that were NOT also saved via the LLM path (defensive against
+      // any overlap) to avoid double-counting.
+      final tmOnlyMatched =
+          tmMatchedUnitIds.where((id) => !savedUnitIds.contains(id)).length;
+      final completedUnits = currentProgress.successfulUnits + tmOnlyMatched;
+      final successRate = units.isNotEmpty
+          ? ((completedUnits / units.length) * 100).round()
           : 0;
       final completedProgress = currentProgress.copyWith(
         status: TranslationProgressStatus.completed,
         currentPhase: TranslationPhase.completed,
-        phaseDetail: 'Batch complete: ${currentProgress.successfulUnits}/${units.length} translations ($successRate% success)',
+        phaseDetail: 'Batch complete: $completedUnits/${units.length} translations ($successRate% success)',
         processedUnits: units.length,
         timestamp: DateTime.now(),
       );
@@ -437,7 +446,8 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         projectLanguageId: context.projectLanguageId,
         batchNumber: batch?.batchNumber ?? 0,
         totalUnits: units.length,
-        completedUnits: completedProgress.successfulUnits,
+        // Include TM-matched units so dashboards reflect true completion.
+        completedUnits: completedUnits,
         failedUnits: completedProgress.failedUnits,
         processingDuration: processingDuration,
       ));
@@ -451,7 +461,8 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
         projectId: context.projectId,
         gameCode: null,
         payload: {
-          'count': completedProgress.successfulUnits,
+          // Include TM-matched units so the activity count matches completion.
+          'count': completedUnits,
           // Orchestrator handles LLM batches; manual flows bypass it.
           'method': 'llm',
           'projectName': null,
@@ -461,7 +472,10 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
       _logger.info('Batch translation completed', {
         'batchId': batchId,
         'totalUnits': units.length,
+        // `completedUnits` includes TM matches; `successfulUnits` is LLM/cache only.
+        'completedUnits': completedUnits,
         'successfulUnits': completedProgress.successfulUnits,
+        'tmMatchedUnits': tmOnlyMatched,
         'failedUnits': completedProgress.failedUnits,
         'tokensUsed': completedProgress.tokensUsed,
       });

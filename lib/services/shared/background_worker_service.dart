@@ -226,25 +226,15 @@ class BackgroundWorkerService {
 
   // Private methods
 
-  Future<void> _processQueue() async {
-    // Don't start more tasks if at max concurrency
-    if (_activeTasks.length >= maxConcurrentTasks) {
-      return;
-    }
-
-    // Get next task
-    if (_queue.isEmpty) {
-      return;
-    }
-
-    final task = _queue.removeFirst();
-
-    // Start task
-    await _executeTask(task);
-
-    // Process next task
-    if (_queue.isNotEmpty) {
-      _processQueue();
+  void _processQueue() {
+    // Fill every free concurrency slot. Tasks are launched WITHOUT awaiting
+    // them inline; awaiting here would serialize the queue and make
+    // maxConcurrentTasks meaningless. Each task removes itself from
+    // _activeTasks and calls _processQueue() again on completion (see
+    // _executeTask), so freed slots are refilled as tasks finish.
+    while (_activeTasks.length < maxConcurrentTasks && _queue.isNotEmpty) {
+      final task = _queue.removeFirst();
+      unawaited(_executeTask(task));
     }
   }
 

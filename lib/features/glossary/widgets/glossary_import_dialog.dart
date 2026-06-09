@@ -7,6 +7,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
+import '../../../providers/shared/repository_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../providers/glossary_providers.dart';
 
 /// Token-themed popup for importing a glossary from a CSV file.
@@ -26,7 +28,52 @@ class GlossaryImportDialog extends ConsumerStatefulWidget {
 class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
   String? _selectedFilePath;
   bool _skipDuplicates = true;
-  String _targetLanguage = 'fr';
+
+  /// The glossary's real target language code, resolved from its
+  /// target_language_id. Imported entries MUST use this code so they stay
+  /// scoped to the glossary's (game, language) pair and are not orphaned.
+  String? _resolvedLanguageCode;
+  bool _resolvingLanguage = true;
+  String? _languageError;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveGlossaryLanguage();
+  }
+
+  /// Resolve the glossary's target language code from its target_language_id.
+  Future<void> _resolveGlossaryLanguage() async {
+    try {
+      final service = ref.read(glossaryServiceProvider);
+      final glossaryResult = await service.getGlossaryById(widget.glossaryId);
+      if (glossaryResult.isErr) {
+        throw Exception(glossaryResult.error.message);
+      }
+      final glossary = glossaryResult.unwrap();
+
+      final langRepo = ref.read(languageRepositoryProvider);
+      final langResult = await langRepo.getById(glossary.targetLanguageId);
+      if (langResult.isErr) {
+        throw Exception(langResult.error.message);
+      }
+      final code = langResult.unwrap().code;
+
+      if (mounted) {
+        setState(() {
+          _resolvedLanguageCode = code;
+          _resolvingLanguage = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _languageError = '$e';
+          _resolvingLanguage = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,23 +95,7 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
             const SizedBox(height: 14),
             _sectionLabel(tokens, t.glossary.labels.targetLanguage),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String>(
-              initialValue: _targetLanguage,
-              style: tokens.fontBody.copyWith(
-                fontSize: 13,
-                color: tokens.text,
-              ),
-              dropdownColor: tokens.panel,
-              decoration: _inputDecoration(tokens, t.glossary.labels.targetLanguage),
-              items: _languageCodes.map((lang) {
-                return DropdownMenuItem(
-                  value: lang,
-                  child: Text(lang.toUpperCase()),
-                );
-              }).toList(),
-              onChanged: (value) =>
-                  setState(() => _targetLanguage = value ?? 'fr'),
-            ),
+            _buildResolvedLanguage(tokens),
             const SizedBox(height: 14),
             _sectionLabel(tokens, t.glossary.labels.options),
             const SizedBox(height: 6),
@@ -122,7 +153,11 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
           label: importState.isLoading ? t.glossary.actions.importing : t.glossary.actions.import,
           icon: FluentIcons.arrow_import_24_regular,
           filled: true,
-          onTap: importState.isLoading ? null : _import,
+          onTap: (importState.isLoading ||
+                  _resolvingLanguage ||
+                  _resolvedLanguageCode == null)
+              ? null
+              : _import,
         ),
       ],
     );
@@ -174,29 +209,41 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
     );
   }
 
-  InputDecoration _inputDecoration(TwmtThemeTokens tokens, String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle:
-          tokens.fontBody.copyWith(fontSize: 12, color: tokens.textDim),
-      floatingLabelStyle:
-          tokens.fontBody.copyWith(fontSize: 12, color: tokens.accent),
-      filled: true,
-      fillColor: tokens.panel2,
-      isDense: true,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(
+  /// Read-only display of the glossary's resolved target language. The user
+  /// cannot change it: imported entries are always scoped to the glossary's
+  /// own (game, language) pair.
+  Widget _buildResolvedLanguage(TwmtThemeTokens tokens) {
+    final String display;
+    if (_resolvingLanguage) {
+      display = '...';
+    } else if (_languageError != null) {
+      display = '-';
+    } else {
+      display = (_resolvedLanguageCode ?? '').toUpperCase();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: tokens.panel2,
+        border: Border.all(color: tokens.border),
         borderRadius: BorderRadius.circular(tokens.radiusSm),
-        borderSide: BorderSide(color: tokens.border),
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusSm),
-        borderSide: BorderSide(color: tokens.border),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.radiusSm),
-        borderSide: BorderSide(color: tokens.accent),
+      child: Row(
+        children: [
+          Icon(FluentIcons.local_language_24_regular,
+              color: tokens.accent, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              display,
+              style: tokens.fontBody.copyWith(
+                fontSize: 13,
+                color: tokens.text,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -295,26 +342,26 @@ class _GlossaryImportDialogState extends ConsumerState<GlossaryImportDialog> {
       return;
     }
 
+    // The target language is the glossary's own resolved language, never a
+    // free user choice — this keeps imported entries from being orphaned.
+    final code = _resolvedLanguageCode;
+    if (code == null || code.isEmpty) {
+      if (mounted) {
+        FluentToast.error(
+          context,
+          _languageError ?? t.glossary.actions.importing,
+        );
+      }
+      return;
+    }
+
     await ref.read(glossaryImportStateProvider.notifier).importCsv(
           glossaryId: widget.glossaryId,
           filePath: _selectedFilePath!,
-          targetLanguageCode: _targetLanguage,
+          targetLanguageCode: code,
           skipDuplicates: _skipDuplicates,
         );
   }
-
-  static const List<String> _languageCodes = [
-    'en',
-    'fr',
-    'de',
-    'es',
-    'it',
-    'pt',
-    'ru',
-    'zh',
-    'ja',
-    'ko',
-  ];
 }
 
 class _OptionToggle extends StatelessWidget {

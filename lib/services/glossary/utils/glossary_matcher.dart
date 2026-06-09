@@ -216,27 +216,38 @@ class GlossaryMatcher {
   }) {
     if (matches.isEmpty) return targetText;
 
-    // Sort matches by position (descending) to apply from end to start
-    // This prevents index shifting issues
-    final sortedMatches = List<GlossaryMatch>.from(matches)
-      ..sort((a, b) => b.startIndex.compareTo(a.startIndex));
-
-    String result = targetText;
-
-    for (final match in sortedMatches) {
-      // Find the corresponding position in target text
-      // This is a simplistic approach - in reality, translation may reorder words
-      // For now, we'll just do a case-insensitive search and replace
-      final sourceTermEscaped = RegExp.escape(match.matchedText);
-      final pattern = RegExp(
-        sourceTermEscaped,
-        caseSensitive: match.entry.caseSensitive,
-      );
-
-      result = result.replaceAll(pattern, match.entry.targetTerm);
+    // IMPORTANT: match.startIndex/endIndex are offsets into the SOURCE text,
+    // not the target (the two are different languages of different length), so
+    // they must NOT be used to splice targetText — doing so corrupts the
+    // translation or throws RangeError. Instead, search the target for each
+    // matched term and replace it. Word boundaries avoid partial-word hits
+    // (e.g. "cat" inside "category"); a single alternation pass prevents one
+    // substitution's output from matching another term (no cascading).
+    final replacements = <String, String>{}; // matchedText -> targetTerm (first wins)
+    for (final match in matches) {
+      final term = match.matchedText;
+      if (term.isEmpty) continue;
+      replacements.putIfAbsent(term, () => match.entry.targetTerm);
     }
+    if (replacements.isEmpty) return targetText;
 
-    return result;
+    // Longest terms first so a longer term wins over a shorter overlapping one.
+    final terms = replacements.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+
+    final pattern = RegExp(
+      r'(?<!\w)(' + terms.map(RegExp.escape).join('|') + r')(?!\w)',
+      caseSensitive: false,
+    );
+
+    return targetText.replaceAllMapped(pattern, (m) {
+      final matched = m.group(1)!;
+      final key = replacements.keys.firstWhere(
+        (k) => k.toLowerCase() == matched.toLowerCase(),
+        orElse: () => matched,
+      );
+      return replacements[key] ?? matched;
+    });
   }
 
   /// Highlight glossary terms in text (for UI display)

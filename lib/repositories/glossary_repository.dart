@@ -357,7 +357,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   }) async {
     final maps = await database.query(
       tableName,
-      where: 'glossary_id = ? AND target_language_code = ? AND source_term = ?',
+      where: 'glossary_id = ? '
+          'AND LOWER(target_language_code) = LOWER(?) '
+          'AND LOWER(TRIM(source_term)) = LOWER(TRIM(?))',
       whereArgs: [glossaryId, targetLanguageCode, sourceTerm],
       limit: 1,
     );
@@ -545,7 +547,11 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
   /// Check if a mapping needs resync.
   ///
-  /// Returns true if the glossary entries were updated after the last sync.
+  /// Returns true if the glossary entries were updated after the last sync,
+  /// OR if the number of entries differs from the count captured at sync
+  /// time. The count check is what detects DELETIONS: removing an entry
+  /// touches no sibling's updated_at, so MAX(updated_at) alone would let the
+  /// DeepL-side glossary keep removed terms forever.
   Future<bool> doesMappingNeedResync({
     required String twmtGlossaryId,
     required String sourceLanguageCode,
@@ -558,6 +564,16 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     );
 
     if (mapping == null) return true;
+
+    // Deletions (and missed inserts) show up as a count mismatch against the
+    // entry_count persisted when the DeepL glossary was created.
+    final currentEntryCount = await getEntryCountForLanguage(
+      glossaryId: twmtGlossaryId,
+      targetLanguageCode: targetLanguageCode,
+    );
+    if (currentEntryCount != mapping.entryCount) {
+      return true;
+    }
 
     // Check if any entries were updated after the last sync
     // Case-insensitive comparison for language codes
@@ -573,6 +589,26 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
 
     final lastUpdated = result.first['last_updated'] as int;
     return lastUpdated > mapping.syncedAt;
+  }
+
+  /// Count glossaries whose target language is [languageId].
+  ///
+  /// Used as a pre-check before deleting a language: `glossaries` holds an
+  /// `ON DELETE RESTRICT` FK to `languages`, so a leftover glossary (e.g.
+  /// auto-provisioned when the language was attached to a project) blocks
+  /// the delete.
+  Future<Result<int, TWMTDatabaseException>> countByTargetLanguageId(
+      String languageId) async {
+    return executeQuery(() async {
+      final result = await database.rawQuery('''
+        SELECT COUNT(*) as count
+        FROM $glossaryTableName
+        WHERE target_language_id = ?
+      ''', [languageId]);
+
+      final count = result.firstOrNull?['count'];
+      return count is int ? count : 0;
+    });
   }
 
   /// Get the count of entries for a specific language pair.

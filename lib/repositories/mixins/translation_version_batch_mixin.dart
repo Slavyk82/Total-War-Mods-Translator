@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/translation_version.dart';
+import '../../services/database/translation_version_triggers.dart';
 
 /// Mixin providing batch operations for translation versions.
 ///
@@ -297,7 +298,10 @@ mixin TranslationVersionBatchMixin {
 
         if (disableTriggers) {
           // Step 3: Rebuild FTS / cache / progress in set-based SQL.
-          final now = DateTime.now().millisecondsSinceEpoch;
+          // `*_at` columns store Unix SECONDS everywhere (triggers use
+          // strftime('%s','now')); writing milliseconds here would push
+          // timestamps ~1000x into the future and corrupt recency sorting.
+          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
           onProgress?.call(total, total, 'Rebuilding search index...');
 
           const rebuildChunkSize = 500;
@@ -363,62 +367,10 @@ mixin TranslationVersionBatchMixin {
         }
       } finally {
         if (disableTriggers) {
-          await txn.execute('''
-            CREATE TRIGGER trg_update_project_language_progress
-            AFTER UPDATE ON translation_versions
-            WHEN NEW.status != OLD.status
-            BEGIN
-              UPDATE project_languages
-              SET progress_percent = (
-                SELECT
-                  CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
-                  NULLIF(COUNT(*), 0)
-                FROM translation_versions tv
-                INNER JOIN translation_units tu ON tv.unit_id = tu.id
-                WHERE tv.project_language_id = NEW.project_language_id
-                  AND tu.is_obsolete = 0
-              ),
-              updated_at = strftime('%s', 'now')
-              WHERE id = NEW.project_language_id;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_translation_versions_fts_insert
-            AFTER INSERT ON translation_versions
-            WHEN new.translated_text IS NOT NULL
-            BEGIN
-              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-              VALUES (new.translated_text, new.validation_issues, new.id);
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_translation_versions_fts_update
-            AFTER UPDATE OF translated_text, validation_issues ON translation_versions
-            BEGIN
-              DELETE FROM translation_versions_fts WHERE version_id = old.id;
-              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-              SELECT new.translated_text, new.validation_issues, new.id
-              WHERE new.translated_text IS NOT NULL;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_update_cache_on_version_change
-            AFTER UPDATE ON translation_versions
-            BEGIN
-              UPDATE translation_view_cache
-              SET translated_text = new.translated_text,
-                  status = new.status,
-                  confidence_score = NULL,
-                  is_manually_edited = new.is_manually_edited,
-                  version_id = new.id,
-                  version_updated_at = new.updated_at
-              WHERE unit_id = new.unit_id
-                AND project_language_id = new.project_language_id;
-            END
-          ''');
+          // Recreate from the single canonical source so the live triggers
+          // stay identical to schema.sql (a previous inline copy omitted the
+          // projects.updated_at bump, permanently degrading the trigger).
+          await TranslationVersionTriggers.recreateAll(txn);
         }
       }
 
@@ -452,7 +404,7 @@ mixin TranslationVersionBatchMixin {
       return Ok((inserted: 0, updated: 0, skipped: 0));
     }
 
-    return executeTransaction((txn) async {
+    final result = await executeTransaction((txn) async {
       final total = entities.length;
       int inserted = 0;
       int updated = 0;
@@ -470,15 +422,20 @@ mixin TranslationVersionBatchMixin {
       }
 
       try {
-        // Process in batches
+        // Process in batches.
+        // `*_at` columns store Unix SECONDS (see trigger strftime('%s','now')),
+        // so timestamps written here MUST be divided by 1000.
         const batchSize = 500;
-        final now = DateTime.now().millisecondsSinceEpoch;
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
         for (var i = 0; i < entities.length; i += batchSize) {
-          // Check for cancellation at batch boundaries
+          // Check for cancellation at batch boundaries.
+          // Throw (instead of returning) so the ENTIRE transaction rolls back
+          // atomically. A bare `return` here commits the rows written so far
+          // while skipping the FTS/cache/progress rebuild below, leaving the
+          // search index and editor grid silently out of sync with the data.
           if (isCancelled?.call() == true) {
-            // Return partial results
-            return (inserted: inserted, updated: updated, skipped: entities.length - i + skipped);
+            throw TWMTDatabaseException(_batchImportCancelledSentinel);
           }
 
           final batchEnd = (i + batchSize).clamp(0, entities.length);
@@ -603,67 +560,26 @@ mixin TranslationVersionBatchMixin {
         }
       } finally {
         if (disableTriggers) {
-          // Recreate all triggers
-          await txn.execute('''
-            CREATE TRIGGER trg_update_project_language_progress
-            AFTER UPDATE ON translation_versions
-            WHEN NEW.status != OLD.status
-            BEGIN
-              UPDATE project_languages
-              SET progress_percent = (
-                SELECT
-                  CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
-                  NULLIF(COUNT(*), 0)
-                FROM translation_versions tv
-                INNER JOIN translation_units tu ON tv.unit_id = tu.id
-                WHERE tv.project_language_id = NEW.project_language_id
-                  AND tu.is_obsolete = 0
-              ),
-              updated_at = strftime('%s', 'now')
-              WHERE id = NEW.project_language_id;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_translation_versions_fts_insert
-            AFTER INSERT ON translation_versions
-            WHEN new.translated_text IS NOT NULL
-            BEGIN
-              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-              VALUES (new.translated_text, new.validation_issues, new.id);
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_translation_versions_fts_update
-            AFTER UPDATE OF translated_text, validation_issues ON translation_versions
-            BEGIN
-              DELETE FROM translation_versions_fts WHERE version_id = old.id;
-              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-              SELECT new.translated_text, new.validation_issues, new.id
-              WHERE new.translated_text IS NOT NULL;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_update_cache_on_version_change
-            AFTER UPDATE ON translation_versions
-            BEGIN
-              UPDATE translation_view_cache
-              SET translated_text = new.translated_text,
-                  status = new.status,
-                  confidence_score = NULL,
-                  is_manually_edited = new.is_manually_edited,
-                  version_id = new.id,
-                  version_updated_at = new.updated_at
-              WHERE unit_id = new.unit_id
-                AND project_language_id = new.project_language_id;
-            END
-          ''');
+          // Recreate from the single canonical source so the live triggers
+          // stay identical to schema.sql (a previous inline copy omitted the
+          // projects.updated_at bump, permanently degrading the trigger).
+          await TranslationVersionTriggers.recreateAll(txn);
         }
       }
 
       return (inserted: inserted, updated: updated, skipped: skipped);
     });
+
+    // A cancellation rolled the whole transaction back, so nothing was
+    // written: report it as "no changes" rather than a database error.
+    if (result.isErr &&
+        result.unwrapErr().message == _batchImportCancelledSentinel) {
+      return Ok((inserted: 0, updated: 0, skipped: entities.length));
+    }
+    return result;
   }
 }
+
+/// Internal sentinel message used to abort [TranslationVersionBatchMixin]'s
+/// `importBatch` transaction on cancellation so it rolls back atomically.
+const String _batchImportCancelledSentinel = '__twmt_batch_import_cancelled__';

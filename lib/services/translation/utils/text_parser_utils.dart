@@ -76,36 +76,42 @@ class TextParserUtils {
   ///
   /// Excludes printf-style placeholders like `[%s]` which are variables, not tags
   static List<String> extractMarkupTags(String text) {
-    final tags = <String>[];
+    // Collect every match across the three patterns together with its start
+    // offset, then sort by start index so the tags are returned in DOCUMENT
+    // ORDER. areTagsBalanced is a stack-based nesting check that depends on
+    // the true left-to-right sequence; grouping tags by type would mask real
+    // imbalances of interleaved tags (e.g. `[[col:red]]<b>text[[/col]]</b>`).
+    final entries = <({int start, String tag})>[];
 
     // XML tags: <tag>, </tag>, <tag attr="value">
     final xmlPattern = RegExp(r'<[^>]+>');
-    tags.addAll(
-      xmlPattern.allMatches(text).map((m) => m.group(0)!),
-    );
+    for (final match in xmlPattern.allMatches(text)) {
+      entries.add((start: match.start, tag: match.group(0)!));
+    }
 
     // Double-bracket tags: [[tag:value]], [[/tag]]
     // Must be checked BEFORE single-bracket pattern to avoid partial matches
     final doubleBracketPattern = RegExp(r'\[\[[^\]]+\]\]');
-    tags.addAll(
-      doubleBracketPattern.allMatches(text).map((m) => m.group(0)!),
-    );
+    for (final match in doubleBracketPattern.allMatches(text)) {
+      entries.add((start: match.start, tag: match.group(0)!));
+    }
 
     // Single BBCode tags: [tag], [/tag], [tag=value]
     // Use negative lookbehind/lookahead to avoid matching double brackets
     // Match [ but not [[, and ] but not ]]
     // Exclude [%s], [%d], [%f] which are printf-style placeholders, not tags
     final bbcodePattern = RegExp(r'(?<!\[)\[[^\[\]]+\](?!\])');
-    final matches = bbcodePattern.allMatches(text);
-
-    for (final match in matches) {
+    for (final match in bbcodePattern.allMatches(text)) {
       final tag = match.group(0)!;
       // Skip if this is a bracketed printf placeholder
       if (!RegExp(r'^\[%[sdf]\]$').hasMatch(tag)) {
-        tags.add(tag);
+        entries.add((start: match.start, tag: tag));
       }
     }
 
-    return tags;
+    // Sort by start offset to restore document order before returning.
+    entries.sort((a, b) => a.start.compareTo(b.start));
+
+    return entries.map((e) => e.tag).toList();
   }
 }

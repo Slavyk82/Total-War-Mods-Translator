@@ -97,8 +97,27 @@ const Map<String, String> legacyRedirects = {
 /// Pure redirect function. Returns the new path or `null` if no redirect
 /// applies. Matches the longest legacy prefix so
 /// `/projects/abc/editor/fr` → `/work/projects/abc/editor/fr`.
-String? appRouterRedirect(String path) {
-  if (path == '/') return legacyRedirects['/'];
+///
+/// [path] is the request path (no query/fragment). [uri], when supplied, is the
+/// full request URI; its query string and fragment are re-appended to the
+/// rewritten path so legacy deep-links carrying e.g. `?filter=...` keep their
+/// parameters across the migration. Passing only [path] (query/fragment lost)
+/// remains supported for backward compatibility.
+String? appRouterRedirect(String path, {Uri? uri}) {
+  // Re-attach the original query string and fragment (if any) to a rewritten
+  // path so the target screen mounts with its intended filter/state.
+  String withQuery(String newPath) {
+    if (uri == null) return newPath;
+    final suffix = StringBuffer();
+    if (uri.query.isNotEmpty) suffix.write('?${uri.query}');
+    if (uri.fragment.isNotEmpty) suffix.write('#${uri.fragment}');
+    return '$newPath$suffix';
+  }
+
+  if (path == '/') {
+    final root = legacyRedirects['/'];
+    return root == null ? null : withQuery(root);
+  }
 
   String? bestMatch;
   int bestLen = 0;
@@ -108,7 +127,7 @@ String? appRouterRedirect(String path) {
       if (legacy.length > bestLen) {
         bestLen = legacy.length;
         final tail = path.substring(legacy.length);
-        bestMatch = '$newPrefix$tail';
+        bestMatch = withQuery('$newPrefix$tail');
       }
     }
   });
@@ -121,7 +140,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.rootRedirect,
     debugLogDiagnostics: true,
-    redirect: (context, state) => appRouterRedirect(state.uri.path),
+    redirect: (context, state) =>
+        appRouterRedirect(state.uri.path, uri: state.uri),
     routes: [
       // Shell route - wraps all main screens with MainLayoutRouter
       ShellRoute(

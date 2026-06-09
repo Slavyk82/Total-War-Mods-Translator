@@ -13,6 +13,7 @@ import '../../../projects/providers/projects_screen_providers.dart';
 import '../../../settings/providers/language_settings_providers.dart';
 import 'add_language_wizard_dialog.dart';
 import 'game_translation_creation_state.dart';
+import 'source_language_resolver.dart';
 
 /// Step 2: select target languages for translation.
 ///
@@ -86,12 +87,32 @@ class StepSelectTargets extends ConsumerWidget {
         // Languages list
         languagesAsync.when(
           data: (languages) {
-            // Filter out the source language
-            final sourceCode =
-                state.selectedSourcePack?.languageCode.toLowerCase();
-            final availableLanguages = languages
-                .where((lang) => lang.code.toLowerCase() != sourceCode)
-                .toList();
+            // Filter out the source language by a STABLE identity.
+            //
+            // The pack's `languageCode` is a Total War file code (cn, tw, jp,
+            // kr, cz, br, ...) which does NOT match the DB's ISO codes (zh, ja,
+            // ko, cs, pt, ...). Comparing the raw pack code to DB codes leaves
+            // the source selectable as a target (e.g. local_cn.pack: 'zh' !=
+            // 'cn'). Resolve the pack to its DB Language first, then exclude by
+            // language.id.
+            final sourceLanguage = SourceLanguageResolver.resolve(
+              languages,
+              state.selectedSourcePack,
+            );
+            // Fallback: if the source language is not in the list (e.g. a
+            // custom language the user has not added), exclude by the mapped DB
+            // code so we still never offer the source as a target.
+            final fallbackCode = state.selectedSourcePack == null
+                ? null
+                : SourceLanguageResolver.mapPackCodeToDbCode(
+                    state.selectedSourcePack!.languageCode,
+                  );
+            final availableLanguages = languages.where((lang) {
+              if (sourceLanguage != null) {
+                return lang.id != sourceLanguage.id;
+              }
+              return lang.code.toLowerCase() != fallbackCode;
+            }).toList();
 
             if (availableLanguages.isEmpty) {
               return _buildNoLanguages(tokens);

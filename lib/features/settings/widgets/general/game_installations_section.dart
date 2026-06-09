@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -35,6 +37,32 @@ class GameInstallationsSection extends ConsumerStatefulWidget {
 class _GameInstallationsSectionState
     extends ConsumerState<GameInstallationsSection> {
   bool _isDetecting = false;
+
+  // Debounce the game-path text field. Each keystroke would otherwise call
+  // [updateGamePath], which writes to the DB, invalidates the settings provider
+  // (re-reading ~15 keys), and triggers glossary auto-provisioning for the
+  // half-typed path. Typing is coalesced into a single save per game after a
+  // short idle delay; non-typing callers (browse / auto-detect) save
+  // immediately since those produce a complete, validated path.
+  static const Duration _gamePathDebounce = Duration(milliseconds: 600);
+  final Map<String, Timer> _gamePathDebounceTimers = {};
+
+  /// Debounced save used by the text field's onChanged (per-keystroke input).
+  void _onGamePathChanged(String gameCode, String path) {
+    _gamePathDebounceTimers[gameCode]?.cancel();
+    _gamePathDebounceTimers[gameCode] = Timer(_gamePathDebounce, () {
+      if (mounted) _saveGamePath(gameCode, path);
+    });
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _gamePathDebounceTimers.values) {
+      timer.cancel();
+    }
+    _gamePathDebounceTimers.clear();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +145,7 @@ class _GameInstallationsSectionState
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
-            onChanged: (value) => _saveGamePath(game.code, value),
+            onChanged: (value) => _onGamePathChanged(game.code, value),
           ),
         ),
       ],
@@ -213,6 +241,9 @@ class _GameInstallationsSectionState
   // === Save Methods ===
 
   Future<void> _saveGamePath(String gameCode, String path) async {
+    // Cancel any pending debounced keystroke save for this game so a stale
+    // partial-path timer cannot fire after an immediate (browse/detect) save.
+    _gamePathDebounceTimers.remove(gameCode)?.cancel();
     try {
       await ref
           .read(generalSettingsProvider.notifier)

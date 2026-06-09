@@ -88,7 +88,21 @@ class FtsQueryBuilder {
     // Sanitize FTS5 query to prevent SQL injection
     final sanitizedQuery = _sanitizeFtsQuery(ftsQuery);
 
-    final filterClause = _buildFilterClause(filter, tablePrefix: 'tv');
+    // Scope the MATCH to the translated_text column only.
+    //
+    // `translation_versions_fts` indexes two columns: translated_text (col 0)
+    // and validation_issues (col 1) (see schema.sql). An unqualified MATCH
+    // would also match against the validation_issues JSON, producing false
+    // positives. FTS5 column-filter syntax `{col} : <query>` restricts the
+    // match to that column. The snippet() below already targets col 0
+    // (translated_text), so highlighting stays consistent.
+    final scopedQuery = '{translated_text} : $sanitizedQuery';
+
+    // translation_versions has no language_code/project_id/file_name columns:
+    // language is reached via project_languages -> languages, and
+    // project_id/file_name live on translation_units. Use a version-specific
+    // filter clause that routes each predicate to the correct table/alias.
+    final filterClause = _buildVersionFilterClause(filter);
     final limitClause = _buildLimitClause(limit, offset);
 
     return '''
@@ -96,7 +110,7 @@ class FtsQueryBuilder {
         tv.id,
         tu.project_id,
         p.name as project_name,
-        tv.language_code,
+        l.code as language_code,
         l.name as language_name,
         tu.key,
         tu.source_text,
@@ -110,8 +124,9 @@ class FtsQueryBuilder {
       INNER JOIN translation_versions tv ON fts.version_id = tv.id
       INNER JOIN translation_units tu ON tv.unit_id = tu.id
       LEFT JOIN projects p ON tu.project_id = p.id
-      LEFT JOIN languages l ON tv.language_code = l.code
-      WHERE translation_versions_fts MATCH '$sanitizedQuery'
+      LEFT JOIN project_languages pl ON tv.project_language_id = pl.id
+      LEFT JOIN languages l ON pl.language_id = l.id
+      WHERE translation_versions_fts MATCH '$scopedQuery'
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
       ORDER BY rank DESC
       $limitClause
@@ -159,6 +174,12 @@ class FtsQueryBuilder {
         tm.created_at,
         tm.last_used_at,
         fts.rank,
+        -- NOTE: translation_memory_fts indexes source_text (col 0) and
+        -- translated_text (col 1); the MATCH below intentionally spans BOTH
+        -- columns (TM lookups search either side). The snippet() is hardcoded
+        -- to col 1 (translated_text), so when a hit is only in source_text the
+        -- highlight may be empty/unhighlighted. Per-column snippet selection is
+        -- left out deliberately to keep this query simple.
         snippet(translation_memory_fts, 1, '<mark>', '</mark>', '...', 10) as highlighted
       FROM translation_memory_fts fts
       INNER JOIN translation_memory tm ON fts.rowid = tm.rowid
@@ -230,6 +251,12 @@ class FtsQueryBuilder {
   /// - [tablePrefix]: Table alias prefix (e.g., 'tu', 'tv')
   ///
   /// Returns: SQL WHERE conditions (without 'WHERE' keyword) or empty string
+  ///
+  /// Used by the translation_units (source-text) query only. translation_units
+  /// has no `status` or `language_code` column — those predicates belong to
+  /// translation_versions — so they are intentionally NOT emitted here (doing
+  /// so would raise "no such column"). Use [_buildVersionFilterClause] for the
+  /// versions query.
   static String _buildFilterClause(
     SearchFilter? filter, {
     String tablePrefix = 't',
@@ -245,20 +272,6 @@ class FtsQueryBuilder {
       final placeholders =
           filter.projectIds!.map((id) => "'${_escapeSql(id)}'").join(', ');
       conditions.add('$tablePrefix.project_id IN ($placeholders)');
-    }
-
-    // Language code filter
-    if (filter.languageCodes != null && filter.languageCodes!.isNotEmpty) {
-      final placeholders =
-          filter.languageCodes!.map((code) => "'${_escapeSql(code)}'").join(', ');
-      conditions.add('$tablePrefix.language_code IN ($placeholders)');
-    }
-
-    // Status filter
-    if (filter.statuses != null && filter.statuses!.isNotEmpty) {
-      final placeholders =
-          filter.statuses!.map((s) => "'${_escapeSql(s)}'").join(', ');
-      conditions.add('$tablePrefix.status IN ($placeholders)');
     }
 
     // File name filter
@@ -280,6 +293,58 @@ class FtsQueryBuilder {
     }
 
     // Relevance score filter
+    if (filter.minRelevanceScore != null) {
+      conditions.add('rank >= ${filter.minRelevanceScore}');
+    }
+
+    return conditions.join(' AND ');
+  }
+
+  /// Build a WHERE clause for the translation_versions search query.
+  ///
+  /// Routes each predicate to the table/alias that actually holds the column:
+  /// - project_id / file_name -> translation_units (`tu`)
+  /// - language code          -> languages (`l.code`, via project_languages)
+  /// - status / created_at    -> translation_versions (`tv`)
+  static String _buildVersionFilterClause(SearchFilter? filter) {
+    if (filter == null || filter.isEmpty) {
+      return '';
+    }
+
+    final conditions = <String>[];
+
+    if (filter.projectIds != null && filter.projectIds!.isNotEmpty) {
+      final placeholders =
+          filter.projectIds!.map((id) => "'${_escapeSql(id)}'").join(', ');
+      conditions.add('tu.project_id IN ($placeholders)');
+    }
+
+    if (filter.languageCodes != null && filter.languageCodes!.isNotEmpty) {
+      final placeholders =
+          filter.languageCodes!.map((code) => "'${_escapeSql(code)}'").join(', ');
+      conditions.add('l.code IN ($placeholders)');
+    }
+
+    if (filter.statuses != null && filter.statuses!.isNotEmpty) {
+      final placeholders =
+          filter.statuses!.map((s) => "'${_escapeSql(s)}'").join(', ');
+      conditions.add('tv.status IN ($placeholders)');
+    }
+
+    if (filter.fileNames != null && filter.fileNames!.isNotEmpty) {
+      final placeholders =
+          filter.fileNames!.map((f) => "'${_escapeSql(f)}'").join(', ');
+      conditions.add('tu.file_name IN ($placeholders)');
+    }
+
+    if (filter.minDate != null) {
+      conditions.add('tv.created_at >= ${filter.minDate!.millisecondsSinceEpoch}');
+    }
+
+    if (filter.maxDate != null) {
+      conditions.add('tv.created_at <= ${filter.maxDate!.millisecondsSinceEpoch}');
+    }
+
     if (filter.minRelevanceScore != null) {
       conditions.add('rank >= ${filter.minRelevanceScore}');
     }
@@ -359,11 +424,16 @@ class FtsQueryBuilder {
       );
     }
 
-    // 2. Escape FTS5 special characters and SQL quotes
-    // FTS5 special chars: " * - ( ) [ ] { }
+    // 2. Escape SQL quotes only.
+    //
+    // The MATCH value is interpolated inside SINGLE quotes ('$sanitizedQuery'),
+    // so only the single quote needs doubling for SQL safety. We MUST NOT
+    // double the double quote: in FTS5, `"..."` denotes a phrase query, and
+    // doubling it (`""cavalry unit""`) corrupts the phrase syntax. Double
+    // quotes are safe to leave intact because they are not the SQL string
+    // delimiter here.
     var sanitized = query
-        .replaceAll('"', '""')  // Escape double quotes
-        .replaceAll("'", "''")  // Escape single quotes
+        .replaceAll("'", "''")  // Escape single quotes (SQL safety)
         .trim();
 
     // 3. Validate length (prevent DoS via extremely long queries)
