@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
@@ -209,16 +210,47 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
     }
   }
 
-  /// Load language flag from assets
+  /// Maps language codes whose flag asset is filed under a different name.
+  ///
+  /// Flag files use ISO-639-1 / region codes (e.g. `br.png`, `ja.png`,
+  /// `cs.png`), but target/game language codes use variants that don't match
+  /// the file name 1:1 — e.g. Brazilian Portuguese is `ptbr` (file `br.png`),
+  /// and Total War's pack codes are `jp`/`kr`/`cz`/`cn`/`tw`.
+  static const Map<String, String> _flagCodeAliases = {
+    'ptbr': 'br',
+    'pt-br': 'br',
+    'pt_br': 'br',
+    'jp': 'ja',
+    'kr': 'ko',
+    'cz': 'cs',
+    'cn': 'zh',
+    'tw': 'zh',
+  };
+
+  /// Resolves the flag asset file name (without extension) for a language code,
+  /// applying [_flagCodeAliases] for variant codes (e.g. `ptbr` -> `br`).
+  @visibleForTesting
+  static String flagCodeFor(String languageCode) {
+    final normalized = languageCode.toLowerCase();
+    return _flagCodeAliases[normalized] ?? normalized;
+  }
+
+  /// Load language flag from assets.
+  ///
+  /// Resolves the flag file name from [languageCode], applying
+  /// [_flagCodeAliases] for variant codes. Returns null (and the caller skips
+  /// the flag overlay) when no matching flag exists.
   Future<img.Image?> _loadFlag(String languageCode) async {
+    final flagCode = flagCodeFor(languageCode);
     try {
-      final assetPath = 'assets/flags/${languageCode.toLowerCase()}.png';
+      final assetPath = 'assets/flags/$flagCode.png';
       final ByteData data = await rootBundle.load(assetPath);
       final Uint8List bytes = data.buffer.asUint8List();
       return img.decodePng(bytes);
     } catch (e) {
       _logger.warning('Failed to load flag asset', {
         'languageCode': languageCode,
+        'flagCode': flagCode,
         'error': e.toString(),
       });
       return null;
