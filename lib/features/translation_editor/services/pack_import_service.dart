@@ -302,8 +302,12 @@ class PackImportService {
         ));
       }
 
-      // Build TranslationVersion entities and existingVersionIds map
-      final now = DateTime.now().millisecondsSinceEpoch;
+      // Build TranslationVersion entities and existingVersionIds map.
+      // Timestamps are stored in SECONDS across the app (everywhere else uses
+      // `~/ 1000`); writing milliseconds here polluted version_updated_at and
+      // skewed recency sorting. Keep a millisecond value only for the id suffix.
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final now = nowMs ~/ 1000;
       final entities = <TranslationVersion>[];
       final existingVersionIds = <String, String>{};
 
@@ -321,7 +325,7 @@ class PackImportService {
         } else {
           // Create new version
           entities.add(TranslationVersion(
-            id: '${now}_${entry.unit.id}',
+            id: '${nowMs}_${entry.unit.id}',
             unitId: entry.unit.id,
             projectLanguageId: projectLanguage.id,
             translatedText: entry.importedValue,
