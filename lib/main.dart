@@ -24,6 +24,7 @@ import 'package:twmt/features/release_notes/providers/release_notes_providers.da
 import 'package:twmt/features/release_notes/widgets/release_notes_dialog.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
+import 'package:twmt/widgets/logs/log_console_overlay.dart';
 
 void main() async {
   // Everything that touches the Flutter bindings must run inside the same
@@ -148,7 +149,14 @@ class MyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: theme,
       routerConfig: router,
-      builder: (context, child) => _AppStartupTasks(child: child!),
+      builder: (context, child) => _AppStartupTasks(
+        child: Stack(
+          children: [
+            child!,
+            const LogConsoleOverlay(),
+          ],
+        ),
+      ),
     );
   }
 }
