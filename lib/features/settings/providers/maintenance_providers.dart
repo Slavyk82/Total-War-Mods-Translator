@@ -238,6 +238,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
 
       final result = await tmService.rebuildFromTranslations(
         onProgress: (processed, total, added) {
+          if (!ref.mounted) return;
           final percent = total > 0 ? ((processed / total) * 100).round() : 0;
           state = state.copyWith(
             progressMessage: 'Processing: $percent% ($processed/$total, $added added)',
@@ -259,6 +260,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
         },
       );
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -274,6 +276,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     } catch (e, stackTrace) {
       _logging.error('Translation Memory rebuild failed', e, stackTrace);
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -300,6 +303,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
 
       final result = await tmService.migrateLegacyHashes(
         onProgress: (processed, total) {
+          if (!ref.mounted) return;
           final percent = total > 0 ? ((processed / total) * 100).round() : 0;
           state = state.copyWith(
             progressMessage: 'Migrating: $percent% ($processed/$total)',
@@ -315,6 +319,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
 
       _logging.info('Legacy hash migration complete', {'processed': processed});
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -329,6 +334,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     } catch (e, stackTrace) {
       _logging.error('Legacy hash migration failed', e, stackTrace);
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,

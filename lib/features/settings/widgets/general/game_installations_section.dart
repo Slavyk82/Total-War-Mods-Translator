@@ -146,8 +146,10 @@ class _GameInstallationsSectionState
       result.when(
         ok: (path) {
           if (path != null) {
-            setState(() =>
-                widget.gamePathControllers[gameCode]?.text = path);
+            if (mounted) {
+              setState(() =>
+                  widget.gamePathControllers[gameCode]?.text = path);
+            }
             _saveGamePath(gameCode, path);
             if (mounted) {
               FluentToast.success(
@@ -168,7 +170,7 @@ class _GameInstallationsSectionState
         },
       );
     } finally {
-      setState(() => _isDetecting = false);
+      if (mounted) setState(() => _isDetecting = false);
     }
   }
 
@@ -179,11 +181,13 @@ class _GameInstallationsSectionState
       final result = await detectionService.detectAllGames();
       result.when(
         ok: (detectedGames) {
-          setState(() {
-            for (final entry in detectedGames.entries) {
-              widget.gamePathControllers[entry.key]?.text = entry.value;
-            }
-          });
+          if (mounted) {
+            setState(() {
+              for (final entry in detectedGames.entries) {
+                widget.gamePathControllers[entry.key]?.text = entry.value;
+              }
+            });
+          }
           for (final entry in detectedGames.entries) {
             _saveGamePath(entry.key, entry.value);
           }
@@ -202,7 +206,7 @@ class _GameInstallationsSectionState
         },
       );
     } finally {
-      setState(() => _isDetecting = false);
+      if (mounted) setState(() => _isDetecting = false);
     }
   }
 

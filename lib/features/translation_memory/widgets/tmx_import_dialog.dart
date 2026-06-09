@@ -384,6 +384,7 @@ class _TmxImportDialogState extends ConsumerState<TmxImportDialog> {
           filePath: _selectedFilePath!,
           overwriteExisting: _overwriteExisting,
           onProgress: (processed, total) {
+            if (!mounted) return;
             setState(() {
               _processedEntries = processed;
               _totalEntries = total;
