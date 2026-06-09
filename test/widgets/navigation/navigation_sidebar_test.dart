@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:twmt/providers/log_window_provider.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/navigation/navigation_sidebar.dart';
 
@@ -190,5 +191,43 @@ void main() {
     _drainOverflowExceptions(tester);
 
     expect(navigatedTo, '/resources/glossary');
+  });
+
+  testWidgets('renders Logs button and toggles the log window',
+      (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    final router = GoRouter(
+      initialLocation: '/system/settings',
+      routes: [
+        GoRoute(
+          path: '/system/settings',
+          builder: (_, _) =>
+              const Scaffold(body: Row(children: [NavigationSidebar()])),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(
+        theme: AppTheme.atelierDarkTheme,
+        routerConfig: router,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    _drainOverflowExceptions(tester);
+
+    expect(find.text('Logs'), findsOneWidget);
+    expect(container.read(logWindowControllerProvider),
+        LogWindowVisibility.closed);
+
+    await tester.tap(find.byKey(NavigationSidebar.logButtonKey));
+    await tester.pump();
+    _drainOverflowExceptions(tester);
+
+    expect(container.read(logWindowControllerProvider),
+        LogWindowVisibility.open);
   });
 }

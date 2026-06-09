@@ -6,6 +6,7 @@ import 'package:twmt/i18n/strings.g.dart';
 
 import '../../config/router/navigation_tree.dart';
 import '../../config/router/navigation_tree_resolver.dart';
+import '../../providers/log_window_provider.dart';
 import '../../providers/theme_name_provider.dart';
 import '../../theme/tokens/atelier_tokens.dart';
 import '../../theme/tokens/forge_tokens.dart';
@@ -30,6 +31,9 @@ class NavigationSidebar extends ConsumerWidget {
 
   /// Widget key attached to the currently-active item, for tests.
   static const Key activeItemKey = ValueKey('nav-sidebar-active-item');
+
+  /// Widget key for the Logs toggle button, for tests.
+  static const Key logButtonKey = ValueKey('nav-sidebar-log-button');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,6 +77,8 @@ class NavigationSidebar extends ConsumerWidget {
                         onTap: () => _dispatch(context, item.route),
                       ),
                 ],
+                const SizedBox(height: 12),
+                const _LogConsoleButton(),
               ],
             ),
           ),
@@ -572,6 +578,78 @@ class _ThemeSwatch extends StatelessWidget {
           stops: const [0.0, 0.5, 0.5, 1.0],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+        ),
+      ),
+    );
+  }
+}
+
+/// Sidebar tile that toggles the floating log console. Mirrors [_NavItemTile]'s
+/// styling but, instead of navigating, flips [LogWindowController]. Highlights
+/// while the window is open or minimized.
+class _LogConsoleButton extends ConsumerStatefulWidget {
+  const _LogConsoleButton();
+
+  @override
+  ConsumerState<_LogConsoleButton> createState() => _LogConsoleButtonState();
+}
+
+class _LogConsoleButtonState extends ConsumerState<_LogConsoleButton> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final isOpen = ref.watch(logWindowControllerProvider) !=
+        LogWindowVisibility.closed;
+    final bg = isOpen
+        ? tokens.accentBg
+        : (_hover ? tokens.panel2 : Colors.transparent);
+    final fg = isOpen ? tokens.accent : tokens.text;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          key: NavigationSidebar.logButtonKey,
+          onTap: () =>
+              ref.read(logWindowControllerProvider.notifier).toggleOpen(),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(6),
+              border: isOpen
+                  ? Border(left: BorderSide(color: tokens.accent, width: 2))
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isOpen
+                      ? FluentIcons.window_console_20_filled
+                      : FluentIcons.window_console_20_regular,
+                  size: 20,
+                  color: fg,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    t.widgets.navigationSidebar.items.logs,
+                    style: TextStyle(
+                      color: fg,
+                      fontWeight:
+                          isOpen ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
