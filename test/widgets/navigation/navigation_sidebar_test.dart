@@ -117,9 +117,9 @@ void main() {
     _drainOverflowExceptions(tester);
 
     for (final label in [
-      'Detect', 'Translate', 'Compile', 'Publish',
+      'Detect', 'Translate', 'Pack Compilation', 'Publish',
       'Home',
-      'Glossary', 'Translation Memory', 'Game Files',
+      'Glossary', 'Translation Memory', 'Game Translation',
       'Settings',
     ]) {
       expect(find.text(label), findsWidgets, reason: label);

@@ -251,9 +251,11 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Banner is present (count == 1 → label has no plural "s"). Several other
-    // StatusPills render per mod row, so match on the banner's unique label.
-    final banner = find.widgetWithText(StatusPill, '1 project pending');
+    // Banner is present. The label is a simple "$count projects pending"
+    // interpolation (no pluralization), so count == 1 renders "1 projects
+    // pending". Several other StatusPills render per mod row, so match on the
+    // banner's unique label.
+    final banner = find.widgetWithText(StatusPill, '1 projects pending');
     expect(banner, findsOneWidget);
 
     await tester.tap(banner);

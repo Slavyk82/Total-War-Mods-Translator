@@ -28,12 +28,16 @@ void main() {
     });
 
     test(
-        'Tools group contains Glossary, Translation Memory, Game Files, '
-        'Compile', () {
+        'Tools group contains Glossary, Translation Memory, Game Translation, '
+        'Pack Compilation', () {
       final tools =
           navigationTree.firstWhere((g) => g.label == 'Tools');
-      expect(tools.items.map((i) => i.label).toList(),
-          ['Glossary', 'Translation Memory', 'Game Files', 'Compile']);
+      expect(tools.items.map((i) => i.label).toList(), [
+        'Glossary',
+        'Translation Memory',
+        'Game Translation',
+        'Pack Compilation',
+      ]);
       expect(tools.items.last.route, AppRoutes.packCompilation);
     });
 

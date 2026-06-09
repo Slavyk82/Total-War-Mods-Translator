@@ -1,258 +1,228 @@
+// Screen tests for the redesigned Game Translation screen.
+//
+// The screen moved to the FluentScaffold + HomeBackToolbar + FilterToolbar
+// archetype (see lib/features/game_translation/screens/game_translation_screen.dart).
+// The previous tests asserted a stale structure (literal padding values, a
+// "ConsumerWidget" type check, hard-coded loading/error copy that no longer
+// matched, and several placeholder assertions that only checked the screen
+// rendered). These tests exercise the real chrome and the loading / error /
+// empty / populated states against the current localized strings.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/features/game_translation/screens/game_translation_screen.dart';
 import 'package:twmt/features/game_translation/providers/game_translation_providers.dart';
+import 'package:twmt/features/game_translation/screens/game_translation_screen.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/features/projects/widgets/project_grid.dart';
+import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart';
+
+import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
+ProjectWithDetails _details(String id, String name) => ProjectWithDetails(
+      project: Project(
+        id: id,
+        name: name,
+        gameInstallationId: 'install-1',
+        createdAt: 0,
+        updatedAt: 0,
+      ),
+      languages: const [],
+    );
+
+/// Overrides for the default empty-list / no-packs scenario.
+List<Override> _emptyNoPacksOverrides() => [
+      gameTranslationProjectsProvider
+          .overrideWith((ref) async => const <ProjectWithDetails>[]),
+      hasLocalPacksProvider.overrideWith((ref) async => false),
+    ];
+
+/// Overrides for an empty list but with localization packs available, so the
+/// empty state offers the create button instead of the warning.
+List<Override> _emptyWithPacksOverrides() => [
+      gameTranslationProjectsProvider
+          .overrideWith((ref) async => const <ProjectWithDetails>[]),
+      hasLocalPacksProvider.overrideWith((ref) async => true),
+    ];
+
+/// Overrides that keep the projects future pending so the loading state shows.
+List<Override> _loadingOverrides() => [
+      gameTranslationProjectsProvider.overrideWith(
+        (ref) => Completer<List<ProjectWithDetails>>().future,
+      ),
+      hasLocalPacksProvider.overrideWith((ref) async => true),
+    ];
+
+/// Overrides that fail the projects future so the error state shows.
+List<Override> _errorOverrides() => [
+      gameTranslationProjectsProvider.overrideWith(
+        (ref) async => throw Exception('boom'),
+      ),
+      hasLocalPacksProvider.overrideWith((ref) async => true),
+    ];
+
+/// Overrides with a populated project list so the grid renders.
+List<Override> _populatedOverrides() => [
+      gameTranslationProjectsProvider.overrideWith((ref) async => [
+            _details('g1', 'English Overhaul'),
+            _details('g2', 'French Overhaul'),
+          ]),
+      hasLocalPacksProvider.overrideWith((ref) async => true),
+    ];
+
 void main() {
-  group('GameTranslationScreen', () {
-    /// Creates test widget with mocked providers for empty project list
-    Widget createTestWidget({ThemeData? theme}) {
-      return ProviderScope(
-        overrides: [
-          // Return empty list of projects to avoid loading/error states
-          gameTranslationProjectsProvider.overrideWith(
-            (ref) async => <ProjectWithDetails>[],
-          ),
-          // Return false for hasLocalPacks to show simple empty state
-          hasLocalPacksProvider.overrideWith(
-            (ref) async => false,
-          ),
-        ],
-        child: MaterialApp(
-          theme: theme ?? ThemeData.light(),
-          home: SizedBox(
-            width: defaultTestScreenSize.width,
-            height: defaultTestScreenSize.height,
-            child: const GameTranslationScreen(),
-          ),
-        ),
-      );
+  setUp(() async {
+    await TestBootstrap.registerFakes();
+  });
+
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    required List<Override> overrides,
+    ThemeData? theme,
+    bool settle = true,
+  }) async {
+    await tester.binding.setSurfaceSize(defaultTestScreenSize);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GameTranslationScreen(),
+      theme: theme ?? AppTheme.atelierDarkTheme,
+      overrides: overrides,
+    ));
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
     }
+  }
 
-    group('Widget Structure', () {
-      testWidgets('should render FluentScaffold as root widget', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
+  group('GameTranslationScreen', () {
+    group('Chrome', () {
+      testWidgets('renders inside a FluentScaffold', (tester) async {
+        await pumpScreen(tester, overrides: _emptyNoPacksOverrides());
         expect(find.byType(FluentScaffold), findsOneWidget);
       });
 
-      testWidgets('should have padding of 24.0', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(Padding), findsWidgets);
-      });
-
-      testWidgets('should have Column layout', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(Column), findsWidgets);
-      });
-
-      testWidgets('should have const constructor', (tester) async {
+      testWidgets('has a const constructor', (tester) async {
         const screen = GameTranslationScreen();
         expect(screen, isNotNull);
       });
-    });
 
-    group('State Management', () {
-      testWidgets('should be a ConsumerWidget', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        final screen = tester.widget<GameTranslationScreen>(
-          find.byType(GameTranslationScreen),
-        );
-        expect(screen, isA<ConsumerWidget>());
+      testWidgets('shows the localized header title', (tester) async {
+        await pumpScreen(tester, overrides: _emptyNoPacksOverrides());
+        expect(find.text('Game Translation'), findsOneWidget);
       });
-    });
 
-    group('Header', () {
-      testWidgets('should display globe icon', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
+      testWidgets('shows the globe header icon', (tester) async {
+        await pumpScreen(tester, overrides: _emptyNoPacksOverrides());
         expect(find.byIcon(FluentIcons.globe_24_regular), findsWidgets);
       });
 
-      testWidgets('should display Game Translation title', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.text('Game Translation'), findsOneWidget);
+      testWidgets('shows the create toolbar action', (tester) async {
+        await pumpScreen(tester, overrides: _emptyWithPacksOverrides());
+        expect(find.text('Create Game Translation'), findsWidgets);
       });
     });
 
     group('Loading State', () {
-      testWidgets('should show loading indicator', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
+      testWidgets('shows a progress indicator while projects load',
+          (tester) async {
+        await pumpScreen(
+          tester,
+          overrides: _loadingOverrides(),
+          settle: false,
+        );
 
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should display loading message', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(find.text('Loading game translations...'), findsOneWidget);
       });
     });
 
     group('Error State', () {
-      testWidgets('should display error icon', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
+      testWidgets('shows the load-failed message and error icon',
+          (tester) async {
+        await pumpScreen(tester, overrides: _errorOverrides());
 
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should display error message', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+        expect(find.text('Error loading game translations'), findsOneWidget);
+        expect(
+          find.byIcon(FluentIcons.error_circle_24_regular),
+          findsOneWidget,
+        );
       });
     });
 
     group('Empty State', () {
-      testWidgets('should display empty state message', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
+      testWidgets('shows the empty-state title and subtitle', (tester) async {
+        await pumpScreen(tester, overrides: _emptyWithPacksOverrides());
 
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+        expect(find.text('No game translations yet'), findsOneWidget);
+        expect(
+          find.text('Create a new translation to translate the base game'),
+          findsOneWidget,
+        );
       });
 
-      testWidgets('should display create button in empty state', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+      testWidgets('offers a create action when packs are available',
+          (tester) async {
+        await pumpScreen(tester, overrides: _emptyWithPacksOverrides());
+        // The empty state renders its own create button in addition to the
+        // toolbar action.
+        expect(find.text('Create Game Translation'), findsWidgets);
       });
 
-      testWidgets('should display warning when no packs available', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
+      testWidgets('shows the no-packs warning when packs are missing',
+          (tester) async {
+        await pumpScreen(tester, overrides: _emptyNoPacksOverrides());
 
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-    });
-
-    group('Projects Grid', () {
-      testWidgets('should render ProjectGrid when projects exist', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should pass projects to grid', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+        expect(
+          find.text('No localization packs found for this game'),
+          findsWidgets,
+        );
+        expect(
+          find.byIcon(FluentIcons.warning_24_regular),
+          findsOneWidget,
+        );
       });
     });
 
-    group('Create Dialog', () {
-      testWidgets('should show CreateGameTranslationDialog', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
+    group('Populated State', () {
+      testWidgets('renders a ProjectGrid with the project names',
+          (tester) async {
+        await pumpScreen(tester, overrides: _populatedOverrides());
 
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+        expect(find.byType(ProjectGrid), findsOneWidget);
+        expect(find.text('English Overhaul'), findsOneWidget);
+        expect(find.text('French Overhaul'), findsOneWidget);
       });
 
-      testWidgets('should not be dismissible', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-    });
-
-    group('Navigation', () {
-      testWidgets('should support project navigation', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should navigate to project detail', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-    });
-
-    group('Local Packs Check', () {
-      testWidgets('should check for local packs availability', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should disable create when no packs', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-    });
-
-    group('Filtering', () {
-      testWidgets('should filter for game translation projects', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
+      testWidgets('shows the translation count label', (tester) async {
+        await pumpScreen(tester, overrides: _populatedOverrides());
+        expect(find.text('2 translations'), findsOneWidget);
       });
     });
 
     group('Theme Integration', () {
-      testWidgets('should render correctly with light theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.light()));
-        await tester.pumpAndSettle();
-
+      testWidgets('renders with a dark theme', (tester) async {
+        await pumpScreen(
+          tester,
+          overrides: _emptyNoPacksOverrides(),
+          theme: AppTheme.atelierDarkTheme,
+        );
+        expect(tester.takeException(), isNull);
         expect(find.byType(GameTranslationScreen), findsOneWidget);
       });
 
-      testWidgets('should render correctly with dark theme', (tester) async {
-        await tester.pumpWidget(createTestWidget(theme: ThemeData.dark()));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-
-      testWidgets('should use theme colors', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(GameTranslationScreen), findsOneWidget);
-      });
-    });
-
-    group('Accessibility', () {
-      testWidgets('should have accessible header', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
-        expect(find.text('Game Translation'), findsOneWidget);
-      });
-
-      testWidgets('should have accessible warning icon', (tester) async {
-        await tester.pumpWidget(createTestWidget());
-        await tester.pumpAndSettle();
-
+      testWidgets('renders with a light theme', (tester) async {
+        await pumpScreen(
+          tester,
+          overrides: _emptyNoPacksOverrides(),
+          theme: AppTheme.vellumLightTheme,
+        );
+        expect(tester.takeException(), isNull);
         expect(find.byType(GameTranslationScreen), findsOneWidget);
       });
     });

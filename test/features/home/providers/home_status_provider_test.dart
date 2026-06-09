@@ -58,6 +58,6 @@ void main() {
     final c = containerWith(toReview: 1, ready: 0, updates: 0);
     addTearDown(c.dispose);
     final s = await c.read(homeStatusProvider.future);
-    expect(s.label, '1 project need your attention');
+    expect(s.label, '1 project needs your attention');
   });
 }

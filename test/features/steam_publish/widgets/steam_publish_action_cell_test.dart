@@ -58,7 +58,7 @@ void main() {
     expect(find.text('Generate pack'), findsOneWidget);
     // Open-in-Steam action renders as a SmallTextButton beside it.
     expect(
-      find.widgetWithText(SmallTextButton, 'Open in Steam'),
+      find.widgetWithText(SmallTextButton, 'Open in Steam Workshop'),
       findsOneWidget,
     );
   });
@@ -78,7 +78,7 @@ void main() {
     expect(find.text('Generate pack'), findsOneWidget);
     // No Open-in-Steam when the project was never published.
     expect(
-      find.widgetWithText(SmallTextButton, 'Open in Steam'),
+      find.widgetWithText(SmallTextButton, 'Open in Steam Workshop'),
       findsNothing,
     );
   });
