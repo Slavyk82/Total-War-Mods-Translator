@@ -48,9 +48,16 @@ class TokenCalculator {
   int calculateTokens(String text) {
     if (text.isEmpty) return 0;
 
-    // Check cache
-    if (_cache.containsKey(text)) {
-      return _cache[text]!;
+    // Check cache. On a hit, move the entry to the most-recently-used
+    // position (remove + re-insert) so eviction is true LRU, not FIFO.
+    // Dart's Map is a LinkedHashMap, so insertion order == recency order and
+    // `keys.first` (evicted in _addToCache) is the least-recently-used entry.
+    // Safe because TokenCalculator is a singleton accessed from a single
+    // isolate; there is no concurrent mutation during this read-modify-write.
+    final cached = _cache.remove(text);
+    if (cached != null) {
+      _cache[text] = cached;
+      return cached;
     }
 
     // Calculate tokens using tiktoken
@@ -179,10 +186,12 @@ class TokenCalculator {
 
   /// Add entry to cache with LRU eviction
   void _addToCache(String text, int tokens) {
-    // If cache is full, remove oldest entry (first entry)
+    // If cache is full, evict the least-recently-used entry. Because hits in
+    // [calculateTokens] re-insert the accessed key (moving it to the end),
+    // `keys.first` is the LRU entry, making this a true LRU policy.
     if (_cache.length >= _maxCacheSize) {
-      final firstKey = _cache.keys.first;
-      _cache.remove(firstKey);
+      final lruKey = _cache.keys.first;
+      _cache.remove(lruKey);
     }
 
     _cache[text] = tokens;

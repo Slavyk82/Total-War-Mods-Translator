@@ -179,6 +179,22 @@ class ImportExecutor {
 
       TranslationUnit? processedUnit = unitResult.value;
 
+      // Track whether THIS row created the unit, so that if the subsequent
+      // version write fails we can roll the orphan unit back (see below).
+      //
+      // NOTE on atomicity: the import is NOT wrapped in a single DB transaction.
+      // Each row performs independent repository writes (insert unit, insert/
+      // update version, recordChange), so a mid-import crash can leave earlier
+      // rows applied and later ones not. SQLite makes each statement atomic and
+      // history is only recorded after the version write succeeds, so the worst
+      // realistic outcome is an incomplete-but-not-corrupt import (reported per
+      // row via ImportResult.errors). A fully atomic import would require
+      // cross-repository transaction support; that refactor is intentionally
+      // out of scope for this low-severity fix. The orphan-unit rollback below
+      // is the minimal safe guard against the one observable inconsistency
+      // (a unit with no version).
+      final bool createdUnitThisRow = processedUnit == null;
+
       if (processedUnit == null) {
         final createResult = await _createNewUnit(
           key: key,
@@ -194,7 +210,7 @@ class ImportExecutor {
         processedUnit = createResult.value;
       }
 
-      return await _processVersion(
+      final versionResult = await _processVersion(
         unit: processedUnit,
         row: row,
         targetColumn: targetColumn,
@@ -203,6 +219,18 @@ class ImportExecutor {
         key: key,
         projectLanguageId: projectLanguageId,
       );
+
+      // If we created the unit in this row but the version write failed, delete
+      // the freshly-created unit so we don't leave a keyed-but-empty orphan that
+      // the user can neither see nor easily clean up. Best-effort: a delete
+      // failure must not mask the original version error.
+      if (createdUnitThisRow &&
+          !versionResult.isSuccess &&
+          !versionResult.isSkipped) {
+        await _unitRepository.delete(processedUnit.id);
+      }
+
+      return versionResult;
     } catch (e) {
       return _RowProcessResult.error(e.toString());
     }

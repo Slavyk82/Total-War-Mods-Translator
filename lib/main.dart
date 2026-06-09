@@ -54,6 +54,14 @@ void main() async {
         await windowManager.show();
         await windowManager.focus();
       });
+
+      // Intercept the window close so we can run an AWAITED shutdown
+      // (WAL checkpoint + dispose) before the process is destroyed. Relying on
+      // AppLifecycleState.detached alone is unreliable on Windows desktop: it
+      // is delivered (if at all) just before process teardown, which can exit
+      // before the async checkpoint completes. setPreventClose(true) keeps the
+      // window alive until _AppLifecycleObserver.onWindowClose calls destroy().
+      await windowManager.setPreventClose(true);
     }
 
     // Initialize all services via Service Locator
@@ -85,8 +93,15 @@ void main() async {
       return true;
     };
 
-    // Register app lifecycle observer for proper cleanup
-    WidgetsBinding.instance.addObserver(_AppLifecycleObserver());
+    // Register app lifecycle observer for proper cleanup. The same instance is
+    // also registered as a window_manager listener (Windows only) so that the
+    // shutdown checkpoint is awaited reliably via onWindowClose rather than
+    // relying on the unreliable AppLifecycleState.detached signal.
+    final lifecycleObserver = _AppLifecycleObserver();
+    WidgetsBinding.instance.addObserver(lifecycleObserver);
+    if (Platform.isWindows) {
+      windowManager.addListener(lifecycleObserver);
+    }
 
     // Apply persisted app-UI locale (or fall back to device locale).
     final localePrefs = await SharedPreferences.getInstance();
@@ -304,29 +319,64 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   }
 }
 
-/// App lifecycle observer for proper resource cleanup
-class _AppLifecycleObserver extends WidgetsBindingObserver {
+/// App lifecycle observer for proper resource cleanup.
+///
+/// Also implements [WindowListener] so that on Windows desktop the shutdown
+/// cleanup (WAL checkpoint + dispose) runs AWAITED before the window/process
+/// is destroyed. AppLifecycleState.detached is unreliable for this on desktop
+/// (it may never fire, or fires immediately before process teardown), so the
+/// window_manager onWindowClose hook — gated by setPreventClose(true) — is the
+/// authoritative shutdown path. The detached handler is retained as a
+/// best-effort fallback for non-desktop / non-prevent-close teardowns.
+class _AppLifecycleObserver extends WidgetsBindingObserver
+    with WindowListener {
+  // Guards against running cleanup twice (e.g. onWindowClose then detached).
+  bool _cleanupStarted = false;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
 
-    // Clean up resources when app is being terminated
+    // Best-effort fallback. On Windows the awaited onWindowClose path below is
+    // the reliable one; this fire-and-forget call only matters when no
+    // prevent-close window handler intercepts the shutdown.
     if (state == AppLifecycleState.detached) {
-      debugPrint('🧹 Application shutting down, cleaning up resources...');
-      _cleanupAsync();
+      debugPrint('🧹 Application detached, cleaning up resources...');
+      unawaited(_cleanupAsync());
     }
   }
 
-  /// Cleanup all resources before app termination
+  /// Window close interceptor (Windows). Because setPreventClose(true) is set,
+  /// the window stays alive until we explicitly destroy it. We run the full
+  /// cleanup AWAITED here so the WAL checkpoint is guaranteed to complete
+  /// before the process exits.
+  @override
+  void onWindowClose() async {
+    final isPreventClose = await windowManager.isPreventClose();
+    if (isPreventClose) {
+      debugPrint('🧹 Window closing, running awaited cleanup...');
+      await _cleanupAsync();
+      // Allow the window to actually close now that cleanup is done.
+      await windowManager.setPreventClose(false);
+      await windowManager.destroy();
+    }
+  }
+
+  /// Cleanup all resources before app termination. Idempotent.
   Future<void> _cleanupAsync() async {
+    if (_cleanupStarted) return;
+    _cleanupStarted = true;
+
     try {
-      // Checkpoint WAL before closing - await to ensure completion
+      // Run the full shutdown checkpoint (TRUNCATE) + PRAGMA optimize and close
+      // the connection via DatabaseService.close(). This is the proper clean
+      // shutdown path that was previously never invoked in production.
       if (DatabaseService.isInitialized) {
-        await DatabaseService.checkpointWal();
-        debugPrint('✅ Database WAL checkpointed');
+        await DatabaseService.close();
+        debugPrint('✅ Database closed (WAL checkpointed)');
       }
     } catch (e) {
-      debugPrint('❌ Error checkpointing WAL: $e');
+      debugPrint('❌ Error closing database: $e');
     }
 
     try {
@@ -336,8 +386,5 @@ class _AppLifecycleObserver extends WidgetsBindingObserver {
     } catch (e) {
       debugPrint('❌ Error disposing EventBus: $e');
     }
-
-    // Additional cleanup can be added here
-    // e.g., ServiceLocator.dispose(), database close, etc.
   }
 }

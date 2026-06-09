@@ -36,6 +36,12 @@ class BatchOperationState {
     String? currentItem,
     String? errorMessage,
     DateTime? startedAt,
+    // Explicit clear flags: the null-coalescing idiom below cannot distinguish
+    // "leave unchanged" from "set to null", so a stale label can never be
+    // cleared via `copyWith(currentItem: null)`. These flags let callers reset
+    // the nullable fields to null. Default false keeps callers backward-compatible.
+    bool clearCurrentItem = false,
+    bool clearErrorMessage = false,
   }) {
     return BatchOperationState(
       isInProgress: isInProgress ?? this.isInProgress,
@@ -44,8 +50,9 @@ class BatchOperationState {
       processedItems: processedItems ?? this.processedItems,
       successCount: successCount ?? this.successCount,
       failureCount: failureCount ?? this.failureCount,
-      currentItem: currentItem ?? this.currentItem,
-      errorMessage: errorMessage ?? this.errorMessage,
+      currentItem: clearCurrentItem ? null : (currentItem ?? this.currentItem),
+      errorMessage:
+          clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       startedAt: startedAt ?? this.startedAt,
     );
   }
@@ -141,9 +148,11 @@ class BatchOperation extends _$BatchOperation {
 
   /// Complete the operation
   void complete() {
+    // Use the explicit clear flag so the stale "current item" label is actually
+    // removed (copyWith's null-coalescing would otherwise keep the old value).
     state = state.copyWith(
       isInProgress: false,
-      currentItem: null,
+      clearCurrentItem: true,
     );
   }
 

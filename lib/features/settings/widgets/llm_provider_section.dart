@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -35,6 +37,31 @@ class LlmProviderSection extends ConsumerStatefulWidget {
 
 class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
   bool _isTesting = false;
+
+  // Debounce the API-key field. Each keystroke would otherwise call
+  // [onSaveApiKey], which writes to flutter_secure_storage and invalidates the
+  // provider settings (forcing several secure-storage reads + DB reads on every
+  // character). flutter_secure_storage is comparatively slow on Windows, so we
+  // coalesce rapid typing/pasting into a single save after a short idle delay.
+  static const Duration _apiKeyDebounce = Duration(milliseconds: 600);
+  Timer? _apiKeyDebounceTimer;
+
+  void _onApiKeyChanged() {
+    _apiKeyDebounceTimer?.cancel();
+    _apiKeyDebounceTimer = Timer(_apiKeyDebounce, () {
+      if (mounted) widget.onSaveApiKey();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Flush any pending save so a value typed right before disposal is not lost.
+    if (_apiKeyDebounceTimer?.isActive ?? false) {
+      _apiKeyDebounceTimer!.cancel();
+      widget.onSaveApiKey();
+    }
+    super.dispose();
+  }
 
   Future<void> _testConnection() async {
     setState(() => _isTesting = true);
@@ -91,7 +118,7 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
                     hint: t.settings.llmProviders.providerSection.apiKeyHint,
                     enabled: true,
                     obscureText: true,
-                    onChanged: (_) => widget.onSaveApiKey(),
+                    onChanged: (_) => _onApiKeyChanged(),
                   ),
                 ),
                 const SizedBox(width: 8),

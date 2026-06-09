@@ -160,6 +160,20 @@ class DatabaseService {
           WHERE id = NEW.project_language_id;
         END
       ''',
+      // FTS-insert trigger: dropped by the bulk paths in
+      // translation_version_batch_mixin (DROP/recreate around batch inserts).
+      // If a crash/partial commit ever left it dropped, newly inserted
+      // translations would silently stop being indexed for full-text search.
+      // Canonical definition matches schema.sql trg_translation_versions_fts_insert.
+      'trg_translation_versions_fts_insert': '''
+        CREATE TRIGGER trg_translation_versions_fts_insert
+        AFTER INSERT ON translation_versions
+        WHEN new.translated_text IS NOT NULL
+        BEGIN
+          INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+          VALUES (new.translated_text, new.validation_issues, new.id);
+        END
+      ''',
       'trg_translation_versions_fts_update': '''
         CREATE TRIGGER trg_translation_versions_fts_update
         AFTER UPDATE OF translated_text, validation_issues ON translation_versions

@@ -239,11 +239,16 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
   Future<String?> generatePack(String gameInstallationId) async {
     if (!state.canCompile) return null;
 
-    // First save if needed
-    if (!state.isEditing) {
-      final saved = await saveCompilation(gameInstallationId);
-      if (!saved) return null;
-    }
+    // Persist the current form/project state before generating the pack.
+    //
+    // The pack is assembled from the in-memory state (selectedProjectIds,
+    // prefix, name), so in edit mode the produced .pack must be backed by a DB
+    // row that matches it — otherwise reopening the compilation shows the old
+    // stored selection, and the conflict analysis the user reviewed (driven by
+    // the live selection) would not match the persisted record. Saving in both
+    // create and edit modes keeps the DB row consistent with the generated pack.
+    final saved = await saveCompilation(gameInstallationId);
+    if (!saved) return null;
 
     final logger = ref.read(loggingServiceProvider);
     final locFileService = ref.read(locFileServiceProvider);

@@ -721,7 +721,36 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     });
 
-    final exitCode = await _currentProcess!.exitCode;
+    // Global (overall) timeout. The inactivity timer above only fires after 3
+    // minutes of TOTAL output silence, so a steamcmd that keeps emitting
+    // periodic heartbeat/progress output but never finishes an item would
+    // never trip it and `await exitCode` could block forever. Add a hard upper
+    // bound, mirroring the single-publish path's 5-minute cap, scaled by the
+    // number of items in this chunk. We budget 5 minutes per item, clamped to
+    // a sane floor/ceiling, then kill the process on expiry — the
+    // uncompleted-items loop below reports the failures consistently with the
+    // inactivity-timeout path (both just kill the process and let the post-exit
+    // reconciliation mark unfinished items as errors).
+    const perItemBudget = Duration(minutes: 5);
+    const minBatchTimeout = Duration(minutes: 5);
+    const maxBatchTimeout = Duration(minutes: 90);
+    var globalTimeout = perItemBudget * chunk.length;
+    if (globalTimeout < minBatchTimeout) globalTimeout = minBatchTimeout;
+    if (globalTimeout > maxBatchTimeout) globalTimeout = maxBatchTimeout;
+
+    final exitCode = await _currentProcess!.exitCode.timeout(
+      globalTimeout,
+      onTimeout: () {
+        _logger.warning(
+          'Batch steamcmd global timeout (${globalTimeout.inMinutes} min) '
+          'for chunk of ${chunk.length} item(s) — killing process',
+        );
+        _currentProcess?.kill();
+        // Return a sentinel exit code; the uncompleted-items loop reports the
+        // affected items as failed.
+        return -1;
+      },
+    );
     inactivityTimer.cancel();
     await outputCompleter.future.timeout(
       const Duration(seconds: 5),
@@ -907,12 +936,29 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         return false;
       }
 
-      // Check that this specific username has a cached entry
-      final lowerUsername = username.toLowerCase();
+      // Check that this specific username has a cached entry.
+      //
+      // Previously this did a naive `lowerConfig.contains(lowerUsername)`
+      // substring test, which false-positives when the username happens to be
+      // a substring of another account name, a path, or a token field. Match
+      // the username as a properly quoted VDF key instead — steamcmd writes
+      // accounts as a quoted key (e.g. `"username"` under the Accounts /
+      // ConnectCache sections). We require the quoted token to appear, and
+      // that it is delimited by a non-word boundary so e.g. "sam" does not
+      // match "samuel". This stays best-effort (an optimization, not a
+      // security boundary): on failure we fall back to a full login.
       final lowerConfig = configContent.toLowerCase();
-      if (!lowerConfig.contains(lowerUsername)) {
+      // RegExp.escape the username so usernames with regex-special characters
+      // are matched literally.
+      final quotedUser = RegExp.escape('"${username.toLowerCase()}"');
+      // The quoted name must be followed by whitespace/brace (a VDF key is
+      // followed by either a nested object `{` or an inline value), not more
+      // word characters — guarding against partial matches inside a longer
+      // quoted string.
+      final userKeyPattern = RegExp('$quotedUser(?![\\w"])');
+      if (!userKeyPattern.hasMatch(lowerConfig)) {
         _logger.info(
-            'config.vdf has no entry for $username — no cached credentials');
+            'config.vdf has no quoted entry for $username — no cached credentials');
         return false;
       }
 
@@ -955,10 +1001,30 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     }
   }
 
-  /// Dispose resources
+  /// Dispose resources held by this service.
+  ///
+  /// Closes the broadcast [_progressController]/[_outputController] and kills
+  /// any in-flight process. This service is a lazy app-lifetime singleton, so
+  /// in normal operation this is effectively never called and the controllers
+  /// live for the process lifetime (the per-operation subscribers cancel their
+  /// own subscriptions, so there is no growing leak). This method exists for
+  /// teardown/tests and for locator resets / hot restart, where the old
+  /// controllers would otherwise leak.
+  ///
+  /// To wire this up, register the service with a dispose callback, e.g.:
+  /// ```
+  /// registerLazySingleton<IWorkshopPublishService>(
+  ///   ...,
+  ///   dispose: (s) => (s as WorkshopPublishServiceImpl).dispose(),
+  /// );
+  /// ```
+  /// (Not declared on [IWorkshopPublishService]; the interface does not expose
+  /// a dispose contract, so callers must downcast or the interface should add
+  /// one if disposal becomes part of the contract.)
   void dispose() {
-    _progressController.close();
-    _outputController.close();
+    // Guard against double-close (e.g. dispose called twice in tests).
+    if (!_progressController.isClosed) _progressController.close();
+    if (!_outputController.isClosed) _outputController.close();
     _currentProcess?.kill();
   }
 }

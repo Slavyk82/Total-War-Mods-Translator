@@ -84,9 +84,26 @@ Future<SearchResultsModel> searchResults(
 
     return result.when(
       ok: (results) {
+        // The underlying search service returns only the CURRENT page (it has
+        // no separate COUNT(*) API, and `searchAll`/`searchWithRegex` do not
+        // even accept an offset). Using `results.length` as the total made
+        // `totalPages`/`hasNextPage` wrong: a full page of `pageSize` results
+        // collapsed to `totalPages == 1` and `hasNextPage == false`, silently
+        // killing pagination beyond page 1.
+        //
+        // Without a real total we use the standard "fetch a full page => assume
+        // there is at least one more page" heuristic so navigation works:
+        //   - rows already skipped on previous pages: `offset`
+        //   - rows on this page: `results.length`
+        //   - if this page is full, signal one more page exists (+1)
+        // This keeps `hasNextPage`, `hasPreviousPage` and `rangeText` coherent.
+        // (When a true COUNT API is added, pass that value here instead.)
+        final pageIsFull = results.length >= pageSize;
+        final totalCount = offset + results.length + (pageIsFull ? 1 : 0);
+
         return SearchResultsModel(
           results: results,
-          totalCount: results.length, // Note: This is a simplification
+          totalCount: totalCount,
           currentPage: page,
           pageSize: pageSize,
           query: query,
@@ -113,7 +130,15 @@ Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
   required int limit,
   required int offset,
 }) async {
-  // Use regex if enabled
+  // Use regex if enabled.
+  //
+  // NOTE: `searchWithRegex` (and `searchAll` below) do not accept an `offset`,
+  // so true pagination is not possible for these scopes — only the first
+  // `limit` rows are ever returned. The provider's `totalCount` heuristic keeps
+  // the UI coherent for page 1. Threading a real offset would require widening
+  // the `ISearchService` interface (out of scope for this fix). Also note that
+  // for a *true* regex (regex metacharacters), the service throws
+  // `UnsupportedError`; the caller catches it and returns empty results.
   if (query.options.useRegex) {
     final searchIn = _getScopeForRegex(query.scope);
     return service.searchWithRegex(

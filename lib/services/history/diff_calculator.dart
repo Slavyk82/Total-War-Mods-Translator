@@ -5,6 +5,14 @@ import '../../models/history/diff_models.dart';
 /// Uses a simplified Myers diff algorithm for efficient character-level
 /// comparison. Suitable for text up to 10k characters.
 class DiffCalculator {
+  /// Maximum character length for the quadratic character-level LCS.
+  ///
+  /// The character LCS allocates an O(m*n) DP table. At ~2000 characters that
+  /// is ~4M cells (a few tens of MB), which is the upper bound we accept on the
+  /// UI isolate. Beyond this threshold we degrade to the much cheaper
+  /// word-level diff to avoid huge synchronous allocations / UI jank / OOM on a
+  /// single long paragraph or dialogue entry.
+  static const int _maxCharDiffLength = 2000;
   /// Calculate character-level diff between two strings
   ///
   /// Returns list of segments with their type (unchanged, added, removed).
@@ -26,6 +34,14 @@ class DiffCalculator {
 
     if (newText.isEmpty) {
       return [DiffSegment(text: oldText, type: DiffType.removed)];
+    }
+
+    // Guard against the O(m*n) DP table blowing up memory on long inputs.
+    // For large texts, fall back to the linear-memory word-level diff instead
+    // of allocating a (m+1)*(n+1) int table.
+    if (oldText.length > _maxCharDiffLength ||
+        newText.length > _maxCharDiffLength) {
+      return calculateWordDiff(oldText, newText);
     }
 
     // Use LCS (Longest Common Subsequence) algorithm

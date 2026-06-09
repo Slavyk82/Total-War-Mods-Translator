@@ -54,24 +54,29 @@ class ReleaseNotesService {
     // Fetch current release info from GitHub
     final result = await _updateService.getLatestRelease();
 
-    return result.when(
-      ok: (release) {
-        debugPrint('[ReleaseNotes] GitHub release version: ${release.version}');
-        // Only show if the release version matches the current app version
-        // This ensures we show the correct release notes
-        if (release.version == currentVersion) {
-          debugPrint('[ReleaseNotes] Versions match! Showing dialog');
-          return release;
-        }
-        // Version mismatch - fail silently
-        debugPrint('[ReleaseNotes] Version mismatch: ${release.version} != $currentVersion');
-        return null;
-      },
-      err: (error) {
-        debugPrint('[ReleaseNotes] GitHub API error: ${error.message}');
-        return null;
-      },
-    );
+    if (result.isErr) {
+      debugPrint('[ReleaseNotes] GitHub API error: ${result.unwrapErr().message}');
+      return null;
+    }
+
+    final release = result.unwrap();
+    debugPrint('[ReleaseNotes] GitHub release version: ${release.version}');
+    // Only show if the release version matches the current app version.
+    // This ensures we show the correct release notes.
+    if (release.version == currentVersion) {
+      debugPrint('[ReleaseNotes] Versions match! Showing dialog');
+      return release;
+    }
+
+    // Version mismatch (installed build is behind the latest GitHub release —
+    // e.g. the user deferred an update). Mark the current build as seen so we
+    // do not re-hit the GitHub API on every subsequent startup for the same
+    // installed version. A genuinely new release will change [release.version]
+    // and is handled by the update flow, while a future build matching its own
+    // release notes will differ from the stored version and re-trigger this.
+    debugPrint('[ReleaseNotes] Version mismatch: ${release.version} != $currentVersion');
+    await markVersionAsSeen(currentVersion);
+    return null;
   }
 
   /// Mark the given version as seen.

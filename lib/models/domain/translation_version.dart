@@ -208,6 +208,9 @@ class TranslationVersion {
         other.status == status &&
         other.translationSource == translationSource &&
         other.validationIssues == validationIssues &&
+        // Included so two versions differing only by schema version (e.g. after
+        // a validation rescan bumps it) compare as not-equal.
+        other.validationSchemaVersion == validationSchemaVersion &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt;
   }
@@ -222,6 +225,7 @@ class TranslationVersion {
       status.hashCode ^
       translationSource.hashCode ^
       validationIssues.hashCode ^
+      validationSchemaVersion.hashCode ^
       createdAt.hashCode ^
       updatedAt.hashCode;
 

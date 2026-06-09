@@ -389,6 +389,15 @@ final projectsFilterProvider =
 /// [removeProject] drops a project from the cached state after a local delete.
 class ProjectsWithDetailsNotifier
     extends AsyncNotifier<List<ProjectWithDetails>> {
+  /// Project ids whose missing image URL has already been back-filled to the DB
+  /// during this session. The back-fill is a write performed from the read/load
+  /// path (`_computeOne`, invoked concurrently via `Future.wait` and also from
+  /// `refreshProject`); guarding it here ensures the DB is mutated at most once
+  /// per project per session instead of on every render that rediscovers the
+  /// image, and prevents two concurrent loads (e.g. `refreshProject` racing a
+  /// `_loadAll`) from issuing duplicate `update()`s on the same row.
+  final Set<String> _imageBackfilledProjectIds = <String>{};
+
   @override
   Future<List<ProjectWithDetails>> build() => _loadAll();
 
@@ -553,8 +562,14 @@ class ProjectsWithDetailsNotifier
           updatedAt: project.updatedAt,
         );
 
-        await projectRepo.update(updatedProject);
+        // Reflect the discovered image in the returned details regardless, so
+        // the UI shows it immediately. Only persist the back-fill to the DB once
+        // per project per session (see [_imageBackfilledProjectIds]) to keep the
+        // write out of the hot read path and avoid concurrent same-row updates.
         project = updatedProject;
+        if (_imageBackfilledProjectIds.add(project.id)) {
+          await projectRepo.update(updatedProject);
+        }
       }
     }
 

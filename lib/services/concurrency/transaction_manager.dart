@@ -210,6 +210,20 @@ class TransactionManager {
     bool continueOnError = false,
   }) async {
     try {
+      // Savepoint names are interpolated into raw SQL (SQLite cannot
+      // parameterize identifiers). Validate every caller-supplied name against
+      // a strict identifier allowlist BEFORE opening the transaction so a name
+      // containing whitespace, quotes or a semicolon cannot break the statement
+      // or inject SQL. Reject the whole batch on the first invalid name.
+      for (final op in operations) {
+        if (!_isValidSavepointName(op.name)) {
+          return Err(TransactionException(
+            'Invalid savepoint name: "${op.name}" '
+            '(must match ^[A-Za-z_][A-Za-z0-9_]*\$)',
+          ));
+        }
+      }
+
       final results = <dynamic>[];
 
       await _db.transaction((txn) async {
@@ -247,12 +261,23 @@ class TransactionManager {
     }
   }
 
-  /// Execute a read-only transaction
+  /// Execute a read callback against the database.
   ///
-  /// Optimized for read operations, prevents accidental writes.
+  /// NOTE: This is a thin convenience wrapper that runs [query] against the
+  /// shared [Database] handle and maps failures to a [Result]. It does NOT
+  /// open a transaction, so it provides **no** isolation / consistent snapshot
+  /// across multiple reads, and it does NOT prevent writes — the callback
+  /// receives a full [Database] and can execute arbitrary statements.
+  ///
+  /// (Contract corrected per code review: wrapping in a real read transaction
+  /// would require changing the callback parameter from [Database] to
+  /// [Transaction], a breaking API change. The earlier claim of write
+  /// prevention / DEFERRED isolation was never actually implemented. Callers
+  /// needing a consistent snapshot should use [executeTransaction] and confine
+  /// themselves to reads within it.)
   ///
   /// Parameters:
-  /// - [query]: Read-only query callback
+  /// - [query]: Read callback
   ///
   /// Returns:
   /// - [Ok]: Query result
@@ -261,7 +286,8 @@ class TransactionManager {
     Future<T> Function(Database db) query,
   ) async {
     try {
-      // SQLite supports DEFERRED transactions for reads
+      // No transaction wrapper: see method doc. The callback runs directly
+      // against the shared database handle.
       final result = await query(_db);
       return Ok(result);
     } on DatabaseException catch (e) {
@@ -377,6 +403,20 @@ class TransactionManager {
   }
 
   // Private helper methods
+
+  /// Strict allowlist for savepoint identifiers.
+  ///
+  /// SQLite savepoint names cannot be bound as parameters, so they are
+  /// interpolated into SQL. Restricting them to a simple identifier shape
+  /// (leading letter/underscore, then alphanumerics/underscores) prevents any
+  /// SQL injection or accidental statement corruption from caller-supplied
+  /// names.
+  static final RegExp _savepointNamePattern =
+      RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
+
+  bool _isValidSavepointName(String name) {
+    return _savepointNamePattern.hasMatch(name);
+  }
 
   bool _isRetryableError(DatabaseException e) {
     final message = e.toString().toLowerCase();

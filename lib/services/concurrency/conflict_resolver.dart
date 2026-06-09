@@ -305,24 +305,31 @@ class ConflictResolver {
     }
   }
 
-  /// Get conflict history for a translation version
+  /// Get conflict history for a translation unit.
+  ///
+  /// Queries by `translation_unit_id`, which [_storeResolution] always
+  /// populates from [ConflictInfo.translationUnitId]. The previous version
+  /// filtered on `translation_version_id`, but that column is only set when a
+  /// conflict carries `metadata['translation_version_id']` — conflicts created
+  /// via the public [detectConflict] entry point leave it NULL, so the old
+  /// query never matched and history was unretrievable. (Code review fix.)
   ///
   /// Parameters:
-  /// - [translationVersionId]: Translation version ID
+  /// - [translationUnitId]: Translation unit ID (always populated on stored rows)
   /// - [limit]: Maximum number of conflicts to return
   ///
   /// Returns:
   /// - [Ok]: List of conflicts and their resolutions
   /// - [Err]: Exception if query failed
   Future<Result<List<Map<String, dynamic>>, ConcurrencyException>> getConflictHistory({
-    required String translationVersionId,
+    required String translationUnitId,
     int limit = 50,
   }) async {
     try {
       final results = await _db.query(
         'conflict_resolutions',
-        where: 'translation_version_id = ?',
-        whereArgs: [translationVersionId],
+        where: 'translation_unit_id = ?',
+        whereArgs: [translationUnitId],
         orderBy: 'detected_at DESC',
         limit: limit,
       );
