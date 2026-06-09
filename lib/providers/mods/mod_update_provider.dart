@@ -280,6 +280,10 @@ class ModUpdateQueue extends _$ModUpdateQueue {
         },
       );
     } catch (e) {
+      // If the notifier was disposed mid-download (dialog closed), don't try to
+      // route the failure back through state — _updateStatusWithError would be a
+      // no-op anyway, and the original error is moot once nothing is watching.
+      if (!ref.mounted) return;
       _updateStatusWithError(
         projectId,
         ModUpdateStatus.failed,
@@ -293,6 +297,10 @@ class ModUpdateQueue extends _$ModUpdateQueue {
 
   /// Update the status of a project in the queue
   void _updateStatus(String projectId, ModUpdateStatus status) {
+    // This notifier is autoDispose; these helpers run after long awaits in
+    // _updateProject, by which point the only watcher (the dialog) may have
+    // closed and disposed the notifier. Writing `state` then throws StateError.
+    if (!ref.mounted) return;
     final info = _updateQueue[projectId];
     if (info != null) {
       _updateQueue[projectId] = info.copyWith(status: status);
@@ -302,6 +310,7 @@ class ModUpdateQueue extends _$ModUpdateQueue {
 
   /// Update the progress of a project in the queue
   void _updateProgress(String projectId, double progress) {
+    if (!ref.mounted) return;
     final info = _updateQueue[projectId];
     if (info != null) {
       _updateQueue[projectId] = info.copyWith(progress: progress);
@@ -315,6 +324,7 @@ class ModUpdateQueue extends _$ModUpdateQueue {
     ModUpdateStatus status,
     String errorMessage,
   ) {
+    if (!ref.mounted) return;
     final info = _updateQueue[projectId];
     if (info != null) {
       _updateQueue[projectId] = info.copyWith(
@@ -331,6 +341,7 @@ class ModUpdateQueue extends _$ModUpdateQueue {
     ModUpdateStatus status,
     ModVersion version,
   ) {
+    if (!ref.mounted) return;
     final info = _updateQueue[projectId];
     if (info != null) {
       _updateQueue[projectId] = info.copyWith(
