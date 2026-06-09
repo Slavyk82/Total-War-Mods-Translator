@@ -5,6 +5,7 @@ import '../../config/database_config.dart';
 import '../../models/common/service_exception.dart';
 import '../shared/i_logging_service.dart';
 import '../shared/logging_service.dart';
+import 'translation_version_triggers.dart';
 
 /// Database service for TWMT application.
 ///
@@ -139,67 +140,11 @@ class DatabaseService {
   /// If the app is killed during such operations, triggers may be missing.
   /// This method checks and recreates them if necessary.
   static Future<void> _ensureCriticalTriggersExist(Database db) async {
-    // List of critical triggers that may be dropped during batch operations
-    final criticalTriggers = <String, String>{
-      'trg_update_project_language_progress': '''
-        CREATE TRIGGER trg_update_project_language_progress
-        AFTER UPDATE ON translation_versions
-        WHEN NEW.status != OLD.status
-        BEGIN
-          UPDATE project_languages
-          SET progress_percent = (
-            SELECT
-              CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
-              NULLIF(COUNT(*), 0)
-            FROM translation_versions tv
-            INNER JOIN translation_units tu ON tv.unit_id = tu.id
-            WHERE tv.project_language_id = NEW.project_language_id
-              AND tu.is_obsolete = 0
-          ),
-          updated_at = strftime('%s', 'now')
-          WHERE id = NEW.project_language_id;
-        END
-      ''',
-      // FTS-insert trigger: dropped by the bulk paths in
-      // translation_version_batch_mixin (DROP/recreate around batch inserts).
-      // If a crash/partial commit ever left it dropped, newly inserted
-      // translations would silently stop being indexed for full-text search.
-      // Canonical definition matches schema.sql trg_translation_versions_fts_insert.
-      'trg_translation_versions_fts_insert': '''
-        CREATE TRIGGER trg_translation_versions_fts_insert
-        AFTER INSERT ON translation_versions
-        WHEN new.translated_text IS NOT NULL
-        BEGIN
-          INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-          VALUES (new.translated_text, new.validation_issues, new.id);
-        END
-      ''',
-      'trg_translation_versions_fts_update': '''
-        CREATE TRIGGER trg_translation_versions_fts_update
-        AFTER UPDATE OF translated_text, validation_issues ON translation_versions
-        BEGIN
-          DELETE FROM translation_versions_fts WHERE version_id = old.id;
-          INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-          SELECT new.translated_text, new.validation_issues, new.id
-          WHERE new.translated_text IS NOT NULL;
-        END
-      ''',
-      'trg_update_cache_on_version_change': '''
-        CREATE TRIGGER trg_update_cache_on_version_change
-        AFTER UPDATE ON translation_versions
-        BEGIN
-          UPDATE translation_view_cache
-          SET translated_text = new.translated_text,
-              status = new.status,
-              confidence_score = NULL,
-              is_manually_edited = new.is_manually_edited,
-              version_id = new.id,
-              version_updated_at = new.updated_at
-          WHERE unit_id = new.unit_id
-            AND project_language_id = new.project_language_id;
-        END
-      ''',
-    };
+    // Canonical DDL lives in TranslationVersionTriggers (single source of
+    // truth shared with the bulk paths that drop/recreate these triggers).
+    // A previous inline copy here omitted the projects.updated_at bump in
+    // trg_update_project_language_progress, so this recovery path itself
+    // recreated a degraded trigger.
 
     // Check which triggers exist
     final existingTriggers = await db.rawQuery(
@@ -208,7 +153,7 @@ class DatabaseService {
     final existingNames = existingTriggers.map((r) => r['name'] as String).toSet();
 
     // Recreate missing triggers
-    for (final entry in criticalTriggers.entries) {
+    for (final entry in TranslationVersionTriggers.byName.entries) {
       if (!existingNames.contains(entry.key)) {
         _logger.warning('Missing trigger detected, recreating: ${entry.key}');
         try {

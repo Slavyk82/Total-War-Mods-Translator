@@ -100,6 +100,40 @@ class LanguageRepository extends BaseRepository<Language> {
     });
   }
 
+  /// Delete a language and every translation-memory entry referencing it
+  /// (as source OR target) in a single transaction.
+  ///
+  /// The two deletes MUST be atomic: several tables hold `ON DELETE RESTRICT`
+  /// foreign keys to `languages` (project_languages, glossaries, ...). If the
+  /// language delete is blocked by any of them, the transaction rolls back
+  /// and the TM entries are preserved — a blocked delete is a true no-op
+  /// instead of an irreversible TM wipe followed by an error.
+  ///
+  /// Returns the number of TM entries removed.
+  Future<Result<int, TWMTDatabaseException>> deleteWithTranslationMemoryCleanup(
+      String languageId) async {
+    return executeTransaction((txn) async {
+      final tmRowsDeleted = await txn.delete(
+        'translation_memory',
+        where: 'source_language_id = ? OR target_language_id = ?',
+        whereArgs: [languageId, languageId],
+      );
+
+      final rowsAffected = await txn.delete(
+        tableName,
+        where: 'id = ?',
+        whereArgs: [languageId],
+      );
+      if (rowsAffected == 0) {
+        // Throw so the surrounding transaction rolls back the TM cleanup.
+        throw TWMTDatabaseException(
+            'Language not found for deletion: $languageId');
+      }
+
+      return tmRowsDeleted;
+    });
+  }
+
   /// Get a language by its ISO code.
   ///
   /// Returns [Ok] with the language if found, [Err] with exception if not found.

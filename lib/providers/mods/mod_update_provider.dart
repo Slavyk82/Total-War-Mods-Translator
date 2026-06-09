@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart' show ValueGetter;
+import 'package:path/path.dart' as path;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/mod_version.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/services/mods/project_analysis_handler.dart';
 import 'package:uuid/uuid.dart';
+import '../shared/logging_providers.dart';
 import '../shared/repository_providers.dart';
 import '../shared/service_providers.dart';
 
@@ -230,22 +234,67 @@ class ModUpdateQueue extends _$ModUpdateQueue {
           // Update status to detecting changes
           _updateStatus(projectId, ModUpdateStatus.detectingChanges);
 
-          // TODO: Implement change detection logic
-          // For now, create a placeholder version
-          final newVersion = ModVersion(
-            id: const Uuid().v4(),
-            projectId: projectId,
-            versionString: DateTime.now().toIso8601String(),
-            detectedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            steamUpdateTimestamp: result.timestamp.millisecondsSinceEpoch ~/ 1000,
-            unitsAdded: 0, // Will be calculated by change detection
-            unitsModified: 0,
-            unitsDeleted: 0,
-            isCurrent: false,
+          // Locate the downloaded .pack file (same selection rule as the
+          // Workshop scanner: first non-TWMT pack in the mod directory).
+          final packFile = await _findDownloadedPackFile(result.downloadPath);
+          if (packFile == null) {
+            _updateStatusWithError(
+              projectId,
+              ModUpdateStatus.failed,
+              'No .pack file found in downloaded mod (${result.downloadPath})',
+            );
+            return;
+          }
+          final packStat = await packFile.stat();
+          final fileLastModified =
+              packStat.modified.millisecondsSinceEpoch ~/ 1000;
+
+          // Run the SAME analysis/apply pipeline as the Workshop scan: it
+          // detects new/modified/removed/reactivated keys, applies them to
+          // translation_units/versions, flags the project and updates the
+          // analysis cache. Previously this flow inserted a placeholder
+          // ModVersion (0/0/0 counts) and applied nothing.
+          final analysisHandler = ProjectAnalysisHandler(
+            projectRepository: projectRepo,
+            analysisCacheRepository:
+                ref.read(modUpdateAnalysisCacheRepositoryProvider),
+            modUpdateAnalysisService:
+                ref.read(modUpdateAnalysisServiceProvider),
+            logger: ref.read(loggingServiceProvider),
           );
+          final analysisResult = await analysisHandler.analyzeProjectChanges(
+            projectId: projectId,
+            packFilePath: packFile.path,
+            workshopId: workshopId,
+            fileLastModified: fileLastModified,
+          );
+          final analysis = analysisResult.analysis;
+          if (analysis == null) {
+            // analyzeProjectChanges already logged the cause.
+            _updateStatusWithError(
+              projectId,
+              ModUpdateStatus.failed,
+              'Change detection failed for the downloaded pack',
+            );
+            return;
+          }
 
           // Update status to updating database
           _updateStatus(projectId, ModUpdateStatus.updatingDatabase);
+
+          final newVersion = ModVersion(
+            id: const Uuid().v4(),
+            projectId: projectId,
+            // Steam Workshop has no semantic version string: identify the
+            // version by the pack's last-modified time (Workshop update time).
+            versionString: packStat.modified.toIso8601String(),
+            detectedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            steamUpdateTimestamp: fileLastModified,
+            unitsAdded: analysis.newUnitsCount,
+            unitsModified: analysis.modifiedUnitsCount,
+            unitsDeleted: analysis.removedUnitsCount,
+            isCurrent: false,
+          );
 
           // Insert new version
           final insertResult = await versionRepo.insert(newVersion);
@@ -253,7 +302,16 @@ class ModUpdateQueue extends _$ModUpdateQueue {
           await insertResult.when(
             ok: (version) async {
               // Mark as current version
-              await versionRepo.markAsCurrent(version.id);
+              final markResult = await versionRepo.markAsCurrent(version.id);
+              if (markResult.isErr) {
+                _updateStatusWithError(
+                  projectId,
+                  ModUpdateStatus.failed,
+                  'Failed to mark version as current: '
+                  '${markResult.unwrapErr().message}',
+                );
+                return;
+              }
 
               // Update status to completed
               _updateStatusWithVersion(
@@ -293,6 +351,29 @@ class ModUpdateQueue extends _$ModUpdateQueue {
       _progressSubscription?.cancel();
       _currentProjectId = null;
     }
+  }
+
+  /// Find the first non-TWMT `.pack` file in [downloadPath].
+  ///
+  /// Mirrors PackFileScanner's selection rule for Workshop mod directories:
+  /// packs whose name contains the `_twmt_` marker are TWMT-generated
+  /// translation packs, not the mod itself.
+  Future<File?> _findDownloadedPackFile(String downloadPath) async {
+    final dir = Directory(downloadPath);
+    if (!await dir.exists()) return null;
+    final packFiles = await dir
+        .list()
+        .where((entity) =>
+            entity is File && entity.path.toLowerCase().endsWith('.pack'))
+        .cast<File>()
+        .toList();
+    for (final packFile in packFiles) {
+      final name =
+          path.basenameWithoutExtension(packFile.path).toLowerCase();
+      if (name.contains('_twmt_')) continue;
+      return packFile;
+    }
+    return null;
   }
 
   /// Update the status of a project in the queue

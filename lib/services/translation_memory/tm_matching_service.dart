@@ -84,6 +84,85 @@ class TmMatchingService {
     return null;
   }
 
+  /// GUARD AGAINST HASH COLLISIONS FROM AGGRESSIVE NORMALIZATION.
+  ///
+  /// The lookup hash is derived from the aggressive normalizer (lowercase,
+  /// remove markup, normalize punctuation) so it can match the write-side
+  /// hash. That means distinct Total War sources such as `Attack` vs
+  /// `ATTACK`, or strings differing only by `[[col:...]]` markup, collide on
+  /// the same hash. For Total War text these differences ARE significant, so
+  /// we must NOT treat such a collision as a verbatim, auto-applied 100%
+  /// match (which would be written as status=translated).
+  ///
+  /// Verifies the stored source is byte-exact (after only conservative,
+  /// case/markup/punctuation-PRESERVING normalization) against the REQUESTED
+  /// [sourceText]. If it is, builds a true exact match. If it differs,
+  /// downgrades to a fuzzy match that needs review (autoApplied=false) so the
+  /// wrong translation is never silently applied.
+  ///
+  /// MUST run per request — including on cache hits and preloaded entries —
+  /// because the verdict depends on the requested text, not on the entry.
+  TmMatch _verifyMatchForRequest({
+    required String sourceText,
+    required String targetLanguageCode,
+    required String entryId,
+    required String storedSourceText,
+    required String storedTargetText,
+    required int usageCount,
+    required DateTime lastUsedAt,
+  }) {
+    final requestedConservative = conservativeExactNormalize(sourceText);
+    final storedConservative = conservativeExactNormalize(storedSourceText);
+    final isTrueExact = requestedConservative == storedConservative;
+
+    if (isTrueExact) {
+      // Create TmMatch with 100% similarity
+      final breakdown = SimilarityBreakdown(
+        levenshteinScore: AppConstants.exactMatchSimilarity,
+        jaroWinklerScore: AppConstants.exactMatchSimilarity,
+        tokenScore: AppConstants.exactMatchSimilarity,
+        contextBoost: AppConstants.zeroSimilarity,
+        weights: const ScoreWeights(),
+      );
+
+      return TmMatch(
+        entryId: entryId,
+        sourceText: storedSourceText,
+        targetText: storedTargetText,
+        targetLanguageCode: targetLanguageCode,
+        similarityScore: AppConstants.exactMatchSimilarity,
+        matchType: TmMatchType.exact,
+        breakdown: breakdown,
+        usageCount: usageCount,
+        lastUsedAt: lastUsedAt,
+        autoApplied: true,
+      );
+    }
+
+    // Normalization-only collision: compute the real similarity so the
+    // user sees an honest score, and never auto-apply it.
+    final score = _similarityCalculator.calculateSimilarity(
+      text1: sourceText,
+      text2: storedSourceText,
+    );
+
+    return TmMatch(
+      entryId: entryId,
+      sourceText: storedSourceText,
+      targetText: storedTargetText,
+      targetLanguageCode: targetLanguageCode,
+      similarityScore: score.combinedScore,
+      matchType: TmMatchType.fuzzy,
+      breakdown: score,
+      usageCount: usageCount,
+      lastUsedAt: lastUsedAt,
+      // Force manual review: a case/markup/punctuation difference in Total
+      // War text must never be auto-applied, regardless of the numeric
+      // similarity score.
+      autoApplied: false,
+    );
+  }
+
   Future<Result<TmMatch?, TmLookupException>> findExactMatch({
     required String sourceText,
     required String targetLanguageCode,
@@ -107,10 +186,23 @@ class TmMatchingService {
         targetLanguageCode: targetLanguageCode,
       );
 
-      // Check cache first
+      // Check cache first. The cache key is the AGGRESSIVE hash, so distinct
+      // sources like `Attack` and `ATTACK` share one slot: the cached value
+      // only tells us which TM entry the hash resolves to. The exact-vs-
+      // collision verdict is per-request and is re-derived below on every
+      // lookup — returning a cached match verbatim would either auto-apply a
+      // wrong-case translation or let a cached downgrade poison true exacts.
       final cached = _cache.getExactMatch(cacheKey);
       if (cached != null) {
-        return Ok(cached);
+        return Ok(_verifyMatchForRequest(
+          sourceText: sourceText,
+          targetLanguageCode: targetLanguageCode,
+          entryId: cached.entryId,
+          storedSourceText: cached.sourceText,
+          storedTargetText: cached.targetText,
+          usageCount: cached.usageCount,
+          lastUsedAt: cached.lastUsedAt,
+        ));
       }
 
       // Lookup in repository
@@ -127,76 +219,19 @@ class TmMatchingService {
 
       final entry = result.value;
 
-      // GUARD AGAINST HASH COLLISIONS FROM AGGRESSIVE NORMALIZATION.
-      //
-      // The lookup hash is derived from the aggressive normalizer (lowercase,
-      // remove markup, normalize punctuation) so it can match the write-side
-      // hash. That means distinct Total War sources such as `Attack` vs
-      // `ATTACK`, or strings differing only by `[[col:...]]` markup, collide on
-      // the same hash. For Total War text these differences ARE significant, so
-      // we must NOT treat such a collision as a verbatim, auto-applied 100%
-      // match (which would be written as status=translated).
-      //
-      // Verify the stored source is byte-exact (after only conservative,
-      // case/markup/punctuation-PRESERVING normalization). If it is, keep it as
-      // a true exact match. If it differs, downgrade it to a fuzzy match that
-      // needs review (autoApplied=false) so the wrong translation is never
-      // silently applied.
-      final requestedConservative = conservativeExactNormalize(sourceText);
-      final storedConservative = conservativeExactNormalize(entry.sourceText);
-      final isTrueExact = requestedConservative == storedConservative;
+      final match = _verifyMatchForRequest(
+        sourceText: sourceText,
+        targetLanguageCode: targetLanguageCode,
+        entryId: entry.id,
+        storedSourceText: entry.sourceText,
+        storedTargetText: entry.translatedText,
+        usageCount: entry.usageCount,
+        lastUsedAt:
+            DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
+      );
 
-      final TmMatch match;
-      if (isTrueExact) {
-        // Create TmMatch with 100% similarity
-        final breakdown = SimilarityBreakdown(
-          levenshteinScore: AppConstants.exactMatchSimilarity,
-          jaroWinklerScore: AppConstants.exactMatchSimilarity,
-          tokenScore: AppConstants.exactMatchSimilarity,
-          contextBoost: AppConstants.zeroSimilarity,
-          weights: const ScoreWeights(),
-        );
-
-        match = TmMatch(
-          entryId: entry.id,
-          sourceText: entry.sourceText,
-          targetText: entry.translatedText,
-          targetLanguageCode: targetLanguageCode,
-          similarityScore: AppConstants.exactMatchSimilarity,
-          matchType: TmMatchType.exact,
-          breakdown: breakdown,
-          usageCount: entry.usageCount,
-          lastUsedAt:
-              DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
-          autoApplied: true,
-        );
-      } else {
-        // Normalization-only collision: compute the real similarity so the
-        // user sees an honest score, and never auto-apply it.
-        final score = _similarityCalculator.calculateSimilarity(
-          text1: sourceText,
-          text2: entry.sourceText,
-        );
-
-        match = TmMatch(
-          entryId: entry.id,
-          sourceText: entry.sourceText,
-          targetText: entry.translatedText,
-          targetLanguageCode: targetLanguageCode,
-          similarityScore: score.combinedScore,
-          matchType: TmMatchType.fuzzy,
-          breakdown: score,
-          usageCount: entry.usageCount,
-          lastUsedAt:
-              DateTime.fromMillisecondsSinceEpoch(entry.lastUsedAt * 1000),
-          // Force manual review: a case/markup/punctuation difference in Total
-          // War text must never be auto-applied, regardless of the numeric
-          // similarity score.
-          autoApplied: false,
-        );
-      }
-
-      // Cache the result
+      // Cache the result. Whatever form is cached (exact or downgraded), the
+      // cache-hit path above re-verifies against the next request's source.
       _cache.putExactMatch(cacheKey, match);
 
       return Ok(match);

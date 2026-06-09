@@ -254,6 +254,85 @@ void main() {
   );
 
   testWidgets(
+    'does NOT resurrect a translation cleared out-of-band: an external change '
+    'to the selected row must not be flushed back on selection switch',
+    (tester) async {
+      // Regression: "Clear translation" on the currently-inspected row updates
+      // the DB and re-emits rows, but the controller kept the OLD text (same
+      // bound unit id → no resync). Switching selection then compared stale
+      // controller text vs the now-empty persisted text and re-saved the old
+      // translation, silently undoing the clear.
+      final saves = <MapEntry<String, String>>[];
+      var rows = [_row('1'), _row('2')];
+      final container = ProviderContainer(overrides: [
+        filteredTranslationRowsProvider('p', 'fr')
+            .overrideWith((_) async => rows),
+        currentProjectProvider('p').overrideWith((_) async => const Project(
+              id: 'p',
+              name: 'p',
+              gameInstallationId: 'g',
+              sourceLanguageCode: 'en',
+              createdAt: 0,
+              updatedAt: 0,
+            )),
+        currentLanguageProvider('fr').overrideWith((_) async => const Language(
+              id: 'fr',
+              code: 'fr',
+              name: 'French',
+              nativeName: 'Français',
+            )),
+      ]);
+      addTearDown(container.dispose);
+      container.read(editorSelectionProvider.notifier).toggleSelection('1');
+
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: AppTheme.atelierDarkTheme,
+          home: Scaffold(
+            body: EditorInspectorPanel(
+              projectId: 'p',
+              languageId: 'fr',
+              onSave: (id, text) => saves.add(MapEntry(id, text)),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Out-of-band clear of unit 1's translation (e.g. grid "Clear
+      // translation" action) — same unit stays selected.
+      rows = [
+        _row('1').copyWith(
+          version: _row('1').version.copyWith(
+                translatedText: '',
+                status: TranslationVersionStatus.pending,
+              ),
+        ),
+        _row('2'),
+      ];
+      container.invalidate(filteredTranslationRowsProvider('p', 'fr'));
+      await tester.pumpAndSettle();
+
+      // The visible target field must reflect the cleared value...
+      final field = find.byKey(const Key('editor-inspector-target-field'));
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty,
+          reason: 'controller must resync when the persisted text changes '
+              'while the same unit stays bound');
+
+      // ...and switching selection must NOT save the stale pre-clear text.
+      container.read(editorSelectionProvider.notifier)
+        ..clearSelection()
+        ..toggleSelection('2');
+      await tester.pumpAndSettle();
+
+      expect(saves, isEmpty,
+          reason: 'no user edit happened — flushing the old controller text '
+              'would resurrect the cleared translation; got: $saves');
+    },
+  );
+
+  testWidgets(
     'single-selection body lays out without overflow at panel height',
     (tester) async {
       final container = ProviderContainer(overrides: [

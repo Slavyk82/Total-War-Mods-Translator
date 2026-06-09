@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/common/result.dart';
 import '../models/common/service_exception.dart';
 import '../models/domain/translation_version.dart';
+import '../services/database/translation_version_triggers.dart';
 import '../services/validation/validation_schema.dart';
 import 'base_repository.dart';
 import 'mixins/translation_version_batch_mixin.dart';
@@ -912,60 +913,11 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
   }
 
   /// Recreate triggers after batch operations.
+  ///
+  /// Delegates to the canonical DDL source so the recreated triggers can
+  /// never diverge from schema.sql.
   Future<void> _recreateTriggers(Transaction txn) async {
-    await txn.execute('''
-      CREATE TRIGGER IF NOT EXISTS trg_update_project_language_progress
-      AFTER UPDATE ON translation_versions
-      WHEN NEW.status != OLD.status
-      BEGIN
-        UPDATE project_languages
-        SET progress_percent = (
-          SELECT
-            CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
-            NULLIF(COUNT(*), 0)
-          FROM translation_versions tv
-          INNER JOIN translation_units tu ON tv.unit_id = tu.id
-          WHERE tv.project_language_id = NEW.project_language_id
-            AND tu.is_obsolete = 0
-        ),
-        updated_at = strftime('%s', 'now')
-        WHERE id = NEW.project_language_id;
-
-        UPDATE projects
-        SET updated_at = strftime('%s', 'now')
-        WHERE id = (
-          SELECT project_id FROM project_languages
-          WHERE id = NEW.project_language_id
-        );
-      END
-    ''');
-
-    await txn.execute('''
-      CREATE TRIGGER IF NOT EXISTS trg_translation_versions_fts_update
-      AFTER UPDATE OF translated_text, validation_issues ON translation_versions
-      BEGIN
-        DELETE FROM translation_versions_fts WHERE version_id = old.id;
-        INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-        SELECT new.translated_text, new.validation_issues, new.id
-        WHERE new.translated_text IS NOT NULL;
-      END
-    ''');
-
-    await txn.execute('''
-      CREATE TRIGGER IF NOT EXISTS trg_update_cache_on_version_change
-      AFTER UPDATE ON translation_versions
-      BEGIN
-        UPDATE translation_view_cache
-        SET translated_text = new.translated_text,
-            status = new.status,
-            confidence_score = NULL,
-            is_manually_edited = new.is_manually_edited,
-            version_id = new.id,
-            version_updated_at = new.updated_at
-        WHERE unit_id = new.unit_id
-          AND project_language_id = new.project_language_id;
-      END
-    ''');
+    await TranslationVersionTriggers.recreateAll(txn);
   }
 
   /// Reset status to pending for all translation versions of specified units.

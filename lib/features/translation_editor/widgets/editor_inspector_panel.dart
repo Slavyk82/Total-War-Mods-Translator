@@ -67,6 +67,13 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
   final _targetController = TextEditingController();
   String? _boundUnitId;
 
+  /// True only after the USER edited the target field (TextField.onChanged),
+  /// never after programmatic controller writes. Guards the flush-on-switch:
+  /// without it, a translation cleared/modified out-of-band (e.g. grid
+  /// "Clear translation") while its row stays selected would be compared
+  /// against the stale controller text and silently resurrected.
+  bool _targetDirty = false;
+
   @override
   void initState() {
     super.initState();
@@ -123,7 +130,13 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
           index: idx + 1,
           total: rows.length,
           controller: _targetController,
-          onSave: (text) => widget.onSave(row.id, text),
+          onSave: (text) {
+            // Explicit commit (blur): the controller is no longer ahead of
+            // the persisted value, so clear the dirty marker.
+            _targetDirty = false;
+            widget.onSave(row.id, text);
+          },
+          onUserEdited: () => _targetDirty = true,
           onAcceptIssue: widget.onAcceptIssue,
           onRejectIssue: widget.onRejectIssue,
           onEditIssue: widget.onEditIssue,
@@ -195,17 +208,32 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     if (_boundUnitId != row.id) {
       _flushDirtyIfNeeded(rows);
       _boundUnitId = row.id;
+      _targetDirty = false;
       // Show escape sequences literally (e.g. real newlines as `\n`) so the
       // user can see and keep the markup. [unescapeFromDisplay] in
       // [_flushDirtyIfNeeded] / `_TargetBlock.onSave` reverses this at commit
       // time.
       _targetController.text = escapeForDisplay(row.translatedText ?? '');
+    } else if (!_targetDirty) {
+      // Same unit still bound but its persisted translation changed
+      // out-of-band (e.g. "Clear translation", batch accept). Resync the
+      // controller so the field shows the real value and a later flush
+      // cannot resurrect the stale text. Never do this while the user has
+      // unsaved edits (_targetDirty) — their typing wins until committed.
+      final persisted = escapeForDisplay(row.translatedText ?? '');
+      if (_targetController.text != persisted) {
+        _targetController.text = persisted;
+      }
     }
   }
 
-  /// Fire `onSave(previousId, dirtyText)` if the controller holds text that
-  /// differs from the previously bound row's persisted translation.
+  /// Fire `onSave(previousId, dirtyText)` if the USER edited the target field
+  /// and the text differs from the previously bound row's persisted
+  /// translation. Non-user divergence (an out-of-band DB change that the
+  /// controller has not caught up with) must NOT be flushed — that would
+  /// overwrite the newer persisted value with stale text.
   void _flushDirtyIfNeeded(List<TranslationRow>? rows) {
+    if (!_targetDirty) return;
     final previousId = _boundUnitId;
     if (previousId == null) return;
     if (rows == null) return;
@@ -214,6 +242,7 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     final previousPersisted = rows[prevIdx].translatedText ?? '';
     final currentText = unescapeFromDisplay(_targetController.text);
     if (currentText != previousPersisted) {
+      _targetDirty = false;
       widget.onSave(previousId, currentText);
     }
   }
@@ -325,6 +354,7 @@ class _SingleSelectionBody extends ConsumerWidget {
   final int total;
   final TextEditingController controller;
   final void Function(String) onSave;
+  final VoidCallback onUserEdited;
   final OnInspectorIssueAction? onAcceptIssue;
   final OnInspectorIssueAction? onRejectIssue;
   final OnInspectorIssueAction? onEditIssue;
@@ -338,6 +368,7 @@ class _SingleSelectionBody extends ConsumerWidget {
     required this.total,
     required this.controller,
     required this.onSave,
+    required this.onUserEdited,
     required this.onAcceptIssue,
     required this.onRejectIssue,
     required this.onEditIssue,
@@ -400,6 +431,7 @@ class _SingleSelectionBody extends ConsumerWidget {
             controller: controller,
             lang: targetCode,
             onSave: onSave,
+            onUserEdited: onUserEdited,
             tokens: tokens,
           ),
         ),
@@ -513,11 +545,13 @@ class _TargetBlock extends StatelessWidget {
   final TextEditingController controller;
   final String lang;
   final void Function(String) onSave;
+  final VoidCallback onUserEdited;
   final TwmtThemeTokens tokens;
   const _TargetBlock({
     required this.controller,
     required this.lang,
     required this.onSave,
+    required this.onUserEdited,
     required this.tokens,
   });
 
@@ -542,6 +576,9 @@ class _TargetBlock extends StatelessWidget {
               child: TextField(
                 key: const Key('editor-inspector-target-field'),
                 controller: controller,
+                // Fires only on USER edits (never on programmatic controller
+                // writes) — exactly the signal the dirty-flush logic needs.
+                onChanged: (_) => onUserEdited(),
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
