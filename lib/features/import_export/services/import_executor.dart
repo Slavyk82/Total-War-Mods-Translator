@@ -3,6 +3,7 @@ import '../../../models/common/result.dart';
 import '../../../models/common/service_exception.dart';
 import '../../../models/domain/translation_unit.dart';
 import '../../../models/domain/translation_version.dart';
+import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../../../services/history/i_history_service.dart';
@@ -21,13 +22,15 @@ class ImportExecutor {
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
   final IHistoryService _historyService;
+  final ProjectLanguageRepository _projectLanguageRepository;
   final Uuid _uuid = const Uuid();
 
-  const ImportExecutor(
+  ImportExecutor(
     this._fileReader,
     this._unitRepository,
     this._versionRepository,
     this._historyService,
+    this._projectLanguageRepository,
   );
 
   /// Execute import with conflict resolution
@@ -62,6 +65,25 @@ class ImportExecutor {
         );
       }
 
+      // Resolve the project_languages row id ONCE. settings.targetLanguageId
+      // is a language id, NOT a project_languages.id; writing it straight into
+      // translation_versions.project_language_id would orphan every imported
+      // version (invisible to the editor and excluded from export).
+      final projectLanguageResult =
+          await _projectLanguageRepository.getByProjectAndLanguage(
+        settings.projectId,
+        settings.targetLanguageId,
+      );
+      if (projectLanguageResult.isErr) {
+        return Err(
+          ServiceException(
+            'Target language is not part of this project. '
+            'Add it to the project before importing.',
+          ),
+        );
+      }
+      final projectLanguageId = projectLanguageResult.value.id;
+
       final sourceColumn = _findColumn(
         settings.columnMapping,
         ImportColumn.sourceText,
@@ -92,6 +114,7 @@ class ImportExecutor {
             targetColumn: targetColumn,
             settings: settings,
             resolutions: resolutions,
+            projectLanguageId: projectLanguageId,
           );
 
           if (result.isSuccess) {
@@ -139,16 +162,24 @@ class ImportExecutor {
     required String targetColumn,
     required ImportSettings settings,
     required ConflictResolutions resolutions,
+    required String projectLanguageId,
   }) async {
     try {
-      final unitsResult = await _unitRepository.getByKey(
+      // findByKey distinguishes "not found" (Ok(null)) from a real DB error
+      // (Err). A transient DB error must NOT be misread as "create a new
+      // unit", which could attempt a duplicate (project_id, key) insert.
+      final unitResult = await _unitRepository.findByKey(
         settings.projectId,
         key,
       );
 
-      TranslationUnit? processedUnit;
+      if (unitResult.isErr) {
+        return _RowProcessResult.error(unitResult.error.message);
+      }
 
-      if (unitsResult.isErr) {
+      TranslationUnit? processedUnit = unitResult.value;
+
+      if (processedUnit == null) {
         final createResult = await _createNewUnit(
           key: key,
           row: row,
@@ -161,8 +192,6 @@ class ImportExecutor {
         }
 
         processedUnit = createResult.value;
-      } else {
-        processedUnit = unitsResult.value;
       }
 
       return await _processVersion(
@@ -172,6 +201,7 @@ class ImportExecutor {
         settings: settings,
         resolutions: resolutions,
         key: key,
+        projectLanguageId: projectLanguageId,
       );
     } catch (e) {
       return _RowProcessResult.error(e.toString());
@@ -213,12 +243,19 @@ class ImportExecutor {
     required ImportSettings settings,
     required ConflictResolutions resolutions,
     required String key,
+    required String projectLanguageId,
   }) async {
-    final versionsResult = await _versionRepository.getByUnit(unit.id);
+    // Scope the lookup to the target language's project_languages row. Using
+    // getByUnit(...).first would pick an arbitrary sibling language's version
+    // (all share the same created_at) and overwrite/merge the wrong language.
+    final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
+      unitId: unit.id,
+      projectLanguageId: projectLanguageId,
+    );
 
-    if (versionsResult.isOk && versionsResult.value.isNotEmpty) {
+    if (versionResult.isOk) {
       return await _updateExistingVersion(
-        existingVersion: versionsResult.value.first,
+        existingVersion: versionResult.value,
         row: row,
         targetColumn: targetColumn,
         resolutions: resolutions,
@@ -229,7 +266,7 @@ class ImportExecutor {
         unit: unit,
         row: row,
         targetColumn: targetColumn,
-        settings: settings,
+        projectLanguageId: projectLanguageId,
       );
     }
   }
@@ -307,7 +344,7 @@ class ImportExecutor {
     required TranslationUnit unit,
     required Map<String, String> row,
     required String targetColumn,
-    required ImportSettings settings,
+    required String projectLanguageId,
   }) async {
     final rawText = targetColumn.isNotEmpty ? row[targetColumn] : null;
     // Normalize: \\n → \n
@@ -318,7 +355,7 @@ class ImportExecutor {
     final newVersion = TranslationVersion(
       id: _uuid.v4(),
       unitId: unit.id,
-      projectLanguageId: settings.targetLanguageId,
+      projectLanguageId: projectLanguageId,
       translatedText: translatedText,
       isManuallyEdited: true,
       status: translatedText != null && translatedText.isNotEmpty

@@ -58,7 +58,12 @@ class PackExportUtils {
       final tsvFile = File(genFile.tsvPath);
       final internalPath = genFile.internalPath;
 
-      final targetPath = path.join(tempDir.path, internalPath);
+      // Write the file under its internal .loc path but with a trailing
+      // `.tsv` extension. `createPack` only converts files ending in `.tsv`
+      // (via `--tsv-to-binary`); stripping that suffix recovers the binary
+      // `.loc` internal path. Writing it as a bare `.loc` here would make the
+      // `.tsv` filter empty and dump raw TSV text into the pack (corruption).
+      final targetPath = path.join(tempDir.path, '$internalPath.tsv');
       final targetFile = File(targetPath);
       await targetFile.parent.create(recursive: true);
 

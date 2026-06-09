@@ -357,7 +357,9 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   }) async {
     final maps = await database.query(
       tableName,
-      where: 'glossary_id = ? AND target_language_code = ? AND source_term = ?',
+      where: 'glossary_id = ? '
+          'AND LOWER(target_language_code) = LOWER(?) '
+          'AND LOWER(TRIM(source_term)) = LOWER(TRIM(?))',
       whereArgs: [glossaryId, targetLanguageCode, sourceTerm],
       limit: 1,
     );

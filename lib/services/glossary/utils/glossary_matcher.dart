@@ -216,24 +216,20 @@ class GlossaryMatcher {
   }) {
     if (matches.isEmpty) return targetText;
 
-    // Sort matches by position (descending) to apply from end to start
-    // This prevents index shifting issues
+    // Apply substitutions positionally over the exact match ranges, working
+    // from the last match to the first so that earlier offsets remain valid as
+    // the string is rebuilt. Each match is replaced exactly once at its own
+    // [startIndex, endIndex) range, which avoids replaceAll's whole-string
+    // rewrites (no cascading substitutions, no partial-word matches).
     final sortedMatches = List<GlossaryMatch>.from(matches)
       ..sort((a, b) => b.startIndex.compareTo(a.startIndex));
 
     String result = targetText;
 
     for (final match in sortedMatches) {
-      // Find the corresponding position in target text
-      // This is a simplistic approach - in reality, translation may reorder words
-      // For now, we'll just do a case-insensitive search and replace
-      final sourceTermEscaped = RegExp.escape(match.matchedText);
-      final pattern = RegExp(
-        sourceTermEscaped,
-        caseSensitive: match.entry.caseSensitive,
-      );
-
-      result = result.replaceAll(pattern, match.entry.targetTerm);
+      result = result.substring(0, match.startIndex) +
+          match.entry.targetTerm +
+          result.substring(match.endIndex);
     }
 
     return result;

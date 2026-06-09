@@ -60,6 +60,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   Process? _currentProcess;
   bool _isCancelled = false;
 
+  // This service is a lazy singleton with mutable per-run state
+  // (_currentProcess / _isCancelled). Guard against concurrent runs so a
+  // second publish cannot stomp the first's process handle or cancellation
+  // flag. Set before entering the try block; cleared in finally.
+  bool _isRunning = false;
+
   @override
   Stream<double> get progressStream => _progressController.stream;
 
@@ -74,6 +80,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     String? steamGuardCode,
   }) async {
     final startTime = DateTime.now();
+    if (_isRunning) {
+      return Err(WorkshopPublishException(
+        'A publish operation is already in progress.',
+      ));
+    }
+    _isRunning = true;
     _isCancelled = false;
     Directory? tempContentDir;
 
@@ -275,6 +287,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     } finally {
       _currentProcess = null;
       _isCancelled = false;
+      _isRunning = false;
       if (tempContentDir != null) {
         try {
           await tempContentDir.delete(recursive: true);
@@ -296,6 +309,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
             Result<WorkshopPublishResult, SteamServiceException> result)?
         onItemComplete,
   }) async {
+    if (_isRunning) {
+      throw WorkshopPublishException(
+        'A publish operation is already in progress.',
+      );
+    }
+    _isRunning = true;
     _isCancelled = false;
     final startTime = DateTime.now();
 
@@ -471,6 +490,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         } catch (_) {}
       }
       _currentProcess = null;
+      _isRunning = false;
     }
   }
 
@@ -517,147 +537,175 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
+    String stdoutBuffer = '';
+
+    // Process one COMPLETE output line. Extracted into a function so the
+    // trailing partial line buffered in [stdoutBuffer] can be flushed on done.
+    void processStdoutLine(String line) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) return;
+
+      _outputController.add(trimmed);
+
+      // Check for auth failure (affects entire session)
+      if (trimmed.contains('Login Failure') ||
+          trimmed.contains('Invalid Password') ||
+          trimmed.contains('FAILED login')) {
+        authFailed = true;
+        return;
+      }
+
+      if (currentChunkPos >= chunk.length) return;
+      final currentIdx = chunk[currentChunkPos];
+
+      // Progress tracking
+      final progressMatch = RegExp(r'(\d+)%').firstMatch(trimmed);
+      if (progressMatch != null) {
+        final pct = int.parse(progressMatch.group(1)!);
+        onItemProgress?.call(currentIdx, pct / 100.0);
+      }
+
+      // Workshop ID detection
+      final idMatch =
+          RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(trimmed);
+      if (idMatch != null) {
+        currentWorkshopId = idMatch.group(1);
+      }
+
+      // Success: item completed
+      if (trimmed.contains('Success.') ||
+          trimmed.contains('Item Updated') ||
+          (currentWorkshopId != null && trimmed.contains('PublishFileID'))) {
+        // Determine final workshop ID
+        final workshopId =
+            currentWorkshopId ?? items[currentIdx].params.publishedFileId;
+
+        completedInChunk.add(currentIdx);
+        final duration = DateTime.now().difference(startTime).inMilliseconds;
+        onItemComplete?.call(
+          currentIdx,
+          Ok(WorkshopPublishResult(
+            workshopId: workshopId,
+            wasUpdate: true,
+            durationMs: duration,
+            timestamp: DateTime.now(),
+            rawOutput: rawOutput.toString(),
+          )),
+        );
+        _activityLogger?.log(
+          ActivityEventType.projectPublished,
+          projectId: null,
+          gameCode: null,
+          payload: {
+            'projectName': items[currentIdx].params.title,
+            'workshopId': workshopId,
+          },
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+
+      // Failure: item not found on Steam
+      if (trimmed.contains('Failed to update workshop item')) {
+        completedInChunk.add(currentIdx);
+        onItemComplete?.call(
+          currentIdx,
+          Err(WorkshopItemNotFoundException(
+            'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
+            workshopId: items[currentIdx].params.publishedFileId,
+          )),
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+
+      // Generic error for current item
+      if (trimmed.contains('ERROR!') &&
+          !trimmed.contains('Login') &&
+          !completedInChunk.contains(currentIdx)) {
+        completedInChunk.add(currentIdx);
+        onItemComplete?.call(
+          currentIdx,
+          Err(WorkshopPublishException(
+            'steamcmd error: $trimmed',
+          )),
+        );
+        currentWorkshopId = null;
+        currentChunkPos++;
+        if (currentChunkPos < chunk.length) {
+          onItemStart?.call(
+            chunk[currentChunkPos],
+            items[chunk[currentChunkPos]].name,
+          );
+        }
+      }
+    }
+
     _currentProcess!.stdout.listen(
       (data) {
         lastOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         rawOutput.write(output);
 
-        for (final line in output.split(RegExp(r'[\r\n]+'))) {
-          final trimmed = line.trim();
-          if (trimmed.isEmpty) continue;
-
-          _outputController.add(trimmed);
-
-          // Check for auth failure (affects entire session)
-          if (trimmed.contains('Login Failure') ||
-              trimmed.contains('Invalid Password') ||
-              trimmed.contains('FAILED login')) {
-            authFailed = true;
-            continue;
-          }
-
-          if (currentChunkPos >= chunk.length) continue;
-          final currentIdx = chunk[currentChunkPos];
-
-          // Progress tracking
-          final progressMatch =
-              RegExp(r'(\d+)%').firstMatch(trimmed);
-          if (progressMatch != null) {
-            final pct = int.parse(progressMatch.group(1)!);
-            onItemProgress?.call(currentIdx, pct / 100.0);
-          }
-
-          // Workshop ID detection
-          final idMatch =
-              RegExp(r'PublishFileID\s*[:=]?\s*(\d+)')
-                  .firstMatch(trimmed);
-          if (idMatch != null) {
-            currentWorkshopId = idMatch.group(1);
-          }
-
-          // Success: item completed
-          if (trimmed.contains('Success.') ||
-              trimmed.contains('Item Updated') ||
-              (currentWorkshopId != null &&
-                  trimmed.contains('PublishFileID'))) {
-            // Determine final workshop ID
-            final workshopId = currentWorkshopId ??
-                items[currentIdx].params.publishedFileId;
-
-            completedInChunk.add(currentIdx);
-            final duration =
-                DateTime.now().difference(startTime).inMilliseconds;
-            onItemComplete?.call(
-              currentIdx,
-              Ok(WorkshopPublishResult(
-                workshopId: workshopId,
-                wasUpdate: true,
-                durationMs: duration,
-                timestamp: DateTime.now(),
-                rawOutput: rawOutput.toString(),
-              )),
-            );
-            _activityLogger?.log(
-              ActivityEventType.projectPublished,
-              projectId: null,
-              gameCode: null,
-              payload: {
-                'projectName': items[currentIdx].params.title,
-                'workshopId': workshopId,
-              },
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
-
-          // Failure: item not found on Steam
-          if (trimmed.contains('Failed to update workshop item')) {
-            completedInChunk.add(currentIdx);
-            onItemComplete?.call(
-              currentIdx,
-              Err(WorkshopItemNotFoundException(
-                'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
-                workshopId: items[currentIdx].params.publishedFileId,
-              )),
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
-
-          // Generic error for current item
-          if (trimmed.contains('ERROR!') &&
-              !trimmed.contains('Login') &&
-              !completedInChunk.contains(currentIdx)) {
-            completedInChunk.add(currentIdx);
-            onItemComplete?.call(
-              currentIdx,
-              Err(WorkshopPublishException(
-                'steamcmd error: $trimmed',
-              )),
-            );
-            currentWorkshopId = null;
-            currentChunkPos++;
-            if (currentChunkPos < chunk.length) {
-              onItemStart?.call(
-                chunk[currentChunkPos],
-                items[chunk[currentChunkPos]].name,
-              );
-            }
-          }
+        // A line can be split across two stdout reads. Buffer the trailing
+        // partial line and only process complete lines, so a split
+        // "Success."/"PublishFileID" line is still recognized and
+        // currentChunkPos stays aligned with the item being published.
+        stdoutBuffer += output;
+        final segments = stdoutBuffer.split(RegExp(r'[\r\n]+'));
+        stdoutBuffer = segments.removeLast();
+        for (final line in segments) {
+          processStdoutLine(line);
         }
       },
       onDone: () {
+        // Flush any final line that arrived without a trailing newline.
+        if (stdoutBuffer.isNotEmpty) {
+          processStdoutLine(stdoutBuffer);
+          stdoutBuffer = '';
+        }
         stdoutDone = true;
         checkDone();
       },
     );
+
+    String stderrBuffer = '';
+    void processStderrLine(String line) {
+      final trimmed = line.trim();
+      if (trimmed.isNotEmpty) {
+        _outputController.add('[stderr] $trimmed');
+      }
+    }
 
     _currentProcess!.stderr.listen(
       (data) {
         lastOutputTime = DateTime.now();
         final output = String.fromCharCodes(data);
         rawOutput.write(output);
-        for (final line in output.split('\n')) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add('[stderr] $trimmed');
-          }
+        stderrBuffer += output;
+        final segments = stderrBuffer.split(RegExp(r'[\r\n]+'));
+        stderrBuffer = segments.removeLast();
+        for (final line in segments) {
+          processStderrLine(line);
         }
       },
       onDone: () {
+        if (stderrBuffer.isNotEmpty) {
+          processStderrLine(stderrBuffer);
+          stderrBuffer = '';
+        }
         stderrDone = true;
         checkDone();
       },

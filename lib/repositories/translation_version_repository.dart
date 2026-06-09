@@ -451,55 +451,17 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
             updated_at = ?
           ''', [now]);
         }
+
+        // Mark affected projects as changed so the "Export outdated" filter
+        // detects the clear, mirroring acceptBatch/rejectBatch.
+        await _bumpProjectsUpdatedAtForVersions(txn, versionIds, now);
       } finally {
         if (disableTriggers) {
-          // Recreate all triggers
-          await txn.execute('''
-            CREATE TRIGGER trg_update_project_language_progress
-            AFTER UPDATE ON translation_versions
-            WHEN NEW.status != OLD.status
-            BEGIN
-              UPDATE project_languages
-              SET progress_percent = (
-                SELECT
-                  CAST(COUNT(CASE WHEN tv.status IN ('approved', 'reviewed', 'translated') THEN 1 END) AS REAL) * 100.0 /
-                  NULLIF(COUNT(*), 0)
-                FROM translation_versions tv
-                INNER JOIN translation_units tu ON tv.unit_id = tu.id
-                WHERE tv.project_language_id = NEW.project_language_id
-                  AND tu.is_obsolete = 0
-              ),
-              updated_at = strftime('%s', 'now')
-              WHERE id = NEW.project_language_id;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_translation_versions_fts_update
-            AFTER UPDATE OF translated_text, validation_issues ON translation_versions
-            BEGIN
-              DELETE FROM translation_versions_fts WHERE version_id = old.id;
-              INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
-              SELECT new.translated_text, new.validation_issues, new.id
-              WHERE new.translated_text IS NOT NULL;
-            END
-          ''');
-
-          await txn.execute('''
-            CREATE TRIGGER trg_update_cache_on_version_change
-            AFTER UPDATE ON translation_versions
-            BEGIN
-              UPDATE translation_view_cache
-              SET translated_text = new.translated_text,
-                  status = new.status,
-                  confidence_score = NULL,
-                  is_manually_edited = new.is_manually_edited,
-                  version_id = new.id,
-                  version_updated_at = new.updated_at
-              WHERE unit_id = new.unit_id
-                AND project_language_id = new.project_language_id;
-            END
-          ''');
+          // Reuse the shared helper so the recreated triggers stay identical
+          // to schema.sql (the previous inline copy omitted the
+          // projects.updated_at bump in trg_update_project_language_progress,
+          // permanently degrading the live trigger for the DB session).
+          await _recreateTriggers(txn);
         }
       }
 

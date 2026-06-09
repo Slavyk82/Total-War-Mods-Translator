@@ -77,13 +77,33 @@ class ProcessService {
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
 
-      final stdoutSub = process.stdout
-          .transform(utf8.decoder)
-          .listen((data) => stdoutBuffer.write(data));
+      // Completers that resolve when each stream is fully drained (onDone).
+      // We must wait for these BEFORE reading the buffers: process.exitCode
+      // completing only means the OS process ended, but the Dart pipes may
+      // still have buffered, undelivered data. Draining first avoids dropping
+      // the tail of the output.
+      final stdoutDone = Completer<void>();
+      final stderrDone = Completer<void>();
 
-      final stderrSub = process.stderr
-          .transform(utf8.decoder)
-          .listen((data) => stderrBuffer.write(data));
+      final stdoutSub = process.stdout.transform(utf8.decoder).listen(
+            (data) => stdoutBuffer.write(data),
+            onDone: () {
+              if (!stdoutDone.isCompleted) stdoutDone.complete();
+            },
+            onError: (Object e) {
+              if (!stdoutDone.isCompleted) stdoutDone.complete();
+            },
+          );
+
+      final stderrSub = process.stderr.transform(utf8.decoder).listen(
+            (data) => stderrBuffer.write(data),
+            onDone: () {
+              if (!stderrDone.isCompleted) stderrDone.complete();
+            },
+            onError: (Object e) {
+              if (!stderrDone.isCompleted) stderrDone.complete();
+            },
+          );
 
       try {
         // Wait for process to complete (with optional timeout)
@@ -101,6 +121,10 @@ class ProcessService {
         } else {
           exitCode = await process.exitCode;
         }
+
+        // Drain stdout/stderr to completion before reading the buffers so we
+        // capture any output still buffered in the pipes after exit.
+        await Future.wait([stdoutDone.future, stderrDone.future]);
 
         final executionTime = DateTime.now().difference(startTime);
 
@@ -163,43 +187,67 @@ class ProcessService {
       final stderrBuffer = StringBuffer();
       int lineCount = 0;
 
+      // Completers that resolve when each stream is fully drained (onDone).
+      // We must wait for these BEFORE reading the buffers: process.exitCode
+      // completing only means the OS process ended, but the Dart pipes may
+      // still have buffered, undelivered data. Draining first avoids dropping
+      // the tail of the output.
+      final stdoutDone = Completer<void>();
+      final stderrDone = Completer<void>();
+
       // Stream stdout
       final stdoutSub = process.stdout
           .transform(utf8.decoder)
           .transform(const LineSplitter())
-          .listen((line) {
-        stdoutBuffer.writeln(line);
-        lineCount++;
+          .listen(
+        (line) {
+          stdoutBuffer.writeln(line);
+          lineCount++;
 
-        if (onProgress != null) {
-          onProgress(models.ProcessProgress(
-            pid: process.pid,
-            currentLine: line,
-            isError: false,
-            totalLines: lineCount,
-            timestamp: DateTime.now(),
-          ));
-        }
-      });
+          if (onProgress != null) {
+            onProgress(models.ProcessProgress(
+              pid: process.pid,
+              currentLine: line,
+              isError: false,
+              totalLines: lineCount,
+              timestamp: DateTime.now(),
+            ));
+          }
+        },
+        onDone: () {
+          if (!stdoutDone.isCompleted) stdoutDone.complete();
+        },
+        onError: (Object e) {
+          if (!stdoutDone.isCompleted) stdoutDone.complete();
+        },
+      );
 
       // Stream stderr
       final stderrSub = process.stderr
           .transform(utf8.decoder)
           .transform(const LineSplitter())
-          .listen((line) {
-        stderrBuffer.writeln(line);
-        lineCount++;
+          .listen(
+        (line) {
+          stderrBuffer.writeln(line);
+          lineCount++;
 
-        if (onProgress != null) {
-          onProgress(models.ProcessProgress(
-            pid: process.pid,
-            currentLine: line,
-            isError: true,
-            totalLines: lineCount,
-            timestamp: DateTime.now(),
-          ));
-        }
-      });
+          if (onProgress != null) {
+            onProgress(models.ProcessProgress(
+              pid: process.pid,
+              currentLine: line,
+              isError: true,
+              totalLines: lineCount,
+              timestamp: DateTime.now(),
+            ));
+          }
+        },
+        onDone: () {
+          if (!stderrDone.isCompleted) stderrDone.complete();
+        },
+        onError: (Object e) {
+          if (!stderrDone.isCompleted) stderrDone.complete();
+        },
+      );
 
       try {
         // Wait for process
@@ -217,6 +265,10 @@ class ProcessService {
         } else {
           exitCode = await process.exitCode;
         }
+
+        // Drain stdout/stderr to completion before reading the buffers so we
+        // capture any output still buffered in the pipes after exit.
+        await Future.wait([stdoutDone.future, stderrDone.future]);
 
         final executionTime = DateTime.now().difference(startTime);
 

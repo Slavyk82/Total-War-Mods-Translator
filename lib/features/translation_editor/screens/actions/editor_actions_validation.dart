@@ -421,9 +421,9 @@ mixin EditorActionsValidation on EditorActionsBase {
 
     final version = versionResult.unwrap();
     final clearedVersion = version.copyWith(
-      translatedText: null,
+      clearTranslatedText: true,
       status: TranslationVersionStatus.pending,
-      validationIssues: null,
+      clearValidationIssues: true,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
 

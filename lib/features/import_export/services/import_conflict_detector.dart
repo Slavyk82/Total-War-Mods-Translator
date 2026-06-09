@@ -1,5 +1,6 @@
 import '../../../models/common/result.dart';
 import '../../../models/common/service_exception.dart';
+import '../../../repositories/project_language_repository.dart';
 import '../../../repositories/translation_unit_repository.dart';
 import '../../../repositories/translation_version_repository.dart';
 import '../models/import_conflict.dart';
@@ -12,11 +13,13 @@ class ImportConflictDetector {
   final ImportFileReader _fileReader;
   final TranslationUnitRepository _unitRepository;
   final TranslationVersionRepository _versionRepository;
+  final ProjectLanguageRepository _projectLanguageRepository;
 
   const ImportConflictDetector(
     this._fileReader,
     this._unitRepository,
     this._versionRepository,
+    this._projectLanguageRepository,
   );
 
   /// Detect conflicts between import data and existing translations
@@ -52,6 +55,21 @@ class ImportConflictDetector {
         ImportColumn.targetText,
       );
 
+      // Resolve the target language's project_languages row id so conflicts
+      // are compared against the SAME language being imported (not an
+      // arbitrary sibling language returned by getByUnit(...).first).
+      final projectLanguageResult =
+          await _projectLanguageRepository.getByProjectAndLanguage(
+        settings.projectId,
+        settings.targetLanguageId,
+      );
+      if (projectLanguageResult.isErr) {
+        // Target language is not part of the project yet: nothing to conflict
+        // with (every imported row will create a fresh version).
+        return Ok(conflicts);
+      }
+      final projectLanguageId = projectLanguageResult.value.id;
+
       for (final row in rows) {
         final key = row[keyColumn];
         if (key == null || key.isEmpty) continue;
@@ -62,6 +80,7 @@ class ImportConflictDetector {
           sourceColumn: sourceColumn,
           targetColumn: targetColumn,
           projectId: settings.projectId,
+          projectLanguageId: projectLanguageId,
         );
 
         if (conflict != null) {
@@ -84,22 +103,32 @@ class ImportConflictDetector {
     required String sourceColumn,
     required String targetColumn,
     required String projectId,
+    required String projectLanguageId,
   }) async {
     try {
-      final unitsResult = await _unitRepository.getByKey(projectId, key);
+      final unitResult = await _unitRepository.findByKey(projectId, key);
 
-      if (unitsResult.isErr) {
+      // A real DB error or a genuinely missing unit both mean "no conflict to
+      // report for this row"; only a found unit can conflict.
+      if (unitResult.isErr) {
         return null;
       }
 
-      final unit = unitsResult.value;
-
-      final versionsResult = await _versionRepository.getByUnit(unit.id);
-      if (versionsResult.isErr || versionsResult.value.isEmpty) {
+      final unit = unitResult.value;
+      if (unit == null) {
         return null;
       }
 
-      final version = versionsResult.value.first;
+      // Compare against the version for the SAME target language only.
+      final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
+        unitId: unit.id,
+        projectLanguageId: projectLanguageId,
+      );
+      if (versionResult.isErr) {
+        return null;
+      }
+
+      final version = versionResult.value;
 
       final importedSourceText = sourceColumn.isNotEmpty ? row[sourceColumn] : null;
       final importedTargetText = targetColumn.isNotEmpty ? row[targetColumn] : null;

@@ -297,7 +297,10 @@ mixin TranslationVersionBatchMixin {
 
         if (disableTriggers) {
           // Step 3: Rebuild FTS / cache / progress in set-based SQL.
-          final now = DateTime.now().millisecondsSinceEpoch;
+          // `*_at` columns store Unix SECONDS everywhere (triggers use
+          // strftime('%s','now')); writing milliseconds here would push
+          // timestamps ~1000x into the future and corrupt recency sorting.
+          final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
           onProgress?.call(total, total, 'Rebuilding search index...');
 
           const rebuildChunkSize = 500;
@@ -452,7 +455,7 @@ mixin TranslationVersionBatchMixin {
       return Ok((inserted: 0, updated: 0, skipped: 0));
     }
 
-    return executeTransaction((txn) async {
+    final result = await executeTransaction((txn) async {
       final total = entities.length;
       int inserted = 0;
       int updated = 0;
@@ -470,15 +473,20 @@ mixin TranslationVersionBatchMixin {
       }
 
       try {
-        // Process in batches
+        // Process in batches.
+        // `*_at` columns store Unix SECONDS (see trigger strftime('%s','now')),
+        // so timestamps written here MUST be divided by 1000.
         const batchSize = 500;
-        final now = DateTime.now().millisecondsSinceEpoch;
+        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
         for (var i = 0; i < entities.length; i += batchSize) {
-          // Check for cancellation at batch boundaries
+          // Check for cancellation at batch boundaries.
+          // Throw (instead of returning) so the ENTIRE transaction rolls back
+          // atomically. A bare `return` here commits the rows written so far
+          // while skipping the FTS/cache/progress rebuild below, leaving the
+          // search index and editor grid silently out of sync with the data.
           if (isCancelled?.call() == true) {
-            // Return partial results
-            return (inserted: inserted, updated: updated, skipped: entities.length - i + skipped);
+            throw TWMTDatabaseException(_batchImportCancelledSentinel);
           }
 
           final batchEnd = (i + batchSize).clamp(0, entities.length);
@@ -665,5 +673,17 @@ mixin TranslationVersionBatchMixin {
 
       return (inserted: inserted, updated: updated, skipped: skipped);
     });
+
+    // A cancellation rolled the whole transaction back, so nothing was
+    // written: report it as "no changes" rather than a database error.
+    if (result.isErr &&
+        result.unwrapErr().message == _batchImportCancelledSentinel) {
+      return Ok((inserted: 0, updated: 0, skipped: entities.length));
+    }
+    return result;
   }
 }
+
+/// Internal sentinel message used to abort [TranslationVersionBatchMixin]'s
+/// `importBatch` transaction on cancellation so it rolls back atomically.
+const String _batchImportCancelledSentinel = '__twmt_batch_import_cancelled__';

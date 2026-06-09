@@ -176,8 +176,26 @@ class LanguageSettings extends _$LanguageSettings {
       return (false, 'Cannot delete the default language. Please select a different default first.');
     }
 
-    // Clean up translation memory entries referencing this language
-    // This must be done before deleting the language due to foreign key constraints
+    // Pre-check project usage BEFORE touching translation memory. Deleting the
+    // language fails on a foreign-key constraint when it is still attached to a
+    // project; if we cleaned up TM first and only then hit that constraint, the
+    // TM entries would be irreversibly lost while the language stays. Checking
+    // first means a blocked delete is a true no-op.
+    final projectLanguageRepository = ref.read(projectLanguageRepositoryProvider);
+    final usageResult = await projectLanguageRepository.countByLanguageId(languageId);
+    if (usageResult.isErr) {
+      return (false, 'Failed to check language usage: ${usageResult.unwrapErr().message}');
+    }
+    if (usageResult.unwrap() > 0) {
+      return (
+        false,
+        'This language is used in one or more projects. '
+            'Remove it from all projects before deleting.',
+      );
+    }
+
+    // Clean up translation memory entries referencing this language.
+    // Must run before deleting the language due to foreign key constraints.
     final tmCleanupResult = await tmRepository.deleteByLanguageId(languageId);
     if (tmCleanupResult.isErr) {
       return (false, 'Failed to clean up translation memory: ${tmCleanupResult.unwrapErr().message}');

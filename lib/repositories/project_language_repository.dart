@@ -185,6 +185,21 @@ class ProjectLanguageRepository extends BaseRepository<ProjectLanguage> {
   ///
   /// Returns [Ok] with the list of languages ordered by name,
   /// [Err] with exception if the query fails.
+  /// Count how many project_languages rows reference the given language.
+  ///
+  /// Used to check, without mutating anything, whether a language is still
+  /// attached to any project before attempting to delete it.
+  Future<Result<int, TWMTDatabaseException>> countByLanguageId(
+      String languageId) async {
+    return executeQuery(() async {
+      final rows = await database.rawQuery(
+        'SELECT COUNT(*) AS c FROM $tableName WHERE language_id = ?',
+        [languageId],
+      );
+      return (rows.first['c'] as int?) ?? 0;
+    });
+  }
+
   Future<Result<List<Language>, TWMTDatabaseException>>
       distinctLanguagesForGameCode(String gameCode) async {
     return executeQuery(() async {

@@ -37,6 +37,11 @@ class _VersionComparisonDialogState
   final ScrollController _rightScrollController = ScrollController();
   final bool _syncScrolling = true;
 
+  /// Re-entrance guard so a programmatic jumpTo on one controller does not
+  /// trigger the other controller's listener and fight back (panes can have
+  /// different scroll extents).
+  bool _syncing = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,13 +50,19 @@ class _VersionComparisonDialogState
 
   void _setupScrollSync() {
     _leftScrollController.addListener(() {
+      if (_syncing) return;
       if (_syncScrolling && _leftScrollController.hasClients) {
+        _syncing = true;
         _rightScrollController.jumpTo(_leftScrollController.offset);
+        _syncing = false;
       }
     });
     _rightScrollController.addListener(() {
+      if (_syncing) return;
       if (_syncScrolling && _rightScrollController.hasClients) {
+        _syncing = true;
         _leftScrollController.jumpTo(_rightScrollController.offset);
+        _syncing = false;
       }
     });
   }

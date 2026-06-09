@@ -58,7 +58,10 @@ void main() {
 
     await utils.copyTsvFilesToPackStructure([gen], tempDir);
 
-    final expectedPath = path.join(tempDir.path, 'text', 'db', 'some__name.loc');
+    // File lands under the internal .loc path with a trailing .tsv extension
+    // so createPack's `.tsv` filter matches and `--tsv-to-binary` runs.
+    final expectedPath =
+        path.join(tempDir.path, 'text', 'db', 'some__name.loc.tsv');
     expect(File(expectedPath).existsSync(), isTrue,
         reason: 'File must land at exactly $expectedPath without splitting __');
 
@@ -86,7 +89,8 @@ void main() {
 
     await utils.copyTsvFilesToPackStructure([genA, genB], tempDir);
 
-    final target = File(path.join(tempDir.path, 'text', 'db', 'merge.loc'));
+    final target =
+        File(path.join(tempDir.path, 'text', 'db', 'merge.loc.tsv'));
     final lines = await target.readAsLines();
 
     expect(lines[0], 'key\ttext\ttooltip');
@@ -116,7 +120,7 @@ void main() {
 
     await utils.copyTsvFilesToPackStructure([genA, genB], tempDir);
 
-    final target = File(path.join(tempDir.path, 'text', 'db', 'dup.loc'));
+    final target = File(path.join(tempDir.path, 'text', 'db', 'dup.loc.tsv'));
     final lines = await target.readAsLines();
     final dataRows = lines.skip(2).where((l) => l.isNotEmpty).toList();
 
