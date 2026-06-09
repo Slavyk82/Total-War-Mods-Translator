@@ -39,7 +39,28 @@
       "translationMemory": "翻译记忆库",
       "gameTranslation": "游戏翻译",
       "packCompilation": "包编译",
-      "settings": "设置"
+      "settings": "设置",
+      "logs": "日志"
+    }
+  },
+  "logConsole": {
+    "title": "日志",
+    "search": "搜索日志……",
+    "copyAll": "全部复制",
+    "clear": "清除",
+    "openFolder": "打开日志文件夹",
+    "minimize": "最小化",
+    "restore": "还原",
+    "close": "关闭",
+    "empty": "本次会话暂无日志",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "错误"
+    },
+    "errors": {
+      "openFolderFailed": "无法打开日志文件夹"
     }
   },
   "dataMigrationDialog": {

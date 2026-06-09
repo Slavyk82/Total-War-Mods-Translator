@@ -39,7 +39,28 @@
       "translationMemory": "Translation Memory",
       "gameTranslation": "Spielübersetzung",
       "packCompilation": "Pack-Kompilierung",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "logs": "Protokolle"
+    }
+  },
+  "logConsole": {
+    "title": "Protokolle",
+    "search": "Protokolle durchsuchen...",
+    "copyAll": "Alle kopieren",
+    "clear": "Leeren",
+    "openFolder": "Protokollordner öffnen",
+    "minimize": "Minimieren",
+    "restore": "Wiederherstellen",
+    "close": "Schließen",
+    "empty": "Noch keine Protokolle für diese Sitzung",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Fehler"
+    },
+    "errors": {
+      "openFolderFailed": "Protokollordner konnte nicht geöffnet werden"
     }
   },
   "dataMigrationDialog": {

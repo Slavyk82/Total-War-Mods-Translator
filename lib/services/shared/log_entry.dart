@@ -22,8 +22,12 @@ class LogEntry {
     return buffer.toString();
   }
 
-  /// Get the color for this log level (for terminal display).
-  int get levelColor {
+  /// Get the color (ARGB int) for this log level (for terminal display).
+  int get levelColor => colorForLevel(level);
+
+  /// ARGB color for a log level string. Shared so UI code can color a level
+  /// without constructing a [LogEntry].
+  static int colorForLevel(String level) {
     switch (level) {
       case 'ERROR':
         return 0xFFE53935; // Red

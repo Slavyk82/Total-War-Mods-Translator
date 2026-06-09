@@ -39,7 +39,28 @@
       "translationMemory": "Mémoire de traduction",
       "gameTranslation": "Traduction du jeu",
       "packCompilation": "Compilation de pack",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "logs": "Logs"
+    }
+  },
+  "logConsole": {
+    "title": "Logs",
+    "search": "Rechercher dans les logs...",
+    "copyAll": "Tout copier",
+    "clear": "Effacer",
+    "openFolder": "Ouvrir le dossier des logs",
+    "minimize": "Réduire",
+    "restore": "Restaurer",
+    "close": "Fermer",
+    "empty": "Aucun log pour cette session",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Erreur"
+    },
+    "errors": {
+      "openFolderFailed": "Impossible d'ouvrir le dossier des logs"
     }
   },
   "dataMigrationDialog": {

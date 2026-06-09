@@ -39,7 +39,28 @@
       "translationMemory": "Translation Memory",
       "gameTranslation": "Game Translation",
       "packCompilation": "Pack Compilation",
-      "settings": "Settings"
+      "settings": "Settings",
+      "logs": "Logs"
+    }
+  },
+  "logConsole": {
+    "title": "Logs",
+    "search": "Search logs...",
+    "copyAll": "Copy all",
+    "clear": "Clear",
+    "openFolder": "Open logs folder",
+    "minimize": "Minimize",
+    "restore": "Restore",
+    "close": "Close",
+    "empty": "No logs for this session yet",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Error"
+    },
+    "errors": {
+      "openFolderFailed": "Could not open the logs folder"
     }
   },
   "dataMigrationDialog": {

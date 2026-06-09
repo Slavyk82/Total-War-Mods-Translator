@@ -39,7 +39,28 @@
       "translationMemory": "Çeviri belleği",
       "gameTranslation": "Oyun çevirisi",
       "packCompilation": "Pack derlemesi",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "logs": "Günlükler"
+    }
+  },
+  "logConsole": {
+    "title": "Günlükler",
+    "search": "Günlüklerde ara...",
+    "copyAll": "Tümünü kopyala",
+    "clear": "Temizle",
+    "openFolder": "Günlük klasörünü aç",
+    "minimize": "Küçült",
+    "restore": "Geri yükle",
+    "close": "Kapat",
+    "empty": "Bu oturum için henüz günlük yok",
+    "levels": {
+      "debug": "Debug",
+      "info": "Info",
+      "warn": "Warn",
+      "error": "Hata"
+    },
+    "errors": {
+      "openFolderFailed": "Günlük klasörü açılamadı"
     }
   },
   "dataMigrationDialog": {
