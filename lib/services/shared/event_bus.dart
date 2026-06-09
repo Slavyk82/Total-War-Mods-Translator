@@ -115,8 +115,11 @@ class EventBus {
     // This prevents crashes during app initialization when EventBus
     // is initialized before DatabaseService
     if (persistEvents && DatabaseService.isInitialized) {
-      // Persist asynchronously in background to avoid blocking transactions
-      // Use unawaited to prevent blocking the caller
+      // Persist asynchronously in background to avoid blocking transactions.
+      // Use unawaited to prevent blocking the caller. Persistence is
+      // best-effort: _persistEvent handles and logs its own failures
+      // internally and never rethrows, so the returned future always
+      // completes successfully and a persistence error cannot crash publish.
       unawaited(
         _persistEvent(
           event,
@@ -124,15 +127,7 @@ class EventBus {
           correlationId: correlationId,
           causationId: causationId,
           metadata: metadata,
-        ).catchError((e, stackTrace) {
-          // Log but don't throw - event persistence is best-effort
-          // The event has already been broadcast to listeners, which is the primary goal
-          // Persistence failure should not crash the caller
-          _logger.warning(
-            'Failed to persist event ${event.runtimeType}',
-            {'error': e.toString()},
-          );
-        }),
+        ),
       );
     }
   }

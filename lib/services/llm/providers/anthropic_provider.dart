@@ -408,10 +408,10 @@ class AnthropicProvider implements ILlmProvider {
       // Parse JSON response
       final translations = _parseTranslations(responseText, request);
 
-      // Extract token usage
-      final usage = data['usage'] as Map<String, dynamic>;
-      final inputTokens = usage['input_tokens'] as int;
-      final outputTokens = usage['output_tokens'] as int;
+      // Extract token usage with null safety
+      final usage = data['usage'] as Map<String, dynamic>? ?? {};
+      final inputTokens = usage['input_tokens'] as int? ?? 0;
+      final outputTokens = usage['output_tokens'] as int? ?? 0;
 
       // Calculate processing time
       final processingTime = DateTime.now().difference(startTime).inMilliseconds;

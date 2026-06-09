@@ -181,6 +181,98 @@ void main() {
       expect(response.outputTokens, 17);
     });
 
+    test('parses a successful response when `usage` is missing, defaulting '
+        'token counts to 0 (does NOT report a parse failure)', () async {
+      final dio = _MockDio();
+      final provider = AnthropicProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+        logger: FakeLogger(),
+      );
+      final request = _buildRequest();
+
+      // A perfectly good translation: text content is present and parses, but
+      // the response omits the `usage` block (or a token field). This must NOT
+      // be surfaced as LlmResponseParseException - token counts default to 0.
+      final textPayload = jsonEncode({
+        'ui_title': 'Bonjour le monde',
+        'ui_subtitle': 'Bon retour',
+      });
+      final bodyWithoutUsage = <String, dynamic>{
+        'id': 'msg_no_usage',
+        'type': 'message',
+        'role': 'assistant',
+        'model': 'claude-3-5-sonnet-20241022',
+        'content': [
+          {'type': 'text', 'text': textPayload},
+        ],
+        'stop_reason': 'end_turn',
+        // No 'usage' field.
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(bodyWithoutUsage));
+
+      final result = await provider.translate(request, 'sk-ant-test');
+
+      expect(result.isOk, isTrue, reason: 'Expected Ok but got: $result');
+      final response = result.value;
+      expect(response.translations, {
+        'ui_title': 'Bonjour le monde',
+        'ui_subtitle': 'Bon retour',
+      });
+      expect(response.inputTokens, 0);
+      expect(response.outputTokens, 0);
+      expect(response.totalTokens, 0);
+    });
+
+    test('parses a successful response when a token field is missing, '
+        'defaulting only the missing field to 0', () async {
+      final dio = _MockDio();
+      final provider = AnthropicProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+        logger: FakeLogger(),
+      );
+      final request = _buildRequest();
+
+      final textPayload = jsonEncode({
+        'ui_title': 'Bonjour le monde',
+        'ui_subtitle': 'Bon retour',
+      });
+      final bodyPartialUsage = <String, dynamic>{
+        'id': 'msg_partial_usage',
+        'type': 'message',
+        'role': 'assistant',
+        'model': 'claude-3-5-sonnet-20241022',
+        'content': [
+          {'type': 'text', 'text': textPayload},
+        ],
+        'stop_reason': 'end_turn',
+        // output_tokens omitted.
+        'usage': {'input_tokens': 42},
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(bodyPartialUsage));
+
+      final result = await provider.translate(request, 'sk-ant-test');
+
+      expect(result.isOk, isTrue, reason: 'Expected Ok but got: $result');
+      final response = result.value;
+      expect(response.inputTokens, 42);
+      expect(response.outputTokens, 0);
+      expect(response.totalTokens, 42);
+    });
+
     test('maps 429 response to LlmRateLimitException and propagates '
         'retry-after header as retryAfterSeconds', () async {
       final dio = _MockDio();
