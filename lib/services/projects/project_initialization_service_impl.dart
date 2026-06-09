@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/mod_update_analysis_cache.dart';
+import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
@@ -131,6 +132,20 @@ class ProjectInitializationServiceImpl
       const uuid = Uuid();
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
+      // Fetch the project's languages ONCE up front. They don't change during
+      // import, so re-querying them per unit (potentially tens of thousands of
+      // times) is wasted work. Cache the list and reuse it for every entry.
+      final languagesResult = await _languageRepository.getByProject(projectId);
+      if (languagesResult.isErr) {
+        _logger.warning('Failed to get project languages', {
+          'projectId': projectId,
+          'error': languagesResult.error,
+        });
+      }
+      final projectLanguages = languagesResult.isOk
+          ? languagesResult.value
+          : <ProjectLanguage>[];
+
       for (int i = 0; i < locFiles.length; i++) {
         if (_isCancelled) {
           return Err(ServiceException('Initialization cancelled'));
@@ -223,37 +238,29 @@ class ProjectInitializationServiceImpl
 
           totalUnitsImported++;
 
-          // Create translation versions for all project languages
-          final languagesResult = await _languageRepository.getByProject(projectId);
-          if (languagesResult.isOk) {
-            final languages = languagesResult.value;
-            for (final language in languages) {
-              final version = TranslationVersion(
-                id: uuid.v4(),
-                unitId: unit.id,
-                projectLanguageId: language.id,
-                translatedText: null, // Empty for new imports
-                isManuallyEdited: false,
-                status: TranslationVersionStatus.pending,
-                validationIssues: null,
-                createdAt: now,
-                updatedAt: now,
-              );
+          // Create translation versions for all project languages.
+          // Uses the languages cached once before the loop above.
+          for (final language in projectLanguages) {
+            final version = TranslationVersion(
+              id: uuid.v4(),
+              unitId: unit.id,
+              projectLanguageId: language.id,
+              translatedText: null, // Empty for new imports
+              isManuallyEdited: false,
+              status: TranslationVersionStatus.pending,
+              validationIssues: null,
+              createdAt: now,
+              updatedAt: now,
+            );
 
-              final versionResult = await _versionRepository.insert(version);
-              if (versionResult.isErr) {
-                _logger.warning('Failed to insert translation version', {
-                  'unitId': unit.id,
-                  'projectLanguageId': language.id,
-                  'error': versionResult.error,
-                });
-              }
+            final versionResult = await _versionRepository.insert(version);
+            if (versionResult.isErr) {
+              _logger.warning('Failed to insert translation version', {
+                'unitId': unit.id,
+                'projectLanguageId': language.id,
+                'error': versionResult.error,
+              });
             }
-          } else {
-            _logger.warning('Failed to get project languages', {
-              'projectId': projectId,
-              'error': languagesResult.error,
-            });
           }
         }
 

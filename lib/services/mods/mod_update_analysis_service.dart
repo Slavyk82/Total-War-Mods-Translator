@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/features/activity/models/activity_event.dart';
 import 'package:twmt/features/activity/services/activity_logger.dart';
@@ -10,6 +11,7 @@ import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
+import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/rpfm/i_rpfm_service.dart';
 import 'package:twmt/services/file/i_localization_parser.dart';
 import 'package:twmt/services/service_locator.dart';
@@ -462,33 +464,50 @@ class ModUpdateAnalysisService {
           updatedAt: now,
         );
 
-        final insertResult = await _unitRepository.insert(unit);
-        if (insertResult.isErr) {
-          _logger.warning('Failed to insert new unit: ${newUnit.key}');
+        // Insert the unit and one translation version per project language
+        // atomically. The per-version view-cache rows are materialized by an
+        // INSERT trigger, and the rest of the app assumes every unit has a
+        // complete set of versions. If any insert fails (or a scan is
+        // interrupted mid-loop), the whole transaction rolls back so we never
+        // leave a unit with a missing/partial set of versions — and we do not
+        // count it as added.
+        try {
+          await DatabaseService.transaction((txn) async {
+            await txn.insert(
+              'translation_units',
+              unit.toJson(),
+              conflictAlgorithm: ConflictAlgorithm.abort,
+            );
+
+            for (final language in languages) {
+              final version = TranslationVersion(
+                id: _uuid.v4(),
+                unitId: unit.id,
+                projectLanguageId: language.id,
+                translatedText: null,
+                isManuallyEdited: false,
+                status: TranslationVersionStatus.pending,
+                validationIssues: null,
+                createdAt: now,
+                updatedAt: now,
+              );
+
+              await txn.insert(
+                'translation_versions',
+                version.toJson(),
+                conflictAlgorithm: ConflictAlgorithm.abort,
+              );
+            }
+          });
+        } catch (e) {
+          // Transaction rolled back: the unit and any versions inserted for it
+          // were discarded. Skip it without counting it as added.
+          _logger.warning(
+            'Failed to insert new unit and its versions, rolled back: '
+            '${newUnit.key} ($e)',
+          );
           processed++;
           continue;
-        }
-
-        // Create translation versions for all project languages
-        for (final language in languages) {
-          final version = TranslationVersion(
-            id: _uuid.v4(),
-            unitId: unit.id,
-            projectLanguageId: language.id,
-            translatedText: null,
-            isManuallyEdited: false,
-            status: TranslationVersionStatus.pending,
-            validationIssues: null,
-            createdAt: now,
-            updatedAt: now,
-          );
-
-          final versionResult = await _versionRepository.insert(version);
-          if (versionResult.isErr) {
-            _logger.warning(
-              'Failed to insert translation version for unit ${unit.id}, language ${language.id}',
-            );
-          }
         }
 
         unitsAdded++;
