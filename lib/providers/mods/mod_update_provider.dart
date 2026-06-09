@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/game_installation.dart';
@@ -44,7 +45,10 @@ class ModUpdateInfo {
     String? projectName,
     ModUpdateStatus? status,
     double? progress,
-    String? errorMessage,
+    // Use a ValueGetter sentinel so callers can explicitly clear the error
+    // (e.g. on retry). A plain `String?` cannot distinguish "leave unchanged"
+    // from "set to null", which previously left stale errors in place.
+    ValueGetter<String?>? errorMessage,
     ModVersion? newVersion,
   }) {
     return ModUpdateInfo(
@@ -52,7 +56,7 @@ class ModUpdateInfo {
       projectName: projectName ?? this.projectName,
       status: status ?? this.status,
       progress: progress ?? this.progress,
-      errorMessage: errorMessage ?? this.errorMessage,
+      errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
       newVersion: newVersion ?? this.newVersion,
     );
   }
@@ -73,6 +77,29 @@ class ModUpdateQueue extends _$ModUpdateQueue {
   final Map<String, ModUpdateInfo> _updateQueue = {};
   StreamSubscription<double>? _progressSubscription;
   String? _currentProjectId;
+
+  // Serializes all update execution. `_updateProject` mutates the single-slot
+  // `_progressSubscription`/`_currentProjectId` fields, so two invocations must
+  // never overlap. Both `startUpdates()` (fire-and-forget) and `retry()` route
+  // their work through `_runExclusive`, which chains tasks onto this future so
+  // a retry triggered mid-download waits for the in-flight project to finish
+  // instead of cancelling its progress subscription and overwriting the
+  // current-project id.
+  Future<void> _updateChain = Future<void>.value();
+
+  /// Runs [action] after any in-flight update completes, guaranteeing that at
+  /// most one [_updateProject] touches the shared subscription/current-id slots
+  /// at a time. Returns a future that resolves when [action] has run.
+  Future<void> _runExclusive(Future<void> Function() action) {
+    // Swallow prior errors so one failed task can't break the chain, then run
+    // the new action. We capture the resulting future as the new chain tail so
+    // subsequent callers queue behind this action.
+    final next = _updateChain.then((_) => action(), onError: (_) => action());
+    // Keep the chain alive even if `action` throws, so the next caller still
+    // runs rather than inheriting an unhandled error.
+    _updateChain = next.catchError((_) {});
+    return next;
+  }
 
   @override
   Map<String, ModUpdateInfo> build() {
@@ -126,7 +153,9 @@ class ModUpdateQueue extends _$ModUpdateQueue {
         continue;
       }
 
-      await _updateProject(updateInfo.projectId);
+      // Run each project exclusively so a concurrent retry() can't interleave
+      // and clobber this project's progress subscription / current-id.
+      await _runExclusive(() => _updateProject(updateInfo.projectId));
     }
   }
 
@@ -290,7 +319,7 @@ class ModUpdateQueue extends _$ModUpdateQueue {
     if (info != null) {
       _updateQueue[projectId] = info.copyWith(
         status: status,
-        errorMessage: errorMessage,
+        errorMessage: () => errorMessage,
       );
       state = Map.from(_updateQueue);
     }
@@ -341,13 +370,16 @@ class ModUpdateQueue extends _$ModUpdateQueue {
   Future<void> retry(String projectId) async {
     final info = _updateQueue[projectId];
     if (info != null && (info.isFailed || info.isCancelled)) {
+      // Clear the stale error explicitly via the ValueGetter sentinel.
       _updateQueue[projectId] = info.copyWith(
         status: ModUpdateStatus.pending,
-        errorMessage: null,
+        errorMessage: () => null,
       );
       state = Map.from(_updateQueue);
 
-      await _updateProject(projectId);
+      // Queue behind any in-flight update so we don't cancel its progress
+      // subscription or overwrite `_currentProjectId` mid-download.
+      await _runExclusive(() => _updateProject(projectId));
     }
   }
 

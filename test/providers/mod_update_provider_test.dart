@@ -82,10 +82,42 @@ void main() {
         );
 
         final newInfo = info.copyWith(
-          errorMessage: 'Connection timeout',
+          errorMessage: () => 'Connection timeout',
         );
 
         expect(newInfo.errorMessage, 'Connection timeout');
+      });
+
+      test('clears error message when passed () => null', () {
+        const info = ModUpdateInfo(
+          projectId: 'proj-123',
+          projectName: 'Test Project',
+          status: ModUpdateStatus.failed,
+          errorMessage: 'Stale error',
+        );
+
+        final cleared = info.copyWith(
+          status: ModUpdateStatus.pending,
+          errorMessage: () => null,
+        );
+
+        expect(cleared.status, ModUpdateStatus.pending);
+        expect(cleared.errorMessage, isNull);
+      });
+
+      test('preserves error message when errorMessage omitted', () {
+        const info = ModUpdateInfo(
+          projectId: 'proj-123',
+          projectName: 'Test Project',
+          status: ModUpdateStatus.failed,
+          errorMessage: 'Kept error',
+        );
+
+        // Omitting errorMessage (sentinel is null) must leave it unchanged.
+        final updated = info.copyWith(progress: 0.9);
+
+        expect(updated.errorMessage, 'Kept error');
+        expect(updated.progress, 0.9);
       });
     });
 
@@ -311,7 +343,7 @@ void main() {
       // Failure during download
       info = info.copyWith(
         status: ModUpdateStatus.failed,
-        errorMessage: 'Network error: Connection refused',
+        errorMessage: () => 'Network error: Connection refused',
       );
 
       expect(info.isFailed, isTrue);
@@ -466,7 +498,7 @@ void main() {
       }
     });
 
-    test('retry from failed goes back to pending', () {
+    test('retry from failed goes back to pending and clears stale error', () {
       const failedInfo = ModUpdateInfo(
         projectId: 'proj-retry',
         projectName: 'Test',
@@ -474,14 +506,15 @@ void main() {
         errorMessage: 'Previous error',
       );
 
+      // retry() uses the ValueGetter sentinel `() => null` to explicitly clear
+      // the error message.
       final retryInfo = failedInfo.copyWith(
         status: ModUpdateStatus.pending,
-        errorMessage: null,
+        errorMessage: () => null,
       );
 
       expect(retryInfo.status, ModUpdateStatus.pending);
-      // Note: copyWith doesn't clear errorMessage to null, it preserves it
-      // This is a limitation of the current implementation
+      expect(retryInfo.errorMessage, isNull);
     });
   });
 }
