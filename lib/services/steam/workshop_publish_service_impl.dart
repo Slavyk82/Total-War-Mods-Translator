@@ -731,42 +731,66 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     bool wasUpdate = initialWasUpdate;
     var lastRealOutputTime = DateTime.now();
 
-    _currentProcess!.stdout.listen((data) {
-      lastRealOutputTime = DateTime.now();
-      final output = String.fromCharCodes(data);
-      stdout.write(output);
+    // Ensure stdout/stderr are fully drained before we read the buffer.
+    // The process can exit while output is still queued, so awaiting exitCode
+    // alone can truncate `stdout` and miss login/update failures.
+    final outputCompleter = Completer<void>();
+    var stdoutDone = false;
+    var stderrDone = false;
+    void checkDone() {
+      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
+        outputCompleter.complete();
+      }
+    }
 
-      for (final line in output.split(RegExp(r'[\r\n]+'))) {
-        final trimmed = line.trim();
-        if (trimmed.isNotEmpty) {
-          _outputController.add(trimmed);
+    _currentProcess!.stdout.listen(
+      (data) {
+        lastRealOutputTime = DateTime.now();
+        final output = String.fromCharCodes(data);
+        stdout.write(output);
+
+        for (final line in output.split(RegExp(r'[\r\n]+'))) {
+          final trimmed = line.trim();
+          if (trimmed.isNotEmpty) {
+            _outputController.add(trimmed);
+          }
         }
-      }
 
-      _tryExtractProgress(output);
+        _tryExtractProgress(output);
 
-      final publishIdMatch =
-          RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(output);
-      if (publishIdMatch != null) {
-        detectedWorkshopId = publishIdMatch.group(1);
-      }
-
-      if (output.contains('Item Updated')) {
-        wasUpdate = true;
-      }
-    });
-
-    _currentProcess!.stderr.listen((data) {
-      lastRealOutputTime = DateTime.now();
-      final output = String.fromCharCodes(data);
-      stdout.write(output);
-      for (final line in output.split('\n')) {
-        final trimmed = line.trim();
-        if (trimmed.isNotEmpty) {
-          _outputController.add('[stderr] $trimmed');
+        final publishIdMatch =
+            RegExp(r'PublishFileID\s*[:=]?\s*(\d+)').firstMatch(output);
+        if (publishIdMatch != null) {
+          detectedWorkshopId = publishIdMatch.group(1);
         }
-      }
-    });
+
+        if (output.contains('Item Updated')) {
+          wasUpdate = true;
+        }
+      },
+      onDone: () {
+        stdoutDone = true;
+        checkDone();
+      },
+    );
+
+    _currentProcess!.stderr.listen(
+      (data) {
+        lastRealOutputTime = DateTime.now();
+        final output = String.fromCharCodes(data);
+        stdout.write(output);
+        for (final line in output.split('\n')) {
+          final trimmed = line.trim();
+          if (trimmed.isNotEmpty) {
+            _outputController.add('[stderr] $trimmed');
+          }
+        }
+      },
+      onDone: () {
+        stderrDone = true;
+        checkDone();
+      },
+    );
 
     final heartbeatTimer =
         Timer.periodic(const Duration(seconds: 5), (_) {
@@ -792,6 +816,13 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     );
 
     heartbeatTimer.cancel();
+
+    // Wait for any output still queued after the process exited so the buffer
+    // (checked for login/update failures and the workshop id) is complete.
+    await outputCompleter.future.timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {},
+    );
 
     return (
       exitCode: exitCode,

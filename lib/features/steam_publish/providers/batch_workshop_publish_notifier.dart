@@ -160,6 +160,10 @@ class BatchWorkshopPublishNotifier
 
     final service = ref.read(workshopPublishServiceProvider);
     final results = <BatchPublishItemResult>[];
+    // Workshop ID DB writes are started synchronously from onItemComplete but
+    // must finish before we invalidate the list, otherwise the refreshed list
+    // can show just-published items as unpublished (race).
+    final pendingSaves = <Future<void>>[];
 
     try {
       await service.publishBatch(
@@ -198,7 +202,7 @@ class BatchWorkshopPublishNotifier
                 success: true,
                 workshopId: publishResult.workshopId,
               ));
-              _saveWorkshopId(item, publishResult.workshopId);
+              pendingSaves.add(_saveWorkshopId(item, publishResult.workshopId));
               logging.info('Item published successfully', {
                 'name': item.name,
                 'workshopId': publishResult.workshopId,
@@ -253,6 +257,12 @@ class BatchWorkshopPublishNotifier
       isPublishing: false,
       clearCurrentItem: true,
     );
+
+    // Ensure all Workshop ID DB writes have committed before refreshing the
+    // list, so just-published items are not shown as unpublished.
+    if (pendingSaves.isNotEmpty) {
+      await Future.wait(pendingSaves);
+    }
 
     // Refresh exports list
     ref.invalidate(publishableItemsProvider);
