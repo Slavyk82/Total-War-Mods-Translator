@@ -26,7 +26,7 @@ TranslationRow _row(String id) => TranslationRow(
 void main() {
   test('rows expose exactly [checkbox, key, sourceText, translatedText]', () {
     final source = EditorDataSource(
-      onCellEdit: (_, _) {},
+      onCellEdit: (_, _) async {},
       onCheckboxTap: (_) {},
       isRowSelected: (_) => false,
     );
@@ -63,7 +63,7 @@ void main() {
 
   setUp(() {
     ds = EditorDataSource(
-      onCellEdit: (_, _) {},
+      onCellEdit: (_, _) async {},
       onCheckboxTap: (_) {},
       isRowSelected: (_) => false,
     );

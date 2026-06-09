@@ -11,7 +11,7 @@ import 'cell_renderers/text_cell_renderer.dart';
 /// kept so the inspector can write through the data source.
 class EditorDataSource extends DataGridSource {
   List<TranslationRow> _rows = [];
-  final Function(String unitId, String newText) onCellEdit;
+  final Future<void> Function(String unitId, String newText) onCellEdit;
   Function(String unitId) onCheckboxTap;
   bool Function(String unitId) isRowSelected;
   Color? _selectedRowColor;

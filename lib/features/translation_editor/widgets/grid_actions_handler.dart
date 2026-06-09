@@ -21,7 +21,7 @@ class GridActionsHandler {
   final Set<String> selectedRowIds;
   final String projectId;
   final String languageId;
-  final Function(String unitId, String newText) onCellEdit;
+  final Future<void> Function(String unitId, String newText) onCellEdit;
 
   GridActionsHandler({
     required this.context,
@@ -115,12 +115,18 @@ class GridActionsHandler {
       return;
     }
 
-    // Apply updates using the onCellEdit callback
+    // Apply updates using the onCellEdit callback.
+    //
+    // Each edit resolves to an async write (read-modify-write on the DB plus an
+    // undo-stack record). Await them sequentially so undo records are pushed in
+    // a deterministic order and any error dialogs surface before we report
+    // success. Showing the toast before the awaits completed previously let the
+    // user see "success" while edits (and their errors) were still in flight.
     for (final entry in updates.entries) {
-      onCellEdit(entry.key, entry.value);
+      await onCellEdit(entry.key, entry.value);
     }
 
-    // Show confirmation
+    // Show confirmation only after every edit has completed.
     if (context.mounted) {
       FluentToast.success(context, t.translationEditor.actions.pasted(count: validLines));
     }

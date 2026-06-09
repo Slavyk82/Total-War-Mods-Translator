@@ -30,7 +30,7 @@ import 'translation_context_builder.dart';
 class EditorDataGrid extends ConsumerStatefulWidget {
   final String projectId;
   final String languageId;
-  final Function(String unitId, String newText) onCellEdit;
+  final Future<void> Function(String unitId, String newText) onCellEdit;
   final Function(String unitId)? onRowDoubleTap;
   final Future<void> Function()? onForceRetranslate;
 

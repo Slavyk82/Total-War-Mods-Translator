@@ -73,7 +73,7 @@ class _Harness {
     );
 
     final dataSource = EditorDataSource(
-      onCellEdit: (_, _) {},
+      onCellEdit: (_, _) async {},
       onCheckboxTap: (_) {},
       isRowSelected: (_) => false,
     );
