@@ -76,9 +76,12 @@ class TmMatchingService {
         return Ok(null);
       }
 
-      // Build cache key using normalized language code for consistency
-      final normalizedLangCode = targetLanguageCode.toLowerCase();
-      final cacheKey = '$sourceHash:$normalizedLangCode';
+      // Build cache key via the canonical generator so writes share the same
+      // key space as TmCache.invalidateLanguagePair / preloadEntries.
+      final cacheKey = TmCache.generateExactMatchKey(
+        sourceHash: sourceHash,
+        targetLanguageCode: targetLanguageCode,
+      );
 
       // Check cache first
       final cached = _cache.getExactMatch(cacheKey);

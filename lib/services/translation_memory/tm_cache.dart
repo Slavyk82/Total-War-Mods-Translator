@@ -103,17 +103,25 @@ class TmCache {
 
   /// Invalidate all cache entries for a language pair
   ///
-  /// [sourceLanguageCode]: Source language
+  /// [sourceLanguageCode]: Source language (not part of the cache key — exact
+  ///   matches are keyed by source hash + target language only, so this is
+  ///   accepted for API symmetry but does not narrow the invalidation).
   /// [targetLanguageCode]: Target language
+  ///
+  /// Keys are produced by [generateExactMatchKey] as `'<sourceHash>:<target>'`,
+  /// so every entry for the target language is matched by its `':<target>'`
+  /// suffix. This shares the same key space as the writer ([generateExactMatchKey]),
+  /// ensuring invalidation actually hits cached entries.
   ///
   /// Performance: O(n) where n is number of matching entries
   void invalidateLanguagePair(
       String sourceLanguageCode, String targetLanguageCode) {
-    final languagePairPrefix = '${sourceLanguageCode}_${targetLanguageCode}_';
+    // sourceLanguageCode is intentionally not part of the key (see doc above).
+    final languagePairSuffix = ':${targetLanguageCode.toLowerCase()}';
 
-    // Find all keys matching this language pair
+    // Find all keys matching this target language
     final keysToRemove = _exactMatchCache.keys
-        .where((key) => key.startsWith(languagePairPrefix))
+        .where((key) => key.endsWith(languagePairSuffix))
         .toList();
 
     // Remove them
@@ -158,24 +166,25 @@ class TmCache {
   /// Check if cache is full
   bool get isFull => _exactMatchCache.length >= maxSize;
 
-  /// Generate cache key for exact match lookup
+  /// Generate cache key for exact match lookup.
+  ///
+  /// This is the single canonical key generator for the exact-match cache. The
+  /// writer ([TmMatchingService.findExactMatch]) and the invalidation/preload
+  /// helpers all route through here so they share one key space.
+  ///
+  /// Exact matches are looked up by source hash + target language (the writer
+  /// has no source language available), so the key is `'<sourceHash>:<target>'`
+  /// with the target language normalized to lowercase.
   ///
   /// [sourceHash]: Hash of source text
-  /// [sourceLanguageCode]: Source language
   /// [targetLanguageCode]: Target language
   ///
   /// Returns cache key string
   static String generateExactMatchKey({
     required String sourceHash,
-    required String sourceLanguageCode,
     required String targetLanguageCode,
   }) {
-    final parts = [
-      sourceLanguageCode,
-      targetLanguageCode,
-      sourceHash,
-    ];
-    return parts.join('_');
+    return '$sourceHash:${targetLanguageCode.toLowerCase()}';
   }
 
   /// Preload frequently used TM entries into cache
@@ -193,7 +202,6 @@ class TmCache {
     for (final entry in entries) {
       final cacheKey = generateExactMatchKey(
         sourceHash: entry.sourceHash,
-        sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
       );
 
