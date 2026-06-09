@@ -1,3 +1,5 @@
+import 'package:twmt/config/app_constants.dart';
+
 /// State for editing/creating a compilation.
 ///
 /// Contains all the form state and compilation progress information
@@ -34,8 +36,11 @@ class CompilationEditorState {
   });
 
   /// Generate default prefix based on language code.
-  static String defaultPrefixForLanguage(String languageCode) {
-    return '!!!!!!!!!!_${languageCode}_compilation_twmt_';
+  static String defaultPrefixForLanguage(
+    String languageCode, {
+    String marker = AppConstants.defaultPackPrefix,
+  }) {
+    return '${marker}_${languageCode}_compilation_twmt_';
   }
 
   CompilationEditorState copyWith({
