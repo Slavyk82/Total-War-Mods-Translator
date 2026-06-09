@@ -698,6 +698,39 @@ void main() {
     });
 
     // =========================================================================
+    // getPackPrefix
+    // =========================================================================
+    group('getPackPrefix', () {
+      test('should return stored prefix when setting exists', () async {
+        const setting = Setting(
+          id: 'setting-1',
+          key: 'pack_prefix',
+          value: 'zzz_',
+          valueType: SettingValueType.string,
+          updatedAt: 1234567890,
+        );
+        when(() => mockRepository.getByKey('pack_prefix'))
+            .thenAnswer((_) async => const Ok(setting));
+
+        final result = await service.getPackPrefix();
+
+        expect(result, 'zzz_');
+      });
+
+      test('should return default "!!!!!!!!!!" when setting does not exist',
+          () async {
+        when(() => mockRepository.getByKey('pack_prefix'))
+            .thenAnswer((_) async => const Err(
+                  TWMTDatabaseException('Setting not found'),
+                ));
+
+        final result = await service.getPackPrefix();
+
+        expect(result, '!!!!!!!!!!');
+      });
+    });
+
+    // =========================================================================
     // getTotalWarGame
     // =========================================================================
     group('getTotalWarGame', () {

@@ -24,6 +24,9 @@ class SettingsKeys {
   static const String rpfmSchemaPath = 'rpfm_schema_path';
   static const String defaultTargetLanguage = 'default_target_language';
   
+  // Pack generation
+  static const String packPrefix = 'pack_prefix';
+
   // Default values
   static const String defaultTargetLanguageValue = 'fr';
   static const String autoUpdate = 'auto_update';

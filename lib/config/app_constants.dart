@@ -298,4 +298,13 @@ class AppConstants {
   ///
   /// Standard denominator used in Jaro distance formula.
   static const double jaroSimilarityDivisor = 3.0;
+
+  // ========== PACK GENERATION CONFIGURATION ==========
+
+  /// Default load-order priority prefix for generated pack and .loc filenames.
+  ///
+  /// The leading exclamation marks force Total War to load translation packs
+  /// with high priority so they override the game's original text. Users may
+  /// override this via Settings/General (generation only).
+  static const String defaultPackPrefix = '!!!!!!!!!!';
 }

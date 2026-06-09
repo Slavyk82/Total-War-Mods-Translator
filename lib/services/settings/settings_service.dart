@@ -1,3 +1,4 @@
+import '../../config/app_constants.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../../models/domain/setting.dart';
@@ -179,6 +180,24 @@ class SettingsService {
     String path,
   ) async {
     return await setString('rpfm_path', path);
+  }
+
+  /// Get the configured pack prefix for generated .pack and .loc filenames.
+  ///
+  /// Returns the stored value or [AppConstants.defaultPackPrefix] when unset.
+  /// An empty stored value is returned as-is (the user may intentionally
+  /// clear the prefix).
+  Future<String> getPackPrefix() async {
+    final result = await _repository.getByKey('pack_prefix');
+    return result.when(
+      ok: (setting) {
+        if (setting.valueType != SettingValueType.string) {
+          return AppConstants.defaultPackPrefix;
+        }
+        return setting.value;
+      },
+      err: (_) => AppConstants.defaultPackPrefix,
+    );
   }
 
   /// Get the Total War game for RPFM operations.
