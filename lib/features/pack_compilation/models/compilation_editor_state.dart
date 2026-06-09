@@ -35,7 +35,12 @@ class CompilationEditorState {
     this.generatePackImage = true,
   });
 
-  /// Generate default prefix based on language code.
+  /// Generate the default compilation prefix for [languageCode].
+  ///
+  /// [marker] is the leading load-order token (default
+  /// [AppConstants.defaultPackPrefix]) — it is only the prefix's leading
+  /// segment, not the full compilation prefix, which is the returned
+  /// `{marker}_{lang}_compilation_twmt_` string.
   static String defaultPrefixForLanguage(
     String languageCode, {
     String marker = AppConstants.defaultPackPrefix,
