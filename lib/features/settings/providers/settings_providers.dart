@@ -8,6 +8,7 @@ import '../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../services/service_locator.dart';
 import '../../../services/shared/i_logging_service.dart';
 import '../../../models/domain/llm_provider_model.dart';
+import '../utils/pack_prefix_sanitizer.dart';
 
 part 'settings_providers.g.dart';
 
@@ -110,6 +111,7 @@ class GeneralSettings extends _$GeneralSettings {
           await service.getString(SettingsKeys.defaultTargetLanguage, defaultValue: SettingsKeys.defaultTargetLanguageValue),
       SettingsKeys.autoUpdate:
           (await service.getBool(SettingsKeys.autoUpdate, defaultValue: true)).toString(),
+      SettingsKeys.packPrefix: await service.getPackPrefix(),
     };
   }
 
@@ -187,6 +189,15 @@ class GeneralSettings extends _$GeneralSettings {
   Future<void> updateAutoUpdate(bool enabled) async {
     final service = ref.read(settingsServiceProvider);
     await service.setBool(SettingsKeys.autoUpdate, enabled);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updatePackPrefix(String prefix) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(
+      SettingsKeys.packPrefix,
+      sanitizePackPrefix(prefix),
+    );
     ref.invalidateSelf();
   }
 }
