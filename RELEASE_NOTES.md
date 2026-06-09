@@ -1,10 +1,10 @@
-## What's New — v2.0.3
+## What's New — v2.0.5
 
-### Translation Memory
-- Added inline editing of the "target" column
+### Logs
+- Added a dedicated, movable log window. Open it from the new "Logs" button under Settings in the sidebar to follow the current session's logs live, with level filtering, search, copy, and one-click access to the logs folder.
 
-### Models
-- Restored DeepSeek 3.2 as a selectable model
+### Pack & Export
+- Added an option to customize the prefix used for generated .loc and pack files.
 
-### Translation Quality
-- Reinforced prompting to better enforce target language selection
+### Fixes
+- Various bug fixes and stability improvements.
