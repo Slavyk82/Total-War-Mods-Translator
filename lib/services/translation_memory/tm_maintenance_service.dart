@@ -229,6 +229,13 @@ class TmMaintenanceService {
         final entries = batchResult.value;
         if (entries.isEmpty) break; // No more legacy entries
 
+        // Track forward progress within this batch. Because the loop always
+        // refetches from offset 0 and relies on each row dropping out of
+        // getEntriesWithLegacyHashes (deleted or rehashed), a row that fails
+        // to migrate AND fails to delete would be refetched first forever.
+        // If a whole batch advances nothing, abort instead of looping.
+        var batchProgress = 0;
+
         for (final entry in entries) {
           // Calculate new SHA256 hash
           final newHash = _calculateSourceHash(entry.sourceText);
@@ -241,17 +248,42 @@ class TmMaintenanceService {
 
           if (existingResult.isOk) {
             // Duplicate exists - delete the legacy entry
-            await _repository.delete(entry.id);
-            deletedDuplicates++;
+            final deleteResult = await _repository.delete(entry.id);
+            if (deleteResult.isOk) {
+              deletedDuplicates++;
+              batchProgress++;
+            }
           } else {
             // No duplicate - update the hash
             final updateResult = await _repository.updateHash(entry.id, newHash);
             if (updateResult.isOk) {
               migratedCount++;
+              batchProgress++;
             }
           }
 
           processedCount++;
+        }
+
+        // No-progress guard: if not a single row in this batch was migrated or
+        // deleted, the same failing rows will be refetched on every iteration
+        // (getEntriesWithLegacyHashes orders by id). Bail out with an error so
+        // the migration terminates instead of hanging on a transient DB error.
+        if (batchProgress == 0) {
+          _logger.warning(
+            'Legacy hash migration made no progress on a batch; aborting',
+            {
+              'migrated': migratedCount,
+              'deletedDuplicates': deletedDuplicates,
+              'batchSize': entries.length,
+            },
+          );
+          return Err(TmServiceException(
+            'Legacy hash migration stalled: a batch of ${entries.length} '
+            'entries could not be migrated or removed '
+            '(migrated $migratedCount, deletedDuplicates $deletedDuplicates '
+            'before the stall). Likely a transient database error.',
+          ));
         }
 
         // Report progress
