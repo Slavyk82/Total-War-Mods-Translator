@@ -469,14 +469,16 @@ class ProjectsWithDetailsNotifier
 
     final (languagesMap, gamesMap) = await _loadLookupMaps();
 
-    final List<ProjectWithDetails> projectsWithDetails = [];
-    for (final project in projects) {
-      projectsWithDetails.add(await _computeOne(
-        project: project,
-        gameInstallation: gamesMap[project.gameInstallationId],
-        languagesMap: languagesMap,
-      ));
-    }
+    // Compute each project's details concurrently. Previously this ran
+    // sequentially, serializing O(projects x languages) DB round-trips and
+    // blocking the list render. Future.wait preserves input order.
+    final projectsWithDetails = await Future.wait(
+      projects.map((project) => _computeOne(
+            project: project,
+            gameInstallation: gamesMap[project.gameInstallationId],
+            languagesMap: languagesMap,
+          )),
+    );
     return projectsWithDetails;
   }
 
@@ -561,10 +563,18 @@ class ProjectsWithDetailsNotifier
     final List<ProjectLanguageWithInfo> languagesWithInfo = [];
 
     if (langResult.isOk) {
-      for (final projLang in langResult.unwrap()) {
+      final projLangs = langResult.unwrap();
+      // Fetch per-language statistics concurrently rather than one round-trip
+      // at a time, to avoid an N+1 serialized chain that blocks the list render.
+      final statsResults = await Future.wait(
+        projLangs.map((projLang) =>
+            versionRepo.getLanguageStatistics(projLang.id)),
+      );
+
+      for (var i = 0; i < projLangs.length; i++) {
+        final projLang = projLangs[i];
         final language = languagesMap[projLang.languageId];
-        final statsResult =
-            await versionRepo.getLanguageStatistics(projLang.id);
+        final statsResult = statsResults[i];
         final stats = statsResult.isOk
             ? statsResult.unwrap()
             : ProjectStatistics.empty();

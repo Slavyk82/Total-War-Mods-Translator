@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 import '../../service_locator.dart';
 import '../../shared/i_logging_service.dart';
 import '../database_service.dart';
@@ -13,6 +15,7 @@ import 'migration_base.dart';
 /// may have failed to be created due to the broken triggers.
 class FixCacheTriggersMigration extends Migration {
   final ILoggingService _logger;
+  final Uuid _uuid = const Uuid();
 
   FixCacheTriggersMigration({ILoggingService? logger})
       : _logger = logger ?? ServiceLocator.get<ILoggingService>();
@@ -20,12 +23,30 @@ class FixCacheTriggersMigration extends Migration {
   @override
   String get id => 'fix_cache_triggers_confidence_score';
 
+  /// Settings marker key recorded once this migration has successfully run.
+  ///
+  /// The migration drops/recreates two triggers and runs a COUNT-join repair
+  /// query. Without a marker it would re-run on every app launch (the base
+  /// [isApplied] returns false). We persist a row in the `settings` table —
+  /// the same key/value marker mechanism used elsewhere in the codebase — so
+  /// subsequent startups short-circuit in [isApplied].
+  static const String _markerKey = 'migration_fix_cache_triggers_applied';
+
   @override
   String get description =>
       'Fix cache triggers and repair missing translation_versions';
 
   @override
   int get priority => 101; // Run after other migrations
+
+  @override
+  Future<bool> isApplied() async {
+    final result = await DatabaseService.database.rawQuery(
+      "SELECT COUNT(*) as cnt FROM settings WHERE key = ?",
+      [_markerKey],
+    );
+    return ((result.first['cnt'] as int?) ?? 0) > 0;
+  }
 
   @override
   Future<bool> execute() async {
@@ -94,12 +115,30 @@ class FixCacheTriggersMigration extends Migration {
       // Repair missing translation_versions
       await _repairMissingTranslationVersions();
 
+      // Record the marker so this migration is skipped on future startups.
+      await _markApplied();
+
       return true;
     } catch (e, stackTrace) {
       _logger.error('Failed to fix cache triggers', e, stackTrace);
       // This is a critical migration - re-throw to alert the user
       rethrow;
     }
+  }
+
+  /// Persist the settings marker row indicating the migration has run.
+  Future<void> _markApplied() async {
+    final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await DatabaseService.rawInsert(
+      '''
+      INSERT OR REPLACE INTO settings (id, key, value, value_type, updated_at)
+      VALUES (
+        COALESCE((SELECT id FROM settings WHERE key = ?), ?),
+        ?, ?, ?, ?
+      )
+      ''',
+      [_markerKey, _uuid.v4(), _markerKey, '1', 'boolean', now],
+    );
   }
 
   /// Repair missing translation_versions entries.

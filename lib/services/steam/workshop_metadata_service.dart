@@ -53,24 +53,15 @@ class WorkshopMetadataService {
       // Convert to domain model
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       
-      // Check if exists
-      final existsResult = await _repository.existsByWorkshopId(workshopId);
-      String entityId;
-
-      if (existsResult.isOk && existsResult.value) {
-        // Get existing ID
-        final existingResult = await _repository.getByWorkshopId(workshopId);
-        if (existingResult is Ok) {
-          entityId = existingResult.value.id;
-        } else {
-          entityId = _uuid.v4();
-        }
-      } else {
-        entityId = _uuid.v4();
-      }
+      // Fetch the existing record ONCE and reuse it for both the
+      // exists-check and the createdAt value. This avoids three separate
+      // round-trips (exists + get + get) and the TOCTOU window between them.
+      final existingResult = await _repository.getByWorkshopId(workshopId);
+      final WorkshopMod? existing =
+          existingResult is Ok ? existingResult.value : null;
 
       final workshopMod = WorkshopMod(
-        id: entityId,
+        id: existing?.id ?? _uuid.v4(),
         workshopId: modInfo.workshopId,
         title: modInfo.title,
         appId: modInfo.appId,
@@ -80,10 +71,7 @@ class WorkshopMetadataService {
         timeUpdated: modInfo.timeUpdated,
         subscriptions: modInfo.subscriptions,
         tags: modInfo.tags,
-        createdAt: existsResult.isOk && existsResult.value 
-            ? (await _repository.getByWorkshopId(workshopId))
-                .when(ok: (m) => m.createdAt, err: (_) => now)
-            : now,
+        createdAt: existing?.createdAt ?? now,
         updatedAt: now,
         lastCheckedAt: now,
       );
