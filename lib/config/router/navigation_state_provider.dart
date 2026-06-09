@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show ValueGetter;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,15 +16,21 @@ class NavigationState {
     this.lastModId,
   });
 
+  /// Returns a copy with the given fields replaced.
+  ///
+  /// Each nullable field uses a [ValueGetter] sentinel so callers can express
+  /// "set to null" (pass `() => null`) distinctly from "leave unchanged" (pass
+  /// nothing). A plain `String?` could not clear a field, which left stale
+  /// values in the in-memory state after clear/remove operations.
   NavigationState copyWith({
-    String? lastRoute,
-    String? lastProjectId,
-    String? lastModId,
+    ValueGetter<String?>? lastRoute,
+    ValueGetter<String?>? lastProjectId,
+    ValueGetter<String?>? lastModId,
   }) {
     return NavigationState(
-      lastRoute: lastRoute ?? this.lastRoute,
-      lastProjectId: lastProjectId ?? this.lastProjectId,
-      lastModId: lastModId ?? this.lastModId,
+      lastRoute: lastRoute != null ? lastRoute() : this.lastRoute,
+      lastProjectId: lastProjectId != null ? lastProjectId() : this.lastProjectId,
+      lastModId: lastModId != null ? lastModId() : this.lastModId,
     );
   }
 }
@@ -55,7 +62,7 @@ class NavigationStateNotifier extends _$NavigationStateNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyLastRoute, route);
 
-    state = state.copyWith(lastRoute: route);
+    state = state.copyWith(lastRoute: () => route);
   }
 
   Future<void> setLastProjectId(String? projectId) async {
@@ -67,7 +74,7 @@ class NavigationStateNotifier extends _$NavigationStateNotifier {
       await prefs.setString(_keyLastProjectId, projectId);
     }
 
-    state = state.copyWith(lastProjectId: projectId);
+    state = state.copyWith(lastProjectId: () => projectId);
   }
 
   Future<void> setLastModId(String? modId) async {
@@ -79,7 +86,7 @@ class NavigationStateNotifier extends _$NavigationStateNotifier {
       await prefs.setString(_keyLastModId, modId);
     }
 
-    state = state.copyWith(lastModId: modId);
+    state = state.copyWith(lastModId: () => modId);
   }
 
   Future<void> clearLastProject() async {
