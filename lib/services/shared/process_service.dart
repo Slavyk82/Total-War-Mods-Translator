@@ -70,7 +70,8 @@ class ProcessService {
         runInShell: config.runInShell,
       );
 
-      _activeProcesses[process.pid] = process;
+      final pid = process.pid;
+      _activeProcesses[pid] = process;
 
       // Collect output
       final stdoutBuffer = StringBuffer();
@@ -84,38 +85,41 @@ class ProcessService {
           .transform(utf8.decoder)
           .listen((data) => stderrBuffer.write(data));
 
-      // Wait for process to complete (with optional timeout)
-      int exitCode;
-      if (config.timeout != null) {
-        exitCode = await process.exitCode.timeout(
-          config.timeout!,
-          onTimeout: () {
-            process.kill();
-            throw TimeoutException(
-              'Process timed out after ${config.timeout!.inSeconds}s',
-            );
-          },
+      try {
+        // Wait for process to complete (with optional timeout)
+        int exitCode;
+        if (config.timeout != null) {
+          exitCode = await process.exitCode.timeout(
+            config.timeout!,
+            onTimeout: () {
+              process.kill();
+              throw TimeoutException(
+                'Process timed out after ${config.timeout!.inSeconds}s',
+              );
+            },
+          );
+        } else {
+          exitCode = await process.exitCode;
+        }
+
+        final executionTime = DateTime.now().difference(startTime);
+
+        final result = models.ProcessResult(
+          exitCode: exitCode,
+          stdout: stdoutBuffer.toString(),
+          stderr: stderrBuffer.toString(),
+          executionTimeMs: executionTime.inMilliseconds,
         );
-      } else {
-        exitCode = await process.exitCode;
+
+        return Ok(result);
+      } finally {
+        // Ensure subscriptions are cancelled and the process is removed from
+        // the active map on every path (success, error, or timeout), so we
+        // never leak stream subscriptions or stale active-process entries.
+        await stdoutSub.cancel();
+        await stderrSub.cancel();
+        _activeProcesses.remove(pid);
       }
-
-      // Wait for output streams to complete
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
-
-      _activeProcesses.remove(process.pid);
-
-      final executionTime = DateTime.now().difference(startTime);
-
-      final result = models.ProcessResult(
-        exitCode: exitCode,
-        stdout: stdoutBuffer.toString(),
-        stderr: stderrBuffer.toString(),
-        executionTimeMs: executionTime.inMilliseconds,
-      );
-
-      return Ok(result);
     } on TimeoutException catch (e) {
       return Err(Exception('Process timeout: ${e.message}'));
     } catch (e) {
@@ -152,7 +156,8 @@ class ProcessService {
         runInShell: config.runInShell,
       );
 
-      _activeProcesses[process.pid] = process;
+      final pid = process.pid;
+      _activeProcesses[pid] = process;
 
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
@@ -196,37 +201,41 @@ class ProcessService {
         }
       });
 
-      // Wait for process
-      int exitCode;
-      if (config.timeout != null) {
-        exitCode = await process.exitCode.timeout(
-          config.timeout!,
-          onTimeout: () {
-            process.kill();
-            throw TimeoutException(
-              'Process timed out after ${config.timeout!.inSeconds}s',
-            );
-          },
+      try {
+        // Wait for process
+        int exitCode;
+        if (config.timeout != null) {
+          exitCode = await process.exitCode.timeout(
+            config.timeout!,
+            onTimeout: () {
+              process.kill();
+              throw TimeoutException(
+                'Process timed out after ${config.timeout!.inSeconds}s',
+              );
+            },
+          );
+        } else {
+          exitCode = await process.exitCode;
+        }
+
+        final executionTime = DateTime.now().difference(startTime);
+
+        final result = models.ProcessResult(
+          exitCode: exitCode,
+          stdout: stdoutBuffer.toString(),
+          stderr: stderrBuffer.toString(),
+          executionTimeMs: executionTime.inMilliseconds,
         );
-      } else {
-        exitCode = await process.exitCode;
+
+        return Ok(result);
+      } finally {
+        // Ensure subscriptions are cancelled and the process is removed from
+        // the active map on every path (success, error, or timeout), so we
+        // never leak stream subscriptions or stale active-process entries.
+        await stdoutSub.cancel();
+        await stderrSub.cancel();
+        _activeProcesses.remove(pid);
       }
-
-      await stdoutSub.cancel();
-      await stderrSub.cancel();
-
-      _activeProcesses.remove(process.pid);
-
-      final executionTime = DateTime.now().difference(startTime);
-
-      final result = models.ProcessResult(
-        exitCode: exitCode,
-        stdout: stdoutBuffer.toString(),
-        stderr: stderrBuffer.toString(),
-        executionTimeMs: executionTime.inMilliseconds,
-      );
-
-      return Ok(result);
     } on TimeoutException catch (e) {
       return Err(Exception('Process timeout: ${e.message}'));
     } catch (e) {
