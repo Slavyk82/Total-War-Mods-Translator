@@ -128,6 +128,22 @@ class LlmNetworkException extends LlmProviderException {
   });
 }
 
+/// Exception for cancelled requests (user-initiated stop)
+///
+/// Raised when an in-flight request is aborted via a cancellation token
+/// (DioExceptionType.cancel). Unlike [LlmNetworkException], this is NOT a
+/// transient failure: it must never be retried, and downstream handlers
+/// must mark the batch as cancelled rather than failed.
+class LlmCancelledException extends LlmProviderException {
+  const LlmCancelledException(
+    super.message, {
+    super.providerCode = 'unknown',
+    super.code = 'CANCELLED',
+    super.details,
+    super.stackTrace,
+  });
+}
+
 /// Exception for server errors (5xx)
 class LlmServerException extends LlmProviderException {
   /// HTTP status code

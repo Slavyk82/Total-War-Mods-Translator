@@ -364,6 +364,36 @@ void main() {
           )).called(1);
     });
 
+    test('maps DioExceptionType.cancel to LlmCancelledException so '
+        'cancellation is never classified as a retryable network error',
+        () async {
+      final dio = _MockDio();
+      final provider = AnthropicProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+        logger: FakeLogger(),
+      );
+      final request = _buildRequest();
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenThrow(DioException(
+        requestOptions: RequestOptions(path: '/messages'),
+        type: DioExceptionType.cancel,
+        message: 'The request was manually cancelled by the user.',
+      ));
+
+      final result = await provider.translate(request, 'sk-ant-test');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmCancelledException>());
+      expect(result.error, isNot(isA<LlmNetworkException>()));
+      expect(result.error.providerCode, 'anthropic');
+    });
+
     test('maps malformed response (missing content) to '
         'LlmResponseParseException instead of throwing', () async {
       final dio = _MockDio();

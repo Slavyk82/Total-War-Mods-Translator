@@ -4,6 +4,15 @@ import '../models/search_result.dart';
 ///
 /// Builds complete SQL queries for FTS5 virtual tables with proper
 /// joins, filters, ranking, and highlighting.
+///
+/// Ranking note: SQLite FTS5 `rank` defaults to bm25(), which returns
+/// NEGATIVE values where MORE NEGATIVE = MORE relevant. All queries here
+/// therefore use ascending `ORDER BY rank` so the best matches come first
+/// (critical: LIMIT truncates inside SQLite, so a wrong sort direction
+/// permanently discards the most relevant rows). The service layer negates
+/// the raw rank into `SearchResult.relevanceScore` (positive, higher =
+/// better), and `SearchFilter.minRelevanceScore` follows that positive
+/// convention — it maps to `rank <= -minRelevanceScore` in SQL.
 class FtsQueryBuilder {
   /// Maximum number of results per query
   static const int maxLimit = 1000;
@@ -47,7 +56,7 @@ class FtsQueryBuilder {
         p.name as project_name,
         tu.key,
         tu.source_text,
-        tu.file_name,
+        tu.source_loc_file as file_name,
         tu.created_at,
         tu.updated_at,
         fts.rank,
@@ -57,7 +66,7 @@ class FtsQueryBuilder {
       LEFT JOIN projects p ON tu.project_id = p.id
       WHERE translation_units_fts MATCH '$sanitizedQuery'
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
-      ORDER BY rank DESC
+      ORDER BY rank
       $limitClause
     ''';
   }
@@ -128,7 +137,7 @@ class FtsQueryBuilder {
       LEFT JOIN languages l ON pl.language_id = l.id
       WHERE translation_versions_fts MATCH '$scopedQuery'
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
-      ORDER BY rank DESC
+      ORDER BY rank
       $limitClause
     ''';
   }
@@ -185,7 +194,7 @@ class FtsQueryBuilder {
       INNER JOIN translation_memory tm ON fts.rowid = tm.rowid
       WHERE translation_memory_fts MATCH '$sanitizedQuery'
       $languageClause
-      ORDER BY rank DESC
+      ORDER BY rank
       $limitClause
     ''';
   }
@@ -274,11 +283,11 @@ class FtsQueryBuilder {
       conditions.add('$tablePrefix.project_id IN ($placeholders)');
     }
 
-    // File name filter
+    // File name filter (translation_units stores it as source_loc_file)
     if (filter.fileNames != null && filter.fileNames!.isNotEmpty) {
       final placeholders =
           filter.fileNames!.map((f) => "'${_escapeSql(f)}'").join(', ');
-      conditions.add('$tablePrefix.file_name IN ($placeholders)');
+      conditions.add('$tablePrefix.source_loc_file IN ($placeholders)');
     }
 
     // Date range filters
@@ -292,9 +301,11 @@ class FtsQueryBuilder {
       conditions.add('$tablePrefix.created_at <= $timestamp');
     }
 
-    // Relevance score filter
+    // Relevance score filter. minRelevanceScore uses the public positive
+    // convention (higher = better); the raw FTS5 bm25 rank is negative with
+    // more-negative = better, so the predicate is rank <= -minRelevanceScore.
     if (filter.minRelevanceScore != null) {
-      conditions.add('rank >= ${filter.minRelevanceScore}');
+      conditions.add('rank <= ${-filter.minRelevanceScore!}');
     }
 
     return conditions.join(' AND ');
@@ -334,7 +345,7 @@ class FtsQueryBuilder {
     if (filter.fileNames != null && filter.fileNames!.isNotEmpty) {
       final placeholders =
           filter.fileNames!.map((f) => "'${_escapeSql(f)}'").join(', ');
-      conditions.add('tu.file_name IN ($placeholders)');
+      conditions.add('tu.source_loc_file IN ($placeholders)');
     }
 
     if (filter.minDate != null) {
@@ -345,8 +356,10 @@ class FtsQueryBuilder {
       conditions.add('tv.created_at <= ${filter.maxDate!.millisecondsSinceEpoch}');
     }
 
+    // See _buildFilterClause: positive minRelevanceScore maps to a
+    // less-than predicate on the negative bm25 rank.
     if (filter.minRelevanceScore != null) {
-      conditions.add('rank >= ${filter.minRelevanceScore}');
+      conditions.add('rank <= ${-filter.minRelevanceScore!}');
     }
 
     return conditions.join(' AND ');

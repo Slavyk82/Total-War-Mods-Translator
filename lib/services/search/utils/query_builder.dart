@@ -103,9 +103,11 @@ class FtsQueryBuilder {
       conditions.add('$tableAlias.created_at <= $timestamp');
     }
 
-    // Filter by minimum relevance score (for FTS5 results)
+    // Filter by minimum relevance score (for FTS5 results). FTS5 rank is
+    // bm25(): negative, more negative = better — a public positive score S
+    // therefore translates to rank <= -S (same convention as FtsQueryBuilder).
     if (filter.minRelevanceScore != null) {
-      conditions.add('rank >= ${filter.minRelevanceScore}');
+      conditions.add('rank <= ${-filter.minRelevanceScore!}');
     }
 
     return conditions.join(' AND ');

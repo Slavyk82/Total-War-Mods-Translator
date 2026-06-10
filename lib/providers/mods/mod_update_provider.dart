@@ -146,25 +146,58 @@ class ModUpdateQueue extends _$ModUpdateQueue {
     state = Map.from(_updateQueue);
   }
 
-  /// Start updating all queued projects
+  /// Start updating all queued projects.
+  ///
+  /// Invoked fire-and-forget (unawaited) from the UI, so it must never
+  /// complete with an error: an exception escaping here would surface as an
+  /// unhandled async error and silently abandon the rest of the queue.
   Future<void> startUpdates() async {
-    final pendingProjects = _updateQueue.values
-        .where((info) => info.status == ModUpdateStatus.pending)
-        .toList();
+    // Capture the logger up front: ref.read would throw if the notifier got
+    // disposed by the time the catch below needs it.
+    final logger = ref.read(loggingServiceProvider);
+    // The update dialog's 'Hide' button pops the ONLY watcher of this
+    // autoDispose notifier while updates are still running. Hold a keep-alive
+    // link for the whole run so the notifier (and the remaining queue)
+    // survives in the background, as 'Hide' promises. Reopening the dialog
+    // re-watches the same live notifier and shows the in-flight state.
+    final link = ref.keepAlive();
+    try {
+      final pendingProjects = _updateQueue.values
+          .where((info) => info.status == ModUpdateStatus.pending)
+          .toList();
 
-    for (final updateInfo in pendingProjects) {
-      if (state[updateInfo.projectId]?.status == ModUpdateStatus.cancelled) {
-        continue;
+      for (final updateInfo in pendingProjects) {
+        // Defense-in-depth: if some other path still disposes the notifier
+        // mid-run (e.g. container teardown), stop cleanly instead of letting
+        // the `state` read below throw on a disposed ref.
+        if (!ref.mounted) return;
+        if (state[updateInfo.projectId]?.status == ModUpdateStatus.cancelled) {
+          continue;
+        }
+
+        // Run each project exclusively so a concurrent retry() can't
+        // interleave and clobber this project's progress subscription /
+        // current-id. _updateProject reports per-project failures through the
+        // queue state and never rethrows, so one failed mod cannot abandon
+        // the rest of the queue.
+        await _runExclusive(() => _updateProject(updateInfo.projectId));
       }
-
-      // Run each project exclusively so a concurrent retry() can't interleave
-      // and clobber this project's progress subscription / current-id.
-      await _runExclusive(() => _updateProject(updateInfo.projectId));
+    } catch (e, stackTrace) {
+      logger.error('Mod update queue run failed', e, stackTrace);
+    } finally {
+      // Release the keep-alive. If the dialog was hidden and nothing else
+      // listens, the notifier disposes now that all queued work is done;
+      // if the dialog is (re)open, it stays alive as usual.
+      link.close();
     }
   }
 
   /// Update a specific project
   Future<void> _updateProject(String projectId) async {
+    // Callers hold a keepAlive link, but if the notifier was disposed anyway
+    // (e.g. container teardown) the ref.reads below would throw
+    // UnmountedRefException before the try/catch can swallow it. Bail out.
+    if (!ref.mounted) return;
     final steamService = ref.read(steamCmdServiceProvider);
     final versionRepo = ref.read(modVersionRepositoryProvider);
     final projectRepo = ref.read(projectRepositoryProvider);
@@ -469,9 +502,17 @@ class ModUpdateQueue extends _$ModUpdateQueue {
       );
       state = Map.from(_updateQueue);
 
-      // Queue behind any in-flight update so we don't cancel its progress
-      // subscription or overwrite `_currentProjectId` mid-download.
-      await _runExclusive(() => _updateProject(projectId));
+      // Same background guarantee as startUpdates: retry() is invoked
+      // fire-and-forget from the dialog, and 'Hide' may pop the only watcher
+      // while the retried download runs. Keep the notifier alive until done.
+      final link = ref.keepAlive();
+      try {
+        // Queue behind any in-flight update so we don't cancel its progress
+        // subscription or overwrite `_currentProjectId` mid-download.
+        await _runExclusive(() => _updateProject(projectId));
+      } finally {
+        link.close();
+      }
     }
   }
 

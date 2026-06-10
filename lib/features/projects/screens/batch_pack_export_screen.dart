@@ -49,7 +49,13 @@ class _BatchPackExportScreenState
   @override
   void dispose() {
     _elapsedTimer?.cancel();
-    ref.read(batchPackExportProvider.notifier).reset();
+    // The leave-confirmation dialog promises the export will be cancelled:
+    // stop the running loop, then reset. reset() defers to cancel() while
+    // the loop is still draining, and exportBatch() reinitializes state at
+    // the start of the next run, so re-entry always begins clean.
+    final notifier = ref.read(batchPackExportProvider.notifier);
+    notifier.cancel();
+    notifier.reset();
     super.dispose();
   }
 
@@ -79,6 +85,9 @@ class _BatchPackExportScreenState
   Future<void> _handleBack() async {
     if (await _confirmLeaveIfActive()) {
       if (mounted) {
+        // Honor the dialog's promise immediately; dispose() repeats this as
+        // a safety net for other pop paths.
+        ref.read(batchPackExportProvider.notifier).cancel();
         ref.read(batchProjectSelectionProvider.notifier).exitSelectionMode();
         ref.invalidate(projectsWithDetailsProvider);
         context.pop();

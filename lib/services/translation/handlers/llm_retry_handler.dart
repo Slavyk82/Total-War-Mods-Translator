@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/llm/i_llm_service.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
@@ -11,6 +12,7 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 /// - Retry on transient errors (429, 529, network errors)
 /// - Exponential backoff with configurable delays
 /// - Respect provider-suggested retry-after delays
+/// - Abort immediately (no retry, no backoff) on cancellation
 class LlmRetryHandler {
   final ILlmService _llmService;
   final ILoggingService _logger;
@@ -28,6 +30,11 @@ class LlmRetryHandler {
   /// - LlmRateLimitException (429 Too Many Requests)
   /// - LlmNetworkException (connection errors)
   ///
+  /// Never retries on LlmCancelledException (user-initiated stop): the
+  /// cancellation Err is returned immediately, and a cancellation arriving
+  /// between attempts (or during a backoff sleep) aborts the loop without
+  /// paying the remaining backoff.
+  ///
   /// Uses exponential backoff: 2s, 4s, 8s...
   Future<Result<LlmResponse, LlmServiceException>> translateWithRetry({
     required LlmRequest llmRequest,
@@ -36,6 +43,17 @@ class LlmRetryHandler {
     int maxRetries = 3,
   }) async {
     for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      // Bail out before the attempt if cancellation already arrived
+      // (e.g. user pressed Stop while a backoff sleep was pending).
+      if (_isCancelled(dioCancelToken)) {
+        _logger.info(
+          'Translation cancelled for batch $batchId - aborting retries',
+        );
+        return Err(
+          const LlmCancelledException('Request cancelled by user'),
+        );
+      }
+
       final result = await _llmService.translateBatch(
         llmRequest,
         cancelToken: dioCancelToken,
@@ -46,6 +64,14 @@ class LlmRetryHandler {
       }
 
       final error = result.unwrapErr();
+
+      // Cancellation is user-initiated: never retry, return immediately.
+      if (error is LlmCancelledException) {
+        _logger.info(
+          'Translation cancelled for batch $batchId: ${error.message}',
+        );
+        return result;
+      }
 
       // Check if error is retryable
       final isRetryable = error is LlmServerException ||
@@ -77,7 +103,14 @@ class LlmRetryHandler {
         'Retry ${attempt + 1}/$maxRetries after ${delaySeconds}s (${error.runtimeType}): ${error.message}',
       );
 
-      await Future.delayed(Duration(seconds: delaySeconds));
+      // Sleep, but wake up immediately if the token is cancelled mid-backoff
+      // (the cancellation check at the top of the loop then bails out).
+      final delay = Future<void>.delayed(Duration(seconds: delaySeconds));
+      if (dioCancelToken is CancelToken) {
+        await Future.any<void>([delay, dioCancelToken.whenCancel]);
+      } else {
+        await delay;
+      }
     }
 
     // Unreachable: the loop above always returns (either Ok on success, or
@@ -87,4 +120,8 @@ class LlmRetryHandler {
       'LlmRetryHandler.translateWithRetry loop exited without returning',
     );
   }
+
+  /// Whether the (dynamically typed) Dio cancel token reports cancellation.
+  bool _isCancelled(dynamic dioCancelToken) =>
+      dioCancelToken is CancelToken && dioCancelToken.isCancelled;
 }

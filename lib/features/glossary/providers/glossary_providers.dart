@@ -303,12 +303,36 @@ class GlossaryEntryEditor extends _$GlossaryEntryEditor {
   }
 
   Future<void> delete(String entryId) async {
+    final logging = ref.read(loggingServiceProvider);
     final service = ref.read(glossaryServiceProvider);
-    await service.deleteEntry(entryId);
+    final result = await service.deleteEntry(entryId);
 
-    // Clear editor state only if still mounted
+    result.when(
+      ok: (_) => logging.debug(
+          '[GlossaryEntryEditor.delete] Entry deleted successfully',
+          {'entryId': entryId}),
+      err: (error) =>
+          logging.error('[GlossaryEntryEditor.delete] ERROR deleting entry', error),
+    );
+
+    // Throw on failure (same convention as save()) so the caller's
+    // try/catch shows the error toast instead of a false success one.
+    if (result.isErr) {
+      throw Exception('Failed to delete entry: ${result.error}');
+    }
+
+    // Clear editor state and refresh providers only if still mounted
     if (ref.mounted) {
       state = null;
+
+      // The datagrid swaps between [glossaryEntriesProvider] and
+      // [glossarySearchResultsProvider] depending on whether a search filter
+      // is active, so both must be invalidated — otherwise the deleted row
+      // stays visible until an unrelated action refetches. Statistics must
+      // follow the new entry count as well.
+      ref.invalidate(glossaryEntriesProvider);
+      ref.invalidate(glossarySearchResultsProvider);
+      ref.invalidate(glossaryStatisticsProvider);
     }
   }
 }

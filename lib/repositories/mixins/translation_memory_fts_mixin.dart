@@ -54,14 +54,23 @@ mixin TranslationMemoryFtsMixin {
       // This is MUCH faster than LIKE queries (100-1000x improvement)
       final ftsQuery = _buildFts5Query(sourceText);
 
-      // Query FTS5 table for initial candidates using BM25 ranking
+      // No usable tokens (empty/whitespace/punctuation-only input):
+      // short-circuit instead of sending an invalid MATCH expression to FTS5.
+      if (ftsQuery.isEmpty) {
+        return <TranslationMemoryEntry>[];
+      }
+
+      // Query FTS5 table for initial candidates using BM25 ranking.
+      // bm25() requires the FTS5 table's hidden column (its real name, not
+      // the join alias) and is negative — more negative means more relevant —
+      // so ascending order yields best candidates first.
       final ftsMaps = await database.rawQuery('''
         SELECT tm.rowid
         FROM translation_memory tm
         INNER JOIN translation_memory_fts fts ON fts.rowid = tm.rowid
         WHERE fts.source_text MATCH ?
           AND tm.target_language_id = ?
-        ORDER BY bm25(fts)
+        ORDER BY bm25(translation_memory_fts) ASC
         LIMIT ?
       ''', [ftsQuery, targetLanguageId, maxCandidates]);
 
@@ -180,27 +189,62 @@ mixin TranslationMemoryFtsMixin {
     });
   }
 
-  /// Build FTS5 query from source text.
+  /// Tokenize text for use in an FTS5 MATCH expression.
   ///
-  /// Extracts significant words and builds an FTS5 MATCH query.
-  /// Filters out very short words and uses OR operator for flexibility.
-  String _buildFts5Query(String text) {
-    // Extract words, filter short ones, escape quotes
-    final words = text
+  /// Strips FTS5 special characters (" * ( ) :), lowercases, splits on
+  /// whitespace and drops tokens shorter than [minWordLength]. The returned
+  /// tokens are intended to be wrapped in double quotes (FTS5 strings), so
+  /// remaining punctuation (periods, apostrophes, hyphens) is safe: FTS5
+  /// tokenizes quoted strings into phrases instead of failing to parse them
+  /// as barewords.
+  List<String> _tokenizeForFts5(String text, {required int minWordLength}) {
+    final sanitized = text
+        .replaceAll('"', ' ')
+        .replaceAll('*', ' ')
+        .replaceAll('(', ' ')
+        .replaceAll(')', ' ')
+        .replaceAll(':', ' ');
+
+    final words = sanitized
         .toLowerCase()
         .split(RegExp(r'\s+'))
-        .where((word) => word.length >= 3)
-        .map((word) => word.replaceAll('"', ''))
+        .where((word) => word.isNotEmpty)
+        .toList();
+
+    final significant =
+        words.where((word) => word.length >= minWordLength).toList();
+    if (significant.isNotEmpty) {
+      return significant;
+    }
+
+    // Short inputs ("No", "HP", single CJK characters) yield no token that
+    // passes the length filter but are still valid searches: fall back to the
+    // whole sanitized input as one phrase token, which callers quote — safe
+    // for FTS5 regardless of remaining punctuation.
+    final phrase = words.join(' ').trim();
+    return phrase.isEmpty ? const [] : [phrase];
+  }
+
+  /// Build FTS5 query from source text for fuzzy candidate retrieval.
+  ///
+  /// Extracts significant words and builds an FTS5 MATCH query of quoted
+  /// tokens joined with OR. Each token is wrapped in double quotes so that
+  /// punctuation in ordinary game text ('attack.', "don't", 'well-trained')
+  /// cannot produce an FTS5 syntax error.
+  ///
+  /// Returns an empty string when the input yields no usable tokens;
+  /// callers must short-circuit instead of passing it to MATCH.
+  String _buildFts5Query(String text) {
+    final words = _tokenizeForFts5(text, minWordLength: 3)
         .take(5) // Limit to 5 most significant words
         .toList();
 
     if (words.isEmpty) {
-      // Fallback: use original text with quotes escaped
-      return text.replaceAll('"', '');
+      return '';
     }
 
-    // Build OR query: word1 OR word2 OR word3
-    return words.join(' OR ');
+    // Build OR query: "word1" OR "word2" OR "word3"
+    return words.map((w) => '"$w"').join(' OR ');
   }
 
   /// Build FTS5 search query from user input text.
@@ -208,26 +252,11 @@ mixin TranslationMemoryFtsMixin {
   /// Tokenizes input, filters short words, and escapes special characters.
   /// Uses prefix matching (*) for partial word matching.
   String _buildFts5SearchQuery(String text) {
-    // Escape FTS5 special characters: " * ( ) :
-    String escaped = text
-        .replaceAll('"', ' ')
-        .replaceAll('*', ' ')
-        .replaceAll('(', ' ')
-        .replaceAll(')', ' ')
-        .replaceAll(':', ' ');
-
-    // Extract words, filter very short ones
-    final words = escaped
-        .toLowerCase()
-        .split(RegExp(r'\s+'))
-        .where((word) => word.length >= 2)
-        .map((word) => word.trim())
-        .where((word) => word.isNotEmpty)
-        .toList();
+    final words = _tokenizeForFts5(text, minWordLength: 2);
 
     if (words.isEmpty) {
-      // Fallback: use original text if no valid words
-      return escaped.trim();
+      // No valid words: return empty so callers short-circuit to no results.
+      return '';
     }
 
     // Build query with prefix matching for better partial matches

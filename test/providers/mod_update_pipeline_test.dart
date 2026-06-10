@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -233,6 +234,122 @@ void main() {
       expect(state[projectId]!.status, ModUpdateStatus.failed,
           reason: 'no pack file → the update cannot have been applied');
       verifyNever(() => versionRepo.insert(any()));
+    });
+  });
+
+  group('ModUpdateQueue background continuation (Hide mid-download)', () {
+    // The dialog's 'Hide' button pops the ONLY watcher of this autoDispose
+    // notifier while updates run. startUpdates must hold a keep-alive link so
+    // the remaining queued mods still update in the background; without it the
+    // notifier is disposed mid-loop and the run dies with an unhandled
+    // UnmountedRefException, silently abandoning every remaining mod.
+    test(
+        'remaining queued mods still update after the last listener is '
+        'removed mid-download', () async {
+      final packFile = File(p.join(downloadDir.path, 'cool_mod.pack'));
+      await packFile.writeAsString('PFH5 fake pack content');
+
+      const project2Id = 'proj-2';
+      final project2 = Project(
+        id: project2Id,
+        name: 'Second mod',
+        gameInstallationId: 'gi-1',
+        modSteamId: '987654321',
+        sourceLanguageCode: 'en',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      when(() => projectRepo.getById(project2Id))
+          .thenAnswer((_) async => Ok(project2));
+
+      const analysis = ModUpdateAnalysis(
+        newUnitsCount: 1,
+        removedUnitsCount: 0,
+        modifiedUnitsCount: 0,
+        totalPackUnits: 10,
+        totalProjectUnits: 9,
+      );
+      when(() => analysisService.analyzeChanges(
+            projectId: any(named: 'projectId'),
+            packFilePath: any(named: 'packFilePath'),
+          )).thenAnswer((_) async => const Ok(analysis));
+      when(() => analysisService.addNewUnits(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(1));
+      when(() => analysisService.applyModifiedSourceTexts(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(ModUpdateApplyResult(
+            sourceTextsUpdated: 0,
+            translationsReset: 0,
+          )));
+      when(() => analysisService.markRemovedUnitsObsolete(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(0));
+
+      // Hold the first download until the test has removed the listener, so
+      // the dispose happens while mod #1 is mid-download.
+      final firstDownloadStarted = Completer<void>();
+      final releaseFirstDownload = Completer<void>();
+      var downloadCalls = 0;
+      when(() => steamService.downloadMod(
+            workshopId: any(named: 'workshopId'),
+            appId: any(named: 'appId'),
+            forceUpdate: any(named: 'forceUpdate'),
+          )).thenAnswer((invocation) async {
+        downloadCalls++;
+        if (downloadCalls == 1) {
+          firstDownloadStarted.complete();
+          await releaseFirstDownload.future;
+        }
+        return Ok(SteamCmdDownloadResult(
+          workshopId:
+              invocation.namedArguments[#workshopId] as String,
+          appId: 1142710,
+          downloadPath: downloadDir.path,
+          sizeBytes: 1024,
+          durationMs: 10,
+          timestamp: DateTime(2026, 6, 9),
+          wasUpdate: true,
+        ));
+      });
+
+      // The dialog watching the provider.
+      final subscription = container.listen(modUpdateQueueProvider, (_, _) {});
+      final notifier = container.read(modUpdateQueueProvider.notifier);
+      notifier.addMultipleToQueue([project, project2]);
+
+      // Fire-and-forget, exactly like the production call site
+      // (whats_new_dialog). Captured here only to assert it doesn't throw.
+      final updates = notifier.startUpdates();
+
+      await firstDownloadStarted.future;
+
+      // User presses 'Hide': the dialog pops, removing the last listener.
+      subscription.close();
+      // Flush the autoDispose scheduler so the disposal (if any) happens now.
+      await container.pump();
+
+      releaseFirstDownload.complete();
+
+      // Must complete without an UnmountedRefException.
+      await updates;
+
+      expect(downloadCalls, 2,
+          reason: 'the second queued mod must still download in background');
+      final inserted = verify(() => versionRepo.insert(captureAny()))
+          .captured
+          .cast<ModVersion>();
+      expect(
+        inserted.map((v) => v.projectId),
+        containsAll([projectId, project2Id]),
+        reason: 'both mods must persist their new version despite Hide',
+      );
     });
   });
 }

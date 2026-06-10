@@ -486,6 +486,14 @@ class GeminiProvider implements ILlmProvider {
 
   /// Handle Dio exceptions
   LlmProviderException _handleDioException(DioException e) {
+    // Handle cancellation (user-initiated stop) - must never be retried
+    if (e.type == DioExceptionType.cancel) {
+      return LlmCancelledException(
+        'Request cancelled: ${e.message}',
+        providerCode: providerCode,
+      );
+    }
+
     final statusCode = e.response?.statusCode;
     final responseData = e.response?.data;
     final headers = e.response?.headers;

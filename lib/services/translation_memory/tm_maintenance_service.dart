@@ -92,9 +92,13 @@ class TmMaintenanceService {
 
         final rows = batchResult.value;
 
-        // Build entries for this batch
-        final entriesToAdd = <({String sourceText, String targetText})>[];
-        final targetLanguageMap = <String, String>{};
+        // Build entries for this batch, grouped by target language code.
+        // The query returns one row PER TARGET LANGUAGE for the same source
+        // text, so the language must be part of the grouping key: keying by
+        // source text alone would assign every translation of a source to a
+        // single language and silently drop the others.
+        final entriesByLanguage =
+            <String, List<({String sourceText, String targetText})>>{};
 
         for (final row in rows) {
           final sourceText = row['source_text'] as String;
@@ -118,38 +122,30 @@ class TmMaintenanceService {
           if (existingResult.isOk) {
             existingCount++;
           } else {
-            entriesToAdd.add((sourceText: sourceText, targetText: targetText));
-            targetLanguageMap[sourceText] = targetLanguageId;
+            final langCode = stripLanguagePrefix(targetLanguageId);
+            entriesByLanguage
+                .putIfAbsent(langCode, () => [])
+                .add((sourceText: sourceText, targetText: targetText));
           }
 
           processedCount++;
         }
 
-        // Add entries that don't exist
-        if (entriesToAdd.isNotEmpty) {
-          // Group by target language for batch insert
-          final byLanguage =
-              <String, List<({String sourceText, String targetText})>>{};
-          for (final entry in entriesToAdd) {
-            final langId = targetLanguageMap[entry.sourceText]!;
-            final langCode = stripLanguagePrefix(langId);
-            byLanguage.putIfAbsent(langCode, () => []).add(entry);
-          }
+        // Add entries that don't exist, one batch per target language
+        for (final entry in entriesByLanguage.entries) {
+          final result = await _crudService.addTranslationsBatch(
+            translations: entry.value,
+            targetLanguageCode: entry.key,
+          );
 
-          for (final entry in byLanguage.entries) {
-            final result = await _crudService.addTranslationsBatch(
-              translations: entry.value,
-              targetLanguageCode: entry.key,
-            );
-
-            if (result.isOk) {
-              addedCount += entry.value.length;
-            } else {
-              _logger.warning('Failed to add batch for ${entry.key}', {
-                'error': result.error,
-                'count': entry.value.length,
-              });
-            }
+          if (result.isOk) {
+            // Count what the batch actually persisted, not what we sent.
+            addedCount += result.value;
+          } else {
+            _logger.warning('Failed to add batch for ${entry.key}', {
+              'error': result.error,
+              'count': entry.value.length,
+            });
           }
         }
 

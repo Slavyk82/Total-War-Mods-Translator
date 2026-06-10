@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import 'llm_exceptions.dart';
+
 /// Token for cancelling LLM requests
 ///
 /// Wraps Dio's CancelToken and provides additional functionality
@@ -27,18 +29,8 @@ class LlmCancellationToken {
   /// Throw if cancelled
   void throwIfCancelled() {
     if (_isCancelled) {
-      throw LlmCancelledException('Operation was cancelled');
+      throw const LlmCancelledException('Operation was cancelled');
     }
   }
-}
-
-/// Exception thrown when LLM operation is cancelled
-class LlmCancelledException implements Exception {
-  final String message;
-
-  LlmCancelledException(this.message);
-
-  @override
-  String toString() => 'LlmCancelledException: $message';
 }
 
