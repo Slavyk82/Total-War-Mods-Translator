@@ -20,6 +20,7 @@ import '../../../../models/domain/project_language.dart';
 import '../../../../models/domain/detected_mod.dart';
 import '../../../../models/domain/language.dart';
 import '../../../../repositories/language_repository.dart';
+import '../../../../repositories/project_repository.dart';
 import '../../../../services/settings/settings_service.dart';
 import '../../providers/projects_screen_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
@@ -29,6 +30,74 @@ import '../../../../services/service_locator.dart';
 import 'project_creation_state.dart';
 import 'step_basic_info.dart';
 import 'step_settings.dart';
+
+/// Why a freshly-created project's file initialization failed.
+enum ProjectInitFailure { schemaNotConfigured, initError }
+
+/// Outcome of [initializeProjectFilesOrRollback].
+class ProjectInitOutcome {
+  final bool success;
+  final int unitsImported;
+  final ProjectInitFailure? failure;
+  final String? error;
+
+  const ProjectInitOutcome.success(this.unitsImported)
+      : success = true,
+        failure = null,
+        error = null;
+
+  const ProjectInitOutcome.failure(this.failure, {this.error})
+      : success = false,
+        unitsImported = 0;
+}
+
+/// Initializes a freshly-created project's files (extract + import .loc) and,
+/// on ANY failure, rolls back the now-orphaned empty project so creation never
+/// reports false success.
+///
+/// Extracted from the wizard's `_initializeProjectFiles` so the rollback
+/// decision is unit-testable. It is UI-free: the dialog handles the log stream
+/// and progress, and surfaces [ProjectInitOutcome.error]/[ProjectInitOutcome
+/// .failure] in its banner. Mirrors the rollback already done in
+/// create_game_translation_dialog.dart.
+Future<ProjectInitOutcome> initializeProjectFilesOrRollback({
+  required IProjectInitializationService initService,
+  required ProjectRepository projectRepo,
+  required String projectId,
+  required String packFilePath,
+  required String? schemaPath,
+}) async {
+  Future<void> rollback() async {
+    try {
+      await projectRepo.delete(projectId);
+    } catch (_) {
+      // Best-effort rollback; the caller surfaces the original failure.
+    }
+  }
+
+  // RPFM schema must be configured to extract/import .loc files. Without it
+  // nothing can be imported, so abort and roll back rather than leaving an
+  // empty project behind.
+  if (schemaPath == null || schemaPath.trim().isEmpty) {
+    await rollback();
+    return const ProjectInitOutcome.failure(
+        ProjectInitFailure.schemaNotConfigured);
+  }
+
+  final initResult = await initService.initializeProject(
+    projectId: projectId,
+    packFilePath: packFilePath,
+  );
+  if (initResult.isErr) {
+    await rollback();
+    return ProjectInitOutcome.failure(
+      ProjectInitFailure.initError,
+      error: initResult.error.toString(),
+    );
+  }
+
+  return ProjectInitOutcome.success(initResult.value);
+}
 
 /// Resolves the target language to use when auto-creating a project language.
 ///
@@ -276,8 +345,14 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       // Initialize project: extract and import .loc files if source file exists
       if (project.sourceFilePath != null &&
           project.sourceFilePath!.isNotEmpty) {
-        await _initializeProjectFiles(projectId, project.sourceFilePath!);
+        final initOk =
+            await _initializeProjectFiles(projectId, project.sourceFilePath!);
         if (!mounted) return;
+        if (!initOk) {
+          // Initialization failed: the error is already in the banner and the
+          // orphaned project has been rolled back. Do not pop as success.
+          return;
+        }
       } else {
         if (!mounted) return;
         // Show success without import
@@ -299,29 +374,25 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
     }
   }
 
-  Future<void> _initializeProjectFiles(
+  /// Initializes the project's files and, on failure, rolls back the orphaned
+  /// project. Returns true on success, false on failure (the error banner is
+  /// already set and the project deleted). The rollback decision lives in the
+  /// unit-tested [initializeProjectFilesOrRollback]; this method only owns the
+  /// UI (schema lookup, log stream, progress, banner).
+  Future<bool> _initializeProjectFiles(
       String projectId, String packFilePath) async {
-    if (!mounted) return;
+    if (!mounted) return false;
 
-    // Validate RPFM schema path is configured
     final settingsService = ref.read(settingsServiceProvider);
     final schemaPath = await settingsService.getString('rpfm_schema_path');
+    final initService = ref.read(projectInitializationServiceProvider);
+    final projectRepo = ref.read(projectRepositoryProvider);
 
-    if (schemaPath.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = t.projects.createProject.errors.rpfmSchemaNotConfigured;
-        _isLoading = false;
-      });
-      return;
-    }
-
+    if (!mounted) return false;
     setState(() {
       _progressMessage = t.projects.createProject.progress.extracting;
       _importLogs.clear();
     });
-
-    final initService = ref.read(projectInitializationServiceProvider);
 
     // Listen to log stream
     final logSubscription = initService.logStream.listen((logMessage) {
@@ -340,33 +411,38 @@ class _CreateProjectDialogState extends ConsumerState<CreateProjectDialog> {
       }
     });
 
-    final initResult = await initService.initializeProject(
+    final outcome = await initializeProjectFilesOrRollback(
+      initService: initService,
+      projectRepo: projectRepo,
       projectId: projectId,
       packFilePath: packFilePath,
+      schemaPath: schemaPath,
     );
 
     // Cancel log subscription
     await logSubscription.cancel();
 
-    if (initResult.isErr) {
-      if (!mounted) return;
+    if (!mounted) return false;
+
+    if (!outcome.success) {
       setState(() {
         _progressMessage = null;
-        _errorMessage =
-            t.projects.messages.importFailed(error: initResult.error.toString());
         _isLoading = false;
+        _errorMessage =
+            outcome.failure == ProjectInitFailure.schemaNotConfigured
+                ? t.projects.createProject.errors.rpfmSchemaNotConfigured
+                : t.projects.messages
+                    .importFailed(error: outcome.error ?? '');
       });
-      return;
+      return false;
     }
-
-    final unitsCount = initResult.value;
-    if (!mounted) return;
 
     // Show success with import count
     FluentToast.success(
       context,
-      t.projects.messages.projectCreatedUnits(count: unitsCount),
+      t.projects.messages.projectCreatedUnits(count: outcome.unitsImported),
     );
+    return true;
   }
 
   @override
