@@ -24,6 +24,32 @@ import 'package:twmt/services/steam/vdf_generator.dart';
 ///    `+set_steam_guard_code <code> +login <username> <password>`.
 /// 3. After a successful full login, steamcmd caches credentials in
 ///    config/config.vdf and ssfn* files — subsequent runs use step 1.
+/// True when steamcmd output indicates a login/authentication failure.
+bool isSteamLoginFailureOutput(String output) {
+  return output.contains('Login Failure') ||
+      output.contains('Invalid Password') ||
+      output.contains('FAILED login');
+}
+
+/// How a steamcmd login failure should be treated.
+enum SteamLoginFailureKind {
+  /// The cached session expired or was revoked. The cached login sent no
+  /// password and no Steam Guard code, so this is not bad credentials — the
+  /// cache must be invalidated and the user re-authenticated from scratch.
+  staleCacheNeedsReauth,
+
+  /// A full login with supplied credentials failed: the credentials are wrong.
+  badCredentials,
+}
+
+/// Classifies a steamcmd login failure based on whether the failing attempt
+/// used the cached-credentials path.
+SteamLoginFailureKind classifySteamLoginFailure({required bool usedCachedLogin}) {
+  return usedCachedLogin
+      ? SteamLoginFailureKind.staleCacheNeedsReauth
+      : SteamLoginFailureKind.badCredentials;
+}
+
 class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   final SteamCmdManager _manager;
   final VdfGenerator _vdfGenerator;
@@ -225,9 +251,22 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
 
       // Check for authentication errors
-      if (run.output.contains('Login Failure') ||
-          run.output.contains('Invalid Password') ||
-          run.output.contains('FAILED login')) {
+      if (isSteamLoginFailureOutput(run.output)) {
+        final kind = classifySteamLoginFailure(usedCachedLogin: cachedLoginOk);
+        if (kind == SteamLoginFailureKind.staleCacheNeedsReauth) {
+          // The cached steamcmd session was stale (expired token / revoked
+          // sentry / password changed elsewhere). We logged in WITHOUT a
+          // password or Steam Guard code, so this is a recoverable expired
+          // cache — not bad credentials. Invalidate the cache and ask for a
+          // fresh Steam Guard authentication so the flow falls back to a full
+          // login instead of dead-ending on a non-retryable auth error that
+          // never prompts for a code.
+          await _invalidateCachedCredentials(steamCmdPath);
+          return Err(const SteamGuardRequiredException(
+            'Your saved Steam session has expired. Please re-enter your '
+            'password and Steam Guard code.',
+          ));
+        }
         return Err(const SteamAuthenticationException(
           'Steam login failed. Check your credentials.',
         ));
@@ -811,15 +850,23 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       return;
     }
 
-    // Mark any uncompleted items as errors
+    // On cancellation, do NOT report uncompleted items at all: an Err here
+    // becomes a `failed` status, but a deliberately-cancelled, never-attempted
+    // item must show as cancelled. Leaving it untouched lets
+    // BatchWorkshopPublishNotifier reclassify the still-pending/inProgress item
+    // to cancelled after the batch returns.
+    if (_isCancelled) {
+      return;
+    }
+
+    // Mark any uncompleted items as errors (genuine unexpected termination).
     for (final idx in chunk) {
       if (!completedInChunk.contains(idx)) {
-        final reason = _isCancelled
-            ? 'Publish cancelled by user'
-            : 'steamcmd process terminated unexpectedly (exit code: $exitCode)';
         onItemComplete?.call(
           idx,
-          Err(WorkshopPublishException(reason)),
+          Err(WorkshopPublishException(
+            'steamcmd process terminated unexpectedly (exit code: $exitCode)',
+          )),
         );
       }
     }
@@ -954,6 +1001,41 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   /// in the steamcmd installation directory. This is instant and avoids the
   /// false-positive from running `steamcmd +login user +quit` (which exits 0
   /// regardless of login success due to +quit).
+  /// Deletes steamcmd's cached-session files (config/config.vdf and ssfn*
+  /// sentry files) so the next publish re-authenticates from scratch.
+  ///
+  /// Called when a cached login fails, which otherwise dead-ends on a
+  /// non-retryable auth error that never prompts for a Steam Guard code.
+  /// Best-effort: failures are logged, never thrown.
+  Future<void> _invalidateCachedCredentials(String steamCmdPath) async {
+    try {
+      final steamCmdDir = path.dirname(steamCmdPath);
+
+      final configFile = File(path.join(steamCmdDir, 'config', 'config.vdf'));
+      if (await configFile.exists()) {
+        await configFile.delete();
+        _logger.info('Deleted stale config.vdf to force re-authentication');
+      }
+
+      // Remove ssfn* sentry files alongside steamcmd.
+      final dir = Directory(steamCmdDir);
+      if (await dir.exists()) {
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is File &&
+              path.basename(entity.path).toLowerCase().startsWith('ssfn')) {
+            try {
+              await entity.delete();
+            } catch (_) {
+              // Best-effort per file.
+            }
+          }
+        }
+      }
+    } catch (e) {
+      _logger.warning('Failed to invalidate cached credentials: $e');
+    }
+  }
+
   Future<bool> _hasCachedCredentials(
     String steamCmdPath,
     String username,
