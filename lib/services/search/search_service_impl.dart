@@ -163,7 +163,6 @@ class SearchServiceImpl implements ISearchService {
   Future<Result<List<SearchResult>, SearchServiceException>>
       searchTranslationMemory(
     String query, {
-    String? sourceLanguage,
     String? targetLanguage,
     int limit = AppConstants.defaultSearchLimit,
     int offset = 0,

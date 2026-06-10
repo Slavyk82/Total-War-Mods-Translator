@@ -70,7 +70,6 @@ abstract class ISearchService {
   ///
   /// Parameters:
   /// - [query]: Search query
-  /// - [sourceLanguage]: Source language code (optional)
   /// - [targetLanguage]: Target language code (optional)
   /// - [limit]: Maximum number of results (default: 100, max: 1000)
   /// - [offset]: Offset for pagination (default: 0)
@@ -81,7 +80,6 @@ abstract class ISearchService {
   Future<Result<List<SearchResult>, SearchServiceException>>
       searchTranslationMemory(
     String query, {
-    String? sourceLanguage,
     String? targetLanguage,
     int limit = 100,
     int offset = 0,

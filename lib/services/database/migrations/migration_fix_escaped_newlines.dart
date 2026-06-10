@@ -45,7 +45,8 @@ class FixEscapedNewlinesMigration extends Migration {
         return false; // Nothing to fix
       }
 
-      _logger.info('Fixing escaped newlines in $count translation records...');
+      _logger.info('Fixing escaped newlines in $count translation records '
+          '(the FTS index is kept in sync by the update trigger)...');
 
       // Process in batches
       const batchSize = 500;
@@ -75,32 +76,12 @@ class FixEscapedNewlinesMigration extends Migration {
         await Future.delayed(Duration.zero);
       }
 
-      _logger.info('Fixed escaped newlines, rebuilding search index...');
-
-      // FTS rebuild
-      await _rebuildFtsIndex();
-
       _logger.info('Fixed escaped newlines in $count translation records');
       return true;
     } catch (e, stackTrace) {
       _logger.error('Failed to fix escaped newlines', e, stackTrace);
       // Non-fatal: translations will still work, just display incorrectly
       return false;
-    }
-  }
-
-  Future<void> _rebuildFtsIndex() async {
-    try {
-      await DatabaseService.execute('''
-        INSERT INTO translation_versions_fts(translation_versions_fts) VALUES('rebuild')
-      ''').timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          _logger.warning('FTS rebuild timed out, will be done lazily');
-        },
-      );
-    } catch (e) {
-      _logger.warning('FTS rebuild skipped: $e');
     }
   }
 }
