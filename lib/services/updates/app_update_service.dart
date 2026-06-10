@@ -100,11 +100,21 @@ class AppUpdateService {
   /// Compare two semantic versions.
   ///
   /// Returns true if [newVersion] is newer than [currentVersion].
+  ///
+  /// Comparison uses the numeric core only: build metadata ("+build") and
+  /// pre-release/suffix segments ("-rc1", "-hotfix") are stripped before the
+  /// dot-split, so "2.0.6-hotfix" compares as 2.0.6. A pre-release of the
+  /// SAME numeric core (e.g. "2.0.5-rc1" vs "2.0.5") is deliberately NOT
+  /// considered newer — equal cores compare as not newer, the safe default.
   bool _isNewerVersion(String newVersion, String currentVersion) {
     try {
-      // Remove any build metadata (e.g., "1.0.0+1" -> "1.0.0")
-      final newParts = newVersion.split('+').first.split('.');
-      final currentParts = currentVersion.split('+').first.split('.');
+      // Reduce to the numeric core: drop "+build" metadata and "-suffix"
+      // pre-release segments (e.g. "2.0.6-hotfix+1" -> "2.0.6").
+      String numericCore(String version) =>
+          version.split('+').first.split('-').first;
+
+      final newParts = numericCore(newVersion).split('.');
+      final currentParts = numericCore(currentVersion).split('.');
 
       for (var i = 0; i < 3; i++) {
         final newPart = i < newParts.length ? int.tryParse(newParts[i]) ?? 0 : 0;

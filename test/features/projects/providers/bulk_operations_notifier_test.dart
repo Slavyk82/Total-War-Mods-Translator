@@ -190,6 +190,51 @@ void main() {
       );
     });
 
+    test(
+        'cancel marks the in-flight project cancelled, not failed, when its '
+        'handler throws after cancellation', () async {
+      final completer = Completer<void>();
+      final stub = _StubBulkHandlers(pauseOnIndex: completer);
+      final container = _makeContainer(stub);
+      addTearDown(container.dispose);
+
+      final projects = _fakeProjects(2);
+      final notifier = container.read(bulkOperationsProvider.notifier);
+
+      // Start the run without awaiting — it will pause on project 0
+      final runFuture = notifier.run(
+        type: BulkOperationType.translate,
+        targetLanguageCode: 'fr',
+        projects: projects,
+      );
+
+      // Let the event loop tick so the notifier enters its first await
+      await Future<void>.delayed(Duration.zero);
+
+      // Cancel while project 0 is blocked
+      await notifier.cancel();
+
+      // Mimic the real runner: stop() makes the in-flight batch emit a
+      // failure, which surfaces as a StateError from the handler.
+      completer.completeError(StateError('Batch failed: batchId=batch-0'));
+
+      await runFuture;
+
+      final state = container.read(bulkOperationsProvider);
+
+      // The in-flight project was deliberately cancelled — it must not be
+      // reported as failed (and must not be offered by "Retry failed").
+      expect(
+        state.results['proj-0']?.status,
+        ProjectResultStatus.cancelled,
+      );
+      expect(
+        state.results['proj-1']?.status,
+        ProjectResultStatus.cancelled,
+      );
+      expect(state.failedProjectIds, isEmpty);
+    });
+
     test('handler exception marks project failed, loop continues', () async {
       // Throw on the second project (call index 1)
       final stub = _StubBulkHandlers(throwOnIndex: 1);

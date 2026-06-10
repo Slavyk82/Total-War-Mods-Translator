@@ -153,11 +153,22 @@ class BulkOperationsNotifier extends Notifier<BulkOperationState> {
           },
         );
       } catch (e) {
-        outcome = ProjectOutcome(
-          status: ProjectResultStatus.failed,
-          message: e.toString(),
-          error: e,
-        );
+        // A cancel() while this project was in flight stops the runner, which
+        // surfaces as a failure here. Record it as cancelled — not failed —
+        // so "Retry failed" does not offer a deliberately cancelled project.
+        // Only reclassify when cancellation was requested before the outcome
+        // is recorded; genuine failures stay failed.
+        if (state.isCancelled) {
+          outcome = const ProjectOutcome(
+            status: ProjectResultStatus.cancelled,
+          );
+        } else {
+          outcome = ProjectOutcome(
+            status: ProjectResultStatus.failed,
+            message: e.toString(),
+            error: e,
+          );
+        }
       }
 
       state = state.copyWith(

@@ -70,7 +70,16 @@ class MigrationService {
       await _initializeSchema();
       _logger.info('Schema initialization completed successfully');
     } else {
-      // Existing database with different version - not supported
+      // Existing database with different version - not supported.
+      //
+      // This branch is intentionally a dead end: there is NO incremental
+      // version-to-version upgrade path here, which is exactly why
+      // DatabaseConfig.databaseVersion is FROZEN at 1 (see its doc comment).
+      // All schema evolution goes through the idempotent MigrationRegistry
+      // (migrations/migration_registry.dart), executed at every startup via
+      // ensurePerformanceIndexes(). If this throw is ever reached on a user
+      // machine, someone bumped databaseVersion — which destroys user data
+      // by forcing a database delete. Don't bump it.
       throw TWMTDatabaseException(
         'Database migration not supported. '
         'Please delete the database file and restart the application. '
