@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -572,6 +573,59 @@ void main() {
       expect(result.isErr, isTrue);
       expect(result.error, isA<LlmTokenLimitException>());
       expect(result.error.providerCode, 'deepseek');
+    });
+  });
+
+  group('DeepSeekProvider.translateStreaming', () {
+    test('reassembles a multibyte UTF-8 character split across two byte '
+        'chunks instead of aborting the stream with a decode error', () async {
+      final dio = _MockDio();
+      final provider = DeepSeekProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      final sse = 'data: ${jsonEncode({
+            'choices': [
+              {
+                'delta': {'content': 'café'},
+                'finish_reason': null,
+              }
+            ],
+          })}\n\n'
+          'data: [DONE]\n\n';
+      final bytes = utf8.encode(sse);
+
+      final eIndex = bytes.indexOf(0xC3);
+      expect(eIndex, greaterThan(0));
+      final chunk1 = Uint8List.fromList(bytes.sublist(0, eIndex + 1));
+      final chunk2 = Uint8List.fromList(bytes.sublist(eIndex + 1));
+
+      final responseBody = ResponseBody(
+        Stream<Uint8List>.fromIterable([chunk1, chunk2]),
+        200,
+      );
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => Response<dynamic>(
+            data: responseBody,
+            statusCode: 200,
+            requestOptions: RequestOptions(path: '/chat/completions'),
+          ));
+
+      final results =
+          await provider.translateStreaming(request, 'sk-test').toList();
+
+      final errors = results.where((r) => r.isErr).toList();
+      expect(errors, isEmpty,
+          reason: 'A multibyte char split across chunks must not error the '
+              'stream; got: ${errors.map((e) => e.error).toList()}');
+      final text = results.where((r) => r.isOk).map((r) => r.value).join();
+      expect(text, 'café');
     });
   });
 }

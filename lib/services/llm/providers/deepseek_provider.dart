@@ -163,12 +163,17 @@ class DeepSeekProvider implements ILlmProvider {
         ),
       );
 
-      // Process Server-Sent Events (SSE) stream
-      final stream = response.data.stream as Stream<List<int>>;
+      // Process Server-Sent Events (SSE) stream. Decode through utf8.decoder
+      // (a stream transformer) so a multibyte character split across network
+      // chunk boundaries is buffered and reassembled, rather than throwing
+      // FormatException on a partial sequence and aborting the whole stream.
+      final stream = (response.data.stream as Stream<List<int>>)
+          .cast<List<int>>()
+          .transform(utf8.decoder);
       String buffer = '';
 
-      await for (final chunk in stream) {
-        buffer += utf8.decode(chunk);
+      await for (final decoded in stream) {
+        buffer += decoded;
 
         // Process complete lines
         final lines = buffer.split('\n');

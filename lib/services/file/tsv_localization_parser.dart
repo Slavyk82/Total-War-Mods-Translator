@@ -64,27 +64,30 @@ class TsvLocalizationParser implements ILocalizationParser {
       final entries = <LocalizationEntry>[];
 
       for (int i = startIndex; i < lines.length; i++) {
-        final line = lines[i].trim();
+        final rawLine = lines[i];
 
-        // Skip empty lines
-        if (line.isEmpty) continue;
+        // Skip blank lines (whitespace-only)
+        if (rawLine.trim().isEmpty) continue;
 
-        // Split by tab
-        final parts = line.split('\t');
+        // Split by tab. Layout is `key\ttext\ttooltip`; the boolean tooltip
+        // flag lives in parts[2] and is intentionally ignored.
+        final parts = rawLine.split('\t');
 
         // We need at least key and text columns
         if (parts.length < 2) {
           continue; // Skip malformed lines
         }
 
+        // Trim the key for matching, but preserve the value verbatim: Total War
+        // strings can carry significant leading/trailing whitespace (e.g.
+        // concatenation fragments like " of "), and a value of literally
+        // "false" is a real string — the tooltip boolean is in parts[2].
         final key = parts[0].trim();
-        final text = parts[1].trim();
+        final text = parts[1];
 
-        // Skip if key or text is empty
+        // Skip only when the key or value is genuinely empty (length 0); a
+        // whitespace-only value is preserved.
         if (key.isEmpty || text.isEmpty) continue;
-
-        // Skip if text is just "false" (tooltip placeholder)
-        if (text == 'false') continue;
 
         final entry = LocalizationEntry(
           key: key,

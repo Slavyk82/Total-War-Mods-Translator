@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -512,6 +513,58 @@ void main() {
       final server = result.error as LlmServerException;
       expect(server.statusCode, 529);
       expect(server.providerCode, 'anthropic');
+    });
+  });
+
+  group('AnthropicProvider.translateStreaming', () {
+    test('reassembles a multibyte UTF-8 character split across two byte '
+        'chunks instead of aborting the stream with a decode error', () async {
+      final dio = _MockDio();
+      final provider = AnthropicProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+        logger: FakeLogger(),
+      );
+      final request = _buildRequest();
+
+      // SSE body: one text delta carrying a non-ASCII word, then message_stop.
+      final sse = 'data: ${jsonEncode({
+            'type': 'content_block_delta',
+            'delta': {'type': 'text_delta', 'text': 'café'},
+          })}\n\n'
+          'data: ${jsonEncode({'type': 'message_stop'})}\n\n';
+      final bytes = utf8.encode(sse);
+
+      // Split the byte stream in the middle of the 2-byte 'é' (0xC3 0xA9) so the
+      // first chunk ends on an incomplete multibyte sequence — exactly what Dio
+      // does at arbitrary network chunk boundaries.
+      final eIndex = bytes.indexOf(0xC3);
+      expect(eIndex, greaterThan(0));
+      final chunk1 = Uint8List.fromList(bytes.sublist(0, eIndex + 1));
+      final chunk2 = Uint8List.fromList(bytes.sublist(eIndex + 1));
+
+      final byteStream = Stream<Uint8List>.fromIterable([chunk1, chunk2]);
+      final responseBody = ResponseBody(byteStream, 200);
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => Response<dynamic>(
+            data: responseBody,
+            statusCode: 200,
+            requestOptions: RequestOptions(path: '/messages'),
+          ));
+
+      final results =
+          await provider.translateStreaming(request, 'sk-ant-test').toList();
+
+      final errors = results.where((r) => r.isErr).toList();
+      expect(errors, isEmpty,
+          reason: 'A multibyte char split across chunks must not error the '
+              'stream; got: ${errors.map((e) => e.error).toList()}');
+      final text = results.where((r) => r.isOk).map((r) => r.value).join();
+      expect(text, 'café');
     });
   });
 }

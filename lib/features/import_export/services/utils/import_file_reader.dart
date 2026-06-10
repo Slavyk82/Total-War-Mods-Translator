@@ -51,15 +51,19 @@ class ImportFileReader {
           }
 
           final data = result.value;
-          if (data is List) {
-            rows = data
-                .whereType<Map>()
-                .map((e) => e.map((k, v) =>
-                    MapEntry(k.toString(), v == null ? '' : v.toString())))
-                .toList();
-            if (rows.isNotEmpty) {
-              headers = rows.first.keys.toList();
-            }
+          final jsonRows = _rowsFromJson(data);
+          if (jsonRows == null) {
+            return Err(
+              ServiceException(
+                'Unsupported JSON structure: expected an array of objects, a '
+                'wrapper object with a single array property, or a map of '
+                'objects.',
+              ),
+            );
+          }
+          rows = jsonRows;
+          if (rows.isNotEmpty) {
+            headers = rows.first.keys.toList();
           }
           break;
 
@@ -100,6 +104,47 @@ class ImportFileReader {
         ServiceException('Failed to read file: $e', stackTrace: stackTrace),
       );
     }
+  }
+
+  /// Convert decoded JSON into import rows.
+  ///
+  /// Accepts three shapes and returns `null` (→ a reported error) for anything
+  /// else, so an unexpected structure is never silently imported as zero rows:
+  ///  - a top-level array of objects: `[{...}, {...}]`;
+  ///  - a wrapper object with a single array property: `{"rows": [...]}`;
+  ///  - a key→object map: `{"unit_a": {...}, "unit_b": {...}}`, where each
+  ///    outer key is exposed as a `key` column (without clobbering an existing
+  ///    `key` field in the inner object).
+  List<Map<String, String>>? _rowsFromJson(dynamic data) {
+    List<Map<String, String>> rowsFromList(List list) => list
+        .whereType<Map>()
+        .map((e) => e.map(
+            (k, v) => MapEntry(k.toString(), v == null ? '' : v.toString())))
+        .toList();
+
+    if (data is List) {
+      return rowsFromList(data);
+    }
+    if (data is Map) {
+      if (data.isEmpty) return null;
+
+      // Wrapper object: exactly one property whose value is an array.
+      final listValues = data.values.whereType<List>().toList();
+      if (listValues.length == 1) {
+        return rowsFromList(listValues.first);
+      }
+
+      // Key→object map: every value is an object.
+      if (data.values.every((v) => v is Map)) {
+        return data.entries.map((entry) {
+          final inner = (entry.value as Map).map((k, v) =>
+              MapEntry(k.toString(), v == null ? '' : v.toString()));
+          inner.putIfAbsent('key', () => entry.key.toString());
+          return inner;
+        }).toList();
+      }
+    }
+    return null;
   }
 
   /// Auto-detect column mapping from headers
