@@ -13,6 +13,31 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 /// Callback fired when the user commits a target text edit (on focus loss).
 typedef OnInspectorSave = void Function(String unitId, String text);
 
+/// Decide whether a pending inspector edit must be flushed, and with what text.
+///
+/// Returns `(unitId, text)` to save, or `null` when nothing should be saved.
+///
+/// [filteredPersisted] is the previous row's persisted text if it is still in
+/// the visible (filtered) grid, else `null`. [unfilteredPersisted] is its
+/// persisted text from the FULL row set, else `null`. Resolving against the
+/// unfiltered set is what prevents a dirty edit from being silently dropped
+/// when the row leaves the filtered view; if the row cannot be located at all,
+/// we flush unconditionally (onSave/handleCellEdit no-ops when unchanged).
+({String unitId, String text})? resolveInspectorFlush({
+  required bool dirty,
+  required String? boundUnitId,
+  required String currentText,
+  required String? filteredPersisted,
+  required String? unfilteredPersisted,
+}) {
+  if (!dirty || boundUnitId == null) return null;
+  final persisted = filteredPersisted ?? unfilteredPersisted;
+  if (persisted == null || currentText != persisted) {
+    return (unitId: boundUnitId, text: currentText);
+  }
+  return null;
+}
+
 /// Callback fired when the user takes an action on a validation issue from
 /// the inspector panel (Accept / Reject / Edit).
 typedef OnInspectorIssueAction = void Function(batch.ValidationIssue issue);
@@ -202,7 +227,14 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
     if (rows == null) return;
     final selectedId = selection.selectedUnitIds.first;
     final idx = rows.indexWhere((r) => r.id == selectedId);
-    if (idx < 0) return;
+    if (idx < 0) {
+      // The selected row is filtered out of the visible set. Still flush any
+      // pending edit for the previously-bound unit (resolved against the full
+      // row set) before dropping the binding, so the edit is not silently lost.
+      _flushDirtyIfNeeded(rows);
+      _boundUnitId = null;
+      return;
+    }
     final row = rows[idx];
 
     if (_boundUnitId != row.id) {
@@ -233,17 +265,40 @@ class _EditorInspectorPanelState extends ConsumerState<EditorInspectorPanel> {
   /// controller has not caught up with) must NOT be flushed — that would
   /// overwrite the newer persisted value with stale text.
   void _flushDirtyIfNeeded(List<TranslationRow>? rows) {
-    if (!_targetDirty) return;
     final previousId = _boundUnitId;
-    if (previousId == null) return;
-    if (rows == null) return;
-    final prevIdx = rows.indexWhere((r) => r.id == previousId);
-    if (prevIdx < 0) return;
-    final previousPersisted = rows[prevIdx].translatedText ?? '';
-    final currentText = unescapeFromDisplay(_targetController.text);
-    if (currentText != previousPersisted) {
+    if (!_targetDirty || previousId == null) return;
+
+    // Persisted text from the visible (filtered) grid, if the row is still
+    // there.
+    String? filteredPersisted;
+    final filteredIdx = rows?.indexWhere((r) => r.id == previousId) ?? -1;
+    if (filteredIdx >= 0) {
+      filteredPersisted = rows![filteredIdx].translatedText ?? '';
+    }
+
+    // Fall back to the UNFILTERED row set when the row has left the filtered
+    // view, so the edit is still flushed instead of being dropped.
+    String? unfilteredPersisted;
+    if (filteredPersisted == null) {
+      final allRows = ref
+          .read(translationRowsProvider(widget.projectId, widget.languageId))
+          .value;
+      final allIdx = allRows?.indexWhere((r) => r.id == previousId) ?? -1;
+      if (allIdx >= 0) {
+        unfilteredPersisted = allRows![allIdx].translatedText ?? '';
+      }
+    }
+
+    final decision = resolveInspectorFlush(
+      dirty: _targetDirty,
+      boundUnitId: previousId,
+      currentText: unescapeFromDisplay(_targetController.text),
+      filteredPersisted: filteredPersisted,
+      unfilteredPersisted: unfilteredPersisted,
+    );
+    if (decision != null) {
       _targetDirty = false;
-      widget.onSave(previousId, currentText);
+      widget.onSave(decision.unitId, decision.text);
     }
   }
 }
