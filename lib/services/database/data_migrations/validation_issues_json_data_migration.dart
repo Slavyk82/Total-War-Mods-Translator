@@ -162,23 +162,36 @@ class ValidationIssuesJsonDataMigration {
     });
   }
 
-  /// Top-level entry point: performs the rewrite transaction, then attempts
-  /// an FTS5 rebuild (best-effort — contentless FTS5 rebuild is not always
-  /// supported; stale FTS is tolerable since the field is advisory), and
-  /// finally writes the marker. The marker is the last write: if any step
-  /// above throws, the marker is not written and the next startup re-runs
-  /// the migration.
+  /// Top-level entry point: performs the rewrite transaction, then resyncs
+  /// the FTS index (best-effort — stale FTS is tolerable since the field is
+  /// advisory), and finally writes the marker. The marker is the last write:
+  /// if any step above throws, the marker is not written and the next
+  /// startup re-runs the migration.
+  ///
+  /// Note: `INSERT INTO fts(fts) VALUES('rebuild')` is NOT used here — it is
+  /// an error on contentless (content='') FTS5 tables, which
+  /// translation_versions_fts is. Instead the index is cleared and
+  /// repopulated explicitly (DELETE works thanks to contentless_delete=1,
+  /// see ContentlessFtsVersionIdMigration). [execute] dropped
+  /// trg_translation_versions_fts_update for the duration of the rewrite,
+  /// so this resync is what brings the index back in line.
   Future<void> run({
     required void Function(int processed, int total) onProgress,
   }) async {
     await execute(onProgress: onProgress);
     try {
-      await DatabaseService.database.execute(
-        "INSERT INTO translation_versions_fts(translation_versions_fts) VALUES('rebuild')",
-      );
+      await DatabaseService.database.transaction((txn) async {
+        await txn.execute('DELETE FROM translation_versions_fts');
+        await txn.execute('''
+          INSERT INTO translation_versions_fts(translated_text, validation_issues, version_id)
+          SELECT translated_text, validation_issues, id
+          FROM translation_versions
+          WHERE translated_text IS NOT NULL
+        ''');
+      });
     } catch (e) {
       _logger.warning(
-        'validation_issues: FTS rebuild skipped (non-fatal)',
+        'validation_issues: FTS resync skipped (non-fatal)',
         {'error': e.toString()},
       );
     }
