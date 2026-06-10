@@ -347,6 +347,35 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
     });
   }
 
+  /// Find a translation version by unit and project language, returning
+  /// `null` when no row matches.
+  ///
+  /// Unlike [getByUnitAndProjectLanguage], a missing row is NOT an error:
+  /// callers can distinguish "definitely not found" (Ok(null)) from a real
+  /// database failure (Err). This prevents transient DB errors from being
+  /// misread as "create a new version", which would attempt a duplicate
+  /// (unit_id, project_language_id) insert.
+  Future<Result<TranslationVersion?, TWMTDatabaseException>>
+      findByUnitAndProjectLanguage({
+    required String unitId,
+    required String projectLanguageId,
+  }) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'unit_id = ? AND project_language_id = ?',
+        whereArgs: [unitId, projectLanguageId],
+        limit: 1,
+      );
+
+      if (maps.isEmpty) {
+        return null;
+      }
+
+      return fromMap(maps.first);
+    });
+  }
+
   /// Clear translations for multiple versions.
   ///
   /// Sets translated_text to empty, status to pending, and updates timestamp.

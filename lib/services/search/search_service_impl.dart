@@ -278,11 +278,22 @@ class SearchServiceImpl implements ISearchService {
     }
   }
 
+  /// Searches all sources and merges the results into one global ranking.
+  ///
+  /// [offset] is an implementation extension not present on
+  /// [ISearchService.searchAll] (an override may add optional named
+  /// parameters): it returns the window [offset, offset + limit) of the
+  /// merged ranking so direct consumers of the concrete type can paginate.
+  /// Callers bound to the interface can achieve the same by over-fetching
+  /// `offset + limit` rows and skipping `offset` locally — the merged
+  /// ordering is deterministic, so a smaller fetch is always a stable
+  /// prefix of a larger one.
   @override
   Future<Result<List<SearchResult>, SearchServiceException>> searchAll(
     String query, {
     SearchFilter? filter,
     int limit = AppConstants.defaultSearchLimit,
+    int offset = 0,
   }) async {
     try {
       // Validate query
@@ -290,11 +301,21 @@ class SearchServiceImpl implements ISearchService {
         return Err(InvalidSearchQueryException('Query cannot be empty'));
       }
 
-      // Search in parallel across all sources
+      // Search in parallel across all sources.
+      //
+      // Each source must be fetched deep enough to cover the requested
+      // window [offset, offset + limit) on its own: matches may be
+      // concentrated in a single source, so splitting the limit between
+      // sources (the old `limit ~/ 3`) starved concentrated result sets
+      // (a query with 200 hits in one table returned at most limit ~/ 3).
+      // Note: each sub-query clamps its limit to FtsQueryBuilder.maxLimit
+      // (1000), so windows deeper than 1000 rows per source degrade — a
+      // pre-existing cap, acceptable for interactive paging.
+      final windowEnd = offset + limit;
       final results = await Future.wait([
-        searchTranslationUnits(query, filter: filter, limit: limit ~/ 3),
-        searchTranslationVersions(query, filter: filter, limit: limit ~/ 3),
-        searchTranslationMemory(query, limit: limit ~/ 3),
+        searchTranslationUnits(query, filter: filter, limit: windowEnd),
+        searchTranslationVersions(query, filter: filter, limit: windowEnd),
+        searchTranslationMemory(query, limit: windowEnd),
       ]);
 
       // Combine results
@@ -305,11 +326,20 @@ class SearchServiceImpl implements ISearchService {
         }
       }
 
-      // Sort by relevance score (descending)
-      allResults.sort((a, b) => b.relevanceScore.compareTo(a.relevanceScore));
+      // Sort by relevance score (descending) with deterministic
+      // tiebreakers: bm25 scores tie frequently and List.sort is not
+      // stable, so without a total order consecutive pages could shuffle,
+      // duplicating or dropping rows at page boundaries.
+      allResults.sort((a, b) {
+        final byScore = b.relevanceScore.compareTo(a.relevanceScore);
+        if (byScore != 0) return byScore;
+        final byType = a.type.index.compareTo(b.type.index);
+        if (byType != 0) return byType;
+        return a.id.compareTo(b.id);
+      });
 
-      // Limit total results
-      final limitedResults = allResults.take(limit).toList();
+      // Slice the requested page window out of the merged ranking.
+      final limitedResults = allResults.skip(offset).take(limit).toList();
 
       return Ok(limitedResults);
     } catch (e) {

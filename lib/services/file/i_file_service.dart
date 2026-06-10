@@ -233,11 +233,15 @@ abstract class IFileService {
   ///
   /// [filePath]: Path to CSV file
   /// [hasHeader]: Whether first row is header
+  /// [encoding]: Text encoding of the file ('utf-8', 'utf-16', 'utf-16le',
+  ///             'utf-16be'). Defaults to UTF-8 when null. UTF-16 variants
+  ///             honor a BOM when present.
   ///
   /// Returns list of rows (each row is a map of column name → value)
   Future<Result<List<Map<String, String>>, ImportException>> importFromCsv({
     required String filePath,
     bool hasHeader = true,
+    String? encoding,
   });
 
   /// Export data to CSV file
@@ -256,10 +260,14 @@ abstract class IFileService {
   /// Import data from JSON file
   ///
   /// [filePath]: Path to JSON file
+  /// [encoding]: Text encoding of the file ('utf-8', 'utf-16', 'utf-16le',
+  ///             'utf-16be'). Defaults to UTF-8 when null. UTF-16 variants
+  ///             honor a BOM when present.
   ///
   /// Returns parsed JSON data
   Future<Result<dynamic, ImportException>> importFromJson({
     required String filePath,
+    String? encoding,
   });
 
   /// Export data to JSON file
@@ -280,6 +288,9 @@ abstract class IFileService {
   /// [filePath]: Path to Excel file
   /// [sheetName]: Sheet name to import (default: first sheet)
   /// [hasHeader]: Whether first row is header
+  ///
+  /// Note: .xlsx is a binary (zip) format — a text encoding setting does not
+  /// apply; cell text is always Unicode per the OOXML spec.
   ///
   /// Returns list of rows
   Future<Result<List<Map<String, String>>, ImportException>> importFromExcel({

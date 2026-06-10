@@ -183,16 +183,34 @@ class GlossaryMigrationService {
       whereArgs: [sourceGlossaryId],
     );
     for (final entry in sourceEntries) {
-      final srcTermKey = (entry['source_term'] as String).trim().toLowerCase();
+      final trimmedTerm = (entry['source_term'] as String).trim();
+      final caseSensitive =
+          ((entry['case_sensitive'] as num?)?.toInt() ?? 0) != 0 ? 1 : 0;
       final tlc = entry['target_language_code'] as String;
+      // The conflict key mirrors the schema's UNIQUE(glossary_id,
+      // target_language_code, source_term, case_sensitive):
+      // - entries only conflict within the same case_sensitive group;
+      // - case-sensitive entries conflict only on an exact (trimmed) match,
+      //   so 'Foo' and 'foo' both survive;
+      // - case-insensitive entries keep the historical LOWER(TRIM()) key.
+      // target_term is intentionally NOT part of the key: when the key above
+      // collides, the UNIQUE constraint forbids keeping both rows even if
+      // their targets differ, so the newer entry wins (documented tiebreak,
+      // same rule as for true duplicates).
+      final termPredicate = caseSensitive == 1
+          ? 'TRIM(source_term) = ?'
+          : 'LOWER(TRIM(source_term)) = ?';
+      final termArg =
+          caseSensitive == 1 ? trimmedTerm : trimmedTerm.toLowerCase();
       final conflicting = await txn.rawQuery('''
         SELECT id, updated_at
         FROM glossary_entries
         WHERE glossary_id = ?
-          AND LOWER(TRIM(source_term)) = ?
+          AND case_sensitive = ?
+          AND $termPredicate
           AND LOWER(target_language_code) = LOWER(?)
         LIMIT 1
-      ''', [survivorGlossaryId, srcTermKey, tlc]);
+      ''', [survivorGlossaryId, caseSensitive, termArg, tlc]);
       if (conflicting.isEmpty) {
         await txn.rawUpdate(
           'UPDATE glossary_entries '

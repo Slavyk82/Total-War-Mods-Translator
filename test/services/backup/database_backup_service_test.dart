@@ -52,6 +52,13 @@ void main() {
     await database.rawQuery('PRAGMA journal_mode=WAL');
     await database
         .execute('CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY, v TEXT)');
+    // A real TWMT database always carries user_version >= 1 after its first
+    // initialization; checkpoint so the version is persisted into the main
+    // file header (backup validation reads it from there) while the row data
+    // inserted below still lives in the WAL.
+    await database
+        .execute('PRAGMA user_version = ${DatabaseConfig.databaseVersion}');
+    await database.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
     for (var i = 0; i < rowCount; i++) {
       await database.insert('items', {'v': '$tag-$i'});
     }
@@ -72,6 +79,47 @@ void main() {
       }
     }
     return names;
+  }
+
+  /// Build a standalone (non-WAL) SQLite database file, optionally stamping
+  /// [userVersion] into its header, and return its raw bytes. Used to craft
+  /// backup archives by hand.
+  Future<List<int>> buildDatabaseBytes({int? userVersion, int rowCount = 3}) async {
+    final genDir = await Directory.systemTemp.createTemp('twmt_dbgen_');
+    try {
+      final dbPath = p.join(genDir.path, 'gen.db');
+      final database = await databaseFactory.openDatabase(dbPath);
+      await database
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      for (var i = 0; i < rowCount; i++) {
+        await database.insert('items', {'v': 'crafted-$i'});
+      }
+      if (userVersion != null) {
+        await database.execute('PRAGMA user_version = $userVersion');
+      }
+      await database.close();
+      return await File(dbPath).readAsBytes();
+    } finally {
+      try {
+        await genDir.delete(recursive: true);
+      } catch (_) {
+        // Windows can briefly hold file locks; leftover temp dirs are benign.
+      }
+    }
+  }
+
+  /// Write a ZIP archive at [zipPath] containing exactly [entries]
+  /// (entry name -> raw bytes) and return its path.
+  Future<String> writeBackupZip(
+    String zipPath,
+    Map<String, List<int>> entries,
+  ) async {
+    final archive = Archive();
+    for (final entry in entries.entries) {
+      archive.addFile(ArchiveFile(entry.key, entry.value.length, entry.value));
+    }
+    await File(zipPath).writeAsBytes(ZipEncoder().encode(archive)!);
+    return zipPath;
   }
 
   /// Open the database at [dbPath] and assert integrity plus row contents.
@@ -385,6 +433,446 @@ void main() {
 
       await reopened!.close();
       DatabaseService.resetTestDatabase();
+    });
+  });
+
+  group('archive entry hardening (zip-slip)', () {
+    test('validateBackup rejects an archive containing a path-traversal entry',
+        () async {
+      final dbBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion,
+      );
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'evil.zip'), {
+        DatabaseConfig.databaseName: dbBytes,
+        '../evil.txt': [0x65, 0x76, 0x69, 0x6C],
+      });
+
+      final service = DatabaseBackupService(
+        databasePathProvider: () async =>
+            p.join(tempRoot.path, 'dbdir', DatabaseConfig.databaseName),
+      );
+      final result = await service.validateBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'an archive with a traversal entry must fail validation');
+      expect(result.unwrapErr().message, contains('unexpected archive entry'));
+    });
+
+    test('validateBackup rejects an archive containing an absolute path entry',
+        () async {
+      final dbBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion,
+      );
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'evil.zip'), {
+        DatabaseConfig.databaseName: dbBytes,
+        'C:/evil/evil.txt': [0x65, 0x76, 0x69, 0x6C],
+      });
+
+      final service = DatabaseBackupService(
+        databasePathProvider: () async =>
+            p.join(tempRoot.path, 'dbdir', DatabaseConfig.databaseName),
+      );
+      final result = await service.validateBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'an archive with an absolute path entry must fail validation');
+      expect(result.unwrapErr().message, contains('unexpected archive entry'));
+    });
+
+    test(
+        'restoreBackup refuses a path-traversal archive and never writes '
+        'outside the database directory', () async {
+      final dbDir = await Directory(p.join(tempRoot.path, 'dbdir')).create();
+      final dbPath = p.join(dbDir.path, DatabaseConfig.databaseName);
+      final originalBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion,
+      );
+      await File(dbPath).writeAsBytes(originalBytes);
+
+      final backupDbBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion,
+        rowCount: 5,
+      );
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'evil.zip'), {
+        DatabaseConfig.databaseName: backupDbBytes,
+        '../evil.txt': [0x65, 0x76, 0x69, 0x6C],
+      });
+
+      var closeCalls = 0;
+      var reinitCalls = 0;
+      final service = DatabaseBackupService(
+        databasePathProvider: () async => dbPath,
+        databaseCloser: () async => closeCalls++,
+        databaseReinitializer: () async => reinitCalls++,
+      );
+      final result = await service.restoreBackup(zipPath);
+
+      expect(result.isErr, isTrue);
+      expect(await File(p.join(tempRoot.path, 'evil.txt')).exists(), isFalse,
+          reason: 'restore must never write outside the database directory');
+      expect(closeCalls, 0,
+          reason: 'the archive must be rejected before the database is touched');
+      expect(reinitCalls, 0);
+      expect(await File(dbPath).readAsBytes(), originalBytes,
+          reason: 'the current database must remain untouched');
+    });
+  });
+
+  group('backup database schema-version validation', () {
+    test('validateBackup rejects a database with user_version 0', () async {
+      // A schema-less / uninitialized database: MigrationService would treat
+      // it as fresh and silently re-run schema.sql over it after restore.
+      final dbBytes = await buildDatabaseBytes(userVersion: null);
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'v0.zip'), {
+        DatabaseConfig.databaseName: dbBytes,
+      });
+
+      final service = DatabaseBackupService(
+        databasePathProvider: () async =>
+            p.join(tempRoot.path, 'dbdir', DatabaseConfig.databaseName),
+      );
+      final result = await service.validateBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'a backup with user_version 0 must fail validation');
+      expect(result.unwrapErr().message, contains('no schema version'));
+    });
+
+    test(
+        'validateBackup rejects a database with a newer schema version than '
+        'the app supports', () async {
+      final dbBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion + 1,
+      );
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'vN.zip'), {
+        DatabaseConfig.databaseName: dbBytes,
+      });
+
+      final service = DatabaseBackupService(
+        databasePathProvider: () async =>
+            p.join(tempRoot.path, 'dbdir', DatabaseConfig.databaseName),
+      );
+      final result = await service.validateBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'a backup with a newer schema version must fail validation');
+      expect(result.unwrapErr().message, contains('newer'));
+    });
+
+    test('validateBackup rejects a twmt.db entry that is not SQLite', () async {
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'junk.zip'), {
+        DatabaseConfig.databaseName: List<int>.filled(4096, 0x41),
+      });
+
+      final service = DatabaseBackupService(
+        databasePathProvider: () async =>
+            p.join(tempRoot.path, 'dbdir', DatabaseConfig.databaseName),
+      );
+      final result = await service.validateBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'a non-SQLite database entry must fail validation');
+      expect(result.unwrapErr().message, contains('not a valid SQLite'));
+    });
+
+    test(
+        'restoreBackup fails on a user_version 0 database and leaves the '
+        'current database intact', () async {
+      final dbDir = await Directory(p.join(tempRoot.path, 'dbdir')).create();
+      final dbPath = p.join(dbDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(dbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      await currentDb.insert('items', {'v': 'original-row'});
+      await currentDb
+          .execute('PRAGMA user_version = ${DatabaseConfig.databaseVersion}');
+      await currentDb.close();
+
+      final freshDbBytes = await buildDatabaseBytes(userVersion: null);
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'v0.zip'), {
+        DatabaseConfig.databaseName: freshDbBytes,
+      });
+
+      var closeCalls = 0;
+      final service = DatabaseBackupService(
+        databasePathProvider: () async => dbPath,
+        databaseCloser: () async => closeCalls++,
+        databaseReinitializer: () async {},
+      );
+      final result = await service.restoreBackup(zipPath);
+
+      expect(result.isErr, isTrue,
+          reason: 'restoring an uninitialized database must fail');
+      expect(closeCalls, 0,
+          reason: 'the archive must be rejected before the database is touched');
+
+      // The original database must be fully intact.
+      final reopened = await databaseFactory.openDatabase(dbPath);
+      try {
+        final rows = await reopened.query('items', orderBy: 'id');
+        expect(rows.map((r) => r['v']).toList(), ['original-row']);
+      } finally {
+        await reopened.close();
+      }
+    });
+  });
+
+  group('streaming backup and restore', () {
+    test(
+        'multi-megabyte database roundtrips through backup + restore with '
+        'full row integrity', () async {
+      // Seed well past the 1 MB stream-buffer size used by the archive
+      // package so the backup/restore path has to handle multiple buffer
+      // chunks per entry (the service must never materialize the database
+      // in memory; this test pins the functional contract at that scale).
+      final sourceDir =
+          await Directory(p.join(tempRoot.path, 'source')).create();
+      final sourceDbPath = p.join(sourceDir.path, DatabaseConfig.databaseName);
+      db = await openWalDatabase(sourceDbPath, rowCount: 0);
+      const rowCount = 5000;
+      final payload = 'x' * 1024; // ~5 MB of row data in total
+      final batch = db!.batch();
+      for (var i = 0; i < rowCount; i++) {
+        batch.insert('items', {'v': 'big-$i-$payload'});
+      }
+      await batch.commit(noResult: true);
+
+      final zipPath = p.join(tempRoot.path, 'backup.zip');
+      final backupService = DatabaseBackupService(
+        databasePathProvider: () async => sourceDbPath,
+      );
+      final backupResult = await backupService.createBackup(zipPath);
+      expect(backupResult.isOk, isTrue, reason: backupResult.toString());
+      expect(await File(zipPath).length(), greaterThan(0));
+      await db!.close();
+      db = null;
+      DatabaseService.resetTestDatabase();
+
+      // Restore over a different current database.
+      final currentDir =
+          await Directory(p.join(tempRoot.path, 'current')).create();
+      final currentDbPath =
+          p.join(currentDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(currentDbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      await currentDb.insert('items', {'v': 'current-data'});
+
+      Database? reopened;
+      final restoreService = DatabaseBackupService(
+        databasePathProvider: () async => currentDbPath,
+        databaseCloser: () async => currentDb.close(),
+        databaseReinitializer: () async {
+          reopened = await databaseFactory.openDatabase(currentDbPath);
+          DatabaseService.setTestDatabase(reopened!);
+        },
+      );
+      final restoreResult = await restoreService.restoreBackup(zipPath);
+      expect(restoreResult.isOk, isTrue, reason: restoreResult.toString());
+
+      final integrity = await reopened!.rawQuery('PRAGMA integrity_check');
+      expect(integrity.first.values.first, 'ok');
+      final countRows =
+          await reopened!.rawQuery('SELECT COUNT(*) AS c FROM items');
+      expect(countRows.first['c'], rowCount,
+          reason: 'every seeded row must survive');
+      final first = await reopened!.query('items', orderBy: 'id', limit: 1);
+      expect(first.single['v'], 'big-0-$payload');
+      final last = await reopened!
+          .query('items', orderBy: 'id DESC', limit: 1);
+      expect(last.single['v'], 'big-${rowCount - 1}-$payload');
+
+      await reopened!.close();
+      DatabaseService.resetTestDatabase();
+    });
+
+    test(
+        'backup + validate + restore leave no open file handles: the '
+        'working directory can be deleted afterwards', () async {
+      // Windows keeps a file locked while any handle is open: a leaked
+      // Input/OutputFileStream would make this recursive delete throw.
+      final workDir =
+          await Directory(p.join(tempRoot.path, 'handles')).create();
+
+      final sourceDir =
+          await Directory(p.join(workDir.path, 'source')).create();
+      final sourceDbPath = p.join(sourceDir.path, DatabaseConfig.databaseName);
+      db = await openWalDatabase(sourceDbPath, rowCount: 30);
+
+      final zipPath = p.join(workDir.path, 'backup.zip');
+      final backupService = DatabaseBackupService(
+        databasePathProvider: () async => sourceDbPath,
+      );
+      expect((await backupService.createBackup(zipPath)).isOk, isTrue);
+      await db!.close();
+      db = null;
+      DatabaseService.resetTestDatabase();
+
+      // Validate (opens the archive) and restore (opens it again).
+      expect((await backupService.validateBackup(zipPath)).isOk, isTrue);
+
+      final currentDir =
+          await Directory(p.join(workDir.path, 'current')).create();
+      final currentDbPath =
+          p.join(currentDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(currentDbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+
+      Database? reopened;
+      final restoreService = DatabaseBackupService(
+        databasePathProvider: () async => currentDbPath,
+        databaseCloser: () async => currentDb.close(),
+        databaseReinitializer: () async {
+          reopened = await databaseFactory.openDatabase(currentDbPath);
+          DatabaseService.setTestDatabase(reopened!);
+        },
+      );
+      expect((await restoreService.restoreBackup(zipPath)).isOk, isTrue);
+      await reopened!.close();
+      DatabaseService.resetTestDatabase();
+
+      // The delete must SUCCEED: a failure here means a stream handle on
+      // the zip or on one of the database files outlived the operation.
+      await workDir.delete(recursive: true);
+      expect(await workDir.exists(), isFalse,
+          reason: 'no file handle may outlive backup/validate/restore');
+    });
+  });
+
+  group('restore safety net', () {
+    test(
+        'reinitializes the database and reports an error when the safety '
+        'backup cannot be created', () async {
+      final dbDir = await Directory(p.join(tempRoot.path, 'dbdir')).create();
+      final dbPath = p.join(dbDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(dbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      await currentDb.insert('items', {'v': 'original-row'});
+      await currentDb
+          .execute('PRAGMA user_version = ${DatabaseConfig.databaseVersion}');
+
+      // A perfectly valid backup archive...
+      final backupDbBytes = await buildDatabaseBytes(
+        userVersion: DatabaseConfig.databaseVersion,
+      );
+      final zipPath = await writeBackupZip(p.join(tempRoot.path, 'ok.zip'), {
+        DatabaseConfig.databaseName: backupDbBytes,
+      });
+
+      // ...but the safety .bak cannot be created: block its path with a
+      // directory so File.copy fails after the database has been closed.
+      await Directory('$dbPath.bak').create(recursive: true);
+
+      var reinitCalls = 0;
+      Database? reopened;
+      final service = DatabaseBackupService(
+        databasePathProvider: () async => dbPath,
+        databaseCloser: () async => currentDb.close(),
+        databaseReinitializer: () async {
+          reinitCalls++;
+          reopened = await databaseFactory.openDatabase(dbPath);
+          DatabaseService.setTestDatabase(reopened!);
+        },
+      );
+      final result = await service.restoreBackup(zipPath);
+
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr().message, contains('safety backup'));
+      expect(result.unwrapErr().requiresRestart, isFalse,
+          reason: 'the database was reinitialized, no restart needed');
+      expect(reinitCalls, 1,
+          reason: 'the database must not be left closed when the safety '
+              'backup fails');
+
+      // The original database is untouched and reopened.
+      final rows = await reopened!.query('items', orderBy: 'id');
+      expect(rows.map((r) => r['v']).toList(), ['original-row']);
+
+      await reopened!.close();
+      DatabaseService.resetTestDatabase();
+    });
+
+    test(
+        'successful restore extracts atomically and leaves no .restore-tmp '
+        'files behind', () async {
+      // Build a backup from a WAL source database.
+      final sourceDir =
+          await Directory(p.join(tempRoot.path, 'source')).create();
+      final sourceDbPath = p.join(sourceDir.path, DatabaseConfig.databaseName);
+      db = await openWalDatabase(sourceDbPath, rowCount: 12, tag: 'from_backup');
+
+      final zipPath = p.join(tempRoot.path, 'backup.zip');
+      final backupService = DatabaseBackupService(
+        databasePathProvider: () async => sourceDbPath,
+      );
+      expect((await backupService.createBackup(zipPath)).isOk, isTrue);
+      await db!.close();
+      db = null;
+      DatabaseService.resetTestDatabase();
+
+      // Restore over a different current database.
+      final currentDir =
+          await Directory(p.join(tempRoot.path, 'current')).create();
+      final currentDbPath =
+          p.join(currentDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(currentDbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      await currentDb.insert('items', {'v': 'current-data'});
+
+      Database? reopened;
+      final restoreService = DatabaseBackupService(
+        databasePathProvider: () async => currentDbPath,
+        databaseCloser: () async => currentDb.close(),
+        databaseReinitializer: () async {
+          reopened = await databaseFactory.openDatabase(currentDbPath);
+          DatabaseService.setTestDatabase(reopened!);
+        },
+      );
+      final result = await restoreService.restoreBackup(zipPath);
+      expect(result.isOk, isTrue, reason: result.toString());
+
+      // The restored database carries the backup's rows.
+      final rows = await reopened!.query('items', orderBy: 'id');
+      expect(rows.length, 12);
+      expect(rows.map((r) => r['v'] as String),
+          everyElement(startsWith('from_backup-')));
+
+      // No intermediate extraction files survive a successful restore.
+      final leftovers = await currentDir
+          .list()
+          .map((e) => p.basename(e.path))
+          .where((name) => name.endsWith('.restore-tmp'))
+          .toList();
+      expect(leftovers, isEmpty,
+          reason: 'extraction temp files must not outlive the restore');
+
+      await reopened!.close();
+      DatabaseService.resetTestDatabase();
+    });
+
+    test('verifyBackupCopy throws when the copy length differs from the source',
+        () async {
+      final sourcePath = p.join(tempRoot.path, 'src.bin');
+      final backupPath = '$sourcePath.bak';
+      await File(sourcePath).writeAsBytes(List<int>.filled(1000, 1));
+      await File(backupPath).writeAsBytes(List<int>.filled(999, 1));
+
+      await expectLater(
+        DatabaseBackupService.verifyBackupCopy(sourcePath, backupPath),
+        throwsA(isA<BackupException>().having(
+          (e) => e.message,
+          'message',
+          contains('Safety backup verification failed'),
+        )),
+        reason: 'a truncated safety copy must abort the restore',
+      );
+
+      // A complete copy passes verification.
+      await File(backupPath).writeAsBytes(List<int>.filled(1000, 1));
+      await DatabaseBackupService.verifyBackupCopy(sourcePath, backupPath);
     });
   });
 }

@@ -620,12 +620,20 @@ CREATE VIRTUAL TABLE IF NOT EXISTS translation_units_fts USING fts5(
 
 -- FTS5 for translation_versions search (CONTENTLESS MODE)
 -- Uses contentless FTS5 to avoid rowid mapping issues with TEXT PRIMARY KEY (UUID)
--- The version_id column is stored (UNINDEXED) to enable JOINs back to translation_versions
+-- The version_id column is stored (UNINDEXED) to enable JOINs back to translation_versions.
+-- IMPORTANT: plain content='' stores NOTHING (version_id would read back NULL,
+-- breaking the search JOIN and making every DELETE ... WHERE version_id a no-op).
+-- contentless_unindexed=1 makes UNINDEXED column values stored/readable and
+-- contentless_delete=1 makes DELETE statements work. Both require SQLite >= 3.47
+-- (bundled runtime: 3.51). Existing databases are repaired by
+-- ContentlessFtsVersionIdMigration.
 CREATE VIRTUAL TABLE IF NOT EXISTS translation_versions_fts USING fts5(
     translated_text,
     validation_issues,
     version_id UNINDEXED,
-    content=''
+    content='',
+    contentless_delete=1,
+    contentless_unindexed=1
 );
 
 -- FTS5 for translation_memory search

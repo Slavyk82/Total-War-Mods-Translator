@@ -83,23 +83,20 @@ Future<SearchResultsModel> searchResults(
     );
 
     return result.when(
-      ok: (results) {
-        // The underlying search service returns only the CURRENT page (it has
-        // no separate COUNT(*) API, and `searchAll`/`searchWithRegex` do not
-        // even accept an offset). Using `results.length` as the total made
-        // `totalPages`/`hasNextPage` wrong: a full page of `pageSize` results
-        // collapsed to `totalPages == 1` and `hasNextPage == false`, silently
-        // killing pagination beyond page 1.
-        //
-        // Without a real total we use the standard "fetch a full page => assume
-        // there is at least one more page" heuristic so navigation works:
-        //   - rows already skipped on previous pages: `offset`
-        //   - rows on this page: `results.length`
-        //   - if this page is full, signal one more page exists (+1)
-        // This keeps `hasNextPage`, `hasPreviousPage` and `rangeText` coherent.
-        // (When a true COUNT API is added, pass that value here instead.)
-        final pageIsFull = results.length >= pageSize;
-        final totalCount = offset + results.length + (pageIsFull ? 1 : 0);
+      ok: (windowResults) {
+        // `_executeSearch` returns the rows of the CURRENT page plus at most
+        // ONE sentinel row (it requests pageSize + 1). The sentinel makes the
+        // next-page signal exact for every scope without a COUNT(*) API:
+        //   - sentinel present -> at least one more page exists; encode that
+        //     as totalCount = offset + pageSize + 1 so `hasNextPage` is true
+        //     (the exact total is unknown, only "there is more");
+        //   - sentinel absent  -> this is the last page and
+        //     offset + results.length is the EXACT total, so `totalPages`,
+        //     `hasNextPage` and `rangeText` are all correct.
+        final hasMore = windowResults.length > pageSize;
+        final results =
+            hasMore ? windowResults.sublist(0, pageSize) : windowResults;
+        final totalCount = offset + results.length + (hasMore ? 1 : 0);
 
         return SearchResultsModel(
           results: results,
@@ -123,30 +120,40 @@ Future<SearchResultsModel> searchResults(
   }
 }
 
-/// Helper to execute appropriate search method
+/// Helper to execute appropriate search method.
+///
+/// Contract: returns the rows of the page window starting at [offset], PLUS
+/// at most one sentinel row beyond it (it requests `limit + 1` rows). The
+/// caller uses the sentinel to decide `hasNextPage` exactly, then trims the
+/// list back to [limit] rows for display.
+///
+/// `searchAll` and `searchWithRegex` accept no `offset` on `ISearchService`,
+/// so for those scopes the whole window `offset + limit + 1` is fetched from
+/// the start and sliced here. This is correct because the service's merged
+/// ordering is deterministic (stable tiebreakers), so a fetch is always a
+/// stable prefix of a deeper fetch.
 Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
   required ISearchService service,
   required SearchQueryModel query,
   required int limit,
   required int offset,
 }) async {
+  // One extra row beyond the page: its presence proves a next page exists.
+  final sentinelLimit = limit + 1;
+
   // Use regex if enabled.
   //
-  // NOTE: `searchWithRegex` (and `searchAll` below) do not accept an `offset`,
-  // so true pagination is not possible for these scopes — only the first
-  // `limit` rows are ever returned. The provider's `totalCount` heuristic keeps
-  // the UI coherent for page 1. Threading a real offset would require widening
-  // the `ISearchService` interface (out of scope for this fix). Also note that
-  // for a *true* regex (regex metacharacters), the service throws
+  // NOTE: for a *true* regex (regex metacharacters), the service throws
   // `UnsupportedError`; the caller catches it and returns empty results.
   if (query.options.useRegex) {
-    final searchIn = _getScopeForRegex(query.scope);
-    return service.searchWithRegex(
+    final result = await service.searchWithRegex(
       query.text,
-      searchIn: searchIn,
+      searchIn: _getScopeForRegex(query.scope),
       filter: query.filter,
-      limit: limit,
+      limit: offset + sentinelLimit,
     );
+    if (result.isErr) return result;
+    return Ok(result.value.skip(offset).toList());
   }
 
   // Build FTS5 query
@@ -165,7 +172,7 @@ Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
       return service.searchTranslationUnits(
         ftsQuery,
         filter: query.filter,
-        limit: limit,
+        limit: sentinelLimit,
         offset: offset,
       );
 
@@ -173,17 +180,19 @@ Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
       return service.searchTranslationVersions(
         ftsQuery,
         filter: query.filter,
-        limit: limit,
+        limit: sentinelLimit,
         offset: offset,
       );
 
     case SearchScope.both:
     case SearchScope.all:
-      return service.searchAll(
+      final result = await service.searchAll(
         ftsQuery,
         filter: query.filter,
-        limit: limit,
+        limit: offset + sentinelLimit,
       );
+      if (result.isErr) return result;
+      return Ok(result.value.skip(offset).toList());
   }
 }
 

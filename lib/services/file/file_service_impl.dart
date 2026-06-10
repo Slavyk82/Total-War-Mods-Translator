@@ -237,10 +237,12 @@ class FileServiceImpl with FileOperationsMixin implements IFileService {
   Future<Result<List<Map<String, String>>, ImportException>> importFromCsv({
     required String filePath,
     bool hasHeader = true,
+    String? encoding,
   }) =>
       _importExportService.importFromCsv(
         filePath: filePath,
         hasHeader: hasHeader,
+        encoding: encoding,
       );
 
   @override
@@ -258,8 +260,12 @@ class FileServiceImpl with FileOperationsMixin implements IFileService {
   @override
   Future<Result<dynamic, ImportException>> importFromJson({
     required String filePath,
+    String? encoding,
   }) =>
-      _importExportService.importFromJson(filePath: filePath);
+      _importExportService.importFromJson(
+        filePath: filePath,
+        encoding: encoding,
+      );
 
   @override
   Future<Result<String, ExportException>> exportToJson({

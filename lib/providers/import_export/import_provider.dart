@@ -194,10 +194,20 @@ class ImportResultData extends _$ImportResultData {
       ref.read(projectLanguageRepositoryProvider),
     );
 
+    // Integrity guard: hand the executor the content hash captured at preview
+    // time (when the previewed file is the one being imported) so the import
+    // aborts if the file changed on disk after the user reviewed the preview.
+    final preview = ref.read(importPreviewDataProvider);
+    final expectedContentHash =
+        (preview != null && preview.filePath == filePath)
+            ? preview.contentHash
+            : null;
+
     final result = await service.executeImport(
       filePath,
       settings,
       resolutions,
+      expectedContentHash: expectedContentHash,
       onProgress: (current, total) {
         progressNotifier.update(current);
       },

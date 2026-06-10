@@ -23,6 +23,7 @@ class ImportFileReader {
           final result = await _fileService.importFromCsv(
             filePath: filePath,
             hasHeader: settings.hasHeaderRow,
+            encoding: settings.encoding,
           );
 
           if (result.isErr) {
@@ -38,7 +39,10 @@ class ImportFileReader {
           break;
 
         case ImportFormat.json:
-          final result = await _fileService.importFromJson(filePath: filePath);
+          final result = await _fileService.importFromJson(
+            filePath: filePath,
+            encoding: settings.encoding,
+          );
 
           if (result.isErr) {
             return Err(
@@ -60,6 +64,8 @@ class ImportFileReader {
           break;
 
         case ImportFormat.excel:
+          // Excel (.xlsx) is a binary format: settings.encoding does not
+          // apply; cell text is always Unicode per the OOXML spec.
           final result = await _fileService.importFromExcel(
             filePath: filePath,
             hasHeader: settings.hasHeaderRow,

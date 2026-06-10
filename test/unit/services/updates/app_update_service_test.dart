@@ -3,6 +3,7 @@
 // ignore_for_file: depend_on_referenced_packages
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +35,93 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(http.Request('GET', Uri.parse('https://example.com')));
+    registerFallbackValue(Uri.parse('https://example.com'));
+  });
+
+  group('AppUpdateService.checkForUpdate version comparison', () {
+    late _MockHttpClient httpClient;
+    late AppUpdateService service;
+
+    setUp(() {
+      httpClient = _MockHttpClient();
+      service = AppUpdateService(httpClient: httpClient);
+    });
+
+    void stubLatestRelease(String tagName) {
+      when(() => httpClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({
+            'tag_name': tagName,
+            'name': tagName,
+            'body': '',
+            'draft': false,
+            'prerelease': false,
+            'published_at': '2026-06-01T00:00:00Z',
+            'html_url': 'https://example.com/release',
+            'assets': <dynamic>[],
+          }),
+          200,
+        ),
+      );
+    }
+
+    test('offers v2.0.6-hotfix as an update over 2.0.5', () async {
+      stubLatestRelease('v2.0.6-hotfix');
+
+      final result = await service.checkForUpdate('2.0.5');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNotNull,
+          reason: '2.0.6-hotfix has a newer numeric core than 2.0.5');
+    });
+
+    test('does not offer v2.0.5-rc1 as an update over 2.0.5', () async {
+      stubLatestRelease('v2.0.5-rc1');
+
+      final result = await service.checkForUpdate('2.0.5');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNull,
+          reason: 'a pre-release of the same numeric core is not newer');
+    });
+
+    test('offers v2.1.0-rc1 as an update over 2.0.9', () async {
+      stubLatestRelease('v2.1.0-rc1');
+
+      final result = await service.checkForUpdate('2.0.9');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNotNull);
+    });
+
+    test('does not offer v2.0.5 as an update over 2.0.5', () async {
+      stubLatestRelease('v2.0.5');
+
+      final result = await service.checkForUpdate('2.0.5');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNull);
+    });
+
+    test('offers v2.0.6 as an update over 2.0.5+10 (build metadata stripped)',
+        () async {
+      stubLatestRelease('v2.0.6');
+
+      final result = await service.checkForUpdate('2.0.5+10');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNotNull);
+    });
+
+    test('does not offer v2.0.4 as an update over 2.0.5', () async {
+      stubLatestRelease('v2.0.4');
+
+      final result = await service.checkForUpdate('2.0.5');
+
+      expect(result.isOk, isTrue);
+      expect(result.value, isNull);
+    });
   });
 
   group('AppUpdateService.downloadInstaller', () {

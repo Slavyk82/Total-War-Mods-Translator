@@ -13,7 +13,23 @@ class DatabaseConfig {
   /// Database file name
   static const String databaseName = 'twmt.db';
 
-  /// Current database schema version
+  /// Database schema version — FROZEN at 1. DO NOT BUMP.
+  ///
+  /// This value is intentionally frozen forever. All schema evolution must go
+  /// through the idempotent [MigrationRegistry]
+  /// (lib/services/database/migrations/migration_registry.dart), which runs at
+  /// every application startup via
+  /// `MigrationService.ensurePerformanceIndexes()`.
+  ///
+  /// Bumping this value would BRICK every existing installation:
+  /// `MigrationService.runMigrations` has no incremental upgrade path — it
+  /// only handles `user_version == 0` (fresh database, runs schema.sql) or
+  /// `user_version == databaseVersion` (up to date). Any other value makes it
+  /// throw and instruct the user to DELETE their database, losing all
+  /// projects, translations, and translation memory.
+  ///
+  /// A tripwire test enforces this freeze:
+  /// test/services/database/migration_service_version_freeze_test.dart
   static const int databaseVersion = 1;
 
   /// Application directory name in AppData

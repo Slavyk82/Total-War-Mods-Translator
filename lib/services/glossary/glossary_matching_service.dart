@@ -185,11 +185,14 @@ class GlossaryMatchingService {
       final inconsistencies = <String>[];
 
       for (final entry in matchedEntries) {
-        // Check if target term appears in target text
-        final targetTermLower = entry.targetTerm.toLowerCase();
-        final targetTextLower = targetText.toLowerCase();
+        // Check if target term appears in target text. Honor the entry's
+        // caseSensitive flag: a case-sensitive term must appear in the exact
+        // prescribed casing to count as consistent.
+        final found = entry.caseSensitive
+            ? targetText.contains(entry.targetTerm)
+            : targetText.toLowerCase().contains(entry.targetTerm.toLowerCase());
 
-        if (!targetTextLower.contains(targetTermLower)) {
+        if (!found) {
           inconsistencies.add(
             'Term "${entry.sourceTerm}" should be translated as "${entry.targetTerm}" but not found in target',
           );
