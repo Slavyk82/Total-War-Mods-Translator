@@ -10,6 +10,18 @@ import 'package:twmt/services/rpfm/utils/rpfm_output_parser.dart';
 import 'package:twmt/services/rpfm/utils/rpfm_game_schema.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
+/// Whether [files] (absolute paths) contains any localization file that
+/// [RpfmPackOperationsMixin.createPack] can add to a pack.
+///
+/// An input directory with neither a `.tsv` nor a legacy `.loc` file would
+/// otherwise yield an empty, translation-less pack reported as success.
+bool hasPackableLocalizationFiles(Iterable<String> files) {
+  return files.any((f) {
+    final lower = f.toLowerCase();
+    return lower.endsWith('.tsv') || lower.endsWith('.loc');
+  });
+}
+
 /// Mixin providing pack creation and inspection operations for RPFM service
 mixin RpfmPackOperationsMixin {
   RpfmCliManager get cliManager;
@@ -108,6 +120,20 @@ mixin RpfmPackOperationsMixin {
 
       // Step 2: Find and add TSV files with --tsv-to-binary conversion
       final allFiles = await _listDirectoryFiles(inputDirectory);
+
+      // Guard against an empty input set: with neither .tsv nor .loc files,
+      // both add-branches below are skipped and the empty pack from step 1
+      // would be returned as success — shipping a translation-less pack into
+      // the game's data folder marked "Generated".
+      if (!hasPackableLocalizationFiles(allFiles)) {
+        await _cleanupPartialPack(outputPackPath);
+        return Err(RpfmPackingException(
+          'No localization files to add to pack '
+          '(no .tsv or .loc files found in the input directory).',
+          outputPath: outputPackPath,
+        ));
+      }
+
       final tsvFiles = allFiles.where((f) => f.toLowerCase().endsWith('.tsv')).toList();
 
       logger.info('Found ${tsvFiles.length} TSV files to add');

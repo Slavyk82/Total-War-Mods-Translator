@@ -392,6 +392,24 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
 
       logger.info('Total loc files generated: $totalFilesGenerated');
 
+      // Abort if nothing was generated (e.g. every selected project failed loc
+      // generation, or none had translatable units for this language). Without
+      // this guard we would invoke RPFM on an empty input directory; createPack
+      // now rejects that, but failing fast here gives a clearer message and
+      // avoids shipping/animating a pointless pack step.
+      if (totalFilesGenerated == 0) {
+        logger.warning('No loc files were generated; aborting pack creation');
+        state = state.copyWith(
+          isCompiling: false,
+          progress: 0.0,
+          currentStep: null,
+          errorMessage:
+              'No translations were generated for the selected projects and '
+              'language, so there is nothing to compile.',
+        );
+        return null;
+      }
+
       // Check for cancellation before pack creation
       if (state.isCancelled) {
         logger.info('Pack compilation cancelled by user');
