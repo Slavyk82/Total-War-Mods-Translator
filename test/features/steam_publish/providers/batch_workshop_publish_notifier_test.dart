@@ -183,4 +183,93 @@ void main() {
     expect(updated.publishedSteamId, '555000333');
     expect(updated.publishedAt, isNotNull);
   });
+
+  // Audit finding F15: statuses used to be keyed by the item's display name
+  // (`statuses[item.name] = ...`), so two batch items with the same name
+  // overwrote each other's status — the screen then showed the same (last
+  // written) status for both rows. Statuses must be keyed by the item's
+  // batch index, which is unique by construction.
+  group('duplicate display names', () {
+    /// Stubs the service so item 0 fails and item 1 succeeds.
+    void stubFirstFailsSecondSucceeds(String workshopId) {
+      when(() => service.publishBatch(
+            items: any(named: 'items'),
+            username: any(named: 'username'),
+            password: any(named: 'password'),
+            steamGuardCode: any(named: 'steamGuardCode'),
+            onItemStart: any(named: 'onItemStart'),
+            onItemProgress: any(named: 'onItemProgress'),
+            onItemComplete: any(named: 'onItemComplete'),
+          )).thenAnswer((invocation) async {
+        final onItemComplete = invocation.namedArguments[#onItemComplete]
+            as void Function(
+                int, Result<WorkshopPublishResult, SteamServiceException>)?;
+        onItemComplete?.call(
+            0,
+            Err(const SteamServiceException(
+              'Timeout: file upload took too long',
+              code: 'TIMEOUT',
+            )));
+        onItemComplete?.call(1, Ok(_publishResult(workshopId)));
+      });
+    }
+
+    Future<BatchWorkshopPublishState> runBatchWithDuplicateNames() async {
+      final notifier = container.read(batchWorkshopPublishProvider.notifier);
+      await notifier.publishBatch(
+        items: [
+          BatchPublishItemInfo(
+            name: 'Same Display Name',
+            params: _params(),
+            projectId: 'p1',
+          ),
+          BatchPublishItemInfo(
+            name: 'Same Display Name',
+            params: _params(),
+            projectId: 'p2',
+          ),
+        ],
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+      );
+      return container.read(batchWorkshopPublishProvider);
+    }
+
+    test(
+        'two items with the same name keep independent statuses '
+        '(first failed, second success)', () async {
+      stubFirstFailsSecondSucceeds('555000444');
+      when(() => projectRepo.getById('p2'))
+          .thenAnswer((_) async => Ok(_project('p2')));
+      when(() => projectRepo.update(any())).thenAnswer((invocation) async =>
+          Ok(invocation.positionalArguments.first as Project));
+
+      final state = await runBatchWithDuplicateNames();
+
+      expect(state.itemStatuses, hasLength(2),
+          reason: 'each batch item must keep its own status entry even when '
+              'display names collide — name-keyed statuses overwrite each '
+              'other');
+      expect(
+        state.itemStatuses.values,
+        containsAll([BatchPublishStatus.failed, BatchPublishStatus.success]),
+        reason: 'the failed first item must not be masked by the successful '
+            'second item of the same name',
+      );
+      expect(state.itemStatuses[0], BatchPublishStatus.failed);
+      expect(state.itemStatuses[1], BatchPublishStatus.success);
+
+      // Results carry the batch index so the screen can look up each row's
+      // own result instead of firstWhere-by-name returning the same result
+      // for both rows.
+      expect(state.results, hasLength(2));
+      final first = state.results.singleWhere((r) => r.index == 0);
+      final second = state.results.singleWhere((r) => r.index == 1);
+      expect(first.success, isFalse);
+      expect(first.errorMessage, contains('Timeout'));
+      expect(second.success, isTrue);
+      expect(second.workshopId, '555000444');
+    });
+  });
 }

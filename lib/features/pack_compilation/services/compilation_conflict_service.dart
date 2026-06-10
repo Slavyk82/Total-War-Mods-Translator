@@ -125,15 +125,33 @@ class CompilationConflictService {
 
           if (first['project_id'] == second['project_id']) continue;
 
-          // Only create conflict if source text is different
-          // Same key with identical source text is NOT a conflict
           final firstSource = first['source_text'] as String;
           final secondSource = second['source_text'] as String;
-          if (firstSource == secondSource) continue;
+
+          final CompilationConflictType conflictType;
+          if (firstSource != secondSource) {
+            // Same key, different source text: key collision.
+            conflictType = CompilationConflictType.keyCollisionDifferentSource;
+          } else {
+            // Same key, same source text: only a conflict when both projects
+            // carry a non-empty translation that differs — otherwise the
+            // entries are auto-mergeable (identical, or one side has nothing
+            // to contribute).
+            final firstTranslation = (first['translated_text'] as String?) ?? '';
+            final secondTranslation =
+                (second['translated_text'] as String?) ?? '';
+            if (firstTranslation.isEmpty ||
+                secondTranslation.isEmpty ||
+                firstTranslation == secondTranslation) {
+              continue;
+            }
+            conflictType = CompilationConflictType.translationConflict;
+          }
 
           final conflict = _createConflict(
             id: 'conflict_${conflictId++}',
             key: key,
+            conflictType: conflictType,
             first: first,
             second: second,
           );
@@ -149,14 +167,14 @@ class CompilationConflictService {
   CompilationConflict _createConflict({
     required String id,
     required String key,
+    required CompilationConflictType conflictType,
     required Map<String, dynamic> first,
     required Map<String, dynamic> second,
   }) {
-    // At this point, we know source texts are different (key collision)
     return CompilationConflict(
       id: id,
       key: key,
-      conflictType: CompilationConflictType.keyCollisionDifferentSource,
+      conflictType: conflictType,
       firstEntry: _createConflictEntry(first),
       secondEntry: _createConflictEntry(second),
     );
@@ -191,11 +209,19 @@ class CompilationConflictService {
 
   ConflictSummary _buildSummary(List<CompilationConflict> conflicts) {
     int keyCollisionCount = 0;
+    int translationConflictCount = 0;
+    int duplicateCount = 0;
     int resolvedCount = 0;
 
     for (final conflict in conflicts) {
-      // All conflicts are now key collisions (different source text)
-      keyCollisionCount++;
+      switch (conflict.conflictType) {
+        case CompilationConflictType.keyCollisionDifferentSource:
+          keyCollisionCount++;
+        case CompilationConflictType.translationConflict:
+          translationConflictCount++;
+        case CompilationConflictType.duplicate:
+          duplicateCount++;
+      }
       if (conflict.isResolved) {
         resolvedCount++;
       }
@@ -204,8 +230,8 @@ class CompilationConflictService {
     return ConflictSummary(
       totalCount: conflicts.length,
       keyCollisionCount: keyCollisionCount,
-      translationConflictCount: 0,
-      duplicateCount: 0,
+      translationConflictCount: translationConflictCount,
+      duplicateCount: duplicateCount,
       resolvedCount: resolvedCount,
     );
   }

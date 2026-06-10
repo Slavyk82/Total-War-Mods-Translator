@@ -24,12 +24,17 @@ class BatchPublishItemInfo {
 
 /// Result of a single item publish
 class BatchPublishItemResult {
+  /// Index of the item in the batch — the stable identity of an item.
+  /// Display names are not unique (two projects can share a mod title),
+  /// so lookups must use this index, never [name].
+  final int index;
   final String name;
   final bool success;
   final String? workshopId;
   final String? errorMessage;
 
   const BatchPublishItemResult({
+    required this.index,
     required this.name,
     required this.success,
     this.workshopId,
@@ -54,7 +59,16 @@ class BatchWorkshopPublishState {
   final int completedItems;
   final double currentItemProgress;
   final String? currentItemName;
-  final Map<String, BatchPublishStatus> itemStatuses;
+
+  /// Index (into the staged batch item list) of the item currently being
+  /// published. Names are not unique, so per-row "is current" checks must
+  /// use this index.
+  final int? currentItemIndex;
+
+  /// Per-item status keyed by the item's index in the batch. Display names
+  /// can collide (two projects with the same mod title), so name keys would
+  /// make same-named items overwrite each other's status.
+  final Map<int, BatchPublishStatus> itemStatuses;
   final List<BatchPublishItemResult> results;
   final bool needsSteamGuard;
 
@@ -65,6 +79,7 @@ class BatchWorkshopPublishState {
     this.completedItems = 0,
     this.currentItemProgress = 0.0,
     this.currentItemName,
+    this.currentItemIndex,
     this.itemStatuses = const {},
     this.results = const [],
     this.needsSteamGuard = false,
@@ -77,7 +92,8 @@ class BatchWorkshopPublishState {
     int? completedItems,
     double? currentItemProgress,
     String? currentItemName,
-    Map<String, BatchPublishStatus>? itemStatuses,
+    int? currentItemIndex,
+    Map<int, BatchPublishStatus>? itemStatuses,
     List<BatchPublishItemResult>? results,
     bool? needsSteamGuard,
     bool clearCurrentItem = false,
@@ -90,6 +106,9 @@ class BatchWorkshopPublishState {
       currentItemProgress: currentItemProgress ?? this.currentItemProgress,
       currentItemName:
           clearCurrentItem ? null : (currentItemName ?? this.currentItemName),
+      currentItemIndex: clearCurrentItem
+          ? null
+          : (currentItemIndex ?? this.currentItemIndex),
       itemStatuses: itemStatuses ?? this.itemStatuses,
       results: results ?? this.results,
       needsSteamGuard: needsSteamGuard ?? this.needsSteamGuard,
@@ -142,11 +161,10 @@ class BatchWorkshopPublishNotifier
     _cachedUsername = username;
     _cachedPassword = password;
 
-    // Initialize statuses
-    final statuses = <String, BatchPublishStatus>{};
-    for (final item in items) {
-      statuses[item.name] = BatchPublishStatus.pending;
-    }
+    // Initialize statuses, keyed by batch index (names are not unique).
+    final statuses = <int, BatchPublishStatus>{
+      for (var i = 0; i < items.length; i++) i: BatchPublishStatus.pending,
+    };
 
     state = state.copyWith(
       isPublishing: true,
@@ -164,10 +182,10 @@ class BatchWorkshopPublishNotifier
     // must finish before we invalidate the list, otherwise the refreshed list
     // can show just-published items as unpublished (race).
     final pendingSaves = <Future<void>>[];
-    // Item name -> failure detail for Workshop ID writes that did not
+    // Item index -> failure detail for Workshop ID writes that did not
     // persist (the upload succeeded but the DB write failed). Filled by the
     // pendingSaves futures; surfaced on the item's result after the batch.
-    final saveFailures = <String, String>{};
+    final saveFailures = <int, String>{};
 
     try {
       await service.publishBatch(
@@ -180,10 +198,11 @@ class BatchWorkshopPublishNotifier
         onItemStart: (index, name) {
           if (_silentlyCleaned) return;
           final updatedStatuses =
-              Map<String, BatchPublishStatus>.from(state.itemStatuses);
-          updatedStatuses[name] = BatchPublishStatus.inProgress;
+              Map<int, BatchPublishStatus>.from(state.itemStatuses);
+          updatedStatuses[index] = BatchPublishStatus.inProgress;
           state = state.copyWith(
             currentItemName: name,
+            currentItemIndex: index,
             currentItemProgress: 0.0,
             itemStatuses: updatedStatuses,
           );
@@ -196,12 +215,13 @@ class BatchWorkshopPublishNotifier
           if (_silentlyCleaned) return;
           final item = items[index];
           final updatedStatuses =
-              Map<String, BatchPublishStatus>.from(state.itemStatuses);
+              Map<int, BatchPublishStatus>.from(state.itemStatuses);
 
           result.when(
             ok: (publishResult) {
-              updatedStatuses[item.name] = BatchPublishStatus.success;
+              updatedStatuses[index] = BatchPublishStatus.success;
               results.add(BatchPublishItemResult(
+                index: index,
                 name: item.name,
                 success: true,
                 workshopId: publishResult.workshopId,
@@ -209,7 +229,7 @@ class BatchWorkshopPublishNotifier
               pendingSaves.add(
                 _saveWorkshopId(item, publishResult.workshopId)
                     .then((failure) {
-                  if (failure != null) saveFailures[item.name] = failure;
+                  if (failure != null) saveFailures[index] = failure;
                 }),
               );
               logging.info('Item published successfully', {
@@ -218,8 +238,9 @@ class BatchWorkshopPublishNotifier
               });
             },
             err: (error) {
-              updatedStatuses[item.name] = BatchPublishStatus.failed;
+              updatedStatuses[index] = BatchPublishStatus.failed;
               results.add(BatchPublishItemResult(
+                index: index,
                 name: item.name,
                 success: false,
                 errorMessage: error.message,
@@ -252,11 +273,11 @@ class BatchWorkshopPublishNotifier
     // Mark remaining uncompleted items as cancelled if batch was cancelled
     if (state.isCancelled) {
       final updatedStatuses =
-          Map<String, BatchPublishStatus>.from(state.itemStatuses);
-      for (final item in items) {
-        if (updatedStatuses[item.name] == BatchPublishStatus.pending ||
-            updatedStatuses[item.name] == BatchPublishStatus.inProgress) {
-          updatedStatuses[item.name] = BatchPublishStatus.cancelled;
+          Map<int, BatchPublishStatus>.from(state.itemStatuses);
+      for (var i = 0; i < items.length; i++) {
+        if (updatedStatuses[i] == BatchPublishStatus.pending ||
+            updatedStatuses[i] == BatchPublishStatus.inProgress) {
+          updatedStatuses[i] = BatchPublishStatus.cancelled;
         }
       }
       state = state.copyWith(itemStatuses: updatedStatuses);
@@ -282,9 +303,10 @@ class BatchWorkshopPublishNotifier
     // while awaiting the saves.
     if (saveFailures.isNotEmpty && !_silentlyCleaned) {
       final amendedResults = state.results.map((r) {
-        final failure = saveFailures[r.name];
+        final failure = saveFailures[r.index];
         if (failure == null || !r.success) return r;
         return BatchPublishItemResult(
+          index: r.index,
           name: r.name,
           success: true,
           workshopId: r.workshopId,

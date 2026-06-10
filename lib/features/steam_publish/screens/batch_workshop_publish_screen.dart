@@ -309,13 +309,16 @@ class _BatchWorkshopPublishScreenState
                     ),
                     itemBuilder: (context, index) {
                       final item = items[index];
-                      final status = state.itemStatuses[item.name] ??
+                      // Statuses and results are keyed by batch index:
+                      // display names are not unique, so name lookups would
+                      // mix up same-named items.
+                      final status = state.itemStatuses[index] ??
                           BatchPublishStatus.pending;
-                      final isCurrent = state.currentItemName == item.name;
+                      final isCurrent = state.currentItemIndex == index;
                       final result = state.results
                           .cast<BatchPublishItemResult?>()
                           .firstWhere(
-                            (r) => r?.name == item.name,
+                            (r) => r?.index == index,
                             orElse: () => null,
                           );
                       final existingId = item.params.publishedFileId;
