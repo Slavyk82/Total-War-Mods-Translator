@@ -69,7 +69,9 @@ class SearchServiceImpl implements ISearchService {
           sourceText: row['source_text'] as String?,
           matchedField: _detectMatchedField(row),
           highlightedText: row['highlighted'] as String? ?? '',
-          relevanceScore: (row['rank'] as num?)?.toDouble() ?? 0.0,
+          // FTS5 rank is bm25(): negative, more negative = better match.
+          // Negate so relevanceScore is positive with higher = more relevant.
+          relevanceScore: -((row['rank'] as num?)?.toDouble() ?? 0.0),
           context: _extractContext(row['source_text'] as String?, query),
           fileName: row['file_name'] as String?,
           createdAt: _parseTimestamp(row['created_at']),
@@ -135,7 +137,8 @@ class SearchServiceImpl implements ISearchService {
           translatedText: row['translated_text'] as String?,
           matchedField: 'translated_text',
           highlightedText: row['highlighted'] as String? ?? '',
-          relevanceScore: (row['rank'] as num?)?.toDouble() ?? 0.0,
+          // Negated bm25 rank: positive, higher = more relevant.
+          relevanceScore: -((row['rank'] as num?)?.toDouble() ?? 0.0),
           context: _extractContext(row['translated_text'] as String?, query),
           status: row['status'] as String?,
           createdAt: _parseTimestamp(row['created_at']),
@@ -198,7 +201,8 @@ class SearchServiceImpl implements ISearchService {
           translatedText: row['target_text'] as String?,
           matchedField: _detectMatchedField(row),
           highlightedText: row['highlighted'] as String? ?? '',
-          relevanceScore: (row['rank'] as num?)?.toDouble() ?? 0.0,
+          // Negated bm25 rank: positive, higher = more relevant.
+          relevanceScore: -((row['rank'] as num?)?.toDouble() ?? 0.0),
           context: _extractContext(row['source_text'] as String?, query),
           createdAt: _parseTimestamp(row['created_at']),
           updatedAt: _parseTimestamp(row['last_used_at']),

@@ -221,6 +221,113 @@ void main() {
       verifyNever(() => logger.warning(any(), any()));
     });
 
+    test('does NOT retry on LlmCancelledException '
+        '(wrapped op invoked exactly once, no backoff, returns Err)',
+        () async {
+      final llmService = _MockLlmService();
+      final logger = MockLoggingService();
+      final handler =
+          LlmRetryHandler(llmService: llmService, logger: logger);
+      final cancelled = const LlmCancelledException(
+        'Request cancelled: stopped by user',
+        providerCode: 'openai',
+      );
+
+      when(() => llmService.translateBatch(any(),
+              cancelToken: any(named: 'cancelToken')))
+          .thenAnswer((_) async =>
+              Err<LlmResponse, LlmServiceException>(cancelled));
+
+      final result = await handler.translateWithRetry(
+        llmRequest: _buildRequest(),
+        batchId: 'batch-cancel',
+        dioCancelToken: CancelToken(),
+        maxRetries: 3,
+      );
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmCancelledException>());
+      verify(() => llmService.translateBatch(any(),
+          cancelToken: any(named: 'cancelToken'))).called(1);
+      // Critical invariant: Stop must never schedule a retry backoff.
+      verifyNever(() => logger.warning(any()));
+      verifyNever(() => logger.warning(any(), any()));
+    });
+
+    test('bails out with LlmCancelledException without calling the service '
+        'when the cancel token is already cancelled', () async {
+      final llmService = _MockLlmService();
+      final logger = MockLoggingService();
+      final handler =
+          LlmRetryHandler(llmService: llmService, logger: logger);
+      final token = CancelToken()..cancel('Stopped by user');
+
+      final result = await handler.translateWithRetry(
+        llmRequest: _buildRequest(),
+        batchId: 'batch-precancelled',
+        dioCancelToken: token,
+        maxRetries: 3,
+      );
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmCancelledException>());
+      verifyNever(() => llmService.translateBatch(any(),
+          cancelToken: any(named: 'cancelToken')));
+    });
+
+    test('aborts the backoff sleep as soon as the token is cancelled '
+        'mid-backoff (no further attempts, Err with LlmCancelledException)',
+        () {
+      fakeAsync((async) {
+        final llmService = _MockLlmService();
+        final logger = MockLoggingService();
+        final handler =
+            LlmRetryHandler(llmService: llmService, logger: logger);
+        final token = CancelToken();
+        // Retryable error => handler schedules a 2s backoff after attempt 0.
+        final networkError = const LlmNetworkException(
+          'Connection reset',
+          providerCode: 'openai',
+        );
+
+        var callCount = 0;
+        when(() => llmService.translateBatch(any(),
+            cancelToken: any(named: 'cancelToken'))).thenAnswer((_) async {
+          callCount++;
+          return Err<LlmResponse, LlmServiceException>(networkError);
+        });
+
+        Result<LlmResponse, LlmServiceException>? resolved;
+        handler
+            .translateWithRetry(
+          llmRequest: _buildRequest(),
+          batchId: 'batch-midsleep-cancel',
+          dioCancelToken: token,
+          maxRetries: 3,
+        )
+            .then((r) {
+          resolved = r;
+        });
+
+        async.flushMicrotasks();
+        expect(callCount, 1);
+        expect(resolved, isNull, reason: 'backoff sleep should be pending');
+
+        // Cancel 500ms into the 2s backoff: the handler must resolve
+        // immediately instead of paying the remaining 1.5s.
+        async.elapse(const Duration(milliseconds: 500));
+        token.cancel('Stopped by user');
+        async.flushMicrotasks();
+
+        expect(resolved, isNotNull,
+            reason: 'cancellation must abort the backoff sleep immediately');
+        expect(resolved!.isErr, isTrue);
+        expect(resolved!.error, isA<LlmCancelledException>());
+        // No second attempt was made against the cancelled token.
+        expect(callCount, 1);
+      });
+    });
+
     test('retries on LlmServerException (5xx) and returns Ok on success; '
         'uses exponential backoff (2s on first retry)', () {
       fakeAsync((async) {

@@ -198,6 +198,36 @@ void main() {
       expect(rateLimit.providerCode, 'gemini');
     });
 
+    test('maps DioExceptionType.cancel to LlmCancelledException so '
+        'cancellation is never classified as a retryable network error',
+        () async {
+      final dio = _MockDio();
+      final provider = GeminiProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenThrow(DioException(
+        requestOptions: RequestOptions(
+            path: '/models/gemini-3-flash-preview:generateContent'),
+        type: DioExceptionType.cancel,
+        message: 'The request was manually cancelled by the user.',
+      ));
+
+      final result = await provider.translate(request, 'gem-test-key');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmCancelledException>());
+      expect(result.error, isNot(isA<LlmNetworkException>()));
+      expect(result.error.providerCode, 'gemini');
+    });
+
     test('maps 403 response to LlmAuthenticationException and does NOT retry '
         '(dio.post called exactly once). Gemini uses 403 (not 401) for bad '
         'API keys.', () async {

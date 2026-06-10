@@ -237,6 +237,35 @@ void main() {
       expect(rateLimit.providerCode, 'deepseek');
     });
 
+    test('maps DioExceptionType.cancel to LlmCancelledException so '
+        'cancellation is never classified as a retryable network error',
+        () async {
+      final dio = _MockDio();
+      final provider = DeepSeekProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenThrow(DioException(
+        requestOptions: RequestOptions(path: '/chat/completions'),
+        type: DioExceptionType.cancel,
+        message: 'The request was manually cancelled by the user.',
+      ));
+
+      final result = await provider.translate(request, 'sk-test-key');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmCancelledException>());
+      expect(result.error, isNot(isA<LlmNetworkException>()));
+      expect(result.error.providerCode, 'deepseek');
+    });
+
     test('maps 401 response to LlmAuthenticationException and does NOT retry '
         '(dio.post called exactly once)', () async {
       final dio = _MockDio();

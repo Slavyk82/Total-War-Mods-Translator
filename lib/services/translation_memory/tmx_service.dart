@@ -6,7 +6,9 @@ import 'package:uuid/uuid.dart';
 import 'package:xml/xml.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_memory_entry.dart';
+import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/translation_memory_repository.dart';
+import 'package:twmt/services/translation_memory/language_id.dart';
 import 'package:twmt/services/translation_memory/models/tm_exceptions.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -20,6 +22,7 @@ class TmxService {
   final TranslationMemoryRepository _repository;
   final TextNormalizer _normalizer;
   final ILoggingService _logger;
+  final LanguageRepository _languageRepository;
 
   static const String _creationTool = 'TWMT';
   static const String _creationToolVersion = '1.0';
@@ -38,9 +41,11 @@ class TmxService {
     required TranslationMemoryRepository repository,
     required TextNormalizer normalizer,
     ILoggingService? logger,
+    LanguageRepository? languageRepository,
   })  : _repository = repository,
         _normalizer = normalizer,
-        _logger = logger ?? ServiceLocator.get<ILoggingService>();
+        _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _languageRepository = languageRepository ?? LanguageRepository();
 
   /// Export translation memory entries to TMX format.
   ///
@@ -478,6 +483,12 @@ class TmxService {
 
   /// Persist imported TMX entries to the database.
   ///
+  /// TMX xml:lang codes are normalized to canonical `languages.id` values
+  /// ('fr-FR' -> 'lang_fr', custom languages via their ISO code). Entries
+  /// whose source or target language matches no row in `languages` are
+  /// skipped (logged with the unknown codes) instead of failing the import
+  /// with an FK violation.
+  ///
   /// [entries]: List of TMX entries to persist
   /// [overwriteExisting]: If true, updates existing entries with same source hash
   /// [onProgress]: Optional callback to report progress (processed, total)
@@ -495,26 +506,92 @@ class TmxService {
         'overwriteExisting': overwriteExisting,
       });
 
+      // Resolve raw TMX xml:lang codes (e.g. 'en', 'fr-FR', 'LANG_DE') to
+      // canonical row ids in the `languages` table BEFORE building entities.
+      // translation_memory.source_language_id/target_language_id are FKs to
+      // languages(id) and PRAGMA foreign_keys = ON, so persisting raw codes
+      // would abort every insert with an FK violation.
+      final languagesResult = await _languageRepository.getAll();
+      if (languagesResult.isErr) {
+        final err = languagesResult.unwrapErr();
+        _logger.error('Failed to load languages for TMX import', err);
+        return Err(TmImportException(
+          'Failed to load languages for TMX import: ${err.message}',
+          processedEntries: 0,
+          error: err,
+        ));
+      }
+
+      final knownIds = <String>{};
+      final idByCode = <String, String>{};
+      for (final language in languagesResult.unwrap()) {
+        knownIds.add(language.id);
+        idByCode[language.code.trim().toLowerCase()] = language.id;
+      }
+
+      // Memoized resolution: raw xml:lang code -> languages.id, or null when
+      // the code matches no known language (entry will be skipped).
+      final resolvedIds = <String, String?>{};
+      String? resolveLanguageId(String raw) {
+        return resolvedIds.putIfAbsent(raw, () {
+          final lower = raw.trim().toLowerCase();
+          // Already a known row id (covers 'lang_xx' and custom UUID ids).
+          if (knownIds.contains(lower)) return lower;
+          // Reduce to the base subtag: strip an optional 'lang_' prefix and
+          // any region/script suffix ('fr-FR' -> 'fr', 'lang_de' -> 'de').
+          final base = _baseLang(stripLanguagePrefix(lower));
+          // Canonical id convention used across TM services: 'lang_<code>'.
+          final candidate = normalizeLanguageId(base);
+          if (candidate != null && knownIds.contains(candidate)) {
+            return candidate;
+          }
+          // Custom languages have UUID ids (id != 'lang_<code>'), so fall
+          // back to a lookup by ISO code.
+          return idByCode[base];
+        });
+      }
+
       // Convert parsed TMX entries into TM entities once; hash is computed
       // here so the repository batch can rely on each entry's sourceHash.
+      // Entries whose languages map to no row in `languages` are skipped
+      // gracefully instead of producing an FK-violating insert.
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final tmEntries = entries.map((entry) {
+      final tmEntries = <TranslationMemoryEntry>[];
+      var skippedUnknownLanguage = 0;
+      for (final entry in entries) {
+        final sourceLanguageId = resolveLanguageId(entry.sourceLanguage);
+        final targetLanguageId = resolveLanguageId(entry.targetLanguage);
+        if (sourceLanguageId == null || targetLanguageId == null) {
+          skippedUnknownLanguage++;
+          continue;
+        }
+
         final normalized = _normalizer.normalize(entry.sourceText);
         final sourceHash = sha256.convert(utf8.encode(normalized)).toString();
-        return TranslationMemoryEntry(
+        tmEntries.add(TranslationMemoryEntry(
           id: const Uuid().v4(),
           sourceText: entry.sourceText,
           translatedText: entry.targetText,
-          sourceLanguageId: entry.sourceLanguage,
-          targetLanguageId: entry.targetLanguage,
+          sourceLanguageId: sourceLanguageId,
+          targetLanguageId: targetLanguageId,
           sourceHash: sourceHash,
           usageCount: entry.usageCount,
           translationProviderId: entry.translationProviderId,
           createdAt: now,
           lastUsedAt: now,
           updatedAt: now,
-        );
-      }).toList();
+        ));
+      }
+
+      if (skippedUnknownLanguage > 0) {
+        _logger.warning('Skipped TMX entries with unknown language codes', {
+          'skippedEntries': skippedUnknownLanguage,
+          'unknownCodes': resolvedIds.entries
+              .where((e) => e.value == null)
+              .map((e) => e.key)
+              .toList(),
+        });
+      }
 
       final result = await _repository.bulkImportTmxEntries(
         tmEntries,
@@ -535,7 +612,8 @@ class TmxService {
       final counts = result.unwrap();
       _logger.info('TMX entries persisted', {
         'persisted': counts.persisted,
-        'skipped': counts.skipped,
+        'skippedExisting': counts.skipped,
+        'skippedUnknownLanguage': skippedUnknownLanguage,
       });
 
       return Ok(counts.persisted);

@@ -55,7 +55,8 @@ class SearchResult {
   /// Highlighted match with <mark> tags
   final String highlightedText;
 
-  /// Relevance rank score from FTS5 (higher = more relevant)
+  /// Relevance score: the NEGATED FTS5 bm25 rank (raw bm25 is negative
+  /// with more-negative = better). Positive here, higher = more relevant.
   final double relevanceScore;
 
   /// Additional context around the match
@@ -224,7 +225,8 @@ class SearchFilter {
   /// Filter by date range (created_at <= maxDate)
   final DateTime? maxDate;
 
-  /// Filter by minimum relevance score
+  /// Filter by minimum relevance score, using the same positive convention
+  /// as [SearchResult.relevanceScore] (negated bm25: higher = more relevant).
   final double? minRelevanceScore;
 
   const SearchFilter({

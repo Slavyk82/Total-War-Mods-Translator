@@ -29,6 +29,11 @@ mixin RpfmPackOperationsMixin {
     // Reset cancellation state at the start of a new operation
     isCancelled = false;
 
+    // Becomes true once 'pack create' has run: from that point on, any
+    // abort must remove the (possibly partial) pack file so a half-built
+    // but loadable pack is never left in the game's data directory.
+    var packFileTouched = false;
+
     try {
       // Validate input directory exists
       if (!await Directory(inputDirectory).exists()) {
@@ -85,9 +90,14 @@ mixin RpfmPackOperationsMixin {
         stdoutEncoding: utf8,
         stderrEncoding: utf8,
       );
+      // Only after Process.run returns can rpfm have written to outputPackPath;
+      // a spawn failure (ProcessException) leaves the previous good pack intact,
+      // so it must not be cleaned up by the generic catch below.
+      packFileTouched = true;
 
       if (result.exitCode != 0) {
         final error = RpfmOutputParser.parseErrorMessage(result.stderr);
+        await _cleanupPartialPack(outputPackPath);
         return Err(RpfmPackingException(
           'Failed to create empty pack: $error',
           outputPath: outputPackPath,
@@ -114,9 +124,7 @@ mixin RpfmPackOperationsMixin {
             if (isCancelled) {
               logger.info('Pack creation cancelled by user');
               // Clean up partial pack file
-              try {
-                await File(outputPackPath).delete();
-              } catch (_) {}
+              await _cleanupPartialPack(outputPackPath);
               return Err(const RpfmPackingException('Pack creation cancelled'));
             }
 
@@ -144,9 +152,7 @@ mixin RpfmPackOperationsMixin {
             // Check if cancelled during process execution
             if (isCancelled) {
               logger.info('Pack creation cancelled by user');
-              try {
-                await File(outputPackPath).delete();
-              } catch (_) {}
+              await _cleanupPartialPack(outputPackPath);
               return Err(const RpfmPackingException('Pack creation cancelled'));
             }
 
@@ -165,9 +171,7 @@ mixin RpfmPackOperationsMixin {
           // return Ok for an essentially empty pack (the empty pack created in
           // step 1 still exists), silently producing a translation-less pack.
           if (locAddedOk == 0) {
-            try {
-              await File(outputPackPath).delete();
-            } catch (_) {}
+            await _cleanupPartialPack(outputPackPath);
             return Err(RpfmPackingException(
               'Failed to add any .loc file to pack ($totalLocFiles attempted).',
               outputPath: outputPackPath,
@@ -182,9 +186,7 @@ mixin RpfmPackOperationsMixin {
           if (isCancelled) {
             logger.info('Pack creation cancelled by user');
             // Clean up partial pack file
-            try {
-              await File(outputPackPath).delete();
-            } catch (_) {}
+            await _cleanupPartialPack(outputPackPath);
             return Err(const RpfmPackingException('Pack creation cancelled'));
           }
 
@@ -223,9 +225,7 @@ mixin RpfmPackOperationsMixin {
           // Check if cancelled during process execution
           if (isCancelled) {
             logger.info('Pack creation cancelled by user');
-            try {
-              await File(outputPackPath).delete();
-            } catch (_) {}
+            await _cleanupPartialPack(outputPackPath);
             return Err(const RpfmPackingException('Pack creation cancelled'));
           }
 
@@ -234,6 +234,11 @@ mixin RpfmPackOperationsMixin {
             final error = RpfmOutputParser.parseErrorMessage(stderr);
             logger.error('Failed to add TSV file: $error');
             logger.error('RPFM stderr: $stderr');
+            // Remove the half-built pack: every successful 'pack add' saves a
+            // valid, loadable file, so leaving it in the game's data folder
+            // would ship incomplete translations while the export reports
+            // failure.
+            await _cleanupPartialPack(outputPackPath);
             return Err(RpfmPackingException(
               'Failed to add TSV file to pack: $error\nFile: $tsvFilePath',
               outputPath: outputPackPath,
@@ -259,11 +264,34 @@ mixin RpfmPackOperationsMixin {
 
       return Ok(outputPackPath);
     } catch (e, stackTrace) {
+      // Only clean up if 'pack create' already ran: before that, the file at
+      // outputPackPath (if any) is the user's previous good pack and must be
+      // preserved.
+      if (packFileTouched) {
+        await _cleanupPartialPack(outputPackPath);
+      }
       return Err(RpfmPackingException(
         'Packing failed: $e',
         outputPath: outputPackPath,
         stackTrace: stackTrace,
       ));
+    }
+  }
+
+  /// Best-effort removal of a partially written pack file.
+  ///
+  /// Called on every abort path after 'pack create' has run, so a failed
+  /// export never leaves a half-built (but loadable) pack in the game's
+  /// data directory. Delete errors are swallowed and logged.
+  Future<void> _cleanupPartialPack(String packPath) async {
+    try {
+      final packFile = File(packPath);
+      if (await packFile.exists()) {
+        await packFile.delete();
+        logger.info('Cleaned up partial pack file: $packPath');
+      }
+    } catch (e) {
+      logger.warning('Failed to clean up partial pack file: $packPath ($e)');
     }
   }
 

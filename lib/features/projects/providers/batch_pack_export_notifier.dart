@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/service_providers.dart';
@@ -109,6 +111,20 @@ class ProjectExportInfo {
 
 /// Notifier for batch pack export
 class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
+  /// Token identifying the current export run. The loop captures the value
+  /// at start and stops touching [state] as soon as it no longer matches,
+  /// so a superseded loop can never resurrect stale state.
+  int _generation = 0;
+
+  /// Set by [cancel]. Instance-level (not part of [state]) so it cannot be
+  /// defeated by a state reset while the loop is still running.
+  bool _cancelRequested = false;
+
+  /// Completes when the currently running export loop has fully exited.
+  /// Non-null means a loop is alive (running or draining after cancel);
+  /// this is the re-entry guard, immune to state resets.
+  Future<void>? _activeRun;
+
   @override
   BatchPackExportState build() => const BatchPackExportState();
 
@@ -117,8 +133,49 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
     required List<ProjectExportInfo> projects,
     required String languageCode,
   }) async {
-    if (state.isExporting) return;
+    // Re-entry guard: an export is running and has not been cancelled.
+    // Instance-level so it stays sound even if state were reset.
+    if (_activeRun != null && !_cancelRequested) return;
 
+    // Supersede any cancelled loop that is still draining its current
+    // await, then wait for it to fully exit so two loops can never
+    // interleave state writes or export the same project concurrently.
+    final previousRun = _activeRun;
+    final runId = ++_generation;
+    _cancelRequested = false;
+    if (previousRun != null) {
+      await previousRun;
+    }
+    if (runId != _generation) return; // Superseded by a newer run.
+    if (_cancelRequested) {
+      // Cancelled while waiting for the previous loop to drain.
+      if (state.isExporting) {
+        state = state.copyWith(isExporting: false, clearCurrentProject: true);
+      }
+      return;
+    }
+
+    final completer = Completer<void>();
+    _activeRun = completer.future;
+    try {
+      await _runExport(
+        runId: runId,
+        projects: projects,
+        languageCode: languageCode,
+      );
+    } finally {
+      if (identical(_activeRun, completer.future)) {
+        _activeRun = null;
+      }
+      completer.complete();
+    }
+  }
+
+  Future<void> _runExport({
+    required int runId,
+    required List<ProjectExportInfo> projects,
+    required String languageCode,
+  }) async {
     final logging = ref.read(loggingServiceProvider);
     logging.info('Starting batch pack export', {
       'projectCount': projects.length,
@@ -144,8 +201,14 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
     final results = <ProjectExportResult>[];
 
     for (var i = 0; i < projects.length; i++) {
-      // Check for cancellation before starting each project
-      if (state.isCancelled) {
+      // Superseded by a newer run or screen lifecycle reset: exit without
+      // touching state (the newer run owns it now).
+      if (runId != _generation) return;
+
+      // Check for cancellation before starting each project. Terminal
+      // cleanup is done here, by the loop itself, so callers never have to
+      // reset state while the loop is still running.
+      if (_cancelRequested) {
         logging.info('Batch export cancelled', {
           'completedProjects': i,
           'totalProjects': projects.length,
@@ -159,6 +222,7 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
 
         state = state.copyWith(
           isExporting: false,
+          isCancelled: true,
           projectStatuses: updatedStatuses,
           clearCurrentProject: true,
         );
@@ -187,7 +251,7 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
           validatedOnly: false,
           generatePackImage: true,
           onProgress: (step, progress, {currentLanguage, currentIndex, total}) {
-            if (!state.isCancelled) {
+            if (runId == _generation && !_cancelRequested) {
               state = state.copyWith(
                 currentProjectProgress: progress,
                 currentStep: step,
@@ -195,6 +259,9 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
             }
           },
         );
+
+        // Superseded while awaiting the export: stop, do not write state.
+        if (runId != _generation) return;
 
         result.when(
           ok: (exportResult) {
@@ -224,6 +291,8 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
           },
         );
       } catch (e, stack) {
+        logging.error('Project export exception: ${project.name}', e, stack);
+        if (runId != _generation) return;
         updatedStatuses[project.id] = BatchProjectStatus.failed;
         results.add(ProjectExportResult(
           projectId: project.id,
@@ -231,7 +300,6 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
           success: false,
           errorMessage: e.toString(),
         ));
-        logging.error('Project export exception: ${project.name}', e, stack);
       }
 
       // Update completed count
@@ -241,6 +309,8 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
         results: List.from(results),
       );
     }
+
+    if (runId != _generation) return;
 
     // Export complete
     state = state.copyWith(
@@ -255,15 +325,33 @@ class BatchPackExportNotifier extends Notifier<BatchPackExportState> {
     });
   }
 
-  /// Cancel the batch export
+  /// Cancel the batch export.
+  ///
+  /// The running loop stops at its next checkpoint (it cannot abort an
+  /// in-flight pack export) and performs its own terminal state cleanup,
+  /// marking the remaining projects as cancelled.
   void cancel() {
+    // Set the flag unconditionally: a run queued behind a draining loop
+    // re-checks it after the drain, during which _activeRun is briefly
+    // null. Harmless when idle — exportBatch clears it at run start.
+    _cancelRequested = true;
     if (state.isExporting && !state.isCancelled) {
       state = state.copyWith(isCancelled: true);
     }
   }
 
-  /// Reset state for a new export
+  /// Reset state for a new export.
+  ///
+  /// While a loop is still alive this defers to [cancel] instead of
+  /// clearing state under it: a mid-run reset would defeat the cancellation
+  /// flag and let the loop resurrect inconsistent state. [exportBatch]
+  /// reinitializes state at the start of every run, so the next run always
+  /// begins clean either way.
   void reset() {
+    if (_activeRun != null) {
+      cancel();
+      return;
+    }
     state = const BatchPackExportState();
   }
 }

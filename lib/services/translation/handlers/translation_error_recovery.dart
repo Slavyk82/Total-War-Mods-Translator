@@ -6,6 +6,7 @@ import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 import 'package:twmt/services/translation/models/llm_exchange_log.dart';
+import 'batch_progress_manager.dart' show CancelledException;
 import 'llm_token_estimator.dart';
 
 /// Callback type for progress updates.
@@ -73,6 +74,20 @@ class TranslationErrorRecovery {
     required int depth,
     required TranslateWithAutoSplitCallback translateWithAutoSplit,
   }) async {
+    // Cancellation is not an error to recover from. Rethrow it as
+    // CancelledException so the orchestrator's `on CancelledException`
+    // handler persists the batch as cancelled instead of failed.
+    if (error is LlmCancelledException) {
+      _logger.info(
+        'Translation cancelled during LLM call for batch $batchId',
+      );
+      throw CancelledException(
+        'Translation cancelled by user',
+        batchId: batchId,
+        error: error,
+      );
+    }
+
     final isContentFiltered = error is LlmContentFilteredException;
     final isBatchTooLarge = (error is LlmTokenLimitException) ||
         (error is LlmResponseParseException && unitsToTranslate.length > 1);

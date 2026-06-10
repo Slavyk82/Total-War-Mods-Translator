@@ -161,6 +161,12 @@ mixin TranslationMemoryBatchMixin {
   ///   and updated_at; usage_count/last_used_at are preserved.
   /// - If a row exists and [overwriteExisting] is false: skip.
   ///
+  /// Duplicates WITHIN [entries] (same `(source_hash, target_language_id)`
+  /// pair appearing more than once) are deduplicated first-wins: the first
+  /// occurrence is processed, later occurrences are counted as skipped.
+  /// This mirrors TMX tuv semantics and prevents UNIQUE-constraint aborts
+  /// mid-import.
+  ///
   /// Returns the number of rows actually written (inserted + updated).
   /// Skipped rows are reported via [onProgress] only.
   ///
@@ -180,6 +186,16 @@ mixin TranslationMemoryBatchMixin {
     const chunkSize = 500;
     var persisted = 0;
     var skipped = 0;
+
+    // Keys (source_hash:target_language_id) already handled earlier in THIS
+    // import run — within the current chunk or a previously committed one.
+    // Real TMX files routinely contain duplicate source segments (and the
+    // hash normalizer can collide distinct sources); without this run-level
+    // tracking the second duplicate inside a chunk takes the INSERT path and
+    // aborts the whole chunk transaction with a UNIQUE(source_hash,
+    // target_language_id) violation, leaving the TM half-imported.
+    // First entry wins, matching TMX tuv convention.
+    final processedKeys = <String>{};
 
     for (var start = 0; start < entries.length; start += chunkSize) {
       final end = (start + chunkSize < entries.length)
@@ -221,6 +237,17 @@ mixin TranslationMemoryBatchMixin {
         var chunkSkipped = 0;
         for (final entry in chunk) {
           final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+
+          // Duplicate of an entry already processed in this import run:
+          // skip it (first-wins) so the INSERT below can never hit the
+          // UNIQUE constraint for in-import duplicates. ConflictAlgorithm
+          // .abort stays as the safety net for genuinely unexpected
+          // conflicts (e.g. concurrent writers).
+          if (!processedKeys.add(key)) {
+            chunkSkipped++;
+            continue;
+          }
+
           final existingId = existingIds[key];
 
           if (existingId != null) {
