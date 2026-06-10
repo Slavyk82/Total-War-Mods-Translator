@@ -37,7 +37,8 @@
       "startRescan": "开始重新扫描"
     },
     "toasts": {
-      "updateComplete": "验证数据更新完成。"
+      "updateComplete": "验证数据更新完成。",
+      "updateFailed": "验证数据更新失败：$error"
     }
   }
 }

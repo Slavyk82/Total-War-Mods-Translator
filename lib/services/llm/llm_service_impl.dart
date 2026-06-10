@@ -176,11 +176,13 @@ class LlmServiceImpl implements ILlmService {
         'deeplGlossaryId': deeplGlossaryId,
       });
 
-      // Translate with glossary
+      // Translate with glossary. Forward the cancel token so a user Stop
+      // aborts this request like every other translation path.
       final result = await provider.translateWithGlossary(
         request: request,
         apiKey: apiKey,
         glossaryId: deeplGlossaryId,
+        cancelToken: cancelToken,
       );
 
       return result.when(

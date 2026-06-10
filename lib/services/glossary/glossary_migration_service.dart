@@ -57,6 +57,14 @@ class GlossaryMigrationService {
           final universalId = entry.key;
           final gameCode = entry.value;
           if (gameCode == null) {
+            // foreign_keys is OFF for the whole transaction (see above), so
+            // glossary_entries' ON DELETE CASCADE does not fire — delete the
+            // dependent entries explicitly or they would be orphaned forever.
+            await txn.delete(
+              'glossary_entries',
+              where: 'glossary_id = ?',
+              whereArgs: [universalId],
+            );
             await txn.delete(
               'glossaries',
               where: 'id = ?',
@@ -99,7 +107,13 @@ class GlossaryMigrationService {
           }
         }
 
-        // 2. Delete any remaining universals that were not mentioned in the plan.
+        // 2. Delete any remaining universals that were not mentioned in the
+        //    plan. As above, CASCADE cannot fire with foreign_keys OFF, so
+        //    their entries must be deleted explicitly first.
+        await txn.rawDelete(
+          'DELETE FROM glossary_entries WHERE glossary_id IN '
+          '(SELECT id FROM glossaries WHERE game_code IS NULL)',
+        );
         await txn.delete('glossaries', where: 'game_code IS NULL');
 
         // 3. Merge duplicate (game_code, target_language_id) groups. Survivor

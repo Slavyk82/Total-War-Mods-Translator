@@ -384,11 +384,29 @@ class OpenAiProvider implements ILlmProvider {
       final message = choice['message'] as Map<String, dynamic>;
       final content = message['content'] as String?;
 
+      final isContentEmpty = content == null || content.trim().isEmpty;
+
+      // An empty completion with finish_reason 'length' means the
+      // max_completion_tokens budget was exhausted before any content was
+      // produced — on reasoning models (GPT-5.x) the whole budget can be
+      // consumed by reasoning tokens. This is truncation, not moderation:
+      // throw a parse exception so the recovery layer retries with a higher
+      // token limit instead of permanently skipping the unit as
+      // content-filtered.
+      if (finishReason == 'length' && isContentEmpty) {
+        throw LlmResponseParseException(
+          'Empty completion with finish_reason "length": '
+          'max_completion_tokens exhausted before any content was produced '
+          '(token budget likely consumed by reasoning tokens).',
+          providerCode: providerCode,
+          rawResponse: data.toString(),
+        );
+      }
+
       // Check for content filtering (explicit finish_reason or empty content)
       // OpenAI returns finish_reason: "content_filter" when moderation triggers
       // Some models return empty content instead of explicit filter reason
-      if (finishReason == 'content_filter' ||
-          (content == null || content.trim().isEmpty)) {
+      if (finishReason == 'content_filter' || isContentEmpty) {
         final sourceTexts = request.texts.values.toList();
         throw LlmContentFilteredException(
           'Content blocked by provider moderation. The source text may contain '
@@ -425,6 +443,10 @@ class OpenAiProvider implements ILlmProvider {
       );
     } on LlmContentFilteredException {
       // Re-throw content filter exceptions as-is (don't wrap in parse exception)
+      rethrow;
+    } on LlmResponseParseException {
+      // Already a parse exception (e.g. the empty 'length' truncation above
+      // or _parseTranslations failures) - don't wrap it a second time
       rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(

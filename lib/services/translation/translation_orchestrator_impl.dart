@@ -376,8 +376,36 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
           }
         },
       );
-      currentProgress =
-          _batchProgressManager.getProgress(batchId) ?? progressAfterLlm;
+      // In parallel mode, per-chunk progress emissions are rebased onto a
+      // stable snapshot that strips tokensUsed/failedUnits (to avoid counter
+      // races between chunks), so the manager's stored progress never
+      // receives them; the authoritative aggregate lives only in
+      // `progressAfterLlm`. Merge that aggregate into the stored progress
+      // (which carries the successful/processed counters bumped by the
+      // progressive saves) instead of discarding it. In single-batch mode
+      // both sides carry the same values and the merge is a no-op.
+      final storedProgress = _batchProgressManager.getProgress(batchId);
+      if (storedProgress == null) {
+        currentProgress = progressAfterLlm;
+      } else {
+        final mergedLogs = [...storedProgress.llmLogs];
+        final knownRequestIds = mergedLogs.map((log) => log.requestId).toSet();
+        for (final log in progressAfterLlm.llmLogs) {
+          if (knownRequestIds.add(log.requestId)) {
+            mergedLogs.add(log);
+          }
+        }
+        currentProgress = storedProgress.copyWith(
+          tokensUsed: progressAfterLlm.tokensUsed > storedProgress.tokensUsed
+              ? progressAfterLlm.tokensUsed
+              : storedProgress.tokensUsed,
+          failedUnits: progressAfterLlm.failedUnits > storedProgress.failedUnits
+              ? progressAfterLlm.failedUnits
+              : storedProgress.failedUnits,
+          llmLogs: mergedLogs,
+          timestamp: DateTime.now(),
+        );
+      }
       _batchProgressManager.updateAndEmitProgress(batchId, currentProgress);
       await _batchProgressManager.checkPauseOrCancel(batchId);
 

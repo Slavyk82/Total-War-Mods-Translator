@@ -81,10 +81,16 @@ class MaintenanceState {
 /// Notifier for maintenance operations.
 @riverpod
 class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
-  ILoggingService get _logging => ref.read(loggingServiceProvider);
+  // Captured once in build() instead of `ref.read` on demand: this notifier
+  // is autoDispose and its maintenance operations keep running after the
+  // provider is disposed (user switched settings tab), when any `ref.read`
+  // throws UnmountedRefException — including from catch blocks. A plain
+  // field stays usable for dispose-safe logging.
+  late final ILoggingService _logging;
 
   @override
   MaintenanceState build() {
+    _logging = ref.read(loggingServiceProvider);
     return const MaintenanceState();
   }
 
@@ -125,10 +131,14 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
         },
       );
 
-      // Perform the reanalysis
-      state = state.copyWith(
-        progressMessage: 'Fixing $totalInconsistent inconsistencies...',
-      );
+      // Perform the reanalysis. The provider may have been disposed during
+      // the count above (autoDispose, user switched tab); skip only the
+      // progress write and let the actual fix run to completion.
+      if (ref.mounted) {
+        state = state.copyWith(
+          progressMessage: 'Fixing $totalInconsistent inconsistencies...',
+        );
+      }
 
       final result = await repository.reanalyzeAllStatuses();
 
@@ -147,6 +157,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
         },
       );
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -159,6 +170,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     } catch (e, stackTrace) {
       _logging.error('Translation reanalysis failed', e, stackTrace);
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -198,6 +210,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
 
       _logging.info('Cleared $deletedCount stale analysis cache entries');
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,
@@ -212,6 +225,7 @@ class MaintenanceStateNotifier extends _$MaintenanceStateNotifier {
     } catch (e, stackTrace) {
       _logging.error('Failed to clear analysis cache', e, stackTrace);
 
+      if (!ref.mounted) return;
       state = state.copyWith(
         isReanalyzing: false,
         clearProgress: true,

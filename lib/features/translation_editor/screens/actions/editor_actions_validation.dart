@@ -454,7 +454,10 @@ mixin EditorActionsValidation on EditorActionsBase {
     final version = versionResult.unwrap();
     final acceptedVersion = version.copyWith(
       status: TranslationVersionStatus.translated,
-      validationIssues: null,
+      // copyWith treats `validationIssues: null` as "keep current value";
+      // the explicit clear flag is required to drop the dismissed issues,
+      // matching the bulk path (batchAcceptVersions sets the column to NULL).
+      clearValidationIssues: true,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );
 
@@ -493,7 +496,9 @@ mixin EditorActionsValidation on EditorActionsBase {
     final editedVersion = version.copyWith(
       translatedText: normalizedText,
       status: TranslationVersionStatus.translated,
-      validationIssues: null,
+      // copyWith treats `validationIssues: null` as "keep current value";
+      // the explicit clear flag is required to drop the stale issues.
+      clearValidationIssues: true,
       isManuallyEdited: true,
       updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
     );

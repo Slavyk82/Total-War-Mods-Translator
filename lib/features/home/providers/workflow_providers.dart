@@ -77,8 +77,12 @@ Future<int> projectsReadyToCompileCount(Ref ref) async {
     final stats = statsResult.value;
     // A project with zero translatable units cannot be "ready to compile".
     if (stats.totalCount == 0) continue;
-    final pct = ((stats.translatedCount / stats.totalCount) * 100).round();
-    if (pct < 100) continue;
+    // Strict completeness check (no rounding): mirrors both the sibling
+    // [projectsInProgressCount] predicate and the destination filter's
+    // `ProjectLanguageWithInfo.isComplete` (`translatedUnits >= totalUnits`),
+    // so the dashboard count matches what `?filter=ready-to-compile` shows.
+    // A rounded percentage would count e.g. 1995/2000 (99.75%) as complete.
+    if (stats.translatedCount < stats.totalCount) continue;
 
     final lastPack = await exportHistoryRepo.getLastPackExportByProject(p.id);
     final hasPack = lastPack != null;

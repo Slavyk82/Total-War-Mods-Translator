@@ -308,6 +308,52 @@ void main() {
         1,
       );
     });
+
+    test(
+        'does not count a 99.75% project as ready (regression: round() '
+        'treated >= 99.5% as 100%)', () async {
+      final projectRepo = _MockProjectRepository();
+      final gameInstallRepo = _MockGameInstallationRepository();
+      final versionRepo = _MockTranslationVersionRepository();
+      final exportHistoryRepo = _MockExportHistoryRepository();
+
+      when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
+        (_) async => Ok<GameInstallation, TWMTDatabaseException>(
+          _installation(id: 'install-wh3'),
+        ),
+      );
+      when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
+        (_) async => Ok<List<Project>, TWMTDatabaseException>([
+          _project(id: 'almost-done'), // 1995/2000 → must NOT count
+        ]),
+      );
+      when(() => versionRepo.getProjectStatistics('almost-done')).thenAnswer(
+        (_) async => Ok<ProjectStatistics, TWMTDatabaseException>(
+          const ProjectStatistics(
+            totalCount: 2000,
+            translatedCount: 1995,
+            pendingCount: 5,
+            validatedCount: 0,
+            errorCount: 0,
+          ),
+        ),
+      );
+      when(() => exportHistoryRepo.getLastPackExportByProject('almost-done'))
+          .thenAnswer((_) async => null);
+
+      final container = _makeContainer(
+        projectRepo: projectRepo,
+        gameInstallationRepo: gameInstallRepo,
+        versionRepo: versionRepo,
+        exportHistoryRepo: exportHistoryRepo,
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        await container.read(projectsReadyToCompileCountProvider.future),
+        0,
+      );
+    });
   });
 
   group('packsAwaitingPublishCountProvider', () {

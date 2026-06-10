@@ -106,11 +106,10 @@ void main() async {
     final localePrefs = await SharedPreferences.getInstance();
     final savedLocaleCode = localePrefs.getString('twmt_app_locale');
     if (savedLocaleCode != null) {
-      final match = AppLocale.values.firstWhere(
-        (l) => l.languageCode == savedLocaleCode,
-        orElse: () => AppLocale.en,
-      );
-      await LocaleSettings.setLocale(match);
+      // Match on the full language tag (with languageCode fallback for
+      // values persisted by older versions) so region-qualified locales
+      // like pt-BR restore exactly instead of degrading to pt.
+      await LocaleSettings.setLocale(resolveSavedAppLocale(savedLocaleCode));
     } else {
       await LocaleSettings.useDeviceLocale();
     }

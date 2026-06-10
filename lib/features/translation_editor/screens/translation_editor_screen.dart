@@ -122,6 +122,12 @@ class _TranslationEditorScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Keep the editor session's undo/redo stack alive while the screen is
+    // open. The provider is autoDispose and the action mixins only ref.read
+    // it; without this watch the stack would be disposed (and emptied)
+    // between a cell edit and a later undo/redo.
+    ref.watch(undoRedoManagerProvider(widget.projectId, widget.languageId));
+
     final projectAsync = ref.watch(currentProjectProvider(widget.projectId));
     final statsAsync = ref.watch(
       editorStatsProvider(widget.projectId, widget.languageId),

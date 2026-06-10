@@ -369,9 +369,26 @@ class DeepSeekProvider implements ILlmProvider {
       final message = choice['message'] as Map<String, dynamic>;
       final content = message['content'] as String?;
 
+      final isContentEmpty = content == null || content.trim().isEmpty;
+
+      // An empty completion with finish_reason 'length' means the max_tokens
+      // budget was exhausted before any content was produced — on reasoning
+      // models (DeepSeek v4) the whole budget can be consumed by reasoning
+      // tokens. This is truncation, not moderation: throw a parse exception
+      // so the recovery layer retries with a higher token limit instead of
+      // permanently skipping the unit as content-filtered.
+      if (finishReason == 'length' && isContentEmpty) {
+        throw LlmResponseParseException(
+          'Empty completion with finish_reason "length": '
+          'max_tokens exhausted before any content was produced '
+          '(token budget likely consumed by reasoning tokens).',
+          providerCode: providerCode,
+          rawResponse: data.toString(),
+        );
+      }
+
       // Check for content filtering or empty content
-      if (finishReason == 'content_filter' ||
-          (content == null || content.trim().isEmpty)) {
+      if (finishReason == 'content_filter' || isContentEmpty) {
         final sourceTexts = request.texts.values.toList();
         throw LlmContentFilteredException(
           'Content blocked by provider moderation. The source text may contain '
@@ -407,6 +424,10 @@ class DeepSeekProvider implements ILlmProvider {
         finishReason: finishReason,
       );
     } on LlmContentFilteredException {
+      rethrow;
+    } on LlmResponseParseException {
+      // Already a parse exception (e.g. the empty 'length' truncation above
+      // or _parseTranslations failures) - don't wrap it a second time
       rethrow;
     } catch (e, stackTrace) {
       throw LlmResponseParseException(

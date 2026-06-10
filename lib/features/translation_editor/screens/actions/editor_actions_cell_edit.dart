@@ -14,7 +14,8 @@ mixin EditorActionsCellEdit on EditorActionsBase {
     try {
       final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
-      final undoRedoManager = ref.read(undoRedoManagerProvider);
+      final undoRedoManager =
+          ref.read(undoRedoManagerProvider(projectId, languageId));
 
       // Resolve the version for the language currently shown in the editor.
       // `getByUnit` returns versions for ALL project languages (all stamped
@@ -100,7 +101,8 @@ mixin EditorActionsCellEdit on EditorActionsBase {
     try {
       final versionRepo = ref.read(shared_repo.translationVersionRepositoryProvider);
       final unitRepo = ref.read(shared_repo.translationUnitRepositoryProvider);
-      final undoRedoManager = ref.read(undoRedoManagerProvider);
+      final undoRedoManager =
+          ref.read(undoRedoManagerProvider(projectId, languageId));
 
       // Resolve the version for the language currently shown in the editor
       // (see handleCellEdit) so a TM suggestion never overwrites a sibling

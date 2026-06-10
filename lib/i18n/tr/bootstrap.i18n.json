@@ -37,7 +37,8 @@
       "startRescan": "Yeniden taramayı başlat"
     },
     "toasts": {
-      "updateComplete": "Doğrulama verisi güncellemesi tamamlandı."
+      "updateComplete": "Doğrulama verisi güncellemesi tamamlandı.",
+      "updateFailed": "Doğrulama verisi güncellemesi başarısız oldu: $error"
     }
   }
 }

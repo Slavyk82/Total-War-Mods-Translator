@@ -26,9 +26,19 @@ class TranslationInProgress extends _$TranslationInProgress {
 }
 
 /// Provider for undo/redo manager.
-/// Not a bridge wrapper — creates a fresh instance per project editor session.
+///
+/// Family-scoped per (projectId, languageId) so undo history never bleeds
+/// across projects or languages. The translation editor screen watches this
+/// provider for the lifetime of the screen, which keeps the stack alive
+/// between a cell edit and a later undo/redo (the provider is autoDispose;
+/// an unwatched read would dispose the stack right after the read). When the
+/// screen closes or switches project/language, the stale stack is dropped.
 @riverpod
-UndoRedoManager undoRedoManager(Ref ref) {
+UndoRedoManager undoRedoManager(
+  Ref ref,
+  String projectId,
+  String languageId,
+) {
   return UndoRedoManager();
 }
 

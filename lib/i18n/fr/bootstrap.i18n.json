@@ -37,7 +37,8 @@
       "startRescan": "Lancer le réanalyse"
     },
     "toasts": {
-      "updateComplete": "Mise à jour des données de validation terminée."
+      "updateComplete": "Mise à jour des données de validation terminée.",
+      "updateFailed": "Échec de la mise à jour des données de validation : $error"
     }
   }
 }

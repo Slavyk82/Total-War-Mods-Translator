@@ -152,7 +152,10 @@ class GridActionsHandler {
       for (final row in selectedRows) {
         final updatedVersion = row.version.copyWith(
           status: TranslationVersionStatus.translated,
-          validationIssues: null, // Clear validation issues when manually approved
+          // Clear validation issues when manually approved. copyWith treats
+          // `validationIssues: null` as "keep current value", so the explicit
+          // clear flag is required here.
+          clearValidationIssues: true,
           updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
         );
 

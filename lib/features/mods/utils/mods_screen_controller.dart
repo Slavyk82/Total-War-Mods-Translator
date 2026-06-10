@@ -49,7 +49,14 @@ class ModsScreenController {
     subscription = _ref.listenManual(
       detectedModsProvider,
       (previous, next) {
-        if (next.hasValue && !next.isLoading) {
+        // Complete on data OR error. A failed rescan with no retained data
+        // settles as AsyncError with hasValue == false, so checking hasValue
+        // alone would leave the loading flag stuck true and leak this
+        // subscription on every retry. The `!isLoading` guard keeps the flag
+        // up while a retry-after-error is still in flight (the previous error
+        // is retained during the reload). The error itself is surfaced by the
+        // screen's error state (modsErrorProvider), not here.
+        if (!next.isLoading && (next.hasValue || next.hasError)) {
           _ref.read(modsLoadingStateProvider.notifier).setLoading(false);
           subscription.close();
         }
@@ -207,14 +214,7 @@ class ModsScreenController {
         mod.packFilePath,
       );
 
-      if (success == true) {
-        _ref.invalidate(projectsWithDetailsProvider);
-        // Update the mod's imported status locally without triggering a full rescan
-        _ref.read(detectedModsProvider.notifier).updateModImported(mod.workshopId, projectId);
-        if (context.mounted) {
-          await openProjectEditor(context, _ref, projectId);
-        }
-      } else {
+      if (success != true) {
         await service.deleteProject(projectId);
         if (context.mounted) {
           FluentToast.warning(
@@ -222,15 +222,54 @@ class ModsScreenController {
             t.mods.messages.noLocalizationFiles,
           );
         }
+        return;
       }
     } catch (e) {
+      // Cleanup is bounded to the creation/initialization steps above: the
+      // project is not fully initialized yet, so deleting it cannot destroy
+      // completed work.
       if (projectId != null) {
         await service.deleteProject(projectId);
       }
       if (context.mounted) {
         FluentToast.error(context, t.mods.messages.failedToCreateProject(error: e));
       }
+      return;
     }
+
+    // From this point the project is fully created and initialized. Errors in
+    // the post-creation steps below (provider refresh, navigation) must NOT
+    // delete it — surface them instead.
+    try {
+      _ref.invalidate(projectsWithDetailsProvider);
+      // Update the mod's imported status locally without triggering a full rescan
+      _ref.read(detectedModsProvider.notifier).updateModImported(mod.workshopId, projectId);
+      if (context.mounted) {
+        await openProjectEditor(context, _ref, projectId);
+      }
+    } catch (e) {
+      final message = _describePostCreationError(projectId, e);
+      if (context.mounted) {
+        FluentToast.warning(context, message);
+      }
+    }
+  }
+
+  /// Log an error that occurred after a project was fully created and
+  /// initialized (e.g. while opening the editor) and return the message to
+  /// surface to the user. The project is left intact: it is valid and visible
+  /// in the Projects screen.
+  String _describePostCreationError(String projectId, Object e) {
+    _ref.read(loggingServiceProvider).error(
+          'Project $projectId was created successfully, '
+          'but a post-creation step failed',
+          e,
+        );
+    // Hardcoded English fallback (matches the precedent in openProjectEditor):
+    // no i18n key exists for this case and the message must not claim creation
+    // failed — the project exists and is usable.
+    return 'Project created, but it could not be opened automatically. '
+        'You can open it from the Projects screen. ($e)';
   }
 
   /// Create a project from a local pack file
@@ -287,12 +326,7 @@ class ModsScreenController {
         packFilePath,
       );
 
-      if (success == true) {
-        _ref.invalidate(projectsWithDetailsProvider);
-        if (context.mounted) {
-          await openProjectEditor(context, _ref, projectId);
-        }
-      } else {
+      if (success != true) {
         await service.deleteProject(projectId);
         if (context.mounted) {
           FluentToast.warning(
@@ -300,13 +334,33 @@ class ModsScreenController {
             t.mods.messages.noLocalizationFilesInPack,
           );
         }
+        return;
       }
     } catch (e) {
+      // Cleanup is bounded to the creation/initialization steps above: the
+      // project is not fully initialized yet, so deleting it cannot destroy
+      // completed work.
       if (projectId != null) {
         await service.deleteProject(projectId);
       }
       if (context.mounted) {
         FluentToast.error(context, t.mods.messages.failedToCreateProject(error: e));
+      }
+      return;
+    }
+
+    // From this point the project is fully created and initialized. Errors in
+    // the post-creation steps below (provider refresh, navigation) must NOT
+    // delete it — surface them instead.
+    try {
+      _ref.invalidate(projectsWithDetailsProvider);
+      if (context.mounted) {
+        await openProjectEditor(context, _ref, projectId);
+      }
+    } catch (e) {
+      final message = _describePostCreationError(projectId, e);
+      if (context.mounted) {
+        FluentToast.warning(context, message);
       }
     }
   }

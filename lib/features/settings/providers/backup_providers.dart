@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../providers/shared/logging_providers.dart';
+import '../../../providers/shared/service_providers.dart';
 import '../../../services/backup/database_backup_service.dart';
 import '../../../services/shared/i_logging_service.dart';
 
@@ -87,7 +88,7 @@ class BackupStateNotifier extends _$BackupStateNotifier {
 
   @override
   BackupState build() {
-    _backupService = DatabaseBackupService();
+    _backupService = ref.read(databaseBackupServiceProvider);
     _logging = ref.read(loggingServiceProvider);
     return const BackupState();
   }
@@ -110,6 +111,11 @@ class BackupStateNotifier extends _$BackupStateNotifier {
       result.when(
         ok: (filePath) {
           _logging.info('Backup export completed', {'path': filePath});
+          // The notifier is autoDispose and may have been disposed while the
+          // backup ran (user switched settings tab); writing state then
+          // would throw UnmountedRefException. The backup itself already
+          // completed — only the (now unobserved) state write is skipped.
+          if (!ref.mounted) return;
           state = state.copyWith(
             isExporting: false,
             clearProgress: true,
@@ -118,6 +124,7 @@ class BackupStateNotifier extends _$BackupStateNotifier {
         },
         err: (error) {
           _logging.error('Backup export failed', error);
+          if (!ref.mounted) return;
           state = state.copyWith(
             isExporting: false,
             clearProgress: true,
@@ -126,7 +133,9 @@ class BackupStateNotifier extends _$BackupStateNotifier {
         },
       );
     } catch (e, stackTrace) {
+      // _logging was captured in build(), so logging stays dispose-safe.
       _logging.error('Unexpected error during backup export', e, stackTrace);
+      if (!ref.mounted) return;
       state = state.copyWith(
         isExporting: false,
         clearProgress: true,
@@ -156,33 +165,44 @@ class BackupStateNotifier extends _$BackupStateNotifier {
       return result.when(
         ok: (_) {
           _logging.info('Backup import completed successfully');
-          state = state.copyWith(
-            isImporting: false,
-            clearProgress: true,
-            lastResult: BackupResult.importSuccess(),
-          );
+          // The notifier is autoDispose and may have been disposed while the
+          // restore ran (user left the settings tab); writing state then
+          // would throw UnmountedRefException. The restore itself already
+          // completed, so still report the real outcome to the caller.
+          if (ref.mounted) {
+            state = state.copyWith(
+              isImporting: false,
+              clearProgress: true,
+              lastResult: BackupResult.importSuccess(),
+            );
+          }
           return true;
         },
         err: (error) {
           _logging.error('Backup import failed', error);
-          state = state.copyWith(
-            isImporting: false,
-            clearProgress: true,
-            lastResult: BackupResult.error(
-              error.message,
-              requiresRestart: error.requiresRestart,
-            ),
-          );
+          if (ref.mounted) {
+            state = state.copyWith(
+              isImporting: false,
+              clearProgress: true,
+              lastResult: BackupResult.error(
+                error.message,
+                requiresRestart: error.requiresRestart,
+              ),
+            );
+          }
           return false;
         },
       );
     } catch (e, stackTrace) {
+      // _logging was captured in build(), so logging stays dispose-safe.
       _logging.error('Unexpected error during backup import', e, stackTrace);
-      state = state.copyWith(
-        isImporting: false,
-        clearProgress: true,
-        lastResult: BackupResult.error('Unexpected error: $e'),
-      );
+      if (ref.mounted) {
+        state = state.copyWith(
+          isImporting: false,
+          clearProgress: true,
+          lastResult: BackupResult.error('Unexpected error: $e'),
+        );
+      }
       return false;
     }
   }

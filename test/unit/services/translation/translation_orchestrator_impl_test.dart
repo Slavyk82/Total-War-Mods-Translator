@@ -129,7 +129,7 @@ TranslationBatchUnit _fakeBatchUnit(String unitId, int order) {
   );
 }
 
-TranslationContext _fakeContext({bool skipTm = false}) {
+TranslationContext _fakeContext({bool skipTm = false, int parallelBatches = 1}) {
   final now = DateTime.now();
   return TranslationContext(
     id: 'ctx-1',
@@ -140,6 +140,7 @@ TranslationContext _fakeContext({bool skipTm = false}) {
     targetLanguage: 'fr',
     sourceLanguage: 'en',
     skipTranslationMemory: skipTm,
+    parallelBatches: parallelBatches,
     createdAt: now,
     updatedAt: now,
   );
@@ -716,6 +717,74 @@ void main() {
       expect(startedEvents.first.batchNumber, 0,
           reason:
               'When batch load fails, event emission must fall back to batchNumber=0');
+    });
+
+    test(
+        'parallel mode: aggregated tokensUsed and failedUnits from parallel '
+        'chunks survive into the completed progress', () async {
+      // Four units with unique source texts (no cache dedup) and
+      // parallelBatches=2 (4 > 2) activate the ParallelBatchProcessor,
+      // which splits the work into 2 chunks of 2 units each.
+      when(() => batchUnitRepository.findByBatchId(any()))
+          .thenAnswer((_) async => Ok([
+                _fakeBatchUnit('a', 0),
+                _fakeBatchUnit('b', 1),
+                _fakeBatchUnit('c', 2),
+                _fakeBatchUnit('d', 3),
+              ]));
+      when(() => unitRepository.getByIds(any())).thenAnswer((_) async => Ok([
+            _fakeUnit('a', 'Alpha source text'),
+            _fakeUnit('b', 'Bravo source text'),
+            _fakeUnit('c', 'Charlie source text'),
+            _fakeUnit('d', 'Delta source text'),
+          ]));
+
+      // Echo a translation for every requested key EXCEPT 'unit-d', which
+      // the LLM "omits" (a missing key counts as a failed unit). Each chunk
+      // call consumes 200 tokens (120 in + 80 out).
+      when(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          )).thenAnswer((inv) async {
+        final req = inv.positionalArguments[0] as LlmRequest;
+        final translations = <String, String>{
+          for (final key in req.texts.keys)
+            if (key != 'unit-d') key: 'fr-$key',
+        };
+        return Ok(LlmResponse(
+          requestId: req.requestId,
+          translations: translations,
+          providerCode: 'anthropic',
+          modelName: 'claude-haiku-4.5',
+          inputTokens: 120,
+          outputTokens: 80,
+          totalTokens: 200,
+          processingTimeMs: 50,
+          timestamp: DateTime.now(),
+        ));
+      });
+
+      final events = await service
+          .translateBatch(
+            batchId: _batchId,
+            context: _fakeContext(parallelBatches: 2),
+          )
+          .toList();
+
+      final terminal = events.last;
+      expect(terminal.isOk, isTrue,
+          reason: 'Expected terminal Ok but got: $terminal');
+      final finalProgress = terminal.unwrap();
+      expect(finalProgress.status, TranslationProgressStatus.completed);
+      expect(finalProgress.successfulUnits, 3);
+      // 2 chunks x 200 tokens. Before the fix the parallel aggregate was
+      // discarded and the completed progress reported tokensUsed=0.
+      expect(finalProgress.tokensUsed, 400);
+      // 'unit-d' was omitted from the LLM response; the chunk-level failure
+      // count must survive aggregation into the completed progress.
+      expect(finalProgress.failedUnits, 1);
+      // One LLM exchange log per chunk must reach the final progress.
+      expect(finalProgress.llmLogs.length, greaterThanOrEqualTo(2));
     });
 
     test(

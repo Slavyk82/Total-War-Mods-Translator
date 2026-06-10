@@ -47,7 +47,13 @@ class ServiceLocator {
   static Completer<void>? _initCompleter;
 
   /// Check if the service locator has been initialized.
-  static bool get isInitialized => _locator.isRegistered<DatabaseService>();
+  ///
+  /// True only once [initialize] has completed successfully. Backed by the
+  /// init completer: [DatabaseService] is used as a static class and is
+  /// never registered in GetIt, so probing GetIt for it would always be
+  /// false (which silently routed uncaught zone errors in main.dart to
+  /// debugPrint instead of the file logger).
+  static bool get isInitialized => _initCompleter?.isCompleted ?? false;
 
   /// Initialize all services and repositories.
   ///
@@ -222,6 +228,8 @@ class ServiceLocator {
   /// WARNING: This should only be used in tests.
   static Future<void> reset() async {
     await _locator.reset();
+    // Keep isInitialized truthful after a reset.
+    _initCompleter = null;
   }
 
   /// Dispose of resources.

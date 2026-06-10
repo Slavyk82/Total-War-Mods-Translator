@@ -37,7 +37,8 @@
       "startRescan": "Erneuten Scan starten"
     },
     "toasts": {
-      "updateComplete": "Aktualisierung der Validierungsdaten abgeschlossen."
+      "updateComplete": "Aktualisierung der Validierungsdaten abgeschlossen.",
+      "updateFailed": "Aktualisierung der Validierungsdaten fehlgeschlagen: $error"
     }
   }
 }
