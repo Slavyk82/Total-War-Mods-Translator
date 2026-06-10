@@ -31,6 +31,15 @@ class ImportPreview {
   @JsonKey(name: 'suggested_mapping')
   final Map<String, String> suggestedMapping;
 
+  /// sha256 hash of the file content at preview time.
+  ///
+  /// The import workflow re-reads the file at every stage (preview, conflict
+  /// detection, execution). This hash lets the executor verify the file did
+  /// not change on disk between the preview the user reviewed and the actual
+  /// import. Null for previews created before this field existed.
+  @JsonKey(name: 'content_hash')
+  final String? contentHash;
+
   const ImportPreview({
     required this.filePath,
     required this.headers,
@@ -39,6 +48,7 @@ class ImportPreview {
     required this.fileSize,
     required this.encoding,
     this.suggestedMapping = const {},
+    this.contentHash,
   });
 
   /// File size in human-readable format
@@ -61,6 +71,7 @@ class ImportPreview {
     int? fileSize,
     String? encoding,
     Map<String, String>? suggestedMapping,
+    String? contentHash,
   }) {
     return ImportPreview(
       filePath: filePath ?? this.filePath,
@@ -70,6 +81,7 @@ class ImportPreview {
       fileSize: fileSize ?? this.fileSize,
       encoding: encoding ?? this.encoding,
       suggestedMapping: suggestedMapping ?? this.suggestedMapping,
+      contentHash: contentHash ?? this.contentHash,
     );
   }
 

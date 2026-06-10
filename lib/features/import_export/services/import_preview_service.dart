@@ -4,6 +4,7 @@ import '../../../models/common/service_exception.dart';
 import '../models/import_export_settings.dart';
 import '../models/import_preview.dart';
 import '../models/import_result.dart';
+import 'utils/import_file_integrity.dart';
 import 'utils/import_file_reader.dart';
 
 /// Service responsible for generating import previews and validation
@@ -27,6 +28,11 @@ class ImportPreviewService {
 
       final fileSize = await file.length();
 
+      // Hash the content so executeImport can verify the file did not change
+      // on disk between this preview and the actual import.
+      final contentHash =
+          await ImportFileIntegrity.computeContentHash(filePath);
+
       final fileDataResult = await _fileReader.readFile(filePath, settings);
 
       if (fileDataResult.isErr) {
@@ -46,6 +52,7 @@ class ImportPreviewService {
           fileSize: fileSize,
           encoding: settings.encoding,
           suggestedMapping: suggestedMapping,
+          contentHash: contentHash,
         ),
       );
     } catch (e, stackTrace) {

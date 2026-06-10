@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
+import 'package:twmt/services/file/utils/utf16_codec.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 
@@ -38,17 +39,22 @@ class FileImportExportService {
   ///
   /// [filePath]: Path to CSV file
   /// [hasHeader]: Whether first row is header
+  /// [encoding]: Text encoding of the file ('utf-8', 'utf-16', 'utf-16le',
+  ///             'utf-16be'). Defaults to UTF-8 when null. UTF-16 variants
+  ///             honor a BOM when present.
   ///
   /// Returns list of rows (each row is a map of column name → value)
   ///
   /// Supports:
   /// - UTF-8 with BOM (Excel compatibility)
+  /// - UTF-16 LE/BE with BOM detection (common for Windows .loc exports)
   /// - Quoted fields with commas and newlines
   /// - Escaped quotes (double quotes)
   /// - Comma delimiter
   Future<Result<List<Map<String, String>>, ImportException>> importFromCsv({
     required String filePath,
     bool hasHeader = true,
+    String? encoding,
   }) async {
     try {
       final file = File(filePath);
@@ -62,11 +68,8 @@ class FileImportExportService {
         );
       }
 
-      // Read with UTF-8 BOM handling
-      final contents = await file.readAsString(encoding: utf8);
-      // Remove BOM if present
-      final cleanContents =
-          contents.startsWith('\uFEFF') ? contents.substring(1) : contents;
+      // Decode honoring the requested encoding (BOM stripped).
+      final cleanContents = _decodeText(await file.readAsBytes(), encoding);
 
       if (cleanContents.trim().isEmpty) {
         _logger.warning('CSV file is empty', {'filePath': filePath});
@@ -289,6 +292,41 @@ class FileImportExportService {
     return records;
   }
 
+  /// Decode raw file bytes to text honoring the requested [encoding].
+  ///
+  /// Supported names (case-insensitive): 'utf-8'/'utf8' (default, also used
+  /// when [encoding] is null or unrecognized), 'utf-16'/'utf16' (BOM-driven
+  /// endianness, little-endian when no BOM — the Windows convention),
+  /// 'utf-16le' and 'utf-16be'. A leading BOM is always stripped so parsers
+  /// never see it as content.
+  String _decodeText(List<int> bytes, String? encoding) {
+    bool hasLeBom() =>
+        bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE;
+    bool hasBeBom() =>
+        bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF;
+
+    switch ((encoding ?? 'utf-8').toLowerCase()) {
+      case 'utf-16':
+      case 'utf16':
+        if (hasBeBom()) {
+          return const Utf16BeDecoder().convert(bytes.sublist(2));
+        }
+        return const Utf16LeDecoder()
+            .convert(hasLeBom() ? bytes.sublist(2) : bytes);
+      case 'utf-16le':
+        return const Utf16LeDecoder()
+            .convert(hasLeBom() ? bytes.sublist(2) : bytes);
+      case 'utf-16be':
+        return const Utf16BeDecoder()
+            .convert(hasBeBom() ? bytes.sublist(2) : bytes);
+      default:
+        final contents = utf8.decode(bytes);
+        return contents.startsWith('\uFEFF')
+            ? contents.substring(1)
+            : contents;
+    }
+  }
+
   /// Format a list of fields into a CSV line with proper escaping
   ///
   /// Escapes:
@@ -316,10 +354,14 @@ class FileImportExportService {
   /// Import data from JSON file
   ///
   /// [filePath]: Path to JSON file
+  /// [encoding]: Text encoding of the file ('utf-8', 'utf-16', 'utf-16le',
+  ///             'utf-16be'). Defaults to UTF-8 when null. UTF-16 variants
+  ///             honor a BOM when present.
   ///
   /// Returns parsed JSON data
   Future<Result<dynamic, ImportException>> importFromJson({
     required String filePath,
+    String? encoding,
   }) async {
     try {
       final file = File(filePath);
@@ -334,7 +376,7 @@ class FileImportExportService {
         );
       }
 
-      final content = await file.readAsString();
+      final content = _decodeText(await file.readAsBytes(), encoding);
       final data = jsonDecode(content);
 
       return Ok(data);
@@ -419,6 +461,9 @@ class FileImportExportService {
   /// [filePath]: Path to Excel file
   /// [sheetName]: Sheet name to import (default: first sheet)
   /// [hasHeader]: Whether first row is header
+  ///
+  /// Note: .xlsx is a binary (zip) format — a text encoding setting does not
+  /// apply; cell text is always Unicode per the OOXML spec.
   ///
   /// Returns list of rows
   Future<Result<List<Map<String, String>>, ImportException>> importFromExcel({

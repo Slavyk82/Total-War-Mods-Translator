@@ -74,17 +74,23 @@ class ImportExportService {
     return await _conflictDetector.detectConflicts(preview, settings);
   }
 
-  /// Execute import with conflict resolution
+  /// Execute import with conflict resolution.
+  ///
+  /// Pass the previewed file's `ImportPreview.contentHash` as
+  /// [expectedContentHash] so the executor can abort if the file changed on
+  /// disk between preview and import.
   Future<Result<ImportResult, ServiceException>> executeImport(
     String filePath,
     ImportSettings settings,
     ConflictResolutions resolutions, {
+    String? expectedContentHash,
     ProgressCallback? onProgress,
   }) async {
     return await _executor.executeImport(
       filePath,
       settings,
       resolutions,
+      expectedContentHash: expectedContentHash,
       onProgress: onProgress,
     );
   }

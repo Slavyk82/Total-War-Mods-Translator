@@ -6,6 +6,7 @@ import '../../../repositories/translation_version_repository.dart';
 import '../models/import_conflict.dart';
 import '../models/import_export_settings.dart';
 import '../models/import_preview.dart';
+import 'utils/import_file_integrity.dart';
 import 'utils/import_file_reader.dart';
 
 /// Service responsible for detecting conflicts during import
@@ -29,6 +30,22 @@ class ImportConflictDetector {
   ) async {
     try {
       final conflicts = <ImportConflict>[];
+
+      // Integrity guard: this stage re-reads the file from disk. If the
+      // content no longer matches what the preview showed, conflicts computed
+      // here would describe data the user never reviewed.
+      if (preview.contentHash != null) {
+        final currentHash =
+            await ImportFileIntegrity.computeContentHash(preview.filePath);
+        if (currentHash != preview.contentHash) {
+          return Err(
+            ServiceException(
+              'Import file changed on disk since preview; '
+              'please re-open the import dialog and preview the file again.',
+            ),
+          );
+        }
+      }
 
       final fileDataResult = await _fileReader.readFile(
         preview.filePath,
@@ -74,7 +91,7 @@ class ImportConflictDetector {
         final key = row[keyColumn];
         if (key == null || key.isEmpty) continue;
 
-        final conflict = await _checkRowForConflict(
+        final conflictResult = await _checkRowForConflict(
           key: key,
           row: row,
           sourceColumn: sourceColumn,
@@ -83,6 +100,13 @@ class ImportConflictDetector {
           projectLanguageId: projectLanguageId,
         );
 
+        // A real DB failure must fail detection: silently reporting
+        // "no conflict" would let the import overwrite data unchecked.
+        if (conflictResult.isErr) {
+          return Err(conflictResult.error);
+        }
+
+        final conflict = conflictResult.value;
         if (conflict != null) {
           conflicts.add(conflict);
         }
@@ -96,8 +120,13 @@ class ImportConflictDetector {
     }
   }
 
-  /// Check a single row for conflicts with existing data
-  Future<ImportConflict?> _checkRowForConflict({
+  /// Check a single row for conflicts with existing data.
+  ///
+  /// Returns Ok(null) when the row genuinely cannot conflict (unknown key or
+  /// no version for the target language yet) and Err when a repository
+  /// lookup fails for real — the caller must surface that failure instead of
+  /// treating it as "no conflict".
+  Future<Result<ImportConflict?, ServiceException>> _checkRowForConflict({
     required String key,
     required Map<String, String> row,
     required String sourceColumn,
@@ -105,55 +134,55 @@ class ImportConflictDetector {
     required String projectId,
     required String projectLanguageId,
   }) async {
-    try {
-      final unitResult = await _unitRepository.findByKey(projectId, key);
-
-      // A real DB error or a genuinely missing unit both mean "no conflict to
-      // report for this row"; only a found unit can conflict.
-      if (unitResult.isErr) {
-        return null;
-      }
-
-      final unit = unitResult.value;
-      if (unit == null) {
-        return null;
-      }
-
-      // Compare against the version for the SAME target language only.
-      final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
-        unitId: unit.id,
-        projectLanguageId: projectLanguageId,
-      );
-      if (versionResult.isErr) {
-        return null;
-      }
-
-      final version = versionResult.value;
-
-      final importedSourceText = sourceColumn.isNotEmpty ? row[sourceColumn] : null;
-      final importedTargetText = targetColumn.isNotEmpty ? row[targetColumn] : null;
-
-      final sourceTextDiffers = importedSourceText != null &&
-          importedSourceText != unit.sourceText;
-
-      return ImportConflict(
-        key: key,
-        existingData: ConflictTranslation(
-          sourceText: unit.sourceText,
-          translatedText: version.translatedText,
-          status: version.status.name,
-          updatedAt: version.updatedAt,
-          changedBy: version.isManuallyEdited ? 'User' : 'LLM',
-        ),
-        importedData: ConflictTranslation(
-          sourceText: importedSourceText,
-          translatedText: importedTargetText,
-        ),
-        sourceTextDiffers: sourceTextDiffers,
-      );
-    } catch (e) {
-      return null;
+    // findByKey distinguishes "not found" (Ok(null)) from a real DB error
+    // (Err). Only a genuinely missing unit means "no conflict".
+    final unitResult = await _unitRepository.findByKey(projectId, key);
+    if (unitResult.isErr) {
+      return Err(unitResult.error);
     }
+
+    final unit = unitResult.value;
+    if (unit == null) {
+      return const Ok(null);
+    }
+
+    // Compare against the version for the SAME target language only.
+    // findByUnitAndProjectLanguage returns Ok(null) when no version exists
+    // yet (no conflict) and Err only on a real DB failure.
+    final versionResult = await _versionRepository.findByUnitAndProjectLanguage(
+      unitId: unit.id,
+      projectLanguageId: projectLanguageId,
+    );
+    if (versionResult.isErr) {
+      return Err(versionResult.error);
+    }
+
+    final version = versionResult.value;
+    if (version == null) {
+      return const Ok(null);
+    }
+
+    final importedSourceText = sourceColumn.isNotEmpty ? row[sourceColumn] : null;
+    final importedTargetText = targetColumn.isNotEmpty ? row[targetColumn] : null;
+
+    final sourceTextDiffers = importedSourceText != null &&
+        importedSourceText != unit.sourceText;
+
+    return Ok(ImportConflict(
+      key: key,
+      existingData: ConflictTranslation(
+        sourceText: unit.sourceText,
+        translatedText: version.translatedText,
+        status: version.status.name,
+        updatedAt: version.updatedAt,
+        changedBy: version.isManuallyEdited ? 'User' : 'LLM',
+      ),
+      importedData: ConflictTranslation(
+        sourceText: importedSourceText,
+        translatedText: importedTargetText,
+      ),
+      sourceTextDiffers: sourceTextDiffers,
+    ));
   }
 
   /// Find column name for a specific import column type

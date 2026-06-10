@@ -11,6 +11,7 @@ import '../../../services/translation/utils/translation_text_utils.dart';
 import '../models/import_conflict.dart';
 import '../models/import_export_settings.dart';
 import '../models/import_result.dart';
+import 'utils/import_file_integrity.dart';
 import 'utils/import_file_reader.dart';
 
 /// Callback for progress updates
@@ -33,16 +34,40 @@ class ImportExecutor {
     this._projectLanguageRepository,
   );
 
-  /// Execute import with conflict resolution
+  /// Execute import with conflict resolution.
+  ///
+  /// When [expectedContentHash] is provided (the sha256 stored on
+  /// `ImportPreview.contentHash` at preview time), the file content is
+  /// re-verified right before importing and the import aborts if the file
+  /// changed on disk since the preview — otherwise the conflicts the user
+  /// reviewed would not match the data actually imported.
   Future<Result<ImportResult, ServiceException>> executeImport(
     String filePath,
     ImportSettings settings,
     ConflictResolutions resolutions, {
+    String? expectedContentHash,
     ProgressCallback? onProgress,
   }) async {
     final startTime = DateTime.now();
 
     try {
+      // Integrity guard: the preview/conflict stages and this executor each
+      // re-read the file from disk. Verify the content is still what the user
+      // previewed BEFORE writing anything, otherwise the reviewed conflicts
+      // were computed on different data than the import would apply.
+      if (expectedContentHash != null) {
+        final currentHash =
+            await ImportFileIntegrity.computeContentHash(filePath);
+        if (currentHash != expectedContentHash) {
+          return Err(
+            ServiceException(
+              'Import file changed on disk since preview; '
+              'please re-open the import dialog and preview the file again.',
+            ),
+          );
+        }
+      }
+
       int totalProcessed = 0;
       int successCount = 0;
       int skippedCount = 0;
@@ -276,14 +301,25 @@ class ImportExecutor {
     // Scope the lookup to the target language's project_languages row. Using
     // getByUnit(...).first would pick an arbitrary sibling language's version
     // (all share the same created_at) and overwrite/merge the wrong language.
-    final versionResult = await _versionRepository.getByUnitAndProjectLanguage(
+    //
+    // findByUnitAndProjectLanguage distinguishes "not found" (Ok(null)) from
+    // a real DB failure (Err). A real failure must NOT be misread as "no
+    // version exists": the create path would then hit the
+    // UNIQUE(unit_id, project_language_id) constraint or silently duplicate.
+    final versionResult =
+        await _versionRepository.findByUnitAndProjectLanguage(
       unitId: unit.id,
       projectLanguageId: projectLanguageId,
     );
 
-    if (versionResult.isOk) {
+    if (versionResult.isErr) {
+      return _RowProcessResult.error(versionResult.error.message);
+    }
+
+    final existingVersion = versionResult.value;
+    if (existingVersion != null) {
       return await _updateExistingVersion(
-        existingVersion: versionResult.value,
+        existingVersion: existingVersion,
         row: row,
         targetColumn: targetColumn,
         resolutions: resolutions,
@@ -309,7 +345,17 @@ class ImportExecutor {
   }) async {
     final resolution = resolutions.getResolution(key);
 
-    if (resolution == null || resolution == ConflictResolution.keepExisting) {
+    // A conflicting row with NO resolution (key absent from the map and no
+    // default) must be surfaced to the user, not silently folded into
+    // skippedCount where it is indistinguishable from an explicit
+    // keepExisting decision.
+    if (resolution == null) {
+      return _RowProcessResult.error(
+        'Unresolved conflict: no resolution provided for this key',
+      );
+    }
+
+    if (resolution == ConflictResolution.keepExisting) {
       return _RowProcessResult.skipped();
     }
 
@@ -342,7 +388,14 @@ class ImportExecutor {
         return _RowProcessResult.error('Failed to update version');
       }
     } else if (resolution == ConflictResolution.merge) {
-      final mergedText = existingVersion.translatedText ?? translatedText;
+      // Keep the existing translation only when it actually has content:
+      // '' is non-null, so `existing ?? imported` would let an empty or
+      // whitespace-only existing translation discard the imported text.
+      final existingText = existingVersion.translatedText;
+      final mergedText =
+          (existingText != null && existingText.trim().isNotEmpty)
+              ? existingText
+              : translatedText;
       final updated = existingVersion.copyWith(
         translatedText: mergedText,
         updatedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
