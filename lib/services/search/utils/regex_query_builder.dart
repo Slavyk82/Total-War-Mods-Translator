@@ -97,6 +97,8 @@ class RegexQueryBuilder {
       LEFT JOIN projects p ON tu.project_id = p.id
       WHERE $likeCondition
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
+      GROUP BY tu.id
+      ORDER BY tu.id
       $limitClause
     ''';
   }

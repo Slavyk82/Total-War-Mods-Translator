@@ -477,11 +477,15 @@ class FtsQueryBuilder {
   ///
   /// Returns: true if dangerous patterns detected, false otherwise
   static bool _containsSqlInjectionPatterns(String query) {
+    // NOTE: the MATCH value is interpolated inside a SINGLE-quoted SQL literal
+    // with single quotes doubled (see _sanitizeFtsQuery step 2), so genuine SQL
+    // injection is already impossible. We therefore do NOT block ordinary
+    // English words — DROP/DELETE/UPDATE/INSERT/ALTER/CREATE/EXEC and UNION are
+    // common search terms in mod text (e.g. "union", "create"), and the
+    // OR/AND-tautology heuristics add no real safety here. Blocking them only
+    // broke legitimate searches. We keep checks for true metacharacters that
+    // are never part of a normal search term.
     final dangerousPatterns = [
-      // SQL DML/DDL keywords
-      RegExp(r'\b(DROP|DELETE|UPDATE|INSERT|ALTER|CREATE|EXEC|EXECUTE)\b',
-          caseSensitive: false),
-
       // SQL comments
       RegExp(r'--'),        // Single-line SQL comments
       RegExp(r'/\*'),       // Multi-line comment start
@@ -490,21 +494,8 @@ class FtsQueryBuilder {
       // Statement terminators
       RegExp(r';'),
 
-      // OR/AND tautologies
-      RegExp(r'\bOR\s+["' "'" r']?1["' "'" r']?\s*=\s*["' "'" r']?1["' "'" r']?',
-          caseSensitive: false),
-      RegExp(r'\bAND\s+["' "'" r']?1["' "'" r']?\s*=\s*["' "'" r']?1["' "'" r']?',
-          caseSensitive: false),
-
-      // UNION-based injection
-      RegExp(r'\bUNION\b', caseSensitive: false),
-
       // Null byte injection
       RegExp(r'\x00'),
-
-      // SQL functions that shouldn't be in search queries
-      RegExp(r'\b(LOAD_FILE|INTO\s+OUTFILE|INTO\s+DUMPFILE)\b',
-          caseSensitive: false),
     ];
 
     return dangerousPatterns.any((pattern) => pattern.hasMatch(query));

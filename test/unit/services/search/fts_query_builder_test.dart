@@ -69,6 +69,25 @@ void main() {
     });
   });
 
+  group('FtsQueryBuilder ordinary-word search (no over-zealous injection block)',
+      () {
+    // The MATCH value is interpolated inside a single-quoted SQL literal with
+    // single quotes doubled, so injection via these words is already
+    // impossible. They are ordinary English words that legitimately appear in
+    // mod text, so a search for them must not be rejected.
+    for (final word in ['update', 'create', 'delete', 'insert', 'union']) {
+      test('accepts the ordinary search term "$word"', () {
+        expect(
+          () => FtsQueryBuilder.buildTranslationUnitsQuery(word, limit: 50),
+          returnsNormally,
+          reason: '"$word" is a normal search term, not an injection',
+        );
+        final sql = FtsQueryBuilder.buildTranslationUnitsQuery(word, limit: 50);
+        expect(sql.toLowerCase(), contains(word));
+      });
+    }
+  });
+
   group('FtsQueryBuilder.buildGlossaryQuery LIKE escaping', () {
     test('escapes percent sign in user input', () {
       final sql = FtsQueryBuilder.buildGlossaryQuery(
