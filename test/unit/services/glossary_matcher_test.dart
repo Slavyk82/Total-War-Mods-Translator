@@ -477,6 +477,113 @@ void main() {
         // Assert
         expect(result, 'The cavalerie attacked.');
       });
+
+      test(
+          'should NOT substitute a case-sensitive term occurring with wrong '
+          'case in target', () {
+        // Arrange: 'IT' is case-sensitive; the target contains only the
+        // English pronoun 'it', which must not be touched.
+        final entry = createTestEntry(
+          sourceTerm: 'IT',
+          targetTerm: 'TI',
+          caseSensitive: true,
+        );
+        final matches = [
+          GlossaryMatch(
+            entry: entry,
+            startIndex: 4,
+            endIndex: 6,
+            matchedText: 'IT',
+          ),
+        ];
+        const sourceText = 'The IT department.';
+        const targetText = 'Does it work as expected?';
+
+        // Act
+        final result = GlossaryMatcher.applySubstitutions(
+          sourceText: sourceText,
+          targetText: targetText,
+          matches: matches,
+        );
+
+        // Assert
+        expect(result, 'Does it work as expected?');
+      });
+
+      test('should substitute a case-sensitive term on exact-case occurrence',
+          () {
+        // Arrange
+        final entry = createTestEntry(
+          sourceTerm: 'IT',
+          targetTerm: 'TI',
+          caseSensitive: true,
+        );
+        final matches = [
+          GlossaryMatch(
+            entry: entry,
+            startIndex: 4,
+            endIndex: 6,
+            matchedText: 'IT',
+          ),
+        ];
+        const sourceText = 'The IT department.';
+        const targetText = 'The IT department, is it open?';
+
+        // Act
+        final result = GlossaryMatcher.applySubstitutions(
+          sourceText: sourceText,
+          targetText: targetText,
+          matches: matches,
+        );
+
+        // Assert: exact-case 'IT' replaced, lowercase 'it' untouched.
+        expect(result, 'The TI department, is it open?');
+      });
+
+      test(
+          'should still substitute case-insensitive terms across cases when '
+          'mixed with case-sensitive ones', () {
+        // Arrange
+        final sensitiveEntry = createTestEntry(
+          id: 'cs',
+          sourceTerm: 'IT',
+          targetTerm: 'TI',
+          caseSensitive: true,
+        );
+        final insensitiveEntry = createTestEntry(
+          id: 'ci',
+          sourceTerm: 'cavalry',
+          targetTerm: 'cavalerie',
+          caseSensitive: false,
+        );
+        final matches = [
+          GlossaryMatch(
+            entry: sensitiveEntry,
+            startIndex: 4,
+            endIndex: 6,
+            matchedText: 'IT',
+          ),
+          GlossaryMatch(
+            entry: insensitiveEntry,
+            startIndex: 11,
+            endIndex: 18,
+            matchedText: 'cavalry',
+          ),
+        ];
+        const sourceText = 'The IT and cavalry.';
+        const targetText = 'The it and CAVALRY.';
+
+        // Act
+        final result = GlossaryMatcher.applySubstitutions(
+          sourceText: sourceText,
+          targetText: targetText,
+          matches: matches,
+        );
+
+        // Assert: 'it' (wrong case for the sensitive term) untouched,
+        // 'CAVALRY' (insensitive) replaced regardless of case.
+        expect(result, 'The it and cavalerie.');
+      });
     });
 
     // =========================================================================

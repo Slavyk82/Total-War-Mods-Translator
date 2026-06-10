@@ -338,6 +338,127 @@ void main() {
         'Pomme v2',
       );
     });
+
+    test(
+        'does NOT merge case-sensitive entries that differ only by letter case',
+        () async {
+      // 'Foo' and 'foo' are distinct terms when case_sensitive = 1, and the
+      // schema's UNIQUE(glossary_id, target_language_code, source_term,
+      // case_sensitive) uses binary collation, so both may coexist. The merge
+      // dedup key must not lowercase case-sensitive terms, or one entry is
+      // permanently deleted.
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('new', 'New', 0, 'gi1', 'wh3', 'lang_fr', 5, 5)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('a', 'old', 'fr', 'Foo', 'X', 1, 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('b', 'new', 'fr', 'foo', 'Y', 1, 10, 10)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final entries = await DatabaseService.database.rawQuery(
+          'SELECT source_term, target_term FROM glossary_entries WHERE glossary_id = ?',
+          ['old']);
+      expect(entries.length, 2,
+          reason: 'Case-sensitive entries differing only by case are distinct '
+              'terms and must both survive the merge.');
+      expect(
+        entries.firstWhere((e) => e['source_term'] == 'Foo')['target_term'],
+        'X',
+      );
+      expect(
+        entries.firstWhere((e) => e['source_term'] == 'foo')['target_term'],
+        'Y',
+      );
+    });
+
+    test(
+        'does NOT merge entries with identical source_term but different '
+        'case_sensitive flags', () async {
+      // UNIQUE(...) includes case_sensitive, so 'Foo' cs=0 and 'Foo' cs=1 are
+      // distinct rows the schema allows to coexist; the merge must keep both.
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('new', 'New', 0, 'gi1', 'wh3', 'lang_fr', 5, 5)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('a', 'old', 'fr', 'Foo', 'X', 0, 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('b', 'new', 'fr', 'Foo', 'Y', 1, 10, 10)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final entries = await DatabaseService.database.rawQuery(
+          'SELECT id FROM glossary_entries WHERE glossary_id = ?', ['old']);
+      expect(entries.map((e) => e['id']), containsAll(['a', 'b']),
+          reason: 'Entries in different case_sensitive groups never conflict.');
+    });
+
+    test(
+        'still merges true duplicates (same source, same target) keeping the '
+        'newer entry', () async {
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('new', 'New', 0, 'gi1', 'wh3', 'lang_fr', 5, 5)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('a', 'old', 'fr', 'apple', 'Pomme', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('b', 'new', 'fr', 'apple', 'Pomme', 10, 10)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final entries = await DatabaseService.database.rawQuery(
+          'SELECT id FROM glossary_entries WHERE glossary_id = ?', ['old']);
+      expect(entries.length, 1,
+          reason: 'True duplicates must still merge to a single entry.');
+      expect(entries.first['id'], 'b',
+          reason: 'The newer entry (greater updated_at) wins.');
+    });
+
+    test(
+        'case-sensitive entries with identical source_term still merge '
+        '(exact duplicates would violate UNIQUE)', () async {
+      // 'Foo' cs=1 in both glossaries: keeping both would violate
+      // UNIQUE(glossary_id, target_language_code, source_term, case_sensitive)
+      // after the move, so keep-newer applies (documented tiebreak even when
+      // the targets differ).
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('old', 'Old', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('new', 'New', 0, 'gi1', 'wh3', 'lang_fr', 5, 5)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('a', 'old', 'fr', 'Foo', 'X', 1, 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, case_sensitive, created_at, updated_at) VALUES ('b', 'new', 'fr', 'Foo', 'Y', 1, 10, 10)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final entries = await DatabaseService.database.rawQuery(
+          'SELECT id, target_term FROM glossary_entries WHERE glossary_id = ?',
+          ['old']);
+      expect(entries.length, 1);
+      expect(entries.first['id'], 'b');
+      expect(entries.first['target_term'], 'Y');
+    });
   });
 
   group('finalizeSchema', () {

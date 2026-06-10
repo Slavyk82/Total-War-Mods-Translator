@@ -412,6 +412,83 @@ void main() {
         expect(result.value.isEmpty, true);
       });
 
+      test(
+          'should flag inconsistency when case-sensitive target term appears '
+          'only wrong-cased in target text', () async {
+        // Arrange: 'HP' -> 'PV' is case-sensitive; the target contains only
+        // lowercase 'pv', which is NOT the prescribed translation.
+        final glossary = createTestGlossary();
+        final entry = createTestEntry(
+          sourceTerm: 'HP',
+          targetTerm: 'PV',
+          caseSensitive: true,
+        );
+
+        when(() => mockRepository.getAllGlossaries(
+              gameCode: any(named: 'gameCode'),
+            )).thenAnswer((_) async => [glossary]);
+
+        when(() => mockRepository.getEntriesByGlossary(
+              glossaryId: glossary.id,
+              targetLanguageCode: 'fr',
+            )).thenAnswer((_) async => [entry]);
+
+        when(() => mockRepository.incrementUsageCount(any()))
+            .thenAnswer((_) async {});
+
+        // Act
+        final result = await service.checkConsistency(
+          sourceText: 'The HP bar is empty.',
+          targetText: 'La barre de pv est vide.',
+          sourceLanguageCode: 'en',
+          targetLanguageCode: 'fr',
+        );
+
+        // Assert
+        expect(result.isOk, true);
+        expect(result.value, hasLength(1),
+            reason: 'Case-sensitive target term present only in the wrong '
+                'case must be reported as inconsistent.');
+        expect(result.value.first, contains('HP'));
+        expect(result.value.first, contains('PV'));
+      });
+
+      test(
+          'should accept exact-cased target term for a case-sensitive entry',
+          () async {
+        // Arrange
+        final glossary = createTestGlossary();
+        final entry = createTestEntry(
+          sourceTerm: 'HP',
+          targetTerm: 'PV',
+          caseSensitive: true,
+        );
+
+        when(() => mockRepository.getAllGlossaries(
+              gameCode: any(named: 'gameCode'),
+            )).thenAnswer((_) async => [glossary]);
+
+        when(() => mockRepository.getEntriesByGlossary(
+              glossaryId: glossary.id,
+              targetLanguageCode: 'fr',
+            )).thenAnswer((_) async => [entry]);
+
+        when(() => mockRepository.incrementUsageCount(any()))
+            .thenAnswer((_) async {});
+
+        // Act
+        final result = await service.checkConsistency(
+          sourceText: 'The HP bar is empty.',
+          targetText: 'La barre de PV est vide.',
+          sourceLanguageCode: 'en',
+          targetLanguageCode: 'fr',
+        );
+
+        // Assert
+        expect(result.isOk, true);
+        expect(result.value, isEmpty);
+      });
+
       test('should handle database exception gracefully', () async {
         // Arrange
         when(() => mockRepository.getAllGlossaries(

@@ -223,16 +223,29 @@ class GlossaryMatcher {
     // matched term and replace it. Word boundaries avoid partial-word hits
     // (e.g. "cat" inside "category"); a single alternation pass prevents one
     // substitution's output from matching another term (no cascading).
-    final replacements = <String, String>{}; // matchedText -> targetTerm (first wins)
+    // Per-entry caseSensitive must be honored (it is in findMatches): a
+    // case-sensitive term replaces only exact-case occurrences, while a
+    // case-insensitive term replaces any casing. Dart RegExp has no inline
+    // per-alternative case flags, so keep ONE case-insensitive alternation
+    // pass (preserving the no-cascading guarantee) and resolve case
+    // sensitivity in the replacement callback.
+    final caseSensitiveRepl =
+        <String, String>{}; // matchedText -> targetTerm (first wins)
+    final caseInsensitiveRepl = <String, String>{};
     for (final match in matches) {
       final term = match.matchedText;
       if (term.isEmpty) continue;
-      replacements.putIfAbsent(term, () => match.entry.targetTerm);
+      final repl =
+          match.entry.caseSensitive ? caseSensitiveRepl : caseInsensitiveRepl;
+      repl.putIfAbsent(term, () => match.entry.targetTerm);
     }
-    if (replacements.isEmpty) return targetText;
+    if (caseSensitiveRepl.isEmpty && caseInsensitiveRepl.isEmpty) {
+      return targetText;
+    }
 
     // Longest terms first so a longer term wins over a shorter overlapping one.
-    final terms = replacements.keys.toList()
+    final terms = <String>{...caseSensitiveRepl.keys, ...caseInsensitiveRepl.keys}
+        .toList()
       ..sort((a, b) => b.length.compareTo(a.length));
 
     final pattern = RegExp(
@@ -242,11 +255,15 @@ class GlossaryMatcher {
 
     return targetText.replaceAllMapped(pattern, (m) {
       final matched = m.group(1)!;
-      final key = replacements.keys.firstWhere(
-        (k) => k.toLowerCase() == matched.toLowerCase(),
-        orElse: () => matched,
-      );
-      return replacements[key] ?? matched;
+      // Case-sensitive terms replace on exact match only.
+      final exact = caseSensitiveRepl[matched];
+      if (exact != null) return exact;
+      // Case-insensitive terms replace regardless of casing.
+      final matchedLower = matched.toLowerCase();
+      for (final entry in caseInsensitiveRepl.entries) {
+        if (entry.key.toLowerCase() == matchedLower) return entry.value;
+      }
+      return matched;
     });
   }
 
