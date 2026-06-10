@@ -1,6 +1,7 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/glossary/glossary_term_presence.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/glossary_deepl_service.dart';
@@ -547,11 +548,15 @@ class GlossaryServiceImpl implements IGlossaryService {
       final inconsistencies = <String>[];
 
       for (final entry in matchedEntries) {
-        // Check if target term appears in target text
-        final targetTermLower = entry.targetTerm.toLowerCase();
-        final targetTextLower = targetText.toLowerCase();
+        // Honor the entry's caseSensitive flag via the shared helper so this
+        // and GlossaryMatchingService.checkConsistency cannot drift.
+        final found = glossaryTermPresentInTarget(
+          targetText: targetText,
+          targetTerm: entry.targetTerm,
+          caseSensitive: entry.caseSensitive,
+        );
 
-        if (!targetTextLower.contains(targetTermLower)) {
+        if (!found) {
           inconsistencies.add(
             'Term "${entry.sourceTerm}" should be translated as "${entry.targetTerm}" but not found in target',
           );

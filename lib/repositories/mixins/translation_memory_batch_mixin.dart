@@ -105,9 +105,22 @@ mixin TranslationMemoryBatchMixin {
         }
       }
 
+      // First-wins intra-batch dedup. The pre-fetch above only knows about
+      // rows ALREADY in the DB. Two entries in this same batch sharing a
+      // (source_hash, target_language_id) pair that is NOT yet in the DB would
+      // both take the INSERT-with-replace path: the second collides on
+      // UNIQUE(source_hash, target_language_id) and replace-deletes the first,
+      // losing its translation while processedCount counts both. The aggressive
+      // TextNormalizer collapses distinct sources to one hash, so this is real.
+      // Skip later occurrences (mirrors bulkImportTmxEntries).
+      final processedKeys = <String>{};
+
       // Process each entry: update existing or insert new
       for (final entry in entries) {
         final key = '${entry.sourceHash}:${entry.targetLanguageId}';
+        if (!processedKeys.add(key)) {
+          continue; // duplicate within this batch — first wins
+        }
         final match = existing[key];
 
         if (match != null) {

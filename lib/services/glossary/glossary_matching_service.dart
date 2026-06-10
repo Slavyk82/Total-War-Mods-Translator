@@ -1,6 +1,7 @@
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
+import 'package:twmt/services/glossary/glossary_term_presence.dart';
 import 'package:twmt/services/glossary/models/glossary_exceptions.dart';
 import 'package:twmt/services/glossary/utils/glossary_matcher.dart';
 
@@ -185,12 +186,13 @@ class GlossaryMatchingService {
       final inconsistencies = <String>[];
 
       for (final entry in matchedEntries) {
-        // Check if target term appears in target text. Honor the entry's
-        // caseSensitive flag: a case-sensitive term must appear in the exact
-        // prescribed casing to count as consistent.
-        final found = entry.caseSensitive
-            ? targetText.contains(entry.targetTerm)
-            : targetText.toLowerCase().contains(entry.targetTerm.toLowerCase());
+        // Honor the entry's caseSensitive flag via the shared helper so this
+        // and GlossaryServiceImpl.checkConsistency cannot drift.
+        final found = glossaryTermPresentInTarget(
+          targetText: targetText,
+          targetTerm: entry.targetTerm,
+          caseSensitive: entry.caseSensitive,
+        );
 
         if (!found) {
           inconsistencies.add(

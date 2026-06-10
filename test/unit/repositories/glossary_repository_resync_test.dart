@@ -110,4 +110,33 @@ void main() {
       );
     });
   });
+
+  group('GlossaryRepository.incrementUsageCount', () {
+    test('bumping usage statistics does NOT trigger a DeepL resync', () async {
+      // Sanity: in sync before the usage bump.
+      expect(await needsResync(), isFalse);
+
+      await repo.incrementUsageCount(['entry-0']);
+
+      final rows = await db.query(
+        'glossary_entries',
+        columns: ['usage_count', 'updated_at'],
+        where: 'id = ?',
+        whereArgs: ['entry-0'],
+      );
+      expect(rows.single['usage_count'], 1, reason: 'usage must still increment');
+      expect(
+        rows.single['updated_at'],
+        entryTimestamp,
+        reason: 'incrementUsageCount must not touch updated_at — that column '
+            'tracks content edits and drives DeepL resync',
+      );
+      expect(
+        await needsResync(),
+        isFalse,
+        reason: 'a glossary match on the hot translation path must not be '
+            'treated as a content edit and force a needless DeepL resync',
+      );
+    });
+  });
 }

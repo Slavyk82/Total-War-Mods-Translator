@@ -265,18 +265,8 @@ class GlossaryDeepLService {
   ///
   /// DeepL expects tab-separated values with source and target terms.
   /// Format: source_term\ttarget_term\n
-  String _convertToDeepLFormat(List<GlossaryEntry> entries) {
-    final buffer = StringBuffer();
-    for (final entry in entries) {
-      // Escape any tabs or newlines in the terms to prevent format issues
-      final sourceTerm = entry.sourceTerm.replaceAll('\t', ' ').replaceAll('\n', ' ').trim();
-      final targetTerm = entry.targetTerm.replaceAll('\t', ' ').replaceAll('\n', ' ').trim();
-
-      // Add tab-separated entry
-      buffer.write('$sourceTerm\t$targetTerm\n');
-    }
-    return buffer.toString();
-  }
+  String _convertToDeepLFormat(List<GlossaryEntry> entries) =>
+      glossaryEntriesToDeepLTsv(entries);
 
   /// Get DeepL API key from secure storage
   Future<String> _getApiKey() async {
@@ -374,4 +364,32 @@ class GlossaryDeepLService {
       'Network error: ${e.message ?? errorMessage}',
     );
   }
+}
+
+/// Convert glossary entries to DeepL glossary TSV (`source\ttarget\n`).
+///
+/// Deduplicates by trimmed source term and skips entries whose trimmed source
+/// or target is empty. The DB UNIQUE constraint includes `case_sensitive`, so
+/// two entries can share the same trimmed source term (e.g. 'Foo' cs=1 and
+/// 'Foo' cs=0); DeepL rejects a glossary that contains duplicate source entries
+/// (HTTP 400), which would fail createDeepLGlossary for the entire glossary.
+/// First target wins for a duplicated source. (DeepL cannot represent per-entry
+/// case sensitivity, so emitting both casing variants would be meaningless
+/// anyway.)
+String glossaryEntriesToDeepLTsv(List<GlossaryEntry> entries) {
+  final buffer = StringBuffer();
+  final seenSources = <String>{};
+  for (final entry in entries) {
+    // Escape any tabs or newlines in the terms to prevent format issues.
+    final sourceTerm =
+        entry.sourceTerm.replaceAll('\t', ' ').replaceAll('\n', ' ').trim();
+    final targetTerm =
+        entry.targetTerm.replaceAll('\t', ' ').replaceAll('\n', ' ').trim();
+
+    if (sourceTerm.isEmpty || targetTerm.isEmpty) continue;
+    if (!seenSources.add(sourceTerm)) continue; // duplicate source — first wins
+
+    buffer.write('$sourceTerm\t$targetTerm\n');
+  }
+  return buffer.toString();
 }
