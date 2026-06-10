@@ -29,10 +29,8 @@ void main() {
 
       final viewStatement = viewStatements.single;
 
-      // The view statement must not have absorbed the next CREATE VIEW, any
-      // triggers, or the seed INSERTs.
-      expect(viewStatement.contains('v_translations_needing_review'), isFalse,
-          reason: 'Stats view must not be merged with the next view');
+      // The view statement must not have absorbed any triggers or the seed
+      // INSERTs that follow it.
       expect(viewStatement.contains('CREATE TRIGGER'), isFalse,
           reason: 'Stats view must not be merged with subsequent triggers');
       expect(viewStatement.contains('INSERT OR IGNORE INTO languages'), isFalse,
@@ -54,13 +52,14 @@ void main() {
         reason: 'A seed INSERT after the stats view must be its own element',
       );
 
-      // Sanity: the second stats view (needing_review) is also isolated.
+      // Regression guard: the broken v_translations_needing_review view
+      // (referenced a non-existent translation_versions.confidence_score
+      // column) was removed from schema.sql and must not be reintroduced.
       expect(
-        statements
-            .where((s) =>
-                s.contains('CREATE VIEW IF NOT EXISTS v_translations_needing_review'))
-            .length,
-        1,
+        statements.any((s) => s.contains('v_translations_needing_review')),
+        isFalse,
+        reason: 'The broken needing_review view must stay out of schema.sql; '
+            'DropBrokenReviewViewMigration drops it from existing databases.',
       );
     });
 

@@ -531,25 +531,47 @@ class DatabaseBackupService {
   }
 
   /// Attempt to rollback from temporary backup.
+  ///
+  /// Restores every file that has a `.bak` copy, then deletes any `-wal`/
+  /// `-shm` sidecar without one (i.e. that did not exist before the
+  /// restore). Without that mirror-image of the forward sidecar cleanup, a
+  /// legacy-format archive carrying WAL/SHM files would leave the rolled
+  /// back database paired with sidecars from the backup's database
+  /// generation — the same cross-generation corruption the restore path
+  /// guards against.
   Future<void> _rollbackFromTemporaryBackup(String dbPath) async {
-    final walPath = '$dbPath-wal';
-    final shmPath = '$dbPath-shm';
-
     final dbBackup = File('$dbPath.bak');
-    final walBackup = File('$walPath.bak');
-    final shmBackup = File('$shmPath.bak');
-
     if (await dbBackup.exists()) {
       await dbBackup.copy(dbPath);
       await dbBackup.delete();
     }
-    if (await walBackup.exists()) {
-      await walBackup.copy(walPath);
-      await walBackup.delete();
-    }
-    if (await shmBackup.exists()) {
-      await shmBackup.copy(shmPath);
-      await shmBackup.delete();
+
+    for (final suffix in const ['-wal', '-shm']) {
+      final sidecarPath = '$dbPath$suffix';
+      final sidecarBackup = File('$sidecarPath.bak');
+      if (await sidecarBackup.exists()) {
+        await sidecarBackup.copy(sidecarPath);
+        await sidecarBackup.delete();
+        continue;
+      }
+      // No .bak means this sidecar did not exist before the restore; remove
+      // anything the failed restore extracted so the rolled-back state is
+      // exactly the pre-restore file set. Best-effort: a leftover sidecar
+      // must not mask the original restore failure.
+      try {
+        final sidecarFile = File(sidecarPath);
+        if (await sidecarFile.exists()) {
+          await sidecarFile.delete();
+          _logging.debug('Removed extracted sidecar file during rollback', {
+            'path': sidecarPath,
+          });
+        }
+      } catch (e) {
+        _logging.warning('Failed to remove extracted sidecar during rollback', {
+          'path': sidecarPath,
+          'error': e.toString(),
+        });
+      }
     }
   }
 }

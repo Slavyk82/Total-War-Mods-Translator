@@ -1,9 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../models/domain/translation_version_history.dart';
 import '../../models/history/diff_models.dart';
-import '../../repositories/translation_version_repository.dart';
-import '../../services/history/undo_redo_manager.dart';
-import '../shared/repository_providers.dart';
 import '../shared/service_providers.dart';
 
 part 'history_providers.g.dart';
@@ -79,94 +76,4 @@ Future<HistoryStats> versionHistoryStatistics(
     ok: (stats) => stats,
     err: (error) => throw Exception('Failed to load statistics: $error'),
   );
-}
-
-/// Undo/Redo Manager Provider
-///
-/// This is a singleton provider that maintains the undo/redo state
-/// throughout the application lifecycle. It's kept alive to preserve
-/// the undo/redo history even when widgets are disposed.
-@Riverpod(keepAlive: true)
-class UndoRedoManagerNotifier extends _$UndoRedoManagerNotifier {
-  late UndoRedoManager _manager;
-  late TranslationVersionRepository _repository;
-
-  @override
-  UndoRedoManagerState build() {
-    _repository = ref.watch(translationVersionRepositoryProvider);
-    _manager = UndoRedoManager();
-    return _manager.state;
-  }
-
-  /// Record a new action
-  void recordAction(HistoryAction action) {
-    _manager.recordAction(action);
-    state = _manager.state;
-  }
-
-  /// Record a translation edit action
-  void recordEdit({
-    required String versionId,
-    required String oldValue,
-    required String newValue,
-  }) {
-    final action = TranslationEditAction(
-      versionId: versionId,
-      oldValue: oldValue,
-      newValue: newValue,
-      timestamp: DateTime.now(),
-      repository: _repository,
-    );
-    recordAction(action);
-  }
-
-  /// Undo the last action
-  Future<bool> undo() async {
-    final success = await _manager.undo();
-    if (success) {
-      state = _manager.state;
-    }
-    return success;
-  }
-
-  /// Redo the last undone action
-  Future<bool> redo() async {
-    final success = await _manager.redo();
-    if (success) {
-      state = _manager.state;
-    }
-    return success;
-  }
-
-  /// Check if undo is available
-  bool get canUndo => state.canUndo;
-
-  /// Check if redo is available
-  bool get canRedo => state.canRedo;
-
-  /// Clear all undo/redo history
-  void clear() {
-    _manager.clear();
-    state = _manager.state;
-  }
-
-  /// Get the last undoable action (for tooltip/preview)
-  HistoryAction? get lastUndoableAction => state.lastUndoableAction;
-
-  /// Get the last redoable action (for tooltip/preview)
-  HistoryAction? get lastRedoableAction => state.lastRedoableAction;
-}
-
-/// Provider for checking if undo is available
-@riverpod
-bool canUndo(Ref ref) {
-  final state = ref.watch(undoRedoManagerProvider);
-  return state.canUndo;
-}
-
-/// Provider for checking if redo is available
-@riverpod
-bool canRedo(Ref ref) {
-  final state = ref.watch(undoRedoManagerProvider);
-  return state.canRedo;
 }

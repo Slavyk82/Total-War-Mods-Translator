@@ -264,6 +264,15 @@ class TranslationErrorRecovery {
       maxTokens: _tokenEstimator.estimateMaxTokens(secondHalfTexts),
     );
 
+    // Rebase the second half onto the FIRST half's resulting progress, not
+    // the original shared baseline. Every translateWithAutoSplit call returns
+    // tokensUsed/failedUnits/llmLogs as its `currentProgress` baseline plus
+    // its own contribution, so chaining baselines makes the progress returned
+    // from this split carry BOTH halves' tokens, failed-unit deltas and
+    // exchange logs. This composes recursively for nested splits and keeps
+    // ParallelBatchProcessor._aggregateResults' baseline-delta arithmetic
+    // correct (it diffs each chunk's returned progress against the shared
+    // pre-LLM baseline, so the chunk's progress must be cumulative).
     final (progressAfterSecond, secondTranslations) = await translateWithAutoSplit(
       batchId: batchId,
       rootBatchId: rootBatchId,
@@ -271,7 +280,7 @@ class TranslationErrorRecovery {
       llmRequest: secondHalfRequest,
       context: context,
       progress: progressAfterFirst,
-      currentProgress: currentProgress,
+      currentProgress: progressAfterFirst,
       getCancellationToken: getCancellationToken,
       onProgressUpdate: onProgressUpdate,
       checkPauseOrCancel: checkPauseOrCancel,

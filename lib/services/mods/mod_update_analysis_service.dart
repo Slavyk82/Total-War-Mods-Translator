@@ -488,39 +488,65 @@ class ModUpdateAnalysisService {
       final total = unitsToInsert.length;
 
       // Insert every new unit and its per-language versions in a SINGLE
-      // transaction. Previously each unit ran its own getByKey SELECT plus its
-      // own transaction (N+1 round-trips), which made large-mod scans crawl on
-      // the UI isolate. ConflictAlgorithm.abort rolls the whole batch back if a
-      // key unexpectedly collides, so we never leave partial unit/version sets.
+      // transaction (one commit — previously each unit ran its own getByKey
+      // SELECT plus its own transaction, N+1 round-trips that made large-mod
+      // scans crawl on the UI isolate), but isolate each unit behind a
+      // SAVEPOINT. A failing insert rolls back ONLY that unit's writes (so the
+      // view-cache invariant "every unit has a full version set" holds); the
+      // unit is logged, skipped, and not counted, and the rest of the batch
+      // still commits. This is the contract pinned by
+      // test/integration/add_new_units_transaction_test.dart.
+      const savepoint = 'sp_add_new_unit';
+      int added;
       try {
-        await DatabaseService.transaction((txn) async {
+        added = await DatabaseService.transaction<int>((txn) async {
+          var inserted = 0;
           var processed = 0;
           var lastReportedProgress = 0;
           const progressReportInterval = 100;
           for (final unit in unitsToInsert) {
-            await txn.insert(
-              'translation_units',
-              unit.toJson(),
-              conflictAlgorithm: ConflictAlgorithm.abort,
-            );
-
-            for (final language in languages) {
-              final version = TranslationVersion(
-                id: _uuid.v4(),
-                unitId: unit.id,
-                projectLanguageId: language.id,
-                translatedText: null,
-                isManuallyEdited: false,
-                status: TranslationVersionStatus.pending,
-                validationIssues: null,
-                createdAt: now,
-                updatedAt: now,
+            await txn.execute('SAVEPOINT $savepoint');
+            try {
+              await txn.insert(
+                'translation_units',
+                unit.toJson(),
+                conflictAlgorithm: ConflictAlgorithm.abort,
               );
 
-              await txn.insert(
-                'translation_versions',
-                version.toJson(),
-                conflictAlgorithm: ConflictAlgorithm.abort,
+              for (final language in languages) {
+                final version = TranslationVersion(
+                  id: _uuid.v4(),
+                  unitId: unit.id,
+                  projectLanguageId: language.id,
+                  translatedText: null,
+                  isManuallyEdited: false,
+                  status: TranslationVersionStatus.pending,
+                  validationIssues: null,
+                  createdAt: now,
+                  updatedAt: now,
+                );
+
+                await txn.insert(
+                  'translation_versions',
+                  version.toJson(),
+                  conflictAlgorithm: ConflictAlgorithm.abort,
+                );
+              }
+
+              await txn.execute('RELEASE SAVEPOINT $savepoint');
+              inserted++;
+            } catch (e) {
+              // Roll back only this unit's writes and keep going. NOTE: the
+              // rollback MUST go through rawQuery, not execute — sqflite's
+              // getSqlInTransactionArgument treats any statement starting
+              // with "rollback" (including ROLLBACK TO SAVEPOINT) as leaving
+              // the outer transaction, which corrupts its bookkeeping.
+              // rawQuery skips that SQL sniffing.
+              await txn.rawQuery('ROLLBACK TO SAVEPOINT $savepoint');
+              await txn.execute('RELEASE SAVEPOINT $savepoint');
+              _logger.warning(
+                'Failed to insert new unit and its versions, rolled back: '
+                '${unit.key} ($e)',
               );
             }
 
@@ -532,8 +558,11 @@ class ModUpdateAnalysisService {
               lastReportedProgress = processed;
             }
           }
+          return inserted;
         });
       } catch (e, stackTrace) {
+        // Whole-batch failure (BEGIN/COMMIT or a savepoint rollback itself
+        // failed): everything was rolled back.
         _logger.error('Failed to insert new units, rolled back', e, stackTrace);
         return Err(ServiceException(
           'Failed to add new units: $e',
@@ -542,8 +571,15 @@ class ModUpdateAnalysisService {
         ));
       }
 
-      _logger.info('Added $total new units for project $projectId');
-      return Ok(total);
+      if (added < total) {
+        _logger.warning(
+          'Added $added of $total new units for project $projectId '
+          '(${total - added} skipped after per-unit rollback)',
+        );
+      } else {
+        _logger.info('Added $added new units for project $projectId');
+      }
+      return Ok(added);
     } catch (e, stackTrace) {
       _logger.error('Failed to add new units', e, stackTrace);
       return Err(ServiceException(

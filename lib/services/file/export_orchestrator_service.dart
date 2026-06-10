@@ -113,6 +113,7 @@ class ExportOrchestratorService {
     ExportProgressCallback? onProgress,
   }) async {
     Directory? tempDir;
+    String? tempPackPath;
 
     try {
       _logger.info('Starting .pack export', {
@@ -194,6 +195,16 @@ class ExportOrchestratorService {
       );
       final packPath = path.join(gameDataPath, packFileName);
 
+      // Build the pack at a temporary path NEXT TO the destination and only
+      // move it over the final name after RPFM fully succeeds. Building
+      // directly at packPath would clobber the user's previous good pack at
+      // step 1, before the new pack is known to succeed (and a hard crash
+      // mid-export would lose it for good). The temp file lives in the game
+      // data directory (not %TEMP%) so the final rename is a same-volume,
+      // atomic replace; the '.tmp' suffix keeps the launcher from picking it
+      // up as a loadable pack. Same pattern as DatabaseBackupService.
+      tempPackPath = '$packPath.tmp';
+
       // Progress range for pack creation: 0.6 to 0.85
       const packProgressStart = 0.6;
       const packProgressEnd = 0.85;
@@ -201,7 +212,7 @@ class ExportOrchestratorService {
 
       final packResult = await _rpfmService.createPack(
         inputDirectory: tempDir.path,
-        outputPackPath: packPath,
+        outputPackPath: tempPackPath,
         languageCode: languageCodes.first,
         onProgress: (currentFile, totalFiles, fileName) {
           if (totalFiles > 0) {
@@ -224,13 +235,29 @@ class ExportOrchestratorService {
         ));
       }
 
-      // Wait for file to be fully released by RPFM and Windows
-      // This prevents "corrupted mod data" errors in the game launcher
-      final fileReleased = await _packUtils.waitForFileRelease(packPath);
+      // Wait for the temp pack to be fully released by RPFM and Windows
+      // before renaming it: a rename fails while a writer still holds the
+      // file, and this also prevents "corrupted mod data" errors in the
+      // game launcher.
+      final fileReleased = await _packUtils.waitForFileRelease(tempPackPath);
       if (!fileReleased) {
         _logger.warning('Pack file may still be locked by the system', {
-          'packPath': packPath,
+          'packPath': tempPackPath,
         });
+      }
+
+      // Atomically replace the previous pack with the fully built one.
+      // Dart's File.rename replaces an existing destination file on a
+      // same-volume move on Windows.
+      try {
+        await File(tempPackPath).rename(packPath);
+      } on FileSystemException catch (e, stackTrace) {
+        return Err(FileServiceException(
+          'Failed to move completed pack into the game data directory: '
+          '${e.message}',
+          error: e,
+          stackTrace: stackTrace,
+        ));
       }
 
       final fileSize = await File(packPath).length();
@@ -300,6 +327,28 @@ class ExportOrchestratorService {
       ));
     } finally {
       await _packUtils.cleanupTempDirectory(tempDir);
+      // Best-effort removal of the temp pack on any failure or cancellation
+      // after it was created. After a successful rename the temp file no
+      // longer exists, so this is a no-op on the happy path. The RPFM layer
+      // already cleans up its own partial output on failure; this covers
+      // exceptions thrown between createPack returning Ok and the rename,
+      // plus the degenerate case where that cleanup itself failed.
+      if (tempPackPath != null) {
+        try {
+          final tempPackFile = File(tempPackPath);
+          if (await tempPackFile.exists()) {
+            await tempPackFile.delete();
+            _logger.info('Cleaned up temporary pack file', {
+              'path': tempPackPath,
+            });
+          }
+        } catch (e) {
+          _logger.warning('Failed to delete temporary pack file', {
+            'path': tempPackPath,
+            'error': e.toString(),
+          });
+        }
+      }
     }
   }
 

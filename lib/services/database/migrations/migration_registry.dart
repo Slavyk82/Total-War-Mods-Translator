@@ -32,6 +32,7 @@ import 'migration_anthropic_opus47_sonnet46.dart';
 import 'migration_deepseek_chat_restore.dart';
 import 'migration_export_history_languages.dart';
 import 'migration_default_model_dedup.dart';
+import 'migration_drop_broken_review_view.dart';
 
 /// Registry of all database migrations.
 ///
@@ -76,6 +77,7 @@ class MigrationRegistry {
       DeepSeekChatRestoreMigration(), // Priority 190 — re-expose deepseek-chat (V3.2) alongside the V4 family
       ExportHistoryLanguagesMigration(), // Priority 200 — backfill export_history.languages from legacy language_code (fixes Projects/Publish on upgraded DBs)
       DefaultModelDedupMigration(), // Priority 210 — repair duplicate per-provider default models left by earlier INSERT-with-is_default=1 migrations
+      DropBrokenReviewViewMigration(), // Priority 220 — drop legacy v_translations_needing_review view (references non-existent confidence_score, breaks schema re-parse on ALTER TABLE)
     ];
 
     // Sort by priority (lower numbers first)

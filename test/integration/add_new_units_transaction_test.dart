@@ -217,4 +217,63 @@ void main() {
       reason: 'no partial set of versions may survive',
     );
   });
+
+  test('partial failure: the bad unit is rolled back, the rest still commits',
+      () async {
+    // Force the version insert to fail for ONE specific unit (KEY_BAD) while
+    // the others succeed. The per-unit savepoint must roll back KEY_BAD's
+    // already-inserted unit row, skip it, and still commit the good units —
+    // returning Ok with the real added count.
+    await db.execute('''
+      CREATE TRIGGER trg_test_fail_bad_unit
+      BEFORE INSERT ON translation_versions
+      WHEN (SELECT key FROM translation_units WHERE id = NEW.unit_id)
+           = 'KEY_BAD'
+      BEGIN
+        SELECT RAISE(ABORT, 'forced test failure');
+      END
+    ''');
+
+    final service = buildService();
+    final result = await service.addNewUnits(
+      projectId: 'P',
+      analysis: analysisWith(const [
+        NewUnitData(key: 'KEY_GOOD_1', sourceText: 'src 1'),
+        NewUnitData(key: 'KEY_BAD', sourceText: 'src bad'),
+        NewUnitData(key: 'KEY_GOOD_2', sourceText: 'src 2'),
+      ]),
+    );
+
+    expect(result.isOk, isTrue);
+    expect(result.value, 2, reason: 'only the two good units are counted');
+
+    // The bad unit's row (inserted before its version failed) was rolled back.
+    expect(
+      await count(
+          'SELECT COUNT(*) FROM translation_units WHERE project_id = ? AND key = ?',
+          ['P', 'KEY_BAD']),
+      0,
+      reason: 'the failing unit must be rolled back by its savepoint',
+    );
+
+    // Both good units survive with a full version set (2 languages each).
+    for (final key in ['KEY_GOOD_1', 'KEY_GOOD_2']) {
+      expect(
+        await count(
+            'SELECT COUNT(*) FROM translation_units WHERE project_id = ? AND key = ?',
+            ['P', key]),
+        1,
+        reason: 'unit $key must survive the sibling failure',
+      );
+      expect(
+        await count('''
+          SELECT COUNT(*) FROM translation_versions tv
+          INNER JOIN translation_units tu ON tv.unit_id = tu.id
+          WHERE tu.project_id = ? AND tu.key = ?
+        ''', ['P', key]),
+        2,
+        reason: 'unit $key must keep a version for every project language',
+      );
+    }
+  });
 }
