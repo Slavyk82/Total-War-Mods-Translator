@@ -118,6 +118,12 @@ class ImportExecutor {
         ImportColumn.targetText,
       );
 
+      // Keys created/updated earlier in THIS import run. A second row for the
+      // same key is a within-file duplicate, not a pre-existing DB conflict the
+      // user reviewed, so it must apply last-wins rather than erroring on a
+      // missing resolution.
+      final processedKeys = <String>{};
+
       for (int i = 0; i < rows.length; i++) {
         totalProcessed++;
         onProgress?.call(i + 1, rows.length);
@@ -140,10 +146,12 @@ class ImportExecutor {
             settings: settings,
             resolutions: resolutions,
             projectLanguageId: projectLanguageId,
+            duplicateWithinRun: processedKeys.contains(key),
           );
 
           if (result.isSuccess) {
             successCount++;
+            processedKeys.add(key);
             if (result.value != null) {
               importedIds.add(result.value!);
             }
@@ -188,6 +196,7 @@ class ImportExecutor {
     required ImportSettings settings,
     required ConflictResolutions resolutions,
     required String projectLanguageId,
+    required bool duplicateWithinRun,
   }) async {
     try {
       // findByKey distinguishes "not found" (Ok(null)) from a real DB error
@@ -243,6 +252,7 @@ class ImportExecutor {
         resolutions: resolutions,
         key: key,
         projectLanguageId: projectLanguageId,
+        duplicateWithinRun: duplicateWithinRun,
       );
 
       // If we created the unit in this row but the version write failed, delete
@@ -297,6 +307,7 @@ class ImportExecutor {
     required ConflictResolutions resolutions,
     required String key,
     required String projectLanguageId,
+    required bool duplicateWithinRun,
   }) async {
     // Scope the lookup to the target language's project_languages row. Using
     // getByUnit(...).first would pick an arbitrary sibling language's version
@@ -324,6 +335,7 @@ class ImportExecutor {
         targetColumn: targetColumn,
         resolutions: resolutions,
         key: key,
+        duplicateWithinRun: duplicateWithinRun,
       );
     } else {
       return await _createNewVersion(
@@ -342,17 +354,28 @@ class ImportExecutor {
     required String targetColumn,
     required ConflictResolutions resolutions,
     required String key,
+    required bool duplicateWithinRun,
   }) async {
-    final resolution = resolutions.getResolution(key);
+    var resolution = resolutions.getResolution(key);
 
     // A conflicting row with NO resolution (key absent from the map and no
     // default) must be surfaced to the user, not silently folded into
     // skippedCount where it is indistinguishable from an explicit
     // keepExisting decision.
+    //
+    // Exception: when the "existing" version was itself created/updated earlier
+    // in THIS import run (a within-file duplicate key), there is no pre-existing
+    // DB conflict for the user to have reviewed — detectConflicts saw nothing
+    // because the unit did not exist at preview time. Apply last-wins instead
+    // of erroring and dropping the row.
     if (resolution == null) {
-      return _RowProcessResult.error(
-        'Unresolved conflict: no resolution provided for this key',
-      );
+      if (duplicateWithinRun) {
+        resolution = ConflictResolution.useImported;
+      } else {
+        return _RowProcessResult.error(
+          'Unresolved conflict: no resolution provided for this key',
+        );
+      }
     }
 
     if (resolution == ConflictResolution.keepExisting) {

@@ -68,13 +68,13 @@ class ModUpdateAnalysisService {
     required ProjectLanguageRepository languageRepository,
     ILoggingService? logger,
     ActivityLogger? activityLogger,
-  })  : _rpfmService = rpfmService,
-        _locParser = locParser,
-        _unitRepository = unitRepository,
-        _versionRepository = versionRepository,
-        _languageRepository = languageRepository,
-        _logger = logger ?? ServiceLocator.get<ILoggingService>(),
-        _activityLogger = activityLogger ?? _tryResolveActivityLogger();
+  }) : _rpfmService = rpfmService,
+       _locParser = locParser,
+       _unitRepository = unitRepository,
+       _versionRepository = versionRepository,
+       _languageRepository = languageRepository,
+       _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+       _activityLogger = activityLogger ?? _tryResolveActivityLogger();
 
   /// Best-effort lookup for the shared [ActivityLogger].
   ///
@@ -105,9 +105,11 @@ class ModUpdateAnalysisService {
       // Step 1: Get existing active translation units from database
       final existingUnitsResult = await _unitRepository.getActive(projectId);
       if (existingUnitsResult.isErr) {
-        return Err(ServiceException(
-          'Failed to get existing translation units: ${existingUnitsResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to get existing translation units: ${existingUnitsResult.error}',
+          ),
+        );
       }
 
       final existingUnits = existingUnitsResult.value;
@@ -119,9 +121,11 @@ class ModUpdateAnalysisService {
       // Step 1b: Get obsolete translation units from database
       final obsoleteUnitsResult = await _unitRepository.getObsolete(projectId);
       if (obsoleteUnitsResult.isErr) {
-        return Err(ServiceException(
-          'Failed to get obsolete translation units: ${obsoleteUnitsResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to get obsolete translation units: ${obsoleteUnitsResult.error}',
+          ),
+        );
       }
 
       final obsoleteUnits = obsoleteUnitsResult.value;
@@ -169,11 +173,13 @@ class ModUpdateAnalysisService {
         } else {
           // Truly new key - collect complete data
           newUnitKeys.add(key);
-          newUnitsData.add(NewUnitData(
-            key: key,
-            sourceText: packSourceText,
-            sourceLocFile: unitData.sourceLocFile,
-          ));
+          newUnitsData.add(
+            NewUnitData(
+              key: key,
+              sourceText: packSourceText,
+              sourceLocFile: unitData.sourceLocFile,
+            ),
+          );
         }
       }
 
@@ -214,7 +220,8 @@ class ModUpdateAnalysisService {
           projectId: projectId,
           gameCode: null,
           payload: {
-            'count': analysis.newUnitsCount +
+            'count':
+                analysis.newUnitsCount +
                 analysis.modifiedUnitsCount +
                 analysis.reactivatedUnitsCount,
           },
@@ -224,11 +231,13 @@ class ModUpdateAnalysisService {
       return Ok(analysis);
     } catch (e, stackTrace) {
       _logger.error('Failed to analyze mod changes', e, stackTrace);
-      return Err(ServiceException(
-        'Failed to analyze mod changes: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
+      return Err(
+        ServiceException(
+          'Failed to analyze mod changes: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -242,70 +251,83 @@ class ModUpdateAnalysisService {
     );
 
     if (extractResult.isErr) {
-      return Err(ServiceException(
-        'Failed to extract .loc files: ${extractResult.error}',
-      ));
+      return Err(
+        ServiceException(
+          'Failed to extract .loc files: ${extractResult.error}',
+        ),
+      );
     }
 
     final extraction = extractResult.value;
     final locFiles = extraction.extractedFiles;
 
-    if (locFiles.isEmpty) {
-      return const Ok([]);
-    }
-
-    final allUnits = <_PackUnitData>[];
-    final seenKeys = <String>{};
-
-    // Parse each TSV file
-    for (final tsvFilePath in locFiles) {
-      final parseResult = await _locParser.parseFile(
-        filePath: tsvFilePath,
-        encoding: 'utf-8',
-      );
-
-      if (parseResult.isErr) {
-        continue;
+    // RPFM always creates the extraction temp directory (even when it yields
+    // zero TSV files), so cleanup must run on every path — including the empty
+    // early return below. A try/finally guarantees the directory is deleted
+    // instead of leaking one rpfm_extract_* dir per re-scan.
+    try {
+      if (locFiles.isEmpty) {
+        return const Ok([]);
       }
 
-      // Extract the original .loc file path relative to extraction directory
-      // TSV path: C:\temp\rpfm_extract_xxx\text\db\something.loc.tsv
-      // Extraction dir: C:\temp\rpfm_extract_xxx
-      // Result: text/db/something.loc
-      String sourceLocFile = tsvFilePath
-          .replaceAll('\\', '/')
-          .replaceFirst('${extraction.outputDirectory.replaceAll('\\', '/')}/', '');
+      final allUnits = <_PackUnitData>[];
+      final seenKeys = <String>{};
 
-      // Remove .tsv extension to get the original .loc path
-      if (sourceLocFile.endsWith('.tsv')) {
-        sourceLocFile = sourceLocFile.substring(0, sourceLocFile.length - 4);
-      }
+      // Parse each TSV file
+      for (final tsvFilePath in locFiles) {
+        final parseResult = await _locParser.parseFile(
+          filePath: tsvFilePath,
+          encoding: 'utf-8',
+        );
 
-      final locFile = parseResult.value;
-      for (final entry in locFile.entries) {
-        // Avoid duplicates (same key from different loc files)
-        if (!seenKeys.contains(entry.key)) {
-          seenKeys.add(entry.key);
-          allUnits.add(_PackUnitData(
-            key: entry.key,
-            sourceText: entry.value,
-            sourceLocFile: sourceLocFile,
-          ));
+        if (parseResult.isErr) {
+          continue;
+        }
+
+        // Extract the original .loc file path relative to extraction directory
+        // TSV path: C:\temp\rpfm_extract_xxx\text\db\something.loc.tsv
+        // Extraction dir: C:\temp\rpfm_extract_xxx
+        // Result: text/db/something.loc
+        String sourceLocFile = tsvFilePath
+            .replaceAll('\\', '/')
+            .replaceFirst(
+              '${extraction.outputDirectory.replaceAll('\\', '/')}/',
+              '',
+            );
+
+        // Remove .tsv extension to get the original .loc path
+        if (sourceLocFile.endsWith('.tsv')) {
+          sourceLocFile = sourceLocFile.substring(0, sourceLocFile.length - 4);
+        }
+
+        final locFile = parseResult.value;
+        for (final entry in locFile.entries) {
+          // Avoid duplicates (same key from different loc files)
+          if (!seenKeys.contains(entry.key)) {
+            seenKeys.add(entry.key);
+            allUnits.add(
+              _PackUnitData(
+                key: entry.key,
+                sourceText: entry.value,
+                sourceLocFile: sourceLocFile,
+              ),
+            );
+          }
         }
       }
-    }
 
-    // Clean up extraction directory
-    try {
-      final extractionDir = Directory(extraction.outputDirectory);
-      if (await extractionDir.exists()) {
-        await extractionDir.delete(recursive: true);
+      return Ok(allUnits);
+    } finally {
+      // Clean up extraction directory on every exit path.
+      try {
+        final extractionDir = Directory(extraction.outputDirectory);
+        if (await extractionDir.exists()) {
+          await extractionDir.delete(recursive: true);
+        }
+      } catch (e) {
+        // Non-critical - cleanup can fail without issue
       }
-    } catch (e) {
-      // Non-critical - cleanup can fail without issue
     }
-
-    return Ok(allUnits);
   }
 
   /// Apply changes from a mod update analysis to the project.
@@ -324,17 +346,20 @@ class ModUpdateAnalysisService {
   /// [onProgress] - Optional callback for progress reporting (processed, total, phase)
   ///
   /// Returns [ModUpdateApplyResult] with counts of affected records.
-  Future<Result<ModUpdateApplyResult, ServiceException>> applyModifiedSourceTexts({
+  Future<Result<ModUpdateApplyResult, ServiceException>>
+  applyModifiedSourceTexts({
     required String projectId,
     required ModUpdateAnalysis analysis,
     void Function(int processed, int total, String phase)? onProgress,
   }) async {
     try {
       if (!analysis.hasModifiedUnits) {
-        return Ok(const ModUpdateApplyResult(
-          sourceTextsUpdated: 0,
-          translationsReset: 0,
-        ));
+        return Ok(
+          const ModUpdateApplyResult(
+            sourceTextsUpdated: 0,
+            translationsReset: 0,
+          ),
+        );
       }
 
       _logger.info(
@@ -360,14 +385,16 @@ class ModUpdateAnalysisService {
         unitKeys: analysis.modifiedUnitKeys,
         onProgress: onProgress != null
             ? (processed, batchTotal) =>
-                onProgress(processed, total, 'Resetting translations')
+                  onProgress(processed, total, 'Resetting translations')
             : null,
       );
 
       if (resetResult.isErr) {
-        return Err(ServiceException(
-          'Failed to reset translation statuses: ${resetResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to reset translation statuses: ${resetResult.error}',
+          ),
+        );
       }
 
       final translationsReset = resetResult.value;
@@ -379,14 +406,16 @@ class ModUpdateAnalysisService {
         sourceTextUpdates: analysis.modifiedSourceTexts,
         onProgress: onProgress != null
             ? (processed, batchTotal) =>
-                onProgress(processed, total, 'Updating source texts')
+                  onProgress(processed, total, 'Updating source texts')
             : null,
       );
 
       if (updateResult.isErr) {
-        return Err(ServiceException(
-          'Failed to update source texts: ${updateResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to update source texts: ${updateResult.error}',
+          ),
+        );
       }
 
       final sourceTextsUpdated = updateResult.value;
@@ -396,17 +425,21 @@ class ModUpdateAnalysisService {
         '$translationsReset translation versions reset to pending',
       );
 
-      return Ok(ModUpdateApplyResult(
-        sourceTextsUpdated: sourceTextsUpdated,
-        translationsReset: translationsReset,
-      ));
+      return Ok(
+        ModUpdateApplyResult(
+          sourceTextsUpdated: sourceTextsUpdated,
+          translationsReset: translationsReset,
+        ),
+      );
     } catch (e, stackTrace) {
       _logger.error('Failed to apply mod update changes', e, stackTrace);
-      return Err(ServiceException(
-        'Failed to apply mod update changes: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
+      return Err(
+        ServiceException(
+          'Failed to apply mod update changes: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -438,9 +471,11 @@ class ModUpdateAnalysisService {
       // Get project languages for creating translation versions
       final languagesResult = await _languageRepository.getByProject(projectId);
       if (languagesResult.isErr) {
-        return Err(ServiceException(
-          'Failed to get project languages: ${languagesResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to get project languages: ${languagesResult.error}',
+          ),
+        );
       }
 
       final languages = languagesResult.value;
@@ -451,9 +486,11 @@ class ModUpdateAnalysisService {
       // defensive de-dup that also avoids N round-trips on the UI isolate.
       final existingResult = await _unitRepository.getByProject(projectId);
       if (existingResult.isErr) {
-        return Err(ServiceException(
-          'Failed to load existing units: ${existingResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to load existing units: ${existingResult.error}',
+          ),
+        );
       }
       final existingKeys = existingResult.value.map((u) => u.key).toSet();
 
@@ -466,18 +503,20 @@ class ModUpdateAnalysisService {
           _logger.debug('Unit already exists, skipping: ${newUnit.key}');
           continue;
         }
-        unitsToInsert.add(TranslationUnit(
-          id: _uuid.v4(),
-          projectId: projectId,
-          key: newUnit.key,
-          sourceText: newUnit.sourceText,
-          context: null,
-          notes: null,
-          sourceLocFile: newUnit.sourceLocFile,
-          isObsolete: false,
-          createdAt: now,
-          updatedAt: now,
-        ));
+        unitsToInsert.add(
+          TranslationUnit(
+            id: _uuid.v4(),
+            projectId: projectId,
+            key: newUnit.key,
+            sourceText: newUnit.sourceText,
+            context: null,
+            notes: null,
+            sourceLocFile: newUnit.sourceLocFile,
+            isObsolete: false,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
       }
 
       if (unitsToInsert.isEmpty) {
@@ -564,11 +603,13 @@ class ModUpdateAnalysisService {
         // Whole-batch failure (BEGIN/COMMIT or a savepoint rollback itself
         // failed): everything was rolled back.
         _logger.error('Failed to insert new units, rolled back', e, stackTrace);
-        return Err(ServiceException(
-          'Failed to add new units: $e',
-          error: e,
-          stackTrace: stackTrace,
-        ));
+        return Err(
+          ServiceException(
+            'Failed to add new units: $e',
+            error: e,
+            stackTrace: stackTrace,
+          ),
+        );
       }
 
       if (added < total) {
@@ -582,11 +623,13 @@ class ModUpdateAnalysisService {
       return Ok(added);
     } catch (e, stackTrace) {
       _logger.error('Failed to add new units', e, stackTrace);
-      return Err(ServiceException(
-        'Failed to add new units: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
+      return Err(
+        ServiceException(
+          'Failed to add new units: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -622,21 +665,25 @@ class ModUpdateAnalysisService {
       );
 
       if (result.isErr) {
-        return Err(ServiceException(
-          'Failed to mark units as obsolete: ${result.error}',
-        ));
+        return Err(
+          ServiceException('Failed to mark units as obsolete: ${result.error}'),
+        );
       }
 
       final unitsMarked = result.value;
-      _logger.info('Marked $unitsMarked units as obsolete for project $projectId');
+      _logger.info(
+        'Marked $unitsMarked units as obsolete for project $projectId',
+      );
       return Ok(unitsMarked);
     } catch (e, stackTrace) {
       _logger.error('Failed to mark removed units as obsolete', e, stackTrace);
-      return Err(ServiceException(
-        'Failed to mark removed units as obsolete: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
+      return Err(
+        ServiceException(
+          'Failed to mark removed units as obsolete: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -652,8 +699,13 @@ class ModUpdateAnalysisService {
   /// [onProgress] - Optional callback for progress reporting (processed, total)
   ///
   /// Returns a record with counts of units reactivated and translations marked for review.
-  Future<Result<({int unitsReactivated, int translationsMarkedForReview}), ServiceException>>
-      reactivateObsoleteUnits({
+  Future<
+    Result<
+      ({int unitsReactivated, int translationsMarkedForReview}),
+      ServiceException
+    >
+  >
+  reactivateObsoleteUnits({
     required String projectId,
     required ModUpdateAnalysis analysis,
     void Function(int processed, int total)? onProgress,
@@ -675,9 +727,11 @@ class ModUpdateAnalysisService {
       );
 
       if (reactivateResult.isErr) {
-        return Err(ServiceException(
-          'Failed to reactivate units: ${reactivateResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to reactivate units: ${reactivateResult.error}',
+          ),
+        );
       }
 
       final unitsReactivated = reactivateResult.value;
@@ -689,9 +743,11 @@ class ModUpdateAnalysisService {
       );
 
       if (reviewResult.isErr) {
-        return Err(ServiceException(
-          'Failed to set translations to needsReview: ${reviewResult.error}',
-        ));
+        return Err(
+          ServiceException(
+            'Failed to set translations to needsReview: ${reviewResult.error}',
+          ),
+        );
       }
 
       final translationsMarkedForReview = reviewResult.value;
@@ -706,12 +762,13 @@ class ModUpdateAnalysisService {
       ));
     } catch (e, stackTrace) {
       _logger.error('Failed to reactivate obsolete units', e, stackTrace);
-      return Err(ServiceException(
-        'Failed to reactivate obsolete units: $e',
-        error: e,
-        stackTrace: stackTrace,
-      ));
+      return Err(
+        ServiceException(
+          'Failed to reactivate obsolete units: $e',
+          error: e,
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 }
-
