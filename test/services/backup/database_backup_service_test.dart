@@ -300,5 +300,91 @@ void main() {
       await reopened!.close();
       DatabaseService.resetTestDatabase();
     });
+
+    test(
+        'rollback after a failed restore removes archive sidecars that did '
+        'not exist before the restore', () async {
+      // 1. Build a legacy-format archive that carries -wal/-shm entries:
+      //    an uncheckpointed WAL database copied file-by-file (the database
+      //    is deliberately not registered with DatabaseService so the
+      //    legacy path skips the checkpoint and copies live WAL/SHM files).
+      final sourceDir =
+          await Directory(p.join(tempRoot.path, 'source')).create();
+      final sourceDbPath = p.join(sourceDir.path, DatabaseConfig.databaseName);
+      db = await openWalDatabase(sourceDbPath, rowCount: 9, tag: 'from_backup');
+      DatabaseService.resetTestDatabase();
+
+      final zipPath = p.join(tempRoot.path, 'backup.zip');
+      final backupService = DatabaseBackupService(
+        databasePathProvider: () async => sourceDbPath,
+        debugForceLegacySnapshot: true,
+      );
+      expect((await backupService.createBackup(zipPath)).isOk, isTrue);
+      await db!.close();
+      db = null;
+
+      // Precondition: the archive really carries the sidecar files.
+      final info = (await backupService.validateBackup(zipPath)).unwrap();
+      expect(info.hasWalFile, isTrue,
+          reason: 'scenario requires a -wal entry in the archive');
+      expect(info.hasShmFile, isTrue,
+          reason: 'scenario requires a -shm entry in the archive');
+
+      // 2. Build the "current" database and close it cleanly so NO -wal/-shm
+      //    exist before the restore (and therefore no .bak copies of them).
+      final currentDir =
+          await Directory(p.join(tempRoot.path, 'current')).create();
+      final currentDbPath =
+          p.join(currentDir.path, DatabaseConfig.databaseName);
+      final currentDb = await databaseFactory.openDatabase(currentDbPath);
+      await currentDb
+          .execute('CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT)');
+      await currentDb.insert('items', {'v': 'original-row'});
+
+      // 3. Fail the restore AFTER extraction: the first reinitialization
+      //    throws, forcing the rollback path; the second (post-rollback)
+      //    succeeds so the service can report a plain restore failure.
+      var reinitCalls = 0;
+      Database? reopened;
+      final restoreService = DatabaseBackupService(
+        databasePathProvider: () async => currentDbPath,
+        databaseCloser: () async => currentDb.close(),
+        databaseReinitializer: () async {
+          reinitCalls++;
+          if (reinitCalls == 1) {
+            throw StateError('injected reinitialization failure');
+          }
+          reopened = await databaseFactory.openDatabase(currentDbPath);
+          DatabaseService.setTestDatabase(reopened!);
+        },
+      );
+
+      final result = await restoreService.restoreBackup(zipPath);
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr().requiresRestart, isFalse);
+      expect(reinitCalls, 2);
+
+      // The rolled-back state must be exactly the pre-restore file set: the
+      // sidecars extracted from the archive had no .bak (they did not exist
+      // before the restore) and must not survive paired with the original db.
+      expect(await File('$currentDbPath-wal').exists(), isFalse,
+          reason: 'rollback must delete the -wal extracted from the archive');
+      expect(await File('$currentDbPath-shm').exists(), isFalse,
+          reason: 'rollback must delete the -shm extracted from the archive');
+
+      // Safety .bak files are consumed by the rollback.
+      expect(await File('$currentDbPath.bak').exists(), isFalse);
+      expect(await File('$currentDbPath-wal.bak').exists(), isFalse);
+      expect(await File('$currentDbPath-shm.bak').exists(), isFalse);
+
+      // The original database is back, intact, with its original rows.
+      final integrity = await reopened!.rawQuery('PRAGMA integrity_check');
+      expect(integrity.first.values.first, 'ok');
+      final rows = await reopened!.query('items', orderBy: 'id');
+      expect(rows.map((r) => r['v']).toList(), ['original-row']);
+
+      await reopened!.close();
+      DatabaseService.resetTestDatabase();
+    });
   });
 }

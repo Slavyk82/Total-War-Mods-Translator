@@ -145,6 +145,10 @@ class TmxService {
   /// [sourceLanguage]: Source language code (ISO 639-1)
   /// [targetLanguage]: Target language code (ISO 639-1)
   /// [pageSize]: Number of entries to fetch per page (default: 5000)
+  /// [includeMetadata]: When false, the TWMT-specific per-TU `<prop>`
+  /// elements (x-usage-count, x-provider-id) are omitted
+  /// [headerProperties]: Optional `<prop type="...">value</prop>` elements
+  /// written inside the TMX `<header>` (e.g. export summary statistics)
   ///
   /// Returns Ok(int) with total entries written on success,
   /// Err(TmExportException) on failure.
@@ -156,30 +160,51 @@ class TmxService {
     required String sourceLanguage,
     required String targetLanguage,
     int pageSize = 5000,
+    bool includeMetadata = true,
+    Map<String, String>? headerProperties,
   }) async {
     _logger.info('Starting streaming TMX export', {
       'filePath': filePath,
       'sourceLanguage': sourceLanguage,
       'targetLanguage': targetLanguage,
       'pageSize': pageSize,
+      'includeMetadata': includeMetadata,
+      'headerProperties': headerProperties?.keys.toList(),
     });
 
     final sink = File(filePath).openWrite(encoding: utf8);
     int totalWritten = 0;
 
     try {
-      // Write XML prolog and TMX opening tags
+      // Write XML prolog and TMX opening tags. The header is built with an
+      // XmlBuilder so optional nested <prop> values are correctly escaped.
+      final headerBuilder = XmlBuilder();
+      headerBuilder.element('header', attributes: {
+        'creationtool': _creationTool,
+        'creationtoolversion': _creationToolVersion,
+        'datatype': _datatype,
+        'segtype': _segtype,
+        'adminlang': _adminLang,
+        'srclang': sourceLanguage,
+        'o-tmf': _creationTool,
+      }, nest: () {
+        for (final prop in (headerProperties ?? const {}).entries) {
+          headerBuilder.element('prop', attributes: {
+            'type': prop.key,
+          }, nest: () {
+            headerBuilder.text(prop.value);
+          });
+        }
+      });
+      final headerXml = headerBuilder
+          .buildFragment()
+          .children
+          .map((node) => node.toXmlString(pretty: true, indent: '  '))
+          .join();
+
       sink.write('<?xml version="1.0" encoding="UTF-8"?>\n');
       sink.write('<tmx version="$_tmxVersion">\n');
-      sink.write('  <header'
-          ' creationtool="$_creationTool"'
-          ' creationtoolversion="$_creationToolVersion"'
-          ' datatype="$_datatype"'
-          ' segtype="$_segtype"'
-          ' adminlang="$_adminLang"'
-          ' srclang="$sourceLanguage"'
-          ' o-tmf="$_creationTool"'
-          '/>\n');
+      sink.write('  $headerXml\n');
       sink.write('  <body>\n');
 
       int offset = 0;
@@ -204,7 +229,13 @@ class TmxService {
           // are the actual XmlElement nodes. Serialize each child individually
           // to obtain the raw <tu>...</tu> string without the fragment wrapper.
           final tuBuilder = XmlBuilder();
-          _buildTranslationUnit(tuBuilder, entry, sourceLanguage, targetLanguage);
+          _buildTranslationUnit(
+            tuBuilder,
+            entry,
+            sourceLanguage,
+            targetLanguage,
+            includeMetadata: includeMetadata,
+          );
           final fragment = tuBuilder.buildFragment();
           for (final node in fragment.children) {
             final tuString = node.toXmlString(pretty: true, indent: '  ');
@@ -241,27 +272,34 @@ class TmxService {
   }
 
   /// Build a translation unit (TU) element for the TMX document.
+  ///
+  /// [includeMetadata] controls the TWMT-specific `<prop>` elements
+  /// (x-usage-count, x-provider-id); the source/target `<tuv>` variants are
+  /// always written.
   void _buildTranslationUnit(
     XmlBuilder builder,
     TranslationMemoryEntry entry,
     String sourceLanguage,
-    String targetLanguage,
-  ) {
+    String targetLanguage, {
+    bool includeMetadata = true,
+  }) {
     builder.element('tu', nest: () {
       // Add custom properties
-      builder.element('prop', attributes: {
-        'type': 'x-usage-count',
-      }, nest: () {
-        builder.text(entry.usageCount.toString());
-      });
-
-      if (entry.translationProviderId != null &&
-          entry.translationProviderId!.isNotEmpty) {
+      if (includeMetadata) {
         builder.element('prop', attributes: {
-          'type': 'x-provider-id',
+          'type': 'x-usage-count',
         }, nest: () {
-          builder.text(entry.translationProviderId!);
+          builder.text(entry.usageCount.toString());
         });
+
+        if (entry.translationProviderId != null &&
+            entry.translationProviderId!.isNotEmpty) {
+          builder.element('prop', attributes: {
+            'type': 'x-provider-id',
+          }, nest: () {
+            builder.text(entry.translationProviderId!);
+          });
+        }
       }
 
       // Source variant

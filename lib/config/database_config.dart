@@ -75,36 +75,32 @@ class DatabaseConfig {
 
   /// Get the logs directory path
   ///
-  /// On Windows: %LOCALAPPDATA%\TWMT\logs
+  /// On Windows: %LOCALAPPDATA%\<app>\logs
+  ///
+  /// Uses getApplicationCacheDirectory() (a stable, app-specific location)
+  /// instead of deriving %LOCALAPPDATA% from getTemporaryDirectory().parent,
+  /// which breaks when TMP/TEMP is redirected. This matches the logs path
+  /// used by LoggingService and FileWatchService.
   static Future<String> getLogsDirectory() async {
-    // Use getTemporaryDirectory() which resolves to %LOCALAPPDATA%\Temp on Windows
-    // Then navigate to parent to get %LOCALAPPDATA%
-    final tempDir = await getTemporaryDirectory();
-    final localAppData = tempDir.parent;
+    final cacheBase = await getApplicationCacheDirectory();
 
-    final logsDir = path.join(
-      localAppData.path,
-      appDirectoryName,
-      'logs',
-    );
+    final logsDir = path.join(cacheBase.path, 'logs');
     await Directory(logsDir).create(recursive: true);
     return logsDir;
   }
 
   /// Get the cache directory path
   ///
-  /// On Windows: %LOCALAPPDATA%\TWMT\cache
+  /// On Windows: %LOCALAPPDATA%\<app>\cache
+  ///
+  /// Uses getApplicationCacheDirectory() (a stable, app-specific location)
+  /// instead of deriving %LOCALAPPDATA% from getTemporaryDirectory().parent,
+  /// which breaks when TMP/TEMP is redirected. This matches the cache path
+  /// used by FileWatchService.
   static Future<String> getCacheDirectory() async {
-    // Use getTemporaryDirectory() which resolves to %LOCALAPPDATA%\Temp on Windows
-    // Then navigate to parent to get %LOCALAPPDATA%
-    final tempDir = await getTemporaryDirectory();
-    final localAppData = tempDir.parent;
+    final cacheBase = await getApplicationCacheDirectory();
 
-    final cacheDir = path.join(
-      localAppData.path,
-      appDirectoryName,
-      'cache',
-    );
+    final cacheDir = path.join(cacheBase.path, 'cache');
     await Directory(cacheDir).create(recursive: true);
     return cacheDir;
   }

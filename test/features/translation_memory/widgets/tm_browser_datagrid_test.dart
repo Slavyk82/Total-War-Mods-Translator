@@ -201,6 +201,9 @@ class _FakeTmService implements ITranslationMemoryService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
+    int? minUsageCount,
+    bool includeMetadata = true,
+    bool includeStats = true,
   }) async =>
       const Ok(0);
 

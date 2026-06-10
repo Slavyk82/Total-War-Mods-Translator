@@ -251,7 +251,13 @@ class _GlossaryEntryEditorDialogState
 
       if (!mounted) return;
 
+      // The datagrid swaps between [glossaryEntriesProvider] and
+      // [glossarySearchResultsProvider] depending on whether a search filter
+      // is active, so both must be invalidated — otherwise an entry edited
+      // from active search results keeps showing its pre-save terms until
+      // the search text changes (mirrors GlossaryEntryEditor.delete).
       ref.invalidate(glossaryEntriesProvider);
+      ref.invalidate(glossarySearchResultsProvider);
       ref.invalidate(glossaryStatisticsProvider);
 
       Navigator.of(context).pop();

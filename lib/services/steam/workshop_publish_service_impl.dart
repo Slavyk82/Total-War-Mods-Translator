@@ -205,17 +205,22 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         await File(vdfPath).delete();
       } catch (_) {}
 
-      if (run.exitCode == -1) {
-        return Err(const SteamCmdTimeoutException(
-          'Publish operation timed out after 5 minutes',
-          timeoutSeconds: 300,
-        ));
-      }
-
+      // Cancellation must be checked BEFORE interpreting exitCode == -1 as a
+      // timeout: cancel() kills the process, and on Windows Process.kill
+      // surfaces exit code -1 — the same sentinel the onTimeout handler
+      // returns. Checking -1 first would report a deliberate user cancel as
+      // a timeout.
       if (_isCancelled) {
         return Err(const SteamServiceException(
           'Publish cancelled by user',
           code: 'PUBLISH_CANCELLED',
+        ));
+      }
+
+      if (run.exitCode == -1) {
+        return Err(const SteamCmdTimeoutException(
+          'Publish operation timed out after 5 minutes',
+          timeoutSeconds: 300,
         ));
       }
 

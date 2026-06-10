@@ -341,7 +341,11 @@ class ParallelBatchProcessor {
     // Every chunk computes failedUnits relative to the shared pre-LLM
     // `currentProgress` baseline, so the per-chunk delta is the number of
     // failures that chunk itself observed (e.g. units omitted from the LLM
-    // response). Sum the deltas on top of the baseline.
+    // response). When a chunk auto-splits, _splitAndProcess chains the
+    // baseline through both halves (each half builds on the previous half's
+    // progress), so the chunk's returned progress is cumulative and the
+    // delta below covers every sub-batch. Sum the deltas on top of the
+    // baseline.
     int totalFailedUnits = currentProgress.failedUnits;
     final allLlmLogs = <LlmExchangeLog>[...currentProgress.llmLogs];
 

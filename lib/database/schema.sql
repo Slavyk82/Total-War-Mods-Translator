@@ -671,26 +671,11 @@ LEFT JOIN translation_units tu ON tu.project_id = p.id AND tu.is_obsolete = 0
 LEFT JOIN translation_versions tv ON tv.unit_id = tu.id AND tv.project_language_id = pl.id
 GROUP BY pl.id;
 
--- View for translations needing review
-CREATE VIEW IF NOT EXISTS v_translations_needing_review AS
-SELECT
-    tv.id AS version_id,
-    tu.project_id,
-    l.code AS language_code,
-    tu.key,
-    tu.source_text,
-    tv.translated_text,
-    tv.status,
-    tv.confidence_score,
-    tv.validation_issues,
-    tv.updated_at
-FROM translation_versions tv
-INNER JOIN translation_units tu ON tv.unit_id = tu.id
-INNER JOIN project_languages pl ON tv.project_language_id = pl.id
-INNER JOIN languages l ON pl.language_id = l.id
-WHERE tv.status IN ('needs_review', 'translated')
-    AND tu.is_obsolete = 0
-    AND (tv.confidence_score < 0.8 OR tv.validation_issues IS NOT NULL);
+-- NOTE: The former v_translations_needing_review view was removed. It
+-- referenced tv.confidence_score, which does not exist on
+-- translation_versions, so every full schema re-parse (e.g. unrelated
+-- ALTER TABLE ... DROP COLUMN / RENAME) failed on it. Existing databases
+-- are repaired by DropBrokenReviewViewMigration.
 
 -- ============================================================================
 -- TRIGGERS

@@ -141,19 +141,27 @@ mixin TranslationMemoryFtsMixin {
         return <TranslationMemoryEntry>[];
       }
 
-      // Build the FTS5 MATCH clause based on search scope
+      // Build the FTS5 MATCH clause based on search scope.
+      //
+      // The OR expression MUST be parenthesized: in FTS5 syntax a column
+      // filter ('col:' or '{col1 col2}:') binds only to the immediately
+      // following phrase, so 'source_text:"a"* OR "b"*' would match the
+      // second term against ALL columns and leak results from the other
+      // column. 'source_text : ("a"* OR "b"*)' scopes every term.
+      // The tokenizer strips '(' and ')' from user input, so the query
+      // cannot break out of the group.
       String ftsMatchClause;
       switch (searchScope) {
         case 'source':
-          ftsMatchClause = 'source_text:$ftsQuery';
+          ftsMatchClause = 'source_text : ($ftsQuery)';
           break;
         case 'target':
-          ftsMatchClause = 'translated_text:$ftsQuery';
+          ftsMatchClause = 'translated_text : ($ftsQuery)';
           break;
         case 'both':
         default:
-          // Search in both columns using OR
-          ftsMatchClause = '{source_text translated_text}:$ftsQuery';
+          // Search in both columns
+          ftsMatchClause = '{source_text translated_text} : ($ftsQuery)';
           break;
       }
 

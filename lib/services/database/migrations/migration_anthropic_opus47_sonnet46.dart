@@ -48,13 +48,28 @@ class AnthropicOpus47Sonnet46Migration extends Migration {
         WHERE code = 'anthropic'
       ''');
 
-      // Insert the new aliases. is_default = 1 on Sonnet 4.6 so the model
-      // picker has a clear primary choice; is_default = 0 on Opus 4.7.
+      // Was the superseded Sonnet 4.5 snapshot still the model-level
+      // default? Captured before the archive step below clears the flag;
+      // decides whether Sonnet 4.6 inherits it. If the user starred another
+      // model (e.g. Haiku 4.5 — setAsDefault clears defaults across all
+      // providers), this is false and the user's choice must be preserved.
+      final legacyDefault = await DatabaseService.database.rawQuery(
+        "SELECT COUNT(*) as cnt FROM llm_provider_models "
+        "WHERE provider_code = 'anthropic' "
+        "AND model_id = 'claude-sonnet-4-5-20250929' AND is_default = 1",
+      );
+      final legacyWasDefault =
+          ((legacyDefault.first['cnt'] as int?) ?? 0) > 0;
+
+      // Insert the new aliases with is_default = 0: the single-default
+      // trigger (trg_llm_models_single_default) is BEFORE UPDATE only and
+      // does NOT fire on INSERT, so inserting with is_default = 1 would
+      // silently create a second default next to a user-chosen one.
       await DatabaseService.execute('''
         INSERT OR IGNORE INTO llm_provider_models
         (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
         VALUES
-        ('model_claude_sonnet_4_6', 'anthropic', 'claude-sonnet-4-6', 'Claude Sonnet 4.6', 1, 1, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
+        ('model_claude_sonnet_4_6', 'anthropic', 'claude-sonnet-4-6', 'Claude Sonnet 4.6', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
       ''');
 
       await DatabaseService.execute('''
@@ -74,6 +89,18 @@ class AnthropicOpus47Sonnet46Migration extends Migration {
             updated_at = strftime('%s', 'now')
         WHERE provider_code = 'anthropic' AND model_id = 'claude-sonnet-4-5-20250929'
       ''');
+
+      // Only when the cleared legacy row WAS the default does Sonnet 4.6
+      // inherit it — and via UPDATE, so the single-default trigger clears
+      // any other default for the provider.
+      if (legacyWasDefault) {
+        await DatabaseService.execute('''
+          UPDATE llm_provider_models
+          SET is_default = 1,
+              updated_at = strftime('%s', 'now')
+          WHERE provider_code = 'anthropic' AND model_id = 'claude-sonnet-4-6'
+        ''');
+      }
 
       _logger.info('Anthropic Opus 4.7 / Sonnet 4.6 added; Sonnet 4.5 archived');
       return true;

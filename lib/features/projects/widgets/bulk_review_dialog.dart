@@ -9,6 +9,7 @@ import 'package:twmt/features/projects/providers/bulk_target_language_provider.d
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_operation_progress_dialog.dart';
+import 'package:twmt/features/settings/providers/settings_providers.dart';
 import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
@@ -240,7 +241,15 @@ Future<({String providerId, String? modelId})?> _resolveProviderModel(
       );
     }
   }
-  return null;
+  // Same fallback as _resolveSelectedProvider: when no editor model is
+  // selected (or its row no longer exists), fall back to the global
+  // `active_llm_provider` setting (provider only, no modelId) so the
+  // per-row retranslate works in the same configurations as the bulk
+  // "Translate all" / "Retranslate all" actions.
+  final settings = await ref.read(llmProviderSettingsProvider.future);
+  final activeCode = settings['active_llm_provider'] ?? '';
+  if (activeCode.isEmpty) return null;
+  return (providerId: 'provider_$activeCode', modelId: null);
 }
 
 // ---------------------------------------------------------------------------

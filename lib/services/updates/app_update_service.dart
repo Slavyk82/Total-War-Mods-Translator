@@ -158,16 +158,34 @@ class AppUpdateService {
       final totalBytes = response.contentLength ?? asset.size;
       var downloadedBytes = 0;
 
-      await for (final chunk in response.stream) {
-        sink.add(chunk);
-        downloadedBytes += chunk.length;
+      try {
+        await for (final chunk in response.stream) {
+          sink.add(chunk);
+          downloadedBytes += chunk.length;
 
-        if (onProgress != null && totalBytes > 0) {
-          onProgress(downloadedBytes / totalBytes);
+          if (onProgress != null && totalBytes > 0) {
+            onProgress(downloadedBytes / totalBytes);
+          }
         }
-      }
 
-      await sink.close();
+        await sink.close();
+      } catch (e) {
+        // Close the sink on failure so the OS file handle is released.
+        try {
+          await sink.close();
+        } catch (_) {
+          // Ignore close errors; the original failure is reported below.
+        }
+        // Remove the partial installer so a stale file is never launched.
+        try {
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {
+          // Best effort: leftovers are removed by cleanupOldInstallers().
+        }
+        rethrow;
+      }
 
       return Ok(filePath);
     } catch (e) {

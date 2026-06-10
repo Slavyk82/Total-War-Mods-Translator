@@ -76,6 +76,73 @@ void main() {
       expect(imported.last.sourceText, 'source 6');
     });
 
+    test(
+        'includeMetadata: false omits TWMT props while staying a valid, '
+        'round-trippable TMX', () async {
+      final entries = [
+        TranslationMemoryEntry(
+          id: 'id-0',
+          sourceText: 'source 0',
+          sourceHash: 'hash-0',
+          sourceLanguageId: 'en',
+          translatedText: 'target 0',
+          targetLanguageId: 'fr',
+          usageCount: 7,
+          translationProviderId: 'provider_openai',
+          createdAt: 1000,
+          updatedAt: 1000,
+          lastUsedAt: 1000,
+        ),
+      ];
+      final outputPath = p.join(tmpDir.path, 'no_meta.tmx');
+
+      final result = await service.exportToTmxStreaming(
+        filePath: outputPath,
+        pageFetcher: (offset, pageSize) async =>
+            Ok(offset == 0 ? entries : const []),
+        sourceLanguage: 'en',
+        targetLanguage: 'fr',
+        includeMetadata: false,
+      );
+
+      expect(result.isOk, true);
+      final xml = File(outputPath).readAsStringSync();
+      expect(xml, isNot(contains('x-usage-count')));
+      expect(xml, isNot(contains('x-provider-id')));
+
+      final importResult = await service.importFromTmx(filePath: outputPath);
+      expect(importResult.isOk, true);
+      final imported = importResult.unwrap();
+      expect(imported.single.sourceText, 'source 0');
+      expect(imported.single.targetText, 'target 0');
+    });
+
+    test('headerProperties are written escaped into the TMX header',
+        () async {
+      final outputPath = p.join(tmpDir.path, 'header_props.tmx');
+
+      final result = await service.exportToTmxStreaming(
+        filePath: outputPath,
+        pageFetcher: (_, _) async => const Ok([]),
+        sourceLanguage: 'en',
+        targetLanguage: 'fr',
+        headerProperties: {
+          'x-entry-count': '0',
+          'x-note': 'a < b & "c"',
+        },
+      );
+
+      expect(result.isOk, true);
+      final xml = File(outputPath).readAsStringSync();
+      expect(xml, contains('<prop type="x-entry-count">0</prop>'));
+      expect(xml, contains('a &lt; b &amp;'),
+          reason: 'header prop values must be XML-escaped');
+
+      // The file must remain a parseable TMX despite the nested header.
+      final importResult = await service.importFromTmx(filePath: outputPath);
+      expect(importResult.isOk, true);
+    });
+
     test('returns Ok(0) when pageFetcher returns empty first page', () async {
       final outputPath = p.join(tmpDir.path, 'empty.tmx');
 

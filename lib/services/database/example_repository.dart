@@ -311,28 +311,6 @@ class ExampleProjectRepository {
     }
   }
 
-  /// Get translations needing review using view
-  ///
-  /// Demonstrates:
-  /// - Using specialized view
-  /// - Filtering pre-calculated data
-  Future<List<Map<String, dynamic>>> getTranslationsNeedingReview(
-    String projectId,
-  ) async {
-    try {
-      return await DatabaseService.rawQuery(
-        'SELECT * FROM v_translations_needing_review WHERE project_id = ? ORDER BY updated_at DESC',
-        [projectId],
-      );
-    } catch (e, stackTrace) {
-      throw TWMTDatabaseException(
-        'Failed to get translations needing review: $projectId',
-        error: e,
-        stackTrace: stackTrace,
-      );
-    }
-  }
-
   /// Update translation with history tracking
   ///
   /// Demonstrates:
