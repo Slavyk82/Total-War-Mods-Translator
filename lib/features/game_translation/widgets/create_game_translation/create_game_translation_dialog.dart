@@ -184,7 +184,11 @@ class _CreateGameTranslationDialogState
         id: projectId,
         name: projectName,
         projectType: 'game',
-        sourceLanguageCode: sourcePack.languageCode,
+        // Store the DB/ISO code, not the raw Total War pack code (cn/jp/kr/...),
+        // so downstream consumers (editor source lang, TM resolveLanguageId)
+        // can resolve it — consistent with the target-exclusion mapping above.
+        sourceLanguageCode:
+            SourceLanguageResolver.mapPackCodeToDbCode(sourcePack.languageCode),
         gameInstallationId: gameInstallation.id,
         sourceFilePath: sourcePack.packFilePath,
         outputFilePath: outputFolder,

@@ -44,6 +44,15 @@ class _PackImportDialogState extends ConsumerState<PackImportDialog> {
   String _importMessage = '';
   bool _isCancelled = false;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Keep the grid's captured theme tokens in sync when the app theme is
+    // toggled while this dialog is open (the data source captured them at
+    // preview-load time). updateTokens no-ops when the theme is unchanged.
+    _dataSource?.updateTokens(context.tokens);
+  }
+
   Future<void> _selectFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -691,7 +700,10 @@ class _TokenCheckbox extends StatelessWidget {
 class _PackImportDataSource extends DataGridSource {
   final List<PackImportEntry> entries;
   Set<String> selectedKeys;
-  final TwmtThemeTokens tokens;
+  // Not final: kept in sync with the live theme via [updateTokens] so the grid
+  // does not render with the palette captured at preview-load time after the
+  // user toggles the app theme while the dialog is open.
+  TwmtThemeTokens tokens;
   final void Function(String key, bool selected) onSelectionChanged;
 
   _PackImportDataSource({
@@ -721,6 +733,14 @@ class _PackImportDataSource extends DataGridSource {
 
   void updateSelection(Set<String> newSelection) {
     selectedKeys = newSelection;
+    notifyListeners();
+  }
+
+  /// Re-render with fresh theme tokens. No-ops (so the grid is not rebuilt)
+  /// when the theme is unchanged — TwmtThemeTokens has value equality.
+  void updateTokens(TwmtThemeTokens newTokens) {
+    if (tokens == newTokens) return;
+    tokens = newTokens;
     notifyListeners();
   }
 

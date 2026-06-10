@@ -24,6 +24,16 @@ class LlmCustomRules extends _$LlmCustomRules {
     );
   }
 
+  /// Invalidate this notifier AND the derived enabled-count / has-enabled
+  /// providers. Those are standalone @riverpod functions that do NOT watch this
+  /// notifier, so invalidateSelf() alone left the accordion's "active count"
+  /// badge stale after a mutation (mirrors the IgnoredSourceTexts notifier).
+  void _invalidateRuleCaches() {
+    ref.invalidateSelf();
+    ref.invalidate(enabledRulesCountProvider);
+    ref.invalidate(hasEnabledRulesProvider);
+  }
+
   /// Add a new custom rule
   ///
   /// Returns (success, errorMessage)
@@ -33,7 +43,7 @@ class LlmCustomRules extends _$LlmCustomRules {
 
     return result.when(
       ok: (_) {
-        ref.invalidateSelf();
+        _invalidateRuleCaches();
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -49,7 +59,7 @@ class LlmCustomRules extends _$LlmCustomRules {
 
     return result.when(
       ok: (_) {
-        ref.invalidateSelf();
+        _invalidateRuleCaches();
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -65,7 +75,7 @@ class LlmCustomRules extends _$LlmCustomRules {
 
     return result.when(
       ok: (_) {
-        ref.invalidateSelf();
+        _invalidateRuleCaches();
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -81,7 +91,7 @@ class LlmCustomRules extends _$LlmCustomRules {
 
     return result.when(
       ok: (_) {
-        ref.invalidateSelf();
+        _invalidateRuleCaches();
         return (true, null);
       },
       err: (error) => (false, error.message),
@@ -98,7 +108,7 @@ class LlmCustomRules extends _$LlmCustomRules {
 
     return result.when(
       ok: (_) {
-        ref.invalidateSelf();
+        _invalidateRuleCaches();
         return (true, null);
       },
       err: (error) => (false, error.message),
