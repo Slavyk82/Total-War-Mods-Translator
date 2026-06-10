@@ -19,7 +19,11 @@ class LlmProviderSection extends ConsumerStatefulWidget {
   final String providerCode;
   final String providerName;
   final TextEditingController apiKeyController;
-  final VoidCallback onSaveApiKey;
+
+  /// Persists the current API-key field text. Returns a future so callers
+  /// (e.g. the Test-connection flow) can await the secure-storage write
+  /// before reading the key back.
+  final Future<void> Function() onSaveApiKey;
   final Widget? additionalSettings;
 
   const LlmProviderSection({
@@ -58,7 +62,7 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
     // Flush any pending save so a value typed right before disposal is not lost.
     if (_apiKeyDebounceTimer?.isActive ?? false) {
       _apiKeyDebounceTimer!.cancel();
-      widget.onSaveApiKey();
+      unawaited(widget.onSaveApiKey());
     }
     super.dispose();
   }
@@ -67,6 +71,17 @@ class _LlmProviderSectionState extends ConsumerState<LlmProviderSection> {
     setState(() => _isTesting = true);
 
     try {
+      // Flush the debounced API-key save before testing. testConnection
+      // reads the key from secure storage, so without this a click that
+      // follows typing (within the 600 ms debounce or while the async
+      // storage write is in flight) would validate the stale stored key —
+      // or report 'No API key configured' on first-time setup. Awaiting an
+      // unconditional save guarantees the field's current text is persisted
+      // before the test reads it back.
+      _apiKeyDebounceTimer?.cancel();
+      await widget.onSaveApiKey();
+      if (!mounted) return;
+
       final notifier = ref.read(llmProviderSettingsProvider.notifier);
       final (success, errorMessage) =
           await notifier.testConnection(widget.providerCode);

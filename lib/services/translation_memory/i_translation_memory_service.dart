@@ -218,12 +218,19 @@ abstract class ITranslationMemoryService {
   /// [outputPath]: Path for output .tmx file
   /// [sourceLanguageCode]: Optional source language filter
   /// [targetLanguageCode]: Optional target language filter
+  /// [minUsageCount]: Optional inclusive lower bound on `usage_count`
+  /// ("frequently used only" export scope)
+  /// [includeMetadata]: Whether per-TU TWMT metadata props are written
+  /// [includeStats]: Whether an export summary is written in the TMX header
   ///
   /// Returns number of entries exported
   Future<Result<int, TmExportException>> exportToTmx({
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
+    int? minUsageCount,
+    bool includeMetadata = true,
+    bool includeStats = true,
   });
 
   /// Get TM entries for review/editing

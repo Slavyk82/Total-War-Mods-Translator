@@ -350,19 +350,29 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
   /// Count entries matching optional filters.
   ///
   /// [targetLanguageId] - Optional target language filter
+  /// [minUsageCount] - Optional inclusive lower bound on `usage_count`
   ///
   /// Uses SELECT COUNT(*) so the whole table never has to be loaded.
   Future<Result<int, TWMTDatabaseException>> countWithFilters({
     String? targetLanguageId,
+    int? minUsageCount,
   }) async {
     return executeQuery(() async {
+      final whereConditions = <String>[];
       final whereArgs = <dynamic>[];
-      final whereClause = targetLanguageId != null
-          ? 'WHERE target_language_id = ?'
-          : '';
+
       if (targetLanguageId != null) {
+        whereConditions.add('target_language_id = ?');
         whereArgs.add(targetLanguageId);
       }
+      if (minUsageCount != null) {
+        whereConditions.add('usage_count >= ?');
+        whereArgs.add(minUsageCount);
+      }
+
+      final whereClause = whereConditions.isEmpty
+          ? ''
+          : 'WHERE ${whereConditions.join(' AND ')}';
 
       final result = await database.rawQuery(
         'SELECT COUNT(*) as count FROM $tableName $whereClause',
@@ -489,16 +499,33 @@ class TranslationMemoryRepository extends BaseRepository<TranslationMemoryEntry>
   /// Stream TM entries in fixed-size pages. Caller is responsible for writing
   /// each chunk to disk before requesting the next page — this avoids loading
   /// the full TM into RAM (500+ MB at 6M rows).
+  ///
+  /// [targetLanguageId] - Optional target language filter
+  /// [minUsageCount] - Optional inclusive lower bound on `usage_count`
+  /// (pushed down to SQL so paging offsets stay consistent with the filter)
   Future<Result<List<TranslationMemoryEntry>, TWMTDatabaseException>> getPage({
     required int offset,
     required int pageSize,
     String? targetLanguageId,
+    int? minUsageCount,
   }) async {
     return executeQuery(() async {
+      final whereConditions = <String>[];
+      final whereArgs = <dynamic>[];
+
+      if (targetLanguageId != null) {
+        whereConditions.add('target_language_id = ?');
+        whereArgs.add(targetLanguageId);
+      }
+      if (minUsageCount != null) {
+        whereConditions.add('usage_count >= ?');
+        whereArgs.add(minUsageCount);
+      }
+
       final maps = await database.query(
         tableName,
-        where: targetLanguageId != null ? 'target_language_id = ?' : null,
-        whereArgs: targetLanguageId != null ? [targetLanguageId] : null,
+        where: whereConditions.isEmpty ? null : whereConditions.join(' AND '),
+        whereArgs: whereArgs.isEmpty ? null : whereArgs,
         orderBy: 'id ASC',
         limit: pageSize,
         offset: offset,

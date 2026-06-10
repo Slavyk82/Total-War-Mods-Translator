@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
+import 'package:twmt/services/shared/i_process_launcher.dart';
 import 'package:twmt/services/steam/i_steamcmd_service.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
@@ -13,15 +14,20 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 class SteamCmdServiceImpl implements ISteamCmdService {
   final SteamCmdManager _manager;
   final ILoggingService _logger;
+  final IProcessLauncher _processLauncher;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
 
   Process? _currentProcess;
   bool _isCancelled = false;
 
-  SteamCmdServiceImpl({ILoggingService? logger, SteamCmdManager? manager})
-      : _logger = logger ?? ServiceLocator.get<ILoggingService>(),
-        _manager = manager ?? SteamCmdManager();
+  SteamCmdServiceImpl({
+    ILoggingService? logger,
+    SteamCmdManager? manager,
+    IProcessLauncher? processLauncher,
+  })  : _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _manager = manager ?? SteamCmdManager(),
+        _processLauncher = processLauncher ?? const ProcessLauncher();
 
   @override
   Stream<double> get progressStream => _progressController.stream;
@@ -98,7 +104,7 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       _logger.info('Executing: $steamCmdPath ${command.join(" ")}');
 
       // Execute SteamCMD (runInShell: false for security - prevents command injection)
-      _currentProcess = await Process.start(
+      _currentProcess = await _processLauncher.start(
         steamCmdPath,
         command,
         runInShell: false,
@@ -109,22 +115,47 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       final stderr = StringBuffer();
       final warnings = <String>[];
 
-      _currentProcess!.stdout.listen((data) {
-        final output = String.fromCharCodes(data);
-        stdout.write(output);
-
-        // Try to extract progress (SteamCMD progress format varies)
-        _tryExtractProgress(output);
-
-        // Collect warnings
-        if (output.toLowerCase().contains('warning')) {
-          warnings.add(output.trim());
+      // Ensure stdout/stderr are fully drained before the buffers are read.
+      // The process can exit while output events are still queued, so
+      // awaiting exitCode alone can truncate stderr (wrong error message)
+      // and lose collected warnings.
+      final outputCompleter = Completer<void>();
+      var stdoutDone = false;
+      var stderrDone = false;
+      void checkDone() {
+        if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
+          outputCompleter.complete();
         }
-      });
+      }
 
-      _currentProcess!.stderr.listen((data) {
-        stderr.write(String.fromCharCodes(data));
-      });
+      _currentProcess!.stdout.listen(
+        (data) {
+          final output = String.fromCharCodes(data);
+          stdout.write(output);
+
+          // Try to extract progress (SteamCMD progress format varies)
+          _tryExtractProgress(output);
+
+          // Collect warnings
+          if (output.toLowerCase().contains('warning')) {
+            warnings.add(output.trim());
+          }
+        },
+        onDone: () {
+          stdoutDone = true;
+          checkDone();
+        },
+      );
+
+      _currentProcess!.stderr.listen(
+        (data) {
+          stderr.write(String.fromCharCodes(data));
+        },
+        onDone: () {
+          stderrDone = true;
+          checkDone();
+        },
+      );
 
       // Wait for completion with timeout (10 minutes)
       final exitCode = await _currentProcess!.exitCode.timeout(
@@ -135,17 +166,29 @@ class SteamCmdServiceImpl implements ISteamCmdService {
         },
       );
 
-      if (exitCode == -1) {
-        return Err(const SteamCmdTimeoutException(
-          'Download timed out',
-          timeoutSeconds: 600,
-        ));
-      }
+      // Wait for any output still queued after the process exited so the
+      // buffers (error message, warnings) are complete before being read.
+      await outputCompleter.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
 
+      // Cancellation must be checked BEFORE interpreting exitCode == -1 as a
+      // timeout: cancel() kills the process, and on Windows Process.kill
+      // surfaces exit code -1 — the same sentinel the onTimeout handler
+      // returns. Checking -1 first would report a deliberate user cancel as
+      // 'Download timed out'.
       if (_isCancelled) {
         return Err(const SteamServiceException(
           'Download cancelled by user',
           code: 'DOWNLOAD_CANCELLED',
+        ));
+      }
+
+      if (exitCode == -1) {
+        return Err(const SteamCmdTimeoutException(
+          'Download timed out',
+          timeoutSeconds: 600,
         ));
       }
 

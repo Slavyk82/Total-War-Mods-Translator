@@ -48,13 +48,28 @@ class OpenAiGpt5xModelsMigration extends Migration {
         WHERE code = 'openai'
       ''');
 
-      // Insert the new aliases. is_default = 0 because the global default
-      // selection is owned by the provider table / user preferences.
+      // Was the legacy snapshot still the model-level default? Captured
+      // before the archive step below clears the flag; decides whether
+      // gpt-5.5 inherits it. If the user starred another model (setAsDefault
+      // clears defaults across all providers), this is false and the user's
+      // choice must be preserved.
+      final legacyDefault = await DatabaseService.database.rawQuery(
+        "SELECT COUNT(*) as cnt FROM llm_provider_models "
+        "WHERE provider_code = 'openai' "
+        "AND model_id = 'gpt-5.1-2025-11-13' AND is_default = 1",
+      );
+      final legacyWasDefault =
+          ((legacyDefault.first['cnt'] as int?) ?? 0) > 0;
+
+      // Insert the new aliases. is_default = 0: the single-default trigger
+      // (trg_llm_models_single_default) is BEFORE UPDATE only and does NOT
+      // fire on INSERT, so inserting with is_default = 1 would silently
+      // create a second default next to a user-chosen one.
       await DatabaseService.execute('''
         INSERT OR IGNORE INTO llm_provider_models
         (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
         VALUES
-        ('model_gpt_5_5', 'openai', 'gpt-5.5', 'GPT-5.5', 1, 1, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
+        ('model_gpt_5_5', 'openai', 'gpt-5.5', 'GPT-5.5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'))
       ''');
 
       await DatabaseService.execute('''
@@ -74,6 +89,18 @@ class OpenAiGpt5xModelsMigration extends Migration {
             updated_at = strftime('%s', 'now')
         WHERE provider_code = 'openai' AND model_id = 'gpt-5.1-2025-11-13'
       ''');
+
+      // Only when the cleared legacy row WAS the default does gpt-5.5
+      // inherit it — and via UPDATE, so the single-default trigger clears
+      // any other default for the provider.
+      if (legacyWasDefault) {
+        await DatabaseService.execute('''
+          UPDATE llm_provider_models
+          SET is_default = 1,
+              updated_at = strftime('%s', 'now')
+          WHERE provider_code = 'openai' AND model_id = 'gpt-5.5'
+        ''');
+      }
 
       _logger.info('OpenAI v5.4/5.5 models added; legacy gpt-5.1 archived');
       return true;

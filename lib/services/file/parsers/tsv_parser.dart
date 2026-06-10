@@ -36,6 +36,7 @@ class TsvParser {
       final lines = content.split('\n');
 
       int lineNumber = 0;
+      bool isFirstDataRow = true;
 
       for (final line in lines) {
         lineNumber++;
@@ -58,6 +59,18 @@ class TsvParser {
         if (parts.length < 2) {
           // Invalid line - skip or throw based on options
           continue;
+        }
+
+        // Skip the RPFM TSV header row ('key\ttext\ttooltip') emitted by
+        // rpfm-cli --tables-as-tsv exports. Only the first data row is
+        // checked, and only an exact header match is skipped, so legitimate
+        // entries are never dropped (see TsvLocalizationParser, which skips
+        // the same header on the file-based path).
+        if (isFirstDataRow) {
+          isFirstDataRow = false;
+          if (_isRpfmHeaderRow(parts)) {
+            continue;
+          }
         }
 
         final key = parts[0].trim();
@@ -336,6 +349,21 @@ class TsvParser {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Check if a split TSV row is the RPFM export header row.
+  ///
+  /// RPFM-CLI's `--tables-as-tsv` export starts every loc TSV with the
+  /// header row `key\ttext\ttooltip` (followed by a `#Loc;...` metadata
+  /// line that is already skipped as a comment).
+  bool _isRpfmHeaderRow(List<String> parts) {
+    if (parts.length < 2 || parts.length > 3) {
+      return false;
+    }
+    if (parts[0].trim() != 'key' || parts[1].trim() != 'text') {
+      return false;
+    }
+    return parts.length == 2 || parts[2].trim() == 'tooltip';
   }
 
   /// Unescape special characters in .loc values

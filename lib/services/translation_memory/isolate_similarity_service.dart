@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:meta/meta.dart';
+
 /// Message sent to the isolate for batch similarity computation
 class SimilarityBatchRequest {
   final String sourceText;
@@ -58,6 +60,22 @@ class IsolateSimilarityService {
   static IsolateSimilarityService? _instance;
   Isolate? _isolate;
   SendPort? _sendPort;
+  ReceivePort? _receivePort;
+
+  /// Single in-flight/completed initialization future.
+  ///
+  /// Assigned synchronously (before any await) in [initialize] so that all
+  /// concurrent callers await the SAME initialization: without it, a second
+  /// caller entering during the `Isolate.spawn` await would spawn a duplicate
+  /// (leaked) isolate, and one entering between the spawn and the handshake
+  /// would early-return and hit `_sendPort!` while it was still null.
+  Future<void>? _initFuture;
+
+  /// Isolate spawn function — injectable for tests to count/fail spawns.
+  final Future<Isolate> Function(
+    void Function(SendPort) entryPoint,
+    SendPort message,
+  ) _spawn;
 
   /// Pre-compiled RegExp patterns for performance optimization.
   /// These patterns are used frequently in similarity calculations,
@@ -75,38 +93,71 @@ class IsolateSimilarityService {
   /// Maximum age for orphaned completers before cleanup
   static const Duration orphanedCompleterMaxAge = Duration(seconds: 60);
 
-  IsolateSimilarityService._();
+  IsolateSimilarityService._() : _spawn = Isolate.spawn;
+
+  /// Test-only constructor allowing a custom [spawn] function so tests can
+  /// count spawns and simulate spawn failures without touching the singleton.
+  @visibleForTesting
+  IsolateSimilarityService.forTesting({
+    Future<Isolate> Function(
+      void Function(SendPort) entryPoint,
+      SendPort message,
+    )? spawn,
+  }) : _spawn = spawn ?? Isolate.spawn;
 
   static IsolateSimilarityService get instance {
     _instance ??= IsolateSimilarityService._();
     return _instance!;
   }
 
-  /// Initialize the isolate
-  Future<void> initialize() async {
-    if (_isolate != null) return;
+  /// Initialize the isolate.
+  ///
+  /// Safe under concurrency: the first caller creates the init future and
+  /// every concurrent caller awaits that same future, which completes only
+  /// after the handshake delivered the isolate's [SendPort]. On failure the
+  /// future is cleared so a later call can retry from scratch.
+  Future<void> initialize() {
+    return _initFuture ??= _doInitialize();
+  }
 
+  Future<void> _doInitialize() async {
     final receivePort = ReceivePort();
-    _isolate = await Isolate.spawn(
-      _isolateEntryPoint,
-      receivePort.sendPort,
-    );
+    try {
+      final isolate = await _spawn(
+        _isolateEntryPoint,
+        receivePort.sendPort,
+      );
+      _isolate = isolate;
 
-    final completer = Completer<SendPort>();
-    receivePort.listen((message) {
-      if (message is SendPort) {
-        completer.complete(message);
-      } else if (message is _IsolateResponse) {
-        final responseCompleter = _responseCompleter.remove(message.requestId);
-        _requestTimestamps.remove(message.requestId);
-        responseCompleter?.complete(message.results);
-      }
-    });
+      final handshake = Completer<SendPort>();
+      receivePort.listen((message) {
+        if (message is SendPort) {
+          if (!handshake.isCompleted) {
+            handshake.complete(message);
+          }
+        } else if (message is _IsolateResponse) {
+          final responseCompleter =
+              _responseCompleter.remove(message.requestId);
+          _requestTimestamps.remove(message.requestId);
+          responseCompleter?.complete(message.results);
+        }
+      });
 
-    _sendPort = await completer.future;
+      _sendPort = await handshake.future;
+      _receivePort = receivePort;
 
-    // Start periodic cleanup of orphaned completers
-    _startCleanupTimer();
+      // Start periodic cleanup of orphaned completers
+      _startCleanupTimer();
+    } catch (e) {
+      // Reset state so a later initialize() can retry instead of awaiting
+      // a permanently failed future.
+      receivePort.close();
+      _isolate?.kill(priority: Isolate.immediate);
+      _isolate = null;
+      _sendPort = null;
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   /// Start periodic cleanup timer for orphaned completers
@@ -143,13 +194,22 @@ class IsolateSimilarityService {
     }
   }
 
-  /// Dispose of the isolate
+  /// Dispose of the isolate.
+  ///
+  /// Must not race an in-flight [initialize]: disposing mid-initialization
+  /// can resurrect the isolate after the handshake completes, or leave
+  /// waiters on a never-completing future. The production singleton lives
+  /// for the app's lifetime, so this is only a constraint for future callers.
   void dispose() {
     _cleanupTimer?.cancel();
     _cleanupTimer = null;
     _isolate?.kill(priority: Isolate.immediate);
     _isolate = null;
     _sendPort = null;
+    _receivePort?.close();
+    _receivePort = null;
+    // Clear the init latch so a later initialize() spawns a fresh isolate.
+    _initFuture = null;
 
     // Complete any pending completers with an error before clearing
     for (final completer in _responseCompleter.values) {
@@ -174,9 +234,10 @@ class IsolateSimilarityService {
     String? category,
     Duration timeout = defaultTimeout,
   }) async {
-    if (_sendPort == null) {
-      await initialize();
-    }
+    // Cheap when already initialized (returns the completed latch future);
+    // under concurrency every caller awaits the same in-flight init, so
+    // _sendPort is guaranteed non-null afterwards.
+    await initialize();
 
     final requestId = _requestId++;
     final completer = Completer<List<SimilarityResult>>();

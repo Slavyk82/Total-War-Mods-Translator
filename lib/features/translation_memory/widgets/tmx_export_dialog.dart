@@ -338,9 +338,18 @@ class _TmxExportDialogState extends ConsumerState<TmxExportDialog> {
     await ref.read(tmExportStateProvider.notifier).exportToTmx(
           outputPath: _outputPath!,
           targetLanguageCode: _targetLanguage,
+          minUsageCount: _exportScope == ExportScope.frequentlyUsed
+              ? _frequentlyUsedMinUsageCount
+              : null,
+          includeMetadata: _includeMetadata,
+          includeStats: _includeStats,
         );
   }
 }
+
+/// Usage-count threshold matching the "Frequently used only (>5 times)"
+/// option label: entries used more than 5 times, i.e. usage_count >= 6.
+const int _frequentlyUsedMinUsageCount = 6;
 
 class _ScopeRadio extends StatelessWidget {
   final ExportScope value;

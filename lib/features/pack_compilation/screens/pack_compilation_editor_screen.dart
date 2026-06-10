@@ -164,6 +164,11 @@ class _PackCompilationEditorScreenState
     final state = ref.watch(compilationEditorProvider);
     final languagesAsync = ref.watch(allLanguagesProvider);
     final currentGameAsync = ref.watch(currentGameInstallationProvider);
+    // While the auto-triggered conflict analysis is in flight, the compile
+    // callback would read `asData?.value == null` and silently skip the
+    // unresolved-conflicts warning dialog — so the Compile button is
+    // disabled until the analysis settles.
+    final isAnalyzingConflicts = ref.watch(isAnalyzingConflictsProvider);
     final notifier = ref.read(compilationEditorProvider.notifier);
     final languages = languagesAsync.asData?.value ?? const <Language>[];
     final gameInstallation = currentGameAsync.asData?.value;
@@ -240,7 +245,12 @@ class _PackCompilationEditorScreenState
                 ? FluentIcons.stop_24_regular
                 : FluentIcons.play_24_regular,
             filled: true,
-            onTap: _buildCompileCallback(state, notifier, gameInstallation),
+            onTap: _buildCompileCallback(
+              state,
+              notifier,
+              gameInstallation,
+              isAnalyzingConflicts: isAnalyzingConflicts,
+            ),
           ),
         ],
         extras: state.isCompiling ? null : const CompilationBBCodeSection(),
@@ -278,14 +288,23 @@ class _PackCompilationEditorScreenState
 
   /// Builds the Compile action callback. Returns null when the action is
   /// unavailable — the button renders its disabled visual in that case.
+  ///
+  /// [isAnalyzingConflicts] disables Compile while the conflict analysis is
+  /// still running: at that point [compilationConflictAnalysisProvider] is
+  /// AsyncLoading, so the callback below would see a null analysis and
+  /// bypass the unresolved-conflicts warning dialog entirely. An analysis
+  /// that ends in AsyncError deliberately does NOT block compiling (the
+  /// warning is advisory; a failed analysis must not hard-block the user).
   VoidCallback? _buildCompileCallback(
     CompilationEditorState state,
     CompilationEditorNotifier notifier,
-    GameInstallation? gameInstallation,
-  ) {
+    GameInstallation? gameInstallation, {
+    required bool isAnalyzingConflicts,
+  }) {
     if (state.isCompiling) return null;
     if (gameInstallation == null) return null;
     if (!state.canCompile) return null;
+    if (isAnalyzingConflicts) return null;
     return () async {
       final analysis =
           ref.read(compilationConflictAnalysisProvider).asData?.value;

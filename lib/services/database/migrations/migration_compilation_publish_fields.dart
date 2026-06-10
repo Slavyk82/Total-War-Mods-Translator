@@ -24,32 +24,55 @@ class CompilationPublishFieldsMigration extends Migration {
 
   @override
   Future<bool> isApplied() async {
-    final columns = await DatabaseService.database.rawQuery(
-      "PRAGMA table_info(compilations)"
-    );
-    return columns.any((col) => col['name'] == 'published_steam_id');
+    // Both columns must exist: the two ALTER statements auto-commit
+    // independently, so a crash between them leaves only the first column.
+    // Checking a single column would mark the half-applied state as done
+    // forever (permanent schema divergence).
+    final columns = await _existingColumns();
+    return columns.contains('published_steam_id') &&
+        columns.contains('published_at');
   }
 
   @override
   Future<bool> execute() async {
     try {
-      if (await isApplied()) {
-        return false; // Already applied
+      // Check-and-add each column independently. This is idempotent and also
+      // repairs databases left half-applied by a crash between the two
+      // auto-committed ALTER statements.
+      final columns = await _existingColumns();
+      var changed = false;
+
+      if (!columns.contains('published_steam_id')) {
+        await DatabaseService.execute('''
+          ALTER TABLE compilations
+          ADD COLUMN published_steam_id TEXT
+        ''');
+        changed = true;
       }
 
-      await DatabaseService.execute('''
-        ALTER TABLE compilations
-        ADD COLUMN published_steam_id TEXT
-      ''');
-      await DatabaseService.execute('''
-        ALTER TABLE compilations
-        ADD COLUMN published_at INTEGER
-      ''');
-      _logger.info('Added published_steam_id and published_at columns to compilations');
-      return true;
+      if (!columns.contains('published_at')) {
+        await DatabaseService.execute('''
+          ALTER TABLE compilations
+          ADD COLUMN published_at INTEGER
+        ''');
+        changed = true;
+      }
+
+      if (changed) {
+        _logger.info(
+            'Ensured published_steam_id and published_at columns on compilations');
+      }
+      return changed;
     } catch (e, stackTrace) {
       _logger.error('Failed to add compilation publish fields', e, stackTrace);
       return false;
     }
+  }
+
+  Future<Set<String>> _existingColumns() async {
+    final columns = await DatabaseService.database.rawQuery(
+      'PRAGMA table_info(compilations)',
+    );
+    return columns.map((col) => col['name'] as String).toSet();
   }
 }

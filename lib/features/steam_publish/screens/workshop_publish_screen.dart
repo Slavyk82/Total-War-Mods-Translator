@@ -359,16 +359,28 @@ class _WorkshopPublishScreenState
       );
     }
 
-    // Manage the elapsed timer based on the current phase.
+    // Manage the elapsed timer based on the current phase. The start time
+    // must be cleared whenever the publish reaches a terminal phase —
+    // otherwise a retried publish (error → Retry → Update) sees a stale
+    // non-null start time, never recreates the ticker, and shows an
+    // inflated, frozen elapsed time. Steam Guard / credentials prompts are
+    // intentionally NOT terminal: the progress view (with elapsed) stays
+    // visible and the upload resumes afterwards.
+    final isTerminalPhase = state.phase == PublishPhase.idle ||
+        state.phase == PublishPhase.completed ||
+        state.phase == PublishPhase.error ||
+        state.phase == PublishPhase.cancelled;
     if (state.isActive && _uploadStartTime == null) {
       _uploadStartTime = DateTime.now();
       _elapsedTimer?.cancel();
       _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
         if (mounted) setState(() {});
       });
-    } else if (!state.isActive && _elapsedTimer != null) {
+    } else if (isTerminalPhase &&
+        (_elapsedTimer != null || _uploadStartTime != null)) {
       _elapsedTimer?.cancel();
       _elapsedTimer = null;
+      _uploadStartTime = null;
     }
 
     // Surface the Steam Guard dialog when the notifier reaches that phase.

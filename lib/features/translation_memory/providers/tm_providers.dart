@@ -296,6 +296,9 @@ class TmExportState extends _$TmExportState {
   Future<void> exportToTmx({
     required String outputPath,
     String? targetLanguageCode,
+    int? minUsageCount,
+    bool includeMetadata = true,
+    bool includeStats = true,
   }) async {
     state = const AsyncValue.loading();
 
@@ -305,6 +308,9 @@ class TmExportState extends _$TmExportState {
       final result = await service.exportToTmx(
         outputPath: outputPath,
         targetLanguageCode: targetLanguageCode,
+        minUsageCount: minUsageCount,
+        includeMetadata: includeMetadata,
+        includeStats: includeStats,
       );
 
       final exportedCount = result.when(

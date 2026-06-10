@@ -87,21 +87,58 @@ class TmImportExportService {
     }
   }
 
+  /// [minUsageCount]: Optional inclusive lower bound on `usage_count`,
+  /// pushed down to the query layer (used by the "frequently used only"
+  /// export scope).
+  /// [includeMetadata]: When false, per-TU TWMT `<prop>` metadata
+  /// (x-usage-count, x-provider-id) is omitted from the TMX.
+  /// [includeStats]: When true, an export summary (entry count, export date)
+  /// is written as `<prop>` elements in the TMX header.
   Future<Result<int, TmExportException>> exportToTmx({
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
+    int? minUsageCount,
+    bool includeMetadata = true,
+    bool includeStats = true,
   }) async {
     try {
       _logger.info('Starting TMX export process', {
         'outputPath': outputPath,
         'sourceLanguageCode': sourceLanguageCode,
         'targetLanguageCode': targetLanguageCode,
+        'minUsageCount': minUsageCount,
+        'includeMetadata': includeMetadata,
+        'includeStats': includeStats,
       });
 
       // Push the target-language filter down to the query layer to avoid
       // loading the full TM into RAM.
       final String? dbTargetLanguageId = normalizeLanguageId(targetLanguageCode);
+
+      // Export summary written into the TMX header when requested. The
+      // entry count comes from a COUNT(*) with the same filters as the
+      // page stream, so it matches what gets written.
+      Map<String, String>? headerProperties;
+      if (includeStats) {
+        final countResult = await _repository.countWithFilters(
+          targetLanguageId: dbTargetLanguageId,
+          minUsageCount: minUsageCount,
+        );
+        if (countResult.isErr) {
+          return Err(TmExportException(
+            'Failed to count entries for export statistics: ${countResult.error}',
+            outputPath: outputPath,
+            error: countResult.error,
+          ));
+        }
+        headerProperties = {
+          'x-entry-count': countResult.value.toString(),
+          'x-export-date': DateTime.now().toUtc().toIso8601String(),
+          if (minUsageCount != null)
+            'x-min-usage-count': minUsageCount.toString(),
+        };
+      }
 
       // Resolve target language string for the TMX header/TUV xml:lang attribute.
       // If the caller did not specify a target language, peek at the first row
@@ -115,6 +152,7 @@ class TmImportExportService {
           offset: 0,
           pageSize: 1,
           targetLanguageId: null,
+          minUsageCount: minUsageCount,
         );
         if (peekResult.isErr) {
           return Err(TmExportException(
@@ -133,6 +171,8 @@ class TmImportExportService {
             pageFetcher: (_, _) async => const Ok([]),
             sourceLanguage: sourceLanguageCode ?? 'en',
             targetLanguage: 'unknown',
+            includeMetadata: includeMetadata,
+            headerProperties: headerProperties,
           );
           if (emptyResult.isErr) {
             return Err(TmExportException(
@@ -162,12 +202,15 @@ class TmImportExportService {
             offset: offset,
             pageSize: pageSize,
             targetLanguageId: dbTargetLanguageId,
+            minUsageCount: minUsageCount,
           );
           if (result.isErr) return Err(result.error);
           return Ok(result.value);
         },
         sourceLanguage: srcLang,
         targetLanguage: tgtLang,
+        includeMetadata: includeMetadata,
+        headerProperties: headerProperties,
       );
 
       if (exportResult.isErr) {

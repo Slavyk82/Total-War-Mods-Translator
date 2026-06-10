@@ -308,11 +308,17 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
     required String outputPath,
     String? sourceLanguageCode,
     String? targetLanguageCode,
+    int? minUsageCount,
+    bool includeMetadata = true,
+    bool includeStats = true,
   }) =>
       _importExportService.exportToTmx(
         outputPath: outputPath,
         sourceLanguageCode: sourceLanguageCode,
         targetLanguageCode: targetLanguageCode,
+        minUsageCount: minUsageCount,
+        includeMetadata: includeMetadata,
+        includeStats: includeStats,
       );
 
   // ========== STATISTICS AND CACHE (Delegated to TmStatisticsService) ==========

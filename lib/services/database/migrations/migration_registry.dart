@@ -31,6 +31,7 @@ import 'migration_openai_v5_4_5_5_models.dart';
 import 'migration_anthropic_opus47_sonnet46.dart';
 import 'migration_deepseek_chat_restore.dart';
 import 'migration_export_history_languages.dart';
+import 'migration_default_model_dedup.dart';
 
 /// Registry of all database migrations.
 ///
@@ -74,6 +75,7 @@ class MigrationRegistry {
       AnthropicOpus47Sonnet46Migration(), // Priority 180 — Anthropic adds Opus 4.7 + Sonnet 4.6 (default), archives Sonnet 4.5
       DeepSeekChatRestoreMigration(), // Priority 190 — re-expose deepseek-chat (V3.2) alongside the V4 family
       ExportHistoryLanguagesMigration(), // Priority 200 — backfill export_history.languages from legacy language_code (fixes Projects/Publish on upgraded DBs)
+      DefaultModelDedupMigration(), // Priority 210 — repair duplicate per-provider default models left by earlier INSERT-with-is_default=1 migrations
     ];
 
     // Sort by priority (lower numbers first)

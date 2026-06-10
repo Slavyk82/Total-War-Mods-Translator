@@ -247,16 +247,12 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
   // === Default Path Methods ===
 
   Future<void> _useDefaultRpfmSchemaPath() async {
-    final username =
-        io.Platform.environment['USERNAME'] ?? io.Platform.environment['USER'];
-    if (username == null || username.isEmpty) {
+    final defaultPath =
+        resolveDefaultRpfmSchemaPath(io.Platform.environment);
+    if (defaultPath == null) {
       if (mounted) FluentToast.warning(context, t.settings.general.rpfm.toasts.usernameNotDetected);
       return;
     }
-
-    final defaultPath =
-        r'C:\Users\$username\AppData\Roaming\FrodoWazEre\rpfm\config\schemas'
-            .replaceAll('\$username', username);
 
     setState(() => widget.rpfmSchemaPathController.text = defaultPath);
     await _saveRpfmSchemaPath(defaultPath);
@@ -287,4 +283,36 @@ class _RpfmSectionState extends ConsumerState<RpfmSection> {
       if (mounted) FluentToast.error(context, t.settings.general.rpfm.toasts.saveSchemaPathError(error: e));
     }
   }
+}
+
+/// Resolves the default RPFM schema directory from [environment].
+///
+/// Prefers `APPDATA` — the real roaming-profile directory, which stays
+/// correct on relocated profiles, profile folders whose name differs from
+/// the account name, and systems where Windows is not installed on `C:` —
+/// and falls back to `USERPROFILE\AppData\Roaming` when `APPDATA` is unset.
+/// Returns `null` when neither variable is available.
+///
+/// Pure function (environment injected) so it can be unit-tested; production
+/// code passes [io.Platform.environment], which is case-insensitive on
+/// Windows.
+@visibleForTesting
+String? resolveDefaultRpfmSchemaPath(Map<String, String> environment) {
+  String? roaming;
+  final appData = environment['APPDATA'];
+  if (appData != null && appData.isNotEmpty) {
+    roaming = appData;
+  } else {
+    final userProfile = environment['USERPROFILE'];
+    if (userProfile != null && userProfile.isNotEmpty) {
+      roaming = '$userProfile\\AppData\\Roaming';
+    }
+  }
+  if (roaming == null) return null;
+
+  // Avoid a doubled separator when the variable ends with a backslash.
+  if (roaming.endsWith('\\')) {
+    roaming = roaming.substring(0, roaming.length - 1);
+  }
+  return '$roaming\\FrodoWazEre\\rpfm\\config\\schemas';
 }
