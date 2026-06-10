@@ -40,7 +40,12 @@ class TsvParser {
 
       for (final line in lines) {
         lineNumber++;
-        final trimmed = line.trim();
+        // Strip only a trailing CR from CRLF line endings; otherwise preserve
+        // the line verbatim so significant leading/trailing whitespace in
+        // values survives (Total War strings can rely on edge spaces).
+        final rawLine =
+            line.endsWith('\r') ? line.substring(0, line.length - 1) : line;
+        final trimmed = rawLine.trim();
 
         // Skip empty lines
         if (trimmed.isEmpty) {
@@ -53,8 +58,9 @@ class TsvParser {
           continue;
         }
 
-        // Parse TSV line (Key\tValue\tBoolean)
-        final parts = trimmed.split('\t');
+        // Parse TSV line (Key\tValue\tBoolean). Split the raw line, not the
+        // trimmed copy, so the value keeps its whitespace.
+        final parts = rawLine.split('\t');
 
         if (parts.length < 2) {
           // Invalid line - skip or throw based on options
@@ -75,13 +81,14 @@ class TsvParser {
 
         final key = parts[0].trim();
         // Total War TSV format: key\tvalue\ttrue/false
-        // If 3+ columns and last is boolean flag, take only column 1
+        // If 3+ columns and last is boolean flag, take only column 1.
+        // The value is preserved verbatim (no trim) — whitespace is data.
         String value;
         if (parts.length >= 3 && (parts.last.trim() == 'true' || parts.last.trim() == 'false')) {
           // Take only the value column, excluding the boolean flag
-          value = parts.sublist(1, parts.length - 1).join('\t').trim();
+          value = parts.sublist(1, parts.length - 1).join('\t');
         } else {
-          value = parts.sublist(1).join('\t').trim();
+          value = parts.sublist(1).join('\t');
         }
 
         // Unescape special characters
@@ -143,8 +150,9 @@ class TsvParser {
           continue;
         }
 
-        // Parse TSV line (Key\tValue\tBoolean)
-        final parts = trimmed.split('\t');
+        // Parse TSV line (Key\tValue\tBoolean). Split the raw line (LineSplitter
+        // already stripped the line ending) so the value keeps its whitespace.
+        final parts = line.split('\t');
 
         if (parts.length < 2) {
           // Invalid line - yield error but continue processing
@@ -161,13 +169,14 @@ class TsvParser {
 
         final key = parts[0].trim();
         // Total War TSV format: key\tvalue\ttrue/false
-        // If 3+ columns and last is boolean flag, take only column 1
+        // If 3+ columns and last is boolean flag, take only column 1.
+        // The value is preserved verbatim (no trim) — whitespace is data.
         String value;
         if (parts.length >= 3 && (parts.last.trim() == 'true' || parts.last.trim() == 'false')) {
           // Take only the value column, excluding the boolean flag
-          value = parts.sublist(1, parts.length - 1).join('\t').trim();
+          value = parts.sublist(1, parts.length - 1).join('\t');
         } else {
-          value = parts.sublist(1).join('\t').trim();
+          value = parts.sublist(1).join('\t');
         }
 
         // Unescape special characters

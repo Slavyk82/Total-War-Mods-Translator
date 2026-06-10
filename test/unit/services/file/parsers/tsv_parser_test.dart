@@ -119,5 +119,34 @@ void main() {
       expect(result.entries[0].value, 'My value');
       expect(result.entries[1].value, 'Value with \n newline');
     });
+
+    test('preserves significant leading/trailing whitespace in the value '
+        '(3-column RPFM row)', () {
+      // Total War strings can carry meaningful edge spaces (e.g. the
+      // concatenation fragment " of "). The binary .loc parser preserves them,
+      // so the TSV path must too.
+      const content = 'frag_of\t of \ttrue\n';
+
+      final result = parser.parseString(
+        content: content,
+        fileName: 'text_en.loc.tsv',
+      );
+
+      expect(result, isNotNull);
+      expect(result!.entries.single.key, 'frag_of');
+      expect(result.entries.single.value, ' of ');
+    });
+
+    test('strips only a trailing CR (CRLF) from a 2-column value', () {
+      const content = 'greeting\tHello\r\n';
+
+      final result = parser.parseString(
+        content: content,
+        fileName: 'test.tsv',
+      );
+
+      expect(result, isNotNull);
+      expect(result!.entries.single.value, 'Hello');
+    });
   });
 }
