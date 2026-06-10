@@ -903,8 +903,15 @@ BEGIN
     UPDATE glossaries SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;
 END;
 
+-- Only fires on CONTENT-column edits: a usage_count bump (incrementUsageCount
+-- on the hot translation path) must NOT touch updated_at, otherwise every
+-- matched glossary term would look like a content edit and force a needless
+-- DeepL glossary resync. See GlossaryEntriesUpdatedAtTriggerScopeMigration.
 CREATE TRIGGER IF NOT EXISTS trg_glossary_entries_updated_at
-AFTER UPDATE ON glossary_entries
+AFTER UPDATE OF
+    target_language_code, source_term, target_term,
+    definition, notes, is_forbidden, case_sensitive
+ON glossary_entries
 WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE glossary_entries SET updated_at = strftime('%s', 'now') WHERE id = NEW.id;

@@ -284,11 +284,16 @@ class TmMatchingService {
         return Ok([]);
       }
 
-      // Use repository's findMatches method
+      // Widen the repository prefilter below minSimilarity. findMatches
+      // pre-filters on Levenshtein similarity ALONE, but the authoritative
+      // cutoff below (score.combinedScore < minSimilarity) uses the combined
+      // 3-algorithm score. A candidate whose combined score clears the
+      // threshold but whose Levenshtein component is lower would otherwise be
+      // dropped here and never scored. Mirrors the isolate paths.
       final candidatesResult = await _repository.findMatches(
         sourceText,
         targetLanguageId,
-        minConfidence: minSimilarity,
+        minConfidence: minSimilarity - 0.1,
       );
 
       if (candidatesResult.isErr) {

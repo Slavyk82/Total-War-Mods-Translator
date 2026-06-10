@@ -415,14 +415,17 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   Future<void> incrementUsageCount(List<String> entryIds) async {
     if (entryIds.isEmpty) return;
 
+    // Deliberately do NOT touch updated_at: it tracks glossary CONTENT edits and
+    // drives doesMappingNeedResync. Bumping it on every glossary match (a hot
+    // translation-path statistic, not a content change) made the DeepL glossary
+    // report "needs resync" after the first matched term, causing endless API
+    // churn and slot consumption.
     final placeholders = entryIds.map((_) => '?').join(',');
-    final now = DateTime.now().millisecondsSinceEpoch;
     await database.rawUpdate('''
       UPDATE $tableName
-      SET usage_count = usage_count + 1,
-          updated_at = ?
+      SET usage_count = usage_count + 1
       WHERE id IN ($placeholders)
-    ''', [now, ...entryIds]);
+    ''', entryIds);
   }
 
   /// Get usage statistics for a glossary
