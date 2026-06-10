@@ -316,6 +316,7 @@ class DeepLProvider implements ILlmProvider {
     required LlmRequest request,
     required String apiKey,
     required String glossaryId,
+    CancelToken? cancelToken,
   }) async {
     final startTime = DateTime.now();
 
@@ -336,6 +337,7 @@ class DeepLProvider implements ILlmProvider {
         targetLang: _languageMapper.mapLanguageCode(request.targetLanguage),
         glossaryId: glossaryId,
         apiKey: apiKey,
+        cancelToken: cancelToken,
       );
 
       return _parseResponse(response.data, request, startTime);

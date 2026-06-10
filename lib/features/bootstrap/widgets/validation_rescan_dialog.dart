@@ -90,15 +90,24 @@ class _ValidationRescanDialogState
     final state = ref.watch(validationRescanControllerProvider);
     final plan = state.plan;
 
-    // Completion: close and fire a success toast once.
+    // Completion: close and fire a toast once. A failed prepare()/rescan
+    // also ends with isDone == true but carries `error` — it must surface
+    // as an error, never as the success toast.
     if (state.isDone && !_toastFired) {
       _toastFired = true;
+      final error = state.error;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(context).pop();
-        // Only show a toast when an actual rescan finished. Pure-
-        // normalization runs (no plan) complete silently.
-        if (plan != null) {
+        if (error != null) {
+          FluentToast.error(
+            context,
+            t.bootstrap.validationRescan.toasts
+                .updateFailed(error: error.toString()),
+          );
+        } else if (plan != null) {
+          // Only show a success toast when an actual rescan finished. Pure-
+          // normalization runs (no plan) complete silently.
           FluentToast.success(
             context,
             t.bootstrap.validationRescan.toasts.updateComplete,

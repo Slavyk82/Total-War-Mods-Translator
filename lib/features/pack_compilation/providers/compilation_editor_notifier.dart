@@ -153,11 +153,19 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
           return false;
         }
 
-        // Update projects
-        await compilationRepo.setProjects(
+        // Update projects. setProjects returns a Result and never throws,
+        // so the surrounding try/catch cannot observe its failure — check it
+        // explicitly like the update/insert calls above.
+        final setProjectsResult = await compilationRepo.setProjects(
           state.compilationId!,
           state.selectedProjectIds.toList(),
         );
+        if (setProjectsResult.isErr) {
+          state = state.copyWith(
+            errorMessage: setProjectsResult.unwrapErr().message,
+          );
+          return false;
+        }
       } else {
         // Create new compilation
         final compilation = Compilation(
@@ -178,13 +186,22 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
           return false;
         }
 
-        // Add projects
-        await compilationRepo.setProjects(
+        // The row is inserted at this point, so record its id before linking
+        // projects — if the link write fails, a retry then runs in edit mode
+        // (update) instead of inserting a duplicate compilation row.
+        state = state.copyWith(compilationId: compilation.id);
+
+        // Add projects (Result-returning, never throws — see edit branch).
+        final setProjectsResult = await compilationRepo.setProjects(
           compilation.id,
           state.selectedProjectIds.toList(),
         );
-
-        state = state.copyWith(compilationId: compilation.id);
+        if (setProjectsResult.isErr) {
+          state = state.copyWith(
+            errorMessage: setProjectsResult.unwrapErr().message,
+          );
+          return false;
+        }
       }
 
       state = state.copyWith(successMessage: 'Compilation saved');
@@ -447,11 +464,20 @@ class CompilationEditorNotifier extends Notifier<CompilationEditorState> {
         );
       }
 
-      // Update compilation with output path
-      await compilationRepo.updateAfterGeneration(
+      // Update compilation with output path. Result-returning (never throws):
+      // an unchecked failure here would leave the generation unrecorded (the
+      // Steam-publish list would keep showing "no pack") while the UI claims
+      // success, so surface it through the catch block below.
+      final generationResult = await compilationRepo.updateAfterGeneration(
         state.compilationId!,
         packPath,
       );
+      if (generationResult.isErr) {
+        throw Exception(
+          'Failed to record generated pack: '
+          '${generationResult.unwrapErr().message}',
+        );
+      }
 
       // Emit activity event (fire-and-forget)
       // Compilations span multiple projects, so projectId is null.

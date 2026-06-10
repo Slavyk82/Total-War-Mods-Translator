@@ -186,6 +186,10 @@ void main() {
         selectedGlossaryLanguageProvider(_warhammer3.code)
             .overrideWith(() => _FakeSelectedGlossaryLanguage('fr-id')),
         currentGlossaryProvider.overrideWith((_) async => glossary),
+        glossaryEntriesProvider(
+          glossaryId: 'g1',
+          targetLanguageCode: null,
+        ).overrideWith((_) async => const <GlossaryEntry>[]),
       ],
     ));
     await tester.pumpAndSettle();
@@ -196,6 +200,56 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(SfDataGrid), findsNothing);
+  });
+
+  testWidgets(
+      'regression: grid shows entries even when the cached glossary still '
+      'reports entryCount == 0 (stale currentGlossaryProvider snapshot)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1920, 1080));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    // Simulates the state right after adding/importing the first entry:
+    // glossaryEntriesProvider was invalidated and refetched, but
+    // currentGlossaryProvider (never invalidated by those flows) still
+    // carries the entryCount: 0 snapshot.
+    final staleGlossary = _glossary(
+      id: 'g1',
+      gameCode: _warhammer3.code,
+      targetLanguageId: 'fr-id',
+      entryCount: 0,
+    );
+
+    await tester.pumpWidget(createThemedTestableWidget(
+      const GlossaryScreen(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        selectedGameProvider
+            .overrideWith(() => _FakeSelectedGame(_warhammer3)),
+        hasProjectsForGameProvider(_warhammer3.code)
+            .overrideWith((_) async => true),
+        glossaryAvailableLanguagesProvider(_warhammer3.code).overrideWith(
+          (_) async => [_lang('fr-id', 'fr', 'French')],
+        ),
+        selectedGlossaryLanguageProvider(_warhammer3.code)
+            .overrideWith(() => _FakeSelectedGlossaryLanguage('fr-id')),
+        currentGlossaryProvider.overrideWith((_) async => staleGlossary),
+        glossaryEntriesProvider(
+          glossaryId: 'g1',
+          targetLanguageCode: null,
+        ).overrideWith(
+          (_) async => [_entry('e1', 'g1', 'Dwarf')],
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    // The freshly added entry must be visible, not the empty placeholder.
+    expect(find.byType(SfDataGrid), findsOneWidget);
+    expect(find.text('Dwarf'), findsOneWidget);
+    expect(
+      find.text('No entries yet. Import a CSV or add your first entry.'),
+      findsNothing,
+    );
   });
 
   testWidgets('nominal: glossary with entries renders the data grid',

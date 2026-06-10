@@ -37,7 +37,8 @@
       "startRescan": "Start rescan"
     },
     "toasts": {
-      "updateComplete": "Validation data update complete."
+      "updateComplete": "Validation data update complete.",
+      "updateFailed": "Validation data update failed: $error"
     }
   }
 }

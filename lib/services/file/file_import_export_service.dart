@@ -244,8 +244,11 @@ class FileImportExportService {
       final char = content[i];
 
       if (char == '"') {
-        // Handle double quotes (escaped quote)
-        if (i + 1 < content.length && content[i + 1] == '"') {
+        // An escaped quote ("" -> ") only exists INSIDE a quoted field.
+        // Outside quotes the first '"' opens the field; without the
+        // inQuotes guard an empty quoted field ("") would decode to a
+        // literal '"' instead of the empty string.
+        if (inQuotes && i + 1 < content.length && content[i + 1] == '"') {
           buffer.write('"');
           i++; // Skip next quote
         } else {

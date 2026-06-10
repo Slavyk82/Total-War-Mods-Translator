@@ -115,8 +115,13 @@ class ParallelBatchProcessor {
     );
 
     // Aggregate results
-    final (llmTranslations, chunkErrors, totalTokensUsed, allLlmLogs) =
-        _aggregateResults(results, currentProgress);
+    final (
+      llmTranslations,
+      chunkErrors,
+      totalTokensUsed,
+      totalFailedUnits,
+      allLlmLogs
+    ) = _aggregateResults(results, currentProgress);
 
     if (chunkErrors.isNotEmpty) {
       _logger.warning(
@@ -138,6 +143,7 @@ class ParallelBatchProcessor {
 
     var finalProgress = updatedProgress.copyWith(
       tokensUsed: totalTokensUsed,
+      failedUnits: totalFailedUnits,
       llmLogs: allLlmLogs,
       timestamp: DateTime.now(),
     );
@@ -318,7 +324,13 @@ class ParallelBatchProcessor {
   }
 
   /// Aggregate results from all parallel chunks.
-  (Map<String, String>, List<String>, int, List<LlmExchangeLog>)
+  ///
+  /// Returns (translations, chunk errors, total tokens used, total failed
+  /// units, merged LLM logs). Token and failed-unit totals are aggregated
+  /// here because per-chunk progress emissions are rebased onto a stable
+  /// snapshot that strips those counters (to avoid parallel counter races),
+  /// so the aggregate computed here is the only authoritative source.
+  (Map<String, String>, List<String>, int, int, List<LlmExchangeLog>)
       _aggregateResults(
     List<(TranslationProgress, Map<String, String>, String?)> results,
     TranslationProgress currentProgress,
@@ -326,12 +338,22 @@ class ParallelBatchProcessor {
     final llmTranslations = <String, String>{};
     final chunkErrors = <String>[];
     int totalTokensUsed = currentProgress.tokensUsed;
+    // Every chunk computes failedUnits relative to the shared pre-LLM
+    // `currentProgress` baseline, so the per-chunk delta is the number of
+    // failures that chunk itself observed (e.g. units omitted from the LLM
+    // response). Sum the deltas on top of the baseline.
+    int totalFailedUnits = currentProgress.failedUnits;
     final allLlmLogs = <LlmExchangeLog>[...currentProgress.llmLogs];
 
     for (final (chunkProgress, chunkTranslations, chunkError) in results) {
       llmTranslations.addAll(chunkTranslations);
       if (chunkError != null) {
         chunkErrors.add(chunkError);
+      }
+      final chunkFailedDelta =
+          chunkProgress.failedUnits - currentProgress.failedUnits;
+      if (chunkFailedDelta > 0) {
+        totalFailedUnits += chunkFailedDelta;
       }
       final newLogs = chunkProgress.llmLogs
           .where((log) =>
@@ -343,7 +365,13 @@ class ParallelBatchProcessor {
       }
     }
 
-    return (llmTranslations, chunkErrors, totalTokensUsed, allLlmLogs);
+    return (
+      llmTranslations,
+      chunkErrors,
+      totalTokensUsed,
+      totalFailedUnits,
+      allLlmLogs
+    );
   }
 
   /// Save any duplicate translations that weren't saved during chunk processing.

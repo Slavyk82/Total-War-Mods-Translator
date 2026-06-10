@@ -11,7 +11,7 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 
 /// Implementation of SteamCMD service
 class SteamCmdServiceImpl implements ISteamCmdService {
-  final SteamCmdManager _manager = SteamCmdManager();
+  final SteamCmdManager _manager;
   final ILoggingService _logger;
   final StreamController<double> _progressController =
       StreamController<double>.broadcast();
@@ -19,8 +19,9 @@ class SteamCmdServiceImpl implements ISteamCmdService {
   Process? _currentProcess;
   bool _isCancelled = false;
 
-  SteamCmdServiceImpl({ILoggingService? logger})
-      : _logger = logger ?? ServiceLocator.get<ILoggingService>();
+  SteamCmdServiceImpl({ILoggingService? logger, SteamCmdManager? manager})
+      : _logger = logger ?? ServiceLocator.get<ILoggingService>(),
+        _manager = manager ?? SteamCmdManager();
 
   @override
   Stream<double> get progressStream => _progressController.stream;
@@ -33,6 +34,13 @@ class SteamCmdServiceImpl implements ISteamCmdService {
     bool forceUpdate = false,
   }) async {
     final startTime = DateTime.now();
+
+    // Scope cancellation to this operation: cancel() may have been invoked
+    // while NO download was in flight (e.g. the user cancelled during the
+    // post-download analysis phases of a mod update). Without this reset the
+    // stale flag would make this brand-new download run to completion and
+    // then be falsely discarded as 'cancelled'.
+    _isCancelled = false;
 
     try {
       // Validate Workshop ID

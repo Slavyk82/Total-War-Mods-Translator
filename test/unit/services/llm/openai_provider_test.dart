@@ -381,6 +381,57 @@ void main() {
       expect(filtered.filteredTexts, contains('sensitive source'));
     });
 
+    test('maps empty content with finish_reason "length" to '
+        'LlmResponseParseException (truncation, NOT content filtering)',
+        () async {
+      // Regression test (finding M5): on reasoning models (GPT-5.x) the
+      // whole max_completion_tokens budget can be consumed by reasoning
+      // tokens, yielding an EMPTY content string with finish_reason
+      // 'length'. This is truncation, not moderation: it must surface as
+      // LlmResponseParseException so the recovery layer retries with a
+      // higher token limit, instead of LlmContentFilteredException which
+      // permanently skips the unit.
+      final dio = _MockDio();
+      final provider = OpenAiProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      final truncatedBody = <String, dynamic>{
+        'id': 'chatcmpl-truncated',
+        'model': 'gpt-4o-mini',
+        'choices': [
+          {
+            'index': 0,
+            'message': {'role': 'assistant', 'content': ''},
+            'finish_reason': 'length',
+          },
+        ],
+        'usage': {
+          'prompt_tokens': 5,
+          'completion_tokens': 512,
+          'total_tokens': 517,
+        },
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(truncatedBody));
+
+      final result = await provider.translate(request, 'sk-test-key');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmResponseParseException>());
+      expect(result.error, isNot(isA<LlmContentFilteredException>()));
+      expect(result.error.providerCode, 'openai');
+      // The message must point at the token budget, not moderation.
+      expect(result.error.message, contains('length'));
+    });
+
     test('maps 500 server error to LlmServerException with statusCode '
         'preserved', () async {
       final dio = _MockDio();

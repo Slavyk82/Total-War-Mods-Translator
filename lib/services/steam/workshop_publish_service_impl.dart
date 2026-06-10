@@ -228,13 +228,30 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         ));
       }
 
-      // Check for Workshop item not found (item was deleted from Steam).
+      // steamcmd prints 'ERROR! Failed to update workshop item (<reason>).'
+      // for ALL workshop_build_item failures. Only the '(File Not Found)'
+      // reason means the item was deleted from Steam; other reasons
+      // (Failure, Timeout, Access Denied, Limit Exceeded, ...) are ordinary
+      // upload failures and must NOT be reported as a deleted item — that
+      // message would push the user to republish as a duplicate new item.
       if (run.output.contains('Failed to update workshop item')) {
-        _logger.info(
-          'Workshop item ${params.publishedFileId} not found on Steam',
-        );
-        return Err(WorkshopItemNotFoundException(
-          'Workshop item #${params.publishedFileId} no longer exists on Steam.',
+        final reason = _extractUpdateFailureReason(run.output);
+        if (_isItemDeletedReason(reason)) {
+          _logger.info(
+            'Workshop item ${params.publishedFileId} not found on Steam',
+          );
+          return Err(WorkshopItemNotFoundException(
+            'Workshop item #${params.publishedFileId} no longer exists on Steam.',
+            workshopId: params.publishedFileId,
+          ));
+        }
+        _logger.warning('Workshop item update failed', {
+          'reason': reason ?? 'unknown',
+          'publishedFileId': params.publishedFileId,
+        });
+        return Err(WorkshopPublishException(
+          'Failed to update workshop item'
+          '${reason != null ? ' ($reason)' : ''}.',
           workshopId: params.publishedFileId,
         ));
       }
@@ -617,16 +634,27 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         }
       }
 
-      // Failure: item not found on Steam
+      // Failure: workshop item update rejected by steamcmd. Only the
+      // '(File Not Found)' reason means the item was deleted from Steam;
+      // any other reason (Failure, Timeout, Access Denied, ...) is a
+      // generic upload failure for the current item.
       if (trimmed.contains('Failed to update workshop item')) {
-        completedInChunk.add(currentIdx);
-        onItemComplete?.call(
-          currentIdx,
-          Err(WorkshopItemNotFoundException(
+        final reason = _extractUpdateFailureReason(trimmed);
+        final SteamServiceException error;
+        if (_isItemDeletedReason(reason)) {
+          error = WorkshopItemNotFoundException(
             'Workshop item #${items[currentIdx].params.publishedFileId} no longer exists on Steam.',
             workshopId: items[currentIdx].params.publishedFileId,
-          )),
-        );
+          );
+        } else {
+          error = WorkshopPublishException(
+            'Failed to update workshop item'
+            '${reason != null ? ' ($reason)' : ''}.',
+            workshopId: items[currentIdx].params.publishedFileId,
+          );
+        }
+        completedInChunk.add(currentIdx);
+        onItemComplete?.call(currentIdx, Err(error));
         currentWorkshopId = null;
         currentChunkPos++;
         if (currentChunkPos < chunk.length) {
@@ -994,6 +1022,23 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   Future<bool> isAvailable() async {
     return await _manager.isAvailable();
   }
+
+  /// Matches the parenthesized EResult reason in steamcmd's
+  /// `ERROR! Failed to update workshop item (<reason>).` error line.
+  static final RegExp _updateFailureReasonPattern =
+      RegExp(r'Failed to update workshop item\s*\(([^)]+)\)');
+
+  /// Extracts the parenthesized reason from a steamcmd
+  /// `Failed to update workshop item (<reason>)` line, or null when the
+  /// output carries no parenthesized reason.
+  static String? _extractUpdateFailureReason(String output) =>
+      _updateFailureReasonPattern.firstMatch(output)?.group(1)?.trim();
+
+  /// Whether the steamcmd update-failure [reason] means the Workshop item
+  /// was deleted from Steam. steamcmd reports this as '(File Not Found)';
+  /// every other reason is an ordinary upload failure.
+  static bool _isItemDeletedReason(String? reason) =>
+      reason != null && reason.toLowerCase() == 'file not found';
 
   /// Try to extract progress percentage from steamcmd output
   void _tryExtractProgress(String output) {

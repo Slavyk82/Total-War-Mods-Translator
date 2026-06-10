@@ -113,7 +113,12 @@ class HeadlessBatchTranslationRunner {
               : progress.processedUnits / progress.totalUnits,
         );
         if (progress.status == TranslationProgressStatus.completed) {
-          translated = progress.successfulUnits;
+          // `successfulUnits` only counts LLM/cache translations; units
+          // satisfied from Translation Memory (exact/fuzzy matches applied
+          // by TmLookupHandler) are counted in `skippedUnits` and never bump
+          // `successfulUnits`. Both kinds received a translation, so report
+          // their sum - otherwise a fully TM-covered run reports 0.
+          translated = progress.successfulUnits + progress.skippedUnits;
           break;
         }
         if (progress.status == TranslationProgressStatus.failed) {

@@ -188,6 +188,16 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
     List<Language> languages,
   ) {
     final tokens = context.tokens;
+    // Gate the soft-empty state on the live entries list, NOT on
+    // `glossary.entryCount`: the count is a snapshot baked into
+    // [currentGlossaryProvider], which is never invalidated when entries are
+    // added/imported/deleted — gating on it kept the first added/imported
+    // entries hidden behind the empty state. [glossaryEntriesProvider] is
+    // invalidated by every entry mutation flow, so it stays fresh.
+    final entriesAsync = ref.watch(glossaryEntriesProvider(
+      glossaryId: glossary.id,
+      targetLanguageCode: null,
+    ));
     String? targetLanguageCode;
     for (final language in languages) {
       if (language.id == glossary.targetLanguageId) {
@@ -254,9 +264,13 @@ class _GlossaryScreenState extends ConsumerState<GlossaryScreen> {
             ),
             Container(height: 1, color: tokens.border),
             Expanded(
-              child: glossary.entryCount == 0
-                  ? _buildSoftEmpty(context)
-                  : GlossaryDataGrid(glossaryId: glossary.id),
+              child: entriesAsync.when(
+                loading: () => const Center(child: FluentInlineSpinner()),
+                error: (error, _) => _buildError(context, error),
+                data: (entries) => entries.isEmpty
+                    ? _buildSoftEmpty(context)
+                    : GlossaryDataGrid(glossaryId: glossary.id),
+              ),
             ),
           ],
         ),

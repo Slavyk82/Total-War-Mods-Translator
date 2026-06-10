@@ -37,7 +37,8 @@
       "startRescan": "다시 스캔 시작"
     },
     "toasts": {
-      "updateComplete": "검증 데이터 업데이트가 완료되었습니다."
+      "updateComplete": "검증 데이터 업데이트가 완료되었습니다.",
+      "updateFailed": "검증 데이터 업데이트에 실패했습니다: $error"
     }
   }
 }

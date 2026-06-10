@@ -264,6 +264,12 @@ class ModUpdateQueue extends _$ModUpdateQueue {
 
       await downloadResult.when(
         ok: (result) async {
+          // The user may have cancelled (cancelAll) while the download was
+          // running: cancel() only kills the SteamCMD process, so a download
+          // that already finished still lands here. Honor the cancel — keep
+          // the cancelled status and skip the analysis/DB pipeline entirely.
+          if (_wasCancelled(projectId)) return;
+
           // Update status to detecting changes
           _updateStatus(projectId, ModUpdateStatus.detectingChanges);
 
@@ -311,6 +317,11 @@ class ModUpdateQueue extends _$ModUpdateQueue {
             );
             return;
           }
+
+          // Re-check after the analysis await: a cancel issued during
+          // detectingChanges must not flip the item back to in-progress or
+          // persist a new ModVersion below.
+          if (_wasCancelled(projectId)) return;
 
           // Update status to updating database
           _updateStatus(projectId, ModUpdateStatus.updatingDatabase);
@@ -363,6 +374,10 @@ class ModUpdateQueue extends _$ModUpdateQueue {
           );
         },
         err: (error) {
+          // cancelAll kills the SteamCMD process, which surfaces here as a
+          // DOWNLOAD_CANCELLED (or timeout) error. A user cancel is not a
+          // failure: keep the cancelled status instead of overwriting it.
+          if (_wasCancelled(projectId)) return;
           _updateStatusWithError(
             projectId,
             ModUpdateStatus.failed,
@@ -375,6 +390,9 @@ class ModUpdateQueue extends _$ModUpdateQueue {
       // route the failure back through state — _updateStatusWithError would be a
       // no-op anyway, and the original error is moot once nothing is watching.
       if (!ref.mounted) return;
+      // Same contract as the err branch above: never overwrite a user cancel
+      // with 'failed'.
+      if (_wasCancelled(projectId)) return;
       _updateStatusWithError(
         projectId,
         ModUpdateStatus.failed,
@@ -408,6 +426,18 @@ class ModUpdateQueue extends _$ModUpdateQueue {
     }
     return null;
   }
+
+  /// Whether the user cancelled [projectId] (via [cancelAll]) while its
+  /// update was running.
+  ///
+  /// `cancelAll` can only kill an in-flight SteamCMD download; the rest of
+  /// `_updateProject` keeps executing. Every phase therefore re-checks this
+  /// after its long awaits so a user cancel is never overwritten by
+  /// in-progress/completed/failed and no ModVersion is persisted post-cancel.
+  /// Reads the internal queue (not `state`) so it stays accurate even if the
+  /// notifier was disposed mid-update.
+  bool _wasCancelled(String projectId) =>
+      _updateQueue[projectId]?.status == ModUpdateStatus.cancelled;
 
   /// Update the status of a project in the queue
   void _updateStatus(String projectId, ModUpdateStatus status) {

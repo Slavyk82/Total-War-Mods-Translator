@@ -75,8 +75,16 @@ class TmMaintenanceService {
       var processedCount = 0;
       const batchSize = 500;
 
-      // Process in batches
-      for (var offset = 0; offset < total; offset += batchSize) {
+      // Process in batches. The loop is bounded by the PAGED QUERY itself
+      // (stop when a page comes back empty or short), NOT by `total`:
+      // countLlmTranslations() counts DISTINCT (source, language) PAIRS
+      // while getMissingTmTranslations() pages DISTINCT (source,
+      // translation, language) TRIPLES, so the row set can be strictly
+      // larger than `total` (same source translated differently across
+      // units). Bounding by `total` would silently skip the tail pages.
+      // `total` is kept only as a progress-denominator estimate.
+      var offset = 0;
+      while (true) {
         final batchResult = await _repository.getMissingTmTranslations(
           projectId: projectId,
           limit: batchSize,
@@ -84,13 +92,17 @@ class TmMaintenanceService {
         );
 
         if (batchResult.isErr) {
-          _logger.warning('Failed to get batch at offset $offset', {
+          // Stop paging on a fetch error: with an open-ended loop a
+          // persistent error would otherwise spin forever. Partial counts
+          // accumulated so far are still returned.
+          _logger.warning('Failed to get batch at offset $offset; stopping', {
             'error': batchResult.error,
           });
-          continue;
+          break;
         }
 
         final rows = batchResult.value;
+        if (rows.isEmpty) break;
 
         // Build entries for this batch, grouped by target language code.
         // The query returns one row PER TARGET LANGUAGE for the same source
@@ -149,11 +161,21 @@ class TmMaintenanceService {
           }
         }
 
-        // Report progress
-        onProgress?.call(processedCount, total, addedCount);
+        // Report progress. `total` is an estimate with a smaller DISTINCT
+        // cardinality than the paged rows, so never report a denominator
+        // below what was actually processed.
+        onProgress?.call(
+          processedCount,
+          processedCount > total ? processedCount : total,
+          addedCount,
+        );
 
         // Yield to UI
         await Future<void>.delayed(Duration.zero);
+
+        // Short page: the query is exhausted, no need for one more round-trip.
+        if (rows.length < batchSize) break;
+        offset += batchSize;
       }
 
       _logger.info('TM rebuild completed', {

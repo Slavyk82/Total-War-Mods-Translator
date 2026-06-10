@@ -308,6 +308,47 @@ void main() {
       expect(server.providerCode, 'deepl');
     });
 
+    test('forwards the caller-supplied CancelToken instance to dio.post so '
+        'a user Stop aborts the in-flight request', () async {
+      final dio = _MockDio();
+      _stubDioOptions(dio);
+      final provider = DeepLProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+      final token = CancelToken();
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(<String, dynamic>{
+            'translations': [
+              {'detected_source_language': 'EN', 'text': 'Bonjour'},
+              {'detected_source_language': 'EN', 'text': 'Bon retour'},
+            ],
+          }));
+
+      final result = await provider.translate(
+        request,
+        'deepl-test-key',
+        cancelToken: token,
+      );
+
+      expect(result.isOk, isTrue, reason: 'Expected Ok but got: $result');
+      final captured = verify(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: captureAny(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).captured;
+      expect(captured.single, same(token),
+          reason: 'the exact CancelToken instance must reach Dio, '
+              'otherwise CancelToken.cancel() cannot abort the request');
+    });
+
     test('maps 400 response to LlmInvalidRequestException (covers DeepL '
         'payload-too-large / bad-request family: 400/413 both land here)',
         () async {
@@ -343,6 +384,73 @@ void main() {
       expect(result.isErr, isTrue);
       expect(result.error, isA<LlmInvalidRequestException>());
       expect(result.error.providerCode, 'deepl');
+    });
+  });
+
+  // Regression tests for the DeepL-with-glossary cancellation path.
+  //
+  // translateWithGlossary used not to accept a cancelToken at all, and its
+  // inner _apiClient.translate call omitted the token, so the one request
+  // shape that goes through a synced glossary was uncancellable: pressing
+  // Stop during a DeepL+glossary batch aborted every other provider request
+  // but left this one running to completion. The token must be accepted and
+  // forwarded to dio.post exactly like the standard translate path.
+  group('DeepLProvider.translateWithGlossary', () {
+    test('forwards the caller-supplied CancelToken instance to dio.post '
+        '(glossary path must be cancellable like every other path)',
+        () async {
+      final dio = _MockDio();
+      _stubDioOptions(dio);
+      final provider = DeepLProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      // Glossary translation requires an explicit source language.
+      final request = LlmRequest(
+        requestId: 'req-deepl-glossary-1',
+        targetLanguage: 'fr',
+        texts: const {'ui_title': 'Hello world'},
+        systemPrompt: 'Translate videogame UI strings.',
+        modelName: 'deepl',
+        sourceLanguage: 'en',
+        glossaryId: 'local-glossary-1',
+        maxTokens: 512,
+        timestamp: DateTime(2026, 4, 14, 12, 0, 0),
+      );
+      final token = CancelToken();
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(<String, dynamic>{
+            'translations': [
+              {'detected_source_language': 'EN', 'text': 'Bonjour le monde'},
+            ],
+          }));
+
+      final result = await provider.translateWithGlossary(
+        request: request,
+        apiKey: 'deepl-test-key',
+        glossaryId: 'deepl-glossary-42',
+        cancelToken: token,
+      );
+
+      expect(result.isOk, isTrue, reason: 'Expected Ok but got: $result');
+
+      final captured = verify(() => dio.post(
+            any(),
+            data: captureAny(named: 'data'),
+            cancelToken: captureAny(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).captured;
+      final payload = captured[0] as Map<String, dynamic>;
+      expect(payload['glossary_id'], 'deepl-glossary-42',
+          reason: 'sanity: this is genuinely the glossary request shape');
+      expect(captured[1], same(token),
+          reason: 'the exact CancelToken instance must reach Dio on the '
+              'glossary path — a user Stop must abort this request too');
     });
   });
 }

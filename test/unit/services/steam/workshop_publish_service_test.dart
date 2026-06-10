@@ -262,7 +262,7 @@ void main() {
   });
 
   test(
-      'steamcmd output "Failed to update workshop item" → '
+      'steamcmd output "Failed to update workshop item (File Not Found)" → '
       'WorkshopItemNotFoundException with workshopId', () async {
     final vdfPath = path.join(tempRoot.path, 'publish.vdf');
     File(vdfPath).writeAsStringSync('// stub vdf');
@@ -273,7 +273,7 @@ void main() {
         .thenAnswer((_) async => _okProcess(
               exitCode: 0,
               stdout: 'Uploading content...\n'
-                  'Failed to update workshop item (Item no longer exists).\n',
+                  'ERROR! Failed to update workshop item (File Not Found).\n',
             ));
 
     final result = await service.publish(
@@ -292,6 +292,46 @@ void main() {
     expect((result.error as WorkshopItemNotFoundException).workshopId,
         '9998887');
   });
+
+  // steamcmd prints 'ERROR! Failed to update workshop item (<reason>).' for
+  // ALL update failures; only '(File Not Found)' means the item was deleted.
+  // Any other EResult reason must surface as a generic publish failure (with
+  // the reason in the message), NOT as 'item no longer exists on Steam'.
+  for (final reason in ['Failure', 'Timeout', 'Access Denied', 'Limit Exceeded']) {
+    test(
+        'steamcmd output "Failed to update workshop item ($reason)" → '
+        'generic WorkshopPublishException carrying the reason', () async {
+      final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+      File(vdfPath).writeAsStringSync('// stub vdf');
+      when(() => vdf.generateVdf(any()))
+          .thenAnswer((_) async => Ok(vdfPath));
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => _okProcess(
+                exitCode: 0,
+                stdout: 'Uploading content...\n'
+                    'ERROR! Failed to update workshop item ($reason).\n',
+              ));
+
+      final result = await service.publish(
+        params: _params(
+          contentFolder: packDir,
+          previewFile: previewPath,
+          publishedFileId: '9998887',
+        ),
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+      );
+
+      expect(result.isErr, true);
+      expect(result.error, isNot(isA<WorkshopItemNotFoundException>()),
+          reason: 'a "$reason" failure must not be reported as a deleted '
+              'item — that message pushes users to republish a duplicate');
+      expect(result.error, isA<WorkshopPublishException>());
+      expect(result.error.message, contains('($reason)'));
+    });
+  }
 
   test('bad steamcmd exit code (not 0/6/7) → WorkshopPublishException',
       () async {
@@ -478,6 +518,95 @@ void main() {
       (result.error as SteamCmdTimeoutException).timeoutSeconds,
       300,
     );
+  });
+
+  group('WorkshopPublishServiceImpl.publishBatch — update-failure reasons', () {
+    // Mirror of the single-publish reason tests for the batch streaming
+    // parser: steamcmd prints 'ERROR! Failed to update workshop item
+    // (<reason>).' for ALL update failures. Only '(File Not Found)' means
+    // the item was deleted from Steam; any other reason must surface as a
+    // generic WorkshopPublishException on the item result, NOT as
+    // WorkshopItemNotFoundException ('no longer exists on Steam') — that
+    // message pushes users to republish a duplicate Workshop item.
+
+    Future<List<Result<WorkshopPublishResult, SteamServiceException>>>
+        runBatchWithStdout(String stdout) async {
+      final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+      File(vdfPath).writeAsStringSync('// stub vdf');
+      when(() => vdf.generateVdf(any())).thenAnswer((_) async => Ok(vdfPath));
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => _okProcess(exitCode: 0, stdout: stdout));
+
+      final results =
+          <Result<WorkshopPublishResult, SteamServiceException>>[];
+      await service.publishBatch(
+        items: [
+          (
+            name: 'Test Mod',
+            params: _params(
+              contentFolder: packDir,
+              previewFile: previewPath,
+              publishedFileId: '9998887',
+            ),
+          ),
+        ],
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+        onItemComplete: (index, result) => results.add(result),
+      );
+      return results;
+    }
+
+    for (final reason in ['Failure', 'Timeout', 'Access Denied', 'Limit Exceeded']) {
+      test(
+          'batch output "Failed to update workshop item ($reason)" → generic '
+          'WorkshopPublishException carrying the reason, NOT item-not-found',
+          () async {
+        final results = await runBatchWithStdout(
+          'Uploading content...\n'
+          'ERROR! Failed to update workshop item ($reason).\n',
+        );
+
+        expect(results, hasLength(1));
+        final result = results.single;
+        expect(result.isErr, isTrue);
+        expect(result.error, isNot(isA<WorkshopItemNotFoundException>()),
+            reason: 'a "$reason" failure must not be reported as a deleted '
+                'item on the batch path either');
+        expect(result.error, isA<WorkshopPublishException>());
+        expect(result.error.message, contains('($reason)'));
+      });
+    }
+
+    test(
+        'batch output "Failed to update workshop item (File Not Found)" → '
+        'WorkshopItemNotFoundException with the item workshopId', () async {
+      final results = await runBatchWithStdout(
+        'Uploading content...\n'
+        'ERROR! Failed to update workshop item (File Not Found).\n',
+      );
+
+      expect(results, hasLength(1));
+      final result = results.single;
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<WorkshopItemNotFoundException>());
+      expect((result.error as WorkshopItemNotFoundException).workshopId,
+          '9998887');
+    });
+
+    test('batch success line still completes the item with Ok', () async {
+      final results = await runBatchWithStdout(
+        'PublishFileID : 1234567890\nItem Updated\nSuccess.\n',
+      );
+
+      expect(results, hasLength(1));
+      expect(results.single.isOk, isTrue,
+          reason: 'got error: '
+              '${results.single.isErr ? results.single.error : ''}');
+      expect(results.single.value.workshopId, '1234567890');
+    });
   });
 
   group('WorkshopPublishServiceImpl.publish — cached credentials', () {

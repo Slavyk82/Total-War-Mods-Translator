@@ -145,46 +145,84 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _progressSub?.cancel();
     _outputSub?.cancel();
 
-    // Guard: if cleaned up or state was reset while awaiting, skip updates
-    if (_silentlyCleaned ||
+    // If cleaned up or reset while awaiting, the UI is gone: skip the state
+    // writes below — but on a successful upload still persist the Workshop
+    // ID. This notifier is app-scoped (ref stays valid after the widget is
+    // disposed), and dropping the id would orphan the published item: the
+    // project would still show as unpublished and a re-publish would create
+    // a duplicate Workshop item.
+    final cleanedWhileAwaiting = _silentlyCleaned ||
         state.phase == PublishPhase.idle ||
-        state.phase == PublishPhase.cancelled) {
+        state.phase == PublishPhase.cancelled;
+    if (cleanedWhileAwaiting && result.isErr) {
       return;
     }
 
     if (result.isOk) {
       final publishResult = result.value;
 
-      // Save workshop ID to project or compilation
+      // Save workshop ID to project or compilation. The repositories return
+      // Result and never throw, so failures must be read off the Result —
+      // the catch below only covers unexpected throws (e.g. disposed ref).
+      // A failed save is surfaced on the completed state (the upload itself
+      // succeeded) so the user knows the id was not persisted locally.
+      String? saveFailure;
       if (projectId != null || compilationId != null) {
-        state = state.copyWith(
-          phase: PublishPhase.savingWorkshopId,
-          statusMessage: 'Saving Workshop ID...',
-        );
+        if (!cleanedWhileAwaiting) {
+          state = state.copyWith(
+            phase: PublishPhase.savingWorkshopId,
+            statusMessage: 'Saving Workshop ID...',
+          );
+        }
 
         try {
           if (projectId != null) {
             final projectRepo = ref.read(projectRepositoryProvider);
             final projectResult = await projectRepo.getById(projectId);
-            if (projectResult.isOk) {
+            if (projectResult.isErr) {
+              saveFailure = projectResult.error.message;
+            } else {
               final updated = projectResult.value.copyWith(
                 publishedSteamId: publishResult.workshopId,
                 publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
                 updatedAt: projectResult.value.updatedAt,
               );
-              await projectRepo.update(updated);
+              final updateResult = await projectRepo.update(updated);
+              if (updateResult.isErr) {
+                saveFailure = updateResult.error.message;
+              }
             }
           } else if (compilationId != null) {
             final compilationRepo = ref.read(compilationRepositoryProvider);
-            await compilationRepo.updateAfterPublish(
+            final updateResult = await compilationRepo.updateAfterPublish(
               compilationId,
               publishResult.workshopId,
               DateTime.now().millisecondsSinceEpoch ~/ 1000,
             );
+            if (updateResult.isErr) {
+              saveFailure = updateResult.error.message;
+            }
           }
         } catch (e) {
-          logging.warning('Failed to save Workshop ID: $e');
+          saveFailure = e.toString();
         }
+        if (saveFailure != null) {
+          logging.warning('Failed to save Workshop ID: $saveFailure');
+        }
+      }
+
+      // Refresh the exports list regardless of UI state — the published id
+      // just changed in the DB.
+      ref.invalidate(publishableItemsProvider);
+
+      // Re-check after the repo awaits: a silentCleanup() arriving while the
+      // id was being saved must not resurrect a stale completed state.
+      if (cleanedWhileAwaiting || _silentlyCleaned) {
+        logging.info('Workshop publish completed after cleanup', {
+          'workshopId': publishResult.workshopId,
+          'wasUpdate': publishResult.wasUpdate,
+        });
+        return;
       }
 
       state = state.copyWith(
@@ -192,13 +230,15 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
         progress: 1.0,
         publishedWorkshopId: publishResult.workshopId,
         wasUpdate: publishResult.wasUpdate,
-        statusMessage: publishResult.wasUpdate
-            ? 'Workshop item updated successfully!'
-            : 'Workshop item published successfully!',
+        statusMessage: saveFailure != null
+            ? 'Workshop item ${publishResult.wasUpdate ? 'updated' : 'published'}, '
+                'but the Workshop ID could not be saved locally '
+                '($saveFailure). The item may still show as unpublished — '
+                'set the Workshop ID manually before publishing again.'
+            : (publishResult.wasUpdate
+                ? 'Workshop item updated successfully!'
+                : 'Workshop item published successfully!'),
       );
-
-      // Invalidate the exports list to refresh Published ID
-      ref.invalidate(publishableItemsProvider);
 
       logging.info('Workshop publish completed', {
         'workshopId': publishResult.workshopId,
@@ -293,6 +333,12 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
   /// Clean up without setting state — safe to call from widget dispose()
   /// where the element is already defunct.
   void silentCleanup() {
+    // Mark cleanup so the pending `publish()` continuation and any stray
+    // stream events skip their state writes (this provider is app-scoped, so
+    // a write here would otherwise persist a stale error/progress state and
+    // flash it when the screen is reopened). `publish()` and `reset()` set
+    // the flag back to false when a new flow starts.
+    _silentlyCleaned = true;
     _progressSub?.cancel();
     _progressSub = null;
     _outputSub?.cancel();

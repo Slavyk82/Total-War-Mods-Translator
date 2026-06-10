@@ -6,7 +6,8 @@ import 'editor_actions_base.dart';
 /// Mixin handling undo/redo operations
 mixin EditorActionsUndoRedo on EditorActionsBase {
   Future<void> handleUndo() async {
-    final undoRedoManager = ref.read(undoRedoManagerProvider);
+    final undoRedoManager =
+        ref.read(undoRedoManagerProvider(projectId, languageId));
 
     try {
       final success = await undoRedoManager.undo();
@@ -21,7 +22,8 @@ mixin EditorActionsUndoRedo on EditorActionsBase {
   }
 
   Future<void> handleRedo() async {
-    final undoRedoManager = ref.read(undoRedoManagerProvider);
+    final undoRedoManager =
+        ref.read(undoRedoManagerProvider(projectId, languageId));
 
     try {
       final success = await undoRedoManager.redo();

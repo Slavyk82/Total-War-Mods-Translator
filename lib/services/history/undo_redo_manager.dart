@@ -172,18 +172,18 @@ class UndoRedoManager {
   Future<bool> undo() async {
     if (!canUndo) return false;
 
+    final action = _undoStack.removeLast();
     try {
-      final action = _undoStack.removeLast();
       await action.undo();
-      _redoStack.add(action);
-      return true;
-    } catch (e) {
-      // Re-add action if undo failed
-      if (_undoStack.isEmpty || _undoStack.last != _undoStack.last) {
-        // Action was already removed, add it back
-      }
+    } catch (_) {
+      // Undo failed (e.g. transient database error): the database was not
+      // changed, so restore the action onto the undo stack — the user can
+      // retry once the failure clears. It must NOT move to the redo stack.
+      _undoStack.add(action);
       rethrow;
     }
+    _redoStack.add(action);
+    return true;
   }
 
   /// Redo the last undone action
@@ -192,18 +192,18 @@ class UndoRedoManager {
   Future<bool> redo() async {
     if (!canRedo) return false;
 
+    final action = _redoStack.removeLast();
     try {
-      final action = _redoStack.removeLast();
       await action.redo();
-      _undoStack.add(action);
-      return true;
-    } catch (e) {
-      // Re-add action if redo failed
-      if (_redoStack.isEmpty || _redoStack.last != _redoStack.last) {
-        // Action was already removed, add it back
-      }
+    } catch (_) {
+      // Redo failed (e.g. transient database error): the database was not
+      // changed, so restore the action onto the redo stack — the user can
+      // retry once the failure clears. It must NOT move to the undo stack.
+      _redoStack.add(action);
       rethrow;
     }
+    _undoStack.add(action);
+    return true;
   }
 
   /// Check if undo is available

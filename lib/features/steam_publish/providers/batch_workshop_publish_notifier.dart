@@ -164,6 +164,10 @@ class BatchWorkshopPublishNotifier
     // must finish before we invalidate the list, otherwise the refreshed list
     // can show just-published items as unpublished (race).
     final pendingSaves = <Future<void>>[];
+    // Item name -> failure detail for Workshop ID writes that did not
+    // persist (the upload succeeded but the DB write failed). Filled by the
+    // pendingSaves futures; surfaced on the item's result after the batch.
+    final saveFailures = <String, String>{};
 
     try {
       await service.publishBatch(
@@ -202,7 +206,12 @@ class BatchWorkshopPublishNotifier
                 success: true,
                 workshopId: publishResult.workshopId,
               ));
-              pendingSaves.add(_saveWorkshopId(item, publishResult.workshopId));
+              pendingSaves.add(
+                _saveWorkshopId(item, publishResult.workshopId)
+                    .then((failure) {
+                  if (failure != null) saveFailures[item.name] = failure;
+                }),
+              );
               logging.info('Item published successfully', {
                 'name': item.name,
                 'workshopId': publishResult.workshopId,
@@ -264,6 +273,31 @@ class BatchWorkshopPublishNotifier
       await Future.wait(pendingSaves);
     }
 
+    // Surface Workshop ID writes that failed AFTER a successful upload: the
+    // refreshed list will still show those items as unpublished/outdated,
+    // and republishing without the saved id would create a duplicate
+    // Workshop item. Keep the item's success status (the upload itself
+    // worked) but attach a message distinguishing 'published but id not
+    // saved'. Guard the state write: the widget may have been disposed
+    // while awaiting the saves.
+    if (saveFailures.isNotEmpty && !_silentlyCleaned) {
+      final amendedResults = state.results.map((r) {
+        final failure = saveFailures[r.name];
+        if (failure == null || !r.success) return r;
+        return BatchPublishItemResult(
+          name: r.name,
+          success: true,
+          workshopId: r.workshopId,
+          errorMessage:
+              'Published as Workshop item #${r.workshopId}, but the Workshop '
+              'ID could not be saved locally ($failure). The item may still '
+              'show as unpublished — set the Workshop ID manually before '
+              'publishing again.',
+        );
+      }).toList();
+      state = state.copyWith(results: amendedResults);
+    }
+
     // Refresh exports list
     ref.invalidate(publishableItemsProvider);
 
@@ -271,11 +305,20 @@ class BatchWorkshopPublishNotifier
       'totalItems': items.length,
       'successCount': state.successCount,
       'failedCount': state.failedCount,
+      'workshopIdSaveFailures': saveFailures.length,
     });
   }
 
-  /// Save workshop ID to project or compilation DB record
-  Future<void> _saveWorkshopId(
+  /// Save workshop ID to project or compilation DB record.
+  ///
+  /// Returns null when the id was persisted, otherwise an English
+  /// description of the failure. The repositories return Result and never
+  /// throw, so failures must be read off the Result — the catch blocks only
+  /// cover unexpected throws (e.g. ref.read after disposal). The Workshop
+  /// upload itself already succeeded by the time this runs, so callers
+  /// surface failures as 'published but id not saved', never as a failed
+  /// upload.
+  Future<String?> _saveWorkshopId(
     BatchPublishItemInfo item,
     String workshopId,
   ) async {
@@ -286,30 +329,51 @@ class BatchWorkshopPublishNotifier
       try {
         final projectRepo = ref.read(projectRepositoryProvider);
         final projectResult = await projectRepo.getById(item.projectId!);
-        if (projectResult.isOk) {
-          final updated = projectResult.value.copyWith(
-            publishedSteamId: workshopId,
-            publishedAt: now,
-            updatedAt: projectResult.value.updatedAt,
-          );
-          await projectRepo.update(updated);
+        if (projectResult.isErr) {
+          final detail =
+              'could not load project: ${projectResult.error.message}';
+          logging.warning(
+              'Failed to save Workshop ID for ${item.name}: $detail');
+          return detail;
+        }
+        final updated = projectResult.value.copyWith(
+          publishedSteamId: workshopId,
+          publishedAt: now,
+          updatedAt: projectResult.value.updatedAt,
+        );
+        final updateResult = await projectRepo.update(updated);
+        if (updateResult.isErr) {
+          final detail = updateResult.error.message;
+          logging.warning(
+              'Failed to save Workshop ID for ${item.name}: $detail');
+          return detail;
         }
       } catch (e) {
         logging.warning('Failed to save Workshop ID for ${item.name}: $e');
+        return e.toString();
       }
     } else if (item.compilationId != null) {
       try {
         final compilationRepo = ref.read(compilationRepositoryProvider);
-        await compilationRepo.updateAfterPublish(
+        final updateResult = await compilationRepo.updateAfterPublish(
           item.compilationId!,
           workshopId,
           now,
         );
+        if (updateResult.isErr) {
+          final detail = updateResult.error.message;
+          logging.warning(
+              'Failed to save Workshop ID for compilation ${item.name}: '
+              '$detail');
+          return detail;
+        }
       } catch (e) {
         logging.warning(
             'Failed to save Workshop ID for compilation ${item.name}: $e');
+        return e.toString();
       }
     }
+    return null;
   }
 
   /// Retry batch with Steam Guard code

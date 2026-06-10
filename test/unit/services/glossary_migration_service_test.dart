@@ -171,6 +171,64 @@ void main() {
       expect(rows, isEmpty);
     });
 
+    test(
+        'deleting a universal via the plan leaves no orphaned glossary_entries '
+        '(FK CASCADE is inert while foreign_keys = OFF)', () async {
+      // Regression: applyMigration runs with PRAGMA foreign_keys = OFF, so
+      // ON DELETE CASCADE on glossary_entries.glossary_id does not fire.
+      // The universal-deletion paths must delete dependent entries explicitly.
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, target_language_id, created_at, updated_at) VALUES ('gu', 'Doomed', 1, 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, game_installation_id, game_code, target_language_id, created_at, updated_at) VALUES ('gg', 'Keep', 0, 'gi1', 'wh3', 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('e1', 'gu', 'fr', 'apple', 'pomme', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('e2', 'gu', 'fr', 'pear', 'poire', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('e3', 'gg', 'fr', 'plum', 'prune', 0, 0)",
+      );
+
+      await service
+          .applyMigration(const MigrationPlan(conversions: {'gu': null}));
+
+      final orphans = await DatabaseService.database.rawQuery(
+        'SELECT ge.id FROM glossary_entries ge '
+        'LEFT JOIN glossaries g ON g.id = ge.glossary_id '
+        'WHERE g.id IS NULL',
+      );
+      expect(orphans, isEmpty,
+          reason: 'Entries of deleted universals must be deleted explicitly '
+              'since CASCADE cannot fire with foreign_keys = OFF.');
+      final kept = await DatabaseService.database
+          .rawQuery('SELECT id FROM glossary_entries');
+      expect(kept.map((r) => r['id']), ['e3'],
+          reason: 'Entries of surviving glossaries must be untouched.');
+    });
+
+    test(
+        'deleting unmentioned universals leaves no orphaned glossary_entries',
+        () async {
+      await DatabaseService.database.execute(
+        "INSERT INTO glossaries (id, name, is_global, target_language_id, created_at, updated_at) VALUES ('gu', 'Unmentioned', 1, 'lang_fr', 0, 0)",
+      );
+      await DatabaseService.database.execute(
+        "INSERT INTO glossary_entries (id, glossary_id, target_language_code, source_term, target_term, created_at, updated_at) VALUES ('e1', 'gu', 'fr', 'apple', 'pomme', 0, 0)",
+      );
+
+      await service.applyMigration(const MigrationPlan(conversions: {}));
+
+      final entries = await DatabaseService.database
+          .rawQuery('SELECT id FROM glossary_entries');
+      expect(entries, isEmpty,
+          reason: 'Entries of universals deleted by the catch-all step must '
+              'not be orphaned.');
+    });
+
     test('succeeds when glossary rows use millisecond timestamps', () async {
       // Real user data: glossary_service stores created_at/updated_at in
       // milliseconds, but trg_glossaries_updated_at writes strftime('%s',...)

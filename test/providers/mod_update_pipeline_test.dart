@@ -21,6 +21,7 @@ import 'package:twmt/repositories/mod_version_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
 import 'package:twmt/services/steam/i_steamcmd_service.dart';
+import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/steamcmd_download_result.dart';
 
 import '../helpers/fakes/fake_logger.dart';
@@ -233,6 +234,191 @@ void main() {
       final state = container.read(modUpdateQueueProvider);
       expect(state[projectId]!.status, ModUpdateStatus.failed,
           reason: 'no pack file → the update cannot have been applied');
+      verifyNever(() => versionRepo.insert(any()));
+    });
+  });
+
+  group('ModUpdateQueue cancellation (cancelAll mid-update)', () {
+    // cancelAll() marks the in-progress project cancelled and kills the
+    // SteamCMD process, but _updateProject keeps running. It must re-check
+    // the cancelled status after every long await: a user cancel may never
+    // be overwritten by detectingChanges/updatingDatabase/completed/failed,
+    // and no ModVersion may be persisted after the cancel.
+
+    /// Stubs the analysis pipeline with a fixed successful result.
+    void stubAnalysisPipeline() {
+      const analysis = ModUpdateAnalysis(
+        newUnitsCount: 3,
+        removedUnitsCount: 1,
+        modifiedUnitsCount: 2,
+        totalPackUnits: 50,
+        totalProjectUnits: 48,
+      );
+      when(() => analysisService.analyzeChanges(
+            projectId: any(named: 'projectId'),
+            packFilePath: any(named: 'packFilePath'),
+          )).thenAnswer((_) async => const Ok(analysis));
+      when(() => analysisService.addNewUnits(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(3));
+      when(() => analysisService.applyModifiedSourceTexts(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(ModUpdateApplyResult(
+            sourceTextsUpdated: 2,
+            translationsReset: 2,
+          )));
+      when(() => analysisService.markRemovedUnitsObsolete(
+            projectId: any(named: 'projectId'),
+            analysis: any(named: 'analysis'),
+            onProgress: any(named: 'onProgress'),
+          )).thenAnswer((_) async => const Ok(1));
+    }
+
+    test(
+        'cancelAll during the download keeps status cancelled and skips '
+        'analysis and DB writes even though the download still completes',
+        () async {
+      final packFile = File(p.join(downloadDir.path, 'cool_mod.pack'));
+      await packFile.writeAsString('PFH5 fake pack content');
+      stubAnalysisPipeline();
+
+      when(() => steamService.cancel()).thenAnswer((_) async {});
+
+      // Hold the download so the test can cancel mid-flight. cancel() on the
+      // real service only kills the SteamCMD process; a download that already
+      // finished (or a mock, as here) still returns Ok afterwards.
+      final downloadStarted = Completer<void>();
+      final releaseDownload = Completer<void>();
+      when(() => steamService.downloadMod(
+            workshopId: any(named: 'workshopId'),
+            appId: any(named: 'appId'),
+            forceUpdate: any(named: 'forceUpdate'),
+          )).thenAnswer((_) async {
+        downloadStarted.complete();
+        await releaseDownload.future;
+        return Ok(SteamCmdDownloadResult(
+          workshopId: workshopId,
+          appId: 1142710,
+          downloadPath: downloadDir.path,
+          sizeBytes: 1024,
+          durationMs: 10,
+          timestamp: DateTime(2026, 6, 9),
+          wasUpdate: true,
+        ));
+      });
+
+      final subscription = container.listen(modUpdateQueueProvider, (_, _) {});
+      addTearDown(subscription.close);
+      final notifier = container.read(modUpdateQueueProvider.notifier);
+      notifier.addToQueue(project);
+      final updates = notifier.startUpdates();
+
+      await downloadStarted.future;
+      notifier.cancelAll();
+      releaseDownload.complete();
+      await updates;
+
+      final state = container.read(modUpdateQueueProvider);
+      expect(state[projectId]!.status, ModUpdateStatus.cancelled,
+          reason: 'a user cancel must not be overwritten by '
+              'detectingChanges/completed');
+      verifyNever(() => analysisService.analyzeChanges(
+            projectId: any(named: 'projectId'),
+            packFilePath: any(named: 'packFilePath'),
+          ));
+      verifyNever(() => versionRepo.insert(any()));
+    });
+
+    test(
+        'cancelAll during change detection keeps status cancelled and does '
+        'not persist a new ModVersion', () async {
+      final packFile = File(p.join(downloadDir.path, 'cool_mod.pack'));
+      await packFile.writeAsString('PFH5 fake pack content');
+      stubAnalysisPipeline();
+
+      when(() => steamService.cancel()).thenAnswer((_) async {});
+
+      // Hold the analysis (detectingChanges phase) so the test can cancel
+      // while the project is past the download.
+      final analysisStarted = Completer<void>();
+      final releaseAnalysis = Completer<void>();
+      when(() => analysisService.analyzeChanges(
+            projectId: any(named: 'projectId'),
+            packFilePath: any(named: 'packFilePath'),
+          )).thenAnswer((_) async {
+        analysisStarted.complete();
+        await releaseAnalysis.future;
+        return const Ok(ModUpdateAnalysis(
+          newUnitsCount: 3,
+          removedUnitsCount: 1,
+          modifiedUnitsCount: 2,
+          totalPackUnits: 50,
+          totalProjectUnits: 48,
+        ));
+      });
+
+      final subscription = container.listen(modUpdateQueueProvider, (_, _) {});
+      addTearDown(subscription.close);
+      final notifier = container.read(modUpdateQueueProvider.notifier);
+      notifier.addToQueue(project);
+      final updates = notifier.startUpdates();
+
+      await analysisStarted.future;
+      notifier.cancelAll();
+      releaseAnalysis.complete();
+      await updates;
+
+      final state = container.read(modUpdateQueueProvider);
+      expect(state[projectId]!.status, ModUpdateStatus.cancelled,
+          reason: 'a user cancel must not be overwritten by '
+              'updatingDatabase/completed');
+      // No new mod version may be persisted after a cancel.
+      verifyNever(() => versionRepo.insert(any()));
+      verifyNever(() => versionRepo.markAsCurrent(any()));
+    });
+
+    test(
+        'a download aborted by cancelAll stays cancelled instead of being '
+        'overwritten with failed', () async {
+      when(() => steamService.cancel()).thenAnswer((_) async {});
+
+      // The real service surfaces a killed download as DOWNLOAD_CANCELLED:
+      // the err branch must keep the user-set cancelled status, not flip the
+      // item to failed with a bogus 'Download failed: ...cancelled' message.
+      final downloadStarted = Completer<void>();
+      final releaseDownload = Completer<void>();
+      when(() => steamService.downloadMod(
+            workshopId: any(named: 'workshopId'),
+            appId: any(named: 'appId'),
+            forceUpdate: any(named: 'forceUpdate'),
+          )).thenAnswer((_) async {
+        downloadStarted.complete();
+        await releaseDownload.future;
+        return const Err(SteamServiceException(
+          'Download cancelled by user',
+          code: 'DOWNLOAD_CANCELLED',
+        ));
+      });
+
+      final subscription = container.listen(modUpdateQueueProvider, (_, _) {});
+      addTearDown(subscription.close);
+      final notifier = container.read(modUpdateQueueProvider.notifier);
+      notifier.addToQueue(project);
+      final updates = notifier.startUpdates();
+
+      await downloadStarted.future;
+      notifier.cancelAll();
+      releaseDownload.complete();
+      await updates;
+
+      final state = container.read(modUpdateQueueProvider);
+      expect(state[projectId]!.status, ModUpdateStatus.cancelled);
+      expect(state[projectId]!.errorMessage, isNull,
+          reason: 'a cancel is not a failure; no error must be reported');
       verifyNever(() => versionRepo.insert(any()));
     });
   });
