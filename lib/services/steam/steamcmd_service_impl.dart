@@ -105,11 +105,16 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       _logger.info('Executing: $steamCmdPath ${command.join(" ")}');
 
       // Execute SteamCMD (runInShell: false for security - prevents command injection)
-      _currentProcess = await _processLauncher.start(
+      // Keep a local handle: a concurrent cancel() kills the process and
+      // nulls the _currentProcess FIELD, so the exitCode await below must go
+      // through this local — using the field would throw on the null and
+      // skip the drainer cleanup.
+      final process = await _processLauncher.start(
         steamCmdPath,
         command,
         runInShell: false,
       );
+      _currentProcess = process;
 
       // Capture output
       final stdout = StringBuffer();
@@ -122,8 +127,8 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       // and lose collected warnings. The drainer also completes on stream
       // error instead of stalling until the grace timeout.
       final drainer = ProcessOutputDrainer(
-        stdout: _currentProcess!.stdout,
-        stderr: _currentProcess!.stderr,
+        stdout: process.stdout,
+        stderr: process.stderr,
         onStdoutChunk: (output) {
           stdout.write(output);
 
@@ -139,17 +144,21 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       );
 
       // Wait for completion with timeout (10 minutes)
-      final exitCode = await _currentProcess!.exitCode.timeout(
+      final exitCode = await process.exitCode.timeout(
         const Duration(minutes: 10),
         onTimeout: () {
-          _currentProcess?.kill();
+          process.kill();
           return -1;
         },
       );
 
       // Wait for any output still queued after the process exited so the
       // buffers (error message, warnings) are complete before being read.
+      // Then cancel the subscriptions: if awaitDrained gave up after its
+      // grace period they would otherwise stay live, and late lines would
+      // fire the callbacks into a finished run.
       await drainer.awaitDrained();
+      await drainer.cancel();
 
       // Cancellation must be checked BEFORE interpreting exitCode == -1 as a
       // timeout: cancel() kills the process, and on Windows Process.kill

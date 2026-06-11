@@ -11,7 +11,11 @@ import 'dart:convert';
 /// centralizes the drain idiom previously copy-pasted across
 /// [ProcessService], `SteamCmdServiceImpl` and `WorkshopPublishServiceImpl`:
 ///
-/// - subscribes to both streams with the given [encoding],
+/// - subscribes to both streams with the given [encoding] — the default is
+///   deliberately [latin1], NOT utf8: it is byte-parity with the
+///   `String.fromCharCodes` the steam call sites previously used (1 byte =
+///   1 code unit) and never throws on arbitrary bytes, so don't assume utf8
+///   when adding callers,
 /// - invokes optional per-chunk callbacks (raw decoded data, in arrival
 ///   order) and per-line callbacks (complete lines, reassembled across
 ///   chunk boundaries, `\r\n`/`\r`/`\n` all accepted as line breaks),

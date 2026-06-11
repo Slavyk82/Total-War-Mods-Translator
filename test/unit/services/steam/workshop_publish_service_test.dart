@@ -773,8 +773,11 @@ void main() {
     test(
         'batch: a slow upload emitting steady progress output well past the '
         'inactivity window is NOT killed and completes Ok', () async {
+      // 10x margin between the 100 ms output cadence and the inactivity
+      // window so a CI scheduler stall cannot make the watchdog kill a
+      // healthy process and flake the test.
       rebuildService(
-        inactivity: const Duration(milliseconds: 500),
+        inactivity: const Duration(seconds: 1),
         ceiling: const Duration(seconds: 30),
       );
       stubVdf();
@@ -788,15 +791,15 @@ void main() {
 
       when(() => launcher.start(any(), any(),
           runInShell: any(named: 'runInShell'))).thenAnswer((_) async {
-        // Emit progress every 100 ms for ~1.5 s — a total runtime several
-        // times the inactivity window (the analogue of an upload outliving
-        // the old per-item wall-clock budget) with no silence gap.
+        // Emit progress every 100 ms for ~2 s — a total runtime well past
+        // the inactivity window (the analogue of an upload outliving the
+        // old per-item wall-clock budget) with no silence gap.
         unawaited(() async {
-          for (var i = 1; i <= 15; i++) {
+          for (var i = 1; i <= 20; i++) {
             await Future<void>.delayed(const Duration(milliseconds: 100));
             if (stdoutController.isClosed) return;
             stdoutController
-                .add(utf8.encode('Uploading content... ${i * 6}%\n'));
+                .add(utf8.encode('Uploading content... ${i * 5}%\n'));
           }
           if (!stdoutController.isClosed) {
             stdoutController.add(utf8
@@ -922,8 +925,11 @@ void main() {
     test(
         'single publish: steady output past the inactivity window is NOT '
         'killed and completes Ok', () async {
+      // 10x margin between the 100 ms output cadence and the inactivity
+      // window so a CI scheduler stall cannot make the watchdog kill a
+      // healthy process and flake the test.
       rebuildService(
-        inactivity: const Duration(milliseconds: 500),
+        inactivity: const Duration(seconds: 1),
         ceiling: const Duration(seconds: 30),
       );
       stubVdf();
@@ -938,11 +944,13 @@ void main() {
       when(() => launcher.start(any(), any(),
           runInShell: any(named: 'runInShell'))).thenAnswer((_) async {
         unawaited(() async {
-          for (var i = 1; i <= 15; i++) {
+          // ~2 s of steady 100 ms-cadence output: well past the 1 s
+          // inactivity window, with a 10x margin between cadence and window.
+          for (var i = 1; i <= 20; i++) {
             await Future<void>.delayed(const Duration(milliseconds: 100));
             if (stdoutController.isClosed) return;
             stdoutController
-                .add(utf8.encode('Uploading content... ${i * 6}%\n'));
+                .add(utf8.encode('Uploading content... ${i * 5}%\n'));
           }
           if (!stdoutController.isClosed) {
             stdoutController.add(utf8
