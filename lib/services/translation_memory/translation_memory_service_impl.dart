@@ -375,10 +375,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       onProgress: onProgress,
     );
 
-    // Clear cache after migration
-    if (result.isOk) {
-      await clearCache();
-    }
+    // Clear cache after migration. Also on Err: a stalled migration may
+    // still have migrated/deleted entries before the failing batch, and a
+    // stale cache would hide them.
+    await clearCache();
 
     return result;
   }

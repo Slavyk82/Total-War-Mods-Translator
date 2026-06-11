@@ -203,7 +203,7 @@ void main() {
         final message = result.error.message;
         expect(message, contains('aborted'),
             reason: 'the error must say the rebuild was aborted');
-        expect(message, contains('$batchSize'),
+        expect(message, contains('adding $batchSize entries'),
             reason: 'partial progress (entries added before the abort) must '
                 'be part of the error message');
         expect(message, contains('db gone'),

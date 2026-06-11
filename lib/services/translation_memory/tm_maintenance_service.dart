@@ -39,7 +39,10 @@ class TmMaintenanceService {
   /// [projectId]: Optional project ID to limit rebuild scope
   /// [onProgress]: Optional progress callback (processed, total, added)
   ///
-  /// Returns tuple of (entries added, entries already existing)
+  /// Returns tuple of (entries added, entries already existing).
+  /// If a page fetch fails mid-rebuild, the rebuild is aborted and an Err
+  /// is returned whose message includes the partial progress (entries
+  /// added/existing/processed before the abort).
   Future<Result<({int added, int existing}), TmServiceException>>
       rebuildFromTranslations({
     String? projectId,
@@ -84,7 +87,6 @@ class TmMaintenanceService {
       // units). Bounding by `total` would silently skip the tail pages.
       // `total` is kept only as a progress-denominator estimate.
       var offset = 0;
-      Object? fetchError;
       while (true) {
         final batchResult = await _repository.getMissingTmTranslations(
           projectId: projectId,
@@ -93,16 +95,20 @@ class TmMaintenanceService {
         );
 
         if (batchResult.isErr) {
-          // Stop paging on a fetch error: with an open-ended loop a
-          // persistent error would otherwise spin forever. The abort is
-          // surfaced as an Err after the loop (with the partial counts in
-          // the message) so the caller does not mistake a rebuild that may
-          // have skipped most translations for a successful one.
+          // Abort on a fetch error: with an open-ended loop a persistent
+          // error would spin forever, and everything past `offset` was never
+          // processed, so reporting Ok would present a possibly mostly
+          // skipped rebuild as a success.
           _logger.warning('Failed to get batch at offset $offset; stopping', {
             'error': batchResult.error,
           });
-          fetchError = batchResult.error;
-          break;
+          return Err(TmServiceException(
+            'TM rebuild aborted after adding $addedCount entries '
+            '($existingCount already existed, $processedCount processed): '
+            'failed to fetch translations page at offset $offset: '
+            '${batchResult.error}',
+            error: batchResult.error,
+          ));
         }
 
         final rows = batchResult.value;
@@ -180,18 +186,6 @@ class TmMaintenanceService {
         // Short page: the query is exhausted, no need for one more round-trip.
         if (rows.length < batchSize) break;
         offset += batchSize;
-      }
-
-      if (fetchError != null) {
-        // A page fetch failed mid-rebuild: everything past `offset` was never
-        // processed, so reporting Ok here would present a possibly mostly
-        // skipped rebuild as a success.
-        return Err(TmServiceException(
-          'TM rebuild aborted after adding $addedCount entries '
-          '($existingCount already existed, $processedCount processed): '
-          'failed to fetch translations page at offset $offset: $fetchError',
-          error: fetchError,
-        ));
       }
 
       _logger.info('TM rebuild completed', {
