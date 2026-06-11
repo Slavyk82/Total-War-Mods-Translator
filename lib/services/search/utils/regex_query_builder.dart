@@ -172,12 +172,15 @@ class RegexQueryBuilder {
     _addListFilter(conditions, filter.statuses, 'tv.status');
     _addListFilter(conditions, filter.fileNames, 'tu.file_name');
 
-    // Add date range filters
+    // Add date range filters. All *_at columns store Unix SECONDS (writers
+    // use millisecondsSinceEpoch ~/ 1000), so convert before comparing.
     if (filter.minDate != null) {
-      conditions.add('tu.created_at >= ${filter.minDate!.millisecondsSinceEpoch}');
+      conditions
+          .add('tu.created_at >= ${filter.minDate!.millisecondsSinceEpoch ~/ 1000}');
     }
     if (filter.maxDate != null) {
-      conditions.add('tu.created_at <= ${filter.maxDate!.millisecondsSinceEpoch}');
+      conditions
+          .add('tu.created_at <= ${filter.maxDate!.millisecondsSinceEpoch ~/ 1000}');
     }
 
     return conditions.join(' AND ');

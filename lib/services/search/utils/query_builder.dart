@@ -91,15 +91,17 @@ class FtsQueryBuilder {
       conditions.add('$tableAlias.file_name IN ($placeholders)');
     }
 
-    // Filter by date range (min date)
+    // Filter by date range (min date). All *_at columns store Unix SECONDS
+    // (writers use millisecondsSinceEpoch ~/ 1000), so convert before
+    // comparing.
     if (filter.minDate != null) {
-      final timestamp = filter.minDate!.millisecondsSinceEpoch;
+      final timestamp = filter.minDate!.millisecondsSinceEpoch ~/ 1000;
       conditions.add('$tableAlias.created_at >= $timestamp');
     }
 
     // Filter by date range (max date)
     if (filter.maxDate != null) {
-      final timestamp = filter.maxDate!.millisecondsSinceEpoch;
+      final timestamp = filter.maxDate!.millisecondsSinceEpoch ~/ 1000;
       conditions.add('$tableAlias.created_at <= $timestamp');
     }
 

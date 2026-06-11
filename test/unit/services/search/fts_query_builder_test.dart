@@ -9,7 +9,9 @@ void main() {
     // where MORE NEGATIVE = MORE relevant. Best-first ordering is therefore
     // ascending (`ORDER BY rank`), never `ORDER BY rank DESC`.
     final descendingRank = RegExp(r'ORDER\s+BY\s+rank\s+DESC', caseSensitive: false);
-    final ascendingRank = RegExp(r'ORDER\s+BY\s+rank\s*(ASC)?\s*\n', caseSensitive: false);
+    // `rank` may be followed by a deterministic tiebreaker column (`, x.id`),
+    // so accept either a comma or end-of-line right after `rank [ASC]`.
+    final ascendingRank = RegExp(r'ORDER\s+BY\s+rank\s*(ASC)?\s*[,\n]', caseSensitive: false);
 
     test('translation units query orders rank ascending (best match first)',
         () {
@@ -86,6 +88,105 @@ void main() {
         expect(sql.toLowerCase(), contains(word));
       });
     }
+  });
+
+  group('FtsQueryBuilder date filters use Unix SECONDS (matching *_at columns)',
+      () {
+    // All *_at columns store Unix timestamps in SECONDS (writers use
+    // `DateTime.now().millisecondsSinceEpoch ~/ 1000`). Emitting milliseconds
+    // would make minDate exclude every row and maxDate an always-true no-op.
+    //
+    // The .123/.456 ms remainders make the seconds value NOT a string prefix
+    // match of the ms value, so the assertions below cannot pass by accident.
+    final minDate = DateTime.fromMillisecondsSinceEpoch(1700000000123, isUtc: true);
+    final maxDate = DateTime.fromMillisecondsSinceEpoch(1800000000456, isUtc: true);
+    final filter = SearchFilter(minDate: minDate, maxDate: maxDate);
+
+    test('translation units query compares created_at in seconds', () {
+      final sql = FtsQueryBuilder.buildTranslationUnitsQuery(
+        'cavalry',
+        filter: filter,
+        limit: 10,
+      );
+      expect(sql, matches(RegExp(r'tu\.created_at >= 1700000000(?!\d)')));
+      expect(sql, matches(RegExp(r'tu\.created_at <= 1800000000(?!\d)')));
+      expect(sql, isNot(contains('1700000000123')));
+      expect(sql, isNot(contains('1800000000456')));
+    });
+
+    test('translation versions query compares created_at in seconds', () {
+      final sql = FtsQueryBuilder.buildTranslationVersionsQuery(
+        'cavalry',
+        filter: filter,
+        limit: 10,
+      );
+      expect(sql, matches(RegExp(r'tv\.created_at >= 1700000000(?!\d)')));
+      expect(sql, matches(RegExp(r'tv\.created_at <= 1800000000(?!\d)')));
+      expect(sql, isNot(contains('1700000000123')));
+      expect(sql, isNot(contains('1800000000456')));
+    });
+  });
+
+  group('FtsQueryBuilder FTS5 column filter is parenthesized', () {
+    // Per the FTS5 grammar, `{col} : term1 term2` scopes ONLY term1 to the
+    // column; term2 matches ALL indexed columns (including validation_issues),
+    // producing false positives. The query must be parenthesized:
+    // `{translated_text} : (term1 term2)`.
+    test('versions query scopes a multi-term query entirely to translated_text',
+        () {
+      final sql = FtsQueryBuilder.buildTranslationVersionsQuery(
+        'heavy cavalry',
+        limit: 10,
+      );
+      expect(sql, contains("MATCH '{translated_text} : (heavy cavalry)'"));
+    });
+
+    test('versions query scopes a single-term query to translated_text', () {
+      final sql = FtsQueryBuilder.buildTranslationVersionsQuery(
+        'cavalry',
+        limit: 10,
+      );
+      expect(sql, contains("MATCH '{translated_text} : (cavalry)'"));
+    });
+  });
+
+  group('FtsQueryBuilder ORDER BY has a deterministic tiebreaker', () {
+    // bm25 rank ties are common for short repeated game strings, and the
+    // pagination layer issues separate SQL queries per page (LIMIT/OFFSET).
+    // Without a unique tiebreaker, tied rows have unspecified order across
+    // queries, so page boundaries can duplicate or drop rows.
+    test('translation units query breaks rank ties on tu.id', () {
+      final sql = FtsQueryBuilder.buildTranslationUnitsQuery(
+        'cavalry',
+        limit: 10,
+      );
+      expect(sql, matches(RegExp(r'ORDER\s+BY\s+rank,\s*tu\.id')));
+    });
+
+    test('translation versions query breaks rank ties on tv.id', () {
+      final sql = FtsQueryBuilder.buildTranslationVersionsQuery(
+        'cavalry',
+        limit: 10,
+      );
+      expect(sql, matches(RegExp(r'ORDER\s+BY\s+rank,\s*tv\.id')));
+    });
+
+    test('translation memory query breaks rank ties on tm.id', () {
+      final sql = FtsQueryBuilder.buildTranslationMemoryQuery(
+        'cavalry',
+        limit: 10,
+      );
+      expect(sql, matches(RegExp(r'ORDER\s+BY\s+rank,\s*tm\.id')));
+    });
+
+    test('glossary query breaks term ties on id (also paginated)', () {
+      final sql = FtsQueryBuilder.buildGlossaryQuery(
+        'cavalry',
+        limit: 10,
+        offset: 10,
+      );
+      expect(sql, matches(RegExp(r'ORDER\s+BY\s+term\s+ASC,\s*id')));
+    });
   });
 
   group('FtsQueryBuilder.buildGlossaryQuery LIKE escaping', () {
