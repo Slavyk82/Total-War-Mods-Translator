@@ -175,12 +175,12 @@ class RegexQueryBuilder {
     // Add date range filters. All *_at columns store Unix SECONDS (writers
     // use millisecondsSinceEpoch ~/ 1000), so convert before comparing.
     if (filter.minDate != null) {
-      conditions
-          .add('tu.created_at >= ${filter.minDate!.millisecondsSinceEpoch ~/ 1000}');
+      final timestamp = filter.minDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tu.created_at >= $timestamp');
     }
     if (filter.maxDate != null) {
-      conditions
-          .add('tu.created_at <= ${filter.maxDate!.millisecondsSinceEpoch ~/ 1000}');
+      final timestamp = filter.maxDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tu.created_at <= $timestamp');
     }
 
     return conditions.join(' AND ');

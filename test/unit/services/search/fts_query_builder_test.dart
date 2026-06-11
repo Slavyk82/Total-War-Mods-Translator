@@ -96,8 +96,9 @@ void main() {
     // `DateTime.now().millisecondsSinceEpoch ~/ 1000`). Emitting milliseconds
     // would make minDate exclude every row and maxDate an always-true no-op.
     //
-    // The .123/.456 ms remainders make the seconds value NOT a string prefix
-    // match of the ms value, so the assertions below cannot pass by accident.
+    // Non-zero ms remainders (.123/.456) ensure the ms and seconds values
+    // differ in more than trailing zeros, so the isNot(contains(ms))
+    // assertions below are meaningful.
     final minDate = DateTime.fromMillisecondsSinceEpoch(1700000000123, isUtc: true);
     final maxDate = DateTime.fromMillisecondsSinceEpoch(1800000000456, isUtc: true);
     final filter = SearchFilter(minDate: minDate, maxDate: maxDate);

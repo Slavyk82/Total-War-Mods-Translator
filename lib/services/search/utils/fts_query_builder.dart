@@ -360,13 +360,13 @@ class FtsQueryBuilder {
 
     // created_at stores Unix SECONDS — see _buildFilterClause for rationale.
     if (filter.minDate != null) {
-      conditions
-          .add('tv.created_at >= ${filter.minDate!.millisecondsSinceEpoch ~/ 1000}');
+      final timestamp = filter.minDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tv.created_at >= $timestamp');
     }
 
     if (filter.maxDate != null) {
-      conditions
-          .add('tv.created_at <= ${filter.maxDate!.millisecondsSinceEpoch ~/ 1000}');
+      final timestamp = filter.maxDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tv.created_at <= $timestamp');
     }
 
     // See _buildFilterClause: positive minRelevanceScore maps to a

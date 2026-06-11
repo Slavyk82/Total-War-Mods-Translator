@@ -119,12 +119,14 @@ class FtsQueryBuilder {
   ///
   /// Parameters:
   /// - [orderBy]: Sort field (default: 'rank' for FTS5 relevance)
-  /// - [ascending]: Sort direction (default: false for relevance)
+  /// - [ascending]: Sort direction (default: true for relevance)
   ///
   /// Returns: SQL ORDER BY clause (without 'ORDER BY' keyword)
+  // FTS5 rank is bm25(): negative, more negative = better — so relevance
+  // ordering must be ASCENDING (same convention as FtsQueryBuilder).
   static String buildOrderClause({
     String orderBy = 'rank',
-    bool ascending = false,
+    bool ascending = true,
   }) {
     final direction = ascending ? 'ASC' : 'DESC';
     return '$orderBy $direction';
