@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:twmt/models/common/result.dart';
+import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/repositories/glossary_repository.dart';
 import 'package:twmt/services/glossary/glossary_service_impl.dart';
 import 'package:twmt/services/glossary/models/glossary.dart';
@@ -46,7 +48,8 @@ void main() {
     await TestDatabase.close(db);
   });
 
-  Future<dynamic> add(String sourceTerm, {required bool caseSensitive}) {
+  Future<Result<GlossaryEntry, GlossaryException>> add(String sourceTerm,
+      {required bool caseSensitive}) {
     return glossaryService.addEntry(
       glossaryId: glossaryId,
       targetLanguageCode: targetLanguageCode,

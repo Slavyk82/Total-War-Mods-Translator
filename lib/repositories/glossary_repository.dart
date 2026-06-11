@@ -358,6 +358,11 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
   /// case-sensitive entries conflict only on an exact (trimmed) match, so
   /// 'Foo' and 'foo' can coexist; case-insensitive entries conflict on the
   /// historical LOWER(TRIM()) key.
+  ///
+  /// Unicode caveat: the migration lowercases its probe in Dart
+  /// (Unicode-aware), whereas SQLite's LOWER() here is ASCII-only — so the
+  /// two can diverge for non-ASCII terms. This side deliberately applies the
+  /// same ASCII-only LOWER() to both sides, keeping the comparison symmetric.
   Future<GlossaryEntry?> findDuplicateEntry({
     required String glossaryId,
     required String targetLanguageCode,
