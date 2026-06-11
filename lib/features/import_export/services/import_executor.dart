@@ -94,12 +94,19 @@ class ImportExecutor {
       // is a language id, NOT a project_languages.id; writing it straight into
       // translation_versions.project_language_id would orphan every imported
       // version (invisible to the editor and excluded from export).
+      // findByProjectAndLanguage distinguishes "not in project" (Ok(null))
+      // from a real DB failure (Err): a real failure must surface as-is, not
+      // be mislabeled as a missing language.
       final projectLanguageResult =
-          await _projectLanguageRepository.getByProjectAndLanguage(
+          await _projectLanguageRepository.findByProjectAndLanguage(
         settings.projectId,
         settings.targetLanguageId,
       );
       if (projectLanguageResult.isErr) {
+        return Err(projectLanguageResult.error);
+      }
+      final projectLanguage = projectLanguageResult.value;
+      if (projectLanguage == null) {
         return Err(
           ServiceException(
             'Target language is not part of this project. '
@@ -107,7 +114,7 @@ class ImportExecutor {
           ),
         );
       }
-      final projectLanguageId = projectLanguageResult.value.id;
+      final projectLanguageId = projectLanguage.id;
 
       final sourceColumn = _findColumn(
         settings.columnMapping,

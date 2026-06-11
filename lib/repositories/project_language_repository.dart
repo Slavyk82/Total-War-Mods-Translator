@@ -138,6 +138,31 @@ class ProjectLanguageRepository extends BaseRepository<ProjectLanguage> {
     });
   }
 
+  /// Find a project language by project and language IDs, returning `null`
+  /// when no row matches.
+  ///
+  /// Unlike [getByProjectAndLanguage], a missing row is NOT an error: callers
+  /// can distinguish "language definitely not in the project" (Ok(null)) from
+  /// a real database failure (Err). This prevents transient DB errors (e.g. a
+  /// locked database) from being misread as "language not in project".
+  Future<Result<ProjectLanguage?, TWMTDatabaseException>>
+      findByProjectAndLanguage(String projectId, String languageId) async {
+    return executeQuery(() async {
+      final maps = await database.query(
+        tableName,
+        where: 'project_id = ? AND language_id = ?',
+        whereArgs: [projectId, languageId],
+        limit: 1,
+      );
+
+      if (maps.isEmpty) {
+        return null;
+      }
+
+      return fromMap(maps.first);
+    });
+  }
+
   /// Update the progress percentage for a project language.
   ///
   /// Returns [Ok] with the updated entity, [Err] with exception if update fails.

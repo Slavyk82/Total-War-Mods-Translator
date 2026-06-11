@@ -10,6 +10,7 @@ import 'package:twmt/features/import_export/services/import_preview_service.dart
 import 'package:twmt/features/import_export/services/utils/import_file_reader.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
+import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
@@ -87,10 +88,11 @@ void main() {
     await TestDatabase.close(db);
   });
 
-  ImportSettings settings() => const ImportSettings(
+  ImportSettings settings({String targetLanguageId = 'lang_fr'}) =>
+      ImportSettings(
         format: ImportFormat.csv,
         projectId: 'proj-1',
-        targetLanguageId: 'lang_fr',
+        targetLanguageId: targetLanguageId,
         hasHeaderRow: true,
         columnMapping: {
           'key': ImportColumn.key,
@@ -105,7 +107,10 @@ void main() {
     return file;
   }
 
-  ImportExecutor buildExecutor(TranslationVersionRepository versionRepo) {
+  ImportExecutor buildExecutor(
+    TranslationVersionRepository versionRepo, {
+    ProjectLanguageRepository? projectLanguageRepo,
+  }) {
     final unitRepo = TranslationUnitRepository();
     final history = HistoryServiceImpl(
       historyRepository: TranslationVersionHistoryRepository(),
@@ -116,7 +121,7 @@ void main() {
       unitRepo,
       versionRepo,
       history,
-      ProjectLanguageRepository(),
+      projectLanguageRepo ?? ProjectLanguageRepository(),
     );
   }
 
@@ -218,6 +223,101 @@ void main() {
       reason: 'a real DB failure must fail conflict detection, got: $result',
     );
   });
+
+  test(
+      'detectConflicts surfaces a real DB failure during the project-language '
+      'lookup instead of silently reporting "no conflicts"', () async {
+    final file = await writeCsv();
+
+    final reader = ImportFileReader(FileServiceImpl());
+    final previewResult = await ImportPreviewService(reader)
+        .previewImport(file.path, settings());
+    expect(previewResult.isOk, isTrue, reason: previewResult.toString());
+
+    final detector = ImportConflictDetector(
+      reader,
+      TranslationUnitRepository(),
+      TranslationVersionRepository(),
+      _FailingProjectLanguageRepository(),
+    );
+
+    final result =
+        await detector.detectConflicts(previewResult.value, settings());
+
+    expect(
+      result.isErr,
+      isTrue,
+      reason: 'a real DB failure during the project-language lookup must '
+          'fail conflict detection, got: $result',
+    );
+  });
+
+  test(
+      'detectConflicts reports no conflicts when the target language is '
+      'genuinely not part of the project', () async {
+    final file = await writeCsv();
+    final notInProject = settings(targetLanguageId: 'lang_de');
+
+    final reader = ImportFileReader(FileServiceImpl());
+    final previewResult = await ImportPreviewService(reader)
+        .previewImport(file.path, notInProject);
+    expect(previewResult.isOk, isTrue, reason: previewResult.toString());
+
+    final detector = ImportConflictDetector(
+      reader,
+      TranslationUnitRepository(),
+      TranslationVersionRepository(),
+      ProjectLanguageRepository(),
+    );
+
+    final result =
+        await detector.detectConflicts(previewResult.value, notInProject);
+
+    expect(result.isOk, isTrue, reason: result.toString());
+    expect(result.value, isEmpty);
+  });
+
+  test(
+      'executeImport surfaces a real DB failure during the project-language '
+      'lookup instead of mislabeling it "language not in project"', () async {
+    final file = await writeCsv();
+    final executor = buildExecutor(
+      TranslationVersionRepository(),
+      projectLanguageRepo: _FailingProjectLanguageRepository(),
+    );
+
+    final result = await executor.executeImport(
+      file.path,
+      settings(),
+      const ConflictResolutions(),
+    );
+
+    expect(
+      result.isErr,
+      isTrue,
+      reason: 'a real DB failure must fail the import, got: $result',
+    );
+    expect(
+      result.error.message,
+      isNot(contains('not part of this project')),
+      reason: 'a real DB failure must not be reported as a missing language',
+    );
+  });
+
+  test('executeImport rejects a target language that is not in the project',
+      () async {
+    final file = await writeCsv();
+    final executor = buildExecutor(TranslationVersionRepository());
+
+    final result = await executor.executeImport(
+      file.path,
+      settings(targetLanguageId: 'lang_de'),
+      const ConflictResolutions(),
+    );
+
+    expect(result.isErr, isTrue, reason: result.toString());
+    expect(result.error.message, contains('not part of this project'));
+  });
 }
 
 /// Fake that simulates a real database failure (e.g. locked/corrupt DB) on
@@ -242,6 +342,25 @@ class _FailingLookupVersionRepository extends TranslationVersionRepository {
     required String unitId,
     required String projectLanguageId,
   }) async {
+    return const Err(_failure);
+  }
+}
+
+/// Fake that simulates a real database failure (e.g. locked/corrupt DB) on
+/// the project-language lookup while every other operation hits the real
+/// in-memory database.
+class _FailingProjectLanguageRepository extends ProjectLanguageRepository {
+  static const _failure = TWMTDatabaseException('database is locked');
+
+  @override
+  Future<Result<ProjectLanguage, TWMTDatabaseException>>
+      getByProjectAndLanguage(String projectId, String languageId) async {
+    return const Err(_failure);
+  }
+
+  @override
+  Future<Result<ProjectLanguage?, TWMTDatabaseException>>
+      findByProjectAndLanguage(String projectId, String languageId) async {
     return const Err(_failure);
   }
 }
