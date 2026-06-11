@@ -238,52 +238,90 @@ class ProjectInitializationServiceImpl
         }
 
         // Insert every unit for this file plus its per-language versions in a
-        // SINGLE transaction. This replaces the previous per-row awaited
-        // inserts (O(entries x languages) round-trips with per-insert trigger
-        // firing). ConflictAlgorithm.abort rolls the whole file's batch back
-        // on an unexpected key collision, so we never leave partial
-        // unit/version sets. Mirrors addNewUnits in
-        // mod_update_analysis_service.dart.
+        // SINGLE transaction (one commit, no O(entries x languages) awaited
+        // round-trips), but isolate each unit behind a SAVEPOINT. A failing
+        // insert rolls back ONLY that unit's writes (so the invariant "every
+        // unit has a full version set" holds); the unit is logged with its
+        // key, skipped, and not counted, and the rest of the file still
+        // commits. Mirrors addNewUnits in mod_update_analysis_service.dart;
+        // contract pinned by
+        // test/integration/project_initialization_savepoint_test.dart.
         if (unitsToInsert.isNotEmpty) {
+          const savepoint = 'sp_init_unit';
           try {
-            await DatabaseService.transaction((txn) async {
+            final skippedKeys = <String>[];
+            final inserted = await DatabaseService.transaction<int>((txn) async {
+              var insertedCount = 0;
               for (final unit in unitsToInsert) {
-                await txn.insert(
-                  'translation_units',
-                  unit.toJson(),
-                  conflictAlgorithm: ConflictAlgorithm.abort,
-                );
-
-                // Create translation versions for all project languages.
-                // Uses the languages cached once before the loop above.
-                for (final language in projectLanguages) {
-                  final version = TranslationVersion(
-                    id: uuid.v4(),
-                    unitId: unit.id,
-                    projectLanguageId: language.id,
-                    translatedText: null, // Empty for new imports
-                    isManuallyEdited: false,
-                    status: TranslationVersionStatus.pending,
-                    validationIssues: null,
-                    createdAt: now,
-                    updatedAt: now,
-                  );
-
+                await txn.execute('SAVEPOINT $savepoint');
+                try {
                   await txn.insert(
-                    'translation_versions',
-                    version.toJson(),
+                    'translation_units',
+                    unit.toJson(),
                     conflictAlgorithm: ConflictAlgorithm.abort,
                   );
+
+                  // Create translation versions for all project languages.
+                  // Uses the languages cached once before the loop above.
+                  for (final language in projectLanguages) {
+                    final version = TranslationVersion(
+                      id: uuid.v4(),
+                      unitId: unit.id,
+                      projectLanguageId: language.id,
+                      translatedText: null, // Empty for new imports
+                      isManuallyEdited: false,
+                      status: TranslationVersionStatus.pending,
+                      validationIssues: null,
+                      createdAt: now,
+                      updatedAt: now,
+                    );
+
+                    await txn.insert(
+                      'translation_versions',
+                      version.toJson(),
+                      conflictAlgorithm: ConflictAlgorithm.abort,
+                    );
+                  }
+
+                  await txn.execute('RELEASE SAVEPOINT $savepoint');
+                  insertedCount++;
+                } catch (e) {
+                  // Roll back only this unit's writes and keep going. NOTE:
+                  // the rollback MUST go through rawQuery, not execute —
+                  // sqflite's getSqlInTransactionArgument treats any statement
+                  // starting with "rollback" (including ROLLBACK TO SAVEPOINT)
+                  // as leaving the outer transaction, which corrupts its
+                  // bookkeeping. rawQuery skips that SQL sniffing.
+                  await txn.rawQuery('ROLLBACK TO SAVEPOINT $savepoint');
+                  await txn.execute('RELEASE SAVEPOINT $savepoint');
+                  skippedKeys.add(unit.key);
+                  _logger.warning(
+                      'Failed to insert unit and its versions, rolled back', {
+                    'file': tsvFilePath,
+                    'key': unit.key,
+                    'error': e,
+                  });
                 }
               }
+              return insertedCount;
             });
-            totalUnitsImported += unitsToInsert.length;
+            totalUnitsImported += inserted;
+
+            if (skippedKeys.isNotEmpty) {
+              // Release the in-memory key reservations for the skipped units
+              // so they are not falsely considered imported.
+              skippedKeys.forEach(existingKeys.remove);
+              _addLog(
+                  'Skipped ${skippedKeys.length} invalid entr'
+                  '${skippedKeys.length == 1 ? 'y' : 'ies'} from $fileName',
+                  InitializationLogLevel.warning);
+            }
           } catch (e, stackTrace) {
-            // The batch for this file rolled back. Keep behavior resilient:
-            // log and continue with the next file (previously a single failed
-            // insert was logged-and-skipped without aborting the whole import).
-            // Roll back the in-memory key reservations for this file so they
-            // are not falsely considered imported.
+            // Whole-transaction failure (per-unit failures are handled by the
+            // savepoints above): the batch for this file rolled back. Keep
+            // behavior resilient: log and continue with the next file. Roll
+            // back the in-memory key reservations for this file so they are
+            // not falsely considered imported.
             for (final unit in unitsToInsert) {
               existingKeys.remove(unit.key);
             }
