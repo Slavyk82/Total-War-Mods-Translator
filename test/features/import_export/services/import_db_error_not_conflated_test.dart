@@ -32,6 +32,12 @@ import '../../../helpers/test_database.dart';
 /// The fix introduces `findByUnitAndProjectLanguage` (Ok(null) == genuinely
 /// absent, Err == real DB failure) and propagates real failures as a row
 /// error (executor) / detection failure (detector).
+///
+/// The same conflation existed for the project-language lookup at the start
+/// of import preview/execution: `getByProjectAndLanguage` returned Err both
+/// for "no such project language" and for a real DB failure. Those paths now
+/// use `findByProjectAndLanguage` with the same Ok(null)/Err split, covered
+/// by the "project-language lookup" tests below.
 void main() {
   late Database db;
   late Directory tempDir;

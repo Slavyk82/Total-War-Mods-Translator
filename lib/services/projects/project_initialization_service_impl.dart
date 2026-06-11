@@ -312,8 +312,9 @@ class ProjectInitializationServiceImpl
               // so they are not falsely considered imported.
               skippedKeys.forEach(existingKeys.remove);
               _addLog(
-                  'Skipped ${skippedKeys.length} invalid entr'
-                  '${skippedKeys.length == 1 ? 'y' : 'ies'} from $fileName',
+                  'Skipped ${skippedKeys.length} '
+                  '${skippedKeys.length == 1 ? 'entry' : 'entries'} '
+                  'that failed to insert from $fileName',
                   InitializationLogLevel.warning);
             }
           } catch (e, stackTrace) {

@@ -228,6 +228,8 @@ class ImportExportService {
   /// cross-project data leak and an enormous, wrong export.
   Future<Result<List<TranslationVersion>, ServiceException>>
       _loadFilteredVersions(ExportSettings settings) async {
+    // Must-exist semantics intended: a missing project language is an export
+    // error here (do not migrate to findByProjectAndLanguage).
     final projectLanguageResult =
         await _projectLanguageRepository.getByProjectAndLanguage(
       settings.projectId,

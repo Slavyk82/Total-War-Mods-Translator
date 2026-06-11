@@ -299,6 +299,28 @@ void main() {
       expect(results[1].value.key, 'good_key');
     });
 
+    test('still skips the header when a malformed line precedes it', () async {
+      // A malformed first line yields Err without consuming the
+      // first-data-row flag, so the RPFM header on the next line is still
+      // recognized and skipped.
+      final file = await writeTsv(
+        'no_tab_on_this_line\n'
+        'key\ttext\ttooltip\n'
+        'unit_name_1\tSwordsmen\ttrue\n',
+      );
+
+      final results = await collect(file.path);
+
+      expect(results, hasLength(2));
+      expect(results[0].isErr, isTrue,
+          reason: 'Malformed first line must yield an error');
+      final entries = okEntries(results);
+      expect(entries, hasLength(1),
+          reason: 'Header row must still be skipped, not yielded as an entry');
+      expect(entries.single.key, 'unit_name_1');
+      expect(entries.single.value, 'Swordsmen');
+    });
+
     test('yields Err for a missing file', () async {
       final results = await collect(
           '${tempDir.path}${Platform.pathSeparator}does_not_exist.tsv');
