@@ -128,6 +128,7 @@ class TsvParser {
     }
 
     int lineNumber = 0;
+    bool isFirstDataRow = true;
 
     try {
       // Open file stream and read line by line
@@ -165,6 +166,17 @@ class TsvParser {
             ),
           );
           continue;
+        }
+
+        // Skip the RPFM TSV header row ('key\ttext\ttooltip') emitted by
+        // rpfm-cli --tables-as-tsv exports. Only the first data row is
+        // checked, and only an exact header match is skipped, so legitimate
+        // entries are never dropped (same semantics as parseString).
+        if (isFirstDataRow) {
+          isFirstDataRow = false;
+          if (_isRpfmHeaderRow(parts)) {
+            continue;
+          }
         }
 
         final key = parts[0].trim();
