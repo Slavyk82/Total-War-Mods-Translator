@@ -154,11 +154,15 @@ void main() {
     );
 
     test(
-      'terminates on a fetch error instead of paging forever, returning the '
-      'partial counts accumulated so far',
+      'terminates on a fetch error instead of paging forever, and reports '
+      'the aborted rebuild as an Err carrying the partial progress',
       () async {
         // The open-ended loop must not spin forever when the paged query
-        // keeps failing — it stops and returns what it processed.
+        // keeps failing — it stops paging. But an aborted rebuild may have
+        // skipped almost all eligible translations, so it must NOT be
+        // reported as an unqualified success: the result must be an Err
+        // whose message includes both the partial progress and the
+        // underlying fetch error.
         const batchSize = 500;
         final fullPage = List<Map<String, dynamic>>.generate(
           batchSize,
@@ -194,9 +198,16 @@ void main() {
 
         final result = await service.rebuildFromTranslations();
 
-        expect(result.isOk, isTrue);
-        expect(result.value.added, batchSize,
-            reason: 'first page processed before the error is kept');
+        expect(result.isErr, isTrue,
+            reason: 'an aborted rebuild must not be reported as success');
+        final message = result.error.message;
+        expect(message, contains('aborted'),
+            reason: 'the error must say the rebuild was aborted');
+        expect(message, contains('$batchSize'),
+            reason: 'partial progress (entries added before the abort) must '
+                'be part of the error message');
+        expect(message, contains('db gone'),
+            reason: 'the underlying fetch error must be surfaced');
         // Exactly two page fetches: the full page, then the failing one.
         verify(() => repo.getMissingTmTranslations(
               projectId: any(named: 'projectId'),
