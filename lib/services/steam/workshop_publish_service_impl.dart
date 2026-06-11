@@ -8,6 +8,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/i_process_launcher.dart';
+import 'package:twmt/services/shared/process_output_drainer.dart';
 import 'package:twmt/services/steam/i_workshop_publish_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
@@ -57,17 +58,31 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
   final ILoggingService _logger;
   final ActivityLogger? _activityLogger;
 
+  /// How long steamcmd may stay completely silent before the watchdog kills
+  /// it. Output activity (progress lines, heartbeats from steamcmd itself)
+  /// resets this window.
+  final Duration _inactivityTimeout;
+
+  /// Absolute ceiling on a single steamcmd run: even a process that keeps
+  /// producing output is killed past this point (guards against an endless
+  /// heartbeat loop that never finishes an item).
+  final Duration _absoluteTimeout;
+
   WorkshopPublishServiceImpl({
     SteamCmdManager? manager,
     VdfGenerator? vdfGenerator,
     IProcessLauncher? processLauncher,
     ILoggingService? logger,
     ActivityLogger? activityLogger,
+    Duration inactivityTimeout = const Duration(minutes: 3),
+    Duration absoluteTimeout = const Duration(minutes: 90),
   })  : _manager = manager ?? SteamCmdManager(),
         _vdfGenerator = vdfGenerator ?? VdfGenerator(),
         _processLauncher = processLauncher ?? const ProcessLauncher(),
         _logger = logger ?? ServiceLocator.get<ILoggingService>(),
-        _activityLogger = activityLogger ?? _tryResolveActivityLogger();
+        _activityLogger = activityLogger ?? _tryResolveActivityLogger(),
+        _inactivityTimeout = inactivityTimeout,
+        _absoluteTimeout = absoluteTimeout;
 
   static ActivityLogger? _tryResolveActivityLogger() {
     try {
@@ -231,10 +246,10 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         await File(vdfPath).delete();
       } catch (_) {}
 
-      // Cancellation must be checked BEFORE interpreting exitCode == -1 as a
-      // timeout: cancel() kills the process, and on Windows Process.kill
-      // surfaces exit code -1 — the same sentinel the onTimeout handler
-      // returns. Checking -1 first would report a deliberate user cancel as
+      // Cancellation must be checked BEFORE the watchdog-timeout check:
+      // cancel() kills the process, and the watchdog may still observe the
+      // resulting silence and record a timeout reason before the exit lands.
+      // Checking the timeout first would report a deliberate user cancel as
       // a timeout.
       if (_isCancelled) {
         return Err(const SteamServiceException(
@@ -243,11 +258,11 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
         ));
       }
 
-      if (run.exitCode == -1) {
-        return Err(const SteamCmdTimeoutException(
-          'Publish operation timed out after 5 minutes',
-          timeoutSeconds: 300,
-        ));
+      // Watchdog kill (silent past the inactivity window, or absolute
+      // ceiling reached) — report as a timeout, not as a bad exit code.
+      final timeoutException = run.timeoutException;
+      if (timeoutException != null) {
+        return Err(timeoutException);
       }
 
       // Check for authentication errors
@@ -576,12 +591,17 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
             Result<WorkshopPublishResult, SteamServiceException> result)?
         onItemComplete,
   }) async {
-    _currentProcess = await _processLauncher.start(
+    // Keep a local handle: a concurrent cancel() kills the process and nulls
+    // the _currentProcess FIELD, so every later use here (exitCode await,
+    // watchdog kill) must go through this local — using the field would
+    // either throw on the null or, worse, kill a LATER publish's process.
+    final process = await _processLauncher.start(
       steamCmdPath,
       command,
       runInShell: false,
     );
-    _currentProcess!.stdin.close();
+    _currentProcess = process;
+    process.stdin.close();
 
     var currentChunkPos = 0;
     final completedInChunk = <int>{};
@@ -595,19 +615,10 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       onItemStart?.call(chunk[0], items[chunk[0]].name);
     }
 
-    final outputCompleter = Completer<void>();
-    var stdoutDone = false;
-    var stderrDone = false;
-    void checkDone() {
-      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
-        outputCompleter.complete();
-      }
-    }
-
-    String stdoutBuffer = '';
-
-    // Process one COMPLETE output line. Extracted into a function so the
-    // trailing partial line buffered in [stdoutBuffer] can be flushed on done.
+    // Process one COMPLETE output line. The drainer reassembles lines split
+    // across stdout chunks and flushes the trailing partial line on done, so
+    // a split "Success."/"PublishFileID" line is still recognized and
+    // currentChunkPos stays aligned with the item being published.
     void processStdoutLine(String line) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) return;
@@ -731,35 +742,6 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
-    _currentProcess!.stdout.listen(
-      (data) {
-        lastOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        rawOutput.write(output);
-
-        // A line can be split across two stdout reads. Buffer the trailing
-        // partial line and only process complete lines, so a split
-        // "Success."/"PublishFileID" line is still recognized and
-        // currentChunkPos stays aligned with the item being published.
-        stdoutBuffer += output;
-        final segments = stdoutBuffer.split(RegExp(r'[\r\n]+'));
-        stdoutBuffer = segments.removeLast();
-        for (final line in segments) {
-          processStdoutLine(line);
-        }
-      },
-      onDone: () {
-        // Flush any final line that arrived without a trailing newline.
-        if (stdoutBuffer.isNotEmpty) {
-          processStdoutLine(stdoutBuffer);
-          stdoutBuffer = '';
-        }
-        stdoutDone = true;
-        checkDone();
-      },
-    );
-
-    String stderrBuffer = '';
     void processStderrLine(String line) {
       final trimmed = line.trim();
       if (trimmed.isNotEmpty) {
@@ -767,73 +749,70 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
-    _currentProcess!.stderr.listen(
-      (data) {
+    final drainer = ProcessOutputDrainer(
+      stdout: process.stdout,
+      stderr: process.stderr,
+      onStdoutChunk: (output) {
         lastOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
         rawOutput.write(output);
-        stderrBuffer += output;
-        final segments = stderrBuffer.split(RegExp(r'[\r\n]+'));
-        stderrBuffer = segments.removeLast();
-        for (final line in segments) {
-          processStderrLine(line);
-        }
       },
-      onDone: () {
-        if (stderrBuffer.isNotEmpty) {
-          processStderrLine(stderrBuffer);
-          stderrBuffer = '';
-        }
-        stderrDone = true;
-        checkDone();
+      onStdoutLine: processStdoutLine,
+      onStderrChunk: (output) {
+        lastOutputTime = DateTime.now();
+        rawOutput.write(output);
       },
+      onStderrLine: processStderrLine,
     );
 
-    // Inactivity timeout: kill process if no output for 3 minutes
-    final inactivityTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) {
-      final silence = DateTime.now().difference(lastOutputTime);
-      if (silence.inMinutes >= 3) {
-        _logger.warning('Batch steamcmd inactivity timeout (3 min)');
-        _currentProcess?.kill();
-      }
-    });
-
-    // Global (overall) timeout. The inactivity timer above only fires after 3
-    // minutes of TOTAL output silence, so a steamcmd that keeps emitting
-    // periodic heartbeat/progress output but never finishes an item would
-    // never trip it and `await exitCode` could block forever. Add a hard upper
-    // bound, mirroring the single-publish path's 5-minute cap, scaled by the
-    // number of items in this chunk. We budget 5 minutes per item, clamped to
-    // a sane floor/ceiling, then kill the process on expiry — the
-    // uncompleted-items loop below reports the failures consistently with the
-    // inactivity-timeout path (both just kill the process and let the post-exit
-    // reconciliation mark unfinished items as errors).
-    const perItemBudget = Duration(minutes: 5);
-    const minBatchTimeout = Duration(minutes: 5);
-    const maxBatchTimeout = Duration(minutes: 90);
-    var globalTimeout = perItemBudget * chunk.length;
-    if (globalTimeout < minBatchTimeout) globalTimeout = minBatchTimeout;
-    if (globalTimeout > maxBatchTimeout) globalTimeout = maxBatchTimeout;
-
-    final exitCode = await _currentProcess!.exitCode.timeout(
-      globalTimeout,
-      onTimeout: () {
+    // Activity-aware timeout. A fixed wall-clock budget here used to kill
+    // healthy uploads (large pack + slow uplink) that were still emitting
+    // steady progress output past the budget, reporting them as 'terminated
+    // unexpectedly'. The watchdog only kills the process when it has been
+    // silent for the inactivity window, or when the absolute ceiling (the
+    // old 90-min clamp ceiling) is reached even while still active — so
+    // output activity extends the deadline. The uncompleted-items loop below
+    // reports the affected items, as a timeout when the watchdog fired.
+    final watchdog = _SteamCmdWatchdog(
+      inactivityTimeout: _inactivityTimeout,
+      absoluteTimeout: _absoluteTimeout,
+      lastOutputAt: () => lastOutputTime,
+      onTimeout: (reason) {
         _logger.warning(
-          'Batch steamcmd global timeout (${globalTimeout.inMinutes} min) '
-          'for chunk of ${chunk.length} item(s) — killing process',
+          'Batch steamcmd timed out $reason '
+          '(chunk of ${chunk.length} item(s)) — killing process',
         );
-        _currentProcess?.kill();
-        // Return a sentinel exit code; the uncompleted-items loop reports the
-        // affected items as failed.
-        return -1;
+        process.kill();
       },
     );
-    inactivityTimer.cancel();
-    await outputCompleter.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {},
-    );
+
+    // Last-resort bound so an unkillable process cannot block this await
+    // forever; the watchdog normally kills well before this fires.
+    final int exitCode;
+    try {
+      exitCode = await process.exitCode.timeout(
+        _absoluteTimeout + const Duration(minutes: 1),
+        onTimeout: () {
+          _logger.warning(
+            'Batch steamcmd did not exit within the absolute ceiling — '
+            'abandoning the wait',
+          );
+          process.kill();
+          return -1;
+        },
+      );
+      // Cancel before the drain grace below so the watchdog cannot record a
+      // spurious inactivity timeout while we wait for trailing output.
+      watchdog.cancel();
+      await drainer.awaitDrained();
+    } finally {
+      // Re-run the cleanup unconditionally (both calls are idempotent): if
+      // anything above throws, a leaked periodic watchdog timer or live
+      // stream subscriptions could otherwise fire callbacks into a finished
+      // run — or kill a later publish's process.
+      watchdog.cancel();
+      await drainer.cancel();
+    }
+    final timeoutException = watchdog.toTimeoutException();
 
     // Handle auth failure — all items in chunk fail
     if (authFailed) {
@@ -859,35 +838,54 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       return;
     }
 
-    // Mark any uncompleted items as errors (genuine unexpected termination).
+    // Mark any uncompleted items as errors. A watchdog kill must be reported
+    // as a timeout, not as an unexplained termination with the -1 sentinel.
     for (final idx in chunk) {
       if (!completedInChunk.contains(idx)) {
         onItemComplete?.call(
           idx,
-          Err(WorkshopPublishException(
-            'steamcmd process terminated unexpectedly (exit code: $exitCode)',
-          )),
+          timeoutException != null
+              ? Err(timeoutException)
+              : Err(WorkshopPublishException(
+                  'steamcmd process terminated unexpectedly '
+                  '(exit code: $exitCode)',
+                )),
         );
       }
     }
   }
 
   /// Run steamcmd with the given command and return structured output.
-  Future<({int exitCode, String output, String? workshopId, bool wasUpdate})>
-      _runSteamCmd({
+  ///
+  /// [timeoutException] is set when the activity-aware watchdog killed the
+  /// process (silent past the inactivity window, or absolute ceiling
+  /// reached); null when the process exited on its own.
+  Future<
+      ({
+        int exitCode,
+        String output,
+        String? workshopId,
+        bool wasUpdate,
+        SteamCmdTimeoutException? timeoutException,
+      })> _runSteamCmd({
     required String steamCmdPath,
     required List<String> command,
     required DateTime startTime,
     required bool initialWasUpdate,
   }) async {
-    _currentProcess = await _processLauncher.start(
+    // Keep a local handle: a concurrent cancel() kills the process and nulls
+    // the _currentProcess FIELD, so every later use here (exitCode await,
+    // watchdog kill) must go through this local — using the field would
+    // either throw on the null or, worse, kill a LATER publish's process.
+    final process = await _processLauncher.start(
       steamCmdPath,
       command,
       runInShell: false,
     );
+    _currentProcess = process;
 
     // Close stdin so steamcmd cannot hang waiting for interactive input
-    _currentProcess!.stdin.close();
+    process.stdin.close();
 
     final stdout = StringBuffer();
     String? detectedWorkshopId;
@@ -897,27 +895,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     // Ensure stdout/stderr are fully drained before we read the buffer.
     // The process can exit while output is still queued, so awaiting exitCode
     // alone can truncate `stdout` and miss login/update failures.
-    final outputCompleter = Completer<void>();
-    var stdoutDone = false;
-    var stderrDone = false;
-    void checkDone() {
-      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
-        outputCompleter.complete();
-      }
-    }
-
-    _currentProcess!.stdout.listen(
-      (data) {
+    final drainer = ProcessOutputDrainer(
+      stdout: process.stdout,
+      stderr: process.stderr,
+      onStdoutChunk: (output) {
         lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
         stdout.write(output);
-
-        for (final line in output.split(RegExp(r'[\r\n]+'))) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add(trimmed);
-          }
-        }
 
         _tryExtractProgress(output);
 
@@ -931,27 +914,21 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
           wasUpdate = true;
         }
       },
-      onDone: () {
-        stdoutDone = true;
-        checkDone();
-      },
-    );
-
-    _currentProcess!.stderr.listen(
-      (data) {
-        lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        stdout.write(output);
-        for (final line in output.split('\n')) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add('[stderr] $trimmed');
-          }
+      onStdoutLine: (line) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add(trimmed);
         }
       },
-      onDone: () {
-        stderrDone = true;
-        checkDone();
+      onStderrChunk: (output) {
+        lastRealOutputTime = DateTime.now();
+        stdout.write(output);
+      },
+      onStderrLine: (line) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add('[stderr] $trimmed');
+        }
       },
     );
 
@@ -970,28 +947,54 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     });
 
-    final exitCode = await _currentProcess!.exitCode.timeout(
-      const Duration(minutes: 5),
-      onTimeout: () {
-        _currentProcess?.kill();
-        return -1;
+    // Activity-aware timeout, same mechanism as the batch path: a fixed
+    // wall-clock cap here used to kill slow-but-progressing uploads. The
+    // watchdog only kills on real silence or at the absolute ceiling.
+    final watchdog = _SteamCmdWatchdog(
+      inactivityTimeout: _inactivityTimeout,
+      absoluteTimeout: _absoluteTimeout,
+      lastOutputAt: () => lastRealOutputTime,
+      onTimeout: (reason) {
+        _logger.warning('steamcmd publish timed out $reason — killing process');
+        process.kill();
       },
     );
 
-    heartbeatTimer.cancel();
+    // Last-resort bound so an unkillable process cannot block this await
+    // forever; the watchdog normally kills well before this fires.
+    final int exitCode;
+    try {
+      exitCode = await process.exitCode.timeout(
+        _absoluteTimeout + const Duration(minutes: 1),
+        onTimeout: () {
+          process.kill();
+          return -1;
+        },
+      );
 
-    // Wait for any output still queued after the process exited so the buffer
-    // (checked for login/update failures and the workshop id) is complete.
-    await outputCompleter.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {},
-    );
+      heartbeatTimer.cancel();
+      watchdog.cancel();
+
+      // Wait for any output still queued after the process exited so the
+      // buffer (checked for login/update failures and the workshop id) is
+      // complete.
+      await drainer.awaitDrained();
+    } finally {
+      // Re-run the cleanup unconditionally (all three calls are idempotent):
+      // if anything above throws, leaked periodic timers or live stream
+      // subscriptions could otherwise fire callbacks into a finished run —
+      // or kill a later publish's process.
+      heartbeatTimer.cancel();
+      watchdog.cancel();
+      await drainer.cancel();
+    }
 
     return (
       exitCode: exitCode,
       output: stdout.toString(),
       workshopId: detectedWorkshopId,
       wasUpdate: wasUpdate,
+      timeoutException: watchdog.toTimeoutException(),
     );
   }
 
@@ -1165,6 +1168,92 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     if (!_outputController.isClosed) _outputController.close();
     _currentProcess?.kill();
   }
+}
+
+/// Activity-aware watchdog for a running steamcmd process.
+///
+/// Replaces the old fixed wall-clock `.timeout()` on `exitCode`, which
+/// killed healthy uploads: a large pack on a slow uplink can legitimately
+/// take longer than any per-item budget while still emitting steady progress
+/// output. The watchdog only declares a timeout when either:
+///  - the process has been completely silent for [inactivityTimeout]
+///    (regardless of elapsed time), or
+///  - the [absoluteTimeout] ceiling is reached even though the process is
+///    still producing output (guards against an endless heartbeat loop).
+/// Output activity therefore extends the effective deadline up to the
+/// absolute ceiling.
+///
+/// [onTimeout] is invoked at most once, with a human-readable reason; the
+/// call site is expected to kill the process there. After the process exits,
+/// read [timeoutReason] to distinguish a watchdog kill from a natural exit.
+class _SteamCmdWatchdog {
+  _SteamCmdWatchdog({
+    required Duration inactivityTimeout,
+    required Duration absoluteTimeout,
+    required DateTime Function() lastOutputAt,
+    required void Function(String reason) onTimeout,
+  }) : _startedAt = DateTime.now() {
+    _timer = Timer.periodic(
+      _checkInterval(inactivityTimeout, absoluteTimeout),
+      (_) {
+        if (timeoutReason != null) return; // already fired
+        final now = DateTime.now();
+        final silence = now.difference(lastOutputAt());
+        final elapsed = now.difference(_startedAt);
+        if (silence >= inactivityTimeout) {
+          timedOutAfter = inactivityTimeout;
+          timeoutReason =
+              'after ${_format(inactivityTimeout)} without output';
+        } else if (elapsed >= absoluteTimeout) {
+          timedOutAfter = absoluteTimeout;
+          timeoutReason = 'after ${_format(absoluteTimeout)} (absolute time '
+              'ceiling reached while still producing output)';
+        }
+        if (timeoutReason != null) {
+          onTimeout(timeoutReason!);
+        }
+      },
+    );
+  }
+
+  final DateTime _startedAt;
+  late final Timer _timer;
+
+  /// Human-readable reason set when the watchdog declared a timeout; null
+  /// when the process exited on its own.
+  String? timeoutReason;
+
+  /// The limit that was exceeded, for exception metadata.
+  Duration? timedOutAfter;
+
+  /// The recorded timeout as a [SteamCmdTimeoutException], or null when the
+  /// watchdog never fired. Centralizes the exception construction so call
+  /// sites don't rebuild it from the raw fields — [timedOutAfter] is always
+  /// set together with [timeoutReason], so no fallback is needed.
+  SteamCmdTimeoutException? toTimeoutException() {
+    final reason = timeoutReason;
+    if (reason == null) return null;
+    return SteamCmdTimeoutException(
+      'steamcmd timed out $reason',
+      timeoutSeconds: timedOutAfter!.inSeconds,
+    );
+  }
+
+  void cancel() => _timer.cancel();
+
+  /// Polls every 10 s in production; scales down for short (test-injected)
+  /// windows so they are still detected promptly.
+  static Duration _checkInterval(Duration inactivity, Duration ceiling) {
+    var interval = const Duration(seconds: 10);
+    final shortest = inactivity < ceiling ? inactivity : ceiling;
+    final half = shortest ~/ 2;
+    if (half < interval) interval = half;
+    const floor = Duration(milliseconds: 20);
+    return interval < floor ? floor : interval;
+  }
+
+  static String _format(Duration d) =>
+      d.inMinutes >= 1 ? '${d.inMinutes} min' : '${d.inSeconds} s';
 }
 
 /// Prepared item for batch publishing (internal to service)

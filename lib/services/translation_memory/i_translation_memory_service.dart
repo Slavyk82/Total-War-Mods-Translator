@@ -298,7 +298,10 @@ abstract class ITranslationMemoryService {
   /// [projectId]: Optional project ID to limit rebuild scope
   /// [onProgress]: Optional progress callback (processed, total, added)
   ///
-  /// Returns tuple of (entries added, entries already existing)
+  /// Returns tuple of (entries added, entries already existing).
+  /// If a page fetch fails mid-rebuild, the rebuild is aborted and an Err
+  /// is returned whose message includes the partial progress (entries
+  /// added/existing/processed before the abort).
   Future<Result<({int added, int existing}), TmServiceException>>
       rebuildFromTranslations({
     String? projectId,

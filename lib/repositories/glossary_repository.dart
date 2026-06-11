@@ -349,18 +349,36 @@ class GlossaryRepository extends BaseRepository<GlossaryEntry> {
     );
   }
 
-  /// Find duplicate entry
+  /// Find duplicate entry.
+  ///
+  /// Mirrors the migration's dedup rules
+  /// (GlossaryMigrationService._mergeEntriesDedup) and the schema's
+  /// UNIQUE(glossary_id, target_language_code, source_term, case_sensitive):
+  /// entries only conflict within the same [caseSensitive] group;
+  /// case-sensitive entries conflict only on an exact (trimmed) match, so
+  /// 'Foo' and 'foo' can coexist; case-insensitive entries conflict on the
+  /// historical LOWER(TRIM()) key.
+  ///
+  /// Unicode caveat: the migration lowercases its probe in Dart
+  /// (Unicode-aware), whereas SQLite's LOWER() here is ASCII-only — so the
+  /// two can diverge for non-ASCII terms. This side deliberately applies the
+  /// same ASCII-only LOWER() to both sides, keeping the comparison symmetric.
   Future<GlossaryEntry?> findDuplicateEntry({
     required String glossaryId,
     required String targetLanguageCode,
     required String sourceTerm,
+    required bool caseSensitive,
   }) async {
+    final termPredicate = caseSensitive
+        ? 'TRIM(source_term) = TRIM(?)'
+        : 'LOWER(TRIM(source_term)) = LOWER(TRIM(?))';
     final maps = await database.query(
       tableName,
       where: 'glossary_id = ? '
           'AND LOWER(target_language_code) = LOWER(?) '
-          'AND LOWER(TRIM(source_term)) = LOWER(TRIM(?))',
-      whereArgs: [glossaryId, targetLanguageCode, sourceTerm],
+          'AND case_sensitive = ? '
+          'AND $termPredicate',
+      whereArgs: [glossaryId, targetLanguageCode, caseSensitive ? 1 : 0, sourceTerm],
       limit: 1,
     );
     return maps.isEmpty ? null : fromMap(maps.first);

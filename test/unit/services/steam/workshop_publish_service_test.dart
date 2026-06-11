@@ -44,6 +44,35 @@ FakeProcess _okProcess({
   );
 }
 
+/// Fake process whose stdout is driven by the test and whose exit code only
+/// resolves when the test (or a kill) completes it. kill() mirrors Windows
+/// TerminateProcess: it surfaces exit code -1 and ends the output stream.
+class _ScriptableFakeProcess extends FakeProcess {
+  _ScriptableFakeProcess({
+    required StreamController<List<int>> stdoutController,
+    required Completer<int> exitCompleter,
+  })  : _stdoutController = stdoutController,
+        _exitCompleter = exitCompleter,
+        super(
+          pid: 4250,
+          exitCodeFuture: exitCompleter.future,
+          stdoutStream: stdoutController.stream,
+          stderrStream: const Stream<List<int>>.empty(),
+        );
+
+  final StreamController<List<int>> _stdoutController;
+  final Completer<int> _exitCompleter;
+  bool wasKilled = false;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    wasKilled = true;
+    if (!_exitCompleter.isCompleted) _exitCompleter.complete(-1);
+    if (!_stdoutController.isClosed) _stdoutController.close();
+    return true;
+  }
+}
+
 WorkshopPublishParams _params({
   required String contentFolder,
   required String previewFile,
@@ -479,19 +508,13 @@ void main() {
   }
 
   test(
-      '_runSteamCmd 5-minute timeout (exit code -1 sentinel) → '
-      'SteamCmdTimeoutException with timeoutSeconds: 300', () async {
-    // Why exit-code -1 sentinel rather than fakeAsync + pending future:
-    //   _runSteamCmd uses .timeout(Duration(minutes: 5), onTimeout: () {
-    //     _currentProcess?.kill(); return -1;
-    //   })
-    // and publish() then matches `run.exitCode == -1` to raise the timeout
-    // exception (workshop_publish_service_impl.dart L753-L759, L182-L187).
-    // The pre-_runSteamCmd phase (manager.getSteamCmdPath, file I/O,
-    // _hasCachedCredentials, vdfGenerator) performs real disk I/O that
-    // does not interact cleanly with fakeAsync's virtual clock — driving
-    // the sentinel directly is faithful to the production timeout path
-    // and keeps the test fully deterministic without a 5-minute wait.
+      'exit code -1 WITHOUT a watchdog timeout (process crash) → generic '
+      'WorkshopPublishException, no longer misreported as a timeout',
+      () async {
+    // Timeouts are now detected by the activity-aware watchdog (see the
+    // 'activity-aware timeouts' group below), not by the -1 sentinel: a
+    // process that genuinely exits with -1 (crash) must surface as a bad
+    // exit code rather than a fictitious '5-minute timeout'.
     final vdfPath = path.join(tempRoot.path, 'publish.vdf');
     File(vdfPath).writeAsStringSync('// stub vdf');
     when(() => vdf.generateVdf(any()))
@@ -513,11 +536,10 @@ void main() {
     );
 
     expect(result.isErr, true);
-    expect(result.error, isA<SteamCmdTimeoutException>());
-    expect(
-      (result.error as SteamCmdTimeoutException).timeoutSeconds,
-      300,
-    );
+    expect(result.error, isNot(isA<SteamCmdTimeoutException>()),
+        reason: 'a crash exit must not be reported as a timeout');
+    expect(result.error, isA<WorkshopPublishException>());
+    expect(result.error.message, contains('-1'));
   });
 
   group('WorkshopPublishServiceImpl.publishBatch — update-failure reasons', () {
@@ -690,6 +712,268 @@ void main() {
       expect(args, isNot(contains('shouldNotBeSent')),
           reason: 'password must never appear in steamcmd args when '
               'cached credentials are used');
+    });
+  });
+
+  group('WorkshopPublishServiceImpl — activity-aware timeouts', () {
+    // Regression tests for the wall-clock batch timeout that killed healthy
+    // uploads: a large pack on a slow uplink can legitimately exceed any
+    // per-item budget while still emitting steady progress output. The
+    // watchdog must only kill on real silence (inactivity window) or at the
+    // absolute ceiling — and a watchdog kill must be reported as a TIMEOUT,
+    // not as 'terminated unexpectedly (exit code: -1)'.
+    //
+    // Watchdog windows are constructor-injected and shortened here so the
+    // tests run in milliseconds instead of minutes.
+
+    /// Rebuilds the service with short watchdog windows.
+    void rebuildService({
+      required Duration inactivity,
+      required Duration ceiling,
+    }) {
+      service.dispose();
+      service = WorkshopPublishServiceImpl(
+        manager: manager,
+        vdfGenerator: vdf,
+        processLauncher: launcher,
+        logger: logger,
+        inactivityTimeout: inactivity,
+        absoluteTimeout: ceiling,
+      );
+    }
+
+    void stubVdf() {
+      final vdfPath = path.join(tempRoot.path, 'publish.vdf');
+      File(vdfPath).writeAsStringSync('// stub vdf');
+      when(() => vdf.generateVdf(any())).thenAnswer((_) async => Ok(vdfPath));
+    }
+
+    Future<List<Result<WorkshopPublishResult, SteamServiceException>>>
+        runBatch() async {
+      final results =
+          <Result<WorkshopPublishResult, SteamServiceException>>[];
+      await service.publishBatch(
+        items: [
+          (
+            name: 'Test Mod',
+            params: _params(
+              contentFolder: packDir,
+              previewFile: previewPath,
+            ),
+          ),
+        ],
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+        onItemComplete: (index, result) => results.add(result),
+      );
+      return results;
+    }
+
+    test(
+        'batch: a slow upload emitting steady progress output well past the '
+        'inactivity window is NOT killed and completes Ok', () async {
+      // 10x margin between the 100 ms output cadence and the inactivity
+      // window so a CI scheduler stall cannot make the watchdog kill a
+      // healthy process and flake the test.
+      rebuildService(
+        inactivity: const Duration(seconds: 1),
+        ceiling: const Duration(seconds: 30),
+      );
+      stubVdf();
+
+      final stdoutController = StreamController<List<int>>();
+      final exitCompleter = Completer<int>();
+      final process = _ScriptableFakeProcess(
+        stdoutController: stdoutController,
+        exitCompleter: exitCompleter,
+      );
+
+      when(() => launcher.start(any(), any(),
+          runInShell: any(named: 'runInShell'))).thenAnswer((_) async {
+        // Emit progress every 100 ms for ~2 s — a total runtime well past
+        // the inactivity window (the analogue of an upload outliving the
+        // old per-item wall-clock budget) with no silence gap.
+        unawaited(() async {
+          for (var i = 1; i <= 20; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            if (stdoutController.isClosed) return;
+            stdoutController
+                .add(utf8.encode('Uploading content... ${i * 5}%\n'));
+          }
+          if (!stdoutController.isClosed) {
+            stdoutController.add(utf8
+                .encode('PublishFileID : 1234567890\nItem Updated\nSuccess.\n'));
+            await stdoutController.close();
+          }
+          if (!exitCompleter.isCompleted) exitCompleter.complete(0);
+        }());
+        return process;
+      });
+
+      final results = await runBatch();
+
+      expect(process.wasKilled, isFalse,
+          reason: 'steady output must keep the watchdog at bay even when '
+              'the total runtime exceeds any wall-clock budget');
+      expect(results, hasLength(1));
+      expect(results.single.isOk, isTrue,
+          reason: 'got error: '
+              '${results.single.isErr ? results.single.error : ''}');
+      expect(results.single.value.workshopId, '1234567890');
+    });
+
+    test(
+        'batch: a completely silent process is killed after the inactivity '
+        'window and reported as a TIMEOUT, not "terminated unexpectedly"',
+        () async {
+      rebuildService(
+        inactivity: const Duration(milliseconds: 400),
+        ceiling: const Duration(seconds: 30),
+      );
+      stubVdf();
+
+      final stdoutController = StreamController<List<int>>();
+      final process = _ScriptableFakeProcess(
+        stdoutController: stdoutController,
+        exitCompleter: Completer<int>(),
+      );
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => process);
+
+      final results = await runBatch();
+
+      expect(process.wasKilled, isTrue);
+      expect(results, hasLength(1));
+      final error = results.single.error;
+      expect(error, isA<SteamCmdTimeoutException>());
+      expect(error.message, contains('steamcmd timed out'));
+      expect(error.message, contains('without output'));
+      expect(error.message, isNot(contains('terminated unexpectedly')));
+    });
+
+    test(
+        'batch: a process emitting output forever is still killed at the '
+        'absolute ceiling and reported as a timeout', () async {
+      rebuildService(
+        inactivity: const Duration(seconds: 10),
+        ceiling: const Duration(seconds: 1),
+      );
+      stubVdf();
+
+      final stdoutController = StreamController<List<int>>();
+      final process = _ScriptableFakeProcess(
+        stdoutController: stdoutController,
+        exitCompleter: Completer<int>(),
+      );
+      when(() => launcher.start(any(), any(),
+          runInShell: any(named: 'runInShell'))).thenAnswer((_) async {
+        unawaited(() async {
+          // Endless heartbeat: never finishes an item, never goes silent.
+          while (!stdoutController.isClosed) {
+            stdoutController.add(utf8.encode('Uploading content... 50%\n'));
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          }
+        }());
+        return process;
+      });
+
+      final results = await runBatch();
+
+      expect(process.wasKilled, isTrue);
+      expect(results, hasLength(1));
+      final error = results.single.error;
+      expect(error, isA<SteamCmdTimeoutException>());
+      expect(error.message, contains('steamcmd timed out'));
+      expect(error.message, contains('absolute time ceiling'));
+    });
+
+    test(
+        'single publish: a silent process is killed after the inactivity '
+        'window → SteamCmdTimeoutException with the new timeout message',
+        () async {
+      rebuildService(
+        inactivity: const Duration(milliseconds: 400),
+        ceiling: const Duration(seconds: 30),
+      );
+      stubVdf();
+
+      final stdoutController = StreamController<List<int>>();
+      final process = _ScriptableFakeProcess(
+        stdoutController: stdoutController,
+        exitCompleter: Completer<int>(),
+      );
+      when(() => launcher.start(any(), any(),
+              runInShell: any(named: 'runInShell')))
+          .thenAnswer((_) async => process);
+
+      final result = await service.publish(
+        params: _params(contentFolder: packDir, previewFile: previewPath),
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+      );
+
+      expect(process.wasKilled, isTrue);
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<SteamCmdTimeoutException>());
+      expect(result.error.message, contains('steamcmd timed out'));
+      expect(result.error.message, contains('without output'));
+    });
+
+    test(
+        'single publish: steady output past the inactivity window is NOT '
+        'killed and completes Ok', () async {
+      // 10x margin between the 100 ms output cadence and the inactivity
+      // window so a CI scheduler stall cannot make the watchdog kill a
+      // healthy process and flake the test.
+      rebuildService(
+        inactivity: const Duration(seconds: 1),
+        ceiling: const Duration(seconds: 30),
+      );
+      stubVdf();
+
+      final stdoutController = StreamController<List<int>>();
+      final exitCompleter = Completer<int>();
+      final process = _ScriptableFakeProcess(
+        stdoutController: stdoutController,
+        exitCompleter: exitCompleter,
+      );
+
+      when(() => launcher.start(any(), any(),
+          runInShell: any(named: 'runInShell'))).thenAnswer((_) async {
+        unawaited(() async {
+          // ~2 s of steady 100 ms-cadence output: well past the 1 s
+          // inactivity window, with a 10x margin between cadence and window.
+          for (var i = 1; i <= 20; i++) {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            if (stdoutController.isClosed) return;
+            stdoutController
+                .add(utf8.encode('Uploading content... ${i * 5}%\n'));
+          }
+          if (!stdoutController.isClosed) {
+            stdoutController.add(utf8
+                .encode('PublishFileID : 1234567890\nItem Updated\nSuccess.\n'));
+            await stdoutController.close();
+          }
+          if (!exitCompleter.isCompleted) exitCompleter.complete(0);
+        }());
+        return process;
+      });
+
+      final result = await service.publish(
+        params: _params(contentFolder: packDir, previewFile: previewPath),
+        username: 'user',
+        password: 'pw',
+        steamGuardCode: '12345',
+      );
+
+      expect(process.wasKilled, isFalse,
+          reason: 'steady output must keep the watchdog at bay');
+      expect(result.isOk, isTrue,
+          reason: 'got error: ${result.isErr ? result.error : ''}');
+      expect(result.value.workshopId, '1234567890');
     });
   });
 }

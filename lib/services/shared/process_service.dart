@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../models/common/result.dart';
 import 'models/process_result.dart' as models;
+import 'process_output_drainer.dart';
 
 /// Service for executing external processes
 ///
@@ -77,33 +78,16 @@ class ProcessService {
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
 
-      // Completers that resolve when each stream is fully drained (onDone).
-      // We must wait for these BEFORE reading the buffers: process.exitCode
-      // completing only means the OS process ended, but the Dart pipes may
-      // still have buffered, undelivered data. Draining first avoids dropping
-      // the tail of the output.
-      final stdoutDone = Completer<void>();
-      final stderrDone = Completer<void>();
-
-      final stdoutSub = process.stdout.transform(utf8.decoder).listen(
-            (data) => stdoutBuffer.write(data),
-            onDone: () {
-              if (!stdoutDone.isCompleted) stdoutDone.complete();
-            },
-            onError: (Object e) {
-              if (!stdoutDone.isCompleted) stdoutDone.complete();
-            },
-          );
-
-      final stderrSub = process.stderr.transform(utf8.decoder).listen(
-            (data) => stderrBuffer.write(data),
-            onDone: () {
-              if (!stderrDone.isCompleted) stderrDone.complete();
-            },
-            onError: (Object e) {
-              if (!stderrDone.isCompleted) stderrDone.complete();
-            },
-          );
+      // The drainer must be awaited BEFORE reading the buffers: see
+      // ProcessOutputDrainer docs (exitCode completing does not mean the
+      // pipes are empty).
+      final drainer = ProcessOutputDrainer(
+        stdout: process.stdout,
+        stderr: process.stderr,
+        encoding: utf8,
+        onStdoutChunk: stdoutBuffer.write,
+        onStderrChunk: stderrBuffer.write,
+      );
 
       try {
         // Wait for process to complete (with optional timeout)
@@ -123,13 +107,8 @@ class ProcessService {
         }
 
         // Drain stdout/stderr to completion before reading the buffers so we
-        // capture any output still buffered in the pipes after exit. Bound the
-        // wait: a surviving child process that inherited the stdout/stderr
-        // pipe can keep it open after the parent exits, so onDone may never
-        // fire. After a short grace period we proceed with whatever was
-        // buffered rather than hang the caller forever.
-        await Future.wait([stdoutDone.future, stderrDone.future])
-            .timeout(const Duration(seconds: 5), onTimeout: () => const []);
+        // capture any output still buffered in the pipes after exit.
+        await drainer.awaitDrained();
 
         final executionTime = DateTime.now().difference(startTime);
 
@@ -145,8 +124,7 @@ class ProcessService {
         // Ensure subscriptions are cancelled and the process is removed from
         // the active map on every path (success, error, or timeout), so we
         // never leak stream subscriptions or stale active-process entries.
-        await stdoutSub.cancel();
-        await stderrSub.cancel();
+        await drainer.cancel();
         _activeProcesses.remove(pid);
       }
     } on TimeoutException catch (e) {
@@ -192,20 +170,15 @@ class ProcessService {
       final stderrBuffer = StringBuffer();
       int lineCount = 0;
 
-      // Completers that resolve when each stream is fully drained (onDone).
-      // We must wait for these BEFORE reading the buffers: process.exitCode
-      // completing only means the OS process ended, but the Dart pipes may
-      // still have buffered, undelivered data. Draining first avoids dropping
-      // the tail of the output.
-      final stdoutDone = Completer<void>();
-      final stderrDone = Completer<void>();
-
-      // Stream stdout
-      final stdoutSub = process.stdout
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-        (line) {
+      // The drainer must be awaited BEFORE reading the buffers: see
+      // ProcessOutputDrainer docs (exitCode completing does not mean the
+      // pipes are empty). It also reassembles lines split across chunk
+      // boundaries and flushes a trailing partial line.
+      final drainer = ProcessOutputDrainer(
+        stdout: process.stdout,
+        stderr: process.stderr,
+        encoding: utf8,
+        onStdoutLine: (line) {
           stdoutBuffer.writeln(line);
           lineCount++;
 
@@ -219,20 +192,7 @@ class ProcessService {
             ));
           }
         },
-        onDone: () {
-          if (!stdoutDone.isCompleted) stdoutDone.complete();
-        },
-        onError: (Object e) {
-          if (!stdoutDone.isCompleted) stdoutDone.complete();
-        },
-      );
-
-      // Stream stderr
-      final stderrSub = process.stderr
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .listen(
-        (line) {
+        onStderrLine: (line) {
           stderrBuffer.writeln(line);
           lineCount++;
 
@@ -245,12 +205,6 @@ class ProcessService {
               timestamp: DateTime.now(),
             ));
           }
-        },
-        onDone: () {
-          if (!stderrDone.isCompleted) stderrDone.complete();
-        },
-        onError: (Object e) {
-          if (!stderrDone.isCompleted) stderrDone.complete();
         },
       );
 
@@ -272,13 +226,8 @@ class ProcessService {
         }
 
         // Drain stdout/stderr to completion before reading the buffers so we
-        // capture any output still buffered in the pipes after exit. Bound the
-        // wait: a surviving child process that inherited the stdout/stderr
-        // pipe can keep it open after the parent exits, so onDone may never
-        // fire. After a short grace period we proceed with whatever was
-        // buffered rather than hang the caller forever.
-        await Future.wait([stdoutDone.future, stderrDone.future])
-            .timeout(const Duration(seconds: 5), onTimeout: () => const []);
+        // capture any output still buffered in the pipes after exit.
+        await drainer.awaitDrained();
 
         final executionTime = DateTime.now().difference(startTime);
 
@@ -294,8 +243,7 @@ class ProcessService {
         // Ensure subscriptions are cancelled and the process is removed from
         // the active map on every path (success, error, or timeout), so we
         // never leak stream subscriptions or stale active-process entries.
-        await stdoutSub.cancel();
-        await stderrSub.cancel();
+        await drainer.cancel();
         _activeProcesses.remove(pid);
       }
     } on TimeoutException catch (e) {

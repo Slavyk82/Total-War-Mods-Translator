@@ -359,10 +359,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       onProgress: onProgress,
     );
 
-    // Clear cache after rebuild
-    if (result.isOk) {
-      await clearCache();
-    }
+    // Clear cache after rebuild. Also on Err: an aborted rebuild may still
+    // have added entries before the failing page fetch, and a stale cache
+    // would hide them.
+    await clearCache();
 
     return result;
   }
@@ -375,10 +375,10 @@ class TranslationMemoryServiceImpl implements ITranslationMemoryService {
       onProgress: onProgress,
     );
 
-    // Clear cache after migration
-    if (result.isOk) {
-      await clearCache();
-    }
+    // Clear cache after migration. Also on Err: a stalled migration may
+    // still have migrated/deleted entries before the failing batch, and a
+    // stale cache would hide them.
+    await clearCache();
 
     return result;
   }

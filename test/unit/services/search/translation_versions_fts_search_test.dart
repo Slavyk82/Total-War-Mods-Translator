@@ -72,6 +72,7 @@ void main() {
     required String id,
     required String unitId,
     required String translatedText,
+    String? validationIssues,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.insert('translation_versions', {
@@ -79,6 +80,7 @@ void main() {
       'unit_id': unitId,
       'project_language_id': 'pl-1',
       'translated_text': translatedText,
+      if (validationIssues != null) 'validation_issues': validationIssues,
       'status': 'translated',
       'created_at': now,
       'updated_at': now,
@@ -185,6 +187,43 @@ void main() {
     );
     expect(stale, isEmpty,
         reason: 'stale FTS entry for the old text must be deleted');
+  });
+
+  test(
+      'multi-term search scopes ALL terms to translated_text '
+      '(parenthesized FTS5 column filter)', () async {
+    await seedGraph();
+    await insertUnit('unit-1', 'heavy cavalry');
+    await insertUnit('unit-2', 'light infantry');
+    // Real match: both terms appear in translated_text.
+    await insertVersion(
+      id: 'version-1',
+      unitId: 'unit-1',
+      translatedText: 'cavalerie grumpfel vexalor',
+    );
+    // Decoy: first term in translated_text, second term ONLY in the indexed
+    // validation_issues column. The FTS5 column filter binds only to the
+    // immediately following phrase, so an unparenthesized
+    //   {translated_text} : grumpfel AND vexalor
+    // would scope only 'grumpfel' and let 'vexalor' match ANY indexed
+    // column (including validation_issues) — returning this row. The
+    // parenthesized form {translated_text} : (grumpfel AND vexalor)
+    // must exclude it.
+    await insertVersion(
+      id: 'version-2',
+      unitId: 'unit-2',
+      translatedText: 'infanterie grumpfel',
+      validationIssues: '[{"type":"style","message":"vexalor mismatch"}]',
+    );
+
+    final result = await service.searchTranslationVersions('grumpfel vexalor');
+
+    expect(result.isOk, isTrue,
+        reason: 'search failed: ${result.isErr ? result.error : ''}');
+    final ids = result.value.map((r) => r.id).toList();
+    expect(ids, ['version-1'],
+        reason: 'decoy whose second term matches only validation_issues '
+            'must NOT be returned');
   });
 
   test('deleting a version removes its FTS entry', () async {

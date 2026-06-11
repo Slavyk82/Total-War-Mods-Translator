@@ -66,7 +66,7 @@ class FtsQueryBuilder {
       LEFT JOIN projects p ON tu.project_id = p.id
       WHERE translation_units_fts MATCH '$sanitizedQuery'
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
-      ORDER BY rank
+      ORDER BY rank, tu.id
       $limitClause
     ''';
   }
@@ -105,7 +105,14 @@ class FtsQueryBuilder {
     // positives. FTS5 column-filter syntax `{col} : <query>` restricts the
     // match to that column. The snippet() below already targets col 0
     // (translated_text), so highlighting stays consistent.
-    final scopedQuery = '{translated_text} : $sanitizedQuery';
+    //
+    // The query MUST be parenthesized: per the FTS5 grammar a column filter
+    // binds only to the immediately following phrase, so for a multi-term
+    // query ('heavy cavalry') an unparenthesized filter would scope only the
+    // first term and let the rest match ALL indexed columns (including
+    // validation_issues) — false positives. Safe to wrap because
+    // _sanitizeFtsQuery strips '(' / ')' from user input.
+    final scopedQuery = '{translated_text} : ($sanitizedQuery)';
 
     // translation_versions has no language_code/project_id/file_name columns:
     // language is reached via project_languages -> languages, and
@@ -137,7 +144,7 @@ class FtsQueryBuilder {
       LEFT JOIN languages l ON pl.language_id = l.id
       WHERE translation_versions_fts MATCH '$scopedQuery'
       ${filterClause.isNotEmpty ? 'AND $filterClause' : ''}
-      ORDER BY rank
+      ORDER BY rank, tv.id
       $limitClause
     ''';
   }
@@ -194,7 +201,7 @@ class FtsQueryBuilder {
       INNER JOIN translation_memory tm ON fts.rowid = tm.rowid
       WHERE translation_memory_fts MATCH '$sanitizedQuery'
       $languageClause
-      ORDER BY rank
+      ORDER BY rank, tm.id
       $limitClause
     ''';
   }
@@ -245,7 +252,7 @@ class FtsQueryBuilder {
       FROM glossary_entries
       WHERE (term LIKE '%$escapedQuery%' ESCAPE '\\' OR translation LIKE '%$escapedQuery%' ESCAPE '\\' OR notes LIKE '%$escapedQuery%' ESCAPE '\\')
       $whereClause
-      ORDER BY term ASC
+      ORDER BY term ASC, id
       $limitClause
     ''';
   }
@@ -290,14 +297,17 @@ class FtsQueryBuilder {
       conditions.add('$tablePrefix.source_loc_file IN ($placeholders)');
     }
 
-    // Date range filters
+    // Date range filters. All *_at columns store Unix SECONDS (writers use
+    // millisecondsSinceEpoch ~/ 1000), so convert before comparing — using
+    // milliseconds would exclude every row for minDate and make maxDate a
+    // no-op.
     if (filter.minDate != null) {
-      final timestamp = filter.minDate!.millisecondsSinceEpoch;
+      final timestamp = filter.minDate!.millisecondsSinceEpoch ~/ 1000;
       conditions.add('$tablePrefix.created_at >= $timestamp');
     }
 
     if (filter.maxDate != null) {
-      final timestamp = filter.maxDate!.millisecondsSinceEpoch;
+      final timestamp = filter.maxDate!.millisecondsSinceEpoch ~/ 1000;
       conditions.add('$tablePrefix.created_at <= $timestamp');
     }
 
@@ -348,12 +358,15 @@ class FtsQueryBuilder {
       conditions.add('tu.source_loc_file IN ($placeholders)');
     }
 
+    // created_at stores Unix SECONDS — see _buildFilterClause for rationale.
     if (filter.minDate != null) {
-      conditions.add('tv.created_at >= ${filter.minDate!.millisecondsSinceEpoch}');
+      final timestamp = filter.minDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tv.created_at >= $timestamp');
     }
 
     if (filter.maxDate != null) {
-      conditions.add('tv.created_at <= ${filter.maxDate!.millisecondsSinceEpoch}');
+      final timestamp = filter.maxDate!.millisecondsSinceEpoch ~/ 1000;
+      conditions.add('tv.created_at <= $timestamp');
     }
 
     // See _buildFilterClause: positive minRelevanceScore maps to a

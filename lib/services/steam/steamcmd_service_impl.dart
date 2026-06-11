@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/shared/i_process_launcher.dart';
+import 'package:twmt/services/shared/process_output_drainer.dart';
 import 'package:twmt/services/steam/i_steamcmd_service.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
@@ -104,11 +105,16 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       _logger.info('Executing: $steamCmdPath ${command.join(" ")}');
 
       // Execute SteamCMD (runInShell: false for security - prevents command injection)
-      _currentProcess = await _processLauncher.start(
+      // Keep a local handle: a concurrent cancel() kills the process and
+      // nulls the _currentProcess FIELD, so the exitCode await below must go
+      // through this local — using the field would throw on the null and
+      // skip the drainer cleanup.
+      final process = await _processLauncher.start(
         steamCmdPath,
         command,
         runInShell: false,
       );
+      _currentProcess = process;
 
       // Capture output
       final stdout = StringBuffer();
@@ -118,19 +124,12 @@ class SteamCmdServiceImpl implements ISteamCmdService {
       // Ensure stdout/stderr are fully drained before the buffers are read.
       // The process can exit while output events are still queued, so
       // awaiting exitCode alone can truncate stderr (wrong error message)
-      // and lose collected warnings.
-      final outputCompleter = Completer<void>();
-      var stdoutDone = false;
-      var stderrDone = false;
-      void checkDone() {
-        if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
-          outputCompleter.complete();
-        }
-      }
-
-      _currentProcess!.stdout.listen(
-        (data) {
-          final output = String.fromCharCodes(data);
+      // and lose collected warnings. The drainer also completes on stream
+      // error instead of stalling until the grace timeout.
+      final drainer = ProcessOutputDrainer(
+        stdout: process.stdout,
+        stderr: process.stderr,
+        onStdoutChunk: (output) {
           stdout.write(output);
 
           // Try to extract progress (SteamCMD progress format varies)
@@ -141,37 +140,25 @@ class SteamCmdServiceImpl implements ISteamCmdService {
             warnings.add(output.trim());
           }
         },
-        onDone: () {
-          stdoutDone = true;
-          checkDone();
-        },
-      );
-
-      _currentProcess!.stderr.listen(
-        (data) {
-          stderr.write(String.fromCharCodes(data));
-        },
-        onDone: () {
-          stderrDone = true;
-          checkDone();
-        },
+        onStderrChunk: stderr.write,
       );
 
       // Wait for completion with timeout (10 minutes)
-      final exitCode = await _currentProcess!.exitCode.timeout(
+      final exitCode = await process.exitCode.timeout(
         const Duration(minutes: 10),
         onTimeout: () {
-          _currentProcess?.kill();
+          process.kill();
           return -1;
         },
       );
 
       // Wait for any output still queued after the process exited so the
       // buffers (error message, warnings) are complete before being read.
-      await outputCompleter.future.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {},
-      );
+      // Then cancel the subscriptions: if awaitDrained gave up after its
+      // grace period they would otherwise stay live, and late lines would
+      // fire the callbacks into a finished run.
+      await drainer.awaitDrained();
+      await drainer.cancel();
 
       // Cancellation must be checked BEFORE interpreting exitCode == -1 as a
       // timeout: cancel() kills the process, and on Windows Process.kill

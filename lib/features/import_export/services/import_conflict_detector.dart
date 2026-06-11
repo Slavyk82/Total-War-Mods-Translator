@@ -75,17 +75,25 @@ class ImportConflictDetector {
       // Resolve the target language's project_languages row id so conflicts
       // are compared against the SAME language being imported (not an
       // arbitrary sibling language returned by getByUnit(...).first).
+      // findByProjectAndLanguage distinguishes "not in project" (Ok(null))
+      // from a real DB failure (Err): a real failure must fail detection,
+      // since silently reporting "no conflict" would let the import
+      // overwrite data unchecked.
       final projectLanguageResult =
-          await _projectLanguageRepository.getByProjectAndLanguage(
+          await _projectLanguageRepository.findByProjectAndLanguage(
         settings.projectId,
         settings.targetLanguageId,
       );
       if (projectLanguageResult.isErr) {
+        return Err(projectLanguageResult.error);
+      }
+      final projectLanguage = projectLanguageResult.value;
+      if (projectLanguage == null) {
         // Target language is not part of the project yet: nothing to conflict
         // with (every imported row will create a fresh version).
         return Ok(conflicts);
       }
-      final projectLanguageId = projectLanguageResult.value.id;
+      final projectLanguageId = projectLanguage.id;
 
       for (final row in rows) {
         final key = row[keyColumn];

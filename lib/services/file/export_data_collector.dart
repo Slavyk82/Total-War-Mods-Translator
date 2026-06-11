@@ -89,22 +89,29 @@ class ExportDataCollector {
     required bool validatedOnly,
   }) async {
     try {
-      // Get project language entity
+      // Get project language entity. findByProjectAndLanguage distinguishes
+      // "not in project" (Ok(null)) from a real DB failure (Err) so a
+      // transient DB error is not logged as a missing language.
       final projectLanguageResult =
-          await _projectLanguageRepository.getByProjectAndLanguage(
+          await _projectLanguageRepository.findByProjectAndLanguage(
         projectId,
         languageCode,
       );
 
       if (projectLanguageResult.isErr) {
+        _logger.error('Failed to resolve project language',
+            projectLanguageResult.unwrapErr());
+        return [];
+      }
+
+      final projectLanguage = projectLanguageResult.unwrap();
+      if (projectLanguage == null) {
         _logger.warning('Project language not found', {
           'projectId': projectId,
           'languageCode': languageCode,
         });
         return [];
       }
-
-      final projectLanguage = projectLanguageResult.unwrap();
 
       // Get all translation units for the project
       final unitsResult = await _translationUnitRepository.getActive(projectId);

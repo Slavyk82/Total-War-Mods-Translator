@@ -213,14 +213,21 @@ final projectsWithTranslationProvider = FutureProvider.family<
 
     // Filter to only those that have a translation in the selected language
     for (final project in allProjects) {
-      final langResult = await projectLangRepo.getByProjectAndLanguage(
+      // findByProjectAndLanguage distinguishes "not in project" (Ok(null),
+      // skip the project) from a real DB failure (Err), which must not
+      // silently hide the project from the list.
+      final langResult = await projectLangRepo.findByProjectAndLanguage(
         project.id,
         params.languageId!,
       );
 
-      if (langResult.isOk) {
-        final projectLanguage = langResult.unwrap();
+      if (langResult.isErr) {
+        throw Exception(
+            'Failed to check project language: ${langResult.unwrapErr()}');
+      }
 
+      final projectLanguage = langResult.unwrap();
+      if (projectLanguage != null) {
         // Get translation stats for this language
         // Use stats.totalCount for consistency (excludes bracket-only and obsolete units)
         final statsResult =

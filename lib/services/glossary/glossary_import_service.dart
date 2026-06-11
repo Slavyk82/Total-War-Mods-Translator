@@ -99,12 +99,18 @@ class GlossaryImportService {
           continue;
         }
 
+        // CSV rows carry no case-sensitivity flag; entries are created
+        // case-insensitive, and the duplicate pre-check must target the same
+        // group, so the same value is passed to both calls below.
+        const caseSensitive = false;
+
         // Check for duplicate
         if (skipDuplicates) {
           final duplicate = await _repository.findDuplicateEntry(
             glossaryId: glossaryId,
             targetLanguageCode: targetLanguageCode,
             sourceTerm: sourceTerm,
+            caseSensitive: caseSensitive,
           );
           if (duplicate != null) {
             continue; // Skip duplicate
@@ -117,6 +123,7 @@ class GlossaryImportService {
           targetLanguageCode: targetLanguageCode,
           sourceTerm: sourceTerm,
           targetTerm: targetTerm,
+          caseSensitive: caseSensitive,
           notes: notes?.isNotEmpty == true ? notes : null,
         );
 
@@ -232,6 +239,7 @@ class GlossaryImportService {
             glossaryId: glossaryId,
             targetLanguageCode: tbxEntry.targetLanguage,
             sourceTerm: tbxEntry.sourceTerm,
+            caseSensitive: tbxEntry.caseSensitive,
           );
           if (duplicate != null) {
             continue; // Skip duplicate
@@ -450,12 +458,18 @@ class GlossaryImportService {
           continue;
         }
 
+        // Excel rows carry no case-sensitivity flag; entries are created
+        // case-insensitive, and the duplicate pre-check must target the same
+        // group, so the same value is passed to both calls below.
+        const caseSensitive = false;
+
         // Check for duplicate
         if (skipDuplicates) {
           final duplicate = await _repository.findDuplicateEntry(
             glossaryId: glossaryId,
             targetLanguageCode: targetLanguageCode,
             sourceTerm: sourceTerm,
+            caseSensitive: caseSensitive,
           );
           if (duplicate != null) {
             continue; // Skip duplicate
@@ -468,6 +482,7 @@ class GlossaryImportService {
           targetLanguageCode: targetLanguageCode,
           sourceTerm: sourceTerm,
           targetTerm: targetTerm,
+          caseSensitive: caseSensitive,
           notes: notes?.isNotEmpty == true ? notes : null,
         );
 
