@@ -366,6 +366,7 @@ void main() {
             glossaryId: 'glossary-id',
             targetLanguageCode: 'fr',
             sourceTerm: 'Hello',
+            caseSensitive: false,
           );
 
           expect(duplicate, isNotNull);
@@ -377,9 +378,125 @@ void main() {
             glossaryId: 'glossary-id',
             targetLanguageCode: 'fr',
             sourceTerm: 'NonExistent',
+            caseSensitive: false,
           );
 
           expect(duplicate, isNull);
+        });
+
+        // The semantics below mirror the migration's dedup rules
+        // (GlossaryMigrationService._mergeEntriesDedup) and the schema's
+        // UNIQUE(glossary_id, target_language_code, source_term,
+        // case_sensitive): entries only conflict within the same
+        // case_sensitive group; case-sensitive entries conflict only on an
+        // exact (trimmed) match; case-insensitive entries use LOWER(TRIM()).
+
+        test(
+            'case-sensitive lookup ignores a case-sensitive entry '
+            'with different casing', () async {
+          await repository.insertEntry(createTestEntry(
+            sourceTerm: 'Attack',
+            caseSensitive: true,
+          ));
+
+          final duplicate = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: 'ATTACK',
+            caseSensitive: true,
+          );
+
+          expect(duplicate, isNull,
+              reason: "case-sensitive 'Attack' and 'ATTACK' are distinct");
+        });
+
+        test(
+            'case-sensitive lookup matches an exact case-sensitive entry, '
+            'ignoring surrounding whitespace', () async {
+          final entry = createTestEntry(
+            sourceTerm: 'Attack',
+            caseSensitive: true,
+          );
+          await repository.insertEntry(entry);
+
+          final exact = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: 'Attack',
+            caseSensitive: true,
+          );
+          expect(exact, isNotNull);
+          expect(exact!.id, equals(entry.id));
+
+          final padded = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: ' Attack ',
+            caseSensitive: true,
+          );
+          expect(padded, isNotNull,
+              reason: 'trimming applies before the exact comparison');
+          expect(padded!.id, equals(entry.id));
+        });
+
+        test(
+            'case-insensitive lookup matches a case-insensitive entry '
+            'regardless of casing', () async {
+          final entry = createTestEntry(
+            sourceTerm: 'attack',
+            caseSensitive: false,
+          );
+          await repository.insertEntry(entry);
+
+          final duplicate = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: 'ATTACK',
+            caseSensitive: false,
+          );
+
+          expect(duplicate, isNotNull);
+          expect(duplicate!.id, equals(entry.id));
+        });
+
+        test(
+            'case-sensitive lookup ignores case-insensitive entries '
+            '(different case_sensitive group)', () async {
+          await repository.insertEntry(createTestEntry(
+            sourceTerm: 'attack',
+            caseSensitive: false,
+          ));
+
+          final duplicate = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: 'Attack',
+            caseSensitive: true,
+          );
+
+          expect(duplicate, isNull,
+              reason: 'the UNIQUE key includes case_sensitive, so groups '
+                  'never conflict with each other (migration semantics)');
+        });
+
+        test(
+            'case-insensitive lookup ignores case-sensitive entries '
+            '(different case_sensitive group)', () async {
+          await repository.insertEntry(createTestEntry(
+            sourceTerm: 'Attack',
+            caseSensitive: true,
+          ));
+
+          final duplicate = await repository.findDuplicateEntry(
+            glossaryId: 'glossary-id',
+            targetLanguageCode: 'fr',
+            sourceTerm: 'attack',
+            caseSensitive: false,
+          );
+
+          expect(duplicate, isNull,
+              reason: 'the UNIQUE key includes case_sensitive, so groups '
+                  'never conflict with each other (migration semantics)');
         });
       });
 

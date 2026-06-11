@@ -101,10 +101,13 @@ class GlossaryImportService {
 
         // Check for duplicate
         if (skipDuplicates) {
+          // CSV rows carry no case-sensitivity flag; addEntry below creates
+          // case-insensitive entries, so check against that group.
           final duplicate = await _repository.findDuplicateEntry(
             glossaryId: glossaryId,
             targetLanguageCode: targetLanguageCode,
             sourceTerm: sourceTerm,
+            caseSensitive: false,
           );
           if (duplicate != null) {
             continue; // Skip duplicate
@@ -232,6 +235,7 @@ class GlossaryImportService {
             glossaryId: glossaryId,
             targetLanguageCode: tbxEntry.targetLanguage,
             sourceTerm: tbxEntry.sourceTerm,
+            caseSensitive: tbxEntry.caseSensitive,
           );
           if (duplicate != null) {
             continue; // Skip duplicate
@@ -452,10 +456,13 @@ class GlossaryImportService {
 
         // Check for duplicate
         if (skipDuplicates) {
+          // Excel rows carry no case-sensitivity flag; addEntry below creates
+          // case-insensitive entries, so check against that group.
           final duplicate = await _repository.findDuplicateEntry(
             glossaryId: glossaryId,
             targetLanguageCode: targetLanguageCode,
             sourceTerm: sourceTerm,
+            caseSensitive: false,
           );
           if (duplicate != null) {
             continue; // Skip duplicate

@@ -259,6 +259,7 @@ class GlossaryServiceImpl implements IGlossaryService {
         glossaryId: glossaryId,
         targetLanguageCode: targetLanguageCode,
         sourceTerm: sourceTerm.trim(),
+        caseSensitive: caseSensitive,
       );
 
       if (duplicate != null) {
