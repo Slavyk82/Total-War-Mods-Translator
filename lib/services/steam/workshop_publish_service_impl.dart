@@ -8,6 +8,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/shared/i_process_launcher.dart';
+import 'package:twmt/services/shared/process_output_drainer.dart';
 import 'package:twmt/services/steam/i_workshop_publish_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
@@ -595,19 +596,10 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       onItemStart?.call(chunk[0], items[chunk[0]].name);
     }
 
-    final outputCompleter = Completer<void>();
-    var stdoutDone = false;
-    var stderrDone = false;
-    void checkDone() {
-      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
-        outputCompleter.complete();
-      }
-    }
-
-    String stdoutBuffer = '';
-
-    // Process one COMPLETE output line. Extracted into a function so the
-    // trailing partial line buffered in [stdoutBuffer] can be flushed on done.
+    // Process one COMPLETE output line. The drainer reassembles lines split
+    // across stdout chunks and flushes the trailing partial line on done, so
+    // a split "Success."/"PublishFileID" line is still recognized and
+    // currentChunkPos stays aligned with the item being published.
     void processStdoutLine(String line) {
       final trimmed = line.trim();
       if (trimmed.isEmpty) return;
@@ -731,35 +723,6 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
-    _currentProcess!.stdout.listen(
-      (data) {
-        lastOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        rawOutput.write(output);
-
-        // A line can be split across two stdout reads. Buffer the trailing
-        // partial line and only process complete lines, so a split
-        // "Success."/"PublishFileID" line is still recognized and
-        // currentChunkPos stays aligned with the item being published.
-        stdoutBuffer += output;
-        final segments = stdoutBuffer.split(RegExp(r'[\r\n]+'));
-        stdoutBuffer = segments.removeLast();
-        for (final line in segments) {
-          processStdoutLine(line);
-        }
-      },
-      onDone: () {
-        // Flush any final line that arrived without a trailing newline.
-        if (stdoutBuffer.isNotEmpty) {
-          processStdoutLine(stdoutBuffer);
-          stdoutBuffer = '';
-        }
-        stdoutDone = true;
-        checkDone();
-      },
-    );
-
-    String stderrBuffer = '';
     void processStderrLine(String line) {
       final trimmed = line.trim();
       if (trimmed.isNotEmpty) {
@@ -767,26 +730,19 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       }
     }
 
-    _currentProcess!.stderr.listen(
-      (data) {
+    final drainer = ProcessOutputDrainer(
+      stdout: _currentProcess!.stdout,
+      stderr: _currentProcess!.stderr,
+      onStdoutChunk: (output) {
         lastOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
         rawOutput.write(output);
-        stderrBuffer += output;
-        final segments = stderrBuffer.split(RegExp(r'[\r\n]+'));
-        stderrBuffer = segments.removeLast();
-        for (final line in segments) {
-          processStderrLine(line);
-        }
       },
-      onDone: () {
-        if (stderrBuffer.isNotEmpty) {
-          processStderrLine(stderrBuffer);
-          stderrBuffer = '';
-        }
-        stderrDone = true;
-        checkDone();
+      onStdoutLine: processStdoutLine,
+      onStderrChunk: (output) {
+        lastOutputTime = DateTime.now();
+        rawOutput.write(output);
       },
+      onStderrLine: processStderrLine,
     );
 
     // Inactivity timeout: kill process if no output for 3 minutes
@@ -830,10 +786,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
       },
     );
     inactivityTimer.cancel();
-    await outputCompleter.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {},
-    );
+    await drainer.awaitDrained();
 
     // Handle auth failure — all items in chunk fail
     if (authFailed) {
@@ -897,27 +850,12 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
     // Ensure stdout/stderr are fully drained before we read the buffer.
     // The process can exit while output is still queued, so awaiting exitCode
     // alone can truncate `stdout` and miss login/update failures.
-    final outputCompleter = Completer<void>();
-    var stdoutDone = false;
-    var stderrDone = false;
-    void checkDone() {
-      if (stdoutDone && stderrDone && !outputCompleter.isCompleted) {
-        outputCompleter.complete();
-      }
-    }
-
-    _currentProcess!.stdout.listen(
-      (data) {
+    final drainer = ProcessOutputDrainer(
+      stdout: _currentProcess!.stdout,
+      stderr: _currentProcess!.stderr,
+      onStdoutChunk: (output) {
         lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
         stdout.write(output);
-
-        for (final line in output.split(RegExp(r'[\r\n]+'))) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add(trimmed);
-          }
-        }
 
         _tryExtractProgress(output);
 
@@ -931,27 +869,21 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
           wasUpdate = true;
         }
       },
-      onDone: () {
-        stdoutDone = true;
-        checkDone();
-      },
-    );
-
-    _currentProcess!.stderr.listen(
-      (data) {
-        lastRealOutputTime = DateTime.now();
-        final output = String.fromCharCodes(data);
-        stdout.write(output);
-        for (final line in output.split('\n')) {
-          final trimmed = line.trim();
-          if (trimmed.isNotEmpty) {
-            _outputController.add('[stderr] $trimmed');
-          }
+      onStdoutLine: (line) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add(trimmed);
         }
       },
-      onDone: () {
-        stderrDone = true;
-        checkDone();
+      onStderrChunk: (output) {
+        lastRealOutputTime = DateTime.now();
+        stdout.write(output);
+      },
+      onStderrLine: (line) {
+        final trimmed = line.trim();
+        if (trimmed.isNotEmpty) {
+          _outputController.add('[stderr] $trimmed');
+        }
       },
     );
 
@@ -982,10 +914,7 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
 
     // Wait for any output still queued after the process exited so the buffer
     // (checked for login/update failures and the workshop id) is complete.
-    await outputCompleter.future.timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {},
-    );
+    await drainer.awaitDrained();
 
     return (
       exitCode: exitCode,
