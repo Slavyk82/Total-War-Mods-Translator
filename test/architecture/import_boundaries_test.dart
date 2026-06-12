@@ -7,7 +7,6 @@ import 'import_graph.dart';
 /// The allowlist shrinks to empty; do NOT add new entries.
 const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
-  'lib/services/mods/game_installation_sync_service.dart -> lib/providers/settings_providers.dart', // lot:3 (service→Riverpod leak; was a settings_providers entry, relocated by lot:1 promotion)
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/translation_settings_provider.dart', // lot:3 (service→Riverpod leak; target relocated by provider-promotion lot)
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/repository_providers.dart', // lot:3
