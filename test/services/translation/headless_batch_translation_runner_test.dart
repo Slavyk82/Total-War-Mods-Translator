@@ -1,31 +1,20 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:twmt/providers/translation_settings_provider.dart';
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
 import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
+import 'package:twmt/services/translation/models/translation_settings.dart';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 class _MockOrchestrator extends Mock implements ITranslationOrchestrator {}
-
-/// Stub notifier that avoids touching SharedPreferences in unit tests.
-class _StubSettingsNotifier extends TranslationSettingsNotifier {
-  @override
-  TranslationSettings build() => const TranslationSettings(
-        unitsPerBatch: 0,
-        parallelBatches: 3,
-      );
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -40,6 +29,12 @@ TranslationContext _stubContext() => TranslationContext(
       createdAt: DateTime(2024),
       updatedAt: DateTime(2024),
     );
+
+/// Stub settings snapshot used by the runner's [readSettings] thunk.
+const _stubSettings = TranslationSettings(
+  unitsPerBatch: 0,
+  parallelBatches: 3,
+);
 
 /// Minimal [TranslationProgress] with the given [status] and unit counts.
 TranslationProgress _progress({
@@ -65,34 +60,35 @@ TranslationProgress _progress({
     );
 
 // ---------------------------------------------------------------------------
-// Factory helpers
+// Factory helper
 // ---------------------------------------------------------------------------
 
-/// Creates a [Provider] that returns a [HeadlessBatchTranslationRunner] wired
-/// to stub delegates that skip DB interaction.
-Provider<HeadlessBatchTranslationRunner> _runnerProvider({
+/// Builds a [HeadlessBatchTranslationRunner] wired to the given [orchestrator]
+/// and stub delegates that skip DB interaction. [fixedBatchId] is returned by
+/// the createBatch delegate.
+HeadlessBatchTranslationRunner _runner({
+  required ITranslationOrchestrator orchestrator,
   required String fixedBatchId,
 }) {
-  return Provider<HeadlessBatchTranslationRunner>(
-    (ref) => HeadlessBatchTranslationRunner(
-      ref,
-      createBatch: ({
-        required projectLanguageId,
-        required unitIds,
-        required providerId,
-      }) async =>
-          fixedBatchId,
-      buildContext: ({
-        required projectLanguageId,
-        required projectId,
-        required providerId,
-        modelId,
-        required skipTranslationMemory,
-        required unitsPerBatch,
-        required parallelBatches,
-      }) async =>
-          _stubContext(),
-    ),
+  return HeadlessBatchTranslationRunner(
+    orchestrator: orchestrator,
+    readSettings: () => _stubSettings,
+    createBatch: ({
+      required projectLanguageId,
+      required unitIds,
+      required providerId,
+    }) async =>
+        fixedBatchId,
+    buildContext: ({
+      required projectLanguageId,
+      required projectId,
+      required providerId,
+      modelId,
+      required skipTranslationMemory,
+      required unitsPerBatch,
+      required parallelBatches,
+    }) async =>
+        _stubContext(),
   );
 }
 
@@ -120,17 +116,7 @@ void main() {
           maxParallel: any(named: 'maxParallel'),
         )).thenAnswer((_) => controller.stream);
 
-    final runnerProv = _runnerProvider(fixedBatchId: batchId);
-
-    final container = ProviderContainer(overrides: [
-      shared_svc.translationOrchestratorProvider
-          .overrideWithValue(orchestrator),
-      translationSettingsProvider
-          .overrideWith(() => _StubSettingsNotifier()),
-    ]);
-    addTearDown(container.dispose);
-
-    final runner = container.read(runnerProv);
+    final runner = _runner(orchestrator: orchestrator, fixedBatchId: batchId);
 
     final future = runner.run(
       projectLanguageId: 'pl-1',
@@ -170,16 +156,7 @@ void main() {
           maxParallel: any(named: 'maxParallel'),
         )).thenAnswer((_) => controller.stream);
 
-    final runnerProv = _runnerProvider(fixedBatchId: batchId);
-
-    final container = ProviderContainer(overrides: [
-      shared_svc.translationOrchestratorProvider
-          .overrideWithValue(orchestrator),
-      translationSettingsProvider.overrideWith(() => _StubSettingsNotifier()),
-    ]);
-    addTearDown(container.dispose);
-
-    final runner = container.read(runnerProv);
+    final runner = _runner(orchestrator: orchestrator, fixedBatchId: batchId);
 
     final future = runner.run(
       projectLanguageId: 'pl-1',
@@ -219,16 +196,7 @@ void main() {
           maxParallel: any(named: 'maxParallel'),
         )).thenAnswer((_) => controller.stream);
 
-    final runnerProv = _runnerProvider(fixedBatchId: batchId);
-
-    final container = ProviderContainer(overrides: [
-      shared_svc.translationOrchestratorProvider
-          .overrideWithValue(orchestrator),
-      translationSettingsProvider.overrideWith(() => _StubSettingsNotifier()),
-    ]);
-    addTearDown(container.dispose);
-
-    final runner = container.read(runnerProv);
+    final runner = _runner(orchestrator: orchestrator, fixedBatchId: batchId);
 
     final future = runner.run(
       projectLanguageId: 'pl-1',
@@ -251,9 +219,76 @@ void main() {
     expect(await future, 3);
   });
 
-  test('stop() calls orchestrator.stopTranslation with current batch id', () async {
-    // similar setup; after run() starts, call runner.stop() and verify
-    // orchestrator.stopTranslation was invoked with the same batchId
-    // returned by createAndPrepareBatch.
-  }, skip: 'Fill in after basic happy path passes');
+  test('throws when stream emits failed status', () async {
+    const batchId = 'b-fail';
+
+    final controller = StreamController<
+        Result<TranslationProgress, TranslationOrchestrationException>>();
+
+    when(() => orchestrator.translateBatchesParallel(
+          batchIds: any(named: 'batchIds'),
+          context: any(named: 'context'),
+          maxParallel: any(named: 'maxParallel'),
+        )).thenAnswer((_) => controller.stream);
+
+    final runner = _runner(orchestrator: orchestrator, fixedBatchId: batchId);
+
+    final future = runner.run(
+      projectLanguageId: 'pl-1',
+      projectId: 'proj-1',
+      unitIds: ['u1', 'u2'],
+      skipTM: false,
+      providerId: 'openai',
+    );
+
+    controller.add(Ok(_progress(
+      batchId: batchId,
+      status: TranslationProgressStatus.failed,
+    )));
+    await controller.close();
+
+    await expectLater(future, throwsA(isA<StateError>()));
+  });
+
+  test('stop() calls orchestrator.stopTranslation with current batch id',
+      () async {
+    const batchId = 'b-stop';
+
+    final controller = StreamController<
+        Result<TranslationProgress, TranslationOrchestrationException>>();
+
+    when(() => orchestrator.translateBatchesParallel(
+          batchIds: any(named: 'batchIds'),
+          context: any(named: 'context'),
+          maxParallel: any(named: 'maxParallel'),
+        )).thenAnswer((_) => controller.stream);
+    when(() => orchestrator.stopTranslation(batchId: any(named: 'batchId')))
+        .thenAnswer((_) async => const Ok(null));
+
+    final runner = _runner(orchestrator: orchestrator, fixedBatchId: batchId);
+
+    final future = runner.run(
+      projectLanguageId: 'pl-1',
+      projectId: 'proj-1',
+      unitIds: ['u1', 'u2'],
+      skipTM: false,
+      providerId: 'openai',
+    );
+
+    // Wait until the batch is registered as current.
+    while (runner.currentBatchId == null) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(runner.currentBatchId, batchId);
+
+    await runner.stop();
+    verify(() => orchestrator.stopTranslation(batchId: batchId)).called(1);
+
+    controller.add(Ok(_progress(
+      batchId: batchId,
+      status: TranslationProgressStatus.completed,
+    )));
+    await controller.close();
+    await future;
+  });
 }

@@ -7,7 +7,7 @@ import 'package:twmt/providers/llm_model_providers.dart';
 import 'package:twmt/providers/translation_settings_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
-import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
 import 'package:twmt/services/translation/headless_validation_rescan_service.dart';
 
 /// Progress callback type used by all bulk operation handlers.

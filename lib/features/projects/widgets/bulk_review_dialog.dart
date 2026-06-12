@@ -13,7 +13,7 @@ import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/providers/llm_model_providers.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
-import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';

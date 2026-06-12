@@ -1,9 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/providers/translation_settings_provider.dart';
-import 'package:twmt/features/translation_editor/utils/translation_batch_helper.dart';
-import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
+import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
+import 'package:twmt/services/translation/models/translation_settings.dart';
 
 // ---------------------------------------------------------------------------
 // Delegate typedefs
@@ -39,16 +37,20 @@ typedef BuildContextDelegate = Future<TranslationContext> Function({
 /// that hold a [WidgetRef] supply thin lambdas wrapping the helper; tests
 /// supply pure-Dart stubs.
 class HeadlessBatchTranslationRunner {
-  HeadlessBatchTranslationRunner(
-    this._ref, {
+  HeadlessBatchTranslationRunner({
     required CreateBatchDelegate createBatch,
     required BuildContextDelegate buildContext,
+    required ITranslationOrchestrator orchestrator,
+    required TranslationSettings Function() readSettings,
   })  : _createBatch = createBatch,
-        _buildContext = buildContext;
+        _buildContext = buildContext,
+        _orchestrator = orchestrator,
+        _readSettings = readSettings;
 
-  final Ref _ref;
   final CreateBatchDelegate _createBatch;
   final BuildContextDelegate _buildContext;
+  final ITranslationOrchestrator _orchestrator;
+  final TranslationSettings Function() _readSettings;
 
   String? _currentBatchId;
 
@@ -79,7 +81,7 @@ class HeadlessBatchTranslationRunner {
     }
     _currentBatchId = batchId;
 
-    final settings = _ref.read(translationSettingsProvider);
+    final settings = _readSettings();
 
     final context = await _buildContext(
       projectLanguageId: projectLanguageId,
@@ -91,9 +93,7 @@ class HeadlessBatchTranslationRunner {
       parallelBatches: settings.parallelBatches,
     );
 
-    final orchestrator = _ref.read(shared_svc.translationOrchestratorProvider);
-
-    final stream = orchestrator.translateBatchesParallel(
+    final stream = _orchestrator.translateBatchesParallel(
       batchIds: [batchId],
       context: context,
       maxParallel: settings.parallelBatches,
@@ -136,55 +136,6 @@ class HeadlessBatchTranslationRunner {
   Future<void> stop() async {
     final id = _currentBatchId;
     if (id == null) return;
-    final orchestrator = _ref.read(shared_svc.translationOrchestratorProvider);
-    await orchestrator.stopTranslation(batchId: id);
+    await _orchestrator.stopTranslation(batchId: id);
   }
 }
-
-// ---------------------------------------------------------------------------
-// Provider
-// ---------------------------------------------------------------------------
-
-/// Provider for [HeadlessBatchTranslationRunner].
-///
-/// Production instance wires delegates directly to
-/// [TranslationBatchHelper], which accepts the generic `Reader` typedef
-/// (both `Ref.read` and `WidgetRef.read` satisfy it). Tests can override
-/// this provider with custom delegates (stubs).
-final headlessBatchTranslationRunnerProvider =
-    Provider<HeadlessBatchTranslationRunner>((ref) {
-  return HeadlessBatchTranslationRunner(
-    ref,
-    createBatch: ({
-      required projectLanguageId,
-      required unitIds,
-      required providerId,
-    }) =>
-        TranslationBatchHelper.createAndPrepareBatch(
-      read: ref.read,
-      projectLanguageId: projectLanguageId,
-      unitIds: unitIds,
-      providerId: providerId,
-      onError: () => throw StateError('Batch preparation failed'),
-    ),
-    buildContext: ({
-      required projectLanguageId,
-      required projectId,
-      required providerId,
-      modelId,
-      required skipTranslationMemory,
-      required unitsPerBatch,
-      required parallelBatches,
-    }) =>
-        TranslationBatchHelper.buildTranslationContext(
-      read: ref.read,
-      projectId: projectId,
-      projectLanguageId: projectLanguageId,
-      providerId: providerId,
-      modelId: modelId,
-      unitsPerBatch: unitsPerBatch,
-      parallelBatches: parallelBatches,
-      skipTranslationMemory: skipTranslationMemory,
-    ),
-  );
-});

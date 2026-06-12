@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/services/bulk_operations_handlers.dart';
-import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
 
 /// Seam for testing: the default production instance delegates to the four
 /// top-level handler functions; tests can override [bulkHandlersProvider]

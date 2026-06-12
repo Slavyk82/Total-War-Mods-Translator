@@ -1,28 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:twmt/services/translation/models/translation_settings.dart';
 
-/// Translation batch settings
-///
-/// [unitsPerBatch]: Number of units per batch. 0 = auto (calculated based on tokens)
-/// [skipTranslationMemory]: If true, skip TM lookup during translation (use LLM only)
-class TranslationSettings {
-  final int unitsPerBatch;
-  final int parallelBatches;
-  final bool skipTranslationMemory;
-
-  const TranslationSettings({
-    required this.unitsPerBatch,
-    required this.parallelBatches,
-    this.skipTranslationMemory = false,
-  });
-
-  /// Whether auto mode is enabled (unitsPerBatch = 0)
-  bool get isAutoMode => unitsPerBatch == 0;
-
-  @override
-  String toString() => 'TranslationSettings(units: ${isAutoMode ? "auto" : unitsPerBatch}, parallel: $parallelBatches, skipTM: $skipTranslationMemory)';
-}
+// Re-export the value object so existing importers of this provider file keep
+// resolving `TranslationSettings`. The type itself lives in a provider-free
+// model file (lib/services/translation/models) so pure services can inject it.
+export 'package:twmt/services/translation/models/translation_settings.dart'
+    show TranslationSettings;
 
 /// Simple state provider for translation settings
 class TranslationSettingsNotifier extends Notifier<TranslationSettings> {
