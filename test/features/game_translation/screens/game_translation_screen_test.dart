@@ -15,7 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/game_translation/providers/game_translation_providers.dart';
 import 'package:twmt/features/game_translation/screens/game_translation_screen.dart';
-import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
 import 'package:twmt/features/projects/widgets/project_grid.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/theme/app_theme.dart';

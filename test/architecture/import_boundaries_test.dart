@@ -9,28 +9,17 @@ const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/widgets/scan_terminal_widget.dart', // lot:2
-  'lib/features/game_translation/providers/game_translation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/widgets/project_grid.dart', // lot:2
-  'lib/features/game_translation/widgets/create_game_translation/create_game_translation_dialog.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/home/providers/action_grid_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/home/providers/workflow_providers.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
-  'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/mods/widgets/whats_new_dialog.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/home/providers/workflow_providers.dart', // lot:2
-  'lib/features/pack_compilation/providers/pack_compilation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_batch_settings.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_model_selector.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_skip_tm.dart', // lot:2
-  'lib/features/translation_editor/screens/actions/editor_actions_base.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/translation_editor/widgets/editor_datagrid.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/widgets/add_language_dialog.dart', // lot:2
-  'lib/features/translation_editor/widgets/grid_actions_handler.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/services/mods/game_installation_sync_service.dart -> lib/providers/settings_providers.dart', // lot:3 (service→Riverpod leak; was a settings_providers entry, relocated by lot:1 promotion)
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/translation_settings_provider.dart', // lot:3 (service→Riverpod leak; target relocated by provider-promotion lot)

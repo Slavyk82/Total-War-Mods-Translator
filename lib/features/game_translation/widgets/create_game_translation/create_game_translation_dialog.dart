@@ -16,7 +16,7 @@ import '../../../../models/domain/project.dart';
 import '../../../../models/domain/project_metadata.dart';
 import '../../../../models/domain/project_language.dart';
 import '../../../../providers/selected_game_provider.dart';
-import '../../../projects/providers/projects_screen_providers.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
 import '../../../../providers/shared/service_providers.dart';
 import '../../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../../services/projects/i_project_initialization_service.dart'

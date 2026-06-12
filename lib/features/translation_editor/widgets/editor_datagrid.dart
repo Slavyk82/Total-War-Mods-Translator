@@ -13,7 +13,7 @@ import 'package:twmt/providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart';
 import '../../../models/events/batch_events.dart';
-import '../../projects/providers/projects_screen_providers.dart' show projectsWithDetailsProvider;
+import 'package:twmt/providers/projects_data_providers.dart' show projectsWithDetailsProvider;
 import 'editor_data_source.dart';
 import 'translation_history_dialog.dart';
 import 'prompt_preview_dialog.dart';

@@ -8,7 +8,7 @@ import '../../../models/domain/project.dart';
 import '../../../models/domain/project_statistics.dart';
 import '../../../providers/selected_game_provider.dart';
 import '../../../providers/shared/repository_providers.dart';
-import '../../projects/providers/projects_screen_providers.dart'
+import 'package:twmt/providers/projects_data_providers.dart'
     show translationStatsVersionProvider;
 import '../models/compilation_editor_state.dart';
 import '../models/compilation_with_details.dart';

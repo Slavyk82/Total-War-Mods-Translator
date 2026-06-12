@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import '../../../../services/validation/models/validation_issue.dart' as validation;
 import '../../../../providers/batch/batch_operations_provider.dart' as batch;
-import '../../../projects/providers/projects_screen_providers.dart'
+import 'package:twmt/providers/projects_data_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import 'package:twmt/providers/editor_providers.dart';
