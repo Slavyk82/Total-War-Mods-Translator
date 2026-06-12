@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:twmt/features/settings/providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/llm_custom_rule.dart';
 import 'package:twmt/services/llm/llm_custom_rules_service.dart';

@@ -17,7 +17,6 @@ const _allowlist = <String>{
   'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/widgets/project_grid.dart', // lot:2
   'lib/features/game_translation/widgets/create_game_translation/create_game_translation_dialog.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/settings/providers/language_settings_providers.dart', // lot:1
   'lib/features/home/providers/action_grid_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/home/providers/workflow_providers.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
@@ -40,9 +39,7 @@ const _allowlist = <String>{
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/widgets/add_language_dialog.dart', // lot:2
-  'lib/features/translation_editor/widgets/editor_toolbar_mod_rule.dart -> lib/features/settings/providers/llm_custom_rules_providers.dart', // lot:1
   'lib/features/translation_editor/widgets/grid_actions_handler.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/translation_editor/widgets/mod_rule_editor_dialog.dart -> lib/features/settings/providers/llm_custom_rules_providers.dart', // lot:1
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/validation_rule.dart', // lot:2
   'lib/models/common/validation_result.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
@@ -52,7 +49,6 @@ const _allowlist = <String>{
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/repository_providers.dart', // lot:3
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/service_providers.dart', // lot:3
   'lib/widgets/sidebar_update_checker.dart -> lib/features/release_notes/widgets/all_release_notes_dialog.dart', // lot:2
-  'lib/widgets/sidebar_update_checker.dart -> lib/features/settings/providers/update_providers.dart', // lot:1
 };
 
 /// Paths that LOOK like Riverpod providers but are not (service purity rule).

@@ -8,7 +8,7 @@ import 'package:twmt/widgets/wizard/labeled_field.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
 import '../../../models/domain/llm_custom_rule.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../../settings/providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
 
 /// Dialog for editing a mod-specific translation rule.
 ///

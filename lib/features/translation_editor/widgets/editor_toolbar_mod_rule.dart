@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../../settings/providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
 import '../providers/editor_providers.dart';
 import 'mod_rule_editor_dialog.dart';
 

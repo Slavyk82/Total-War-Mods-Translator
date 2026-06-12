@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../models/domain/github_release.dart';
-import '../../../providers/shared/service_providers.dart' as bridge;
-import '../../../services/updates/app_update_service.dart';
+import '../models/domain/github_release.dart';
+import '../providers/shared/service_providers.dart' as bridge;
+import '../services/updates/app_update_service.dart';
 
 part 'update_providers.g.dart';
 

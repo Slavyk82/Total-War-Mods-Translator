@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../../../models/domain/llm_custom_rule.dart';
-import '../../../providers/shared/service_providers.dart' as bridge;
-import '../../../services/llm/llm_custom_rules_service.dart';
+import '../models/domain/llm_custom_rule.dart';
+import '../providers/shared/service_providers.dart' as bridge;
+import '../services/llm/llm_custom_rules_service.dart';
 
 part 'llm_custom_rules_providers.g.dart';
 

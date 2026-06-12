@@ -9,7 +9,7 @@ import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/llm_custom_rule.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
 import 'llm_custom_rules_data_source.dart';
 import 'llm_custom_rule_editor_dialog.dart';
 

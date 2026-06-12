@@ -1,9 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
-import '../../../models/domain/language.dart';
-import '../../../providers/shared/repository_providers.dart';
-import '../../../providers/shared/service_providers.dart';
-import '../../../repositories/language_repository.dart';
+import '../models/domain/language.dart';
+import '../providers/shared/repository_providers.dart';
+import '../providers/shared/service_providers.dart';
+import '../repositories/language_repository.dart';
 import 'package:twmt/providers/settings_providers.dart' hide settingsServiceProvider;
 
 part 'language_settings_providers.g.dart';
