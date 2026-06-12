@@ -49,11 +49,17 @@ class ContextMenuBuilder {
           children: [
             Icon(icon, size: 16, color: effectiveIcon),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: tokens.fontBody.copyWith(
-                fontSize: 13,
-                color: effectiveLabel,
+            // `Flexible` lets long labels (e.g. "Force Retranslate (4)")
+            // ellipsize instead of overflowing the PopupMenu's ~280px width
+            // cap. Mirrors the SmallTextButton convention.
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: tokens.fontBody.copyWith(
+                  fontSize: 13,
+                  color: effectiveLabel,
+                ),
               ),
             ),
           ],
