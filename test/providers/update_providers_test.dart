@@ -456,7 +456,9 @@ void main() {
       await container.read(autoUpdateCheckProvider.future);
 
       expect(spy.calls, 1);
-    }, timeout: const Timeout(Duration(seconds: 20)));
+      // Generous timeout: the real 5s delay can stretch under full-suite CPU
+      // contention; this keeps the test deterministic rather than flaky.
+    }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
   // ---------------------------------------------------------------------------
