@@ -1,5 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
-import 'package:twmt/services/translation/models/translation_exceptions.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'validation_issue_entry.dart';
 
 part 'validation_result.g.dart';

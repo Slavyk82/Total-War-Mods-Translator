@@ -6,7 +6,7 @@ import 'package:twmt/repositories/mod_update_analysis_cache_repository.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/mods/mod_update_analysis_service.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/i18n/strings.g.dart';
 
 /// Callback type for emitting scan log messages.

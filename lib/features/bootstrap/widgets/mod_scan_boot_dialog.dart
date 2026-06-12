@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:twmt/i18n/strings.g.dart';
 
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';

@@ -15,7 +15,7 @@ import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/services/translation/models/batch_estimate.dart';
 import 'package:twmt/services/translation/models/translation_context.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 
 /// Handles batch estimation, validation, and statistics calculations
 ///

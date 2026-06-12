@@ -12,8 +12,7 @@ import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/translation/headless_validation_rescan_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
-import 'package:twmt/services/translation/models/translation_exceptions.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'package:twmt/services/validation/validation_schema.dart';
 
 class _MockVersionRepo extends Mock implements TranslationVersionRepository {}

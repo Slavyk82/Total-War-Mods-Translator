@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
 import 'package:twmt/i18n/strings.g.dart';

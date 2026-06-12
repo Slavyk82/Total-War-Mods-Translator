@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:twmt/features/bootstrap/widgets/mod_scan_boot_dialog.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';
 import 'package:twmt/models/domain/detected_mod.dart';

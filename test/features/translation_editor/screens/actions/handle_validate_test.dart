@@ -22,7 +22,7 @@ import 'package:twmt/services/translation/i_validation_service.dart'
     show IValidationService;
 import 'package:twmt/services/translation/models/translation_exceptions.dart'
     show ValidationException, ValidationSeverity;
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../../helpers/fakes/fake_logger.dart';

@@ -53,3 +53,15 @@ extension ValidationRuleDisplay on ValidationRule {
     }
   }
 }
+
+/// Severity level of validation error
+enum ValidationSeverity {
+  /// Warning - can continue but not recommended
+  warning,
+
+  /// Error - must be fixed
+  error,
+
+  /// Critical - severe issue
+  critical,
+}

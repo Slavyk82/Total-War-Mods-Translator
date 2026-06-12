@@ -7,7 +7,6 @@ import 'import_graph.dart';
 /// The allowlist shrinks to empty; do NOT add new entries.
 const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
-  'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/models/scan_log_message.dart', // lot:2
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/widgets/scan_terminal_widget.dart', // lot:2
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/steam_publish/providers/published_subs_cache_provider.dart', // lot:2
@@ -37,9 +36,6 @@ const _allowlist = <String>{
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/widgets/add_language_dialog.dart', // lot:2
   'lib/features/translation_editor/widgets/grid_actions_handler.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
-  'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/validation_rule.dart', // lot:2
-  'lib/models/common/validation_result.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
   'lib/services/mods/game_installation_sync_service.dart -> lib/providers/settings_providers.dart', // lot:3 (service→Riverpod leak; was a settings_providers entry, relocated by lot:1 promotion)
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3

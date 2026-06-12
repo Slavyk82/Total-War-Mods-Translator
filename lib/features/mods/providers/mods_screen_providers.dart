@@ -5,7 +5,7 @@ import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/shared/service_providers.dart';

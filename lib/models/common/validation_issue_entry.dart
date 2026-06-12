@@ -1,5 +1,4 @@
-import 'package:twmt/services/translation/models/translation_exceptions.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 
 /// Structured representation of a single validation issue, persisted in
 /// `translation_versions.validation_issues` as JSON.
