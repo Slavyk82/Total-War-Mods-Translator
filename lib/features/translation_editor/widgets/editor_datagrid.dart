@@ -9,7 +9,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/token_data_grid_header.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart';
 import '../../../models/events/batch_events.dart';

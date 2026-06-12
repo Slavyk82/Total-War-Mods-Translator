@@ -6,7 +6,7 @@ import '../../../../providers/batch/batch_operations_provider.dart' as batch;
 import '../../../projects/providers/projects_screen_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import '../../../../providers/shared/repository_providers.dart' as shared_repo;
-import '../../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 
 /// Base mixin providing common functionality for editor actions
 mixin EditorActionsBase {

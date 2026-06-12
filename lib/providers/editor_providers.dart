@@ -5,13 +5,13 @@ import 'package:twmt/services/history/undo_redo_manager.dart';
 import 'package:twmt/providers/shared/repository_providers.dart' as shared_repo;
 
 // Re-exports: extracted provider files.
-export 'editor_row_models.dart';
-export 'editor_filter_notifier.dart';
-export 'editor_selection_notifier.dart';
-export 'grid_data_providers.dart';
-export 'llm_model_providers.dart';
-export 'tm_suggestions_provider.dart';
-export 'validation_issues_provider.dart';
+export 'package:twmt/features/translation_editor/providers/editor_row_models.dart';
+export 'package:twmt/features/translation_editor/providers/editor_filter_notifier.dart';
+export 'package:twmt/features/translation_editor/providers/editor_selection_notifier.dart';
+export 'package:twmt/features/translation_editor/providers/grid_data_providers.dart';
+export 'package:twmt/providers/llm_model_providers.dart';
+export 'package:twmt/features/translation_editor/providers/tm_suggestions_provider.dart';
+export 'package:twmt/features/translation_editor/providers/validation_issues_provider.dart';
 
 part 'editor_providers.g.dart';
 

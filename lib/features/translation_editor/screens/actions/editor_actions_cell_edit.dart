@@ -4,7 +4,7 @@ import '../../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/history/undo_redo_manager.dart';
 import '../../../../services/translation/utils/translation_text_utils.dart';
-import '../../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import '../../widgets/editor_dialogs.dart';
 import 'editor_actions_base.dart';
 

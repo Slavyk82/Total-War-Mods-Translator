@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/providers/llm_custom_rules_providers.dart';
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'mod_rule_editor_dialog.dart';
 
 /// Mod-specific prompt rule button for the editor sidebar.

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../providers/translation_settings_provider.dart';
+import 'package:twmt/providers/translation_settings_provider.dart';
 
 /// Toggleable "Use translation memory" checkbox for the editor sidebar.
 ///

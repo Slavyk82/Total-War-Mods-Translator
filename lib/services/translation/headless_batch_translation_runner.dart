@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
+import 'package:twmt/providers/translation_settings_provider.dart';
 import 'package:twmt/features/translation_editor/utils/translation_batch_helper.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/services/translation/models/translation_context.dart';

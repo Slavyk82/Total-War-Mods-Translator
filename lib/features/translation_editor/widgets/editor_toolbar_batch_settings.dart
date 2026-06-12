@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../providers/translation_settings_provider.dart';
+import 'package:twmt/providers/translation_settings_provider.dart';
 
 /// Inline batch-settings panel rendered in the editor sidebar §Context group.
 ///

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
+import 'package:twmt/providers/translation_settings_provider.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/services/translation/headless_batch_translation_runner.dart';

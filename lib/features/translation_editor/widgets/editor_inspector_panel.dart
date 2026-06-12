@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/features/translation_editor/providers/editor_inspector_width_notifier.dart';
-import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/utils/display_escape.dart';
 import 'package:twmt/features/translation_editor/utils/validation_issues_parser.dart';
 import 'package:twmt/i18n/strings.g.dart';

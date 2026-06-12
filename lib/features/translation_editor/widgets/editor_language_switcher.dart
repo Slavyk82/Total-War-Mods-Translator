@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/projects/providers/project_detail_providers.dart';
+import 'package:twmt/providers/project_detail_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/features/projects/widgets/add_language_dialog.dart';

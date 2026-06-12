@@ -15,7 +15,7 @@ import '../../../models/domain/translation_version.dart';
 import '../../../services/glossary/glossary_auto_provisioning_service.dart';
 import '../../../services/service_locator.dart';
 import '../providers/projects_screen_providers.dart';
-import '../providers/project_detail_providers.dart';
+import 'package:twmt/providers/project_detail_providers.dart';
 
 /// Token-themed popup for adding target languages to a project.
 class AddLanguageDialog extends ConsumerStatefulWidget {

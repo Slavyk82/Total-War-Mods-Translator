@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/projects/providers/project_detail_providers.dart';
+import 'package:twmt/providers/project_detail_providers.dart';
 import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 

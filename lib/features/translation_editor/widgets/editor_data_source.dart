@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'cell_renderers/checkbox_cell_renderer.dart';
 import 'cell_renderers/text_cell_renderer.dart';
 

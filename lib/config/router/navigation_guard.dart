@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/pack_compilation/providers/pack_compilation_providers.dart';
-import '../../features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import '../../widgets/fluent/fluent_widgets.dart';
 
 /// Returns `true` if it is safe to navigate away from the current screen.

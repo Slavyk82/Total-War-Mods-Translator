@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/projects/providers/project_detail_providers.dart';
+import 'package:twmt/providers/project_detail_providers.dart';
 import 'package:twmt/features/projects/utils/open_project_editor.dart';
 import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/models/domain/language.dart';

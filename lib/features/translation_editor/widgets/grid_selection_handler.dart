@@ -1,7 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'editor_data_source.dart';
 
 /// Handler for grid selection operations

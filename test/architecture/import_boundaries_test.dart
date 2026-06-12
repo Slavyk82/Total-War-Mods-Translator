@@ -9,7 +9,6 @@ const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
   'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/mods/widgets/scan_terminal_widget.dart', // lot:2
-  'lib/features/bootstrap/widgets/mod_scan_boot_dialog.dart -> lib/features/steam_publish/providers/published_subs_cache_provider.dart', // lot:2
   'lib/features/game_translation/providers/game_translation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/screens/game_translation_screen.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
@@ -23,22 +22,18 @@ const _allowlist = <String>{
   'lib/features/mods/widgets/whats_new_dialog.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/home/providers/workflow_providers.dart', // lot:2
   'lib/features/pack_compilation/providers/pack_compilation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/projects/services/bulk_operations_handlers.dart -> lib/features/translation_editor/providers/llm_model_providers.dart', // lot:2
-  'lib/features/projects/services/bulk_operations_handlers.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:2
-  'lib/features/projects/widgets/bulk_review_dialog.dart -> lib/features/translation_editor/providers/llm_model_providers.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_batch_settings.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_model_selector.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_skip_tm.dart', // lot:2
   'lib/features/translation_editor/screens/actions/editor_actions_base.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_datagrid.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/project_detail_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/widgets/add_language_dialog.dart', // lot:2
   'lib/features/translation_editor/widgets/grid_actions_handler.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/services/mods/game_installation_sync_service.dart -> lib/providers/settings_providers.dart', // lot:3 (service→Riverpod leak; was a settings_providers entry, relocated by lot:1 promotion)
-  'lib/services/translation/headless_batch_translation_runner.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3
+  'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/translation_settings_provider.dart', // lot:3 (service→Riverpod leak; target relocated by provider-promotion lot)
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/repository_providers.dart', // lot:3
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/service_providers.dart', // lot:3
   'lib/widgets/sidebar_update_checker.dart -> lib/features/release_notes/widgets/all_release_notes_dialog.dart', // lot:2

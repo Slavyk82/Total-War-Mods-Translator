@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/projects/providers/project_detail_providers.dart';
+import 'package:twmt/providers/project_detail_providers.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/screens/projects_screen.dart';
 import 'package:twmt/providers/settings_providers.dart';

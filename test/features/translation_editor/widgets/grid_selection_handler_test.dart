@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:syncfusion_flutter_datagrid/datagrid.dart';
-import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_data_source.dart';
 import 'package:twmt/features/translation_editor/widgets/grid_selection_handler.dart';
 import 'package:twmt/models/domain/translation_unit.dart';

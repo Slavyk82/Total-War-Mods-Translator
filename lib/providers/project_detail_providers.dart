@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../models/domain/project_language.dart';
-import '../../../models/domain/language.dart';
-import '../../../providers/shared/repository_providers.dart';
+import 'package:twmt/models/domain/project_language.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
 
 // Re-export shared repository providers for backward compatibility
-export '../../../providers/shared/repository_providers.dart'
+export 'package:twmt/providers/shared/repository_providers.dart'
     show translationUnitRepositoryProvider, translationVersionRepositoryProvider;
 
 /// Project language enriched with its [Language] record and per-language

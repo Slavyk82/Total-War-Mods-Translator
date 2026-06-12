@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'package:twmt/features/translation_editor/widgets/editor_inspector_panel.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
