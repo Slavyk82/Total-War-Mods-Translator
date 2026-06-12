@@ -65,8 +65,6 @@ const _allowlist = <String>{
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/validation_rule.dart', // lot:2
   'lib/models/common/validation_result.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
-  'lib/services/database/migrations/migration_registry.dart -> lib/services/database/migrations/migration_deepseek_provider.dart', // lot:3
-  'lib/services/database/migrations/migration_registry.dart -> lib/services/database/migrations/migration_gemini_provider.dart', // lot:3
   'lib/services/mods/game_installation_sync_service.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3
@@ -79,6 +77,7 @@ const _allowlist = <String>{
 /// Paths that LOOK like Riverpod providers but are not (service purity rule).
 bool _isProviderFalsePositive(String libPath) =>
     libPath.startsWith('lib/services/llm/providers/') ||
+    libPath.startsWith('lib/services/database/migrations/') ||
     libPath == 'lib/repositories/translation_provider_repository.dart';
 
 String _featureOf(String libPath) {
