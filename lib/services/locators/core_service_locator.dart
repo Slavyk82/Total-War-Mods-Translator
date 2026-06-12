@@ -5,10 +5,6 @@ import '../../features/activity/repositories/activity_event_repository_impl.dart
 import '../../features/activity/services/activity_logger.dart';
 import '../../features/activity/services/activity_logger_impl.dart';
 import '../../repositories/settings_repository.dart';
-import '../concurrency/batch_isolation_manager.dart';
-import '../concurrency/conflict_resolver.dart';
-import '../concurrency/optimistic_lock_manager.dart';
-import '../concurrency/pessimistic_lock_manager.dart';
 import '../concurrency/transaction_manager.dart';
 import '../file/file_service.dart';
 import '../rpfm/i_rpfm_service.dart';
@@ -123,24 +119,8 @@ class CoreServiceLocator {
     );
 
     // Concurrency Services
-    locator.registerLazySingleton<PessimisticLockManager>(
-      () => PessimisticLockManager(),
-    );
-
-    locator.registerLazySingleton<OptimisticLockManager>(
-      () => OptimisticLockManager(),
-    );
-
-    locator.registerLazySingleton<BatchIsolationManager>(
-      () => BatchIsolationManager(),
-    );
-
     locator.registerLazySingleton<TransactionManager>(
       () => TransactionManager(),
-    );
-
-    locator.registerLazySingleton<ConflictResolver>(
-      () => ConflictResolver(),
     );
 
     // Search Services

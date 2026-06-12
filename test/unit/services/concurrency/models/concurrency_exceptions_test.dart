@@ -10,23 +10,9 @@ void main() {
 
   test('each subtype sets its documented code + details', () {
     final cases = <ConcurrencyException, String>{
-      ResourceLockedException('m', resourceId: 'r', lockedBy: 'u'):
-          'RESOURCE_LOCKED',
-      LockNotFoundException('m', lockId: 'l'): 'LOCK_NOT_FOUND',
-      LockExpiredException('m', lockId: 'l'): 'LOCK_EXPIRED',
-      LockOwnershipException('m', lockId: 'l', actualOwner: 'a'):
-          'LOCK_OWNERSHIP_ERROR',
-      DeadlockException('m', involvedLocks: ['a', 'b']): 'DEADLOCK_DETECTED',
-      VersionConflictException('m', expectedVersion: 1, actualVersion: 2):
-          'VERSION_CONFLICT',
-      DataConflictException('m', conflictType: 'merge'): 'DATA_CONFLICT',
-      BatchReservationException('m', unitId: 'u'): 'BATCH_RESERVATION_CONFLICT',
       TransactionException('m', transactionId: 't'): 'TRANSACTION_ERROR',
       MaxRetriesExceededException('m', maxRetries: 3, attemptsMade: 3):
           'MAX_RETRIES_EXCEEDED',
-      ConflictResolutionException('m', conflictId: 'c'):
-          'CONFLICT_RESOLUTION_FAILED',
-      LockRenewalException('m', lockId: 'l'): 'LOCK_RENEWAL_FAILED',
     };
 
     cases.forEach((exception, expectedCode) {
@@ -36,11 +22,11 @@ void main() {
     });
   });
 
-  test('VersionConflictException records the version delta in details', () {
-    final e = VersionConflictException('conflict',
-        resourceId: 'r', expectedVersion: 5, actualVersion: 7);
+  test('TransactionException stringifies the original error in details', () {
+    final e = TransactionException('failed',
+        transactionId: 't1', originalError: StateError('inner'));
     final details = e.details as Map;
-    expect(details['expected_version'], 5);
-    expect(details['actual_version'], 7);
+    expect(details['transaction_id'], 't1');
+    expect(details['original_error'], contains('inner'));
   });
 }
