@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show NumberFormat;
 import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
-import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
+import 'package:twmt/widgets/common/scan_terminal_widget.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';

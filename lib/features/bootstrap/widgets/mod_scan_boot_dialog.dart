@@ -8,7 +8,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/providers/mods_data_providers.dart';
-import 'package:twmt/features/mods/widgets/scan_terminal_widget.dart';
+import 'package:twmt/widgets/common/scan_terminal_widget.dart';
 import 'package:twmt/providers/published_subs_cache_provider.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
