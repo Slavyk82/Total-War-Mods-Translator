@@ -311,35 +311,6 @@ CREATE TABLE IF NOT EXISTS glossary_entries (
 );
 
 -- ============================================================================
--- SEARCH MANAGEMENT
--- ============================================================================
-
--- Search History: Recent search queries
-CREATE TABLE IF NOT EXISTS search_history (
-    id TEXT PRIMARY KEY,
-    query TEXT NOT NULL,
-    scope TEXT NOT NULL,
-    filters_json TEXT,
-    result_count INTEGER NOT NULL,
-    searched_at INTEGER NOT NULL,
-    CHECK (scope IN ('source', 'target', 'both', 'key', 'all'))
-);
-
--- Saved Searches: User-saved search queries
-CREATE TABLE IF NOT EXISTS saved_searches (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    query TEXT NOT NULL,
-    scope TEXT NOT NULL,
-    filters_json TEXT,
-    usage_count INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL,
-    last_used_at INTEGER NOT NULL,
-    CHECK (scope IN ('source', 'target', 'both', 'key', 'all')),
-    CHECK (usage_count >= 0)
-);
-
--- ============================================================================
 -- WORKSHOP MODS
 -- ============================================================================
 
@@ -566,11 +537,6 @@ CREATE INDEX IF NOT EXISTS idx_glossary_entries_glossary ON glossary_entries(glo
 CREATE INDEX IF NOT EXISTS idx_glossary_entries_source ON glossary_entries(source_term);
 CREATE INDEX IF NOT EXISTS idx_glossary_entries_usage ON glossary_entries(usage_count DESC);
 CREATE INDEX IF NOT EXISTS idx_glossary_entries_language ON glossary_entries(target_language_code);
-
--- Search History
-CREATE INDEX IF NOT EXISTS idx_search_history_searched ON search_history(searched_at DESC);
-CREATE INDEX IF NOT EXISTS idx_saved_searches_name ON saved_searches(name);
-CREATE INDEX IF NOT EXISTS idx_saved_searches_last_used ON saved_searches(last_used_at DESC);
 
 -- Workshop Mods
 CREATE UNIQUE INDEX IF NOT EXISTS idx_workshop_mods_workshop_id ON workshop_mods(workshop_id);

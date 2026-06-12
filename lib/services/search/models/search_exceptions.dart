@@ -50,24 +50,6 @@ class SearchDatabaseException extends SearchServiceException {
         );
 }
 
-/// Saved search not found
-class SavedSearchNotFoundException extends SearchServiceException {
-  SavedSearchNotFoundException(super.message, {String? searchId})
-      : super(
-          code: 'SAVED_SEARCH_NOT_FOUND',
-          details: {'search_id': searchId},
-        );
-}
-
-/// Saved search already exists with same name
-class DuplicateSavedSearchException extends SearchServiceException {
-  DuplicateSavedSearchException(super.message, {String? name})
-      : super(
-          code: 'DUPLICATE_SAVED_SEARCH',
-          details: {'name': name},
-        );
-}
-
 /// Too many search results (exceeded limit)
 class TooManyResultsException extends SearchServiceException {
   TooManyResultsException(
@@ -77,23 +59,5 @@ class TooManyResultsException extends SearchServiceException {
   }) : super(
           code: 'TOO_MANY_RESULTS',
           details: {'result_count': resultCount, 'max_results': maxResults},
-        );
-}
-
-/// Regular expression is invalid
-class InvalidRegexException extends SearchServiceException {
-  InvalidRegexException(super.message, {String? pattern, String? error})
-      : super(
-          code: 'INVALID_REGEX',
-          details: {'pattern': pattern, 'error': error},
-        );
-}
-
-/// Search history limit exceeded
-class SearchHistoryLimitException extends SearchServiceException {
-  SearchHistoryLimitException(super.message, {int? maxHistory})
-      : super(
-          code: 'SEARCH_HISTORY_LIMIT',
-          details: {'max_history': maxHistory},
         );
 }

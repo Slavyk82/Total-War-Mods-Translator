@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import '../../models/common/service_exception.dart';
 import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
+import 'game_language_registry.dart';
 
 /// Represents a detected game localization pack file.
 class DetectedLocalPack {
@@ -57,25 +58,6 @@ class GameLocalizationService {
 
   GameLocalizationService({ILoggingService? logging})
       : _logging = logging ?? ServiceLocator.get<ILoggingService>();
-
-  /// Map of language codes to display names
-  static const Map<String, String> languageCodeNames = {
-    'en': 'English',
-    'br': 'Brazilian Portuguese',
-    'cn': 'Chinese (Simplified)',
-    'cz': 'Czech',
-    'de': 'German',
-    'es': 'Spanish',
-    'fr': 'French',
-    'it': 'Italian',
-    'jp': 'Japanese',
-    'kr': 'Korean',
-    'pl': 'Polish',
-    'ru': 'Russian',
-    'tr': 'Turkish',
-    'tw': 'Chinese (Traditional)',
-    'zh': 'Chinese',
-  };
 
   /// Detect all available localization packs for a game installation.
   ///
@@ -156,9 +138,8 @@ class GameLocalizationService {
   /// Get display name for a language code.
   ///
   /// Returns the code in uppercase if no mapping exists.
-  String getLanguageName(String code) {
-    return languageCodeNames[code.toLowerCase()] ?? code.toUpperCase();
-  }
+  String getLanguageName(String code) =>
+      GameLanguageRegistry.displayName(code) ?? code.toUpperCase();
 
   /// Get language code from a pack file path.
   ///

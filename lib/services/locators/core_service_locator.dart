@@ -10,7 +10,6 @@ import '../concurrency/conflict_resolver.dart';
 import '../concurrency/optimistic_lock_manager.dart';
 import '../concurrency/pessimistic_lock_manager.dart';
 import '../concurrency/transaction_manager.dart';
-import '../database/database_service.dart';
 import '../file/file_service.dart';
 import '../rpfm/i_rpfm_service.dart';
 import '../rpfm/rpfm_cli_manager.dart';
@@ -146,9 +145,7 @@ class CoreServiceLocator {
 
     // Search Services
     locator.registerLazySingleton<ISearchService>(
-      () => SearchServiceImpl(
-        databaseService: DatabaseService.instance,
-      ),
+      () => SearchServiceImpl(),
     );
 
     // Shared Services

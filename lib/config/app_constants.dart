@@ -17,22 +17,6 @@ class AppConstants {
 
   // ========== SEARCH CONFIGURATION ==========
 
-  /// Maximum number of search history entries to keep in database
-  ///
-  /// When this limit is reached, oldest entries are automatically deleted.
-  /// Prevents unbounded growth of search_history table.
-  static const int maxSearchHistory = 100;
-
-  /// Default limit for search history queries
-  ///
-  /// How many recent searches to show by default in search history UI.
-  static const int defaultSearchHistoryLimit = 50;
-
-  /// Maximum limit for search history queries
-  ///
-  /// Upper bound for user-requested history limit to prevent excessive queries.
-  static const int maxSearchHistoryLimit = 100;
-
   /// Default number of search results to return
   ///
   /// Used when user doesn't specify a limit for search queries.

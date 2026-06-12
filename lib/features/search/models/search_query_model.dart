@@ -79,9 +79,6 @@ class SearchOptions {
   /// Whole word match only
   final bool wholeWord;
 
-  /// Use regular expression
-  final bool useRegex;
-
   /// Use phrase search (exact phrase)
   final bool phraseSearch;
 
@@ -97,7 +94,6 @@ class SearchOptions {
   const SearchOptions({
     this.caseSensitive = false,
     this.wholeWord = false,
-    this.useRegex = false,
     this.phraseSearch = false,
     this.prefixSearch = false,
     this.includeObsolete = false,
@@ -114,7 +110,6 @@ class SearchOptions {
   SearchOptions copyWith({
     bool? caseSensitive,
     bool? wholeWord,
-    bool? useRegex,
     bool? phraseSearch,
     bool? prefixSearch,
     bool? includeObsolete,
@@ -123,7 +118,6 @@ class SearchOptions {
     return SearchOptions(
       caseSensitive: caseSensitive ?? this.caseSensitive,
       wholeWord: wholeWord ?? this.wholeWord,
-      useRegex: useRegex ?? this.useRegex,
       phraseSearch: phraseSearch ?? this.phraseSearch,
       prefixSearch: prefixSearch ?? this.prefixSearch,
       includeObsolete: includeObsolete ?? this.includeObsolete,

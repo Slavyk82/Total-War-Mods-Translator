@@ -11,8 +11,6 @@ Complete Advanced Search UI implementation for TWMT with FTS5 full-text search b
 - **Advanced Search Dialog**: Large, resizable dialog (800x600px) with full query builder
 - **Query Builder**: FTS5 query syntax with operators (AND, OR, NOT, phrase, prefix)
 - **Search Results Panel**: Paginated results with highlighting and navigation
-- **Saved Searches**: Save frequently used searches with usage statistics
-- **Search History**: Auto-saved last 50 searches
 - **Filters**: Status, project, language, file, date range
 - **Highlighting**: Bold text with color highlighting for matched terms
 
@@ -29,8 +27,7 @@ lib/features/search/
 └── widgets/
     ├── advanced_search_dialog.dart     # Main search dialog
     ├── search_query_builder.dart       # Query builder widget
-    ├── search_results_panel.dart       # Results display with pagination
-    └── saved_searches_panel.dart       # Saved searches management
+    └── search_results_panel.dart       # Results display with pagination
 ```
 
 ## Usage
@@ -76,23 +73,7 @@ class MySearchResultsScreen extends ConsumerWidget {
 }
 ```
 
-### 3. Manage Saved Searches
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:twmt/features/search/widgets/saved_searches_panel.dart';
-
-// Show saved searches dialog
-await showDialog(
-  context: context,
-  builder: (context) => const SavedSearchesPanel(asDialog: true),
-);
-
-// Or embed in screen
-const SavedSearchesPanel(asDialog: false);
-```
-
-### 4. Programmatic Search
+### 3. Programmatic Search
 
 ```dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -164,7 +145,6 @@ final query = SearchQueryModel(
 
 - `caseSensitive`: Case-sensitive search
 - `wholeWord`: Whole word match only
-- `useRegex`: Use regular expression (slower)
 - `phraseSearch`: Wrap in quotes for exact phrase
 - `prefixSearch`: Append * for prefix matching
 - `includeObsolete`: Include obsolete entries
@@ -195,49 +175,6 @@ resultsAsync.when(
   loading: () => CircularProgressIndicator(),
   error: (error, stack) => Text('Error: $error'),
 );
-```
-
-### savedSearchesProvider
-
-List of saved searches.
-
-```dart
-final savedSearchesAsync = ref.watch(savedSearchesProvider);
-```
-
-### searchHistoryProvider
-
-Last 50 searches.
-
-```dart
-final historyAsync = ref.watch(searchHistoryProvider);
-```
-
-### saveSearchActionProvider
-
-Save current search.
-
-```dart
-final action = ref.read(saveSearchActionProvider.notifier);
-await action.save('My Search', query);
-```
-
-### deleteSearchActionProvider
-
-Delete saved search.
-
-```dart
-final action = ref.read(deleteSearchActionProvider.notifier);
-await action.delete(searchId);
-```
-
-### executeSavedSearchActionProvider
-
-Execute saved search.
-
-```dart
-final action = ref.read(executeSavedSearchActionProvider.notifier);
-await action.execute(savedSearch);
 ```
 
 ## FTS5 Query Syntax
@@ -310,8 +247,6 @@ All FTS5 tables ready:
 - `translation_units_fts`: Source text and keys
 - `translation_versions_fts`: Translated text
 - `translation_memory_fts`: TM entries
-- `search_history`: Last 100 searches
-- `saved_searches`: User-saved searches
 
 ## Testing
 
@@ -324,8 +259,6 @@ All FTS5 tables ready:
 5. Click Search
 6. Verify results display with highlighting
 7. Click "Go to" on a result
-8. Save search as "Emperor Searches"
-9. Re-run from Saved Searches panel
 
 ### Unit Testing
 
@@ -355,7 +288,6 @@ testWidgets('Search dialog opens and accepts input', (tester) async {
 
 1. **Export**: CSV/Excel export not yet implemented (placeholder)
 2. **Total Count**: Pagination shows results count, not total database count (requires COUNT query)
-3. **Regex Validation**: Basic validation only, may not catch all invalid patterns
 
 ## Future Enhancements
 

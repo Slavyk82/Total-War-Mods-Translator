@@ -39,17 +39,6 @@ class SearchQuery extends _$SearchQuery {
     state = state.copyWith(options: options);
   }
 
-  /// Load query from saved search
-  void loadFromSavedSearch(SavedSearch savedSearch) {
-    state = SearchQueryModel(
-      text: savedSearch.query,
-      scope: SearchScope.all, // Default, would need to be stored in filter
-      operator: SearchOperator.and, // Default
-      filter: savedSearch.filter,
-      options: SearchOptions.defaults(),
-    );
-  }
-
   /// Clear query
   void clear() {
     state = SearchQueryModel.empty();
@@ -127,11 +116,11 @@ Future<SearchResultsModel> searchResults(
 /// caller uses the sentinel to decide `hasNextPage` exactly, then trims the
 /// list back to [limit] rows for display.
 ///
-/// `searchAll` and `searchWithRegex` accept no `offset` on `ISearchService`,
-/// so for those scopes the whole window `offset + limit + 1` is fetched from
-/// the start and sliced here. This is correct because the service's merged
-/// ordering is deterministic (stable tiebreakers), so a fetch is always a
-/// stable prefix of a deeper fetch.
+/// `searchAll` accepts no `offset` on `ISearchService`, so for that scope the
+/// whole window `offset + limit + 1` is fetched from the start and sliced
+/// here. This is correct because the service's merged ordering is
+/// deterministic (stable tiebreakers), so a fetch is always a stable prefix
+/// of a deeper fetch.
 Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
   required ISearchService service,
   required SearchQueryModel query,
@@ -140,21 +129,6 @@ Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
 }) async {
   // One extra row beyond the page: its presence proves a next page exists.
   final sentinelLimit = limit + 1;
-
-  // Use regex if enabled.
-  //
-  // NOTE: for a *true* regex (regex metacharacters), the service throws
-  // `UnsupportedError`; the caller catches it and returns empty results.
-  if (query.options.useRegex) {
-    final result = await service.searchWithRegex(
-      query.text,
-      searchIn: _getScopeForRegex(query.scope),
-      filter: query.filter,
-      limit: offset + sentinelLimit,
-    );
-    if (result.isErr) return result;
-    return Ok(result.value.skip(offset).toList());
-  }
 
   // Build FTS5 query
   String ftsQuery = query.text;
@@ -193,188 +167,5 @@ Future<Result<List<SearchResult>, SearchServiceException>> _executeSearch({
       );
       if (result.isErr) return result;
       return Ok(result.value.skip(offset).toList());
-  }
-}
-
-/// Convert SearchScope to regex searchIn parameter
-String _getScopeForRegex(SearchScope scope) {
-  switch (scope) {
-    case SearchScope.source:
-    case SearchScope.key:
-      return 'source';
-    case SearchScope.target:
-      return 'target';
-    case SearchScope.both:
-    case SearchScope.all:
-      return 'both';
-  }
-}
-
-/// Search history (last 50 searches)
-@riverpod
-Future<List<Map<String, dynamic>>> searchHistory(Ref ref) async {
-  final service = ref.watch(searchServiceProvider);
-  final result = await service.getSearchHistory(limit: 50);
-
-  return result.when(
-    ok: (history) => history,
-    err: (error) => [],
-  );
-}
-
-/// Saved searches list
-@riverpod
-Future<List<SavedSearch>> savedSearches(Ref ref) async {
-  final service = ref.watch(searchServiceProvider);
-  final result = await service.getSavedSearches();
-
-  return result.when(
-    ok: (searches) => searches,
-    err: (error) => [],
-  );
-}
-
-/// Save a search
-@riverpod
-class SaveSearchAction extends _$SaveSearchAction {
-  @override
-  AsyncValue<void> build() => const AsyncValue.data(null);
-
-  Future<void> save(String name, SearchQueryModel query) async {
-    state = const AsyncValue.loading();
-
-    try {
-      final service = ref.read(searchServiceProvider);
-      final result = await service.saveSearch(
-        name,
-        query.text,
-        filter: query.filter,
-      );
-
-      result.when(
-        ok: (_) {
-          if (ref.mounted) {
-            state = const AsyncValue.data(null);
-            // Refresh saved searches list
-            ref.invalidate(savedSearchesProvider);
-          }
-        },
-        err: (error) {
-          if (ref.mounted) {
-            state = AsyncValue.error(error, StackTrace.current);
-          }
-        },
-      );
-    } catch (e, st) {
-      if (ref.mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
-  }
-}
-
-/// Delete a saved search
-@riverpod
-class DeleteSearchAction extends _$DeleteSearchAction {
-  @override
-  AsyncValue<void> build() => const AsyncValue.data(null);
-
-  Future<void> delete(String searchId) async {
-    state = const AsyncValue.loading();
-
-    try {
-      final service = ref.read(searchServiceProvider);
-      final result = await service.deleteSavedSearch(searchId);
-
-      result.when(
-        ok: (_) {
-          if (ref.mounted) {
-            state = const AsyncValue.data(null);
-            // Refresh saved searches list
-            ref.invalidate(savedSearchesProvider);
-          }
-        },
-        err: (error) {
-          if (ref.mounted) {
-            state = AsyncValue.error(error, StackTrace.current);
-          }
-        },
-      );
-    } catch (e, st) {
-      if (ref.mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
-  }
-}
-
-/// Execute a saved search
-@riverpod
-class ExecuteSavedSearchAction extends _$ExecuteSavedSearchAction {
-  @override
-  AsyncValue<void> build() => const AsyncValue.data(null);
-
-  Future<void> execute(SavedSearch search) async {
-    state = const AsyncValue.loading();
-
-    try {
-      final service = ref.read(searchServiceProvider);
-
-      // Increment usage count
-      await service.incrementSavedSearchUsage(search.id);
-
-      if (ref.mounted) {
-        // Load search query into search query provider
-        final queryNotifier = ref.read(searchQueryProvider.notifier);
-        queryNotifier.loadFromSavedSearch(search);
-
-        // Refresh search results
-        ref.invalidate(searchResultsProvider);
-
-        // Refresh saved searches to update usage count
-        ref.invalidate(savedSearchesProvider);
-
-        state = const AsyncValue.data(null);
-      }
-    } catch (e, st) {
-      if (ref.mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
-  }
-}
-
-/// Clear search history
-@riverpod
-class ClearHistoryAction extends _$ClearHistoryAction {
-  @override
-  AsyncValue<void> build() => const AsyncValue.data(null);
-
-  Future<void> clear() async {
-    state = const AsyncValue.loading();
-
-    try {
-      final service = ref.read(searchServiceProvider);
-      final result = await service.clearSearchHistory();
-
-      result.when(
-        ok: (_) {
-          if (ref.mounted) {
-            state = const AsyncValue.data(null);
-            // Refresh search history
-            ref.invalidate(searchHistoryProvider);
-          }
-        },
-        err: (error) {
-          if (ref.mounted) {
-            state = AsyncValue.error(error, StackTrace.current);
-          }
-        },
-      );
-    } catch (e, st) {
-      if (ref.mounted) {
-        state = AsyncValue.error(e, st);
-      }
-    }
   }
 }

@@ -15,9 +15,9 @@ import 'package:twmt/services/search/models/search_result.dart';
 /// fetch to guess whether a next page exists. That heuristic is wrong in
 /// both directions:
 ///   - exactly pageSize total matches => claimed a phantom next page;
-///   - `searchAll`/`searchWithRegex` accept no offset, so page 2 simply
-///     re-fetched (a subset of) page 1 — duplicated results, and with the
-///     old `limit ~/ 3` split a full page could never even be reached.
+///   - `searchAll` accepts no offset, so page 2 simply re-fetched (a subset
+///     of) page 1 — duplicated results, and with the old `limit ~/ 3` split
+///     a full page could never even be reached.
 ///
 /// The fixed provider requests one sentinel row beyond the page window
 /// (pageSize + 1) and slices the window itself for the offset-less
@@ -43,16 +43,10 @@ void main() {
   Future<SearchResultsModel> runSearch(
     ProviderContainer container, {
     required int page,
-    bool useRegex = false,
   }) async {
     final notifier = container.read(searchQueryProvider.notifier);
     notifier.updateText('alpha');
     notifier.updateScope(SearchScope.all);
-    if (useRegex) {
-      notifier.updateOptions(
-        container.read(searchQueryProvider).options.copyWith(useRegex: true),
-      );
-    }
     return container.read(searchResultsProvider(page: page).future);
   }
 
@@ -115,20 +109,6 @@ void main() {
       expect(model.totalCount, 120);
     });
   });
-
-  group('regex scope (searchWithRegex has no offset parameter either)', () {
-    test('page 2 returns the next distinct slice with exact hasNextPage',
-        () async {
-      final fake = _FakeSearchService(totalMatches: 70, factory: result);
-      final container = makeContainer(fake);
-
-      final model = await runSearch(container, page: 2, useRegex: true);
-
-      expect(model.results, hasLength(20));
-      expect(model.results.first.id, 'r-50');
-      expect(model.hasNextPage, isFalse);
-    });
-  });
 }
 
 /// Fake search service returning a deterministic, relevance-ordered global
@@ -148,16 +128,6 @@ class _FakeSearchService implements ISearchService {
   @override
   Future<Result<List<SearchResult>, SearchServiceException>> searchAll(
     String query, {
-    SearchFilter? filter,
-    int limit = 100,
-  }) async {
-    return Ok(_prefix(limit));
-  }
-
-  @override
-  Future<Result<List<SearchResult>, SearchServiceException>> searchWithRegex(
-    String pattern, {
-    String searchIn = 'both',
     SearchFilter? filter,
     int limit = 100,
   }) async {
