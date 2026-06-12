@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:twmt/features/settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import 'package:twmt/features/steam_publish/widgets/workshop_onboarding_card.dart';
 import 'package:twmt/models/common/result.dart';

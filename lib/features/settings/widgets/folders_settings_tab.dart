@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../models/game_display_info.dart';
 import 'general/game_installations_section.dart';
 import 'general/workshop_section.dart';

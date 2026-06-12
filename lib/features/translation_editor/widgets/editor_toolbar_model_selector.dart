@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../../settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../providers/editor_providers.dart';
 
 /// LLM model selector for the editor sidebar.

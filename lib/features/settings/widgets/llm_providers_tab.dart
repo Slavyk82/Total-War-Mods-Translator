@@ -7,7 +7,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
-import '../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'llm_provider_section.dart';
 import 'llm_custom_rules_section.dart';
 

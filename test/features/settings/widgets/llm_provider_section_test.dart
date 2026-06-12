@@ -14,7 +14,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/features/settings/widgets/llm_provider_section.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/theme/app_theme.dart';

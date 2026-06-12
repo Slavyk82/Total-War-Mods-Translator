@@ -4,7 +4,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/services/settings/settings_service.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 
 class MockSettingsService extends Mock implements SettingsService {}
 

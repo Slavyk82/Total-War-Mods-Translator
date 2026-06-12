@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
-import '../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import 'llm/llm_model_row.dart';
 import 'llm/llm_provider_header.dart';

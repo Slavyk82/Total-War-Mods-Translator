@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/settings/utils/pack_prefix_sanitizer.dart';
+import 'package:twmt/utils/pack_prefix_sanitizer.dart';
 
 void main() {
   group('sanitizePackPrefix', () {

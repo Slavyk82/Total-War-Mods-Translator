@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/projects/providers/project_detail_providers.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 
 /// Resolves which `languageId` to land on when opening a project.

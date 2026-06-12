@@ -7,7 +7,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-import '../../settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 
 const _secureStorage = FlutterSecureStorage(
   wOptions: WindowsOptions(useBackwardCompatibility: false),

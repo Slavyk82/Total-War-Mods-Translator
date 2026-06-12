@@ -6,7 +6,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-import '../../../features/settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';

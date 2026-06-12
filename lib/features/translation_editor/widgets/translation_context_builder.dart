@@ -5,7 +5,7 @@ import '../../../services/glossary/models/glossary_term_with_variants.dart';
 import '../../../services/translation/models/translation_context.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart' as shared_svc;
-import '../../settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../providers/editor_providers.dart';
 
 /// Builds a [TranslationContext] for prompt preview in the translation editor.

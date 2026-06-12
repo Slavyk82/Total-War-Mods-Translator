@@ -9,7 +9,7 @@ import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/steam/models/game_definitions.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 
 /// Service to sync game settings with game_installations table
 class GameInstallationSyncService {

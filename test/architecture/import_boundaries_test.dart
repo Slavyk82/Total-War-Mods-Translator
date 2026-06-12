@@ -20,10 +20,8 @@ const _allowlist = <String>{
   'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/settings/providers/language_settings_providers.dart', // lot:1
   'lib/features/glossary/providers/glossary_providers.dart -> lib/features/activity/models/activity_event.dart', // lot:1
   'lib/features/glossary/providers/glossary_providers.dart -> lib/features/activity/providers/activity_providers.dart', // lot:1
-  'lib/features/glossary/providers/glossary_providers.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/home/providers/action_grid_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/home/providers/workflow_providers.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
-  'lib/features/mods/services/mods_project_service.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/widgets/project_initialization_dialog.dart', // lot:2
@@ -33,39 +31,26 @@ const _allowlist = <String>{
   'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/home/providers/workflow_providers.dart', // lot:2
   'lib/features/pack_compilation/providers/pack_compilation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/pack_compilation/screens/pack_compilation_editor_screen.dart -> lib/features/translation_editor/screens/progress/progress_widgets.dart', // lot:2
-  'lib/features/projects/services/bulk_operations_handlers.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/projects/services/bulk_operations_handlers.dart -> lib/features/translation_editor/providers/llm_model_providers.dart', // lot:2
   'lib/features/projects/services/bulk_operations_handlers.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:2
-  'lib/features/projects/utils/open_project_editor.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/projects/widgets/bulk_review_dialog.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/projects/widgets/bulk_review_dialog.dart -> lib/features/translation_editor/providers/llm_model_providers.dart', // lot:2
-  'lib/features/projects/widgets/create_project/create_project_dialog.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_batch_settings.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_model_selector.dart', // lot:2
   'lib/features/projects/widgets/projects_bulk_menu_panel.dart -> lib/features/translation_editor/widgets/editor_toolbar_skip_tm.dart', // lot:2
   'lib/features/steam_publish/screens/batch_workshop_publish_screen.dart -> lib/features/translation_editor/screens/progress/progress_widgets.dart', // lot:2
-  'lib/features/steam_publish/screens/steam_publish_screen.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/steam_publish/screens/workshop_publish_screen.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/steam_publish/widgets/steam_login_dialog.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/steam_publish/widgets/workshop_onboarding_card.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/steam_publish/widgets/workshop_publish_settings_dialog.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
-  'lib/features/translation_editor/providers/llm_model_providers.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/translation_editor/screens/actions/editor_actions_base.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
-  'lib/features/translation_editor/screens/actions/editor_actions_translation.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/translation_editor/widgets/editor_datagrid.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/project_detail_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_language_switcher.dart -> lib/features/projects/widgets/add_language_dialog.dart', // lot:2
   'lib/features/translation_editor/widgets/editor_toolbar_mod_rule.dart -> lib/features/settings/providers/llm_custom_rules_providers.dart', // lot:1
-  'lib/features/translation_editor/widgets/editor_toolbar_model_selector.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/features/translation_editor/widgets/grid_actions_handler.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/translation_editor/widgets/mod_rule_editor_dialog.dart -> lib/features/settings/providers/llm_custom_rules_providers.dart', // lot:1
-  'lib/features/translation_editor/widgets/translation_context_builder.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
   'lib/models/common/validation_issue_entry.dart -> lib/services/translation/models/validation_rule.dart', // lot:2
   'lib/models/common/validation_result.dart -> lib/services/translation/models/translation_exceptions.dart', // lot:2
-  'lib/services/mods/game_installation_sync_service.dart -> lib/features/settings/providers/settings_providers.dart', // lot:1
+  'lib/services/mods/game_installation_sync_service.dart -> lib/providers/settings_providers.dart', // lot:3 (service→Riverpod leak; was a settings_providers entry, relocated by lot:1 promotion)
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/features/translation_editor/providers/translation_settings_provider.dart', // lot:3
   'lib/services/translation/headless_batch_translation_runner.dart -> lib/providers/shared/service_providers.dart', // lot:3
   'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/repository_providers.dart', // lot:3

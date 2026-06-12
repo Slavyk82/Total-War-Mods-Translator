@@ -3,7 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:twmt/i18n/strings.g.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';

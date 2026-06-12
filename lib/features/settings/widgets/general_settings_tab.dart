@@ -4,7 +4,7 @@ import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import '../../../widgets/common/fluent_spinner.dart';
-import '../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'general/app_language_section.dart';
 import 'general/backup_section.dart';
 import 'general/language_preferences_section.dart';

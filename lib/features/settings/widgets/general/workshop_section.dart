@@ -7,7 +7,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
-import '../../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'settings_section_header.dart';
 
 /// Steam Workshop configuration section.

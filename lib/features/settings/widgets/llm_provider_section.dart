@@ -7,7 +7,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
-import '../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/common/fluent_spinner.dart';
 import 'llm_models_list.dart';

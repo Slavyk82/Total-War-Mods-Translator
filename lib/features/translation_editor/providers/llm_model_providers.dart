@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as shared_svc;
 import 'package:twmt/providers/shared/logging_providers.dart';

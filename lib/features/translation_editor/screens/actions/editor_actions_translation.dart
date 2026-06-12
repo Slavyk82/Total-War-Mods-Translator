@@ -3,7 +3,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import '../../../../providers/shared/logging_providers.dart';
 import '../../../../providers/shared/service_providers.dart' as shared_svc;
 import '../../../../services/translation/models/translation_context.dart';
-import '../../../settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import '../../providers/editor_providers.dart';
 import '../../providers/translation_settings_provider.dart';
 import '../../utils/translation_batch_helper.dart';

@@ -17,7 +17,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:twmt/features/projects/providers/bulk_review_rows_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_review_dialog.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
