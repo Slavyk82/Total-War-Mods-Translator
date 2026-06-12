@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:twmt/config/router/app_router.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
-import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/cards/workflow_card.dart';

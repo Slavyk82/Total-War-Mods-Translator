@@ -2,15 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:twmt/features/home/providers/workflow_providers.dart';
-import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/compilation.dart';
+import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/game_installation.dart';
+import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/models/domain/project_statistics.dart';
+import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
@@ -112,6 +114,36 @@ Compilation _compilation({
   );
 }
 
+/// Build a [DetectedMod] with the timestamps required to drive a specific
+/// [ModUpdateStatus] via the model's computed getter.
+///
+/// - `needsUpdate: true`  → `timeUpdated > localFileLastModified` → needsDownload
+/// - `needsUpdate: false` → equal timestamps → upToDate
+DetectedMod _mod({
+  required String id,
+  bool isHidden = false,
+  bool needsUpdate = false,
+}) {
+  return DetectedMod(
+    workshopId: id,
+    name: 'mod-$id',
+    packFilePath: 'mods/$id.pack',
+    isHidden: isHidden,
+    timeUpdated: needsUpdate ? 200 : 100,
+    localFileLastModified: 100,
+  );
+}
+
+/// Stub [DetectedMods] notifier resolving to a fixed mod list, bypassing the
+/// real scanner/service stack.
+class _StubDetectedMods extends DetectedMods {
+  _StubDetectedMods(this._mods);
+  final List<DetectedMod> _mods;
+
+  @override
+  Future<List<DetectedMod>> build() async => _mods;
+}
+
 ProviderContainer _makeContainer({
   required ProjectRepository projectRepo,
   required GameInstallationRepository gameInstallationRepo,
@@ -119,8 +151,7 @@ ProviderContainer _makeContainer({
   ExportHistoryRepository? exportHistoryRepo,
   CompilationRepository? compilationRepo,
   ConfiguredGame? selectedGame = _gameWh3,
-  Future<int> Function()? totalModsCountOverride,
-  Future<int> Function()? needsUpdateModsCountOverride,
+  List<DetectedMod>? detectedMods,
 }) {
   final overrides = <Override>[
     projectRepositoryProvider.overrideWithValue(projectRepo),
@@ -132,12 +163,8 @@ ProviderContainer _makeContainer({
       exportHistoryRepositoryProvider.overrideWithValue(exportHistoryRepo),
     if (compilationRepo != null)
       compilationRepositoryProvider.overrideWithValue(compilationRepo),
-    if (totalModsCountOverride != null)
-      totalModsCountProvider.overrideWith((ref) => totalModsCountOverride()),
-    if (needsUpdateModsCountOverride != null)
-      needsUpdateModsCountProvider.overrideWith(
-        (ref) => needsUpdateModsCountOverride(),
-      ),
+    if (detectedMods != null)
+      detectedModsProvider.overrideWith(() => _StubDetectedMods(detectedMods)),
   ];
   final container = ProviderContainer(overrides: overrides);
   return container;
@@ -147,7 +174,7 @@ void main() {
   setUp(() async => TestBootstrap.registerFakes());
 
   group('modsDiscoveredCountProvider', () {
-    test('forwards totalModsCountProvider value', () async {
+    test('counts non-hidden mods, independent of any screen toggle', () async {
       final projectRepo = _MockProjectRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
 
@@ -155,16 +182,23 @@ void main() {
         projectRepo: projectRepo,
         gameInstallationRepo: gameInstallRepo,
         selectedGame: null,
-        totalModsCountOverride: () async => 42,
+        detectedMods: [
+          _mod(id: 'a'),
+          _mod(id: 'b'),
+          _mod(id: 'c'),
+          _mod(id: 'hidden-1', isHidden: true),
+          _mod(id: 'hidden-2', isHidden: true),
+        ],
       );
       addTearDown(container.dispose);
 
-      expect(await container.read(modsDiscoveredCountProvider.future), 42);
+      // 3 visible mods; the 2 hidden ones are excluded.
+      expect(await container.read(modsDiscoveredCountProvider.future), 3);
     });
   });
 
   group('modsWithUpdatesCountProvider', () {
-    test('forwards needsUpdateModsCountProvider value', () async {
+    test('counts non-hidden mods needing an update', () async {
       final projectRepo = _MockProjectRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
 
@@ -172,11 +206,30 @@ void main() {
         projectRepo: projectRepo,
         gameInstallationRepo: gameInstallRepo,
         selectedGame: null,
-        needsUpdateModsCountOverride: () async => 7,
+        detectedMods: [
+          _mod(id: 'needs-1', needsUpdate: true),
+          _mod(id: 'needs-2', needsUpdate: true),
+          _mod(id: 'up-to-date'),
+          // Hidden + needs update → excluded (toggle-independent).
+          _mod(id: 'hidden-needs', isHidden: true, needsUpdate: true),
+        ],
       );
       addTearDown(container.dispose);
 
-      expect(await container.read(modsWithUpdatesCountProvider.future), 7);
+      expect(await container.read(modsWithUpdatesCountProvider.future), 2);
+    });
+
+    test('verifies updateStatus predicate matches needsDownload', () {
+      // Guards the timestamp-driven helper: a mod with timeUpdated >
+      // localFileLastModified must surface as needsDownload.
+      expect(
+        _mod(id: 'x', needsUpdate: true).updateStatus,
+        ModUpdateStatus.needsDownload,
+      );
+      expect(
+        _mod(id: 'y').updateStatus,
+        ModUpdateStatus.upToDate,
+      );
     });
   });
 

@@ -1,22 +1,20 @@
 import 'dart:io';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/models/domain/detected_mod.dart';
 import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart';
 import '../../../providers/shared/service_providers.dart';
 
-part 'mods_screen_providers.g.dart';
+// Re-export the shared mods data providers so existing screen-level consumers
+// (which import this file) keep resolving `scanLogStreamProvider` and
+// `modsInitialRescanDoneProvider` without changing their imports.
+export 'package:twmt/providers/mods_data_providers.dart'
+    show scanLogStreamProvider, ModsInitialRescanDone;
 
-/// Provider for the scan log stream from WorkshopScannerService
-final scanLogStreamProvider = Provider<Stream<ScanLogMessage>>((ref) {
-  final scannerService = ref.watch(workshopScannerServiceProvider);
-  return scannerService.scanLogStream;
-});
+part 'mods_screen_providers.g.dart';
 
 /// Session-level cache for scanned mods per game.
 /// This cache persists for the lifetime of the app session,
@@ -392,19 +390,6 @@ Future<int> projectsWithPendingChangesCount(Ref ref) async {
   }
 
   return pendingCount;
-}
-
-/// Tracks whether the mods screen has already forced its once-per-session
-/// rescan. Stays alive for the whole app session so re-navigating to the
-/// Mods screen does not retrigger a scan; resets only on app restart.
-@Riverpod(keepAlive: true)
-class ModsInitialRescanDone extends _$ModsInitialRescanDone {
-  @override
-  bool build() => false;
-
-  void markDone() {
-    state = true;
-  }
 }
 
 /// Refresh trigger for mods list

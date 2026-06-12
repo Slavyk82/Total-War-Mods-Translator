@@ -1,26 +1,40 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
+import 'package:twmt/models/domain/mod_update_status.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'workflow_providers.g.dart';
 
-/// Total mods detected for the selected game.
+/// Mods detected for the selected game, counting only non-hidden mods.
 ///
-/// Thin wrapper over [totalModsCountProvider] so the Home feature can depend
-/// on a stable primitive without reaching into the Mods feature directly.
+/// Computed directly from the global [detectedModsProvider] so the Home
+/// dashboard reflects the real mod count, independent of the Mods screen's
+/// "show hidden" toggle (which is a screen-local view preference, not a
+/// dashboard concern).
 @riverpod
-Future<int> modsDiscoveredCount(Ref ref) =>
-    ref.watch(totalModsCountProvider.future);
+Future<int> modsDiscoveredCount(Ref ref) async {
+  final mods = await ref.watch(detectedModsProvider.future);
+  return mods.where((m) => !m.isHidden).length;
+}
 
-/// Mods with Steam Workshop updates available.
+/// Non-hidden mods with Steam Workshop updates available.
 ///
-/// Thin wrapper over [needsUpdateModsCountProvider].
+/// Computed directly from the global [detectedModsProvider]. The update-status
+/// predicate mirrors the Mods screen's `needsUpdateModsCount` exactly, but the
+/// hidden filter is fixed to non-hidden (toggle-independent) for the dashboard.
 @riverpod
-Future<int> modsWithUpdatesCount(Ref ref) =>
-    ref.watch(needsUpdateModsCountProvider.future);
+Future<int> modsWithUpdatesCount(Ref ref) async {
+  final mods = await ref.watch(detectedModsProvider.future);
+  return mods
+      .where((m) =>
+          !m.isHidden &&
+          (m.updateStatus == ModUpdateStatus.needsDownload ||
+              m.updateStatus == ModUpdateStatus.hasChanges))
+      .length;
+}
 
 /// Number of active projects for the selected game.
 ///

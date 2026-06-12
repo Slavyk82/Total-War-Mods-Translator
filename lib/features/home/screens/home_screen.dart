@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 import 'package:twmt/features/home/widgets/action_grid.dart';
 import 'package:twmt/features/home/widgets/empty_state_guide.dart';
 import 'package:twmt/features/home/widgets/home_language_switcher.dart';

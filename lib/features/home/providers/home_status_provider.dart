@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'action_grid_providers.dart';
-import 'workflow_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 
 part 'home_status_provider.g.dart';
 
