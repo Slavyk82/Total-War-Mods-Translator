@@ -1,6 +1,6 @@
 import '../../../models/common/result.dart';
 import '../../../models/common/service_exception.dart';
-import '../models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 
 /// Repository interface for persistent activity events.
 ///

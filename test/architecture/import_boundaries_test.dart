@@ -18,16 +18,12 @@ const _allowlist = <String>{
   'lib/features/game_translation/widgets/create_game_translation/create_game_translation_dialog.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/game_translation/widgets/create_game_translation/step_select_targets.dart -> lib/features/settings/providers/language_settings_providers.dart', // lot:1
-  'lib/features/glossary/providers/glossary_providers.dart -> lib/features/activity/models/activity_event.dart', // lot:1
-  'lib/features/glossary/providers/glossary_providers.dart -> lib/features/activity/providers/activity_providers.dart', // lot:1
   'lib/features/home/providers/action_grid_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/home/providers/workflow_providers.dart -> lib/features/mods/providers/mods_screen_providers.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
   'lib/features/mods/utils/mods_screen_controller.dart -> lib/features/projects/widgets/project_initialization_dialog.dart', // lot:2
   'lib/features/mods/widgets/whats_new_dialog.dart -> lib/features/projects/utils/open_project_editor.dart', // lot:2
-  'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/activity/models/activity_event.dart', // lot:1
-  'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/activity/providers/activity_providers.dart', // lot:1
   'lib/features/pack_compilation/providers/compilation_editor_notifier.dart -> lib/features/home/providers/workflow_providers.dart', // lot:2
   'lib/features/pack_compilation/providers/pack_compilation_providers.dart -> lib/features/projects/providers/projects_screen_providers.dart', // lot:2
   'lib/features/pack_compilation/screens/pack_compilation_editor_screen.dart -> lib/features/translation_editor/screens/progress/progress_widgets.dart', // lot:2

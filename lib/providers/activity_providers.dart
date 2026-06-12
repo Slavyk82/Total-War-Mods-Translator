@@ -1,10 +1,10 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
-import '../models/activity_event.dart';
-import '../repositories/activity_event_repository.dart';
-import '../repositories/activity_event_repository_impl.dart';
-import '../services/activity_logger.dart';
-import '../services/activity_logger_impl.dart';
+import 'package:twmt/models/events/activity_event.dart';
+import 'package:twmt/features/activity/repositories/activity_event_repository.dart';
+import 'package:twmt/features/activity/repositories/activity_event_repository_impl.dart';
+import 'package:twmt/features/activity/services/activity_logger.dart';
+import 'package:twmt/features/activity/services/activity_logger_impl.dart';
 
 part 'activity_providers.g.dart';
 

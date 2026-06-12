@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 
 void main() {
   group('ActivityEventType', () {

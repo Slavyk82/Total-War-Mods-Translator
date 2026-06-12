@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as path;
-import 'package:twmt/features/activity/models/activity_event.dart';
-import 'package:twmt/features/activity/providers/activity_providers.dart';
+import 'package:twmt/models/events/activity_event.dart';
+import 'package:twmt/providers/activity_providers.dart';
 import 'package:twmt/features/home/providers/workflow_providers.dart';
 import 'package:uuid/uuid.dart';
 

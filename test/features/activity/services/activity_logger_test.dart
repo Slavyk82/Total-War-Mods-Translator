@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'package:twmt/features/activity/repositories/activity_event_repository.dart';
 import 'package:twmt/features/activity/services/activity_logger_impl.dart';
 import 'package:twmt/models/common/result.dart';

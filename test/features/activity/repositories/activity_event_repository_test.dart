@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'package:twmt/features/activity/repositories/activity_event_repository_impl.dart';
 import 'package:twmt/services/database/database_service.dart';
 import 'package:twmt/services/database/migrations/migration_activity_events.dart';

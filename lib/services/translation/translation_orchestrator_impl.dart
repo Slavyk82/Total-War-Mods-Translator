@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:twmt/config/app_constants.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_batch.dart';

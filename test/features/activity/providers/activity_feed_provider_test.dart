@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
-import 'package:twmt/features/activity/providers/activity_providers.dart';
+import 'package:twmt/models/events/activity_event.dart';
+import 'package:twmt/providers/activity_providers.dart';
 import 'package:twmt/features/activity/repositories/activity_event_repository.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';

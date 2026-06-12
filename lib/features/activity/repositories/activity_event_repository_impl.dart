@@ -1,7 +1,7 @@
 import '../../../models/common/result.dart';
 import '../../../models/common/service_exception.dart';
 import '../../../repositories/base_repository.dart';
-import '../models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'activity_event_repository.dart';
 
 /// SQLite-backed implementation of [ActivityEventRepository].

@@ -1,6 +1,6 @@
 import '../../../services/service_locator.dart';
 import '../../../services/shared/i_logging_service.dart';
-import '../models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import '../repositories/activity_event_repository.dart';
 import 'activity_logger.dart';
 
