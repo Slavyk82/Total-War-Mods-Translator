@@ -11,7 +11,7 @@ import 'package:twmt/services/translation/i_translation_orchestrator.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
 import '../providers/editor_providers.dart';
-import 'progress/progress_widgets.dart';
+import 'package:twmt/widgets/common/progress_widgets.dart';
 import 'progress/progress_phase_widgets.dart';
 
 /// Full-screen translation progress display

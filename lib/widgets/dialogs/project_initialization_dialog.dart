@@ -6,7 +6,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
-import '../../../services/projects/i_project_initialization_service.dart';
+import 'package:twmt/services/projects/i_project_initialization_service.dart';
 
 /// Token-themed popup showing real-time progress during project initialization
 /// (pack extraction + translation-unit import).
