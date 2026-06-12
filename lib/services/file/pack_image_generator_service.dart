@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as path;
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/file/i_pack_image_generator_service.dart';
+import 'package:twmt/services/game/game_language_registry.dart';
 import 'package:twmt/services/file/models/file_exceptions.dart';
 import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
@@ -210,36 +211,25 @@ class PackImageGeneratorService implements IPackImageGeneratorService {
     }
   }
 
-  /// Maps language codes whose flag asset is filed under a different name.
+  /// Resolves the flag asset file name (without extension) for a language code.
   ///
   /// Flag files use ISO-639-1 / region codes (e.g. `br.png`, `ja.png`,
   /// `cs.png`), but target/game language codes use variants that don't match
   /// the file name 1:1 — e.g. Brazilian Portuguese is `ptbr` (file `br.png`),
   /// and Total War's pack codes are `jp`/`kr`/`cz`/`cn`/`tw`.
-  static const Map<String, String> _flagCodeAliases = {
-    'ptbr': 'br',
-    'pt-br': 'br',
-    'pt_br': 'br',
-    'jp': 'ja',
-    'kr': 'ko',
-    'cz': 'cs',
-    'cn': 'zh',
-    'tw': 'zh',
-  };
-
-  /// Resolves the flag asset file name (without extension) for a language code,
-  /// applying [_flagCodeAliases] for variant codes (e.g. `ptbr` -> `br`).
+  ///
+  /// Delegates to [GameLanguageRegistry], the single source of truth for
+  /// language-code aliasing across the app.
   @visibleForTesting
   static String flagCodeFor(String languageCode) {
-    final normalized = languageCode.toLowerCase();
-    return _flagCodeAliases[normalized] ?? normalized;
+    return GameLanguageRegistry.flagCode(languageCode);
   }
 
   /// Load language flag from assets.
   ///
-  /// Resolves the flag file name from [languageCode], applying
-  /// [_flagCodeAliases] for variant codes. Returns null (and the caller skips
-  /// the flag overlay) when no matching flag exists.
+  /// Resolves the flag file name from [languageCode] via [flagCodeFor].
+  /// Returns null (and the caller skips the flag overlay) when no matching
+  /// flag exists.
   Future<img.Image?> _loadFlag(String languageCode) async {
     final flagCode = flagCodeFor(languageCode);
     try {

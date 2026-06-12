@@ -1,5 +1,4 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:uuid/uuid.dart';
 
 import '../database/database_service.dart';
 import '../../config/app_constants.dart';
@@ -9,22 +8,12 @@ import 'models/search_result.dart';
 import 'models/search_exceptions.dart';
 import 'utils/query_builder.dart' as legacy;
 import 'utils/fts_query_builder.dart' as sql_builder;
-import 'utils/regex_query_builder.dart';
-import 'search_history_service.dart';
 
 /// Implementation of search service using FTS5 full-text search
 ///
 /// Provides 100-1000x faster search than LIKE queries by leveraging
 /// SQLite FTS5 virtual tables.
 class SearchServiceImpl implements ISearchService {
-  final SearchHistoryService _historyService;
-
-  SearchServiceImpl({
-    DatabaseService? databaseService,
-    Uuid? uuid,
-    SearchHistoryService? historyService,
-  }) : _historyService = historyService ?? SearchHistoryService(uuid: uuid);
-
   Database get _db => DatabaseService.database;
 
   @override
@@ -78,9 +67,6 @@ class SearchServiceImpl implements ISearchService {
           updatedAt: _parseTimestamp(row['updated_at']),
         );
       }).toList();
-
-      // Add to search history
-      await _historyService.addToSearchHistory(query, searchResults.length);
 
       return Ok(searchResults);
     } on DatabaseException catch (e) {
@@ -146,9 +132,6 @@ class SearchServiceImpl implements ISearchService {
         );
       }).toList();
 
-      // Add to search history
-      await _historyService.addToSearchHistory(query, searchResults.length);
-
       return Ok(searchResults);
     } on DatabaseException catch (e) {
       return Err(SearchDatabaseException('Database error during search',
@@ -208,9 +191,6 @@ class SearchServiceImpl implements ISearchService {
         );
       }).toList();
 
-      // Add to search history
-      await _historyService.addToSearchHistory(query, searchResults.length);
-
       return Ok(searchResults);
     } on DatabaseException catch (e) {
       return Err(SearchDatabaseException('Database error during search',
@@ -263,9 +243,6 @@ class SearchServiceImpl implements ISearchService {
           updatedAt: _parseTimestamp(row['updated_at']),
         );
       }).toList();
-
-      // Add to search history
-      await _historyService.addToSearchHistory(query, searchResults.length);
 
       return Ok(searchResults);
     } on DatabaseException catch (e) {
@@ -348,131 +325,6 @@ class SearchServiceImpl implements ISearchService {
   }
 
   @override
-  Future<Result<List<SearchResult>, SearchServiceException>> searchWithRegex(
-    String pattern, {
-    String searchIn = 'both',
-    SearchFilter? filter,
-    int limit = AppConstants.defaultSearchLimit,
-  }) async {
-    try {
-      // Validate and escape regex pattern
-      final regexPattern = RegexQueryBuilder.validateAndEscapePattern(pattern);
-
-      // Build SQL query with REGEXP
-      final sql = RegexQueryBuilder.buildRegexQuery(
-        regexPattern,
-        searchIn: searchIn,
-        filter: filter,
-        limit: limit,
-      );
-
-      // Execute search
-      final results = await _db.rawQuery(sql);
-
-      // Convert to SearchResult objects
-      final searchResults = results.map((row) {
-        return SearchResult(
-          id: row['id'] as String,
-          type: SearchResultType.translationUnit,
-          projectId: row['project_id'] as String?,
-          projectName: row['project_name'] as String?,
-          key: row['key'] as String?,
-          sourceText: row['source_text'] as String?,
-          translatedText: row['translated_text'] as String?,
-          matchedField: row['matched_field'] as String? ?? 'source_text',
-          highlightedText: row['source_text'] as String? ?? '',
-          relevanceScore: 1.0, // No ranking for REGEXP
-          createdAt: _parseTimestamp(row['created_at']),
-          updatedAt: _parseTimestamp(row['updated_at']),
-        );
-      }).toList();
-
-      // Add to search history
-      await _historyService.addToSearchHistory(
-          'REGEX: $pattern', searchResults.length);
-
-      return Ok(searchResults);
-    } on ArgumentError catch (e) {
-      return Err(InvalidRegexException(e.message, pattern: pattern));
-    } on DatabaseException catch (e) {
-      return Err(SearchDatabaseException('Database error during regex search',
-          dbError: e));
-    } catch (e) {
-      return Err(SearchDatabaseException('Unexpected error during regex search',
-          dbError: e));
-    }
-  }
-
-  // Delegate history operations to SearchHistoryService
-
-  @override
-  Future<Result<List<Map<String, dynamic>>, SearchServiceException>>
-      getSearchHistory({int limit = AppConstants.defaultSearchHistoryLimit}) async {
-    return _historyService.getSearchHistory(limit: limit);
-  }
-
-  @override
-  Future<Result<bool, SearchServiceException>> addToSearchHistory(
-    String query,
-    int resultCount,
-  ) async {
-    return _historyService.addToSearchHistory(query, resultCount);
-  }
-
-  @override
-  Future<Result<int, SearchServiceException>> clearSearchHistory() async {
-    return _historyService.clearSearchHistory();
-  }
-
-  @override
-  Future<Result<SavedSearch, SearchServiceException>> saveSearch(
-    String name,
-    String query, {
-    SearchFilter? filter,
-  }) async {
-    return _historyService.saveSearch(name, query, filter: filter);
-  }
-
-  @override
-  Future<Result<List<SavedSearch>, SearchServiceException>>
-      getSavedSearches() async {
-    return _historyService.getSavedSearches();
-  }
-
-  @override
-  Future<Result<SavedSearch, SearchServiceException>> getSavedSearch(
-      String id) async {
-    return _historyService.getSavedSearch(id);
-  }
-
-  @override
-  Future<Result<SavedSearch, SearchServiceException>> updateSavedSearch(
-    String id, {
-    String? name,
-    String? query,
-    SearchFilter? filter,
-  }) async {
-    return _historyService.updateSavedSearch(
-      id,
-      name: name,
-      query: query,
-      filter: filter,
-    );
-  }
-
-  @override
-  Future<Result<bool, SearchServiceException>> deleteSavedSearch(
-      String id) async {
-    return _historyService.deleteSavedSearch(id);
-  }
-
-  @override
-  Future<Result<bool, SearchServiceException>> incrementSavedSearchUsage(
-      String id) async {
-    return _historyService.incrementSavedSearchUsage(id);
-  }
-
-  @override
   Future<Result<bool, SearchServiceException>> validateFtsQuery(
       String query) async {
     try {
@@ -484,12 +336,6 @@ class SearchServiceImpl implements ISearchService {
       return Err(InvalidSearchQueryException('Unexpected validation error',
           query: query));
     }
-  }
-
-  @override
-  Future<Result<Map<String, dynamic>, SearchServiceException>>
-      getSearchStatistics() async {
-    return _historyService.getSearchStatistics();
   }
 
   // Helper methods

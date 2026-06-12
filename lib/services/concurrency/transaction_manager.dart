@@ -6,10 +6,10 @@ import '../database/database_service.dart';
 import '../../models/common/result.dart';
 import 'models/concurrency_exceptions.dart';
 
-/// Manager for database transactions with retry logic and savepoints
+/// Manager for database transactions with retry logic
 ///
-/// Provides transactional operations with automatic retry on conflict,
-/// rollback on error, and support for nested transactions via savepoints.
+/// Provides transactional operations with automatic retry on conflict
+/// and rollback on error.
 class TransactionManager {
   final Uuid _uuid;
 
@@ -129,136 +129,6 @@ class TransactionManager {
       }
       return operations.length;
     }, maxRetries: maxRetries);
-  }
-
-  /// Execute with savepoint support (nested transaction simulation)
-  ///
-  /// SQLite doesn't support true nested transactions, but we can simulate
-  /// them using savepoints.
-  ///
-  /// Parameters:
-  /// - [action]: Transaction callback
-  /// - [savepointName]: Name for the savepoint (auto-generated if null)
-  ///
-  /// Returns:
-  /// - [Ok]: Result of the transaction
-  /// - [Err]: Exception if failed
-  ///
-  /// Example:
-  /// ```dart
-  /// final result = await manager.executeWithSavepoint((txn) async {
-  ///   // These operations can be rolled back to the savepoint
-  ///   await txn.update('table', data);
-  ///   return data;
-  /// });
-  /// ```
-  Future<Result<T, ConcurrencyException>> executeWithSavepoint<T>(
-    Future<T> Function(Transaction txn) action, {
-    String? savepointName,
-  }) async {
-    final savepoint = savepointName ?? 'sp_${_uuid.v4().substring(0, 8)}';
-
-    try {
-      final result = await _db.transaction<T>((txn) async {
-        // Create savepoint
-        await txn.execute('SAVEPOINT $savepoint');
-
-        try {
-          final result = await action(txn);
-
-          // Release savepoint on success
-          await txn.execute('RELEASE SAVEPOINT $savepoint');
-
-          return result;
-        } catch (e) {
-          // Rollback to savepoint on error
-          await txn.execute('ROLLBACK TO SAVEPOINT $savepoint');
-          rethrow;
-        }
-      });
-
-      return Ok(result);
-    } on DatabaseException catch (e) {
-      return Err(TransactionException(
-        'Savepoint transaction failed: ${e.toString()}',
-        transactionId: savepoint,
-        originalError: e,
-      ));
-    } catch (e) {
-      return Err(TransactionException(
-        'Unexpected savepoint error: ${e.toString()}',
-        transactionId: savepoint,
-        originalError: e,
-      ));
-    }
-  }
-
-  /// Execute multiple operations with individual savepoints
-  ///
-  /// Each operation gets its own savepoint. If one fails, only that
-  /// operation is rolled back, not the entire transaction.
-  ///
-  /// Parameters:
-  /// - [operations]: List of operations with savepoint names
-  /// - [continueOnError]: Continue executing remaining operations if one fails
-  ///
-  /// Returns:
-  /// - [Ok]: List of results (null for failed operations if continueOnError=true)
-  /// - [Err]: Exception if transaction failed
-  Future<Result<List<dynamic>, ConcurrencyException>> executeWithMultipleSavepoints(
-    List<({String name, Future<dynamic> Function(Transaction txn) action})> operations, {
-    bool continueOnError = false,
-  }) async {
-    try {
-      // Savepoint names are interpolated into raw SQL (SQLite cannot
-      // parameterize identifiers). Validate every caller-supplied name against
-      // a strict identifier allowlist BEFORE opening the transaction so a name
-      // containing whitespace, quotes or a semicolon cannot break the statement
-      // or inject SQL. Reject the whole batch on the first invalid name.
-      for (final op in operations) {
-        if (!_isValidSavepointName(op.name)) {
-          return Err(TransactionException(
-            'Invalid savepoint name: "${op.name}" '
-            '(must match ^[A-Za-z_][A-Za-z0-9_]*\$)',
-          ));
-        }
-      }
-
-      final results = <dynamic>[];
-
-      await _db.transaction((txn) async {
-        for (final op in operations) {
-          try {
-            await txn.execute('SAVEPOINT ${op.name}');
-
-            final result = await op.action(txn);
-            results.add(result);
-
-            await txn.execute('RELEASE SAVEPOINT ${op.name}');
-          } catch (e) {
-            await txn.execute('ROLLBACK TO SAVEPOINT ${op.name}');
-
-            if (continueOnError) {
-              results.add(null); // Mark as failed but continue
-            } else {
-              rethrow; // Abort entire transaction
-            }
-          }
-        }
-      });
-
-      return Ok(results);
-    } on DatabaseException catch (e) {
-      return Err(TransactionException(
-        'Multiple savepoints transaction failed: ${e.toString()}',
-        originalError: e,
-      ));
-    } catch (e) {
-      return Err(TransactionException(
-        'Unexpected error in multiple savepoints: ${e.toString()}',
-        originalError: e,
-      ));
-    }
   }
 
   /// Execute a read callback against the database.
@@ -403,20 +273,6 @@ class TransactionManager {
   }
 
   // Private helper methods
-
-  /// Strict allowlist for savepoint identifiers.
-  ///
-  /// SQLite savepoint names cannot be bound as parameters, so they are
-  /// interpolated into SQL. Restricting them to a simple identifier shape
-  /// (leading letter/underscore, then alphanumerics/underscores) prevents any
-  /// SQL injection or accidental statement corruption from caller-supplied
-  /// names.
-  static final RegExp _savepointNamePattern =
-      RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
-
-  bool _isValidSavepointName(String name) {
-    return _savepointNamePattern.hasMatch(name);
-  }
 
   bool _isRetryableError(DatabaseException e) {
     final message = e.toString().toLowerCase();

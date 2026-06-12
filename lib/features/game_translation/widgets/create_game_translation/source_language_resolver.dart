@@ -1,4 +1,5 @@
 import '../../../../models/domain/language.dart';
+import '../../../../services/game/game_language_registry.dart';
 import '../../../../services/game/game_localization_service.dart';
 
 /// Resolves a detected game pack to the seeded/DB [Language] it represents.
@@ -17,34 +18,15 @@ import '../../../../services/game/game_localization_service.dart';
 class SourceLanguageResolver {
   const SourceLanguageResolver._();
 
-  /// Maps a Total War pack/file code to the ISO-639-1 code used by the DB
-  /// `languages` table. Codes that already match ISO (en, de, es, fr, ru, it,
-  /// pl, tr, ...) are returned unchanged by the caller via the fallback in
-  /// [mapPackCodeToDbCode].
+  /// Returns the DB (ISO) code for a pack/file [packCode]. Maps Total War
+  /// variant codes (cn/tw -> zh, jp -> ja, kr -> ko, cz -> cs, br -> pt, ...)
+  /// to their ISO-639-1 DB code; codes that already match ISO are returned
+  /// lowercased and unchanged.
   ///
-  /// Mirrors the alias table in
-  /// `lib/services/file/pack_image_generator_service.dart`
-  /// (`_flagCodeAliases`), kept local here to avoid depending on a
-  /// `@visibleForTesting` API in a shared service.
-  static const Map<String, String> _packCodeToDbCode = {
-    'cn': 'zh', // Chinese (Simplified) -> Chinese
-    'tw': 'zh', // Chinese (Traditional) -> Chinese
-    'jp': 'ja', // Japanese
-    'kr': 'ko', // Korean
-    'cz': 'cs', // Czech
-    'br': 'pt', // Brazilian Portuguese -> Portuguese
-    'pt-br': 'pt',
-    'pt_br': 'pt',
-    'ptbr': 'pt',
-  };
-
-  /// Returns the DB (ISO) code for a pack/file [packCode], applying
-  /// [_packCodeToDbCode] for variant codes and otherwise returning the
-  /// lowercased input unchanged.
-  static String mapPackCodeToDbCode(String packCode) {
-    final normalized = packCode.toLowerCase();
-    return _packCodeToDbCode[normalized] ?? normalized;
-  }
+  /// Delegates to [GameLanguageRegistry], the single source of truth for
+  /// language-code aliasing across the app.
+  static String mapPackCodeToDbCode(String packCode) =>
+      GameLanguageRegistry.isoCode(packCode);
 
   /// Resolves the source [pack] to its DB [Language] within [languages].
   ///
