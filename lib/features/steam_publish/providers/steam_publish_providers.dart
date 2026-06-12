@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';
+import 'package:twmt/providers/published_subs_cache_provider.dart';
 import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';

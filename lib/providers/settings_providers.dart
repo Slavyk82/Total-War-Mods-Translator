@@ -1,0 +1,492 @@
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:twmt/config/settings_keys.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
+import 'package:twmt/providers/shared/service_providers.dart' as bridge;
+import 'package:twmt/services/settings/settings_service.dart';
+import 'package:twmt/services/llm/llm_model_management_service.dart';
+import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/services/shared/i_logging_service.dart';
+import 'package:twmt/models/domain/llm_provider_model.dart';
+import 'package:twmt/utils/pack_prefix_sanitizer.dart';
+
+export 'package:twmt/config/settings_keys.dart' show SettingsKeys;
+
+part 'settings_providers.g.dart';
+
+/// Secure storage for API keys
+const _secureStorage = FlutterSecureStorage(
+  wOptions: WindowsOptions(useBackwardCompatibility: false),
+);
+
+/// Provider for settings service
+@riverpod
+SettingsService settingsService(Ref ref) {
+  return ref.watch(bridge.settingsServiceProvider);
+}
+
+/// Provider for LLM model management service
+@riverpod
+LlmModelManagementService llmModelManagementService(Ref ref) {
+  return ref.watch(bridge.llmModelManagementServiceProvider);
+}
+
+/// General settings notifier
+@riverpod
+class GeneralSettings extends _$GeneralSettings {
+  @override
+  Future<Map<String, String>> build() async {
+    final service = ref.read(settingsServiceProvider);
+
+    return {
+      SettingsKeys.gamePathWh3: await service.getString(SettingsKeys.gamePathWh3),
+      SettingsKeys.gamePathWh2: await service.getString(SettingsKeys.gamePathWh2),
+      SettingsKeys.gamePathWh: await service.getString(SettingsKeys.gamePathWh),
+      SettingsKeys.gamePathRome2: await service.getString(SettingsKeys.gamePathRome2),
+      SettingsKeys.gamePathAttila: await service.getString(SettingsKeys.gamePathAttila),
+      SettingsKeys.gamePathTroy: await service.getString(SettingsKeys.gamePathTroy),
+      SettingsKeys.gamePath3k: await service.getString(SettingsKeys.gamePath3k),
+      SettingsKeys.gamePathPharaoh: await service.getString(SettingsKeys.gamePathPharaoh),
+      SettingsKeys.gamePathPharaohDynasties: await service.getString(SettingsKeys.gamePathPharaohDynasties),
+      SettingsKeys.workshopPath: await service.getString(SettingsKeys.workshopPath),
+      SettingsKeys.rpfmPath: await service.getString(SettingsKeys.rpfmPath),
+      SettingsKeys.rpfmSchemaPath: await service.getString(SettingsKeys.rpfmSchemaPath),
+      SettingsKeys.defaultTargetLanguage:
+          await service.getString(SettingsKeys.defaultTargetLanguage, defaultValue: SettingsKeys.defaultTargetLanguageValue),
+      SettingsKeys.autoUpdate:
+          (await service.getBool(SettingsKeys.autoUpdate, defaultValue: true)).toString(),
+      SettingsKeys.packPrefix: await service.getPackPrefix(),
+    };
+  }
+
+  Future<void> updateGamePath(String gameCode, String path) async {
+    final service = ref.read(settingsServiceProvider);
+    final key = _getGamePathKey(gameCode);
+    await service.setString(key, path);
+    ref.invalidateSelf();
+
+    // Auto-provision empty glossaries for this game only when a path is
+    // actually set. Clearing the path must not trigger provisioning.
+    if (path.isNotEmpty) {
+      try {
+        await ServiceLocator.get<GlossaryAutoProvisioningService>()
+            .provisionForGame(gameCode);
+      } catch (e) {
+        // Best-effort: don't block the settings save on provisioning.
+        ServiceLocator.get<ILoggingService>().warning(
+          'Glossary auto-provision for game failed',
+          {'gameCode': gameCode, 'error': e.toString()},
+        );
+      }
+    }
+  }
+
+  Future<void> updateWorkshopPath(String path) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.workshopPath, path);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateRpfmPath(String path) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.rpfmPath, path);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateRpfmSchemaPath(String path) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.rpfmSchemaPath, path);
+    ref.invalidateSelf();
+  }
+
+  String _getGamePathKey(String gameCode) {
+    switch (gameCode) {
+      case 'wh3':
+        return SettingsKeys.gamePathWh3;
+      case 'wh2':
+        return SettingsKeys.gamePathWh2;
+      case 'wh':
+        return SettingsKeys.gamePathWh;
+      case 'rome2':
+        return SettingsKeys.gamePathRome2;
+      case 'attila':
+        return SettingsKeys.gamePathAttila;
+      case 'troy':
+        return SettingsKeys.gamePathTroy;
+      case '3k':
+        return SettingsKeys.gamePath3k;
+      case 'pharaoh':
+        return SettingsKeys.gamePathPharaoh;
+      case 'pharaoh_dynasties':
+        return SettingsKeys.gamePathPharaohDynasties;
+      default:
+        throw ArgumentError('Unknown game code: $gameCode');
+    }
+  }
+
+  Future<void> updateDefaultTargetLanguage(String language) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.defaultTargetLanguage, language);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateAutoUpdate(bool enabled) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setBool(SettingsKeys.autoUpdate, enabled);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updatePackPrefix(String prefix) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(
+      SettingsKeys.packPrefix,
+      sanitizePackPrefix(prefix),
+    );
+    ref.invalidateSelf();
+  }
+}
+
+/// LLM provider settings notifier
+@riverpod
+class LlmProviderSettings extends _$LlmProviderSettings {
+  @override
+  Future<Map<String, String>> build() async {
+    final service = ref.read(settingsServiceProvider);
+
+    // Load non-sensitive settings from database
+    // Models are NOT hardcoded - empty string means "use DB default"
+    final provider = await service.getString(
+      SettingsKeys.activeProvider,
+      defaultValue: 'openai',
+    );
+    final anthropicModel = await service.getString(
+      SettingsKeys.anthropicModel,
+      defaultValue: '', // Model loaded from DB if empty
+    );
+    final openaiModel = await service.getString(
+      SettingsKeys.openaiModel,
+      defaultValue: '', // Model loaded from DB if empty
+    );
+    final deeplPlan = await service.getString(
+      SettingsKeys.deeplPlan,
+      defaultValue: 'free',
+    );
+    final rateLimit = await service.getInt(
+      SettingsKeys.rateLimit,
+      defaultValue: 500,
+    );
+
+    // Load API keys from secure storage
+    final anthropicKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey) ?? '';
+    final openaiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey) ?? '';
+    final deeplKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey) ?? '';
+    final deepseekKey = await _secureStorage.read(key: SettingsKeys.deepseekApiKey) ?? '';
+    final geminiKey = await _secureStorage.read(key: SettingsKeys.geminiApiKey) ?? '';
+
+    return {
+      SettingsKeys.activeProvider: provider,
+      SettingsKeys.anthropicModel: anthropicModel,
+      SettingsKeys.anthropicApiKey: anthropicKey,
+      SettingsKeys.openaiModel: openaiModel,
+      SettingsKeys.openaiApiKey: openaiKey,
+      SettingsKeys.deeplPlan: deeplPlan,
+      SettingsKeys.deeplApiKey: deeplKey,
+      SettingsKeys.deepseekApiKey: deepseekKey,
+      SettingsKeys.geminiApiKey: geminiKey,
+      SettingsKeys.rateLimit: rateLimit.toString(),
+    };
+  }
+
+  Future<void> updateActiveProvider(String provider) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.activeProvider, provider);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateAnthropicApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.anthropicApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateAnthropicModel(String model) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.anthropicModel, model);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateOpenaiApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.openaiApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateOpenaiModel(String model) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.openaiModel, model);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateDeeplApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.deeplApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateDeeplPlan(String plan) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setString(SettingsKeys.deeplPlan, plan);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateDeepseekApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.deepseekApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateGeminiApiKey(String key) async {
+    await _secureStorage.write(key: SettingsKeys.geminiApiKey, value: key);
+    ref.invalidateSelf();
+  }
+
+  Future<void> updateRateLimit(int limit) async {
+    final service = ref.read(settingsServiceProvider);
+    await service.setInt(SettingsKeys.rateLimit, limit);
+    ref.invalidateSelf();
+  }
+
+  Future<(bool, String?)> testConnection(String providerCode) async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('testConnection called', {'providerCode': providerCode});
+
+    try {
+      // Get API key for the provider
+      String? apiKey;
+      switch (providerCode) {
+        case 'anthropic':
+          apiKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey);
+          logging.debug('Anthropic API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'openai':
+          apiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey);
+          logging.debug('OpenAI API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'deepl':
+          apiKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey);
+          logging.debug('DeepL API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'deepseek':
+          apiKey = await _secureStorage.read(key: SettingsKeys.deepseekApiKey);
+          logging.debug('DeepSeek API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        case 'gemini':
+          apiKey = await _secureStorage.read(key: SettingsKeys.geminiApiKey);
+          logging.debug('Gemini API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          break;
+        default:
+          logging.warning('Unknown provider', {'providerCode': providerCode});
+          return (false, 'Unknown provider');
+      }
+
+      // Check if API key exists
+      if (apiKey == null || apiKey.isEmpty) {
+        logging.debug('No API key configured', {'providerCode': providerCode});
+        return (false, 'No API key configured');
+      }
+
+      // Get the first enabled model for this provider (required for validation)
+      String? effectiveModel;
+      if (providerCode != 'deepl') {
+        final modelService = ref.read(llmModelManagementServiceProvider);
+        final modelsResult = await modelService.getEnabledModelsByProvider(providerCode);
+        if (modelsResult.isOk) {
+          final models = modelsResult.unwrap();
+          if (models.isNotEmpty) {
+            effectiveModel = models.first.modelId;
+            logging.debug('Using first enabled model for validation', {'model': effectiveModel});
+          }
+        }
+
+        if (effectiveModel == null) {
+          logging.debug('No enabled model found', {'providerCode': providerCode});
+          return (false, 'No model enabled. Enable at least one model to test the connection.');
+        }
+      }
+
+      logging.debug('Getting provider factory');
+      // Get provider instance and test connection
+      final providerFactory = ref.read(bridge.llmProviderFactoryProvider);
+      logging.debug('Getting provider instance', {'providerCode': providerCode});
+      final provider = providerFactory.getProvider(providerCode);
+      logging.debug('Provider instance obtained', {'providerName': provider.providerName});
+
+      logging.debug('Calling validateApiKey', {'model': effectiveModel});
+      final result = await provider.validateApiKey(apiKey, model: effectiveModel);
+      logging.debug('validateApiKey returned', {'isOk': result.isOk});
+
+      if (result.isOk) {
+        logging.info('Connection test SUCCESS', {'providerCode': providerCode});
+        return (true, null);
+      } else {
+        final error = result.unwrapErr();
+        logging.warning('Connection test FAILED', {'providerCode': providerCode, 'error': error.message});
+        return (false, error.message);
+      }
+    } catch (e, stackTrace) {
+      logging.error('Exception in testConnection', e, stackTrace);
+      return (false, 'Error: $e');
+    }
+  }
+}
+
+/// Provider for available LLM models for a specific provider
+@riverpod
+class LlmModels extends _$LlmModels {
+  @override
+  Future<List<LlmProviderModel>> build(String providerCode) async {
+    final service = ref.read(llmModelManagementServiceProvider);
+    final result = await service.getAvailableModelsByProvider(providerCode);
+
+    return result.when(
+      ok: (models) => models,
+      err: (_) => [],
+    );
+  }
+
+  /// Enable a model
+  Future<(bool, String?)> enableModel(String modelId) async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('Enabling model', {'modelId': modelId});
+
+    final service = ref.read(llmModelManagementServiceProvider);
+    final result = await service.enableModel(modelId);
+
+    if (result.isOk) {
+      logging.info('Successfully enabled model', {'modelId': modelId});
+      ref.invalidateSelf();
+      return (true, null);
+    } else {
+      final error = result.unwrapErr();
+      logging.warning('Failed to enable model', {'modelId': modelId, 'error': error.message});
+      return (false, error.message);
+    }
+  }
+
+  /// Disable a model
+  Future<(bool, String?)> disableModel(String modelId) async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('Disabling model', {'modelId': modelId});
+
+    final service = ref.read(llmModelManagementServiceProvider);
+    final result = await service.disableModel(modelId);
+
+    if (result.isOk) {
+      logging.info('Successfully disabled model', {'modelId': modelId});
+      ref.invalidateSelf();
+      return (true, null);
+    } else {
+      final error = result.unwrapErr();
+      logging.warning('Failed to disable model', {'modelId': modelId, 'error': error.message});
+      return (false, error.message);
+    }
+  }
+
+  /// Set a model as the global default.
+  ///
+  /// Only one model can be default at a time across all providers.
+  /// Also updates the global active provider setting to this provider,
+  /// so the model becomes the "favorite" for translations.
+  /// Note: DeepL is not set as the active LLM provider since it's a
+  /// translation API, not an LLM for batch translation.
+  Future<(bool, String?)> setAsDefault(String modelId) async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('Setting model as global default', {'modelId': modelId});
+
+    final service = ref.read(llmModelManagementServiceProvider);
+    final result = await service.setDefaultModel(modelId);
+
+    if (result.isOk) {
+      logging.info('Successfully set model as global default', {'modelId': modelId});
+
+      // Also set this provider as the global active provider
+      // This makes clicking the star set both the default model AND the favorite provider
+      // Skip DeepL - it's a translation API, not an LLM for batch translation
+      if (providerCode != 'deepl') {
+        logging.debug('Setting provider as active global provider', {'providerCode': providerCode});
+        await ref.read(llmProviderSettingsProvider.notifier).updateActiveProvider(providerCode);
+      } else {
+        logging.debug('Skipping DeepL as active global provider (not an LLM)');
+      }
+
+      // Invalidate all provider model lists since default is now global
+      _invalidateAllProviderModels();
+      // Also invalidate self to refresh current provider's list
+      ref.invalidateSelf();
+      return (true, null);
+    } else {
+      final error = result.unwrapErr();
+      logging.warning('Failed to set global default model', {'modelId': modelId, 'error': error.message});
+      return (false, error.message);
+    }
+  }
+
+  /// Invalidate model lists for all known providers.
+  ///
+  /// Excludes the current provider to avoid self-invalidation error.
+  void _invalidateAllProviderModels() {
+    const providers = ['anthropic', 'openai', 'deepl', 'deepseek', 'gemini'];
+    for (final provider in providers) {
+      // Skip current provider to avoid self-invalidation error
+      if (provider != providerCode) {
+        ref.invalidate(llmModelsProvider(provider));
+      }
+    }
+  }
+
+  /// Toggle model enabled status
+  Future<(bool, String?)> toggleEnabled(String modelId) async {
+    final logging = ref.read(loggingServiceProvider);
+    logging.debug('Toggling model enabled status', {'modelId': modelId});
+
+    final service = ref.read(llmModelManagementServiceProvider);
+    final result = await service.toggleModelEnabled(modelId);
+
+    if (result.isOk) {
+      logging.info('Successfully toggled model', {'modelId': modelId});
+      ref.invalidateSelf();
+      return (true, null);
+    } else {
+      final error = result.unwrapErr();
+      logging.warning('Failed to toggle model', {'modelId': modelId, 'error': error.message});
+      return (false, error.message);
+    }
+  }
+}
+
+/// Provider for enabled LLM models for a specific provider
+@riverpod
+Future<List<LlmProviderModel>> enabledLlmModels(
+  Ref ref,
+  String providerCode,
+) async {
+  final service = ref.watch(llmModelManagementServiceProvider);
+  final result = await service.getEnabledModelsByProvider(providerCode);
+
+  return result.when(
+    ok: (models) => models,
+    err: (_) => [],
+  );
+}
+
+/// Provider for the default LLM model for a specific provider
+@riverpod
+Future<LlmProviderModel?> defaultLlmModel(
+  Ref ref,
+  String providerCode,
+) async {
+  final service = ref.watch(llmModelManagementServiceProvider);
+  final result = await service.getDefaultModel(providerCode);
+
+  return result.when(
+    ok: (model) => model,
+    err: (_) => null,
+  );
+}

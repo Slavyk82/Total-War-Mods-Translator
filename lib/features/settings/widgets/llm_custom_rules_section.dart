@@ -6,7 +6,7 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/settings/settings_accordion_section.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
 import 'llm_custom_rules_datagrid.dart';
 import 'llm_custom_rule_editor_dialog.dart';
 

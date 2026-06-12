@@ -6,7 +6,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as p;
 import 'package:twmt/config/router/app_router.dart';
-import 'package:twmt/features/translation_editor/screens/progress/progress_widgets.dart';
+import 'package:twmt/widgets/common/progress_widgets.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';

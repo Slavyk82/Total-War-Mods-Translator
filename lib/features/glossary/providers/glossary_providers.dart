@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
-import 'package:twmt/features/activity/providers/activity_providers.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/models/events/activity_event.dart';
+import 'package:twmt/providers/activity_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/models/domain/glossary_entry.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/providers/selected_game_provider.dart';

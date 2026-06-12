@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:twmt/features/projects/utils/open_project_editor.dart';
+import 'package:twmt/utils/open_project_editor.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/mods/mod_update_provider.dart';

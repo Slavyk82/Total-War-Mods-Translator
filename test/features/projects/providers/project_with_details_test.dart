@@ -8,7 +8,7 @@
 // through the translation editor's initState (the only place the flag gets
 // cleared today) leave projects stuck in the "Needs Update" filter.
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/project.dart';

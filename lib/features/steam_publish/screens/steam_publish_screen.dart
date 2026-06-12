@@ -15,7 +15,7 @@ import 'package:twmt/services/steam/steamcmd_manager.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 
-import '../../settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import '../providers/batch_workshop_publish_notifier.dart';
 import '../providers/publish_staging_provider.dart';

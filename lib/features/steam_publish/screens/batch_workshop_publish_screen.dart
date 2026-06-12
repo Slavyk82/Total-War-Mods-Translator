@@ -18,7 +18,7 @@ import 'package:twmt/widgets/wizard/form_section.dart';
 import 'package:twmt/widgets/wizard/sticky_form_panel.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
 
-import '../../../features/translation_editor/screens/progress/progress_widgets.dart';
+import 'package:twmt/widgets/common/progress_widgets.dart';
 import '../providers/batch_workshop_publish_notifier.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';

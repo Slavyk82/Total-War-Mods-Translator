@@ -7,6 +7,11 @@ import 'package:twmt/features/projects/providers/bulk_operations_notifier.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/services/bulk_operations_handlers.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
+import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/services/translation/i_translation_orchestrator.dart';
+import 'package:twmt/services/translation/models/translation_context.dart';
+import 'package:twmt/services/translation/models/translation_settings.dart';
 
 // ---------------------------------------------------------------------------
 // Fakes
@@ -105,6 +110,46 @@ class _StubBulkHandlers extends BulkHandlers {
 }
 
 // ---------------------------------------------------------------------------
+// Stub runner
+// ---------------------------------------------------------------------------
+
+/// No-op orchestrator; cancel() only calls runner.stop() with no active batch,
+/// so the orchestrator is never actually invoked.
+class _FakeOrchestrator extends Fake implements ITranslationOrchestrator {}
+
+/// Pure [HeadlessBatchTranslationRunner] with stub delegates. The notifier
+/// tests exercise the notifier's cancel/loop logic, not the runner itself;
+/// the runner's own behavior is covered by its dedicated test.
+HeadlessBatchTranslationRunner _stubRunner() => HeadlessBatchTranslationRunner(
+      orchestrator: _FakeOrchestrator(),
+      readSettings: () =>
+          const TranslationSettings(unitsPerBatch: 0, parallelBatches: 3),
+      createBatch: ({
+        required projectLanguageId,
+        required unitIds,
+        required providerId,
+      }) async =>
+          'stub-batch',
+      buildContext: ({
+        required projectLanguageId,
+        required projectId,
+        required providerId,
+        modelId,
+        required skipTranslationMemory,
+        required unitsPerBatch,
+        required parallelBatches,
+      }) async =>
+          TranslationContext(
+        id: 'ctx',
+        projectId: projectId,
+        projectLanguageId: projectLanguageId,
+        targetLanguage: 'PL',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      ),
+    );
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -117,6 +162,7 @@ ProviderContainer _makeContainer(_StubBulkHandlers stub) {
   return ProviderContainer(
     overrides: [
       bulkHandlersProvider.overrideWithValue(stub),
+      headlessBatchTranslationRunnerProvider.overrideWithValue(_stubRunner()),
     ],
   );
 }

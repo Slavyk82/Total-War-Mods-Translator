@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/validation_issue_entry.dart';
@@ -8,12 +7,9 @@ import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_unit_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
-import 'package:twmt/providers/shared/repository_providers.dart';
-import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/translation/headless_validation_rescan_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
-import 'package:twmt/services/translation/models/translation_exceptions.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'package:twmt/services/validation/validation_schema.dart';
 
 class _MockVersionRepo extends Mock implements TranslationVersionRepository {}
@@ -38,21 +34,14 @@ void main() {
     when(() => repo.normalizeStatusEncoding())
         .thenAnswer((_) async => const Ok(0));
 
-    // Wrap the call in a FutureProvider so it receives a Ref — the
-    // idiomatic way to test a Ref-taking function from a ProviderContainer.
-    final resultProvider = FutureProvider<RescanResult>((ref) {
-      return runHeadlessValidationRescan(
-        ref: ref,
-        projectLanguageId: 'pl-1',
-      );
-    });
-
-    final container = ProviderContainer(overrides: [
-      translationVersionRepositoryProvider.overrideWithValue(repo),
-    ]);
-    addTearDown(container.dispose);
-
-    final result = await container.read(resultProvider.future);
+    // Deps are injected directly. On the early-exit (no translated units)
+    // path the unit repo and validation service are never touched.
+    final result = await runHeadlessValidationRescan(
+      versionRepo: repo,
+      unitRepo: _MockUnitRepo(),
+      validationService: _MockValidationService(),
+      projectLanguageId: 'pl-1',
+    );
 
     expect(result.scanned, 0);
     expect(result.needsReviewTotal, 0);
@@ -114,21 +103,12 @@ void main() {
       when(() => repo.updateValidationBatch(any()))
           .thenAnswer((_) async => const Ok(1));
 
-      final resultProvider = FutureProvider<RescanResult>((ref) {
-        return runHeadlessValidationRescan(
-          ref: ref,
-          projectLanguageId: projectLanguageId,
-        );
-      });
-
-      final container = ProviderContainer(overrides: [
-        translationVersionRepositoryProvider.overrideWithValue(repo),
-        translationUnitRepositoryProvider.overrideWithValue(unitRepo),
-        validationServiceProvider.overrideWithValue(validation),
-      ]);
-      addTearDown(container.dispose);
-
-      final result = await container.read(resultProvider.future);
+      final result = await runHeadlessValidationRescan(
+        versionRepo: repo,
+        unitRepo: unitRepo,
+        validationService: validation,
+        projectLanguageId: projectLanguageId,
+      );
       expect(result.newIssues, 1);
 
       // Capture the updates the rescan wrote and verify the stamped

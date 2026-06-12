@@ -20,7 +20,7 @@ import 'package:twmt/services/mods/utils/workshop_mod_processor.dart';
 import 'package:twmt/services/mods/pack_file_scanner.dart';
 import 'package:twmt/services/mods/detected_mod_builder.dart';
 import 'package:twmt/services/mods/project_analysis_handler.dart';
-import 'package:twmt/features/mods/models/scan_log_message.dart';
+import 'package:twmt/models/domain/scan_log_message.dart';
 import 'package:twmt/i18n/strings.g.dart';
 
 /// Service for scanning Steam Workshop folders and discovering mods.

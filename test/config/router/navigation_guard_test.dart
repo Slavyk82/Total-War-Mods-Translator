@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/config/router/navigation_guard.dart';
 import 'package:twmt/features/pack_compilation/providers/pack_compilation_providers.dart';
-import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 
 void main() {
   Widget host(void Function(WidgetRef) capture) {

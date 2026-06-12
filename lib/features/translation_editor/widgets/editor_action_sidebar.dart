@@ -1,15 +1,15 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:twmt/features/translation_editor/providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/workflow/pipeline_timeline.dart';
 
-import 'editor_toolbar_batch_settings.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_batch_settings.dart';
 import 'editor_toolbar_mod_rule.dart';
-import 'editor_toolbar_model_selector.dart';
-import 'editor_toolbar_skip_tm.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_model_selector.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_skip_tm.dart';
 
 /// Left sidebar of the translation editor (240 px).
 ///

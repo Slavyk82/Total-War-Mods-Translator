@@ -60,7 +60,8 @@ dependencies:
   # JSON Serialization
   json_annotation: ^4.9.0
 
-  # DataGrid for editable tables (MANDATORY per CLAUDE.md)
+  # DataGrid for editable tables (MANDATORY for editable tabular UIs:
+  # the editor grid, glossary, language settings, etc.)
   syncfusion_flutter_datagrid: ^31.2.10
 
   # Syncfusion theming primitives (SfDataGridTheme/Data) used by the editor

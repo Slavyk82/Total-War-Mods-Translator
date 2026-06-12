@@ -11,9 +11,9 @@ import '../../../widgets/detail/home_back_toolbar.dart';
 import '../../../widgets/layouts/fluent_scaffold.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
 import '../../../widgets/lists/list_toolbar_leading.dart';
-import '../../projects/providers/projects_screen_providers.dart';
-import '../../projects/utils/open_project_editor.dart';
-import '../../projects/widgets/project_grid.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
+import 'package:twmt/utils/open_project_editor.dart';
+import 'package:twmt/widgets/lists/project_grid.dart';
 import '../providers/game_translation_providers.dart';
 import '../widgets/create_game_translation/create_game_translation_dialog.dart';
 

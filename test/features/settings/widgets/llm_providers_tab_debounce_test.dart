@@ -9,8 +9,8 @@
 // then advance past the 300ms debounce and assert exactly one write.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:twmt/features/settings/providers/llm_custom_rules_providers.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/llm_custom_rules_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'package:twmt/features/settings/widgets/llm_providers_tab.dart';
 import 'package:twmt/models/domain/llm_custom_rule.dart';
 import 'package:twmt/theme/app_theme.dart';

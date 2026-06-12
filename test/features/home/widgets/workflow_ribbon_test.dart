@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
-import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 import 'package:twmt/features/home/widgets/workflow_ribbon.dart';
 import 'package:twmt/theme/app_theme.dart';
 import 'package:twmt/widgets/cards/workflow_card.dart';

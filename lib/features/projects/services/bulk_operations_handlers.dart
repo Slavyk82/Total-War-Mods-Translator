@@ -2,12 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
-import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
-import 'package:twmt/features/translation_editor/providers/translation_settings_provider.dart';
+import 'package:twmt/providers/settings_providers.dart';
+import 'package:twmt/providers/llm_model_providers.dart';
+import 'package:twmt/providers/translation_settings_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
-import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
 import 'package:twmt/services/translation/headless_validation_rescan_service.dart';
 
 /// Progress callback type used by all bulk operation handlers.
@@ -135,7 +135,9 @@ Future<ProjectOutcome> runBulkTranslate({
 
     // Post-translation rescan.
     final rescan = await runHeadlessValidationRescan(
-      ref: ref,
+      versionRepo: ref.read(translationVersionRepositoryProvider),
+      unitRepo: ref.read(translationUnitRepositoryProvider),
+      validationService: ref.read(validationServiceProvider),
       projectLanguageId: projectLanguageId,
     );
 
@@ -266,7 +268,9 @@ Future<ProjectOutcome> runBulkRescan({
 
   try {
     final rescan = await runHeadlessValidationRescan(
-      ref: ref,
+      versionRepo: ref.read(translationVersionRepositoryProvider),
+      unitRepo: ref.read(translationUnitRepositoryProvider),
+      validationService: ref.read(validationServiceProvider),
       projectLanguageId: lang.projectLanguage.id,
     );
 

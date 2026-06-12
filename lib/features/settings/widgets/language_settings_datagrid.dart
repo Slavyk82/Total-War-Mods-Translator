@@ -9,7 +9,7 @@ import 'package:twmt/widgets/dialogs/token_confirm_dialog.dart';
 import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import '../../../models/domain/language.dart';
 import '../../../widgets/fluent/fluent_widgets.dart';
-import '../providers/language_settings_providers.dart';
+import 'package:twmt/providers/language_settings_providers.dart';
 import 'language_settings_data_source.dart';
 
 /// DataGrid widget for displaying and managing languages in settings

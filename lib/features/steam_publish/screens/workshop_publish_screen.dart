@@ -26,7 +26,7 @@ import 'package:twmt/widgets/wizard/summary_box.dart';
 import 'package:twmt/widgets/wizard/token_text_field.dart';
 import 'package:twmt/widgets/wizard/wizard_screen_layout.dart';
 
-import '../../../features/settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import '../../../providers/selected_game_provider.dart';
 import '../../../providers/shared/service_providers.dart';

@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import '../../../models/domain/translation_version.dart' show TranslationVersionStatus;
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import '../../../providers/shared/logging_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
-import '../../projects/providers/projects_screen_providers.dart'
+import 'package:twmt/providers/projects_data_providers.dart'
     show projectsWithDetailsProvider, translationStatsVersionProvider;
 import 'editor_data_source.dart';
 import 'clear_progress_dialog.dart';

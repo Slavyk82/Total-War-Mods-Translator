@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:twmt/features/steam_publish/providers/published_subs_cache_provider.dart';
+import 'package:twmt/providers/published_subs_cache_provider.dart';
 import 'package:twmt/features/steam_publish/providers/steam_publish_providers.dart';
 import 'package:twmt/features/steam_publish/widgets/steam_publish_list_cells.dart';
 import 'package:twmt/models/domain/project.dart';

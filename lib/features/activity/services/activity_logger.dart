@@ -1,4 +1,4 @@
-import '../models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 
 /// Fire-and-forget service that persists [ActivityEvent]s for the Home
 /// dashboard feed.

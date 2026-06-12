@@ -9,11 +9,11 @@ import 'package:twmt/features/projects/providers/bulk_target_language_provider.d
 import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
 import 'package:twmt/features/projects/providers/visible_projects_for_bulk_provider.dart';
 import 'package:twmt/features/projects/widgets/bulk_operation_progress_dialog.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
-import 'package:twmt/features/translation_editor/providers/llm_model_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
+import 'package:twmt/providers/llm_model_providers.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
-import 'package:twmt/services/translation/headless_batch_translation_runner.dart';
+import 'package:twmt/providers/translation_runner_providers.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';

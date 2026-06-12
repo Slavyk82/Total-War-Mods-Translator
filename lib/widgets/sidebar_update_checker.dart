@@ -4,8 +4,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../features/release_notes/widgets/all_release_notes_dialog.dart';
-import '../features/settings/providers/update_providers.dart';
+import 'package:twmt/widgets/dialogs/all_release_notes_dialog.dart';
+import 'package:twmt/providers/update_providers.dart';
 import '../providers/app_version_provider.dart';
 import '../widgets/fluent/fluent_toast.dart';
 import '../widgets/common/fluent_spinner.dart' hide FluentProgressBar;

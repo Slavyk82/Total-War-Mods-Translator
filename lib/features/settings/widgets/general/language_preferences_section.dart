@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import '../../../../widgets/fluent/fluent_widgets.dart';
-import '../../providers/language_settings_providers.dart';
+import 'package:twmt/providers/language_settings_providers.dart';
 import '../add_custom_language_dialog.dart';
 import '../language_settings_datagrid.dart';
 import 'settings_section_header.dart';

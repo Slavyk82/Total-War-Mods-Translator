@@ -6,7 +6,7 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/translation/models/translation_exceptions.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'package:twmt/services/translation/utils/markup_tag_utils.dart';
 import 'package:twmt/services/translation/utils/text_parser_utils.dart';
 

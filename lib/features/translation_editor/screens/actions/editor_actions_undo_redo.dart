@@ -1,6 +1,6 @@
 import 'package:twmt/i18n/strings.g.dart';
 import '../../../../services/toast_notification_service.dart';
-import '../../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 import 'editor_actions_base.dart';
 
 /// Mixin handling undo/redo operations

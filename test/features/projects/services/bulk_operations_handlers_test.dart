@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/projects/providers/bulk_operation_state.dart';
-import 'package:twmt/features/projects/providers/projects_screen_providers.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
 import 'package:twmt/features/projects/services/bulk_operations_handlers.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';

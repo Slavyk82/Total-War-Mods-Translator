@@ -6,7 +6,7 @@ import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart' hide ValidationException;
 import 'package:twmt/models/common/validation_issue_entry.dart';
 import 'package:twmt/models/common/validation_result.dart' as common;
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/models/domain/translation_version.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';

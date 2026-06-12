@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:twmt/features/settings/providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 
 part 'selected_game_provider.g.dart';
 

@@ -12,7 +12,7 @@ import 'package:twmt/widgets/fluent/fluent_expander.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/utils/game_label.dart';
-import '../../providers/settings_providers.dart';
+import 'package:twmt/providers/settings_providers.dart';
 import 'settings_section_header.dart';
 
 /// Game installations configuration section.

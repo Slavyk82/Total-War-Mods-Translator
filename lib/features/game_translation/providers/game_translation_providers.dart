@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/selected_game_provider.dart';
 import '../../../providers/shared/service_providers.dart';
 import '../../../services/game/game_localization_service.dart';
-import '../../projects/providers/projects_screen_providers.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
 
 /// Provider for detected local packs for the selected game installation.
 ///

@@ -4,7 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/validation/models/validation_issue.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
-import '../providers/editor_providers.dart';
+import 'package:twmt/providers/editor_providers.dart';
 
 /// Validation panel showing translation quality issues
 ///

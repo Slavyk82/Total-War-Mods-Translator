@@ -10,7 +10,7 @@ import 'package:twmt/widgets/lists/small_icon_button.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/widgets/wizard/wizard_step_header.dart';
 
-import 'package:twmt/features/settings/providers/settings_providers.dart'
+import 'package:twmt/providers/settings_providers.dart'
     show SettingsKeys;
 
 import '../../../../widgets/fluent/fluent_widgets.dart';

@@ -14,7 +14,7 @@ import 'package:twmt/widgets/lists/list_row.dart';
 import 'package:twmt/widgets/lists/relative_date.dart';
 import 'package:twmt/widgets/lists/status_pill.dart';
 
-import '../providers/published_subs_cache_provider.dart';
+import 'package:twmt/providers/published_subs_cache_provider.dart';
 import '../providers/steam_publish_providers.dart';
 
 /// Column spec for the Steam Publish list (§7.1 filterable list archetype).

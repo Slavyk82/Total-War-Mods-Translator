@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';

@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/features/home/providers/action_grid_providers.dart';
 import 'package:twmt/features/home/providers/home_status_provider.dart';
-import 'package:twmt/features/home/providers/workflow_providers.dart';
+import 'package:twmt/providers/workflow_providers.dart';
 
 import '../../../helpers/test_bootstrap.dart';
 

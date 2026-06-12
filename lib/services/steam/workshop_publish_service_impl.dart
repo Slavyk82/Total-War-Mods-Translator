@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
-import 'package:twmt/features/activity/models/activity_event.dart';
+import 'package:twmt/models/events/activity_event.dart';
 import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/service_locator.dart';

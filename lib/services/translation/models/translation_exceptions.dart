@@ -1,5 +1,7 @@
 import 'package:twmt/models/common/service_exception.dart';
-import 'package:twmt/services/translation/models/validation_rule.dart';
+import 'package:twmt/models/common/validation_rule.dart';
+
+export 'package:twmt/models/common/validation_rule.dart' show ValidationSeverity;
 
 /// Base exception for translation services
 class TranslationServiceException extends ServiceException {
@@ -86,18 +88,6 @@ class ValidationError {
   @override
   String toString() =>
       '[${rule.codeName}] $field: $message${value != null ? ' (value: $value)' : ''}';
-}
-
-/// Severity level of validation error
-enum ValidationSeverity {
-  /// Warning - can continue but not recommended
-  warning,
-
-  /// Error - must be fixed
-  error,
-
-  /// Critical - severe issue
-  critical,
 }
 
 /// Exception thrown when batch optimization fails

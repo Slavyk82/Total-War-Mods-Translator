@@ -7,8 +7,8 @@ import 'package:twmt/config/app_constants.dart';
 import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
-import '../../providers/settings_providers.dart';
-import '../../utils/pack_prefix_sanitizer.dart';
+import 'package:twmt/providers/settings_providers.dart';
+import 'package:twmt/utils/pack_prefix_sanitizer.dart';
 import 'settings_section_header.dart';
 
 /// Settings section to customize the load-order prefix used when generating

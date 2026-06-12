@@ -5,7 +5,7 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/services/file/export_orchestrator_service.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/layouts/fluent_scaffold.dart' hide FluentIconButton;
-import 'progress/progress_widgets.dart';
+import 'package:twmt/widgets/common/progress_widgets.dart';
 
 /// Step labels for progress display — resolved lazily via slang to support locale changes.
 String _getExportStepLabel(String step) {
