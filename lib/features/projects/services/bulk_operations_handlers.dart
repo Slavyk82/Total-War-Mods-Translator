@@ -135,7 +135,9 @@ Future<ProjectOutcome> runBulkTranslate({
 
     // Post-translation rescan.
     final rescan = await runHeadlessValidationRescan(
-      ref: ref,
+      versionRepo: ref.read(translationVersionRepositoryProvider),
+      unitRepo: ref.read(translationUnitRepositoryProvider),
+      validationService: ref.read(validationServiceProvider),
       projectLanguageId: projectLanguageId,
     );
 
@@ -266,7 +268,9 @@ Future<ProjectOutcome> runBulkRescan({
 
   try {
     final rescan = await runHeadlessValidationRescan(
-      ref: ref,
+      versionRepo: ref.read(translationVersionRepositoryProvider),
+      unitRepo: ref.read(translationUnitRepositoryProvider),
+      validationService: ref.read(validationServiceProvider),
       projectLanguageId: lang.projectLanguage.id,
     );
 

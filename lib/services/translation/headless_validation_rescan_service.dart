@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:riverpod/riverpod.dart';
 import 'package:twmt/models/domain/translation_version.dart';
-import 'package:twmt/providers/shared/repository_providers.dart';
-import 'package:twmt/providers/shared/service_providers.dart';
+import 'package:twmt/repositories/translation_unit_repository.dart';
+import 'package:twmt/repositories/translation_version_repository.dart';
+import 'package:twmt/services/translation/i_validation_service.dart';
 import 'package:twmt/services/validation/validation_schema.dart';
 
 /// Summary returned by [runHeadlessValidationRescan].
@@ -37,11 +37,11 @@ typedef RescanResult = ({
 ///   6. Batch-write all changed rows.
 ///   7. Return the five-counter summary.
 Future<RescanResult> runHeadlessValidationRescan({
-  required Ref ref,
+  required TranslationVersionRepository versionRepo,
+  required TranslationUnitRepository unitRepo,
+  required IValidationService validationService,
   required String projectLanguageId,
 }) async {
-  final versionRepo = ref.read(translationVersionRepositoryProvider);
-
   // Step 1 – repair legacy status encoding (same as _performRescan).
   await versionRepo.normalizeStatusEncoding();
 
@@ -69,11 +69,6 @@ Future<RescanResult> runHeadlessValidationRescan({
       needsReviewTotal: 0,
     );
   }
-
-  // Lazy-read the unit repo and validation service only when there is
-  // actual work to do (avoids ServiceLocator lookups on the early-exit path).
-  final unitRepo = ref.read(translationUnitRepositoryProvider);
-  final validationService = ref.read(validationServiceProvider);
 
   // Step 4 – load all units in a single batch query.
   final unitIds =

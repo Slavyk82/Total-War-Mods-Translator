@@ -7,8 +7,6 @@ import 'import_graph.dart';
 /// The allowlist shrinks to empty; do NOT add new entries.
 const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
-  'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/repository_providers.dart', // lot:3
-  'lib/services/translation/headless_validation_rescan_service.dart -> lib/providers/shared/service_providers.dart', // lot:3
 };
 
 /// Paths that LOOK like Riverpod providers but are not (service purity rule).
