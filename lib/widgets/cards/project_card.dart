@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:twmt/i18n/strings.g.dart';
-import '../providers/projects_screen_providers.dart';
-import '../../../models/domain/project.dart';
-import '../../../models/domain/game_installation.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
+import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/models/domain/game_installation.dart';
 
 /// A card displaying project information in Fluent Design style.
 ///

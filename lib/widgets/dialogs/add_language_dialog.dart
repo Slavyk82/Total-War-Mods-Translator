@@ -9,12 +9,13 @@ import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/fluent/fluent_widgets.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 import 'package:twmt/i18n/strings.g.dart';
-import '../../../models/domain/language.dart';
-import '../../../models/domain/project_language.dart';
-import '../../../models/domain/translation_version.dart';
-import '../../../services/glossary/glossary_auto_provisioning_service.dart';
-import '../../../services/service_locator.dart';
-import '../providers/projects_screen_providers.dart';
+import 'package:twmt/models/domain/language.dart';
+import 'package:twmt/models/domain/project_language.dart';
+import 'package:twmt/models/domain/translation_version.dart';
+import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
+import 'package:twmt/services/service_locator.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
+import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/project_detail_providers.dart';
 
 /// Token-themed popup for adding target languages to a project.

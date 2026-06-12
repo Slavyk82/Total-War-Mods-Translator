@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../providers/projects_screen_providers.dart';
-import 'project_card.dart';
+import 'package:twmt/providers/projects_data_providers.dart';
+import 'package:twmt/widgets/cards/project_card.dart';
 
 /// List layout for displaying project cards.
 ///

@@ -12,7 +12,7 @@ import 'package:twmt/features/mods/providers/mods_screen_providers.dart';
 import 'package:twmt/providers/mods/mod_list_provider.dart';
 import 'package:twmt/features/mods/services/mods_project_service.dart';
 import 'package:twmt/features/mods/utils/mods_dialog_helper.dart';
-import 'package:twmt/features/projects/utils/open_project_editor.dart';
+import 'package:twmt/utils/open_project_editor.dart';
 import 'package:twmt/widgets/dialogs/project_initialization_dialog.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/projects_data_providers.dart';

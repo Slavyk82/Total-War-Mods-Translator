@@ -1,8 +1,8 @@
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../models/domain/github_release.dart';
-import '../../../providers/shared/service_providers.dart';
+import 'package:twmt/models/domain/github_release.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'release_notes_providers.g.dart';
 

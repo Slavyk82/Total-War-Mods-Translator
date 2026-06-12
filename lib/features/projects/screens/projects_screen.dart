@@ -22,7 +22,7 @@ import 'package:twmt/widgets/detail/home_back_toolbar.dart';
 import '../providers/projects_bulk_menu_visibility_provider.dart';
 import '../providers/projects_screen_providers.dart';
 import '../widgets/projects_bulk_menu_panel.dart';
-import 'package:twmt/features/projects/utils/open_project_editor.dart';
+import 'package:twmt/utils/open_project_editor.dart';
 
 /// Projects screen — filterable list archetype per UI spec §7.1.
 ///

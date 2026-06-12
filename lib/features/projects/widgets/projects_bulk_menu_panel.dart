@@ -6,9 +6,9 @@ import 'package:twmt/features/projects/widgets/bulk_action_buttons.dart';
 import 'package:twmt/features/projects/widgets/bulk_info_card.dart';
 import 'package:twmt/features/projects/widgets/bulk_scope_indicator.dart';
 import 'package:twmt/features/projects/widgets/bulk_target_language_selector.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_toolbar_batch_settings.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_toolbar_model_selector.dart';
-import 'package:twmt/features/translation_editor/widgets/editor_toolbar_skip_tm.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_batch_settings.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_model_selector.dart';
+import 'package:twmt/widgets/translation/editor_toolbar_skip_tm.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 
 /// Right-hand bulk-actions side panel of the Projects screen.

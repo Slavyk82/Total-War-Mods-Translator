@@ -8,8 +8,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-import '../../../models/domain/github_release.dart';
-import '../providers/release_notes_providers.dart';
+import 'package:twmt/models/domain/github_release.dart';
+import 'package:twmt/providers/release_notes_providers.dart';
 
 /// Token-themed popup shown after app update, displaying release notes.
 class ReleaseNotesDialog extends ConsumerWidget {

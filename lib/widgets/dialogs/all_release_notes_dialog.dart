@@ -7,8 +7,8 @@ import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/dialogs/token_dialog.dart';
 import 'package:twmt/widgets/lists/small_text_button.dart';
 
-import '../../../models/domain/github_release.dart';
-import 'release_notes_dialog.dart';
+import 'package:twmt/models/domain/github_release.dart';
+import 'package:twmt/widgets/dialogs/release_notes_dialog.dart';
 
 /// Token-themed popup showing all release notes in reverse chronological order.
 class AllReleaseNotesDialog extends StatelessWidget {
