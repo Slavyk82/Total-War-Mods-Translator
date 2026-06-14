@@ -80,6 +80,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
   WorkshopPublishParams? _cachedParams;
   String? _cachedProjectId;
   String? _cachedCompilationId;
+  String? _cachedLanguageCode;
 
   @override
   WorkshopPublishState build() => const WorkshopPublishState();
@@ -92,6 +93,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     String? steamGuardCode,
     String? projectId,
     String? compilationId,
+    String? languageCode,
   }) async {
     final logging = ref.read(loggingServiceProvider);
     final service = ref.read(workshopPublishServiceProvider);
@@ -103,6 +105,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _cachedParams = params;
     _cachedProjectId = projectId;
     _cachedCompilationId = compilationId;
+    _cachedLanguageCode = languageCode;
 
     state = state.copyWith(
       phase: PublishPhase.uploading,
@@ -177,20 +180,15 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
 
         try {
           if (projectId != null) {
-            final projectRepo = ref.read(projectRepositoryProvider);
-            final projectResult = await projectRepo.getById(projectId);
-            if (projectResult.isErr) {
-              saveFailure = projectResult.error.message;
-            } else {
-              final updated = projectResult.value.copyWith(
-                publishedSteamId: publishResult.workshopId,
-                publishedAt: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                updatedAt: projectResult.value.updatedAt,
-              );
-              final updateResult = await projectRepo.update(updated);
-              if (updateResult.isErr) {
-                saveFailure = updateResult.error.message;
-              }
+            final pubRepo = ref.read(projectPublicationRepositoryProvider);
+            final setResult = await pubRepo.setPublication(
+              projectId,
+              languageCode ?? 'fr',
+              publishResult.workshopId,
+              DateTime.now().millisecondsSinceEpoch ~/ 1000,
+            );
+            if (setResult.isErr) {
+              saveFailure = setResult.error.message;
             }
           } else if (compilationId != null) {
             final compilationRepo = ref.read(compilationRepositoryProvider);
@@ -295,6 +293,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
       steamGuardCode: code,
       projectId: _cachedProjectId,
       compilationId: _cachedCompilationId,
+      languageCode: _cachedLanguageCode,
     );
   }
 
@@ -354,6 +353,7 @@ class WorkshopPublishNotifier extends Notifier<WorkshopPublishState> {
     _cachedParams = null;
     _cachedProjectId = null;
     _cachedCompilationId = null;
+    _cachedLanguageCode = null;
   }
 }
 

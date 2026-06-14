@@ -284,8 +284,11 @@ class _WorkshopPublishScreenState
 
     String? projectId;
     String? compilationId;
+    String? languageCode;
     if (_item is ProjectPublishItem) {
-      projectId = (_item as ProjectPublishItem).project.id;
+      final projectItem = _item as ProjectPublishItem;
+      projectId = projectItem.project.id;
+      languageCode = projectItem.publicationLanguageCode;
     } else if (_item is CompilationPublishItem) {
       compilationId = (_item as CompilationPublishItem).compilation.id;
     }
@@ -297,6 +300,7 @@ class _WorkshopPublishScreenState
           steamGuardCode: steamGuardCode,
           projectId: projectId,
           compilationId: compilationId,
+          languageCode: languageCode,
         );
   }
 
