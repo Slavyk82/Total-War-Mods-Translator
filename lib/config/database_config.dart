@@ -41,11 +41,23 @@ class DatabaseConfig {
 
   /// Get the application data directory path
   ///
-  /// In debug mode, uses the installed app's directory to share data.
-  /// In release mode, uses the standard path_provider directory.
+  /// In debug mode (a real `flutter run` dev session), uses the installed
+  /// app's directory so development shares the production data. In release
+  /// mode, uses the standard path_provider directory.
+  ///
+  /// SAFETY: the debug data-sharing override is DISABLED under `flutter test`,
+  /// and a guard below hard-refuses the real installed-app directory while
+  /// testing. `flutter test` runs in [kDebugMode], so without this guard every
+  /// test would resolve the developer's REAL production database — and any test
+  /// reaching a destructive path ([DatabaseService.deleteDatabase],
+  /// [MigrationService.reset], a restore) would wipe it. Tests MUST use
+  /// `TestDatabase` (in-memory) or mock path_provider with a temp directory.
   static Future<String> _getAppDataDirectory() async {
-    if (kDebugMode && Platform.isWindows) {
-      // In debug mode on Windows, use the installed app's directory
+    final underTest = Platform.environment['FLUTTER_TEST'] == 'true';
+
+    if (kDebugMode && Platform.isWindows && !underTest) {
+      // Real dev session on Windows: use the installed app's directory so the
+      // dev build shares the production database, settings and secure storage.
       final appData = Platform.environment['APPDATA'];
       if (appData != null) {
         final devPath = path.join(appData, _installedAppDirectoryName);
@@ -54,8 +66,28 @@ class DatabaseConfig {
         }
       }
     }
+
     // Default: use path_provider
     final directory = await getApplicationSupportDirectory();
+
+    // Test guard: never let a test operate on the real installed-app data
+    // directory. If path_provider was not mocked (or was mocked to the real
+    // location), fail loudly instead of silently touching production data.
+    if (underTest) {
+      final appData = Platform.environment['APPDATA'];
+      if (appData != null) {
+        final realDir = path.join(appData, _installedAppDirectoryName);
+        if (path.equals(directory.path, realDir)) {
+          throw StateError(
+            'DatabaseConfig resolved the REAL installed-app data directory '
+            'under flutter test ($realDir). Tests must use TestDatabase '
+            '(in-memory) or mock path_provider with a temp dir. Refusing to '
+            'touch the production database.',
+          );
+        }
+      }
+    }
+
     return directory.path;
   }
 

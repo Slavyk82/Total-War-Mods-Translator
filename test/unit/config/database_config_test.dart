@@ -33,8 +33,67 @@ class _FakePathProviderPlatform extends PathProviderPlatform {
   Future<String?> getTemporaryPath() async => tempPath;
 }
 
+/// Fake that only stubs the application-support path, used to drive the
+/// production-DB guard in [DatabaseConfig].
+class _SupportPathFake extends PathProviderPlatform {
+  _SupportPathFake({required this.supportPath});
+
+  final String supportPath;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => supportPath;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('DatabaseConfig production-DB guard under flutter test', () {
+    // Regression guard for the incident where `flutter test` (which runs in
+    // kDebugMode) resolved the REAL installed-app database directory and a
+    // destructive call (deleteDatabase/MigrationService.reset) wiped the
+    // developer's production database. getDatabasePath() must NEVER hand back
+    // the real installed-app directory while testing.
+
+    String realInstalledDir() {
+      final appData = Platform.environment['APPDATA']!;
+      return path.join(appData, 'com.github.slavyk82', 'twmt');
+    }
+
+    test(
+      'getDatabasePath throws when path_provider resolves the real prod dir',
+      () async {
+        PathProviderPlatform.instance =
+            _SupportPathFake(supportPath: realInstalledDir());
+
+        await expectLater(
+          DatabaseConfig.getDatabasePath(),
+          throwsA(isA<StateError>()),
+        );
+      },
+      // The guard is Windows + APPDATA specific (the app is Windows-only).
+      skip: !Platform.isWindows || Platform.environment['APPDATA'] == null,
+    );
+
+    test(
+      'getDatabasePath returns a temp path unchanged (no real-dir override)',
+      () async {
+        final tempSupport =
+            await Directory.systemTemp.createTemp('twmt_support_');
+        addTearDown(() async {
+          if (await tempSupport.exists()) {
+            await tempSupport.delete(recursive: true);
+          }
+        });
+        PathProviderPlatform.instance =
+            _SupportPathFake(supportPath: tempSupport.path);
+
+        final dbPath = await DatabaseConfig.getDatabasePath();
+
+        expect(dbPath, path.join(tempSupport.path, DatabaseConfig.databaseName));
+      },
+      skip: !Platform.isWindows,
+    );
+  });
 
   group('DatabaseConfig logs/cache directories', () {
     late Directory root;

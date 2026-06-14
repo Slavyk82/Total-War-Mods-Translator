@@ -16,6 +16,9 @@ import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/services/backup/auto_backup_service.dart';
+import 'package:twmt/config/database_config.dart';
+import 'package:path/path.dart' as path;
 import 'package:twmt/features/bootstrap/widgets/mod_scan_boot_dialog.dart';
 import 'package:twmt/features/bootstrap/widgets/validation_rescan_dialog.dart';
 import 'package:twmt/features/glossary/screens/glossary_migration_screen.dart';
@@ -282,6 +285,29 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
     // Trigger cleanup of old installer files.
     if (!mounted) return;
     ref.read(cleanupOldInstallersProvider);
+
+    // Take a rolling automatic database backup (best-effort, daily). Runs in
+    // the background so it never blocks startup; AutoBackupService skips when a
+    // recent backup already exists and prunes old archives itself.
+    if (!mounted) return;
+    unawaited(_runAutoBackup());
+  }
+
+  Future<void> _runAutoBackup() async {
+    try {
+      final backupService = ref.read(databaseBackupServiceProvider);
+      final autoBackup = AutoBackupService(
+        logging: ServiceLocator.get<ILoggingService>(),
+        backupDirectoryProvider: () async => path.join(
+          await DatabaseConfig.getAppSupportDirectory(),
+          'backups',
+        ),
+        createBackup: backupService.createBackup,
+      );
+      await autoBackup.runIfDue();
+    } catch (_) {
+      // Best-effort; AutoBackupService logs its own failures internally.
+    }
   }
 
   Future<void> _checkReleaseNotes() async {

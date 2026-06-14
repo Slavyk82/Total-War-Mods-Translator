@@ -553,6 +553,11 @@ class DatabaseService {
   /// Only use for testing or reset functionality.
   static Future<void> deleteDatabase() async {
     await close();
+    // SAFETY: this is the single destructive DB primitive. Under `flutter
+    // test`, DatabaseConfig.getDatabasePath() refuses to resolve the real
+    // installed-app directory (it throws), so a stray/generated test that
+    // calls deleteDatabase() or MigrationService.reset() can never delete the
+    // developer's production database. See DatabaseConfig._getAppDataDirectory.
     final dbPath = await DatabaseConfig.getDatabasePath();
     await databaseFactory.deleteDatabase(dbPath);
   }
