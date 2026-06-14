@@ -6,6 +6,7 @@ import '../../repositories/game_installation_repository.dart';
 import '../../repositories/glossary_repository.dart';
 import '../../repositories/language_repository.dart';
 import '../../repositories/project_language_repository.dart';
+import '../../repositories/project_publication_repository.dart';
 import '../../repositories/project_repository.dart';
 import '../../repositories/translation_unit_repository.dart';
 import '../../repositories/translation_version_repository.dart';
@@ -17,6 +18,10 @@ part 'repository_providers.g.dart';
 @Riverpod(keepAlive: true)
 ProjectRepository projectRepository(Ref ref) =>
     ServiceLocator.get<ProjectRepository>();
+
+@Riverpod(keepAlive: true)
+ProjectPublicationRepository projectPublicationRepository(Ref ref) =>
+    ServiceLocator.get<ProjectPublicationRepository>();
 
 @Riverpod(keepAlive: true)
 ProjectLanguageRepository projectLanguageRepository(Ref ref) =>
