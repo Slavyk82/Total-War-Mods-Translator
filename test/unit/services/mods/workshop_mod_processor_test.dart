@@ -54,7 +54,7 @@ void main() {
         workshopModRepository: repo, workshopApiService: api, logger: FakeLogger());
     when(() => repo.upsert(any())).thenAnswer((_) async => _rok(_mod('x')));
     when(() => repo.updateLastChecked(any(), any()))
-        .thenAnswer((_) async => _rok(1));
+        .thenAnswer((_) async => const Ok(null));
   });
 
   test('returns an empty map for no workshop ids', () async {

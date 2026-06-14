@@ -73,6 +73,8 @@ void main() {
 
     test('not equal to an unrelated type', () {
       const a = ConfiguredGame(code: 'wh3', name: 'N', path: 'C:/p');
+      // Intentional unrelated-type comparison: == must reject non-ConfiguredGame.
+      // ignore: unrelated_type_equality_checks
       expect(a == 'wh3', isFalse);
     });
 

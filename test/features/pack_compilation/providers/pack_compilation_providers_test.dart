@@ -209,7 +209,7 @@ void main() {
       // listen and assert the AsyncValue settles into an error instead.
       container.listen(
         compilationsWithDetailsProvider,
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await pumpEventQueue();
@@ -337,7 +337,7 @@ void main() {
       );
       container.listen(
         projectsWithTranslationProvider(params),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await pumpEventQueue();
@@ -363,7 +363,7 @@ void main() {
       );
       container.listen(
         projectsWithTranslationProvider(params),
-        (_, __) {},
+        (_, _) {},
         fireImmediately: true,
       );
       await pumpEventQueue();

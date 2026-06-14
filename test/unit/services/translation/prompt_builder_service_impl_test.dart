@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
-import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/repositories/language_repository.dart';

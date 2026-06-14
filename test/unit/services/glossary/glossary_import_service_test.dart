@@ -66,7 +66,7 @@ void main() {
 
   tearDown(() => tmp.deleteSync(recursive: true));
 
-  File _write(String name, String content) {
+  File write(String name, String content) {
     final f = File('${tmp.path}${Platform.pathSeparator}$name');
     f.writeAsStringSync(content);
     return f;
@@ -90,7 +90,7 @@ void main() {
 
     test('imports valid rows, skipping the header, blanks and bad rows',
         () async {
-      final csv = _write('g.csv',
+      final csv = write('g.csv',
           'source,target,notes\r\nEmpire,Empire FR,a note\r\nLord,Seigneur\r\n,onlytarget\r\nSingle\r\n');
 
       final r = await service.importFromCsv(
@@ -116,7 +116,7 @@ void main() {
             caseSensitive: any(named: 'caseSensitive'),
           )).thenAnswer((_) async => _entry());
 
-      final csv = _write('g.csv', 'source,target\r\nEmpire,Empire FR\r\n');
+      final csv = write('g.csv', 'source,target\r\nEmpire,Empire FR\r\n');
       final r = await service.importFromCsv(
           glossaryId: 'g1', filePath: csv.path, targetLanguageCode: 'fr');
 
@@ -137,20 +137,20 @@ void main() {
         '<?xml version="1.0"?>\n<martif xml:lang="en"><text><body>$body</body></text></martif>';
 
     test('rejects invalid XML', () async {
-      final f = _write('g.tbx', 'not xml <<<');
+      final f = write('g.tbx', 'not xml <<<');
       final r = await service.importFromTbx(glossaryId: 'g1', filePath: f.path);
       expect(r.unwrapErr(), isA<GlossaryFileException>());
     });
 
     test('rejects a file without a martif root', () async {
-      final f = _write('g.tbx', '<?xml version="1.0"?>\n<root/>');
+      final f = write('g.tbx', '<?xml version="1.0"?>\n<root/>');
       final r = await service.importFromTbx(glossaryId: 'g1', filePath: f.path);
       expect(r.unwrapErr(), isA<GlossaryFileException>());
     });
 
     test('parses term entries and imports one target per non-source langSet',
         () async {
-      final f = _write(
+      final f = write(
         'g.tbx',
         tbx('''
 <termEntry id="t1">

@@ -120,6 +120,8 @@ dev_dependencies:
   fake_async: ^1.3.1
   # Provides MockPlatformInterfaceMixin to fake FilePicker.platform in tests.
   plugin_platform_interface: ^2.1.8
+  path_provider_platform_interface: ^2.1.2
+  sqflite_common: ^2.5.6
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

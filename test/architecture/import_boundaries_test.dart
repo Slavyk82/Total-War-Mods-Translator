@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'import_graph.dart';
 
 /// Known, intentionally-tolerated violations. EACH entry must be removed by
-/// the lot that fixes it. Format: '<importerLibPath> -> <importedLibPath>'.
+/// the lot that fixes it. Format: `'<importerLibPath> -> <importedLibPath>'`.
 /// The allowlist shrinks to empty; do NOT add new entries.
 const _allowlist = <String>{
   // === Seeded in Lot 0 (run with TWMT_PRINT_VIOLATIONS=1 to regenerate) ===
