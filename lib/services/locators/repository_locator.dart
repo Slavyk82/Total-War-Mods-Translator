@@ -12,6 +12,7 @@ import '../../repositories/mod_scan_cache_repository.dart';
 import '../../repositories/mod_update_analysis_cache_repository.dart';
 import '../../repositories/mod_version_repository.dart';
 import '../../repositories/project_language_repository.dart';
+import '../../repositories/project_publication_repository.dart';
 import '../../repositories/project_repository.dart';
 import '../../repositories/settings_repository.dart';
 import '../../repositories/translation_batch_repository.dart';
@@ -54,6 +55,10 @@ class RepositoryLocator {
 
     locator.registerLazySingleton<ProjectRepository>(
       () => ProjectRepository(),
+    );
+
+    locator.registerLazySingleton<ProjectPublicationRepository>(
+      () => ProjectPublicationRepository(),
     );
 
     locator.registerLazySingleton<ProjectLanguageRepository>(
