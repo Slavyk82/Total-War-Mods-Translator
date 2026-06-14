@@ -19,10 +19,10 @@ ProjectPublishItem _project({String? publishedSteamId}) => ProjectPublishItem(
         gameInstallationId: 'g',
         createdAt: 0,
         updatedAt: 0,
-        publishedSteamId: publishedSteamId,
-        publishedAt: publishedSteamId != null ? 1_700_000_000 : null,
       ),
       languageCodes: const ['en'],
+      resolvedPublishedSteamId: publishedSteamId,
+      resolvedPublishedAt: publishedSteamId != null ? 1_700_000_000 : null,
     );
 
 void main() {

@@ -77,10 +77,10 @@ ProjectPublishItem _project({
       gameInstallationId: 'g1',
       createdAt: 0,
       updatedAt: 0,
-      publishedSteamId: publishedSteamId,
-      publishedAt: publishedAt,
     ),
     languageCodes: const ['en'],
+    resolvedPublishedSteamId: publishedSteamId,
+    resolvedPublishedAt: publishedAt,
   );
 }
 

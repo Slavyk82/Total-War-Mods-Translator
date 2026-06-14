@@ -23,10 +23,10 @@ PublishableItem _stubItem({required String? publishedSteamId}) {
       gameInstallationId: 'g',
       createdAt: 0,
       updatedAt: 0,
-      publishedSteamId: publishedSteamId,
-      publishedAt: publishedSteamId != null ? 1700000000 : null,
     ),
     languageCodes: const ['en'],
+    resolvedPublishedSteamId: publishedSteamId,
+    resolvedPublishedAt: publishedSteamId != null ? 1700000000 : null,
   );
 }
 

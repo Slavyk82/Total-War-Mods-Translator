@@ -25,7 +25,9 @@ import 'package:twmt/repositories/compilation_repository.dart';
 import 'package:twmt/repositories/export_history_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
+import 'package:twmt/repositories/project_publication_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 
 class _MockProjectRepo extends Mock implements ProjectRepository {}
@@ -41,6 +43,9 @@ class _MockProjectLanguageRepo extends Mock
 
 class _MockGameInstallationRepo extends Mock
     implements GameInstallationRepository {}
+
+class _MockProjectPublicationRepo extends Mock
+    implements ProjectPublicationRepository {}
 
 /// Test double for [SelectedGame] returning a fixed value without settings.
 class _FakeSelectedGame extends SelectedGame {
@@ -144,11 +149,15 @@ ProjectPublishItem _pItem({
   ExportHistory? export,
   Project? project,
   List<String> langs = const ['en'],
+  String? resolvedPublishedSteamId,
+  int? resolvedPublishedAt,
 }) =>
     ProjectPublishItem(
       export: export,
       project: project ?? _project(id: 'p'),
       languageCodes: langs,
+      resolvedPublishedSteamId: resolvedPublishedSteamId,
+      resolvedPublishedAt: resolvedPublishedAt,
     );
 
 CompilationPublishItem _cItem({
@@ -185,9 +194,9 @@ void main() {
           name: 'My Mod',
           imageUrl: 'http://img/x.png',
           modSteamId: '999',
-          publishedSteamId: '555',
-          publishedAt: 1700000000,
         ),
+        resolvedPublishedSteamId: '555',
+        resolvedPublishedAt: 1700000000,
       );
 
       expect(item.displayName, 'My Mod');
@@ -304,6 +313,7 @@ void main() {
     late _MockLanguageRepo languageRepo;
     late _MockProjectLanguageRepo projectLanguageRepo;
     late _MockGameInstallationRepo gameInstallationRepo;
+    late _MockProjectPublicationRepo projectPublicationRepo;
 
     setUp(() {
       projectRepo = _MockProjectRepo();
@@ -312,6 +322,12 @@ void main() {
       languageRepo = _MockLanguageRepo();
       projectLanguageRepo = _MockProjectLanguageRepo();
       gameInstallationRepo = _MockGameInstallationRepo();
+      projectPublicationRepo = _MockProjectPublicationRepo();
+      // Default: no publication rows (no project has a Workshop id).
+      when(() => projectPublicationRepo.getAll()).thenAnswer(
+        (_) async =>
+            Ok<List<ProjectPublication>, TWMTDatabaseException>(const []),
+      );
     });
 
     baseOverrides(ConfiguredGame? game) => [
@@ -323,6 +339,8 @@ void main() {
               .overrideWithValue(projectLanguageRepo),
           gameInstallationRepositoryProvider
               .overrideWithValue(gameInstallationRepo),
+          projectPublicationRepositoryProvider
+              .overrideWithValue(projectPublicationRepo),
           selectedGameProvider.overrideWith(() => _FakeSelectedGame(game)),
         ];
 
@@ -544,21 +562,15 @@ void main() {
 
       final outdated = _pItem(
         export: _export(outputPath: packPath, exportedAt: 2000),
-        project: _project(
-          id: 'p-out',
-          name: 'Zeta',
-          publishedSteamId: '1',
-          publishedAt: 1000, // exportedAt(2000) > publishedAt -> outdated
-        ),
+        project: _project(id: 'p-out', name: 'Zeta'),
+        resolvedPublishedSteamId: '1',
+        resolvedPublishedAt: 1000, // exportedAt(2000) > publishedAt -> outdated
       );
       final upToDate = _pItem(
         export: _export(outputPath: packPath, exportedAt: 500),
-        project: _project(
-          id: 'p-pub',
-          name: 'Alpha',
-          publishedSteamId: '2',
-          publishedAt: 3000, // not outdated
-        ),
+        project: _project(id: 'p-pub', name: 'Alpha'),
+        resolvedPublishedSteamId: '2',
+        resolvedPublishedAt: 3000, // not outdated
       );
       final unpublished = _pItem(
         export: _export(outputPath: packPath, exportedAt: 1500),
@@ -732,21 +744,15 @@ void main() {
       // Same publishedAt -> comparator falls through to exportedAt tie-break.
       final early = _pItem(
         export: _export(outputPath: packPath, exportedAt: 100),
-        project: _project(
-          id: 'p-e',
-          name: 'Early',
-          publishedSteamId: '1',
-          publishedAt: 5000,
-        ),
+        project: _project(id: 'p-e', name: 'Early'),
+        resolvedPublishedSteamId: '1',
+        resolvedPublishedAt: 5000,
       );
       final late = _pItem(
         export: _export(outputPath: packPath, exportedAt: 900),
-        project: _project(
-          id: 'p-l',
-          name: 'Late',
-          publishedSteamId: '2',
-          publishedAt: 5000,
-        ),
+        project: _project(id: 'p-l', name: 'Late'),
+        resolvedPublishedSteamId: '2',
+        resolvedPublishedAt: 5000,
       );
       final c = make(
         items: [late, early],

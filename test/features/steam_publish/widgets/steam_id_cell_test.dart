@@ -12,13 +12,14 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
-import 'package:twmt/repositories/project_repository.dart';
+import 'package:twmt/repositories/project_publication_repository.dart';
 import 'package:twmt/theme/app_theme.dart';
 
 import '../../../helpers/test_bootstrap.dart';
 import '../../../helpers/test_helpers.dart';
 
-class _FakeProjectRepository extends Mock implements ProjectRepository {}
+class _FakeProjectPublicationRepository extends Mock
+    implements ProjectPublicationRepository {}
 
 String _createTempPack(String id) {
   final dir = Directory.systemTemp.createTempSync('twmt-id-cell-$id-');
@@ -57,10 +58,10 @@ ProjectPublishItem _project({
       gameInstallationId: 'g',
       createdAt: 0,
       updatedAt: 0,
-      publishedSteamId: publishedSteamId,
-      publishedAt: publishedSteamId != null ? 1_700_000_000 : null,
     ),
     languageCodes: const ['en'],
+    resolvedPublishedSteamId: publishedSteamId,
+    resolvedPublishedAt: publishedSteamId != null ? 1_700_000_000 : null,
   );
 }
 
@@ -146,30 +147,26 @@ void main() {
     expect(find.text('999'), findsOneWidget);
   });
 
-  testWidgets('Save persists the parsed id via the project repository',
+  testWidgets('Save persists the parsed id via the publication repository',
       (tester) async {
-    final fakeRepo = _FakeProjectRepository();
-    final savedIds = <String?>[];
-    final baseProject = Project(
-      id: 'p1',
-      name: 'P1',
-      gameInstallationId: 'g',
-      createdAt: 0,
-      updatedAt: 0,
-    );
-    when(() => fakeRepo.getById('p1')).thenAnswer(
-      (_) async => Ok<Project, TWMTDatabaseException>(baseProject),
-    );
-    when(() => fakeRepo.update(any())).thenAnswer((invocation) async {
-      final updated = invocation.positionalArguments.first as Project;
-      savedIds.add(updated.publishedSteamId);
-      return Ok<Project, TWMTDatabaseException>(updated);
+    final fakePubRepo = _FakeProjectPublicationRepository();
+    final setSteamIdCalls = <List<String>>[];
+    when(() => fakePubRepo.setSteamId(any(), any(), any()))
+        .thenAnswer((invocation) async {
+      setSteamIdCalls.add([
+        invocation.positionalArguments[0] as String,
+        invocation.positionalArguments[1] as String,
+        invocation.positionalArguments[2] as String,
+      ]);
+      return const Ok<void, TWMTDatabaseException>(null);
     });
 
     await tester.pumpWidget(createThemedTestableWidget(
       Scaffold(body: SteamIdCell(item: _project())),
       theme: AppTheme.atelierDarkTheme,
-      overrides: [projectRepositoryProvider.overrideWithValue(fakeRepo)],
+      overrides: [
+        projectPublicationRepositoryProvider.overrideWithValue(fakePubRepo),
+      ],
     ));
     await tester.pumpAndSettle();
 
@@ -183,29 +180,22 @@ void main() {
     await tester.tap(find.byTooltip('Save Workshop id'));
     await tester.pumpAndSettle(const Duration(seconds: 2));
 
-    expect(savedIds, ['3456789012']);
+    expect(setSteamIdCalls, hasLength(1));
+    expect(setSteamIdCalls.single[0], 'p1'); // projectId
+    expect(setSteamIdCalls.single[2], '3456789012'); // steamId
   });
 
   testWidgets(
-    'Save with unparseable input keeps the editor open and never calls update',
+    'Save with unparseable input keeps the editor open and never calls setSteamId',
     (tester) async {
-      final fakeRepo = _FakeProjectRepository();
-      when(() => fakeRepo.getById(any())).thenAnswer(
-        (_) async => Ok<Project, TWMTDatabaseException>(
-          Project(
-            id: 'p1',
-            name: 'P1',
-            gameInstallationId: 'g',
-            createdAt: 0,
-            updatedAt: 0,
-          ),
-        ),
-      );
+      final fakePubRepo = _FakeProjectPublicationRepository();
 
       await tester.pumpWidget(createThemedTestableWidget(
         Scaffold(body: SteamIdCell(item: _project())),
         theme: AppTheme.atelierDarkTheme,
-        overrides: [projectRepositoryProvider.overrideWithValue(fakeRepo)],
+        overrides: [
+          projectPublicationRepositoryProvider.overrideWithValue(fakePubRepo),
+        ],
       ));
       await tester.pumpAndSettle();
 
@@ -221,31 +211,23 @@ void main() {
       // Editor stays open so the user can correct the input without re-typing.
       expect(find.byType(TextField), findsOneWidget);
       expect(find.byTooltip('Save Workshop id'), findsOneWidget);
-      verifyNever(() => fakeRepo.update(any()));
+      verifyNever(() => fakePubRepo.setSteamId(any(), any(), any()));
     },
   );
 
   testWidgets(
     'Save surfaces a failure when the repository throws and keeps the editor open',
     (tester) async {
-      final fakeRepo = _FakeProjectRepository();
-      when(() => fakeRepo.getById('p1')).thenAnswer(
-        (_) async => Ok<Project, TWMTDatabaseException>(
-          Project(
-            id: 'p1',
-            name: 'P1',
-            gameInstallationId: 'g',
-            createdAt: 0,
-            updatedAt: 0,
-          ),
-        ),
-      );
-      when(() => fakeRepo.update(any())).thenThrow(Exception('db down'));
+      final fakePubRepo = _FakeProjectPublicationRepository();
+      when(() => fakePubRepo.setSteamId(any(), any(), any()))
+          .thenThrow(Exception('db down'));
 
       await tester.pumpWidget(createThemedTestableWidget(
         Scaffold(body: SteamIdCell(item: _project())),
         theme: AppTheme.atelierDarkTheme,
-        overrides: [projectRepositoryProvider.overrideWithValue(fakeRepo)],
+        overrides: [
+          projectPublicationRepositoryProvider.overrideWithValue(fakePubRepo),
+        ],
       ));
       await tester.pumpAndSettle();
 
