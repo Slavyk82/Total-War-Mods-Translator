@@ -13,6 +13,9 @@ import '../../utils/string_similarity.dart';
 /// - [findMatches]: Fuzzy matching with Levenshtein similarity
 /// - [searchFts5]: Full-text search across source/target text
 mixin TranslationMemoryFtsMixin {
+  /// [DIAGNOSTIC] guards the one-time TM size log.
+  static bool _diagLogged = false;
+
   /// Database instance - must be provided by implementing class
   Database get database;
 
@@ -50,6 +53,19 @@ mixin TranslationMemoryFtsMixin {
     int maxCandidates = 50,
   }) async {
     return executeQuery(() async {
+      // [DIAGNOSTIC 2026-06-14b] one-time TM size + per-query timing.
+      if (!_diagLogged) {
+        _diagLogged = true;
+        final totalRow = await database
+            .rawQuery('SELECT count(*) AS c FROM translation_memory');
+        final langRow = await database.rawQuery(
+            'SELECT count(*) AS c FROM translation_memory WHERE target_language_id = ?',
+            [targetLanguageId]);
+        // ignore: avoid_print
+        print('[FTS-SIZE] translation_memory total=${totalRow.first['c']} '
+            'forTargetLang=${langRow.first['c']}');
+      }
+      final sw = Stopwatch()..start();
       // Step 1: Use FTS5 to get top candidates based on BM25 ranking
       // This is MUCH faster than LIKE queries (100-1000x improvement)
       final ftsQuery = _buildFts5Query(sourceText);
@@ -60,19 +76,28 @@ mixin TranslationMemoryFtsMixin {
         return <TranslationMemoryEntry>[];
       }
 
-      // Query FTS5 table for initial candidates using BM25 ranking.
-      // bm25() requires the FTS5 table's hidden column (its real name, not
-      // the join alias) and is negative — more negative means more relevant —
-      // so ascending order yields best candidates first.
+      // Query FTS5 table for initial candidates.
+      //
+      // NOTE: deliberately NO `ORDER BY bm25(...)`. bm25 ranking forces SQLite
+      // to score EVERY matching row (across all languages) before the
+      // `target_language_id` filter and `LIMIT` can apply, which is O(all
+      // matches) and degrades badly as the TM grows — a >5 min fuzzy pass on a
+      // large TM (2026-06-14). Without an ORDER BY, `LIMIT` short-circuits:
+      // SQLite stops as soon as it has collected [maxCandidates] matching rows.
+      // Candidate *ranking* is not lost — step 3 below recomputes precise
+      // Levenshtein similarity on the fetched rows and sorts by it (then usage),
+      // so the returned matches are still the most similar of the pool.
       final ftsMaps = await database.rawQuery('''
         SELECT tm.rowid
         FROM translation_memory tm
         INNER JOIN translation_memory_fts fts ON fts.rowid = tm.rowid
         WHERE fts.source_text MATCH ?
           AND tm.target_language_id = ?
-        ORDER BY bm25(translation_memory_fts) ASC
         LIMIT ?
       ''', [ftsQuery, targetLanguageId, maxCandidates]);
+      // ignore: avoid_print
+      print('[FTS] ms=${sw.elapsedMilliseconds} n=${ftsMaps.length} '
+          'q="$ftsQuery"');
 
       if (ftsMaps.isEmpty) {
         return <TranslationMemoryEntry>[];
@@ -243,17 +268,51 @@ mixin TranslationMemoryFtsMixin {
   /// Returns an empty string when the input yields no usable tokens;
   /// callers must short-circuit instead of passing it to MATCH.
   String _buildFts5Query(String text) {
+    // Drop ultra-common English stopwords BEFORE picking the top words.
+    //
+    // The source language is always English here, and an OR query that
+    // includes a stopword like "the" matches essentially every row in
+    // translation_memory. Combined with `ORDER BY bm25(...) LIMIT n`, SQLite
+    // must score every matching row before applying the limit, so on a large
+    // TM the query effectively never returns and wedges the fuzzy lookup
+    // (observed: a `"mandate" OR "the" OR "gravewind"` query hung the whole
+    // batch). Keeping only discriminative terms shrinks the MATCH set to rows
+    // that share the rare words — far faster AND better candidates.
     final words = _tokenizeForFts5(text, minWordLength: 3)
+        .where((w) => !_ftsStopwords.contains(w))
         .take(5) // Limit to 5 most significant words
         .toList();
 
     if (words.isEmpty) {
+      // All tokens were stopwords (or too short): no discriminative term to
+      // search on. Returning '' makes the caller short-circuit to "no fuzzy
+      // candidates" (the unit falls through to LLM) — correct and, crucially,
+      // never issues the catastrophic all-rows MATCH.
       return '';
     }
 
     // Build OR query: "word1" OR "word2" OR "word3"
     return words.map((w) => '"$w"').join(' OR ');
   }
+
+  /// High-frequency English stopwords (≥3 chars, so they survive the
+  /// `minWordLength` token filter) excluded from fuzzy FTS candidate queries.
+  /// A MATCH on any of these alone matches almost the entire table, which is
+  /// pathological under `ORDER BY bm25(...) LIMIT n`. Source text is always
+  /// English in this app, so an English list is sufficient.
+  static const Set<String> _ftsStopwords = {
+    'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'any', 'can',
+    'her', 'was', 'one', 'our', 'out', 'his', 'has', 'had', 'its', 'who',
+    'did', 'she', 'him', 'how', 'may', 'two', 'see', 'now', 'get',
+    'with', 'that', 'this', 'from', 'they', 'them', 'their', 'then', 'than',
+    'have', 'will', 'would', 'could', 'should', 'about', 'there', 'here',
+    'what', 'which', 'when', 'where', 'your', 'were', 'been', 'being', 'into',
+    'onto', 'over', 'under', 'such', 'some', 'more', 'most', 'only', 'also',
+    'very', 'just', 'like', 'upon', 'each', 'both', 'those', 'these', 'because',
+    'while', 'during', 'after', 'before', 'again', 'against', 'between',
+    'through', 'above', 'below', 'down', 'off', 'own', 'same', 'other',
+    'another', 'toward', 'towards', 'shall', 'must', 'might', 'does',
+  };
 
   /// Build FTS5 search query from user input text.
   ///

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -207,16 +209,15 @@ class _BulkReviewDialogState extends ConsumerState<BulkReviewDialog> {
   }
 
   void _showError(String message) {
-    final tokens = context.tokens;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: tokens.errBg,
-        content: Text(
-          message,
-          style: tokens.fontBody.copyWith(color: tokens.err, fontSize: 12.5),
-        ),
-      ),
-    );
+    // The app shell is FluentScaffold (a Material wrapper, not a Material
+    // Scaffold), so the root ScaffoldMessenger has no Scaffold to present a
+    // SnackBar — showSnackBar would assert. Surface errors through the shared
+    // TokenDialog, like every other popup in the app.
+    unawaited(TokenDialog.showError(
+      context,
+      title: t.common.error,
+      message: message,
+    ));
   }
 }
 

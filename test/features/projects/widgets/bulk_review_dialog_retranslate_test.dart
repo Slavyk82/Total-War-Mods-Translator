@@ -160,4 +160,38 @@ void main() {
         ));
     expect(find.text(t.projects.bulk.review.noModelSelected), findsOneWidget);
   });
+
+  testWidgets(
+      'per-row retranslate surfaces its error without a Material Scaffold '
+      'ancestor', (tester) async {
+    // The real app shell is FluentScaffold (a Material wrapper, NOT a Material
+    // Scaffold), so the root ScaffoldMessenger has no descendant Scaffolds.
+    // A SnackBar-based error would assert `_scaffolds.isNotEmpty` and crash;
+    // the error must be surfaced via a dialog instead. Pumping the dialog with
+    // no Scaffold ancestor reproduces that production condition.
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(createThemedTestableWidget(
+      const BulkReviewDialog(),
+      theme: AppTheme.atelierDarkTheme,
+      overrides: [
+        bulkReviewRowsProvider.overrideWith((ref) async => [_row]),
+        selectedLlmModelProvider.overrideWith(_NoSelectionLlmModel.new),
+        llmProviderSettingsProvider
+            .overrideWith(() => _StubLlmProviderSettings(const {})),
+        headlessBatchTranslationRunnerProvider.overrideWithValue(runner),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    _drainTokenDialogOverflow(tester);
+
+    await tester.tap(
+      find.byTooltip(t.projects.bulk.review.tooltipRetranslate),
+    );
+    await tester.pumpAndSettle();
+    _drainTokenDialogOverflow(tester);
+
+    // No ScaffoldMessenger assertion was thrown, and the error reached the UI.
+    expect(find.text(t.projects.bulk.review.noModelSelected), findsOneWidget);
+  });
 }

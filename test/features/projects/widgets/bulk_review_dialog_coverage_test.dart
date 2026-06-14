@@ -378,7 +378,7 @@ void main() {
     _drainTokenDialogOverflow(tester);
   });
 
-  testWidgets('per-row validate surfaces an error snackbar on failure',
+  testWidgets('per-row validate surfaces an error dialog on failure',
       (tester) async {
     when(() => versionRepo.acceptBatch(any())).thenAnswer(
       (_) async => const Err(TWMTDatabaseException('db down')),
@@ -389,14 +389,13 @@ void main() {
     ]);
 
     await tester.tap(find.byTooltip(t.projects.bulk.review.tooltipValidate));
-    await tester.pump(); // start async
-    await tester.pump(); // settle setState + snackbar insert
-
-    expect(find.byType(SnackBar), findsOneWidget);
-
-    // Drain the 4s snackbar auto-dismiss timer so the test ends clean.
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     _drainTokenDialogOverflow(tester);
+
+    // Errors surface through TokenDialog.showError (a SnackBar would assert in
+    // the app's Scaffold-less FluentScaffold shell), so the error title shows.
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text(t.common.error), findsOneWidget);
   });
 
   // -------------------------------------------------------------------------
@@ -456,10 +455,10 @@ void main() {
 
     await tester.tap(find.byTooltip(t.projects.bulk.review.tooltipRetranslate));
     await tester.pumpAndSettle();
-
-    expect(find.byType(SnackBar), findsOneWidget);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
     _drainTokenDialogOverflow(tester);
+
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text(t.common.error), findsOneWidget);
   });
 
   // -------------------------------------------------------------------------
@@ -481,7 +480,7 @@ void main() {
     verify(() => versionRepo.acceptBatch(['v-1'])).called(1);
   });
 
-  testWidgets('validate all surfaces an error snackbar on failure',
+  testWidgets('validate all surfaces an error dialog on failure',
       (tester) async {
     when(() => versionRepo.acceptBatch(any())).thenAnswer(
       (_) async => const Err(TWMTDatabaseException('batch failed')),
@@ -492,12 +491,11 @@ void main() {
     ]);
 
     await tester.tap(find.text(t.projects.bulk.review.validateAll));
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(SnackBar), findsOneWidget);
-    await tester.pumpAndSettle(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     _drainTokenDialogOverflow(tester);
+
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.text(t.common.error), findsOneWidget);
   });
 
   // -------------------------------------------------------------------------

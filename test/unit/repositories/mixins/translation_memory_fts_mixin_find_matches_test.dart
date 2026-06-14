@@ -194,5 +194,41 @@ void main() {
           reason: result.isErr ? '${result.unwrapErr()}' : '');
       expect(result.unwrap(), isEmpty);
     });
+
+    // Regression: a fuzzy query that includes an ultra-common stopword like
+    // "the" used to MATCH essentially every row in translation_memory, and the
+    // `ORDER BY bm25(...) LIMIT n` then forced SQLite to score the whole table
+    // — so on a large TM the query effectively never returned and froze the
+    // whole batch translation (2026-06-14). _buildFts5Query now strips English
+    // stopwords so the MATCH set only contains rows with the discriminative
+    // terms.
+    test('an all-stopword input issues no MATCH and returns empty', () async {
+      // Seed an entry IDENTICAL to the query: without stopword filtering the
+      // FTS query `"the" OR "and" OR "you" OR "are"` would match it (and a
+      // large real table besides). With filtering the query is empty, so
+      // findMatches short-circuits before issuing the catastrophic MATCH.
+      await seedEntry(id: 'tm-stop', sourceText: 'the and you are');
+
+      final result = await repo.findMatches('the and you are', targetLang);
+
+      expect(result.isOk, isTrue,
+          reason: result.isErr ? '${result.unwrapErr()}' : '');
+      expect(result.unwrap(), isEmpty,
+          reason: 'a stopword-only fuzzy query must not run an all-rows MATCH');
+    });
+
+    test('still finds an entry by its discriminative terms when the query '
+        'also contains stopwords', () async {
+      // "the" is dropped from the FTS query, but the rare terms ("gravewind",
+      // "mandate") still retrieve the entry — stopword filtering must not cause
+      // false negatives for ordinary text.
+      await seedEntry(id: 'tm-rare', sourceText: 'the gravewind mandate');
+
+      final result = await repo.findMatches('the gravewind mandate', targetLang);
+
+      expect(result.isOk, isTrue,
+          reason: result.isErr ? '${result.unwrapErr()}' : '');
+      expect(result.unwrap().map((m) => m.id), contains('tm-rare'));
+    });
   });
 }

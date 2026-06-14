@@ -382,6 +382,34 @@ void main() {
       expect(result.isOk, isTrue);
       expect(result.value, equals(0));
     });
+
+    test('accepts a >50 batch via the disable-triggers path', () async {
+      const count = 69;
+      final ids = <String>[];
+      for (var i = 0; i < count; i++) {
+        final id = 'bv$i';
+        ids.add(id);
+        await insertRawVersion(
+          id: id,
+          unitId: 'bu$i',
+          translatedText: 'done $i',
+          status: 'needs_review',
+          validationIssues: '[some-issue]',
+        );
+      }
+
+      final result = await repo.acceptBatch(ids);
+
+      expect(result.isOk, isTrue, reason: 'error: ${result.isErr ? result.error : ''}');
+      expect(result.value, equals(count));
+
+      final rows = await db.query('translation_versions');
+      for (final row in rows) {
+        expect(row['status'], equals('translated'),
+            reason: 'row ${row['id']} should be accepted');
+        expect(row['validation_issues'], isNull);
+      }
+    });
   });
 
   group('rejectBatch', () {
