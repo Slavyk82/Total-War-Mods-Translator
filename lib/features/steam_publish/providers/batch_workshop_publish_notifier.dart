@@ -13,12 +13,14 @@ class BatchPublishItemInfo {
   final WorkshopPublishParams params;
   final String? projectId;
   final String? compilationId;
+  final String? languageCode;
 
   const BatchPublishItemInfo({
     required this.name,
     required this.params,
     this.projectId,
     this.compilationId,
+    this.languageCode,
   });
 }
 
@@ -349,23 +351,15 @@ class BatchWorkshopPublishNotifier
 
     if (item.projectId != null) {
       try {
-        final projectRepo = ref.read(projectRepositoryProvider);
-        final projectResult = await projectRepo.getById(item.projectId!);
-        if (projectResult.isErr) {
-          final detail =
-              'could not load project: ${projectResult.error.message}';
-          logging.warning(
-              'Failed to save Workshop ID for ${item.name}: $detail');
-          return detail;
-        }
-        final updated = projectResult.value.copyWith(
-          publishedSteamId: workshopId,
-          publishedAt: now,
-          updatedAt: projectResult.value.updatedAt,
+        final pubRepo = ref.read(projectPublicationRepositoryProvider);
+        final setResult = await pubRepo.setPublication(
+          item.projectId!,
+          item.languageCode ?? 'fr',
+          workshopId,
+          now,
         );
-        final updateResult = await projectRepo.update(updated);
-        if (updateResult.isErr) {
-          final detail = updateResult.error.message;
+        if (setResult.isErr) {
+          final detail = setResult.error.message;
           logging.warning(
               'Failed to save Workshop ID for ${item.name}: $detail');
           return detail;

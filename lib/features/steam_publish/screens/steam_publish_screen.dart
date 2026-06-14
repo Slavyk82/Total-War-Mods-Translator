@@ -301,8 +301,10 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
 
       String? projectId;
       String? compilationId;
+      String? languageCode;
       if (item is ProjectPublishItem) {
         projectId = item.project.id;
+        languageCode = item.publicationLanguageCode;
       } else if (item is CompilationPublishItem) {
         compilationId = item.compilation.id;
       }
@@ -312,6 +314,7 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
         params: params,
         projectId: projectId,
         compilationId: compilationId,
+        languageCode: languageCode,
       ));
     }
 
