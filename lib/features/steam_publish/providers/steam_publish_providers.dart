@@ -14,28 +14,6 @@ import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'steam_publish_providers.g.dart';
 
-/// Resolve which target language's published id applies to a per-project
-/// publish row. `project_publication` is keyed by (project, language) but the
-/// list shows one row per project. Prefer 'fr' when it is a target language,
-/// else the first target language, else 'fr'.
-String resolvePublicationLanguage(List<String> targetLanguages) {
-  if (targetLanguages.contains('fr')) return 'fr';
-  if (targetLanguages.isNotEmpty) return targetLanguages.first;
-  return 'fr';
-}
-
-/// Pick the publication row for a project: the one matching the resolved
-/// target language, else the first available row, else null.
-ProjectPublication? resolvePublication(
-    List<ProjectPublication> rows, List<String> targetLanguages) {
-  if (rows.isEmpty) return null;
-  final lang = resolvePublicationLanguage(targetLanguages);
-  for (final row in rows) {
-    if (row.languageCode == lang) return row;
-  }
-  return rows.first;
-}
-
 /// Sort mode for the Steam Publish list.
 enum SteamPublishSortMode { exportDate, name, publishDate }
 
@@ -139,8 +117,11 @@ class ProjectPublishItem extends PublishableItem {
   List<String> get languagesList => export?.languagesList ?? languageCodes;
 
   /// The target language under which this project's publication id is stored.
+  /// Resolved from the project's configured target languages ([languageCodes]),
+  /// not from the exported pack's language list — so the write basis matches
+  /// the read basis in the publish screen.
   String get publicationLanguageCode =>
-      resolvePublicationLanguage(languagesList);
+      resolvePublicationLanguage(languageCodes);
 
   int get entryCount => export?.entryCount ?? 0;
 

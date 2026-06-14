@@ -33,3 +33,25 @@ class ProjectPublication {
         'published_at': publishedAt,
       };
 }
+
+/// Resolve which target language's published id applies to a per-project
+/// publish row. `project_publication` is keyed by (project, language) but the
+/// publish list shows one row per project. Prefer 'fr' when it is a target
+/// language, else the first target language, else 'fr'.
+String resolvePublicationLanguage(List<String> targetLanguages) {
+  if (targetLanguages.contains('fr')) return 'fr';
+  if (targetLanguages.isNotEmpty) return targetLanguages.first;
+  return 'fr';
+}
+
+/// Pick the publication row for a project: the one matching the resolved
+/// target language, else the first available row, else null.
+ProjectPublication? resolvePublication(
+    List<ProjectPublication> rows, List<String> targetLanguages) {
+  if (rows.isEmpty) return null;
+  final lang = resolvePublicationLanguage(targetLanguages);
+  for (final row in rows) {
+    if (row.languageCode == lang) return row;
+  }
+  return rows.first;
+}
