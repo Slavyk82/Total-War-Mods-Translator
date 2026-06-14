@@ -10,6 +10,7 @@ import 'package:twmt/providers/settings_providers.dart'
     hide settingsServiceProvider;
 import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
+import '../../../services/steam/workshop_template.dart';
 
 /// Token-themed popup configuring default templates for Workshop title and
 /// description. Templates support `$modName` which is replaced by the project
@@ -46,9 +47,12 @@ class _WorkshopPublishSettingsDialogState
 
   Future<void> _loadTemplates() async {
     final service = ref.read(settingsServiceProvider);
-    final title = await service.getString(SettingsKeys.workshopTitleTemplate);
-    final description =
-        await service.getString(SettingsKeys.workshopDescriptionTemplate);
+    // Unwrap any template accidentally stored as a localized JSON map
+    // ({"fr":"..."}) so the editor shows plain text; saving then heals it.
+    final title = resolveLocalizedTemplate(
+        await service.getString(SettingsKeys.workshopTitleTemplate));
+    final description = resolveLocalizedTemplate(
+        await service.getString(SettingsKeys.workshopDescriptionTemplate));
     final visibilityName =
         await service.getString(SettingsKeys.workshopDefaultVisibility);
     if (!mounted) return;

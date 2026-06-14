@@ -12,6 +12,7 @@ import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/services/steam/models/game_definitions.dart';
 import 'package:twmt/services/steam/models/workshop_publish_params.dart';
 import 'package:twmt/services/steam/steamcmd_manager.dart';
+import 'package:twmt/services/steam/workshop_template.dart';
 import 'package:twmt/theme/twmt_theme_tokens.dart';
 import 'package:twmt/widgets/fluent/fluent_toast.dart';
 
@@ -285,29 +286,38 @@ class _SteamPublishScreenState extends ConsumerState<SteamPublishScreen> {
       final packDir = File(packPath).parent.path;
       final modName = item.displayName;
 
+      String? projectId;
+      String? compilationId;
+      String? languageCode;
+      String? templateLanguageCode;
+      if (item is ProjectPublishItem) {
+        projectId = item.project.id;
+        languageCode = item.publicationLanguageCode;
+        templateLanguageCode = item.publicationLanguageCode;
+      } else if (item is CompilationPublishItem) {
+        compilationId = item.compilation.id;
+        templateLanguageCode = item.languageCode;
+      }
+
+      // Defensive: a template accidentally stored as a localized JSON map
+      // ({"fr":"..."}) would otherwise inject escaped quotes into the workshop
+      // VDF and crash steamcmd's KeyValues parser. Resolve to plain text for
+      // the item's publication language before applying $modName.
+      final titleText =
+          resolveLocalizedTemplate(titleTemplate, languageCode: templateLanguageCode);
+      final descText =
+          resolveLocalizedTemplate(descTemplate, languageCode: templateLanguageCode);
+
       final params = WorkshopPublishParams(
         appId: appId,
         publishedFileId: item.publishedSteamId!,
         contentFolder: packDir,
         previewFile: previewPath,
-        title: titleTemplate.isNotEmpty
-            ? _applyTemplate(titleTemplate, modName)
-            : modName,
-        description: descTemplate.isNotEmpty
-            ? _applyTemplate(descTemplate, modName)
-            : '',
+        title: titleText.isNotEmpty ? _applyTemplate(titleText, modName) : modName,
+        description:
+            descText.isNotEmpty ? _applyTemplate(descText, modName) : '',
         visibility: visibility,
       );
-
-      String? projectId;
-      String? compilationId;
-      String? languageCode;
-      if (item is ProjectPublishItem) {
-        projectId = item.project.id;
-        languageCode = item.publicationLanguageCode;
-      } else if (item is CompilationPublishItem) {
-        compilationId = item.compilation.id;
-      }
 
       items.add(BatchPublishItemInfo(
         name: modName,

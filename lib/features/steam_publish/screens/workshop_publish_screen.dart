@@ -33,6 +33,7 @@ import '../../../providers/shared/service_providers.dart';
 import '../../../services/steam/models/game_definitions.dart';
 import '../../../services/steam/models/workshop_publish_params.dart';
 import '../../../services/steam/steamcmd_manager.dart';
+import '../../../services/steam/workshop_template.dart';
 import '../../../widgets/fluent/fluent_toast.dart';
 import '../providers/publish_staging_provider.dart';
 import '../providers/steam_publish_providers.dart';
@@ -155,11 +156,21 @@ class _WorkshopPublishScreenState
     }
     if (!mounted) return;
     final modName = _item?.displayName ?? '';
-    if (titleTemplate.isNotEmpty) {
-      _titleController.text = _applyTemplate(titleTemplate, modName);
+    // Defensive: unwrap a template accidentally stored as a localized JSON map
+    // ({"fr":"..."}) to plain text before applying it — see workshop_template.
+    final item = _item;
+    final templateLang = item is ProjectPublishItem
+        ? item.publicationLanguageCode
+        : (item is CompilationPublishItem ? item.languageCode : null);
+    final titleText =
+        resolveLocalizedTemplate(titleTemplate, languageCode: templateLang);
+    final descText =
+        resolveLocalizedTemplate(descTemplate, languageCode: templateLang);
+    if (titleText.isNotEmpty) {
+      _titleController.text = _applyTemplate(titleText, modName);
     }
-    if (descTemplate.isNotEmpty) {
-      _descriptionController.text = _applyTemplate(descTemplate, modName);
+    if (descText.isNotEmpty) {
+      _descriptionController.text = _applyTemplate(descText, modName);
     }
     final match = WorkshopVisibility.values
         .where((v) => v.name == visibilityName)

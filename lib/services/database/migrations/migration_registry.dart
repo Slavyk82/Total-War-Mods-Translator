@@ -36,6 +36,7 @@ import 'migration_default_model_dedup.dart';
 import 'migration_drop_broken_review_view.dart';
 import 'migration_contentless_fts_version_id.dart';
 import 'migration_glossary_entries_updated_at_trigger_scope.dart';
+import 'migration_fix_workshop_template_json.dart';
 
 /// Registry of all database migrations.
 ///
@@ -84,6 +85,7 @@ class MigrationRegistry {
       DropBrokenReviewViewMigration(), // Priority 220 — drop legacy v_translations_needing_review view (references non-existent confidence_score, breaks schema re-parse on ALTER TABLE)
       ContentlessFtsVersionIdMigration(), // Priority 230 — rebuild translation_versions_fts with contentless_delete=1 + contentless_unindexed=1 (plain content='' stored nothing: search JOIN dead, DELETE maintenance no-op)
       GlossaryEntriesUpdatedAtTriggerScopeMigration(), // Priority 240 — restrict trg_glossary_entries_updated_at to content columns so usage bumps don't force DeepL resync
+      FixWorkshopTemplateJsonMigration(), // Priority 250 — unwrap JSON-localized Workshop templates ({"fr":...}) that crash steamcmd's VDF parser
     ];
 
     // Sort by priority (lower numbers first)
