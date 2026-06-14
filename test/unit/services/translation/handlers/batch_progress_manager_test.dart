@@ -8,6 +8,9 @@ import 'package:twmt/models/events/domain_event.dart';
 import 'package:twmt/repositories/translation_batch_repository.dart';
 import 'package:twmt/services/shared/event_bus.dart';
 import 'package:twmt/services/translation/handlers/batch_progress_manager.dart';
+import 'package:twmt/services/translation/i_translation_orchestrator.dart';
+import 'package:twmt/services/translation/models/llm_exchange_log.dart';
+import 'package:twmt/services/translation/models/translation_exceptions.dart';
 import 'package:twmt/services/translation/models/translation_progress.dart';
 
 import '../../../../helpers/fakes/fake_logger.dart';
@@ -53,6 +56,19 @@ TranslationProgress _initialProgress({int total = 1}) {
     timestamp: DateTime.now(),
   );
 }
+
+LlmExchangeLog _log(String requestId) => LlmExchangeLog(
+      timestamp: DateTime(2024, 1, 1),
+      providerCode: 'anthropic',
+      modelName: 'model',
+      requestId: requestId,
+      unitsCount: 1,
+      inputTokens: 1,
+      outputTokens: 1,
+      totalTokens: 2,
+      processingTimeMs: 5,
+      success: true,
+    );
 
 TranslationBatch _fakeBatch(String id) {
   return TranslationBatch(
@@ -288,6 +304,438 @@ void main() {
             causationId: any(named: 'causationId'),
             metadata: any(named: 'metadata'),
           )).called(1);
+    });
+  });
+
+  group('cancellation token accessors', () {
+    test('getCancellationToken returns null before creation, token after', () {
+      expect(manager.getCancellationToken(_batchId), isNull);
+      final created = manager.getOrCreateCancellationToken(_batchId);
+      expect(manager.getCancellationToken(_batchId), same(created));
+    });
+
+    test('getOrCreateCancellationToken is idempotent per batchId', () {
+      final t1 = manager.getOrCreateCancellationToken(_batchId);
+      final t2 = manager.getOrCreateCancellationToken(_batchId);
+      expect(identical(t1, t2), isTrue);
+    });
+  });
+
+  group('updateProgress (no emit)', () {
+    test('stores progress without adding to the stream', () async {
+      final controller = manager.getOrCreateController(_batchId);
+      final received = <Result<TranslationProgress, Object>>[];
+      final sub = controller.stream.listen(received.add);
+
+      final progress = _initialProgress();
+      manager.updateProgress(_batchId, progress);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(received, isEmpty);
+      expect(manager.getProgress(_batchId), same(progress));
+      await sub.cancel();
+    });
+  });
+
+  group('incrementCountersAndEmit', () {
+    test('no-op when the batch is not tracked', () {
+      manager.incrementCountersAndEmit('missing', successfulUnits: 5);
+      expect(manager.getProgress('missing'), isNull);
+    });
+
+    test('adds counters/tokens, updates phase, recomputes percentage, emits',
+        () async {
+      final controller = manager.getOrCreateController(_batchId);
+      manager.updateProgress(
+        _batchId,
+        TranslationProgress(
+          batchId: _batchId,
+          status: TranslationProgressStatus.inProgress,
+          totalUnits: 10,
+          processedUnits: 2,
+          successfulUnits: 2,
+          failedUnits: 0,
+          skippedUnits: 0,
+          currentPhase: TranslationPhase.initializing,
+          tokensUsed: 100,
+          tmReuseRate: 0.0,
+          timestamp: DateTime(2024, 1, 1),
+        ),
+      );
+
+      final received = <Result<TranslationProgress, Object>>[];
+      final sub = controller.stream.listen(received.add);
+
+      manager.incrementCountersAndEmit(
+        _batchId,
+        successfulUnits: 3,
+        failedUnits: 1,
+        processedUnits: 4,
+        tokensUsed: 50,
+        phaseDetail: 'chunk-2',
+        currentPhase: TranslationPhase.llmTranslation,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final updated = manager.getProgress(_batchId)!;
+      expect(updated.successfulUnits, 5);
+      expect(updated.failedUnits, 1);
+      expect(updated.processedUnits, 6);
+      expect(updated.tokensUsed, 150);
+      expect(updated.phaseDetail, 'chunk-2');
+      expect(updated.currentPhase, TranslationPhase.llmTranslation);
+      // 6 / 10 = 0.6
+      expect(updated.progressPercentage, closeTo(0.6, 1e-9));
+
+      expect(received, hasLength(1));
+      expect(received.single.unwrap(), same(updated));
+      await sub.cancel();
+    });
+
+    test('zero totalUnits yields 0.0 percentage (guards division)', () {
+      manager.updateProgress(
+        _batchId,
+        TranslationProgress(
+          batchId: _batchId,
+          status: TranslationProgressStatus.inProgress,
+          totalUnits: 0,
+          processedUnits: 0,
+          successfulUnits: 0,
+          failedUnits: 0,
+          skippedUnits: 0,
+          currentPhase: TranslationPhase.initializing,
+          tokensUsed: 0,
+          tmReuseRate: 0.0,
+          timestamp: DateTime(2024, 1, 1),
+        ),
+      );
+      manager.incrementCountersAndEmit(_batchId, processedUnits: 0);
+      expect(manager.getProgress(_batchId)!.progressPercentage, 0.0);
+    });
+
+    test('appends new logs and de-duplicates by requestId', () {
+      manager.updateProgress(
+        _batchId,
+        _initialProgress().copyWith(llmLogs: [_log('r1')]),
+      );
+
+      manager.incrementCountersAndEmit(
+        _batchId,
+        appendLogs: [_log('r1'), _log('r2')],
+      );
+
+      expect(
+        manager.getProgress(_batchId)!.llmLogs.map((l) => l.requestId),
+        ['r1', 'r2'],
+      );
+    });
+
+    test('empty appendLogs leaves logs unchanged', () {
+      manager.updateProgress(
+        _batchId,
+        _initialProgress().copyWith(llmLogs: [_log('r1')]),
+      );
+      manager.incrementCountersAndEmit(_batchId, appendLogs: const []);
+      expect(
+        manager.getProgress(_batchId)!.llmLogs.map((l) => l.requestId),
+        ['r1'],
+      );
+    });
+  });
+
+  group('updatePhaseAndEmit', () {
+    test('no-op when the batch is not tracked', () {
+      manager.updatePhaseAndEmit('missing', phaseDetail: 'x');
+      expect(manager.getProgress('missing'), isNull);
+    });
+
+    test('updates phase fields and logs without touching counters, emits',
+        () async {
+      final controller = manager.getOrCreateController(_batchId);
+      manager.updateProgress(
+        _batchId,
+        _initialProgress().copyWith(processedUnits: 4, successfulUnits: 4),
+      );
+
+      final received = <Result<TranslationProgress, Object>>[];
+      final sub = controller.stream.listen(received.add);
+
+      manager.updatePhaseAndEmit(
+        _batchId,
+        phaseDetail: 'saving',
+        currentPhase: TranslationPhase.saving,
+        appendLogs: [_log('r9')],
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final p = manager.getProgress(_batchId)!;
+      expect(p.currentPhase, TranslationPhase.saving);
+      expect(p.phaseDetail, 'saving');
+      expect(p.processedUnits, 4);
+      expect(p.successfulUnits, 4);
+      expect(p.llmLogs.map((l) => l.requestId), ['r9']);
+      expect(received, hasLength(1));
+      await sub.cancel();
+    });
+
+    test('null appendLogs leaves logs unchanged', () {
+      manager.updateProgress(
+        _batchId,
+        _initialProgress().copyWith(llmLogs: [_log('r1')]),
+      );
+      manager.updatePhaseAndEmit(_batchId, phaseDetail: 'x');
+      expect(
+        manager.getProgress(_batchId)!.llmLogs.map((l) => l.requestId),
+        ['r1'],
+      );
+    });
+  });
+
+  group('pause', () {
+    test('errors when batch is not active', () async {
+      final result = await manager.pause(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      final err = result.unwrapErr();
+      expect(err, isA<InvalidStateException>());
+      expect((err as InvalidStateException).currentState, 'not_active');
+    });
+
+    test('errors when batch is already paused', () async {
+      manager.updateProgress(
+        _batchId,
+        _initialProgress().copyWith(status: TranslationProgressStatus.paused),
+      );
+      final result = await manager.pause(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect((result.unwrapErr() as InvalidStateException).currentState,
+          'paused');
+    });
+
+    test('pauses active batch, flips status and publishes BatchPausedEvent',
+        () async {
+      manager.updateProgress(_batchId, _initialProgress(total: 10));
+
+      final result = await manager.pause(batchId: _batchId);
+
+      expect(result.isOk, isTrue);
+      expect(manager.getProgress(_batchId)!.status,
+          TranslationProgressStatus.paused);
+      verify(() => eventBus.publish(
+            any(),
+            triggeredBy: any(named: 'triggeredBy'),
+            correlationId: any(named: 'correlationId'),
+            causationId: any(named: 'causationId'),
+            metadata: any(named: 'metadata'),
+          )).called(1);
+    });
+
+    test('still succeeds when getById returns Err (empty projectLanguageId)',
+        () async {
+      when(() => batchRepository.getById(any())).thenAnswer((_) async =>
+          Err<TranslationBatch, TWMTDatabaseException>(
+              TWMTDatabaseException('missing')));
+      manager.updateProgress(_batchId, _initialProgress());
+
+      final result = await manager.pause(batchId: _batchId);
+      expect(result.isOk, isTrue);
+    });
+
+    test('returns Err when the repository throws', () async {
+      when(() => batchRepository.getById(any()))
+          .thenThrow(Exception('boom'));
+      manager.updateProgress(_batchId, _initialProgress());
+
+      final result = await manager.pause(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr(), isA<TranslationOrchestrationException>());
+    });
+  });
+
+  group('resume', () {
+    test('errors when batch is not paused', () async {
+      final result = await manager.resume(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect((result.unwrapErr() as InvalidStateException).currentState,
+          'not_paused');
+    });
+
+    test('resumes paused batch, flips status and publishes BatchResumedEvent',
+        () async {
+      manager.updateProgress(_batchId, _initialProgress(total: 8));
+      await manager.pause(batchId: _batchId);
+
+      final result = await manager.resume(batchId: _batchId);
+
+      expect(result.isOk, isTrue);
+      expect(manager.getProgress(_batchId)!.status,
+          TranslationProgressStatus.inProgress);
+      // pause + resume publish twice in total.
+      verify(() => eventBus.publish(
+            any(),
+            triggeredBy: any(named: 'triggeredBy'),
+            correlationId: any(named: 'correlationId'),
+            causationId: any(named: 'causationId'),
+            metadata: any(named: 'metadata'),
+          )).called(2);
+    });
+
+    test('still succeeds when getById returns Err', () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      await manager.pause(batchId: _batchId);
+      when(() => batchRepository.getById(any())).thenAnswer((_) async =>
+          Err<TranslationBatch, TWMTDatabaseException>(
+              TWMTDatabaseException('missing')));
+
+      final result = await manager.resume(batchId: _batchId);
+      expect(result.isOk, isTrue);
+    });
+
+    test('returns Err when the repository throws', () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      await manager.pause(batchId: _batchId);
+      when(() => batchRepository.getById(any()))
+          .thenThrow(Exception('boom'));
+
+      final result = await manager.resume(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr(), isA<TranslationOrchestrationException>());
+    });
+  });
+
+  group('cancel', () {
+    test('uses defaults when no progress and getById fails', () async {
+      when(() => batchRepository.getById(any())).thenAnswer((_) async =>
+          Err<TranslationBatch, TWMTDatabaseException>(
+              TWMTDatabaseException('missing')));
+
+      final result = await manager.cancel(batchId: _batchId);
+      expect(result.isOk, isTrue);
+    });
+
+    test('returns Err when the repository throws', () async {
+      when(() => batchRepository.getById(any()))
+          .thenThrow(Exception('boom'));
+      final result = await manager.cancel(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr(), isA<TranslationOrchestrationException>());
+    });
+  });
+
+  group('stop', () {
+    test('cancels token, publishes event and trips checkPauseOrCancel',
+        () async {
+      final token = manager.getOrCreateCancellationToken(_batchId);
+      manager.updateProgress(_batchId, _initialProgress());
+
+      final result = await manager.stop(batchId: _batchId);
+
+      expect(result.isOk, isTrue);
+      expect(token.isCancelled, isTrue);
+      verify(() => eventBus.publish(
+            any(),
+            triggeredBy: any(named: 'triggeredBy'),
+            correlationId: any(named: 'correlationId'),
+            causationId: any(named: 'causationId'),
+            metadata: any(named: 'metadata'),
+          )).called(1);
+      expect(
+        () => manager.checkPauseOrCancel(_batchId),
+        throwsA(isA<CancelledException>()),
+      );
+    });
+
+    test('succeeds with no token/progress and getById failing', () async {
+      when(() => batchRepository.getById(any())).thenAnswer((_) async =>
+          Err<TranslationBatch, TWMTDatabaseException>(
+              TWMTDatabaseException('missing')));
+      final result = await manager.stop(batchId: _batchId);
+      expect(result.isOk, isTrue);
+    });
+
+    test('returns Err when the repository throws', () async {
+      when(() => batchRepository.getById(any()))
+          .thenThrow(Exception('boom'));
+      final result = await manager.stop(batchId: _batchId);
+      expect(result.isErr, isTrue);
+      expect(result.unwrapErr(), isA<TranslationOrchestrationException>());
+    });
+  });
+
+  group('getStatus / isActive / getActiveBatchIds', () {
+    test('getStatus returns tracked progress', () async {
+      final p = _initialProgress();
+      manager.updateProgress(_batchId, p);
+      final result = await manager.getStatus(batchId: _batchId);
+      expect(result.isOk, isTrue);
+      expect(result.unwrap(), same(p));
+    });
+
+    test('getStatus returns null when untracked', () async {
+      final result = await manager.getStatus(batchId: 'absent');
+      expect(result.isOk, isTrue);
+      expect(result.unwrap(), isNull);
+    });
+
+    test('isActive is true when tracked', () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      expect(await manager.isActive(batchId: _batchId), isTrue);
+    });
+
+    test('isActive is true when paused even if removed from active map',
+        () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      await manager.pause(batchId: _batchId);
+      expect(await manager.isActive(batchId: _batchId), isTrue);
+    });
+
+    test('isActive is false when unknown', () async {
+      expect(await manager.isActive(batchId: 'nope'), isFalse);
+    });
+
+    test('getActiveBatchIds lists all tracked batch ids', () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      manager.updateProgress(_otherBatchId, _initialProgress());
+      final ids = await manager.getActiveBatchIds();
+      expect(ids, containsAll([_batchId, _otherBatchId]));
+    });
+  });
+
+  group('checkPauseOrCancel edge cases', () {
+    test('returns normally when no flags are set', () async {
+      await manager.checkPauseOrCancel(_batchId);
+    });
+
+    test('throws when stopped', () async {
+      await manager.stop(batchId: _batchId);
+      expect(
+        () => manager.checkPauseOrCancel(_batchId),
+        throwsA(isA<CancelledException>()),
+      );
+    });
+
+    test('paused then resumed (completer cleared) falls through', () async {
+      manager.updateProgress(_batchId, _initialProgress());
+      await manager.pause(batchId: _batchId);
+      await manager.resume(batchId: _batchId);
+      await manager.checkPauseOrCancel(_batchId);
+    });
+
+    test('cancel after pause completer wakes the waiter via cleanup', () async {
+      // pause registers a resume completer; cleanup() marks the batch cancelled
+      // and completes that completer, so the post-resume re-check throws.
+      manager.updateProgress(_batchId, _initialProgress());
+      await manager.pause(batchId: _batchId);
+
+      final future = manager.checkPauseOrCancel(_batchId);
+      manager.cleanup(_batchId);
+
+      await expectLater(future, throwsA(isA<CancelledException>()));
+    });
+  });
+
+  group('cleanup edge cases', () {
+    test('cleanup of an unknown batch is a no-op', () {
+      expect(() => manager.cleanup('unknown'), returnsNormally);
     });
   });
 }
