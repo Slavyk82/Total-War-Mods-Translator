@@ -548,6 +548,85 @@ void main() {
       });
     });
 
+    group('empty source_text exclusion', () {
+      test('getLanguageStatistics excludes empty and whitespace-only sources',
+          () async {
+        await insertUnit('u-real', sourceText: 'translate me');
+        await insertUnit('u-empty', sourceText: '');
+        await insertUnit('u-spaces', sourceText: '   ');
+        await insertVersion(
+            id: 'v1',
+            unitId: 'u-real',
+            projectLanguageId: 'pl-1',
+            status: 'pending');
+        await insertVersion(
+            id: 'v2',
+            unitId: 'u-empty',
+            projectLanguageId: 'pl-1',
+            status: 'pending');
+        await insertVersion(
+            id: 'v3',
+            unitId: 'u-spaces',
+            projectLanguageId: 'pl-1',
+            status: 'pending');
+
+        final result = await repository.getLanguageStatistics('pl-1');
+
+        final stats = result.value;
+        // Only the unit with a non-empty source counts.
+        expect(stats.totalCount, equals(1));
+        expect(stats.pendingCount, equals(1));
+      });
+
+      test('getProjectStatistics excludes empty sources', () async {
+        await insertUnit('u-real', sourceText: 'translate me');
+        await insertUnit('u-empty', sourceText: '');
+        await insertVersion(
+            id: 'v1',
+            unitId: 'u-real',
+            projectLanguageId: 'pl-1',
+            status: 'pending');
+        await insertVersion(
+            id: 'v2',
+            unitId: 'u-empty',
+            projectLanguageId: 'pl-1',
+            status: 'pending');
+
+        final result = await repository.getProjectStatistics('proj-1');
+
+        expect(result.value.pendingCount, equals(1));
+      });
+
+      test('getGlobalStatistics excludes empty sources', () async {
+        await insertUnit('u-real', sourceText: 'translate me');
+        await insertUnit('u-empty', sourceText: '');
+        await insertVersion(
+            id: 'v1',
+            unitId: 'u-real',
+            projectLanguageId: 'pl-1',
+            translatedText: null);
+        await insertVersion(
+            id: 'v2',
+            unitId: 'u-empty',
+            projectLanguageId: 'pl-1',
+            translatedText: null);
+
+        final result = await repository.getGlobalStatistics();
+
+        expect(result.value.totalUnits, equals(1));
+      });
+
+      // Re-eligibility after a mod-update rescan (an empty source that gets
+      // filled in must count again) is guaranteed structurally rather than by a
+      // dedicated test: the exclusion is a stateless predicate over the current
+      // source_text — there is no persisted skip flag to clear. The two cases
+      // above (empty excluded, non-empty included) therefore fully cover the
+      // transition. A test that mutated a unit's source in place would only
+      // re-prove the stateless query, and additionally trips a pre-existing
+      // FTS-index limitation when UPDATE-ing translation_units in the in-memory
+      // test DB — unrelated to this counting logic.
+    });
+
     group('getGlobalStatistics', () {
       test('counts units, translated units, pending units and words', () async {
         await insertUnit('u1');

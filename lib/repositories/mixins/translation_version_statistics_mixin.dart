@@ -23,17 +23,20 @@ mixin TranslationVersionStatisticsMixin {
   /// the database (or defaults if not initialized).
   ///
   /// Matches the logic in TranslationSkipFilter.shouldSkip():
-  /// 1. Texts starting with "[HIDDEN]" prefix (case-insensitive)
-  /// 2. Fully bracketed texts like "[hidden]", "[PLACEHOLDER]" (single brackets only)
-  /// 3. User-configurable skip texts from the database
+  /// 1. Empty / whitespace-only source text (nothing to translate)
+  /// 2. Texts starting with "[HIDDEN]" prefix (case-insensitive)
+  /// 3. Fully bracketed texts like "[hidden]", "[PLACEHOLDER]" (single brackets only)
+  /// 4. User-configurable skip texts from the database
   ///
   /// Note: Does NOT exclude BBCode double-bracket tags like "[[col:yellow]]"
   String get excludeSkipUnitsCondition {
     final skipTextsCondition = TranslationSkipFilter.getSqlCondition();
     return '''
     NOT (
+      -- Empty / whitespace-only source text (nothing to translate)
+      TRIM(COALESCE(tu.source_text, '')) = ''
       -- Texts starting with [HIDDEN] prefix (case-insensitive)
-      UPPER(TRIM(tu.source_text)) LIKE '[HIDDEN]%'
+      OR UPPER(TRIM(tu.source_text)) LIKE '[HIDDEN]%'
       -- Fully bracketed single-bracket texts (not BBCode double brackets)
       OR (TRIM(tu.source_text) LIKE '[%]'
        AND TRIM(tu.source_text) NOT LIKE '[[%'

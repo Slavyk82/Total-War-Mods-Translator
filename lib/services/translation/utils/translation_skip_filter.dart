@@ -104,12 +104,19 @@ class TranslationSkipFilter {
   /// Checks if the source text should be skipped from translation.
   ///
   /// Returns true if the text matches any of the skip patterns:
+  /// - Empty / whitespace-only text (structural, not configurable)
   /// - Text starting with [HIDDEN] prefix (structural, not configurable)
   /// - Fully bracketed text like [PLACEHOLDER] (structural, not configurable)
   /// - User-configurable skip texts from the database
   /// - Default skip texts as fallback
   static bool shouldSkip(String text) {
     final trimmed = text.trim();
+
+    // Empty / whitespace-only source has nothing to translate (structural rule,
+    // not configurable). Mirrors the SQL filter in the statistics mixin.
+    if (trimmed.isEmpty) {
+      return true;
+    }
 
     // Check for [HIDDEN] prefix (structural rule, not configurable)
     if (startsWithHidden(trimmed)) {

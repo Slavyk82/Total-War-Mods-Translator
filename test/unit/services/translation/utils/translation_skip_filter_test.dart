@@ -132,12 +132,13 @@ void main() {
       expect(TranslationSkipFilter.shouldSkip('dummy text'), isFalse);
     });
 
-    test('does not skip empty or whitespace-only strings by itself', () {
-      // Empty strings are NOT in the default set and are not bracketed,
-      // so shouldSkip returns false. This guards against regressions that
-      // would incorrectly blanket-skip empty inputs.
-      expect(TranslationSkipFilter.shouldSkip(''), isFalse);
-      expect(TranslationSkipFilter.shouldSkip('   '), isFalse);
+    test('skips empty or whitespace-only source text', () {
+      // An empty source has nothing to translate, so it must be skipped from
+      // both the translation pipeline and the statistics counts. Whitespace
+      // is treated as empty (trimmed) for consistency with the SQL filter.
+      expect(TranslationSkipFilter.shouldSkip(''), isTrue);
+      expect(TranslationSkipFilter.shouldSkip('   '), isTrue);
+      expect(TranslationSkipFilter.shouldSkip('\t\n '), isTrue);
     });
   });
 
