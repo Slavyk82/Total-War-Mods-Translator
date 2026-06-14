@@ -22,10 +22,14 @@ class PublishedSubsCache extends _$PublishedSubsCache {
   @override
   Map<String, int> build() => const {};
 
-  /// Collects unique non-empty `publishedSteamId` values from every project
-  /// and compilation of the currently selected game. Returns an empty list
-  /// when no game is selected, the game is unknown, or no published items
-  /// exist for the user.
+  /// Collects unique non-empty published Workshop ids for every project and
+  /// compilation of the currently selected game. Project ids now come from the
+  /// `project_publication` table (all rows for the installation's projects,
+  /// across all languages). Compilation ids still come from the legacy
+  /// `published_steam_id` column on each compilation row.
+  ///
+  /// Returns an empty list when no game is selected, the game is unknown, or
+  /// no published items exist for the user.
   ///
   /// Pure DB read — does not mutate state.
   Future<List<String>> collectPublishedIds() async {
@@ -42,13 +46,24 @@ class PublishedSubsCache extends _$PublishedSubsCache {
 
     final ids = <String>{};
 
+    // Collect published project ids from project_publication (keyed by
+    // project+language) — only for projects that belong to this installation.
     final projectRepo = ref.read(projectRepositoryProvider);
     final projectsResult =
         await projectRepo.getByGameInstallation(installationId);
     if (projectsResult.isOk) {
-      for (final p in projectsResult.value) {
-        final id = p.publishedSteamId;
-        if (id != null && id.isNotEmpty) ids.add(id);
+      final projectIds =
+          projectsResult.value.map((p) => p.id).toSet();
+      final pubRepo = ref.read(projectPublicationRepositoryProvider);
+      final pubResult = await pubRepo.getAll();
+      if (pubResult.isOk) {
+        for (final row in pubResult.value) {
+          if (projectIds.contains(row.projectId) &&
+              row.steamId != null &&
+              row.steamId!.isNotEmpty) {
+            ids.add(row.steamId!);
+          }
+        }
       }
     }
 

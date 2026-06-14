@@ -14,6 +14,7 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/project_statistics.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
@@ -23,6 +24,7 @@ import 'package:twmt/repositories/export_history_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
+import 'package:twmt/repositories/project_publication_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
@@ -51,6 +53,9 @@ class _MockExportHistoryRepository extends Mock
 
 class _MockModUpdateAnalysisService extends Mock
     implements ModUpdateAnalysisService {}
+
+class _MockProjectPublicationRepository extends Mock
+    implements ProjectPublicationRepository {}
 
 class _FakeSelectedGame extends SelectedGame {
   _FakeSelectedGame(this._value);
@@ -97,6 +102,16 @@ ProjectLanguage _projectLanguage() {
   );
 }
 
+/// Create a publication repository stub that returns an empty list by default.
+_MockProjectPublicationRepository _emptyPubRepo() {
+  final mock = _MockProjectPublicationRepository();
+  when(() => mock.getAll()).thenAnswer(
+    (_) async =>
+        Ok<List<ProjectPublication>, TWMTDatabaseException>(const []),
+  );
+  return mock;
+}
+
 ProviderContainer _makeContainer({
   required ProjectRepository projectRepo,
   required ProjectLanguageRepository projectLanguageRepo,
@@ -114,6 +129,7 @@ ProviderContainer _makeContainer({
     translationVersionRepositoryProvider.overrideWithValue(versionRepo),
     workshopModRepositoryProvider.overrideWithValue(workshopModRepo),
     exportHistoryRepositoryProvider.overrideWithValue(exportHistoryRepo),
+    projectPublicationRepositoryProvider.overrideWithValue(_emptyPubRepo()),
     modUpdateAnalysisServiceProvider
         .overrideWithValue(_MockModUpdateAnalysisService()),
     selectedGameProvider.overrideWith(() => _FakeSelectedGame(_game)),

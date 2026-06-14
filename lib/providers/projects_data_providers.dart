@@ -9,6 +9,7 @@ import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/project_statistics.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
 import 'package:twmt/models/domain/export_history.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/logging_providers.dart';
@@ -22,12 +23,24 @@ class ProjectWithDetails {
   final ModUpdateAnalysis? updateAnalysis;
   final ExportHistory? lastPackExport;
 
+  /// The Workshop id of the user's published translation pack for this project,
+  /// resolved from the `project_publication` table by target language.
+  /// Replaces the vestigial `project.publishedSteamId` column for display
+  /// and status-badge logic.
+  final String? resolvedPublishedSteamId;
+
+  /// The Unix timestamp when the pack was last published to Steam Workshop,
+  /// resolved from `project_publication` by target language.
+  final int? resolvedPublishedAt;
+
   const ProjectWithDetails({
     required this.project,
     this.gameInstallation,
     required this.languages,
     this.updateAnalysis,
     this.lastPackExport,
+    this.resolvedPublishedSteamId,
+    this.resolvedPublishedAt,
   });
 
   /// Calculate overall progress across all languages
@@ -94,7 +107,7 @@ class ProjectWithDetails {
   bool get isModifiedSinceLastExport {
     if (lastPackExport == null) return false;
     var checkpoint = lastPackExport!.exportedAt;
-    final publishedAt = project.publishedAt;
+    final publishedAt = resolvedPublishedAt;
     if (publishedAt != null && publishedAt > checkpoint) {
       checkpoint = publishedAt;
     }
@@ -111,7 +124,7 @@ class ProjectWithDetails {
   bool get hasSteamPublishWorkflow {
     final modSteamId = project.modSteamId;
     if (modSteamId != null && modSteamId.isNotEmpty) return true;
-    final publishedId = project.publishedSteamId;
+    final publishedId = resolvedPublishedSteamId;
     return publishedId != null && publishedId.isNotEmpty;
   }
 
@@ -126,9 +139,9 @@ class ProjectWithDetails {
   bool get isPackPublishedOnSteam {
     final export = lastPackExport;
     if (export == null) return false;
-    final publishedId = project.publishedSteamId;
+    final publishedId = resolvedPublishedSteamId;
     if (publishedId == null || publishedId.isEmpty) return false;
-    final publishedAt = project.publishedAt;
+    final publishedAt = resolvedPublishedAt;
     if (publishedAt == null) return false;
     return publishedAt >= export.exportedAt;
   }
@@ -219,10 +232,12 @@ class ProjectsWithDetailsNotifier
 
     final project = projectResult.unwrap();
     final (languagesMap, gamesMap) = await _loadLookupMaps();
+    final publicationsByProject = await _loadPublicationsByProject();
     final updated = await _computeOne(
       project: project,
       gameInstallation: gamesMap[project.gameInstallationId],
       languagesMap: languagesMap,
+      publicationsByProject: publicationsByProject,
     );
 
     state = AsyncData([
@@ -274,6 +289,10 @@ class ProjectsWithDetailsNotifier
 
     final (languagesMap, gamesMap) = await _loadLookupMaps();
 
+    // Bulk-load published Workshop ids from project_publication once so each
+    // _computeOne call only needs a map lookup (not an extra DB round-trip).
+    final publicationsByProject = await _loadPublicationsByProject();
+
     // Compute each project's details concurrently. Previously this ran
     // sequentially, serializing O(projects x languages) DB round-trips and
     // blocking the list render. Future.wait preserves input order.
@@ -282,9 +301,22 @@ class ProjectsWithDetailsNotifier
             project: project,
             gameInstallation: gamesMap[project.gameInstallationId],
             languagesMap: languagesMap,
+            publicationsByProject: publicationsByProject,
           )),
     );
     return projectsWithDetails;
+  }
+
+  /// Bulk-load all `project_publication` rows and index them by project id.
+  Future<Map<String, List<ProjectPublication>>> _loadPublicationsByProject() async {
+    final pubRepo = ref.read(projectPublicationRepositoryProvider);
+    final pubResult = await pubRepo.getAll();
+    if (pubResult.isErr) return const {};
+    final byProject = <String, List<ProjectPublication>>{};
+    for (final row in pubResult.value) {
+      byProject.putIfAbsent(row.projectId, () => []).add(row);
+    }
+    return byProject;
   }
 
   /// Pre-load languages and game installations once.
@@ -314,11 +346,12 @@ class ProjectsWithDetailsNotifier
   }
 
   /// Compute full [ProjectWithDetails] for a single project, reusing pre-loaded
-  /// language and game installation lookups.
+  /// language, game installation, and publication lookups.
   Future<ProjectWithDetails> _computeOne({
     required Project project,
     required GameInstallation? gameInstallation,
     required Map<String, Language> languagesMap,
+    Map<String, List<ProjectPublication>>? publicationsByProject,
   }) async {
     final projectRepo = ref.read(projectRepositoryProvider);
     final projectLangRepo = ref.read(projectLanguageRepositoryProvider);
@@ -462,12 +495,23 @@ class ProjectsWithDetailsNotifier
       }
     }
 
+    // Resolve the publication row for this project using its target language
+    // codes (derived from the loaded languages).
+    final targetLangCodes = languagesWithInfo
+        .map((l) => l.language?.code)
+        .whereType<String>()
+        .toList();
+    final pubRows = publicationsByProject?[project.id] ?? const [];
+    final publication = resolvePublication(pubRows, targetLangCodes);
+
     return ProjectWithDetails(
       project: project,
       gameInstallation: gameInstallation,
       languages: languagesWithInfo,
       updateAnalysis: updateAnalysis,
       lastPackExport: lastPackExport,
+      resolvedPublishedSteamId: publication?.steamId,
+      resolvedPublishedAt: publication?.publishedAt,
     );
   }
 }

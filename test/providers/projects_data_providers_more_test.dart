@@ -16,6 +16,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/export_history.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/mod_update_analysis.dart';
@@ -30,6 +31,7 @@ import 'package:twmt/repositories/export_history_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
 import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
+import 'package:twmt/repositories/project_publication_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/translation_version_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
@@ -58,6 +60,9 @@ class _MockExportHistoryRepository extends Mock
 
 class _MockModUpdateAnalysisService extends Mock
     implements ModUpdateAnalysisService {}
+
+class _MockProjectPublicationRepository extends Mock
+    implements ProjectPublicationRepository {}
 
 class _FakeSelectedGame extends SelectedGame {
   _FakeSelectedGame(this._value);
@@ -130,8 +135,10 @@ ProviderContainer _makeContainer({
   required TranslationVersionRepository versionRepo,
   required WorkshopModRepository workshopModRepo,
   required ExportHistoryRepository exportHistoryRepo,
+  ProjectPublicationRepository? publicationRepo,
   ConfiguredGame? selectedGame = _game,
 }) {
+  final pubRepo = publicationRepo ?? _MockProjectPublicationRepository();
   return ProviderContainer(overrides: [
     projectRepositoryProvider.overrideWithValue(projectRepo),
     projectLanguageRepositoryProvider.overrideWithValue(projectLanguageRepo),
@@ -140,10 +147,21 @@ ProviderContainer _makeContainer({
     translationVersionRepositoryProvider.overrideWithValue(versionRepo),
     workshopModRepositoryProvider.overrideWithValue(workshopModRepo),
     exportHistoryRepositoryProvider.overrideWithValue(exportHistoryRepo),
+    projectPublicationRepositoryProvider.overrideWithValue(pubRepo),
     modUpdateAnalysisServiceProvider
         .overrideWithValue(_MockModUpdateAnalysisService()),
     selectedGameProvider.overrideWith(() => _FakeSelectedGame(selectedGame)),
   ]);
+}
+
+/// Create a publication repository stub that returns an empty list by default.
+_MockProjectPublicationRepository _emptyPubRepo() {
+  final mock = _MockProjectPublicationRepository();
+  when(() => mock.getAll()).thenAnswer(
+    (_) async =>
+        Ok<List<ProjectPublication>, TWMTDatabaseException>(const []),
+  );
+  return mock;
 }
 
 void main() {
@@ -331,7 +349,7 @@ void main() {
       expect(modified.isModifiedSinceLastExport, isTrue);
     });
 
-    test('hasSteamPublishWorkflow true via modSteamId or publishedSteamId', () {
+    test('hasSteamPublishWorkflow true via modSteamId or resolvedPublishedSteamId', () {
       final plain =
           ProjectWithDetails(project: _project(), languages: const []);
       expect(plain.hasSteamPublishWorkflow, isFalse);
@@ -349,21 +367,18 @@ void main() {
       );
       expect(viaMod.hasSteamPublishWorkflow, isTrue);
 
+      // Publication id now comes from resolvedPublishedSteamId (project_publication
+      // table), not the legacy project.publishedSteamId column.
       final viaPublished = ProjectWithDetails(
-        project: Project(
-          id: 'p1',
-          name: 'Alpha',
-          gameInstallationId: 'install-wh3',
-          createdAt: 0,
-          updatedAt: 0,
-          publishedSteamId: '99999',
-        ),
+        project: _project(),
         languages: const [],
+        resolvedPublishedSteamId: '99999',
       );
       expect(viaPublished.hasSteamPublishWorkflow, isTrue);
     });
 
-    test('isPackPublishedOnSteam requires export, publishedSteamId and time',
+    test(
+        'isPackPublishedOnSteam requires export, resolvedPublishedSteamId and time',
         () {
       final export = ExportHistory(
         id: 'e1',
@@ -394,34 +409,24 @@ void main() {
       );
 
       // Published after the export -> live on Steam.
+      // Publication data now comes from resolvedPublishedSteamId/resolvedPublishedAt
+      // (project_publication table), not the legacy project columns.
       final live = ProjectWithDetails(
-        project: Project(
-          id: 'p1',
-          name: 'Alpha',
-          gameInstallationId: 'install-wh3',
-          createdAt: 0,
-          updatedAt: 0,
-          publishedSteamId: '99999',
-          publishedAt: 2000,
-        ),
+        project: _project(),
         languages: const [],
         lastPackExport: export,
+        resolvedPublishedSteamId: '99999',
+        resolvedPublishedAt: 2000,
       );
       expect(live.isPackPublishedOnSteam, isTrue);
 
       // Published before the export -> stale (local pack newer than Steam).
       final stale = ProjectWithDetails(
-        project: Project(
-          id: 'p1',
-          name: 'Alpha',
-          gameInstallationId: 'install-wh3',
-          createdAt: 0,
-          updatedAt: 0,
-          publishedSteamId: '99999',
-          publishedAt: 500,
-        ),
+        project: _project(),
         languages: const [],
         lastPackExport: export,
+        resolvedPublishedSteamId: '99999',
+        resolvedPublishedAt: 500,
       );
       expect(stale.isPackPublishedOnSteam, isFalse);
     });
@@ -522,6 +527,7 @@ void main() {
         versionRepo: versionRepo,
         workshopModRepo: workshopModRepo,
         exportHistoryRepo: exportHistoryRepo,
+        publicationRepo: _emptyPubRepo(),
         selectedGame: selectedGame,
       );
       addTearDown(container.dispose);
@@ -751,6 +757,7 @@ void main() {
         versionRepo: versionRepo,
         workshopModRepo: workshopModRepo,
         exportHistoryRepo: exportHistoryRepo,
+        publicationRepo: _emptyPubRepo(),
       );
       addTearDown(container.dispose);
       return container;
