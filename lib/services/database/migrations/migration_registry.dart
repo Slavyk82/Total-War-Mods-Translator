@@ -19,6 +19,7 @@ import 'migration_gemini_provider.dart';
 import 'migration_deepl_glossary_sync.dart';
 import 'migration_published_steam_id.dart';
 import 'migration_published_at.dart';
+import 'migration_create_project_publication.dart';
 import 'migration_compilation_publish_fields.dart';
 import 'migration_validation_schema_version.dart';
 import 'migration_activity_events.dart';
@@ -66,6 +67,7 @@ class MigrationRegistry {
       DeepLGlossarySyncMigration(),
       PublishedSteamIdMigration(),
       PublishedAtMigration(),
+      CreateProjectPublicationMigration(), // Priority 96 — table + legacy backfill
       CompilationPublishFieldsMigration(),
       ValidationSchemaVersionMigration(),
       ActivityEventsMigration(),
