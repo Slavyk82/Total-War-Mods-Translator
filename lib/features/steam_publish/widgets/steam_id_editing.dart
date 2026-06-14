@@ -49,19 +49,14 @@ Future<bool> saveWorkshopId({
 
   try {
     if (item is ProjectPublishItem) {
-      final projectRepo = ref.read(projectRepositoryProvider);
-      final projectResult = await projectRepo.getById(item.project.id);
-      if (projectResult.isErr) {
-        showSaveError(projectResult.error.message);
-        return false;
-      }
-      final updated = projectResult.value.copyWith(
-        publishedSteamId: parsed,
-        updatedAt: projectResult.value.updatedAt,
+      final pubRepo = ref.read(projectPublicationRepositoryProvider);
+      final setResult = await pubRepo.setSteamId(
+        item.project.id,
+        item.publicationLanguageCode,
+        parsed,
       );
-      final updateResult = await projectRepo.update(updated);
-      if (updateResult.isErr) {
-        showSaveError(updateResult.error.message);
+      if (setResult.isErr) {
+        showSaveError(setResult.error.message);
         return false;
       }
     } else if (item is CompilationPublishItem) {
