@@ -7,11 +7,34 @@ import 'package:twmt/providers/published_subs_cache_provider.dart';
 import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/export_history.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 
 part 'steam_publish_providers.g.dart';
+
+/// Resolve which target language's published id applies to a per-project
+/// publish row. `project_publication` is keyed by (project, language) but the
+/// list shows one row per project. Prefer 'fr' when it is a target language,
+/// else the first target language, else 'fr'.
+String resolvePublicationLanguage(List<String> targetLanguages) {
+  if (targetLanguages.contains('fr')) return 'fr';
+  if (targetLanguages.isNotEmpty) return targetLanguages.first;
+  return 'fr';
+}
+
+/// Pick the publication row for a project: the one matching the resolved
+/// target language, else the first available row, else null.
+ProjectPublication? resolvePublication(
+    List<ProjectPublication> rows, List<String> targetLanguages) {
+  if (rows.isEmpty) return null;
+  final lang = resolvePublicationLanguage(targetLanguages);
+  for (final row in rows) {
+    if (row.languageCode == lang) return row;
+  }
+  return rows.first;
+}
 
 /// Sort mode for the Steam Publish list.
 enum SteamPublishSortMode { exportDate, name, publishDate }
@@ -66,10 +89,17 @@ class ProjectPublishItem extends PublishableItem {
   final Project project;
   final List<String> languageCodes;
 
+  /// Resolved from `project_publication` by target language (not the legacy
+  /// `project.publishedSteamId` column, which is vestigial).
+  final String? resolvedPublishedSteamId;
+  final int? resolvedPublishedAt;
+
   ProjectPublishItem({
     required this.export,
     required this.project,
     required this.languageCodes,
+    this.resolvedPublishedSteamId,
+    this.resolvedPublishedAt,
   });
 
   @override
@@ -82,10 +112,10 @@ class ProjectPublishItem extends PublishableItem {
   String get outputPath => export?.outputPath ?? '';
 
   @override
-  String? get publishedSteamId => project.publishedSteamId;
+  String? get publishedSteamId => resolvedPublishedSteamId;
 
   @override
-  int? get publishedAt => project.publishedAt;
+  int? get publishedAt => resolvedPublishedAt;
 
   @override
   bool get isCompilation => false;
@@ -107,6 +137,10 @@ class ProjectPublishItem extends PublishableItem {
   bool get isFromSteamWorkshop => project.isFromSteamWorkshop;
 
   List<String> get languagesList => export?.languagesList ?? languageCodes;
+
+  /// The target language under which this project's publication id is stored.
+  String get publicationLanguageCode =>
+      resolvePublicationLanguage(languagesList);
 
   int get entryCount => export?.entryCount ?? 0;
 
@@ -176,6 +210,7 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
   final languageRepo = ref.watch(languageRepositoryProvider);
   final projectLanguageRepo = ref.watch(projectLanguageRepositoryProvider);
   final gameInstallationRepo = ref.watch(gameInstallationRepositoryProvider);
+  final projectPublicationRepo = ref.watch(projectPublicationRepositoryProvider);
 
   // Get selected game to filter by
   final selectedGame = await ref.watch(selectedGameProvider.future);
@@ -188,6 +223,16 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
         await gameInstallationRepo.getByGameCode(gameCode);
     if (gameInstallationResult.isOk) {
       gameInstallationId = gameInstallationResult.value.id;
+    }
+  }
+
+  // Bulk-load published Workshop ids (keyed by project+language) once, so the
+  // per-project resolution below is a map lookup, not an N+1 query.
+  final publicationsByProject = <String, List<ProjectPublication>>{};
+  final allPublicationsResult = await projectPublicationRepo.getAll();
+  if (allPublicationsResult.isOk) {
+    for (final pub in allPublicationsResult.value) {
+      publicationsByProject.putIfAbsent(pub.projectId, () => []).add(pub);
     }
   }
 
@@ -215,10 +260,17 @@ Future<List<PublishableItem>> publishableItems(Ref ref) async {
         }
       }
 
+      final publication = resolvePublication(
+        publicationsByProject[project.id] ?? const [],
+        langCodes,
+      );
+
       items.add(ProjectPublishItem(
         export: lastExport,
         project: project,
         languageCodes: langCodes,
+        resolvedPublishedSteamId: publication?.steamId,
+        resolvedPublishedAt: publication?.publishedAt,
       ));
     }
   }
