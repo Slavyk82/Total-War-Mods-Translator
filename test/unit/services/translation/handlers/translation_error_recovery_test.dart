@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/translation/handlers/batch_progress_manager.dart'
@@ -136,6 +137,72 @@ void main() {
           isNot(isA<CancelledException>()),
         )),
       );
+    });
+
+    // Regression: a single source string the LLM keeps returning blank (e.g.
+    // {"translations":[{"key":"...","translation":" "}]}) must NOT abort the
+    // whole batch. Once retries are exhausted, the unit is skipped (counted as
+    // a failed unit) like a content-filtered unit - never fatal.
+    test('skips a single unit with an unrecoverable parse error instead of '
+        'failing the whole batch once retries are exhausted', () async {
+      final recovery = TranslationErrorRecovery(
+        tokenEstimator: LlmTokenEstimator(),
+        logger: MockLoggingService(),
+      );
+
+      final unit = TranslationUnit(
+        id: 'dca7ad73-a8f6-4c70-ae3d-5ae76838709f',
+        projectId: 'project-1',
+        key: 'blank_key',
+        sourceText: '%n',
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      var translateCalled = false;
+      final (progress, translations) = await recovery.handleLlmError(
+        error: const LlmResponseParseException(
+          'Failed to parse translations from response: FormatException: '
+          'No valid translations found in response (1 empty, 0 missing)',
+          providerCode: 'openai',
+          rawResponse:
+              '{"translations":[{"key":"dca7ad73-a8f6-4c70-ae3d-5ae76838709f",'
+              '"translation":" "}]}',
+        ),
+        batchId: 'batch-1',
+        rootBatchId: 'batch-1',
+        unitsToTranslate: [unit],
+        llmRequest: _buildRequest(),
+        context: _buildContext(),
+        progress: _buildProgress(),
+        currentProgress: _buildProgress(),
+        getCancellationToken: (_) => null,
+        onProgressUpdate: (_, _) {},
+        checkPauseOrCancel: (_) async {},
+        // depth >= 2 means the token-doubling retries are already exhausted.
+        depth: 2,
+        translateWithAutoSplit: ({
+          required String batchId,
+          required String rootBatchId,
+          required List<dynamic> unitsToTranslate,
+          required LlmRequest llmRequest,
+          required TranslationContext context,
+          required TranslationProgress progress,
+          required TranslationProgress currentProgress,
+          required Function(String batchId) getCancellationToken,
+          required ProgressUpdateCallback onProgressUpdate,
+          required Future<void> Function(String batchId) checkPauseOrCancel,
+          SubBatchTranslatedCallback? onSubBatchTranslated,
+          int depth = 0,
+        }) async {
+          translateCalled = true;
+          throw StateError('should not retry an exhausted single unit');
+        },
+      );
+
+      expect(translateCalled, isFalse);
+      expect(translations, isEmpty);
+      expect(progress.failedUnits, 1);
     });
   });
 }

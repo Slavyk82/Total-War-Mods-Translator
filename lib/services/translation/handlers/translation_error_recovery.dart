@@ -114,24 +114,43 @@ class TranslationErrorRecovery {
       );
     }
 
-    // Handle single unit parse error - retry with more tokens
-    if (error is LlmResponseParseException &&
-        unitsToTranslate.length == 1 &&
-        depth < 2) {
-      return _retryWithMoreTokens(
+    // Handle single unit parse error.
+    if (error is LlmResponseParseException && unitsToTranslate.length == 1) {
+      // A truncated or malformed response may be recoverable by retrying with
+      // a larger token budget - try that a couple of times first.
+      if (depth < 2) {
+        return _retryWithMoreTokens(
+          batchId: batchId,
+          rootBatchId: rootBatchId,
+          unitsToTranslate: unitsToTranslate,
+          llmRequest: llmRequest,
+          context: context,
+          progress: progress,
+          currentProgress: currentProgress,
+          getCancellationToken: getCancellationToken,
+          onProgressUpdate: onProgressUpdate,
+          checkPauseOrCancel: checkPauseOrCancel,
+          onSubBatchTranslated: onSubBatchTranslated,
+          depth: depth,
+          translateWithAutoSplit: translateWithAutoSplit,
+        );
+      }
+
+      // Retries are exhausted (or the unit was isolated deep in the split
+      // tree). The model keeps returning an empty/whitespace or otherwise
+      // unparseable translation for this single string - this is not
+      // truncation and more tokens will not help. Skip the unit (count it as
+      // failed) instead of aborting the whole batch: one bad source string
+      // must never fail the entire project's translation.
+      return _handleUnparseableUnit(
+        unit: unitsToTranslate.first,
         batchId: batchId,
         rootBatchId: rootBatchId,
-        unitsToTranslate: unitsToTranslate,
-        llmRequest: llmRequest,
         context: context,
         progress: progress,
         currentProgress: currentProgress,
-        getCancellationToken: getCancellationToken,
         onProgressUpdate: onProgressUpdate,
-        checkPauseOrCancel: checkPauseOrCancel,
-        onSubBatchTranslated: onSubBatchTranslated,
-        depth: depth,
-        translateWithAutoSplit: translateWithAutoSplit,
+        error: error,
       );
     }
 
@@ -381,6 +400,47 @@ class TranslationErrorRecovery {
     onProgressUpdate(rootBatchId, filterProgress);
 
     return (filterProgress, <String, String>{});
+  }
+
+  /// Handle a single unit whose response cannot be parsed after retries.
+  ///
+  /// The LLM persistently returned an empty/whitespace or unparseable
+  /// translation for this one source string. Skip it (count as a failed unit)
+  /// rather than throwing, so a single bad string never aborts the batch.
+  (TranslationProgress, Map<String, String>) _handleUnparseableUnit({
+    required TranslationUnit unit,
+    required String batchId,
+    required String rootBatchId,
+    required TranslationContext context,
+    required TranslationProgress progress,
+    required TranslationProgress currentProgress,
+    required ProgressUpdateCallback onProgressUpdate,
+    required LlmServiceException error,
+  }) {
+    _logger.warning(
+      'Unparseable/empty LLM response for unit "${unit.key}" after retries - '
+      'skipping. The model returned no usable translation for this string.',
+    );
+
+    final skipLog = LlmExchangeLog.fromError(
+      requestId: '$batchId-unparseable',
+      providerCode: context.providerId ?? 'unknown',
+      modelName: context.modelId ?? 'unknown',
+      unitsCount: 1,
+      errorMessage:
+          'Empty or unparseable translation for key "${unit.key}", skipping '
+          'this unit: $error',
+    );
+
+    final skipProgress = progress.copyWith(
+      phaseDetail: 'Skipped untranslatable content: "${unit.key}"',
+      llmLogs: [...currentProgress.llmLogs, skipLog],
+      failedUnits: currentProgress.failedUnits + 1,
+      timestamp: DateTime.now(),
+    );
+    onProgressUpdate(rootBatchId, skipProgress);
+
+    return (skipProgress, <String, String>{});
   }
 
   /// Handle non-recoverable LLM error.
