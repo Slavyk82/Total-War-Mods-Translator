@@ -31,8 +31,8 @@ dependency as a Riverpod provider. UI code must **never** call
 
 | File | Purpose |
 | --- | --- |
-| `lib/providers/shared/repository_providers.dart` | Exposes the 8 core repositories (Project, ProjectLanguage, Language, GameInstallation, Compilation, TranslationVersion, TranslationUnit, WorkshopMod) plus a few shared async queries (`allLanguages`, `activeLanguages`, `allGameInstallations`). |
-| `lib/providers/shared/service_providers.dart` | Exposes ~37 services and the remaining repositories (Glossary, ExportHistory, ModUpdateAnalysisCache, TranslationVersionHistory, TranslationMemory, TranslationBatchUnit, TranslationBatch, ModVersion, LlmProviderModel). |
+| `lib/providers/shared/repository_providers.dart` | Exposes the 10 core repositories (Project, ProjectPublication, ProjectLanguage, Language, GameInstallation, Glossary, Compilation, TranslationVersion, TranslationUnit, WorkshopMod) plus a few shared async queries (`allLanguages`, `activeLanguages`, `allGameInstallations`). |
+| `lib/providers/shared/service_providers.dart` | Exposes ~35 services and the remaining repositories (ExportHistory, ModUpdateAnalysisCache, TranslationVersionHistory, TranslationMemory, TranslationBatchUnit, TranslationBatch, ModVersion, LlmProviderModel). |
 | `lib/providers/shared/logging_providers.dart` | Hand-written `Provider<ILoggingService>` for the logger. Hand-written rather than codegen'd because it's the bootstrap dependency that tests most often override. |
 
 The pattern in both codegen'd files is uniform:
@@ -149,29 +149,25 @@ forcing those services to become async/lazy Riverpod providers.
 
 ## Current debt
 
-Known follow-ups left on the table after the bridge migration:
+Known follow-ups left on the table after the bridge migration. Line numbers
+drift with every edit — treat file/method names as the anchor, not the line.
 
-- **Pass-through UI wrappers.** Several feature-local `@riverpod` wrappers
-  (`historyServiceProvider`, `releaseNotesServiceProvider`,
-  `gameLocalizationServiceProvider`, ...) now do nothing but
-  `ref.watch(bridge.xxxProvider)`. Consider deleting them and pointing
-  callers at the bridge directly.
 - **Service-layer DI pass.** Many services still accept
   `logger ?? ServiceLocator.get<ILoggingService>()` constructor fallbacks
   (notably DB migrations). A future batch should make `logger` required and
   delete the fallbacks.
-- **`lib/utils/retry_utils.dart` (lines 13, 290).** Concrete `LoggingService`
-  type field — widen to `ILoggingService`.
 - **`lib/services/database/database_service.dart` and `migration_service.dart`.**
   `static ILoggingService _logger = LoggingService.instance;` is a latent
   footgun if the singleton's null-safety contract ever tightens.
 - **`ModsProjectService.create`.** Pure pass-through factory with two
-  callers (both in `lib/features/mods/utils/mods_screen_controller.dart`,
-  lines 160 and 237) — inline it.
+  callers (both in `lib/features/mods/utils/mods_screen_controller.dart`:
+  `_createProjectFromMod` and `_createProjectFromLocalPack`) — inline it.
 - **`ModsScreenController`.** Plain Dart class holding only a `WidgetRef`;
   convert to a `@riverpod` Notifier.
-- **`deleteCompilation(WidgetRef ref, ...)`.** Top-level function with a
-  single caller — inline.
-- **`TmBrowserDataGrid` lines 81–90 (and 3 sibling TM dialogs).** Renders
-  unbounded `error.toString()`; wrap in `SingleChildScrollView` or cap with
-  `maxLines`.
+- **`deleteCompilation(WidgetRef ref, ...)` in
+  `lib/features/pack_compilation/providers/pack_compilation_providers.dart`.**
+  Now unused — the list screen deletes via `compilationRepository.delete`
+  directly — so this top-level function is dead code; delete it.
+- **`TmBrowserDataGrid` error state (and sibling TM dialogs).** The
+  `failedToLoadEntries` branch renders an unbounded `error.toString()`; wrap
+  in `SingleChildScrollView` or cap with `maxLines`.

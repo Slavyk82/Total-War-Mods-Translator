@@ -47,16 +47,17 @@ feature:
 ## How it is enforced
 
 `test/architecture/import_boundaries_test.dart` walks `lib/`, parses every
-import, and asserts the three invariants. It carries an allowlist of
-historically-tolerated violations that shrinks toward empty; once empty, the
-boundaries are locked. New violations fail the test — fix the import (promote
-or inject), do not add to the allowlist.
+import, and asserts the three invariants. Its allowlist of
+historically-tolerated violations is now **empty**, so the boundaries are
+locked: any new violation fails the test — fix the import (promote or inject),
+do not add to the allowlist. A companion test also fails on stale allowlist
+entries, keeping it from silently regrowing.
 
 Two known false positives are excluded by path, because they are not Riverpod
 providers despite their names:
 
 - `lib/services/llm/providers/*` — LLM strategy classes (Anthropic, OpenAI, …).
-- `lib/services/database/migrations/migration_*_provider.dart` — DB migrations.
+- `lib/services/database/migrations/**` — DB migrations (whole directory).
 - `lib/repositories/translation_provider_repository.dart` — a repository.
 
 See also `docs/architecture/dependency_injection.md` for the GetIt + Riverpod
