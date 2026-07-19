@@ -13,7 +13,6 @@ import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
 import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
-import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/providers/settings_providers.dart';
@@ -82,6 +81,7 @@ class ModsProjectService {
   final ProjectLanguageRepository _projectLanguageRepo;
   final SettingsService _settingsService;
   final ILoggingService _logger;
+  final GlossaryAutoProvisioningService? _glossaryProvisioning;
 
   ModsProjectService({
     required ProjectRepository projectRepository,
@@ -90,12 +90,14 @@ class ModsProjectService {
     required ProjectLanguageRepository projectLanguageRepository,
     required SettingsService settingsService,
     required ILoggingService logger,
+    GlossaryAutoProvisioningService? glossaryProvisioningService,
   })  : _projectRepo = projectRepository,
         _workshopModRepo = workshopModRepository,
         _languageRepo = languageRepository,
         _projectLanguageRepo = projectLanguageRepository,
         _settingsService = settingsService,
-        _logger = logger;
+        _logger = logger,
+        _glossaryProvisioning = glossaryProvisioningService;
 
   /// Factory constructor with explicit dependencies (callers resolve via DI)
   factory ModsProjectService.create({
@@ -105,6 +107,7 @@ class ModsProjectService {
     required ProjectLanguageRepository projectLanguageRepository,
     required SettingsService settingsService,
     required ILoggingService logger,
+    GlossaryAutoProvisioningService? glossaryProvisioningService,
   }) {
     return ModsProjectService(
       projectRepository: projectRepository,
@@ -113,6 +116,7 @@ class ModsProjectService {
       projectLanguageRepository: projectLanguageRepository,
       settingsService: settingsService,
       logger: logger,
+      glossaryProvisioningService: glossaryProvisioningService,
     );
   }
 
@@ -331,14 +335,11 @@ class ModsProjectService {
     await _projectLanguageRepo.insert(projectLanguage);
 
     // Best-effort: provision an empty glossary for the default target language.
-    // The helper is internally error-swallowed, and the locator lookup itself
-    // is guarded so unit tests that skip DI registration still pass.
-    if (ServiceLocator.isRegistered<GlossaryAutoProvisioningService>()) {
-      await ServiceLocator.get<GlossaryAutoProvisioningService>()
-          .provisionForProject(
-        projectId: projectId,
-        targetLanguageIds: [target.id],
-      );
-    }
+    // The helper is internally error-swallowed, and the dependency is optional
+    // so unit tests that skip DI wiring still pass.
+    await _glossaryProvisioning?.provisionForProject(
+      projectId: projectId,
+      targetLanguageIds: [target.id],
+    );
   }
 }

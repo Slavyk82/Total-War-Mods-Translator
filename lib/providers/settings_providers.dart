@@ -5,9 +5,6 @@ import 'package:twmt/providers/shared/logging_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart' as bridge;
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/services/llm/llm_model_management_service.dart';
-import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
-import 'package:twmt/services/service_locator.dart';
-import 'package:twmt/services/shared/i_logging_service.dart';
 import 'package:twmt/models/domain/llm_provider_model.dart';
 import 'package:twmt/utils/pack_prefix_sanitizer.dart';
 
@@ -70,11 +67,12 @@ class GeneralSettings extends _$GeneralSettings {
     // actually set. Clearing the path must not trigger provisioning.
     if (path.isNotEmpty) {
       try {
-        await ServiceLocator.get<GlossaryAutoProvisioningService>()
+        await ref
+            .read(bridge.glossaryAutoProvisioningServiceProvider)
             .provisionForGame(gameCode);
       } catch (e) {
         // Best-effort: don't block the settings save on provisioning.
-        ServiceLocator.get<ILoggingService>().warning(
+        ref.read(loggingServiceProvider).warning(
           'Glossary auto-provision for game failed',
           {'gameCode': gameCode, 'error': e.toString()},
         );

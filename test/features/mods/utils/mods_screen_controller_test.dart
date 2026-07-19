@@ -24,6 +24,7 @@ import 'package:twmt/repositories/language_repository.dart';
 import 'package:twmt/repositories/project_language_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/repositories/workshop_mod_repository.dart';
+import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
 import 'package:twmt/services/projects/i_project_initialization_service.dart';
 import 'package:twmt/services/settings/settings_service.dart';
 import 'package:twmt/theme/app_theme.dart';
@@ -66,6 +67,18 @@ class _MockSettingsService extends Mock implements SettingsService {}
 
 class _MockInitService extends Mock
     implements IProjectInitializationService {}
+
+/// No-op glossary provisioning: the create/import flows read this via the
+/// bridge provider, but auto-provisioning is a best-effort side effect that
+/// these controller tests neither wire up nor assert on.
+class _FakeGlossaryProvisioning extends Fake
+    implements GlossaryAutoProvisioningService {
+  @override
+  Future<void> provisionForProject({
+    required String projectId,
+    required List<String> targetLanguageIds,
+  }) async {}
+}
 
 /// DetectedMods stub whose scan fails with no retained data (first visit /
 /// retry-after-error: AsyncError with hasValue == false).
@@ -332,6 +345,8 @@ void main() {
           gameInstallationRepositoryProvider.overrideWithValue(gameRepo),
           settingsServiceProvider.overrideWithValue(settings),
           projectInitializationServiceProvider.overrideWithValue(initService),
+          glossaryAutoProvisioningServiceProvider
+              .overrideWithValue(_FakeGlossaryProvisioning()),
           // The post-creation step that throws: marking the mod imported in
           // the local cache (runs after the project is fully initialized).
           detectedModsProvider
@@ -402,6 +417,8 @@ void main() {
           gameInstallationRepositoryProvider.overrideWithValue(gameRepo),
           settingsServiceProvider.overrideWithValue(settings),
           projectInitializationServiceProvider.overrideWithValue(initService),
+          glossaryAutoProvisioningServiceProvider
+              .overrideWithValue(_FakeGlossaryProvisioning()),
           detectedModsProvider
               .overrideWith(() => _ImportMarkThrowingDetectedMods()),
         ],

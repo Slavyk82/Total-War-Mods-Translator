@@ -1,4 +1,3 @@
-import '../../../services/service_locator.dart';
 import '../../../services/shared/i_logging_service.dart';
 import 'package:twmt/models/events/activity_event.dart';
 import '../repositories/activity_event_repository.dart';
@@ -17,9 +16,9 @@ class ActivityLoggerImpl implements ActivityLogger {
 
   ActivityLoggerImpl({
     required ActivityEventRepository repository,
-    ILoggingService? logger,
+    required ILoggingService logger,
   })  : _repository = repository,
-        _logger = logger ?? ServiceLocator.get<ILoggingService>();
+        _logger = logger;
 
   @override
   Future<void> log(

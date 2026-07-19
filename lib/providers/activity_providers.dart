@@ -5,6 +5,7 @@ import 'package:twmt/features/activity/repositories/activity_event_repository.da
 import 'package:twmt/features/activity/repositories/activity_event_repository_impl.dart';
 import 'package:twmt/features/activity/services/activity_logger.dart';
 import 'package:twmt/features/activity/services/activity_logger_impl.dart';
+import 'package:twmt/providers/shared/logging_providers.dart';
 
 part 'activity_providers.g.dart';
 
@@ -16,8 +17,10 @@ ActivityEventRepository activityEventRepository(Ref ref) =>
 /// Singleton fire-and-forget activity logger backed by
 /// [activityEventRepositoryProvider].
 @Riverpod(keepAlive: true)
-ActivityLogger activityLogger(Ref ref) =>
-    ActivityLoggerImpl(repository: ref.watch(activityEventRepositoryProvider));
+ActivityLogger activityLogger(Ref ref) => ActivityLoggerImpl(
+      repository: ref.watch(activityEventRepositoryProvider),
+      logger: ref.watch(loggingServiceProvider),
+    );
 
 /// Last 20 activity events for the current game (or all if none selected).
 ///

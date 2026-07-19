@@ -12,10 +12,9 @@ import 'package:twmt/i18n/strings.g.dart';
 import 'package:twmt/models/domain/language.dart';
 import 'package:twmt/models/domain/project_language.dart';
 import 'package:twmt/models/domain/translation_version.dart';
-import 'package:twmt/services/glossary/glossary_auto_provisioning_service.dart';
-import 'package:twmt/services/service_locator.dart';
 import 'package:twmt/providers/projects_data_providers.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
+import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/providers/project_detail_providers.dart';
 
 /// Token-themed popup for adding target languages to a project.
@@ -307,7 +306,8 @@ class _AddLanguageDialogState extends ConsumerState<AddLanguageDialog> {
       // Best-effort: provision an empty glossary per (gameCode, languageId)
       // so the new language automatically has a glossary available. The
       // helper is internally error-swallowed and never blocks this flow.
-      await ServiceLocator.get<GlossaryAutoProvisioningService>()
+      await ref
+          .read(glossaryAutoProvisioningServiceProvider)
           .provisionForProject(
         projectId: widget.projectId,
         targetLanguageIds: languageIdsList,
