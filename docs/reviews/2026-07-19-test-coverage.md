@@ -244,3 +244,63 @@ translation_provider, translation_version.
    Pas de bug vivant (SQLite stocke des ints), mais incohérent.
 3. Seuils divergents : `TmSuggestion.isFrequentlyUsed` = `usageCount >= 5`
    vs `TranslationMemoryEntry.isFrequentlyUsed` = `usageCount > 5`.
+
+---
+
+# Addendum 2 — Anomalies traitées (19 juillet 2026)
+
+Enquête sur les 3 anomalies : **aucune n'était un bug vivant**. Toutes
+remontaient à une même racine — un sous-système d'events (persistance + stats
+temps réel) échafaudé mais **jamais branché**. Preuves collectées dans le code :
+
+- `EventBus.persistEvents` vaut `false` par défaut et n'est jamais passé à `true`
+  en prod (seulement dans les tests).
+- La table `event_store` n'est **créée par aucune migration** — la persistance
+  n'a donc jamais eu de destination réelle ; seuls les auto-tests la créaient à
+  la main.
+- Les classes d'events `tm_events` / `project_events` / `translation_events`
+  ne sont **jamais publiées** (seul `TranslationAddedEvent` apparaît, dans un
+  commentaire). Ce qui circule réellement : les `Batch*Event`, avec un `toJson()`
+  réel.
+- Leurs stream providers ont **0 consommateur** (sauf `translationAddedEvents`,
+  lu par `TranslationStatistics` — lui-même watché par **aucune UI**, et
+  écoutant un event qui ne se déclenche jamais).
+- `TmSuggestion` (anomalie 3) : **0 usage** ; le provider de suggestions vivant
+  utilise `TmMatch`, un autre type.
+
+## Décision appliquée : élagage (Option A) + convertisseur partagé (anomalie 2)
+
+**Supprimé (code mort, ~1 150 lignes nettes) :**
+- `lib/models/events/{tm_events,project_events,translation_events}.dart`
+- `lib/providers/statistics/translation_statistics_provider.dart` (+ `.g.dart`)
+- `lib/services/shared/models/event_record.dart` (`EventRecord`,
+  `EventStatistics`) (+ `.g.dart`)
+- 5 fichiers de tests associés (dont les 3 tests d'events écrits en Addendum 1,
+  qui épinglaient le comportement de code désormais supprimé)
+
+**Allégé :**
+- `lib/services/shared/event_bus.dart` : **493 → 80 lignes**. Retrait de toute
+  la persistance morte (`persistEvents`, `_persistEvent`, `getEventHistory`,
+  `replayEvents`, `getStatistics`, `purgeOldEvents`, `searchEvents`, buffer de
+  replay). Conservé : le pub/sub vivant (`on<T>`, `publish`, `publishSync`,
+  `events`, `dispose`). Couverture : **14/14 (100 %)**.
+- `lib/providers/events/event_stream_providers.dart` : 18 → 10 providers (les
+  streams `Batch*` vivants, seuls consommés).
+
+**Anomalie 2 corrigée :** `Project.hasModUpdateImpact` utilise désormais le
+`@BoolIntConverter()` partagé au lieu des helpers one-off `_boolFromInt` /
+`_boolToInt` (qui divergeaient du convertisseur partagé sur le parsing des
+chaînes). Comportement identique en prod (SQLite renvoie des entiers).
+
+**Anomalies 1 et 3 résolues par suppression** (les stubs `toJson` qui
+levaient `UnimplementedError` et les getters `isFrequentlyUsed` divergents
+faisaient partie du code mort retiré).
+
+## Vérification
+
+- `flutter analyze` : propre.
+- Suite complète : **6 353 tests, 0 échec** (un `-1` transitoire d'un run
+  antérieur était le flaky token-encoder connu, non reproduit en ré-exécution).
+- Couverture : **83,2 % global / 84,0 % hors générés** (stable — le code mort
+  supprimé était surtout couvert à 100 % *et* retiré du dénominateur). `models`
+  passe de 89,5 % à 88,6 % (retrait des 3 fichiers d'events à 100 %).

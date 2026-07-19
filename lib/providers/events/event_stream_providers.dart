@@ -1,9 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../services/shared/event_bus.dart';
 import '../../models/events/batch_events.dart';
-import '../../models/events/translation_events.dart';
-import '../../models/events/project_events.dart';
-import '../../models/events/tm_events.dart';
 
 part 'event_stream_providers.g.dart';
 
@@ -49,57 +46,6 @@ Stream<BatchCancelledEvent> batchCancelledEvents(Ref ref) {
   return EventBus.instance.on<BatchCancelledEvent>();
 }
 
-// ========== Translation Event Streams ==========
-
-@riverpod
-Stream<TranslationAddedEvent> translationAddedEvents(Ref ref) {
-  return EventBus.instance.on<TranslationAddedEvent>();
-}
-
-@riverpod
-Stream<TranslationEditedEvent> translationEditedEvents(Ref ref) {
-  return EventBus.instance.on<TranslationEditedEvent>();
-}
-
-@riverpod
-Stream<TranslationValidatedEvent> translationValidatedEvents(Ref ref) {
-  return EventBus.instance.on<TranslationValidatedEvent>();
-}
-
-@riverpod
-Stream<TranslationDeletedEvent> translationDeletedEvents(Ref ref) {
-  return EventBus.instance.on<TranslationDeletedEvent>();
-}
-
-@riverpod
-Stream<TranslationStatusChangedEvent> translationStatusChangedEvents(Ref ref) {
-  return EventBus.instance.on<TranslationStatusChangedEvent>();
-}
-
-// ========== Project Event Streams ==========
-
-@riverpod
-Stream<ProjectCreatedEvent> projectCreatedEvents(Ref ref) {
-  return EventBus.instance.on<ProjectCreatedEvent>();
-}
-
-@riverpod
-Stream<ProjectUpdatedEvent> projectUpdatedEvents(Ref ref) {
-  return EventBus.instance.on<ProjectUpdatedEvent>();
-}
-
-@riverpod
-Stream<ProjectCompletedEvent> projectCompletedEvents(Ref ref) {
-  return EventBus.instance.on<ProjectCompletedEvent>();
-}
-
-// ========== TM Event Streams ==========
-
-@riverpod
-Stream<TranslationAddedToTmEvent> translationAddedToTmEvents(Ref ref) {
-  return EventBus.instance.on<TranslationAddedToTmEvent>();
-}
-
 // ========== Filtered Event Streams ==========
 
 /// Get progress events for a specific batch
@@ -133,15 +79,4 @@ Stream<BatchFailedEvent> batchFailedForBatch(
   return EventBus.instance
       .on<BatchFailedEvent>()
       .where((event) => event.batchId == batchId);
-}
-
-/// Get all events for a specific project
-@riverpod
-Stream<ProjectEvent> projectEvents(
-  Ref ref,
-  String projectId,
-) {
-  return EventBus.instance.on<ProjectEvent>().where(
-        (event) => event.projectId == projectId,
-      );
 }

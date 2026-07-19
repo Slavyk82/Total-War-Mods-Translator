@@ -103,13 +103,7 @@ void main() {
             ));
 
     // EventBus.publish is async; return a resolved future.
-    when(() => eventBus.publish(
-          any(),
-          triggeredBy: any(named: 'triggeredBy'),
-          correlationId: any(named: 'correlationId'),
-          causationId: any(named: 'causationId'),
-          metadata: any(named: 'metadata'),
-        )).thenAnswer((_) async {});
+    when(() => eventBus.publish(any())).thenAnswer((_) async {});
 
     manager = BatchProgressManager(
       batchRepository: batchRepository,
@@ -297,13 +291,7 @@ void main() {
       await manager.cancel(batchId: _batchId);
 
       // cancel() awaits getById then publish(); verify publish was called.
-      verify(() => eventBus.publish(
-            any(),
-            triggeredBy: any(named: 'triggeredBy'),
-            correlationId: any(named: 'correlationId'),
-            causationId: any(named: 'causationId'),
-            metadata: any(named: 'metadata'),
-          )).called(1);
+      verify(() => eventBus.publish(any())).called(1);
     });
   });
 
@@ -520,13 +508,7 @@ void main() {
       expect(result.isOk, isTrue);
       expect(manager.getProgress(_batchId)!.status,
           TranslationProgressStatus.paused);
-      verify(() => eventBus.publish(
-            any(),
-            triggeredBy: any(named: 'triggeredBy'),
-            correlationId: any(named: 'correlationId'),
-            causationId: any(named: 'causationId'),
-            metadata: any(named: 'metadata'),
-          )).called(1);
+      verify(() => eventBus.publish(any())).called(1);
     });
 
     test('still succeeds when getById returns Err (empty projectLanguageId)',
@@ -570,13 +552,7 @@ void main() {
       expect(manager.getProgress(_batchId)!.status,
           TranslationProgressStatus.inProgress);
       // pause + resume publish twice in total.
-      verify(() => eventBus.publish(
-            any(),
-            triggeredBy: any(named: 'triggeredBy'),
-            correlationId: any(named: 'correlationId'),
-            causationId: any(named: 'causationId'),
-            metadata: any(named: 'metadata'),
-          )).called(2);
+      verify(() => eventBus.publish(any())).called(2);
     });
 
     test('still succeeds when getById returns Err', () async {
@@ -631,13 +607,7 @@ void main() {
 
       expect(result.isOk, isTrue);
       expect(token.isCancelled, isTrue);
-      verify(() => eventBus.publish(
-            any(),
-            triggeredBy: any(named: 'triggeredBy'),
-            correlationId: any(named: 'correlationId'),
-            causationId: any(named: 'causationId'),
-            metadata: any(named: 'metadata'),
-          )).called(1);
+      verify(() => eventBus.publish(any())).called(1);
       expect(
         () => manager.checkPauseOrCancel(_batchId),
         throwsA(isA<CancelledException>()),

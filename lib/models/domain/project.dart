@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:twmt/models/common/json_converters.dart';
 import 'package:twmt/models/domain/project_metadata.dart';
 
 part 'project.g.dart';
@@ -78,11 +79,8 @@ class Project {
   /// Flag indicating the project was impacted by a mod update.
   /// Set to true when mod update changes are applied (new units, modified texts, etc.)
   /// Users can clear this flag after reviewing the project.
-  @JsonKey(
-    name: 'has_mod_update_impact',
-    fromJson: _boolFromInt,
-    toJson: _boolToInt,
-  )
+  @JsonKey(name: 'has_mod_update_impact')
+  @BoolIntConverter()
   final bool hasModUpdateImpact;
 
   /// Type of project: 'mod' for mod translations, 'game' for base game translations.
@@ -272,14 +270,3 @@ class Project {
   @override
   String toString() => 'Project(id: $id, name: $name, type: $projectType, gameInstallationId: $gameInstallationId)';
 }
-
-/// Convert SQLite integer (0/1) to bool for hasModUpdateImpact field
-bool _boolFromInt(dynamic value) {
-  if (value == null) return false;
-  if (value is bool) return value;
-  if (value is int) return value == 1;
-  return false;
-}
-
-/// Convert bool to SQLite integer (0/1) for hasModUpdateImpact field
-int _boolToInt(bool value) => value ? 1 : 0;
