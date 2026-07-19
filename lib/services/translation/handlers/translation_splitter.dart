@@ -183,7 +183,14 @@ class TranslationSplitter {
     SubBatchTranslatedCallback? onSubBatchTranslated,
     required int depth,
   }) async {
-    final cancellationToken = getCancellationToken(batchId);
+    // Always resolve the token by the ROOT batch id: the cancellation token is
+    // registered once per batch under the root id (see BatchProgressManager),
+    // while `batchId` here may be a parallel-chunk id ('<root>-parallel-N') or
+    // an auto-split sub-id that has no token of its own. Looking it up by
+    // `batchId` returned null for every parallel chunk, so a user Stop could
+    // not abort the in-flight Dio request and cancellation appeared to hang
+    // until the current batch's API calls completed naturally.
+    final cancellationToken = getCancellationToken(rootBatchId);
     final dioCancelToken = cancellationToken?.dioToken;
 
     final llmCallProgress = progress.copyWith(

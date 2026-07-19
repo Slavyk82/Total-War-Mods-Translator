@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/models/domain/translation_unit.dart';
 import 'package:twmt/services/llm/models/llm_exceptions.dart';
+import 'package:twmt/services/llm/models/llm_cancellation_token.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/models/llm_response.dart';
 import 'package:twmt/services/translation/handlers/llm_cache_manager.dart';
@@ -56,7 +57,7 @@ LlmRequest _buildRequest(Map<String, String> texts) {
   );
 }
 
-TranslationContext _buildContext() {
+TranslationContext _buildContext({int parallelBatches = 1}) {
   return TranslationContext(
     id: 'ctx-1',
     projectId: 'project-1',
@@ -64,6 +65,7 @@ TranslationContext _buildContext() {
     providerId: 'provider_openai',
     modelId: 'gpt-4o-mini',
     targetLanguage: 'fr',
+    parallelBatches: parallelBatches,
     createdAt: DateTime(2026, 6, 10),
     updatedAt: DateTime(2026, 6, 10),
   );
@@ -200,6 +202,98 @@ void main() {
           reason: 'first half\'s exchange log must not be dropped');
       expect(successIds.where((id) => id.contains('part2')), hasLength(1),
           reason: 'second half\'s exchange log must not be dropped');
+    });
+  });
+
+  group('ParallelBatchProcessor cancellation-token wiring', () {
+    test(
+        'every parallel chunk forwards the ROOT batch Dio cancel token so '
+        'Stop aborts in-flight requests immediately', () async {
+      final tokenEstimator = LlmTokenEstimator();
+      final retryHandler = _MockLlmRetryHandler();
+      final logger = MockLoggingService();
+      final processor = ParallelBatchProcessor(
+        tokenEstimator: tokenEstimator,
+        cacheManager: LlmCacheManager(logger: logger),
+        translationSplitter: TranslationSplitter(
+          tokenEstimator: tokenEstimator,
+          retryHandler: retryHandler,
+          logger: logger,
+        ),
+        logger: logger,
+      );
+
+      final units = [
+        _unit('u1', 'Source one'),
+        _unit('u2', 'Source two'),
+        _unit('u3', 'Source three'),
+        _unit('u4', 'Source four'),
+      ];
+
+      // Production reality: the cancellation token is registered ONLY under the
+      // root batch id (BatchProgressManager.getOrCreateCancellationToken is
+      // called once for the root batch in the orchestrator). Chunk ids like
+      // 'batch-1-parallel-0' have no token of their own.
+      final rootToken = LlmCancellationToken();
+      final capturedTokens = <Object?>[];
+
+      when(() => retryHandler.translateWithRetry(
+            llmRequest: any(named: 'llmRequest'),
+            batchId: any(named: 'batchId'),
+            dioCancelToken: any(named: 'dioCancelToken'),
+          )).thenAnswer((invocation) async {
+        capturedTokens
+            .add(invocation.namedArguments[const Symbol('dioCancelToken')]);
+        final request = invocation.namedArguments[const Symbol('llmRequest')]
+            as LlmRequest;
+        return Ok<LlmResponse, LlmServiceException>(LlmResponse(
+          requestId: request.requestId,
+          translations: {for (final k in request.texts.keys) k: 'T:$k'},
+          providerCode: 'openai',
+          modelName: 'gpt-4o-mini',
+          inputTokens: 10,
+          outputTokens: 10,
+          totalTokens: 20,
+          processingTimeMs: 10,
+          timestamp: DateTime(2026, 6, 10, 12, 0, 1),
+        ));
+      });
+
+      final baseline = _buildProgress();
+      final cacheResult = CacheProcessingResult(
+        cachedTranslations: <String, String>{},
+        uncachedSourceTexts: units.map((u) => u.sourceText).toList(),
+        registeredHashes: <String, String>{},
+        sourceTextToUnits: {
+          for (final u in units) u.sourceText: [u],
+        },
+        cachedUnitIds: <String>{},
+        allTranslations: <String, String>{},
+      );
+
+      await processor.processParallelBatches(
+        batchId: 'batch-1',
+        unitsForLlm: units,
+        unitsToTranslate: units,
+        builtPrompt: _FakeBuiltPrompt(),
+        context: _buildContext(parallelBatches: 2),
+        progress: baseline,
+        currentProgress: baseline,
+        cacheResult: cacheResult,
+        // Token exists only for the root id, exactly like production.
+        getCancellationToken: (id) => id == 'batch-1' ? rootToken : null,
+        onProgressUpdate: (_, _) {},
+        checkPauseOrCancel: (_) async {},
+      );
+
+      expect(capturedTokens, isNotEmpty,
+          reason: 'each chunk must issue an LLM call');
+      expect(
+        capturedTokens,
+        everyElement(same(rootToken.dioToken)),
+        reason: 'a null token here means the in-flight request cannot be '
+            'aborted until it completes naturally — the reported cancel lag',
+      );
     });
   });
 
