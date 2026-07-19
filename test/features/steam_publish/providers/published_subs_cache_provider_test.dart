@@ -7,11 +7,13 @@ import 'package:twmt/models/common/service_exception.dart';
 import 'package:twmt/models/domain/compilation.dart';
 import 'package:twmt/models/domain/game_installation.dart';
 import 'package:twmt/models/domain/project.dart';
+import 'package:twmt/models/domain/project_publication.dart';
 import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/shared/repository_providers.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/repositories/compilation_repository.dart';
 import 'package:twmt/repositories/game_installation_repository.dart';
+import 'package:twmt/repositories/project_publication_repository.dart';
 import 'package:twmt/repositories/project_repository.dart';
 import 'package:twmt/services/steam/i_workshop_api_service.dart';
 import 'package:twmt/services/steam/models/steam_exceptions.dart';
@@ -23,6 +25,9 @@ class _MockCompilationRepository extends Mock implements CompilationRepository {
 
 class _MockGameInstallationRepository extends Mock
     implements GameInstallationRepository {}
+
+class _MockProjectPublicationRepository extends Mock
+    implements ProjectPublicationRepository {}
 
 class _MockWorkshopApiService extends Mock implements IWorkshopApiService {}
 
@@ -48,18 +53,26 @@ GameInstallation _installation({String id = 'install-wh3'}) =>
       updatedAt: 0,
     );
 
-Project _project({
-  required String id,
-  String? publishedSteamId,
-}) =>
-    Project(
+Project _project({required String id}) => Project(
       id: id,
       name: id,
       gameInstallationId: 'install-wh3',
       createdAt: 0,
       updatedAt: 0,
-      publishedSteamId: publishedSteamId,
-      publishedAt: publishedSteamId != null ? 1700000000 : null,
+    );
+
+/// A `project_publication` row — the source of truth for published project
+/// Workshop ids (projects.published_steam_id is vestigial).
+ProjectPublication _publication({
+  required String projectId,
+  required String? steamId,
+  String languageCode = 'fr',
+}) =>
+    ProjectPublication(
+      projectId: projectId,
+      languageCode: languageCode,
+      steamId: steamId,
+      publishedAt: steamId != null && steamId.isNotEmpty ? 1700000000 : null,
     );
 
 Compilation _compilation({
@@ -94,6 +107,7 @@ ProviderContainer _makeContainer({
   required ProjectRepository projectRepo,
   required CompilationRepository compilationRepo,
   required GameInstallationRepository gameInstallationRepo,
+  required ProjectPublicationRepository publicationRepo,
   required IWorkshopApiService workshopApi,
   ConfiguredGame? selectedGame = _gameWh3,
 }) {
@@ -102,6 +116,7 @@ ProviderContainer _makeContainer({
       projectRepositoryProvider.overrideWithValue(projectRepo),
       compilationRepositoryProvider.overrideWithValue(compilationRepo),
       gameInstallationRepositoryProvider.overrideWithValue(gameInstallationRepo),
+      projectPublicationRepositoryProvider.overrideWithValue(publicationRepo),
       workshopApiServiceProvider.overrideWithValue(workshopApi),
       selectedGameProvider.overrideWith(() => _FakeSelectedGame(selectedGame)),
     ],
@@ -123,6 +138,7 @@ void main() {
       final projectRepo = _MockProjectRepository();
       final compilationRepo = _MockCompilationRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
+      final publicationRepo = _MockProjectPublicationRepository();
       final workshopApi = _MockWorkshopApiService();
 
       when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
@@ -131,9 +147,15 @@ void main() {
       );
       when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
         (_) async => Ok<List<Project>, TWMTDatabaseException>([
-          _project(id: 'p1', publishedSteamId: '111'),
-          _project(id: 'p2', publishedSteamId: '222'),
-          _project(id: 'p3'), // unpublished — must not be queried
+          _project(id: 'p1'),
+          _project(id: 'p2'),
+          _project(id: 'p3'), // unpublished (no publication row) — not queried
+        ]),
+      );
+      when(() => publicationRepo.getAll()).thenAnswer(
+        (_) async => Ok<List<ProjectPublication>, TWMTDatabaseException>([
+          _publication(projectId: 'p1', steamId: '111'),
+          _publication(projectId: 'p2', steamId: '222'),
         ]),
       );
       when(() => compilationRepo.getByGameInstallation('install-wh3'))
@@ -157,6 +179,7 @@ void main() {
         projectRepo: projectRepo,
         compilationRepo: compilationRepo,
         gameInstallationRepo: gameInstallRepo,
+        publicationRepo: publicationRepo,
         workshopApi: workshopApi,
       );
       addTearDown(container.dispose);
@@ -180,6 +203,7 @@ void main() {
       final projectRepo = _MockProjectRepository();
       final compilationRepo = _MockCompilationRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
+      final publicationRepo = _MockProjectPublicationRepository();
       final workshopApi = _MockWorkshopApiService();
 
       when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
@@ -188,7 +212,12 @@ void main() {
       );
       when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
         (_) async => Ok<List<Project>, TWMTDatabaseException>([
-          _project(id: 'p1', publishedSteamId: '111'),
+          _project(id: 'p1'),
+        ]),
+      );
+      when(() => publicationRepo.getAll()).thenAnswer(
+        (_) async => Ok<List<ProjectPublication>, TWMTDatabaseException>([
+          _publication(projectId: 'p1', steamId: '111'),
         ]),
       );
       when(() => compilationRepo.getByGameInstallation('install-wh3'))
@@ -216,6 +245,7 @@ void main() {
         projectRepo: projectRepo,
         compilationRepo: compilationRepo,
         gameInstallationRepo: gameInstallRepo,
+        publicationRepo: publicationRepo,
         workshopApi: workshopApi,
       );
       addTearDown(container.dispose);
@@ -238,12 +268,14 @@ void main() {
       final projectRepo = _MockProjectRepository();
       final compilationRepo = _MockCompilationRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
+      final publicationRepo = _MockProjectPublicationRepository();
       final workshopApi = _MockWorkshopApiService();
 
       // 150 published projects → must split into 100 + 50.
-      final projects = List<Project>.generate(
+      final projects = List<Project>.generate(150, (i) => _project(id: 'p$i'));
+      final publications = List<ProjectPublication>.generate(
         150,
-        (i) => _project(id: 'p$i', publishedSteamId: '${1000 + i}'),
+        (i) => _publication(projectId: 'p$i', steamId: '${1000 + i}'),
       );
 
       when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
@@ -252,6 +284,10 @@ void main() {
       );
       when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
         (_) async => Ok<List<Project>, TWMTDatabaseException>(projects),
+      );
+      when(() => publicationRepo.getAll()).thenAnswer(
+        (_) async =>
+            Ok<List<ProjectPublication>, TWMTDatabaseException>(publications),
       );
       when(() => compilationRepo.getByGameInstallation('install-wh3'))
           .thenAnswer(
@@ -271,6 +307,7 @@ void main() {
         projectRepo: projectRepo,
         compilationRepo: compilationRepo,
         gameInstallationRepo: gameInstallRepo,
+        publicationRepo: publicationRepo,
         workshopApi: workshopApi,
       );
       addTearDown(container.dispose);
@@ -299,6 +336,7 @@ void main() {
       final projectRepo = _MockProjectRepository();
       final compilationRepo = _MockCompilationRepository();
       final gameInstallRepo = _MockGameInstallationRepository();
+      final publicationRepo = _MockProjectPublicationRepository();
       final workshopApi = _MockWorkshopApiService();
 
       when(() => gameInstallRepo.getByGameCode('wh3')).thenAnswer(
@@ -307,8 +345,17 @@ void main() {
       );
       when(() => projectRepo.getByGameInstallation('install-wh3')).thenAnswer(
         (_) async => Ok<List<Project>, TWMTDatabaseException>([
-          _project(id: 'p1', publishedSteamId: '111'),
+          _project(id: 'p1'),
           _project(id: 'p2'), // unpublished — must not appear
+        ]),
+      );
+      when(() => publicationRepo.getAll()).thenAnswer(
+        (_) async => Ok<List<ProjectPublication>, TWMTDatabaseException>([
+          _publication(projectId: 'p1', steamId: '111'),
+          // Empty steam id — must not appear.
+          _publication(projectId: 'p2', steamId: ''),
+          // Row for a project outside this installation — must not appear.
+          _publication(projectId: 'other-install-project', steamId: '999'),
         ]),
       );
       when(() => compilationRepo.getByGameInstallation('install-wh3'))
@@ -323,6 +370,7 @@ void main() {
         projectRepo: projectRepo,
         compilationRepo: compilationRepo,
         gameInstallationRepo: gameInstallRepo,
+        publicationRepo: publicationRepo,
         workshopApi: workshopApi,
       );
       addTearDown(container.dispose);

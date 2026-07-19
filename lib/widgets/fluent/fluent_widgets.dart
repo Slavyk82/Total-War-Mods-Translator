@@ -7,17 +7,11 @@
 ///
 /// ### Buttons
 /// - [FluentButton] - Primary action button (replaces ElevatedButton)
-/// - [FluentTextButton] - Secondary text-only button (replaces TextButton)
 /// - [FluentIconButton] - Icon-only button (replaces IconButton)
 /// - [FluentOutlinedButton] - Outlined button (replaces OutlinedButton)
 ///
 /// ### Notifications
 /// - [FluentToast] - Toast notifications (replaces SnackBar)
-///
-/// ### Input Controls
-/// - [FluentToggleSwitch] - Toggle switch (replaces Switch)
-/// - [FluentCheckbox] - Checkbox (replaces Checkbox)
-/// - [FluentTextField] - Text field (replaces TextField)
 ///
 /// ### Progress Indicators
 /// - [FluentProgressRing] - Circular progress indicator (replaces CircularProgressIndicator)
@@ -65,31 +59,20 @@
 /// | Material Widget | Fluent Replacement |
 /// |----------------|-------------------|
 /// | ElevatedButton | FluentButton |
-/// | TextButton | FluentTextButton |
 /// | IconButton | FluentIconButton |
 /// | OutlinedButton | FluentOutlinedButton |
 /// | SnackBar | FluentToast |
-/// | Switch | FluentToggleSwitch |
-/// | Checkbox | FluentCheckbox |
-/// | TextField | FluentTextField |
 /// | CircularProgressIndicator | FluentProgressRing |
 /// | LinearProgressIndicator | FluentProgressBar |
 library;
 
 // Buttons
 export 'fluent_button.dart';
-export 'fluent_text_button.dart';
 export 'fluent_icon_button.dart';
 export 'fluent_outlined_button.dart';
-export 'fluent_dialog_button.dart';
 
 // Notifications
 export 'fluent_toast.dart';
-
-// Input Controls
-export 'fluent_toggle_switch.dart';
-export 'fluent_checkbox.dart';
-export 'fluent_text_field.dart';
 
 // Progress Indicators
 export 'fluent_progress_indicator.dart';
