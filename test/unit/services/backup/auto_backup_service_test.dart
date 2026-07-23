@@ -65,13 +65,14 @@ void main() {
     expect(createCalls, 1);
     final files = await backupFiles();
     expect(files, hasLength(1));
-    expect(files.single, matches(r'^TWMT_Backup_.*\.zip$'));
+    expect(files.single, matches(r'^TWMT_AutoBackup_.*\.zip$'));
   });
 
   test('skips when a recent backup already exists', () async {
-    // Plant a fresh backup, then run with a 1-day interval.
-    await File(path.join(backupDir.path, 'TWMT_Backup_2026-06-14_120000.zip'))
-        .writeAsString('zip');
+    // Plant a fresh auto-backup, then run with a 1-day interval.
+    await File(
+      path.join(backupDir.path, 'TWMT_AutoBackup_2026-06-14_120000.zip'),
+    ).writeAsString('zip');
 
     final service = build(minInterval: const Duration(days: 1));
     final result = await service.runIfDue();
@@ -83,7 +84,7 @@ void main() {
   test('takes a new backup when the newest is older than minInterval',
       () async {
     final old = File(
-      path.join(backupDir.path, 'TWMT_Backup_2026-06-01_120000.zip'),
+      path.join(backupDir.path, 'TWMT_AutoBackup_2026-06-01_120000.zip'),
     );
     await old.writeAsString('zip');
     await old.setLastModified(DateTime(2026, 6, 1, 12));
@@ -99,10 +100,10 @@ void main() {
   });
 
   test('prunes old backups beyond the retain count', () async {
-    // Pre-seed 4 old backups with increasing mtimes, retain = 2.
+    // Pre-seed 4 old auto-backups with increasing mtimes, retain = 2.
     for (var i = 1; i <= 4; i++) {
       final f = File(
-        path.join(backupDir.path, 'TWMT_Backup_2026-06-0${i}_120000.zip'),
+        path.join(backupDir.path, 'TWMT_AutoBackup_2026-06-0${i}_120000.zip'),
       );
       await f.writeAsString('zip');
       await f.setLastModified(DateTime(2026, 6, i, 12));
@@ -122,5 +123,32 @@ void main() {
     expect(files, hasLength(2));
     expect(files.any((f) => f.contains('2026-06-01')), isFalse);
     expect(files.any((f) => f.contains('2026-06-02')), isFalse);
+  });
+
+  // Regression (D1): manual backups (saved by the user with the TWMT_Backup_
+  // name) live in the same directory but must NEVER be deleted by auto-backup
+  // pruning. Only auto-backups are subject to the retain limit.
+  test('never prunes manually-named backups, only auto-backups', () async {
+    // Four manual backups the user saved into the backup directory.
+    for (var i = 1; i <= 4; i++) {
+      final f = File(
+        path.join(backupDir.path, 'TWMT_Backup_2026-06-0${i}_120000.zip'),
+      );
+      await f.writeAsString('zip');
+      await f.setLastModified(DateTime(2026, 6, i, 12));
+    }
+
+    final service = build(
+      retain: 2,
+      minInterval: const Duration(days: 1),
+      now: () => DateTime(2026, 6, 14, 12),
+    );
+
+    await service.runIfDue();
+
+    final files = await backupFiles();
+    // All four manual backups survive; pruning only ever touches auto-backups.
+    final manual = files.where((f) => f.startsWith('TWMT_Backup_')).toList();
+    expect(manual, hasLength(4));
   });
 }

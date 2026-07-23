@@ -297,9 +297,19 @@ class ValidationServiceImpl implements IValidationService {
           '${translatedVars.where((v) => v.startsWith('{{')).toList()}');
     }
 
-    // Check if all source variables are in translation
-    final missingVars =
-        sourceVars.where((v) => !translatedVars.contains(v)).toList();
+    // Compare by OCCURRENCE COUNT, not mere presence: dropping one of two
+    // identical placeholders (e.g. "%s ... %s" -> "%s") corrupts the runtime
+    // substitution and must be caught. A token is "missing" when the
+    // translation has fewer occurrences of it than the source.
+    final sourceCounts = _countOccurrences(sourceVars);
+    final translatedCounts = _countOccurrences(translatedVars);
+
+    final missingVars = <String>[];
+    sourceCounts.forEach((variable, count) {
+      if ((translatedCounts[variable] ?? 0) < count) {
+        missingVars.add(variable);
+      }
+    });
     if (missingVars.isNotEmpty) {
       // Separate double-brace templates from simple variables
       final missingSimpleVars =
@@ -331,8 +341,14 @@ class ValidationServiceImpl implements IValidationService {
       }
     }
 
-    // Check if translation has extra variables
-    final extraVars = translatedVars.where((v) => !sourceVars.contains(v));
+    // A token is "extra" when the translation has MORE occurrences of it than
+    // the source (a spurious added or duplicated placeholder).
+    final extraVars = <String>[];
+    translatedCounts.forEach((variable, count) {
+      if (count > (sourceCounts[variable] ?? 0)) {
+        extraVars.add(variable);
+      }
+    });
     if (extraVars.isNotEmpty) {
       return ValidationError(
         rule: ValidationRule.variables,
@@ -343,6 +359,16 @@ class ValidationServiceImpl implements IValidationService {
     }
 
     return null;
+  }
+
+  /// Count how many times each token occurs (multiset), so variable-preservation
+  /// checks are sensitive to duplicated/dropped occurrences, not just presence.
+  static Map<String, int> _countOccurrences(List<String> items) {
+    final counts = <String, int>{};
+    for (final item in items) {
+      counts[item] = (counts[item] ?? 0) + 1;
+    }
+    return counts;
   }
 
   @override
@@ -391,6 +417,24 @@ class ValidationServiceImpl implements IValidationService {
         rule: ValidationRule.markup,
         severity: ValidationSeverity.error,
         message: 'Unbalanced markup tags in translation',
+        field: key,
+      );
+    }
+
+    // Same count and both balanced, but a tag's VALUE changed (e.g. a colour
+    // code `[[col:red]]` -> `[[col:green]]`). The rendered in-game text is
+    // silently altered, so flag it. Compared as a multiset (not by position)
+    // so a legitimate reordering of independent tags is not a false positive.
+    final sourceTagCounts = _countOccurrences(sourceTags);
+    final translatedTagCounts = _countOccurrences(translatedTags);
+    final tagsDiffer = sourceTagCounts.length != translatedTagCounts.length ||
+        sourceTagCounts.entries
+            .any((e) => translatedTagCounts[e.key] != e.value);
+    if (tagsDiffer) {
+      return ValidationError(
+        rule: ValidationRule.markup,
+        severity: ValidationSeverity.error,
+        message: 'Markup tag values changed between source and translation',
         field: key,
       );
     }

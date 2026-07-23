@@ -41,41 +41,48 @@ class CreateProjectPublicationMigration extends Migration {
   @override
   Future<bool> execute() async {
     try {
-      await DatabaseService.execute('''
-        CREATE TABLE IF NOT EXISTS project_publication (
-          project_id TEXT NOT NULL,
-          language_code TEXT NOT NULL,
-          steam_id TEXT,
-          published_at INTEGER,
-          PRIMARY KEY (project_id, language_code)
-        )
-      ''');
-
-      final projectCols = await DatabaseService.database
-          .rawQuery('PRAGMA table_info(projects)');
-      final hasLegacy =
-          projectCols.any((c) => c['name'] == 'published_steam_id');
-      if (hasLegacy) {
-        await DatabaseService.execute('''
-          INSERT OR IGNORE INTO project_publication
-            (project_id, language_code, steam_id, published_at)
-          SELECT
-            p.id,
-            COALESCE(
-              (SELECT l.code
-                 FROM project_languages pl
-                 JOIN languages l ON l.id = pl.language_id
-                WHERE pl.project_id = p.id
-                ORDER BY (l.code = 'fr') DESC, pl.created_at ASC
-                LIMIT 1),
-              'fr'),
-            p.published_steam_id,
-            p.published_at
-          FROM projects p
-          WHERE p.published_steam_id IS NOT NULL
-            AND p.published_steam_id <> ''
+      // Create the table and backfill it ATOMICALLY. isApplied() only checks
+      // that the table exists, so if these were two separate autocommits a
+      // crash between them would leave the table present but the backfill
+      // unrun - and the migration would then be skipped forever, silently
+      // dropping every legacy published Workshop id. A single transaction makes
+      // it all-or-nothing (the INSERT OR IGNORE keeps a full re-run idempotent).
+      await DatabaseService.database.transaction((txn) async {
+        await txn.execute('''
+          CREATE TABLE IF NOT EXISTS project_publication (
+            project_id TEXT NOT NULL,
+            language_code TEXT NOT NULL,
+            steam_id TEXT,
+            published_at INTEGER,
+            PRIMARY KEY (project_id, language_code)
+          )
         ''');
-      }
+
+        final projectCols = await txn.rawQuery('PRAGMA table_info(projects)');
+        final hasLegacy =
+            projectCols.any((c) => c['name'] == 'published_steam_id');
+        if (hasLegacy) {
+          await txn.execute('''
+            INSERT OR IGNORE INTO project_publication
+              (project_id, language_code, steam_id, published_at)
+            SELECT
+              p.id,
+              COALESCE(
+                (SELECT l.code
+                   FROM project_languages pl
+                   JOIN languages l ON l.id = pl.language_id
+                  WHERE pl.project_id = p.id
+                  ORDER BY (l.code = 'fr') DESC, pl.created_at ASC
+                  LIMIT 1),
+                'fr'),
+              p.published_steam_id,
+              p.published_at
+            FROM projects p
+            WHERE p.published_steam_id IS NOT NULL
+              AND p.published_steam_id <> ''
+          ''');
+        }
+      });
 
       _logger.info('Ensured project_publication table (with legacy backfill)');
       return true;

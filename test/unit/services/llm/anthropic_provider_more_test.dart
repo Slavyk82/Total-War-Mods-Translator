@@ -368,12 +368,14 @@ void main() {
   });
 
   group('AnthropicProvider.translate — response parsing edges', () {
-    test('non-text content block only -> empty text -> content filtered',
-        () async {
+    test('non-text content block only -> empty text -> parse error (retryable, '
+        'NOT content filtered)', () async {
       final dio = _MockDio();
       final provider = buildProvider(dio);
-      // content has a non-text block; firstWhere(orElse) yields {'text': ''},
-      // which (non-empty content + empty text) trips the content-filter branch.
+      // content has only a non-text block (e.g. tool_use); firstWhere(orElse)
+      // yields empty text. With a non-moderation stop_reason this is NOT
+      // content filtering: it must surface as a retryable parse error (L1), so
+      // the recovery layer retries rather than permanently skipping the unit.
       _stubPostAnswer(
         dio,
         _okResponse({
@@ -390,7 +392,8 @@ void main() {
       final result = await provider.translate(_buildRequest(), 'sk-ant-test');
 
       expect(result.isErr, isTrue);
-      expect(result.error, isA<LlmContentFilteredException>());
+      expect(result.error, isA<LlmResponseParseException>());
+      expect(result.error, isNot(isA<LlmContentFilteredException>()));
     });
 
     test('text block with malformed JSON maps to LlmResponseParseException',

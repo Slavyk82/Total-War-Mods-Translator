@@ -448,6 +448,28 @@ void main() {
       verify(() => versionRepository.upsert(any())).called(1);
     });
 
+    test('a duplicate call for a batch already in flight does not start the '
+        'work a second time (D3 re-entrancy guard)', () async {
+      // Fire two translateBatch calls back-to-back for the SAME batchId. The
+      // second must be ignored (joined to the running batch), not run a second
+      // _translateBatchInternal - otherwise the LLM is called twice, doubling
+      // cost and racing the shared progress counters.
+      final first =
+          service.translateBatch(batchId: _batchId, context: _fakeContext());
+      // Duplicate while the first is still in flight.
+      service.translateBatch(batchId: _batchId, context: _fakeContext());
+
+      await first.toList();
+
+      // A single _translateBatchInternal run calls getById twice; a second
+      // (un-guarded) run would double that to four.
+      verify(() => batchRepository.getById(any())).called(2);
+      verify(() => llmService.translateBatch(
+            any(),
+            cancelToken: any(named: 'cancelToken'),
+          )).called(1);
+    });
+
     test('skip-filter path: bracketed placeholder bypasses LLM entirely',
         () async {
       // Two units: one normal, one fully-bracketed placeholder.

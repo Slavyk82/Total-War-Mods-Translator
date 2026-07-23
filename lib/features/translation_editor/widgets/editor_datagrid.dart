@@ -12,6 +12,7 @@ import 'package:twmt/widgets/lists/token_data_grid_theme.dart';
 import 'package:twmt/providers/editor_providers.dart';
 import '../../../providers/shared/repository_providers.dart' as shared_repo;
 import '../../../providers/shared/service_providers.dart';
+import '../../../providers/shared/logging_providers.dart';
 import '../../../models/events/batch_events.dart';
 import 'package:twmt/providers/projects_data_providers.dart' show projectsWithDetailsProvider;
 import 'editor_data_source.dart';
@@ -115,15 +116,40 @@ class _EditorDataGridState extends ConsumerState<EditorDataGrid> {
           (pl) => pl.languageId == widget.languageId,
           orElse: () => throw Exception('Project language not found'),
         );
-        
+
         if (mounted) {
           setState(() {
             _currentProjectLanguageId = projectLanguage.id;
           });
         }
+      } else {
+        // Repo returned an error: id stays null, so batch-completion events
+        // won't match and the grid stops auto-refreshing. Log it instead of
+        // failing silently.
+        ref.read(loggingServiceProvider).warning(
+          'Editor grid: could not load project language id; batch-completion '
+          'auto-refresh will be disabled for this view',
+          {
+            'projectId': widget.projectId,
+            'languageId': widget.languageId,
+            'error': projectLanguagesResult.error.message,
+          },
+        );
       }
     } catch (e) {
-      // Error loading project language ID, event filtering won't work but non-critical
+      // The language is not attached to the project (firstWhere threw) or the
+      // lookup failed. _currentProjectLanguageId stays null, so batch-event
+      // auto-refresh will not fire; log it so the lost refreshes are
+      // diagnosable rather than invisible.
+      ref.read(loggingServiceProvider).warning(
+        'Editor grid: failed to resolve project language id; batch-completion '
+        'auto-refresh will be disabled for this view',
+        {
+          'projectId': widget.projectId,
+          'languageId': widget.languageId,
+          'error': e.toString(),
+        },
+      );
     }
   }
 

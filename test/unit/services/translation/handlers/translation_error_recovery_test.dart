@@ -204,5 +204,63 @@ void main() {
       expect(translations, isEmpty);
       expect(progress.failedUnits, 1);
     });
+
+    // Regression (L2): a single unit whose own size exceeds the model context
+    // cannot be split (nothing to split) and more output tokens won't help.
+    // It must be skipped (counted as failed), NOT thrown as a fatal error that
+    // aborts every other translatable unit in a non-parallel batch.
+    test('skips a single oversized unit (token limit) instead of failing the '
+        'whole batch', () async {
+      final recovery = TranslationErrorRecovery(
+        tokenEstimator: LlmTokenEstimator(),
+        logger: MockLoggingService(),
+      );
+
+      final unit = TranslationUnit(
+        id: 'big-unit',
+        projectId: 'project-1',
+        key: 'huge_key',
+        sourceText: 'x' * 100000,
+        createdAt: 1,
+        updatedAt: 1,
+      );
+
+      final (progress, translations) = await recovery.handleLlmError(
+        error: const LlmTokenLimitException(
+          'Prompt exceeds the model context window',
+          providerCode: 'openai',
+        ),
+        batchId: 'batch-1',
+        rootBatchId: 'batch-1',
+        unitsToTranslate: [unit],
+        llmRequest: _buildRequest(),
+        context: _buildContext(),
+        progress: _buildProgress(),
+        currentProgress: _buildProgress(),
+        getCancellationToken: (_) => null,
+        onProgressUpdate: (_, _) {},
+        checkPauseOrCancel: (_) async {},
+        depth: 0,
+        translateWithAutoSplit: ({
+          required String batchId,
+          required String rootBatchId,
+          required List<dynamic> unitsToTranslate,
+          required LlmRequest llmRequest,
+          required TranslationContext context,
+          required TranslationProgress progress,
+          required TranslationProgress currentProgress,
+          required Function(String batchId) getCancellationToken,
+          required ProgressUpdateCallback onProgressUpdate,
+          required Future<void> Function(String batchId) checkPauseOrCancel,
+          SubBatchTranslatedCallback? onSubBatchTranslated,
+          int depth = 0,
+        }) async {
+          throw StateError('must not split/retry a single oversized unit');
+        },
+      );
+
+      expect(translations, isEmpty);
+      expect(progress.failedUnits, 1);
+    });
   });
 }

@@ -33,7 +33,9 @@ class GlossaryServiceLocator {
     locator.registerLazySingleton<GlossaryDeepLService>(
       () => GlossaryDeepLService(
         glossaryRepository: locator<GlossaryRepository>(),
-        secureStorage: const FlutterSecureStorage(),
+        secureStorage: const FlutterSecureStorage(
+          wOptions: WindowsOptions(useBackwardCompatibility: false),
+        ),
       ),
     );
 

@@ -59,7 +59,9 @@ class LlmServiceLocator {
         providerFactory: locator<LlmProviderFactory>(),
         batchAdjuster: locator<LlmBatchAdjuster>(),
         settingsService: locator<SettingsService>(),
-        secureStorage: const FlutterSecureStorage(),
+        secureStorage: const FlutterSecureStorage(
+          wOptions: WindowsOptions(useBackwardCompatibility: false),
+        ),
         deeplGlossarySyncServiceFactory: () {
           if (locator.isRegistered<DeepLGlossarySyncService>()) {
             return locator<DeepLGlossarySyncService>();

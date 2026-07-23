@@ -205,6 +205,114 @@ void main() {
     });
   });
 
+  group('ParallelBatchProcessor partial-then-fail counting (D5)', () {
+    test('counts only the NOT-yet-saved units as failed when a chunk saves '
+        'its first half then fails on the second half', () async {
+      final tokenEstimator = LlmTokenEstimator();
+      final retryHandler = _MockLlmRetryHandler();
+      final logger = MockLoggingService();
+      final processor = ParallelBatchProcessor(
+        tokenEstimator: tokenEstimator,
+        cacheManager: LlmCacheManager(logger: logger),
+        translationSplitter: TranslationSplitter(
+          tokenEstimator: tokenEstimator,
+          retryHandler: retryHandler,
+          logger: logger,
+        ),
+        logger: logger,
+      );
+
+      final units = [
+        _unit('u1', 'Source one'),
+        _unit('u2', 'Source two'),
+        _unit('u3', 'Source three'),
+        _unit('u4', 'Source four'),
+      ];
+
+      // Full 4-unit chunk trips the token limit -> auto-split. The FIRST half
+      // (u1,u2) succeeds and is persisted via onSubBatchTranslated. The SECOND
+      // half (u3,u4) then dies with a fatal network error, so the whole chunk
+      // takes the error path. Only u3,u4 are truly failed - u1,u2 are already
+      // saved on disk and must NOT be counted as failures.
+      when(() => retryHandler.translateWithRetry(
+            llmRequest: any(named: 'llmRequest'),
+            batchId: any(named: 'batchId'),
+            dioCancelToken: any(named: 'dioCancelToken'),
+          )).thenAnswer((invocation) async {
+        final request =
+            invocation.namedArguments[const Symbol('llmRequest')] as LlmRequest;
+        if (request.texts.length > 2) {
+          return Err<LlmResponse, LlmServiceException>(
+            const LlmTokenLimitException(
+              'Estimated tokens exceed the model limit',
+              providerCode: 'openai',
+            ),
+          );
+        }
+        if (request.texts.containsKey('u1')) {
+          // First half: both units translated successfully.
+          return Ok<LlmResponse, LlmServiceException>(LlmResponse(
+            requestId: request.requestId,
+            translations: {'u1': 'T:u1', 'u2': 'T:u2'},
+            providerCode: 'openai',
+            modelName: 'gpt-4o-mini',
+            inputTokens: 100,
+            outputTokens: 50,
+            totalTokens: 150,
+            processingTimeMs: 10,
+            timestamp: DateTime(2026, 6, 10, 12, 0, 1),
+          ));
+        }
+        // Second half: fatal, non-recoverable error.
+        return Err<LlmResponse, LlmServiceException>(
+          const LlmNetworkException('Connection reset', providerCode: 'openai'),
+        );
+      });
+
+      final savedIds = <String>{};
+      Future<void> saveCallback(
+        List<TranslationUnit> u,
+        Map<String, String> t,
+        Set<String> c,
+      ) async {
+        savedIds.addAll(t.keys);
+      }
+
+      final baseline = _buildProgress();
+      final cacheResult = CacheProcessingResult(
+        cachedTranslations: <String, String>{},
+        uncachedSourceTexts: units.map((u) => u.sourceText).toList(),
+        registeredHashes: <String, String>{},
+        sourceTextToUnits: {
+          for (final u in units) u.sourceText: [u],
+        },
+        cachedUnitIds: <String>{},
+        allTranslations: <String, String>{},
+      );
+
+      final (finalProgress, _, _) = await processor.processParallelBatches(
+        batchId: 'batch-1',
+        unitsForLlm: units,
+        unitsToTranslate: units,
+        builtPrompt: _FakeBuiltPrompt(),
+        context: _buildContext(),
+        progress: baseline,
+        currentProgress: baseline,
+        cacheResult: cacheResult,
+        getCancellationToken: (_) => null,
+        onProgressUpdate: (_, _) {},
+        checkPauseOrCancel: (_) async {},
+        onSubBatchTranslated: saveCallback,
+      );
+
+      // The first half really was saved.
+      expect(savedIds, containsAll(<String>['u1', 'u2']));
+      // Only the 2 unsaved units count as failed - NOT the whole 4-unit chunk.
+      expect(finalProgress.failedUnits, 2,
+          reason: 'already-saved units must not be double-counted as failed');
+    });
+  });
+
   group('ParallelBatchProcessor cancellation-token wiring', () {
     test(
         'every parallel chunk forwards the ROOT batch Dio cancel token so '

@@ -399,6 +399,47 @@ void main() {
       expect(result.error.message, contains('length'));
     });
 
+    test('maps empty content with a non-filter finish_reason to '
+        'LlmResponseParseException (transient, NOT content filtering)',
+        () async {
+      // Regression (L1): an empty completion whose finish_reason is NOT an
+      // explicit moderation signal (e.g. 'stop', or null) must surface as a
+      // retryable LlmResponseParseException, not LlmContentFilteredException
+      // (which permanently skips the unit).
+      final dio = _MockDio();
+      final provider = DeepSeekProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      final emptyBody = <String, dynamic>{
+        'id': 'chatcmpl-empty',
+        'model': 'deepseek-v4-flash',
+        'choices': [
+          {
+            'index': 0,
+            'message': {'role': 'assistant', 'content': ''},
+            'finish_reason': 'stop',
+          },
+        ],
+        'usage': {'prompt_tokens': 5, 'completion_tokens': 0, 'total_tokens': 5},
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(emptyBody));
+
+      final result = await provider.translate(request, 'sk-test-key');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmResponseParseException>());
+      expect(result.error, isNot(isA<LlmContentFilteredException>()));
+    });
+
     test('maps empty content with finish_reason "content_filter" to '
         'LlmContentFilteredException carrying source texts', () async {
       // Companion to the 'length' regression test above: an explicit

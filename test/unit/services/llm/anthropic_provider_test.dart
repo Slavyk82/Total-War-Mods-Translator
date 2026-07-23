@@ -429,8 +429,52 @@ void main() {
       expect(result.error.providerCode, 'anthropic');
     });
 
-    test('maps empty text content to LlmContentFilteredException carrying '
-        'source texts', () async {
+    test('maps empty text with a non-filter stop_reason to '
+        'LlmResponseParseException (truncation, NOT content filtering)',
+        () async {
+      // Regression (L1): an empty text block with a non-moderation stop_reason
+      // (e.g. 'max_tokens', or 'end_turn' where the only block was a thinking
+      // block) is truncation/transient, NOT moderation. It must surface as
+      // LlmResponseParseException so the recovery layer retries with a larger
+      // token budget, instead of LlmContentFilteredException which permanently
+      // skips the unit.
+      final dio = _MockDio();
+      final provider = AnthropicProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+        logger: FakeLogger(),
+      );
+      final request = _buildRequest();
+
+      final truncatedBody = <String, dynamic>{
+        'id': 'msg_truncated',
+        'type': 'message',
+        'role': 'assistant',
+        'model': 'claude-3-5-sonnet-20241022',
+        'content': [
+          {'type': 'text', 'text': ''},
+        ],
+        'stop_reason': 'max_tokens',
+        'usage': {'input_tokens': 5, 'output_tokens': 0},
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(truncatedBody));
+
+      final result = await provider.translate(request, 'sk-ant-test');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmResponseParseException>());
+      expect(result.error, isNot(isA<LlmContentFilteredException>()));
+      expect(result.error.providerCode, 'anthropic');
+    });
+
+    test('maps an explicit content_filter stop_reason to '
+        'LlmContentFilteredException carrying source texts', () async {
       final dio = _MockDio();
       final provider = AnthropicProvider(
         dio: dio,
@@ -439,9 +483,6 @@ void main() {
       );
       final request = _buildRequest(texts: const {'k1': 'sensitive source'});
 
-      // Anthropic signals moderation via empty text content or a
-      // 'content_filter' stop_reason. Exercising the empty-text branch here:
-      // content list is non-empty but the text block contains an empty string.
       final filteredBody = <String, dynamic>{
         'id': 'msg_filtered',
         'type': 'message',
@@ -450,7 +491,7 @@ void main() {
         'content': [
           {'type': 'text', 'text': ''},
         ],
-        'stop_reason': 'end_turn',
+        'stop_reason': 'content_filter',
         'usage': {'input_tokens': 5, 'output_tokens': 0},
       };
 

@@ -433,6 +433,47 @@ void main() {
       expect(result.error.message, contains('length'));
     });
 
+    test('maps empty content with a non-filter finish_reason to '
+        'LlmResponseParseException (transient, NOT content filtering)',
+        () async {
+      // Regression (L1): an empty completion whose finish_reason is NOT an
+      // explicit moderation signal (e.g. 'stop', or null) must not be treated
+      // as content-filtered (which permanently skips the unit). It is transient
+      // and must surface as LlmResponseParseException so recovery retries.
+      final dio = _MockDio();
+      final provider = OpenAiProvider(
+        dio: dio,
+        tokenCalculator: FakeTokenCalculator(),
+      );
+      final request = _buildRequest();
+
+      final emptyBody = <String, dynamic>{
+        'id': 'chatcmpl-empty',
+        'model': 'gpt-4o-mini',
+        'choices': [
+          {
+            'index': 0,
+            'message': {'role': 'assistant', 'content': ''},
+            'finish_reason': 'stop',
+          },
+        ],
+        'usage': {'prompt_tokens': 5, 'completion_tokens': 0, 'total_tokens': 5},
+      };
+
+      when(() => dio.post(
+            any(),
+            data: any(named: 'data'),
+            cancelToken: any(named: 'cancelToken'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => _successResponse(emptyBody));
+
+      final result = await provider.translate(request, 'sk-test-key');
+
+      expect(result.isErr, isTrue);
+      expect(result.error, isA<LlmResponseParseException>());
+      expect(result.error, isNot(isA<LlmContentFilteredException>()));
+    });
+
     test('maps 500 server error to LlmServerException with statusCode '
         'preserved', () async {
       final dio = _MockDio();

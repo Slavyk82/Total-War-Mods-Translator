@@ -148,41 +148,50 @@ class ContextMenuBuilder {
 
       final logging = ref.read(loggingServiceProvider);
 
-      switch (value) {
-        case 'select_all':
-          onSelectAll();
-          break;
-        case 'force_retranslate':
-          logging.debug('Context menu: force_retranslate clicked', {
-            'selectionCount': selectionCount,
-          });
-          if (onForceRetranslate != null) {
-            logging.debug('Context menu: calling onForceRetranslate');
-            await onForceRetranslate();
-            logging.debug('Context menu: onForceRetranslate completed');
-          } else {
-            logging.warning('Context menu: onForceRetranslate is null!');
-          }
-          break;
-        case 'mark_as_translated':
-          if (onMarkAsTranslated != null) {
-            await onMarkAsTranslated();
-          }
-          break;
-        case 'clear':
-          await onClear();
-          break;
-        case 'history':
-          await onViewHistory();
-          break;
-        case 'view_prompt':
-          if (onViewPrompt != null) {
-            await onViewPrompt();
-          }
-          break;
-        case 'delete':
-          await onDelete();
-          break;
+      // The awaited action callbacks below can throw. This continuation is
+      // fire-and-forget (the showMenu future is not awaited upstream), so an
+      // unhandled rejection would escape to the zone/FlutterError.onError and
+      // the action would just appear to do nothing. Catch and log it so the
+      // failure is at least recorded instead of vanishing.
+      try {
+        switch (value) {
+          case 'select_all':
+            onSelectAll();
+            break;
+          case 'force_retranslate':
+            logging.debug('Context menu: force_retranslate clicked', {
+              'selectionCount': selectionCount,
+            });
+            if (onForceRetranslate != null) {
+              logging.debug('Context menu: calling onForceRetranslate');
+              await onForceRetranslate();
+              logging.debug('Context menu: onForceRetranslate completed');
+            } else {
+              logging.warning('Context menu: onForceRetranslate is null!');
+            }
+            break;
+          case 'mark_as_translated':
+            if (onMarkAsTranslated != null) {
+              await onMarkAsTranslated();
+            }
+            break;
+          case 'clear':
+            await onClear();
+            break;
+          case 'history':
+            await onViewHistory();
+            break;
+          case 'view_prompt':
+            if (onViewPrompt != null) {
+              await onViewPrompt();
+            }
+            break;
+          case 'delete':
+            await onDelete();
+            break;
+        }
+      } catch (e, stackTrace) {
+        logging.error('Context menu action "$value" failed', e, stackTrace);
       }
     });
   }

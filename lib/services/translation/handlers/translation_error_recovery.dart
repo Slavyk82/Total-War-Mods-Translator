@@ -167,6 +167,23 @@ class TranslationErrorRecovery {
       );
     }
 
+    // Handle a single unit whose own size exceeds the model context window.
+    // There is nothing left to split (one unit) and a larger output budget
+    // cannot shrink an over-long prompt, so retrying/splitting is futile. Skip
+    // it (count as failed) rather than aborting every sibling unit in the batch.
+    if (error is LlmTokenLimitException && unitsToTranslate.length == 1) {
+      return _handleOversizedUnit(
+        unit: unitsToTranslate.first,
+        batchId: batchId,
+        rootBatchId: rootBatchId,
+        context: context,
+        progress: progress,
+        currentProgress: currentProgress,
+        onProgressUpdate: onProgressUpdate,
+        error: error,
+      );
+    }
+
     // Non-recoverable error
     return _handleFatalError(
       error: error,
@@ -434,6 +451,47 @@ class TranslationErrorRecovery {
 
     final skipProgress = progress.copyWith(
       phaseDetail: 'Skipped untranslatable content: "${unit.key}"',
+      llmLogs: [...currentProgress.llmLogs, skipLog],
+      failedUnits: currentProgress.failedUnits + 1,
+      timestamp: DateTime.now(),
+    );
+    onProgressUpdate(rootBatchId, skipProgress);
+
+    return (skipProgress, <String, String>{});
+  }
+
+  /// Handle a single unit that is too large for the model context - skip it.
+  ///
+  /// The unit's own source text exceeds the model's context window, so it can
+  /// be neither split (it is already alone) nor rescued with more output
+  /// tokens. Skip it (count as a failed unit) so it never aborts the batch.
+  (TranslationProgress, Map<String, String>) _handleOversizedUnit({
+    required TranslationUnit unit,
+    required String batchId,
+    required String rootBatchId,
+    required TranslationContext context,
+    required TranslationProgress progress,
+    required TranslationProgress currentProgress,
+    required ProgressUpdateCallback onProgressUpdate,
+    required LlmServiceException error,
+  }) {
+    _logger.warning(
+      'Source string for unit "${unit.key}" exceeds the model context window - '
+      'skipping. This single string is too large to translate in one request.',
+    );
+
+    final skipLog = LlmExchangeLog.fromError(
+      requestId: '$batchId-oversized',
+      providerCode: context.providerId ?? 'unknown',
+      modelName: context.modelId ?? 'unknown',
+      unitsCount: 1,
+      errorMessage:
+          'Source string for key "${unit.key}" exceeds the model context '
+          'window, skipping this unit: $error',
+    );
+
+    final skipProgress = progress.copyWith(
+      phaseDetail: 'Skipped oversized content: "${unit.key}"',
       llmLogs: [...currentProgress.llmLogs, skipLog],
       failedUnits: currentProgress.failedUnits + 1,
       timestamp: DateTime.now(),

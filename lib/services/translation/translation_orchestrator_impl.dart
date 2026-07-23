@@ -62,6 +62,13 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
   final ParallelBatchHandler _parallelBatchHandler;
   final BatchEstimationHandler _batchEstimationHandler;
 
+  /// Batch ids whose translation run is currently in flight. Tracked
+  /// synchronously so a duplicate [translateBatch] call (UI double-trigger, or
+  /// a retry firing before the first run finished) is joined to the running
+  /// batch instead of starting a second run - which would double LLM cost and
+  /// race the shared progress counters/events.
+  final Set<String> _inFlightBatches = <String>{};
+
   TranslationOrchestratorImpl({
     required ILlmService llmService,
     required ITranslationMemoryService tmService,
@@ -142,8 +149,23 @@ class TranslationOrchestratorImpl implements ITranslationOrchestrator {
     // are emitted through the same stream that the UI is listening to.
     final controller = _batchProgressManager.getOrCreateController(batchId);
 
-    // Run the translation in a separate async context
-    _translateBatchInternal(batchId, context);
+    // Re-entrancy guard: if this batch is already running, join the caller to
+    // the existing progress stream instead of launching a second run. Tracked
+    // synchronously (before the first await) so two back-to-back calls cannot
+    // both slip through.
+    if (_inFlightBatches.contains(batchId)) {
+      _logger.warning('translateBatch called for a batch already in flight; '
+          'joining the running batch instead of starting a duplicate', {
+        'batchId': batchId,
+      });
+      return controller.stream;
+    }
+    _inFlightBatches.add(batchId);
+
+    // Run the translation in a separate async context, clearing the in-flight
+    // marker when it finishes (success or failure) so the batch can be re-run.
+    _translateBatchInternal(batchId, context)
+        .whenComplete(() => _inFlightBatches.remove(batchId));
 
     return controller.stream;
   }

@@ -408,10 +408,10 @@ class OpenAiProvider implements ILlmProvider {
         );
       }
 
-      // Check for content filtering (explicit finish_reason or empty content)
-      // OpenAI returns finish_reason: "content_filter" when moderation triggers
-      // Some models return empty content instead of explicit filter reason
-      if (finishReason == 'content_filter' || isContentEmpty) {
+      // Only an EXPLICIT moderation signal means content filtering (a
+      // permanent skip). OpenAI returns finish_reason: "content_filter" when
+      // moderation triggers.
+      if (finishReason == 'content_filter') {
         final sourceTexts = request.texts.values.toList();
         throw LlmContentFilteredException(
           'Content blocked by provider moderation. The source text may contain '
@@ -420,6 +420,18 @@ class OpenAiProvider implements ILlmProvider {
           providerCode: providerCode,
           filteredTexts: sourceTexts,
           finishReason: finishReason ?? 'empty_content',
+        );
+      }
+
+      // Any other empty completion (finish_reason 'stop', null, or unknown) is
+      // transient, not moderation: surface as a parse error so the recovery
+      // layer retries instead of permanently skipping the unit.
+      if (isContentEmpty) {
+        throw LlmResponseParseException(
+          'Empty completion from provider (finish_reason: '
+          '${finishReason ?? "unknown"}) with no content - retrying.',
+          providerCode: providerCode,
+          rawResponse: data.toString(),
         );
       }
 

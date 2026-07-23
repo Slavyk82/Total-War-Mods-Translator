@@ -41,7 +41,9 @@ class GlossaryServiceImpl implements IGlossaryService {
     _importExportService = GlossaryImportExportService(_repository, this);
     _deeplService = GlossaryDeepLService(
       glossaryRepository: _repository,
-      secureStorage: const FlutterSecureStorage(),
+      secureStorage: const FlutterSecureStorage(
+        wOptions: WindowsOptions(useBackwardCompatibility: false),
+      ),
     );
     _matchingService = GlossaryMatchingService(_repository);
     _statisticsService = GlossaryStatisticsService(_repository);

@@ -6,6 +6,16 @@ class TextParserUtils {
   /// Private constructor - all methods are static
   TextParserUtils._();
 
+  /// A single C-style `printf` conversion specifier, e.g. `%s %d %u %x %02d
+  /// %.2f %1$s %ld %%`. Grammar: `% [argIndex$] [flags] [width] [.precision]
+  /// [length] specifier`.
+  ///
+  /// The space flag is deliberately excluded from the flag class so that plain
+  /// text like `"50% off"` or `"100 % done"` is NOT misread as a specifier.
+  /// Kept in sync with the sibling grammar in TranslationValidationService.
+  static const String _printfCore =
+      r'%(?:\d+\$)?[-+0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|L|z|j|t)?[diouxXeEfFgGaAcsp%]';
+
   /// Extract variables from text
   ///
   /// Supports:
@@ -44,15 +54,15 @@ class TextParserUtils {
       }
     }
 
-    // Bracketed printf-style: [%s], [%d], [%f], etc.
+    // Bracketed printf-style: [%s], [%02d], [%1$s], etc.
     // Must be checked BEFORE single printf and BBCode patterns to avoid conflicts
-    final bracketedPrintfPattern = RegExp(r'\[%[sdf]\]');
+    final bracketedPrintfPattern = RegExp('\\[$_printfCore\\]');
     variables.addAll(
       bracketedPrintfPattern.allMatches(text).map((m) => m.group(0)!),
     );
 
-    // Printf-style: %s, %d, %f, etc.
-    final printfPattern = RegExp(r'%[sdf]');
+    // Printf-style: %s, %d, %u, %x, %02d, %.2f, %ld, %1$s, %% ...
+    final printfPattern = RegExp(_printfCore);
     variables.addAll(
       printfPattern.allMatches(text).map((m) => m.group(0)!),
     );
@@ -99,12 +109,14 @@ class TextParserUtils {
     // Single BBCode tags: [tag], [/tag], [tag=value]
     // Use negative lookbehind/lookahead to avoid matching double brackets
     // Match [ but not [[, and ] but not ]]
-    // Exclude [%s], [%d], [%f] which are printf-style placeholders, not tags
+    // Exclude bracketed printf placeholders like [%s], [%02d] which are
+    // variables, not tags (kept in sync with extractVariables' printf core).
+    final bracketedPrintf = RegExp('^\\[$_printfCore\\]\$');
     final bbcodePattern = RegExp(r'(?<!\[)\[[^\[\]]+\](?!\])');
     for (final match in bbcodePattern.allMatches(text)) {
       final tag = match.group(0)!;
       // Skip if this is a bracketed printf placeholder
-      if (!RegExp(r'^\[%[sdf]\]$').hasMatch(tag)) {
+      if (!bracketedPrintf.hasMatch(tag)) {
         entries.add((start: match.start, tag: tag));
       }
     }

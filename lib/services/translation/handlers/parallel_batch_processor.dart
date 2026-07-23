@@ -265,6 +265,24 @@ class ParallelBatchProcessor {
     required Future<void> Function(String batchId) checkPauseOrCancel,
     SubBatchTranslatedCallback? onSubBatchTranslated,
   }) async {
+    // Track which of THIS chunk's units were already persisted (via
+    // onSubBatchTranslated) before a later sub-batch failed. When an
+    // auto-split chunk saves its first half then dies on the second half, only
+    // the not-yet-saved units are real failures - the saved ones are already
+    // on disk (and counted successful), so counting the whole chunk as failed
+    // would double-count them.
+    final savedInThisChunk = <String>{};
+    SubBatchTranslatedCallback? countingCallback;
+    if (onSubBatchTranslated != null) {
+      countingCallback = (units, translations, cachedIds) async {
+        await onSubBatchTranslated(units, translations, cachedIds);
+        savedInThisChunk.addAll(translations.keys);
+      };
+    }
+
+    int unsavedFailedCount() =>
+        (chunk.length - savedInThisChunk.length).clamp(0, chunk.length);
+
     try {
       final (resultProgress, translations) =
           await _translationSplitter.translateWithAutoSplit(
@@ -278,30 +296,33 @@ class ParallelBatchProcessor {
         getCancellationToken: getCancellationToken,
         onProgressUpdate: onProgressUpdate,
         checkPauseOrCancel: checkPauseOrCancel,
-        onSubBatchTranslated: onSubBatchTranslated,
+        onSubBatchTranslated: countingCallback,
       );
       return (resultProgress, translations, null);
     } on TranslationOrchestrationException catch (e) {
+      final failedInChunk = unsavedFailedCount();
       _logger.warning(
-          'Chunk $chunkId failed: ${e.message}. Skipping ${chunk.length} units.');
+          'Chunk $chunkId failed: ${e.message}. Skipping $failedInChunk units.');
 
       final errorLog = LlmExchangeLog.fromError(
         requestId: chunkId,
         providerCode: context.providerId ?? 'unknown',
         modelName: context.modelId ?? 'unknown',
-        unitsCount: chunk.length,
+        unitsCount: failedInChunk,
         errorMessage: 'Chunk skipped: ${e.message}',
       );
 
       final errorProgress = progress.copyWith(
         llmLogs: [...currentProgress.llmLogs, errorLog],
-        // Count every unit in the dropped chunk as failed. _aggregateResults
-        // diffs each chunk's returned failedUnits against the shared
-        // currentProgress baseline, so building on that baseline makes the
-        // delta equal chunk.length. Without this the fatally-failed chunk
-        // contributes a zero delta and the orchestrator marks the whole batch
-        // 'completed' with 0 failures while these units stay untranslated.
-        failedUnits: currentProgress.failedUnits + chunk.length,
+        // Count only the NOT-yet-saved units of the dropped chunk as failed.
+        // _aggregateResults diffs each chunk's returned failedUnits against the
+        // shared currentProgress baseline, so building on that baseline makes
+        // the delta equal the unsaved count. (Units already persisted via
+        // onSubBatchTranslated are counted successful; counting the whole chunk
+        // here would double-count them as failed too.) The delta stays > 0 as
+        // long as anything was actually lost, so the batch is never wrongly
+        // reported as fully completed.
+        failedUnits: currentProgress.failedUnits + failedInChunk,
         phaseDetail: 'Chunk failed, continuing with others...',
         timestamp: DateTime.now(),
       );
@@ -309,22 +330,24 @@ class ParallelBatchProcessor {
 
       return (errorProgress, <String, String>{}, e.message);
     } catch (e) {
+      final failedInChunk = unsavedFailedCount();
       _logger.error('Unexpected error in chunk $chunkId: $e');
 
       final errorLog = LlmExchangeLog.fromError(
         requestId: chunkId,
         providerCode: context.providerId ?? 'unknown',
         modelName: context.modelId ?? 'unknown',
-        unitsCount: chunk.length,
+        unitsCount: failedInChunk,
         errorMessage: 'Unexpected error: $e',
       );
 
       final errorProgress = progress.copyWith(
         llmLogs: [...currentProgress.llmLogs, errorLog],
-        // See the TranslationOrchestrationException branch above: count the
-        // dropped chunk's units as failed so the aggregate delta is non-zero
-        // and the batch is not silently reported as fully completed.
-        failedUnits: currentProgress.failedUnits + chunk.length,
+        // See the TranslationOrchestrationException branch above: count only
+        // the not-yet-saved units as failed so already-persisted units are not
+        // double-counted, while the aggregate delta stays non-zero whenever
+        // work was actually lost.
+        failedUnits: currentProgress.failedUnits + failedInChunk,
         phaseDetail: 'Chunk error, continuing...',
         timestamp: DateTime.now(),
       );

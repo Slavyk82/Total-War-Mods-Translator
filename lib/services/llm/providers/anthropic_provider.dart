@@ -396,10 +396,11 @@ class AnthropicProvider implements ILlmProvider {
       );
       final responseText = textBlock['text'] as String;
 
-      // Check for content filtering
-      // Anthropic may return empty content or specific stop reasons when content is filtered
-      if (stopReason == 'content_filter' ||
-          (responseText.trim().isEmpty && content.isNotEmpty)) {
+      // Only an EXPLICIT moderation signal means content filtering (a
+      // permanent skip). Empty text with any other stop_reason (e.g.
+      // 'max_tokens', or 'end_turn' where the sole block was a thinking block)
+      // is truncation/transient, not moderation.
+      if (stopReason == 'content_filter') {
         final sourceTexts = request.texts.values.toList();
         throw LlmContentFilteredException(
           'Content blocked by Anthropic safety filters. The source text may '
@@ -407,6 +408,19 @@ class AnthropicProvider implements ILlmProvider {
           providerCode: providerCode,
           filteredTexts: sourceTexts,
           finishReason: stopReason ?? 'empty_content',
+        );
+      }
+
+      // Empty text without an explicit filter signal: surface as a parse error
+      // so the recovery layer retries with a larger token budget instead of
+      // permanently skipping the unit as content-filtered.
+      if (responseText.trim().isEmpty) {
+        throw LlmResponseParseException(
+          'Empty text content from Anthropic (stop_reason: '
+          '${stopReason ?? "unknown"}). Treated as truncation/transient - '
+          'retrying with a larger token budget.',
+          providerCode: providerCode,
+          rawResponse: data.toString(),
         );
       }
 

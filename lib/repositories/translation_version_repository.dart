@@ -564,6 +564,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
               SELECT translated_text, validation_issues, id
               FROM $tableName
               WHERE id IN ($placeholders) AND translated_text IS NOT NULL
+                AND translated_text != ''
               ''',
               batch,
             );
@@ -786,6 +787,7 @@ class TranslationVersionRepository extends BaseRepository<TranslationVersion>
               SELECT translated_text, validation_issues, id
               FROM $tableName
               WHERE id IN ($placeholders) AND translated_text IS NOT NULL
+                AND translated_text != ''
               ''',
               batch,
             );

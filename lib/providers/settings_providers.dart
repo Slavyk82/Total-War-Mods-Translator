@@ -261,23 +261,23 @@ class LlmProviderSettings extends _$LlmProviderSettings {
       switch (providerCode) {
         case 'anthropic':
           apiKey = await _secureStorage.read(key: SettingsKeys.anthropicApiKey);
-          logging.debug('Anthropic API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          logging.debug('Anthropic API key loaded', {'hasKey': apiKey != null});
           break;
         case 'openai':
           apiKey = await _secureStorage.read(key: SettingsKeys.openaiApiKey);
-          logging.debug('OpenAI API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          logging.debug('OpenAI API key loaded', {'hasKey': apiKey != null});
           break;
         case 'deepl':
           apiKey = await _secureStorage.read(key: SettingsKeys.deeplApiKey);
-          logging.debug('DeepL API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          logging.debug('DeepL API key loaded', {'hasKey': apiKey != null});
           break;
         case 'deepseek':
           apiKey = await _secureStorage.read(key: SettingsKeys.deepseekApiKey);
-          logging.debug('DeepSeek API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          logging.debug('DeepSeek API key loaded', {'hasKey': apiKey != null});
           break;
         case 'gemini':
           apiKey = await _secureStorage.read(key: SettingsKeys.geminiApiKey);
-          logging.debug('Gemini API key loaded', {'hasKey': apiKey != null, 'length': apiKey?.length});
+          logging.debug('Gemini API key loaded', {'hasKey': apiKey != null});
           break;
         default:
           logging.warning('Unknown provider', {'providerCode': providerCode});

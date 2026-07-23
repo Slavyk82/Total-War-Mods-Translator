@@ -7,9 +7,18 @@ import '../../models/common/service_exception.dart';
 ///
 /// Performs various quality checks on translations to identify issues
 class TranslationValidationService implements ITranslationValidationService {
-  /// Regular expression to find variables in text
-  /// Supports: {0}, %s, [%s], ${var}
-  static final _variablePattern = RegExp(r'\{(\d+)\}|\[%[sdifgc]\]|%[sdifgc]|\$\{[\w]+\}');
+  /// A single C-style `printf` conversion specifier, e.g. `%s %d %u %x %02d
+  /// %.2f %1$s %ld %%`. Grammar: `% [argIndex$] [flags] [width] [.precision]
+  /// [length] specifier`. The space flag is excluded so plain text like
+  /// `"50% off"` is not misread. Kept in sync with TextParserUtils._printfCore.
+  static const _printfCore =
+      r'%(?:\d+\$)?[-+0#]*\d*(?:\.\d+)?(?:hh|h|ll|l|L|z|j|t)?[diouxXeEfFgGaAcsp%]';
+
+  /// Regular expression to find variables in text.
+  /// Supports: {0}, printf specifiers (%s, %u, %02d, %1$s, ...), bracketed
+  /// printf ([%s]), and ${var}.
+  static final _variablePattern =
+      RegExp('\\{(\\d+)\\}|\\[$_printfCore\\]|$_printfCore|\\\$\\{[\\w]+\\}');
 
   /// Regular expression to find numbers in text
   static final _numberPattern = RegExp(r'\d+');
@@ -189,18 +198,20 @@ class TranslationValidationService implements ITranslationValidationService {
     String sourceText,
     String translatedText,
   ) {
-    final sourceVariables = _variablePattern
-        .allMatches(sourceText)
-        .map((m) => m.group(0)!)
-        .toSet();
+    // Count occurrences (multiset) rather than collapsing to a Set: dropping
+    // one of two identical placeholders (e.g. "%s ... %s" -> "%s") must be
+    // flagged, not silently accepted.
+    final sourceCounts = _countVariables(sourceText);
+    final translatedCounts = _countVariables(translatedText);
 
-    final translatedVariables = _variablePattern
-        .allMatches(translatedText)
-        .map((m) => m.group(0)!)
-        .toSet();
-
-    final missingVariables =
-        sourceVariables.difference(translatedVariables).toList();
+    // A variable is missing when the translation has fewer occurrences of it
+    // than the source (fully dropped, or one of several occurrences dropped).
+    final missingVariables = <String>[];
+    sourceCounts.forEach((variable, count) {
+      if ((translatedCounts[variable] ?? 0) < count) {
+        missingVariables.add(variable);
+      }
+    });
 
     if (missingVariables.isNotEmpty) {
       final missingVarsStr = missingVariables.join(', ');
@@ -225,6 +236,16 @@ class TranslationValidationService implements ITranslationValidationService {
     }
 
     return [];
+  }
+
+  /// Count how many times each variable/placeholder occurs in [text].
+  Map<String, int> _countVariables(String text) {
+    final counts = <String, int>{};
+    for (final match in _variablePattern.allMatches(text)) {
+      final variable = match.group(0)!;
+      counts[variable] = (counts[variable] ?? 0) + 1;
+    }
+    return counts;
   }
 
   /// Check for whitespace issues

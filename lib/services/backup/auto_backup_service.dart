@@ -43,9 +43,12 @@ class AutoBackupService {
         _createBackup = createBackup,
         _now = now ?? DateTime.now;
 
-  /// Auto-backups use the same `TWMT_Backup_*.zip` naming as manual backups.
+  /// Auto-backups use a DISTINCT `TWMT_AutoBackup_*.zip` prefix so that
+  /// pruning (and the "is a backup due?" check) can never match a manually
+  /// saved `TWMT_Backup_*.zip` archive - deleting a user's manual backups
+  /// would be data loss.
   static final RegExp _backupNamePattern =
-      RegExp(r'^TWMT_Backup_.*\.zip$', caseSensitive: false);
+      RegExp(r'^TWMT_AutoBackup_.*\.zip$', caseSensitive: false);
 
   /// Create a backup if one is due. Returns the created backup path, or null
   /// when the run was skipped (recent backup exists) or failed.
@@ -92,14 +95,15 @@ class AutoBackupService {
     }
   }
 
-  /// Filename in the format `TWMT_Backup_YYYY-MM-DD_HHMMSS.zip` (matches
-  /// [DatabaseBackupService.generateBackupFilename]).
+  /// Filename in the format `TWMT_AutoBackup_YYYY-MM-DD_HHMMSS.zip`. The
+  /// `AutoBackup` infix distinguishes rolling auto-backups from user-initiated
+  /// `TWMT_Backup_*` archives so pruning never touches the latter.
   String _generateFilename() {
     String two(int v) => v.toString().padLeft(2, '0');
     final n = _now();
     final stamp = '${n.year}-${two(n.month)}-${two(n.day)}_'
         '${two(n.hour)}${two(n.minute)}${two(n.second)}';
-    return 'TWMT_Backup_$stamp.zip';
+    return 'TWMT_AutoBackup_$stamp.zip';
   }
 
   /// List `TWMT_Backup_*.zip` files in [dir], newest (most recently modified)
