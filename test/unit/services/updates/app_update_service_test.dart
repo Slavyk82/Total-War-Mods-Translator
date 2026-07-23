@@ -124,6 +124,30 @@ void main() {
     });
   });
 
+  group('AppUpdateService request timeout', () {
+    test(
+        'getLatestRelease resolves to an error instead of hanging when the '
+        'server accepts the connection but never responds', () async {
+      final httpClient = _MockHttpClient();
+      // Half-open connection: the request Future never completes.
+      when(() => httpClient.get(any(), headers: any(named: 'headers')))
+          .thenAnswer((_) => Completer<http.Response>().future);
+
+      final service = AppUpdateService(
+        httpClient: httpClient,
+        requestTimeout: const Duration(milliseconds: 50),
+      );
+
+      final result = await service.getLatestRelease();
+
+      expect(result.isErr, isTrue,
+          reason: 'a stalled GitHub connection must resolve to an error so the '
+              'awaited startup chain (release-notes -> auto-backup) cannot hang');
+      expect(result.error.message.toLowerCase(), contains('tim'),
+          reason: 'the failure should be reported as a timeout');
+    }, timeout: const Timeout(Duration(seconds: 5)));
+  });
+
   group('AppUpdateService.downloadInstaller', () {
     late Directory tempDir;
     late _MockHttpClient httpClient;

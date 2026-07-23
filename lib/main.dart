@@ -278,19 +278,22 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
       ref.read(updateCheckerProvider.notifier).checkForUpdates(),
     );
 
-    // Check for release notes straight after.
+    // Take a rolling automatic database backup (best-effort, daily). Kicked
+    // off FIRST, before the awaited release-notes network check below, so a
+    // slow or hung GitHub request can never suppress the daily safety backup.
+    // Runs in the background (fire-and-forget); AutoBackupService skips when a
+    // recent backup already exists and prunes old archives itself.
     if (!mounted) return;
-    await _checkReleaseNotes();
+    unawaited(_runAutoBackup());
 
     // Trigger cleanup of old installer files.
     if (!mounted) return;
     ref.read(cleanupOldInstallersProvider);
 
-    // Take a rolling automatic database backup (best-effort, daily). Runs in
-    // the background so it never blocks startup; AutoBackupService skips when a
-    // recent backup already exists and prunes old archives itself.
+    // Check for release notes last. This awaits a network call (now bounded by
+    // AppUpdateService's request timeout); it must not gate the backup above.
     if (!mounted) return;
-    unawaited(_runAutoBackup());
+    await _checkReleaseNotes();
   }
 
   Future<void> _runAutoBackup() async {

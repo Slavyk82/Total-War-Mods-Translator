@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,8 +18,18 @@ class AppUpdateService {
 
   final http.Client _httpClient;
 
-  AppUpdateService({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  /// Per-request deadline for every GitHub HTTP call. package:http applies no
+  /// default request timeout, so without this a connection that is accepted
+  /// but never answered (captive portal, transparent proxy, half-open socket)
+  /// leaves the Future pending forever — which at startup hangs the awaited
+  /// release-notes check and silently skips the daily database backup.
+  final Duration _requestTimeout;
+
+  AppUpdateService({
+    http.Client? httpClient,
+    Duration requestTimeout = const Duration(seconds: 15),
+  })  : _httpClient = httpClient ?? http.Client(),
+        _requestTimeout = requestTimeout;
 
   /// Get the latest release from GitHub.
   Future<Result<GitHubRelease, ServiceException>> getLatestRelease() async {
@@ -29,7 +40,7 @@ class AppUpdateService {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'TWMT-App',
         },
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -41,6 +52,10 @@ class AppUpdateService {
           'Failed to fetch release: HTTP ${response.statusCode}',
         ));
       }
+    } on TimeoutException {
+      return Err(ServiceException(
+        'Request timed out after ${_requestTimeout.inSeconds}s',
+      ));
     } catch (e) {
       return Err(ServiceException('Network error: $e'));
     }
@@ -55,7 +70,7 @@ class AppUpdateService {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'TWMT-App',
         },
-      );
+      ).timeout(_requestTimeout);
 
       if (response.statusCode == 200) {
         final jsonList = jsonDecode(response.body) as List<dynamic>;
@@ -68,6 +83,10 @@ class AppUpdateService {
           'Failed to fetch releases: HTTP ${response.statusCode}',
         ));
       }
+    } on TimeoutException {
+      return Err(ServiceException(
+        'Request timed out after ${_requestTimeout.inSeconds}s',
+      ));
     } catch (e) {
       return Err(ServiceException('Network error: $e'));
     }
@@ -146,7 +165,7 @@ class AppUpdateService {
       final request = http.Request('GET', Uri.parse(asset.browserDownloadUrl));
       request.headers['User-Agent'] = 'TWMT-App';
 
-      final response = await _httpClient.send(request);
+      final response = await _httpClient.send(request).timeout(_requestTimeout);
 
       if (response.statusCode != 200) {
         return Err(ServiceException(
@@ -198,6 +217,10 @@ class AppUpdateService {
       }
 
       return Ok(filePath);
+    } on TimeoutException {
+      return Err(ServiceException(
+        'Download timed out after ${_requestTimeout.inSeconds}s',
+      ));
     } catch (e) {
       return Err(ServiceException('Download failed: $e'));
     }
