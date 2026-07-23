@@ -295,6 +295,13 @@ class ParallelBatchProcessor {
 
       final errorProgress = progress.copyWith(
         llmLogs: [...currentProgress.llmLogs, errorLog],
+        // Count every unit in the dropped chunk as failed. _aggregateResults
+        // diffs each chunk's returned failedUnits against the shared
+        // currentProgress baseline, so building on that baseline makes the
+        // delta equal chunk.length. Without this the fatally-failed chunk
+        // contributes a zero delta and the orchestrator marks the whole batch
+        // 'completed' with 0 failures while these units stay untranslated.
+        failedUnits: currentProgress.failedUnits + chunk.length,
         phaseDetail: 'Chunk failed, continuing with others...',
         timestamp: DateTime.now(),
       );
@@ -314,6 +321,10 @@ class ParallelBatchProcessor {
 
       final errorProgress = progress.copyWith(
         llmLogs: [...currentProgress.llmLogs, errorLog],
+        // See the TranslationOrchestrationException branch above: count the
+        // dropped chunk's units as failed so the aggregate delta is non-zero
+        // and the batch is not silently reported as fully completed.
+        failedUnits: currentProgress.failedUnits + chunk.length,
         phaseDetail: 'Chunk error, continuing...',
         timestamp: DateTime.now(),
       );

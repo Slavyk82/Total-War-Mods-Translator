@@ -297,6 +297,102 @@ void main() {
     });
   });
 
+  group('ParallelBatchProcessor with a fatally-failing chunk', () {
+    test(
+        'counts a fatally-failed chunk\'s units as failed so the batch is not '
+        'silently reported complete with zero failures', () async {
+      final tokenEstimator = LlmTokenEstimator();
+      final retryHandler = _MockLlmRetryHandler();
+      final logger = MockLoggingService();
+      final processor = ParallelBatchProcessor(
+        tokenEstimator: tokenEstimator,
+        cacheManager: LlmCacheManager(logger: logger),
+        translationSplitter: TranslationSplitter(
+          tokenEstimator: tokenEstimator,
+          retryHandler: retryHandler,
+          logger: logger,
+        ),
+        logger: logger,
+      );
+
+      final units = [
+        _unit('u1', 'Source one'),
+        _unit('u2', 'Source two'),
+        _unit('u3', 'Source three'),
+        _unit('u4', 'Source four'),
+      ];
+
+      // Two parallel chunks of two units each. The chunk holding u1/u2 hits a
+      // non-retryable, non-splittable provider error (fatal): the splitter's
+      // error recovery throws TranslationOrchestrationException. The chunk
+      // holding u3/u4 succeeds. The failed chunk's two units MUST be counted
+      // as failed; otherwise the orchestrator marks the whole batch
+      // 'completed' with 0 failures and the user ships an incomplete
+      // translation believing it finished.
+      when(() => retryHandler.translateWithRetry(
+            llmRequest: any(named: 'llmRequest'),
+            batchId: any(named: 'batchId'),
+            dioCancelToken: any(named: 'dioCancelToken'),
+          )).thenAnswer((invocation) async {
+        final request =
+            invocation.namedArguments[const Symbol('llmRequest')] as LlmRequest;
+        if (request.texts.containsKey('u1')) {
+          return Err<LlmResponse, LlmServiceException>(
+            const LlmInvalidRequestException(
+              'Model rejected the request',
+              providerCode: 'openai',
+            ),
+          );
+        }
+        return Ok<LlmResponse, LlmServiceException>(LlmResponse(
+          requestId: request.requestId,
+          translations: {for (final k in request.texts.keys) k: 'T:$k'},
+          providerCode: 'openai',
+          modelName: 'gpt-4o-mini',
+          inputTokens: 10,
+          outputTokens: 10,
+          totalTokens: 20,
+          processingTimeMs: 10,
+          timestamp: DateTime(2026, 6, 10, 12, 0, 1),
+        ));
+      });
+
+      final baseline = _buildProgress();
+      final cacheResult = CacheProcessingResult(
+        cachedTranslations: <String, String>{},
+        uncachedSourceTexts: units.map((u) => u.sourceText).toList(),
+        registeredHashes: <String, String>{},
+        sourceTextToUnits: {
+          for (final u in units) u.sourceText: [u],
+        },
+        cachedUnitIds: <String>{},
+        allTranslations: <String, String>{},
+      );
+
+      final (finalProgress, translations, _) =
+          await processor.processParallelBatches(
+        batchId: 'batch-1',
+        unitsForLlm: units,
+        unitsToTranslate: units,
+        builtPrompt: _FakeBuiltPrompt(),
+        context: _buildContext(parallelBatches: 2),
+        progress: baseline,
+        currentProgress: baseline,
+        cacheResult: cacheResult,
+        getCancellationToken: (_) => null,
+        onProgressUpdate: (_, _) {},
+        checkPauseOrCancel: (_) async {},
+      );
+
+      // The two units in the fatally-failed chunk must be counted as failed.
+      expect(finalProgress.failedUnits, 2,
+          reason: 'a fatally-failed parallel chunk must contribute its unit '
+              'count to failedUnits, not be silently dropped');
+      // The surviving chunk's translations are still returned (partial success).
+      expect(translations, {'u3': 'T:u3', 'u4': 'T:u4'});
+    });
+  });
+
   group('TranslationErrorRecovery split contract (via handleLlmError)', () {
     test(
         'returned progress chains BOTH halves\' contributions on top of a '
