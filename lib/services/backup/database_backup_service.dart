@@ -85,7 +85,22 @@ class DatabaseBackupService {
   static Future<void> _defaultReinitialize() async {
     await DatabaseService.initialize();
     await MigrationService.runMigrations();
+    // Apply the incremental MigrationRegistry migrations, exactly like the
+    // normal startup path (service_locator.dart). runMigrations() only acts on
+    // the frozen schema version and no-ops once user_version equals the target,
+    // so WITHOUT this a restored backup taken under an older build is left
+    // missing every column/table/index added since it was captured (until the
+    // next full app restart re-runs startup). ensurePerformanceIndexes() is the
+    // only path that applies the registry, and it is idempotent.
+    await MigrationService.ensurePerformanceIndexes();
   }
+
+  /// Exercise the production default reinitializer (the one used after a
+  /// restore when no reinitializer is injected). Test-only seam: verifies a
+  /// restored database is brought up to the current schema exactly like a
+  /// normal startup, rather than left at the backup's schema version.
+  @visibleForTesting
+  static Future<void> defaultReinitializeForTesting() => _defaultReinitialize();
 
   /// The only archive entry names a TWMT backup may contain. Anything else
   /// (in particular relative `..` or absolute paths smuggled into a

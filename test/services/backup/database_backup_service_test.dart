@@ -7,6 +7,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:twmt/config/database_config.dart';
 import 'package:twmt/services/backup/database_backup_service.dart';
 import 'package:twmt/services/database/database_service.dart';
+import 'package:twmt/services/database/migration_service.dart';
 
 import '../../helpers/test_bootstrap.dart';
 
@@ -737,6 +738,80 @@ void main() {
       await workDir.delete(recursive: true);
       expect(await workDir.exists(), isFalse,
           reason: 'no file handle may outlive backup/validate/restore');
+    });
+  });
+
+  group('restore reinitialization brings the schema up to date', () {
+    /// Apply lib/database/schema.sql (the frozen v1 baseline) verbatim,
+    /// WITHOUT running any MigrationRegistry migration — the on-disk shape of
+    /// a database captured by a backup taken under an old build.
+    Future<void> applySchemaOnly(Database database) async {
+      final schema = await File('lib/database/schema.sql').readAsString();
+      for (final raw in MigrationService.splitSqlScriptForTesting(schema)) {
+        final statement = raw.trim();
+        if (statement.isEmpty) continue;
+        await database.execute(statement);
+      }
+    }
+
+    Future<bool> tableExists(Database d, String name) async {
+      final rows = await d.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+        [name],
+      );
+      return rows.isNotEmpty;
+    }
+
+    Future<bool> columnExists(Database d, String table, String column) async {
+      final rows = await d.rawQuery('PRAGMA table_info($table)');
+      return rows.any((r) => r['name'] == column);
+    }
+
+    test(
+        'the production default reinitializer applies the incremental registry '
+        'migrations a restored old-schema database is missing', () async {
+      // Simulate the state right after an old backup ZIP has been extracted
+      // and reopened: schema.sql applied, user_version pinned at the frozen
+      // target, but none of the post-v1 MigrationRegistry migrations applied.
+      final db = await databaseFactory.openDatabase(inMemoryDatabasePath);
+      await applySchemaOnly(db);
+      await db.execute('PRAGMA user_version = ${DatabaseConfig.databaseVersion}');
+      DatabaseService.setTestDatabase(db);
+
+      // Precondition: the frozen v1 schema predates these post-v1 objects, so
+      // they are absent — exactly the state a backup taken under an older build
+      // is restored into. (If they were already present the test could not
+      // distinguish the bug from the fix.)
+      expect(await tableExists(db, 'activity_events'), isFalse);
+      expect(await tableExists(db, 'project_publication'), isFalse);
+      expect(
+          await columnExists(db, 'translation_versions', 'validation_schema_version'),
+          isFalse);
+
+      // Run the SAME reinitializer production uses after a restore when no
+      // override is injected (DatabaseBackupService._defaultReinitialize).
+      await DatabaseBackupService.defaultReinitializeForTesting();
+
+      // After the restore the schema must be complete for exactly the
+      // tables/columns the app queries on the Activity, Projects/Publish and
+      // editor screens. The bug: the reinitializer skipped
+      // ensurePerformanceIndexes, and runMigrations no-ops because user_version
+      // already equals the frozen target — so these objects stayed missing and
+      // the first query touching them threw until the next full app restart.
+      expect(await tableExists(db, 'activity_events'), isTrue,
+          reason: 'activity_events must exist after restore, else Activity '
+              'queries throw');
+      expect(await tableExists(db, 'project_publication'), isTrue,
+          reason: 'project_publication must exist after restore, else Publish '
+              'throws');
+      expect(
+          await columnExists(db, 'translation_versions', 'validation_schema_version'),
+          isTrue,
+          reason: 'validation_schema_version must exist after restore, else the '
+              'editor grid throws');
+
+      await db.close();
+      DatabaseService.resetTestDatabase();
     });
   });
 
