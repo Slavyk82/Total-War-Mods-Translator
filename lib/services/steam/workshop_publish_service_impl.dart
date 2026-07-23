@@ -210,7 +210,20 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
           '+quit',
         ];
       } else if (steamGuardCode != null) {
-        // Full auth with TOTP code as third positional arg to +login
+        // Full auth with TOTP code as third positional arg to +login.
+        //
+        // SECURITY (residual, accepted): on this first-login / expired-cache
+        // path the plaintext password and Steam Guard code are passed in
+        // steamcmd's argv, so they are readable by any process running as the
+        // same Windows user (WMI Win32_Process.CommandLine, Process Explorer)
+        // for the lifetime of the steamcmd process. stdin is deliberately
+        // closed right after start (steamcmd hangs on interactive input — see
+        // _runSteamCmd and submitSteamGuardCode), so argv is the only working
+        // credential channel here. Exposure is limited to first login: the
+        // cached-login branch above never passes the password. Do NOT move
+        // these to stdin without verifying steamcmd actually consumes a
+        // redirected password prompt on Windows — it did not, which is why
+        // this design exists.
         _outputController.add(
             'Full authentication with Steam Guard code...');
         command = [
@@ -521,6 +534,13 @@ class WorkshopPublishServiceImpl implements IWorkshopPublishService {
 
         // First chunk (or no cached creds): use provided auth
         // Subsequent chunks: credentials are cached from first login
+        //
+        // SECURITY (residual, accepted): same as the single-publish path —
+        // the password / Steam Guard code are passed in steamcmd's argv and
+        // are readable by same-user processes for the process lifetime. Only
+        // the first chunk's login carries them; later chunks reuse the cached
+        // session. stdin is closed on purpose, so argv is the only working
+        // channel. See the note in publishWorkshopItem before changing this.
         if (chunkIdx == 0 && !cachedLoginOk && steamGuardCode != null) {
           command = [
             '+login', username, password, steamGuardCode,
