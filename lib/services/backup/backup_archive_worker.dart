@@ -10,18 +10,17 @@ import 'package:path/path.dart' as path;
 /// [workDirPath] must be a scratch directory the caller owns; per-entry
 /// deflate temp files are written there and deleted as they are consumed.
 ///
-/// Returns non-fatal warning messages for the caller to log. The worker cannot
-/// log by itself: it holds no [ILoggingService] and, once running in a
-/// background isolate, could not reach one anyway.
+/// The worker cannot log: it holds no [ILoggingService] and, once running in
+/// a background isolate, could not reach one anyway. Failures surface as
+/// thrown exceptions for the caller to log.
 ///
 /// Each entry is compressed file→file and copied into the zip in chunks, so
 /// peak memory stays a few stream buffers instead of the full database size.
-Future<List<String>> writeBackupArchive({
+Future<void> writeBackupArchive({
   required String tempZipPath,
   required List<(String, String)> sources,
   required String workDirPath,
 }) async {
-  final warnings = <String>[];
   OutputFileStream? zipOutput;
   try {
     zipOutput = OutputFileStream(tempZipPath);
@@ -43,16 +42,18 @@ Future<List<String>> writeBackupArchive({
     zipOutput = null;
   } finally {
     // Close the zip output on the failure path: an open handle keeps the file
-    // locked on Windows and would block the caller's temp-file cleanup.
+    // locked on Windows and would block the caller's temp-file cleanup. This
+    // branch only runs while an exception from the try block is already
+    // propagating, so a close failure here is secondary to that exception —
+    // swallow it rather than mask the original error; the caller
+    // (createBackup) logs the propagating exception via
+    // `_logging.error('Failed to create backup', ...)`.
     if (zipOutput != null) {
       try {
         zipOutput.closeSync();
-      } catch (e) {
-        warnings.add('Failed to close backup archive stream: $e');
-      }
+      } catch (_) {}
     }
   }
-  return warnings;
 }
 
 /// Add the file at [sourcePath] to [encoder] as [entryName] without ever

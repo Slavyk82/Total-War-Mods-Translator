@@ -210,14 +210,11 @@ class DatabaseBackupService {
       // stream buffers instead of the full database size.
       _logging.debug('Writing backup archive');
       tempZipNeedsCleanup = true;
-      final warnings = await writeBackupArchive(
+      await writeBackupArchive(
         tempZipPath: tempZipPath,
         sources: sources,
         workDirPath: workDir.path,
       );
-      for (final warning in warnings) {
-        _logging.warning(warning, {'path': tempZipPath});
-      }
 
       await File(tempZipPath).rename(destinationPath);
       tempZipNeedsCleanup = false;

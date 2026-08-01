@@ -38,10 +38,16 @@ void main() {
   }
 
   /// Read one entry back out of the produced archive.
+  ///
+  /// Decodes with `verify: true` so the archive's CRC-32 is actually checked
+  /// against the decompressed bytes. These tests are the regression net for
+  /// the isolate move in the next task; without verification a broken CRC
+  /// (e.g. from deleting `crc32 = deflate.crc32`) would be invisible, since
+  /// the content bytes still round-trip correctly either way.
   List<int> readEntry(String zipPath, String entryName) {
     final input = InputFileStream(zipPath);
     try {
-      final archive = ZipDecoder().decodeBuffer(input);
+      final archive = ZipDecoder().decodeBuffer(input, verify: true);
       final entry = archive.files.firstWhere((f) => f.name == entryName);
       return entry.content as List<int>;
     } finally {
@@ -54,13 +60,12 @@ void main() {
     final source = await writeSource('twmt.db', bytes);
     final zipPath = path.join(tmp.path, 'out.zip');
 
-    final warnings = await writeBackupArchive(
+    await writeBackupArchive(
       tempZipPath: zipPath,
       sources: [('twmt.db', source.path)],
       workDirPath: tmp.path,
     );
 
-    expect(warnings, isEmpty);
     expect(readEntry(zipPath, 'twmt.db'), equals(bytes));
   });
 
@@ -99,7 +104,9 @@ void main() {
 
     final input = InputFileStream(zipPath);
     try {
-      final archive = ZipDecoder().decodeBuffer(input);
+      // verify: true — see readEntry's comment above: without it, a CRC
+      // regression in the moved compression path would go undetected.
+      final archive = ZipDecoder().decodeBuffer(input, verify: true);
       expect(
         archive.files.map((f) => f.name).toList()..sort(),
         ['twmt.db', 'twmt.db-wal'],
