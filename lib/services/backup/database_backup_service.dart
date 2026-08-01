@@ -11,6 +11,7 @@ import '../database/database_service.dart';
 import '../database/migration_service.dart';
 import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
+import 'backup_archive_worker.dart';
 
 /// Exception thrown when backup operations fail.
 class BackupException extends ServiceException {
@@ -141,7 +142,6 @@ class DatabaseBackupService {
     Directory? workDir;
     final tempZipPath = '$destinationPath.tmp';
     var tempZipNeedsCleanup = false;
-    OutputFileStream? zipOutput;
 
     try {
       // Ensure parent directory exists
@@ -210,23 +210,14 @@ class DatabaseBackupService {
       // stream buffers instead of the full database size.
       _logging.debug('Writing backup archive');
       tempZipNeedsCleanup = true;
-      zipOutput = OutputFileStream(tempZipPath);
-      final encoder = ZipEncoder();
-      encoder.startEncode(zipOutput);
-      var entryIndex = 0;
-      for (final (entryName, sourcePath) in sources) {
-        final deflateTempPath =
-            path.join(workDir.path, 'entry-${entryIndex++}.deflate');
-        await _addFileToZipStreamed(
-          encoder,
-          entryName,
-          sourcePath,
-          deflateTempPath,
-        );
+      final warnings = await writeBackupArchive(
+        tempZipPath: tempZipPath,
+        sources: sources,
+        workDirPath: workDir.path,
+      );
+      for (final warning in warnings) {
+        _logging.warning(warning, {'path': tempZipPath});
       }
-      encoder.endEncode();
-      await zipOutput.close();
-      zipOutput = null;
 
       await File(tempZipPath).rename(destinationPath);
       tempZipNeedsCleanup = false;
@@ -246,18 +237,6 @@ class DatabaseBackupService {
         stackTrace: stackTrace,
       ));
     } finally {
-      // Close the zip output before deleting the temp file: an open handle
-      // keeps the file locked on Windows.
-      if (zipOutput != null) {
-        try {
-          zipOutput.closeSync();
-        } catch (e) {
-          _logging.warning('Failed to close backup archive stream', {
-            'path': tempZipPath,
-            'error': e.toString(),
-          });
-        }
-      }
       if (tempZipNeedsCleanup) {
         try {
           final tempZipFile = File(tempZipPath);
@@ -282,72 +261,6 @@ class DatabaseBackupService {
         }
       }
     }
-  }
-
-  /// Add the file at [sourcePath] to [encoder] as [entryName] without ever
-  /// materializing it in memory.
-  ///
-  /// The file is first deflate-compressed file→file into [deflateTempPath]:
-  /// [Deflate.buffer] reads the input and writes the compressed output
-  /// through fixed-size stream buffers and keeps a running CRC-32 of the
-  /// uncompressed input as a side effect. The pre-compressed bytes are then
-  /// handed to [ZipEncoder.addFile] as an already-deflated entry, which the
-  /// encoder copies into the archive in 1 MB chunks. (ZipFileEncoder.addFile
-  /// in archive 3.x is NOT used because it buffers both the whole
-  /// uncompressed file and its deflated form in memory.)
-  ///
-  /// [Deflate.BEST_SPEED] matches the compression level the previous
-  /// in-memory `ZipEncoder().encode` implementation used, so produced
-  /// archives stay byte-compatible with the validate/restore path.
-  Future<void> _addFileToZipStreamed(
-    ZipEncoder encoder,
-    String entryName,
-    String sourcePath,
-    String deflateTempPath,
-  ) async {
-    final sourceLength = await File(sourcePath).length();
-
-    var crc32 = 0;
-    final input = InputFileStream(sourcePath);
-    try {
-      final deflateOutput = OutputFileStream(deflateTempPath);
-      try {
-        final deflate = Deflate.buffer(
-          input,
-          level: Deflate.BEST_SPEED,
-          output: deflateOutput,
-        );
-        deflate.finish();
-        crc32 = deflate.crc32;
-      } finally {
-        await deflateOutput.close();
-      }
-    } finally {
-      await input.close();
-    }
-
-    final compressedInput = InputFileStream(deflateTempPath);
-    try {
-      final entry = ArchiveFile(
-        entryName,
-        sourceLength,
-        compressedInput,
-        ArchiveFile.DEFLATE,
-      )
-        ..crc32 = crc32
-        // The constructor falls back to the COMPRESSED stream length when
-        // size <= 0; force the real uncompressed size so zero-byte sources
-        // (e.g. a TRUNCATE-checkpointed WAL) carry correct zip metadata.
-        ..size = sourceLength;
-      // addFile streams the pre-compressed bytes into the zip output and
-      // closes [compressedInput] (autoClose defaults to true).
-      encoder.addFile(entry);
-    } finally {
-      // Idempotent when addFile already closed the stream; required when
-      // addFile threw before closing it (Windows file locks).
-      compressedInput.closeSync();
-    }
-    await File(deflateTempPath).delete();
   }
 
   /// Check whether the linked SQLite library supports `VACUUM INTO`
