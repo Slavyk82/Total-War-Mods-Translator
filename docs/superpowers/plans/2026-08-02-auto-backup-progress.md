@@ -174,7 +174,7 @@ git commit -m "feat(backup): add BackupProgress model"
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: `Future<List<String>> writeBackupArchive({required String tempZipPath, required List<(String, String)> sources, required String workDirPath})` — writes the zip and returns warning messages for the caller to log.
+- Produces: `Future<void> writeBackupArchive({required String tempZipPath, required List<(String, String)> sources, required String workDirPath})` — writes the zip; failures surface as thrown exceptions.
 
 **This task does NOT introduce the isolate.** It only relocates code, so that a reviewer can judge "was the move faithful?" separately from "does `Isolate.run` behave?". `createBackup` calls `writeBackupArchive` directly, still on the main isolate. Task 3 adds the isolate.
 
@@ -228,7 +228,12 @@ void main() {
   List<int> readEntry(String zipPath, String entryName) {
     final input = InputFileStream(zipPath);
     try {
-      final archive = ZipDecoder().decodeBuffer(input);
+      // verify: true actually checks CRC-32. Without it the decoder ignores
+      // the checksum entirely, and a broken CRC would round-trip content fine
+      // here while 7-Zip and Explorer reject the archive. These tests are the
+      // regression net for moving compression into an isolate, so the checksum
+      // has to be part of what they verify.
+      final archive = ZipDecoder().decodeBuffer(input, verify: true);
       final entry = archive.files.firstWhere((f) => f.name == entryName);
       return entry.content as List<int>;
     } finally {
@@ -241,13 +246,12 @@ void main() {
     final source = await writeSource('twmt.db', bytes);
     final zipPath = path.join(tmp.path, 'out.zip');
 
-    final warnings = await writeBackupArchive(
+    await writeBackupArchive(
       tempZipPath: zipPath,
       sources: [('twmt.db', source.path)],
       workDirPath: tmp.path,
     );
 
-    expect(warnings, isEmpty);
     expect(readEntry(zipPath, 'twmt.db'), equals(bytes));
   });
 
@@ -286,7 +290,7 @@ void main() {
 
     final input = InputFileStream(zipPath);
     try {
-      final archive = ZipDecoder().decodeBuffer(input);
+      final archive = ZipDecoder().decodeBuffer(input, verify: true);
       expect(
         archive.files.map((f) => f.name).toList()..sort(),
         ['twmt.db', 'twmt.db-wal'],
@@ -354,18 +358,17 @@ import 'package:path/path.dart' as path;
 /// [workDirPath] must be a scratch directory the caller owns; per-entry
 /// deflate temp files are written there and deleted as they are consumed.
 ///
-/// Returns non-fatal warning messages for the caller to log. The worker cannot
-/// log by itself: it holds no [ILoggingService] and, once running in a
-/// background isolate, could not reach one anyway.
+/// The worker cannot log: it holds no [ILoggingService] and, once running in a
+/// background isolate, could not reach one anyway. Failures therefore surface
+/// as thrown exceptions, which the caller catches and logs.
 ///
 /// Each entry is compressed file→file and copied into the zip in chunks, so
 /// peak memory stays a few stream buffers instead of the full database size.
-Future<List<String>> writeBackupArchive({
+Future<void> writeBackupArchive({
   required String tempZipPath,
   required List<(String, String)> sources,
   required String workDirPath,
 }) async {
-  final warnings = <String>[];
   OutputFileStream? zipOutput;
   try {
     zipOutput = OutputFileStream(tempZipPath);
@@ -391,12 +394,15 @@ Future<List<String>> writeBackupArchive({
     if (zipOutput != null) {
       try {
         zipOutput.closeSync();
-      } catch (e) {
-        warnings.add('Failed to close backup archive stream: $e');
+      } catch (_) {
+        // Secondary to the exception already unwinding, which createBackup
+        // logs via _logging.error('Failed to create backup', ...). Nothing
+        // useful can be reported from here: the worker holds no logger, and
+        // a value returned from a finally block that an exception is passing
+        // through would never reach the caller anyway.
       }
     }
   }
-  return warnings;
 }
 
 /// Add the file at [sourcePath] to [encoder] as [entryName] without ever
@@ -482,14 +488,11 @@ Replace the archive-writing block — from `_logging.debug('Writing backup archi
 ```dart
       _logging.debug('Writing backup archive');
       tempZipNeedsCleanup = true;
-      final warnings = await writeBackupArchive(
+      await writeBackupArchive(
         tempZipPath: tempZipPath,
         sources: sources,
         workDirPath: workDir.path,
       );
-      for (final warning in warnings) {
-        _logging.warning(warning, {'path': tempZipPath});
-      }
 
       await File(tempZipPath).rename(destinationPath);
       tempZipNeedsCleanup = false;
@@ -704,7 +707,7 @@ Replace the `writeBackupArchive(...)` call added in Task 2 with:
       final capturedZipPath = tempZipPath;
       final capturedSources = sources;
       final capturedWorkDir = workDir.path;
-      final warnings = await Isolate.run(
+      await Isolate.run(
         () => writeBackupArchive(
           tempZipPath: capturedZipPath,
           sources: capturedSources,
@@ -1126,7 +1129,7 @@ Replace the whole block introduced in Task 3 — the three `captured*` locals an
           onProgress: onProgress,
         );
       }
-      final warnings = await Isolate.run(
+      await Isolate.run(
         () => writeBackupArchive(
           tempZipPath: capturedZipPath,
           sources: capturedSources,
@@ -2253,7 +2256,7 @@ disk activity instead of leaving the user staring at an unresponsive window."
 
 **Type consistency**
 
-- `writeBackupArchive` returns `Future<List<String>>` in Task 2 and is consumed as `warnings` in Tasks 2 and 3.
+- `writeBackupArchive` returns `Future<void>` (the returned-warnings channel prescribed in the first draft was unreachable dead code -- `zipOutput = null` is the last statement of the `try`, so the `finally` branch only runs while an exception unwinds past the `return`). Tasks 3 and 4 simply `await` it.
 - `BackupProgress({required phase, required bytesDone})` and `formattedBytes` are used identically in Tasks 4, 6, 7.
 - `BackupProgressPoller.start({phase, measure, onProgress})` / `stop()` match between Task 4's implementation and its use in `createBackup`.
 - Outcome names (`AutoBackupSkipped` / `AutoBackupCreated` / `AutoBackupFailure`, Task 5) are deliberately distinct from UI-state names (`AutoBackupIdle` / `AutoBackupRunning` / `AutoBackupDone` / `AutoBackupError`, Task 6); Task 8 uses both in one file.
