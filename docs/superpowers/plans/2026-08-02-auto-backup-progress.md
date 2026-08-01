@@ -617,23 +617,39 @@ void main() {
   });
 
   test('keeps the calling isolate responsive during compression', () async {
+    // 64 MB of incompressible data: large enough that a synchronous deflate
+    // stalls the event loop for a clearly measurable stretch.
+    await File(dbPath).writeAsBytes(fakeSqliteBytes(64 * 1024 * 1024));
     final destination = path.join(tmp.path, 'backup.zip');
 
-    // Count timer ticks that fire while the backup runs. If compression were
-    // still synchronous on this isolate, the event loop would be starved and
-    // essentially no tick would be delivered.
-    var ticks = 0;
-    final timer =
-        Timer.periodic(const Duration(milliseconds: 1), (_) => ticks++);
-    addTearDown(timer.cancel);
+    // Sample the wall clock on a fast timer and keep the largest gap between
+    // consecutive ticks.
+    //
+    // Counting ticks would prove nothing: createBackup awaits file I/O either
+    // way, so some ticks always get through even when compression blocks the
+    // isolate. The GAP is the discriminating signal — while Deflate.finish()
+    // holds the isolate, no tick can fire at all.
+    final ticks = <DateTime>[DateTime.now()];
+    final timer = Timer.periodic(
+      const Duration(milliseconds: 5),
+      (_) => ticks.add(DateTime.now()),
+    );
 
     final result = await build().createBackup(destination);
+    timer.cancel();
 
     expect(result.isOk, isTrue);
+
+    var maxGapMs = 0;
+    for (var i = 1; i < ticks.length; i++) {
+      final gap = ticks[i].difference(ticks[i - 1]).inMilliseconds;
+      if (gap > maxGapMs) maxGapMs = gap;
+    }
     expect(
-      ticks,
-      greaterThan(0),
-      reason: 'the event loop must keep running while the worker compresses',
+      maxGapMs,
+      lessThan(500),
+      reason: 'the event loop stalled for ${maxGapMs}ms, so compression is '
+          'still running on the calling isolate',
     );
   });
 
@@ -665,7 +681,9 @@ void main() {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `flutter test test/unit/services/backup/database_backup_service_isolate_test.dart -r compact`
-Expected: FAIL on `keeps the calling isolate responsive during compression` — `ticks` is 0 or near 0, because compression still runs synchronously on this isolate. The other tests may already pass.
+Expected: FAIL on `keeps the calling isolate responsive during compression` — the reported `maxGapMs` is well above 500, because `Deflate.finish()` still holds this isolate for the whole 64 MB. The other three tests already pass; they are regression cover for the change, not new behaviour.
+
+**Do not proceed until you have seen this specific failure.** It is the only automated proof that the fix in this task does what it claims. If it passes before the change, the test is not discriminating and must be fixed first — raise it rather than continuing.
 
 - [ ] **Step 3: Wrap the worker call in `Isolate.run`**
 
