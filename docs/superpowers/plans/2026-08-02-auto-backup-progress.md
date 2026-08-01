@@ -656,7 +656,7 @@ void main() {
   test('surfaces a worker failure as Err rather than throwing', () async {
     // A destination inside a path that cannot be created forces the worker's
     // OutputFileStream to fail.
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
 
     final result = await build().createBackup(destination);
 
@@ -664,7 +664,7 @@ void main() {
   });
 
   test('leaves no .tmp file behind when the backup fails', () async {
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
 
     await build().createBackup(destination);
 
@@ -1031,7 +1031,7 @@ void main() {
 
   test('stops reporting when the backup fails', () async {
     final events = <BackupProgress>[];
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
 
     final result =
         await build().createBackup(destination, onProgress: events.add);
