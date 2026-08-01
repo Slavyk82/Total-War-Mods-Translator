@@ -43,7 +43,8 @@ prerequisite, not an optional extra.
 
 1. The application stays fully responsive during an automatic backup.
 2. The user sees a discreet, non-blocking indicator explaining the disk activity,
-   with real progress, that disappears on its own when the backup completes.
+   with live evidence of progress, that disappears on its own when the backup
+   completes.
 3. A failed automatic backup stops being silent.
 
 ## Non-goals
@@ -54,6 +55,7 @@ prerequisite, not an optional extra.
   synchronous inflate; it can be addressed separately.
 - Any change to the backup archive format, the retention policy, or the
   once-per-day scheduling.
+- A percentage. See "Why no percentage" below.
 
 ## Decisions
 
@@ -63,78 +65,94 @@ prerequisite, not an optional extra.
 | How visible? | Discreet card, bottom-right, auto-dismissing. |
 | On failure? | Persistent error card, dismissed by the user. |
 | Scope of progress UI | Automatic backup only. |
+| Risk posture | **Conservative.** Compression logic is moved, never rewritten. |
 
 Working during a backup is safe: `VACUUM INTO` produces a transactionally
-consistent snapshot while writers continue, and phase 2 compresses that
-snapshot file — the live database is not touched at all during compression.
+consistent snapshot while writers continue, and the compression phase works on
+that snapshot file — the live database is not touched at all during compression.
 
 ## Architecture
 
-### 1. Compression moves to a background isolate
+The guiding constraint is the risk posture: **not one byte of the compression
+logic changes.** The archive-writing code is relocated into a background
+isolate verbatim, and progress is derived by observing the filesystem from the
+outside. Nothing in the code path that determines archive contents, CRCs, or
+zip structure is touched, so the produced archives are bit-for-bit what they are
+today.
+
+### 1. The archive writer moves to a background isolate, unchanged
 
 New file `lib/services/backup/backup_archive_worker.dart` — pure Dart,
-top-level functions, depending only on `dart:io`, `dart:isolate` and `archive`.
-No Flutter, no Riverpod, no sqflite, no GetIt. This keeps
+top-level functions, depending only on `dart:io` and `archive`. No Flutter, no
+Riverpod, no sqflite, no GetIt. This keeps
 `test/architecture/import_boundaries_test.dart` green and makes the worker
 usable under `flutter test`.
 
-`DatabaseBackupService.createBackup()` delegates archive writing to
-`Isolate.run()`, passing a `SendPort` for progress. `Isolate.run` rethrows a
-worker exception in the caller, so the existing `try/catch/finally` in
-`createBackup` keeps working unchanged, including its temp-file cleanup.
+The block currently spanning `database_backup_service.dart:213-229` — the
+`OutputFileStream` / `ZipEncoder.startEncode` / per-entry
+`_addFileToZipStreamed` loop / `endEncode` / `close` sequence — moves into the
+worker together with `_addFileToZipStreamed` itself, **with its body
+unmodified**: `Deflate.buffer(...)` + `finish()` stay exactly as they are.
 
-### 2. Chunked deflate
-
-The monolithic `Deflate.buffer(...).finish()` becomes a loop driven inside the
-worker, using the `archive` package's incremental API (`Deflate.addBytes`,
-`deflate.dart:57`):
+`createBackup()` then calls:
 
 ```dart
-final deflate = Deflate.buffer(
-  InputStream(Uint8List(0)),
-  level: Deflate.BEST_SPEED,
-  flush: Deflate.NO_FLUSH,
-  output: deflateOutput,
-);
-while (!input.isEOS) {
-  final chunk = input.readBytes(chunkSize).toUint8List();
-  if (chunk.isEmpty) break;
-  deflate.addBytes(chunk, flush: Deflate.NO_FLUSH);
-  bytesDone += chunk.length;            // progress point
-}
-deflate.addBytes(const <int>[], flush: Deflate.FINISH);
-deflate.finish();
-crc32 = deflate.crc32;
+await Isolate.run(() => writeBackupArchive(tempZipPath, sources, workDirPath));
 ```
 
-Chunk size 4 MB. Progress events throttled to ~200 ms so the port is not
-flooded (1.78 GB / 4 MB ≈ 440 raw events).
+`sources` is a `List<(String, String)>` of plain strings and the paths are
+strings, so every capture is trivially sendable. `Isolate.run` rethrows a worker
+exception in the caller, so the existing `try/catch/finally` in `createBackup`
+keeps working unchanged, including its temp-file cleanup and its
+`zipOutput.closeSync()` guard — which becomes the worker's responsibility for
+the stream it now owns.
 
-**Why this stays byte-compatible.** `Deflate.crc32` accumulates across
-successive `addBytes` calls — `crc32 = getCrc32(bytes, crc32)` in `_readBuf`
-(`deflate.dart:1218`) — and is reset only in `_init`, which the constructor
-calls once. `NO_FLUSH` is the standard zlib "keep compressing" mode and injects
-no flush markers. `BEST_SPEED` is preserved, so archives remain readable by the
-existing `validateBackup` / `restoreBackup` paths. This is the single riskiest
-change in the design and is pinned by the round-trip test below.
+What stays on the main isolate: parent-directory creation, the database-exists
+check, `workDir` creation, `VACUUM INTO`, the rename over the final name, the
+size log, and all cleanup.
 
-### 3. Two phases, honestly reported
+### 2. Progress by filesystem observation
 
-| Phase | Work | Display |
-| --- | --- | --- |
-| `snapshot` | `VACUUM INTO` (sqflite isolate) | Indeterminate bar + bytes written |
-| `compressing` | worker isolate | Exact percentage + `done / total` |
+No `SendPort`, no cross-isolate messaging. `createBackup` runs a
+`Timer.periodic` (500 ms) on the main isolate that stats the temporary files the
+worker is writing and reports the byte count through `onProgress`:
 
-Phase 1 is deliberately **indeterminate**. `VACUUM INTO` exposes no progress
-hook, so `createBackup` polls `File(snapshotPath).length()` on a ~500 ms timer
-while awaiting the statement, and reports that count as `bytesDone` with
-`bytesTotal = 0`.
+| Phase | Polled path(s) |
+| --- | --- |
+| `snapshot` | the `VACUUM INTO` target in `workDir` |
+| `compressing` | `entry-*.deflate` in `workDir`, plus `$destinationPath.tmp` |
 
-The byte count is shown, but **not** turned into a percentage: `VACUUM INTO`
-defragments, so the snapshot ends up *smaller* than the source database. A
-fraction computed against the source size would climb, reach 100%, and then
-stall — visibly wrong. A byte counter with an indeterminate bar reports exactly
-what is known and nothing more.
+The compression phase polls the per-entry deflate temp files rather than the zip
+itself, because `ZipEncoder.addFile` only appends an entry *after* its deflate
+has fully completed — the zip would sit near zero for the entire compression and
+then jump. The `.deflate` files grow continuously, so they are the signal that
+actually moves.
+
+Every poll is wrapped in `try/catch` and falls back to the last known value.
+Stat-ing a file another isolate holds open can throw on Windows; a failed poll
+must degrade the display, never the backup. The timer is cancelled in
+`createBackup`'s `finally` block, on every path.
+
+This approach is read-only and entirely outside the backup's own code path: it
+cannot corrupt an archive, because it cannot influence one.
+
+### 3. Why no percentage
+
+Neither phase can produce an honest fraction:
+
+- `VACUUM INTO` exposes no progress hook, and it defragments — the snapshot ends
+  up *smaller* than the source database. A fraction against the source size
+  would climb, hit 100%, and stall.
+- Compression progress is only observable as *compressed bytes written*, whose
+  total is unknown until the archive is finished (~362 MB from 1.78 GB here, but
+  the ratio drifts with content).
+
+Estimating a denominator from the previous backup's size was considered and
+rejected: it produces a bar that can reach 100% and freeze, or finish at 80%,
+which is precisely the "is it stuck?" impression this work exists to remove.
+
+The card therefore shows an **indeterminate bar plus a live byte counter**. The
+counter is what proves the app is alive — the actual goal — and it never lies.
 
 ### 4. Progress transport
 
@@ -147,11 +165,8 @@ Future<Result<String, BackupException>> createBackup(
 })
 ```
 
-`createBackup` owns the `ReceivePort`: it listens for the worker's progress
-messages and invokes `onProgress` from that listener. `onProgress` therefore
-always fires on the **main isolate**, and callers may touch Riverpod state
-directly from it without any cross-isolate concern. The port is closed in
-`createBackup`'s `finally` block, on every path.
+`onProgress` is invoked from the polling timer, so it always fires on the
+**main isolate**; callers may touch Riverpod state directly from it.
 
 Consequences:
 
@@ -169,10 +184,11 @@ enum BackupPhase { snapshot, compressing }
 class BackupProgress {
   final BackupPhase phase;
   final int bytesDone;
-  final int bytesTotal;          // 0 when unknown
-  double? get fraction => bytesTotal > 0 ? bytesDone / bytesTotal : null;
 }
 ```
+
+No `bytesTotal`, no `fraction` — per section 3, there is no honest denominator,
+and modelling one would invite a caller to render it.
 
 New provider `lib/providers/backup/auto_backup_progress_provider.dart`
 (`@riverpod`, requires `build_runner`) holding:
@@ -194,10 +210,6 @@ card is not expressible. The return type becomes:
 sealed class AutoBackupOutcome {}      // skipped | created(String path) | failed(String message)
 ```
 
-This is a signature change; `test/unit/services/backup/auto_backup_service_test.dart`
-is updated accordingly. The best-effort contract is unchanged: a failure is
-still caught, logged, and never propagated into startup.
-
 `AutoBackupService` also has to *carry* the progress callback, since it wraps
 `createBackup` behind an injected function type
 (`auto_backup_service.dart:23-24`). Its injected type widens to accept the
@@ -217,6 +229,11 @@ This keeps the wiring in `main.dart` a one-liner (`createBackup:
 backupService.createBackup`) and leaves `AutoBackupService` free of any Flutter
 or Riverpod dependency.
 
+These are signature changes;
+`test/unit/services/backup/auto_backup_service_test.dart` is updated
+accordingly. The best-effort contract is unchanged: a failure is still caught,
+logged, and never propagated into startup.
+
 ## UI
 
 New widget `lib/widgets/backup/auto_backup_progress_card.dart`, mounted in the
@@ -235,7 +252,7 @@ Width ~320 px, fade in/out.
 | --- | --- |
 | `idle` | `SizedBox.shrink()` |
 | `running(snapshot)` | "Snapshotting database… 1.2 GB", indeterminate bar |
-| `running(compressing)` | "Compressing… 45%", determinate bar, "812 MB / 1.78 GB" |
+| `running(compressing)` | "Compressing… 180 MB written", indeterminate bar |
 | `done` | "Done" held ~1.5 s, then fades out |
 | `failed` | Red card, persistent, close button |
 
@@ -258,27 +275,38 @@ all 11 locales (en, fr, de, es, ko, pt, pt-BR, ru, tr, zh).
 
 | # | Test | Why |
 | --- | --- | --- |
-| 1 | **Round-trip**: create an archive via the chunked deflate → `validateBackup` succeeds → `restoreBackup` → data identical | The critical test. Proves the chunked deflate stays byte-compatible with the existing read paths. |
-| 2 | Source larger than `chunkSize` (multiple `addBytes` calls) | Verifies CRC-32 accumulates correctly across chunks. |
-| 3 | Zero-byte source (TRUNCATE-checkpointed WAL) | The loop must exit cleanly and still emit a valid empty entry. |
-| 4 | Progress callback | Monotonically increasing, final event equals total, phases in order. |
-| 5 | `AutoBackupOutcome` | `skipped` / `created` / `failed` are distinguishable. |
-| 6 | Widget test for the card | Each state renders; the error state persists until the close button is tapped. |
-| 7 | `test/architecture/import_boundaries_test.dart` | Must stay green — the worker is pure Dart. |
+| 1 | **Round-trip**: `createBackup` → `validateBackup` succeeds → `restoreBackup` → data identical | Guards the isolate relocation end to end. |
+| 2 | Content fidelity: SHA-256 of every file restored from a worker-built archive equals the source's, for both an incompressible (random) and a highly compressible input of several MB | Literal zip byte-identity is impossible — `ArchiveFile.lastModTime` defaults to `DateTime.now()` (`archive_file.dart:24`), so the header bytes differ every run. Content fidelity is the property that actually matters and it is verifiable. |
+| 3 | Zero-byte source (TRUNCATE-checkpointed WAL) | Exercises the legacy multi-entry path, which the single-entry `VACUUM INTO` path does not cover. |
+| 4 | Progress callback | Fires with `snapshot` then `compressing`, byte counts non-decreasing, timer cancelled after completion and after failure. |
+| 5 | Poll failure tolerated | A stat that throws must leave the backup successful and the last value displayed. |
+| 6 | `AutoBackupOutcome` | `skipped` / `created` / `failed` are distinguishable. |
+| 7 | Widget test for the card | Each state renders; the error state persists until the close button is tapped. |
+| 8 | `test/architecture/import_boundaries_test.dart` | Must stay green — the worker is pure Dart. |
 
 Existing repo test conventions apply (mocktail repos, `NoopLogger`, real temp
 directories, theme-token extension for widget tests).
 
 ## Risks
 
-- **Archive compatibility** (highest). Mitigated by test 1, which exercises the
-  full create → validate → restore cycle rather than just asserting the file
-  exists.
-- **`Deflate.buffer` with an empty initial input and `flush: NO_FLUSH`** must be
-  a no-op. Covered by tests 1-3; if it misbehaves, the fallback is to construct
-  the deflater from the first chunk instead of an empty buffer.
-- **Isolate memory**: the worker holds one 4 MB chunk plus deflate window
-  buffers. Peak memory stays bounded, matching the existing streaming design.
+Deliberately low, by construction.
+
+- **Isolate relocation** is the only behavioural change to the backup path.
+  Mitigated by tests 1-3. Because the compression code moves verbatim, identical
+  archive content is guaranteed by construction; the tests are there to catch a
+  botched relocation (a stream closed on the wrong side, an entry dropped), not
+  a compression regression.
+- **Windows file locking during polling**: stat-ing a file the worker holds open
+  may throw. Contained by the `try/catch` fallback (test 5); a poll failure
+  degrades the counter, never the backup.
+- **Isolate memory**: the worker holds the same stream buffers the current code
+  does. Peak memory is unchanged, matching the existing streaming design.
+
+Explicitly *not* taken: rewriting `Deflate.buffer(...).finish()` into a chunked
+`addBytes` loop. That would have yielded an exact percentage, but it changes the
+code that determines archive bytes and CRCs, and a mistake there produces
+archives that fail to restore — the one failure mode a backup feature must never
+have.
 
 ## Out of scope, noted
 
