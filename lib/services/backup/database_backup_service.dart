@@ -6,6 +6,7 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart' as path;
 
 import '../../config/database_config.dart';
+import '../../models/backup/backup_progress.dart';
 import '../../models/common/result.dart';
 import '../../models/common/service_exception.dart';
 import '../database/database_service.dart';
@@ -13,6 +14,7 @@ import '../database/migration_service.dart';
 import '../service_locator.dart';
 import '../shared/i_logging_service.dart';
 import 'backup_archive_worker.dart';
+import 'backup_progress_poller.dart';
 
 /// Exception thrown when backup operations fail.
 class BackupException extends ServiceException {
@@ -72,12 +74,16 @@ class DatabaseBackupService {
   @visibleForTesting
   final bool debugForceLegacySnapshot;
 
+  /// How often the progress poller samples the worker's temp files.
+  final Duration progressInterval;
+
   DatabaseBackupService({
     ILoggingService? logging,
     Future<String> Function()? databasePathProvider,
     Future<void> Function()? databaseCloser,
     Future<void> Function()? databaseReinitializer,
     this.debugForceLegacySnapshot = false,
+    this.progressInterval = const Duration(milliseconds: 500),
   })  : _logging = logging ?? ServiceLocator.get<ILoggingService>(),
         _getDatabasePath =
             databasePathProvider ?? DatabaseConfig.getDatabasePath,
@@ -136,13 +142,15 @@ class DatabaseBackupService {
   /// so an interrupted backup never leaves a half-written file that looks
   /// like a valid archive.
   Future<Result<String, BackupException>> createBackup(
-    String destinationPath,
-  ) async {
+    String destinationPath, {
+    void Function(BackupProgress)? onProgress,
+  }) async {
     _logging.info('Creating database backup', {'destination': destinationPath});
 
     Directory? workDir;
     final tempZipPath = '$destinationPath.tmp';
     var tempZipNeedsCleanup = false;
+    final poller = BackupProgressPoller(interval: progressInterval);
 
     try {
       // Ensure parent directory exists
@@ -178,8 +186,16 @@ class DatabaseBackupService {
         final snapshotPath =
             path.join(workDir.path, DatabaseConfig.databaseName);
         _logging.debug('Creating consistent snapshot via VACUUM INTO');
+        if (onProgress != null) {
+          poller.start(
+            phase: BackupPhase.snapshot,
+            measure: () => _fileLength(snapshotPath),
+            onProgress: onProgress,
+          );
+        }
         await DatabaseService.database
             .execute('VACUUM INTO ?', [snapshotPath]);
+        poller.stop();
         sources.add((DatabaseConfig.databaseName, snapshotPath));
       } else {
         if (DatabaseService.isInitialized) {
@@ -219,6 +235,15 @@ class DatabaseBackupService {
       final capturedZipPath = tempZipPath;
       final capturedSources = sources;
       final capturedWorkDir = workDir.path;
+
+      if (onProgress != null) {
+        poller.start(
+          phase: BackupPhase.compressing,
+          measure: () =>
+              _compressedBytesSoFar(capturedWorkDir, capturedZipPath),
+          onProgress: onProgress,
+        );
+      }
       await Isolate.run(
         () => writeBackupArchive(
           tempZipPath: capturedZipPath,
@@ -226,6 +251,7 @@ class DatabaseBackupService {
           workDirPath: capturedWorkDir,
         ),
       );
+      poller.stop();
 
       await File(tempZipPath).rename(destinationPath);
       tempZipNeedsCleanup = false;
@@ -245,6 +271,7 @@ class DatabaseBackupService {
         stackTrace: stackTrace,
       ));
     } finally {
+      poller.stop();
       if (tempZipNeedsCleanup) {
         try {
           final tempZipFile = File(tempZipPath);
@@ -269,6 +296,36 @@ class DatabaseBackupService {
         }
       }
     }
+  }
+
+  /// Length of [filePath], or 0 when it does not exist yet.
+  static Future<int> _fileLength(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) return 0;
+    return file.length();
+  }
+
+  /// Compressed bytes the worker has produced so far.
+  ///
+  /// Sums the per-entry `entry-*.deflate` scratch files plus the archive
+  /// itself. The zip alone is a poor signal: [ZipEncoder.addFile] only appends
+  /// an entry *after* its deflate has fully completed, so the archive would sit
+  /// near zero for the whole compression and then jump. The `.deflate` files
+  /// grow continuously, so they are what actually moves.
+  static Future<int> _compressedBytesSoFar(
+    String workDirPath,
+    String tempZipPath,
+  ) async {
+    var total = await _fileLength(tempZipPath);
+    final dir = Directory(workDirPath);
+    if (await dir.exists()) {
+      await for (final entity in dir.list()) {
+        if (entity is File && entity.path.endsWith('.deflate')) {
+          total += await entity.length();
+        }
+      }
+    }
+    return total;
   }
 
   /// Check whether the linked SQLite library supports `VACUUM INTO`
