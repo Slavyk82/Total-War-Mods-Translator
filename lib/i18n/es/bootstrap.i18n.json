@@ -40,5 +40,13 @@
       "updateComplete": "Actualización de los datos de validación completada.",
       "updateFailed": "Error al actualizar los datos de validación: $error"
     }
+  },
+  "autoBackup": {
+    "title": "Copia de seguridad automática",
+    "snapshotting": "Creando instantánea de la base de datos… $size",
+    "compressing": "Comprimiendo… $size escritos",
+    "done": "Copia de seguridad completada",
+    "failedTitle": "Error en la copia de seguridad automática",
+    "dismiss": "Cerrar"
   }
 }

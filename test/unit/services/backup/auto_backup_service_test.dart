@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
+import 'package:twmt/models/backup/backup_progress.dart';
 import 'package:twmt/models/common/result.dart';
 import 'package:twmt/services/backup/auto_backup_service.dart';
 import 'package:twmt/services/backup/database_backup_service.dart';
@@ -25,7 +26,10 @@ void main() {
 
   /// Fake createBackup that just writes a small placeholder file at the
   /// destination so list/prune logic has real files to operate on.
-  Future<Result<String, BackupException>> fakeCreate(String destination) async {
+  Future<Result<String, BackupException>> fakeCreate(
+    String destination, {
+    void Function(BackupProgress)? onProgress,
+  }) async {
     createCalls++;
     await File(destination).writeAsString('zip');
     return Ok(destination);
@@ -35,7 +39,10 @@ void main() {
     Duration minInterval = const Duration(days: 1),
     int retain = 5,
     DateTime Function()? now,
-    Future<Result<String, BackupException>> Function(String)? createBackup,
+    Future<Result<String, BackupException>> Function(
+      String, {
+      void Function(BackupProgress)? onProgress,
+    })? createBackup,
   }) {
     return AutoBackupService(
       logging: NoopLogger(),
@@ -61,7 +68,7 @@ void main() {
 
     final result = await service.runIfDue();
 
-    expect(result, isNotNull);
+    expect(result, isA<AutoBackupCreated>());
     expect(createCalls, 1);
     final files = await backupFiles();
     expect(files, hasLength(1));
@@ -77,7 +84,7 @@ void main() {
     final service = build(minInterval: const Duration(days: 1));
     final result = await service.runIfDue();
 
-    expect(result, isNull);
+    expect(result, isA<AutoBackupSkipped>());
     expect(createCalls, 0);
   });
 
@@ -95,7 +102,7 @@ void main() {
     );
     final result = await service.runIfDue();
 
-    expect(result, isNotNull);
+    expect(result, isA<AutoBackupCreated>());
     expect(createCalls, 1);
   });
 
@@ -150,5 +157,55 @@ void main() {
     // All four manual backups survive; pruning only ever touches auto-backups.
     final manual = files.where((f) => f.startsWith('TWMT_Backup_')).toList();
     expect(manual, hasLength(4));
+  });
+
+  test('reports a failed backup as AutoBackupFailure', () async {
+    final service = build(
+      createBackup: (destination, {onProgress}) async =>
+          const Err(BackupException('disk on fire')),
+    );
+
+    final result = await service.runIfDue();
+
+    expect(result, isA<AutoBackupFailure>());
+    expect((result as AutoBackupFailure).message, contains('disk on fire'));
+  });
+
+  test('reports a thrown error as AutoBackupFailure', () async {
+    final service = build(
+      createBackup: (destination, {onProgress}) async =>
+          throw StateError('boom'),
+    );
+
+    final result = await service.runIfDue();
+
+    expect(result, isA<AutoBackupFailure>());
+  });
+
+  test('exposes the created path', () async {
+    final service = build();
+
+    final result = await service.runIfDue();
+
+    expect(result, isA<AutoBackupCreated>());
+    expect((result as AutoBackupCreated).path, endsWith('.zip'));
+  });
+
+  test('forwards onProgress to the underlying backup', () async {
+    BackupProgress? seen;
+    final service = build(
+      createBackup: (destination, {onProgress}) async {
+        onProgress?.call(
+          const BackupProgress(phase: BackupPhase.compressing, bytesDone: 5),
+        );
+        await File(destination).writeAsString('zip');
+        return Ok(destination);
+      },
+    );
+
+    await service.runIfDue(onProgress: (p) => seen = p);
+
+    expect(seen, isNotNull);
+    expect(seen!.bytesDone, 5);
   });
 }

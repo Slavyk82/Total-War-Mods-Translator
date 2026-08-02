@@ -40,5 +40,13 @@
       "updateComplete": "Aktualisierung der Validierungsdaten abgeschlossen.",
       "updateFailed": "Aktualisierung der Validierungsdaten fehlgeschlagen: $error"
     }
+  },
+  "autoBackup": {
+    "title": "Automatische Sicherung",
+    "snapshotting": "Datenbank-Snapshot… $size",
+    "compressing": "Komprimierung… $size geschrieben",
+    "done": "Sicherung abgeschlossen",
+    "failedTitle": "Automatische Sicherung fehlgeschlagen",
+    "dismiss": "Schließen"
   }
 }

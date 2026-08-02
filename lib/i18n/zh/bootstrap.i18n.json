@@ -40,5 +40,13 @@
       "updateComplete": "验证数据更新完成。",
       "updateFailed": "验证数据更新失败：$error"
     }
+  },
+  "autoBackup": {
+    "title": "自动备份",
+    "snapshotting": "正在创建数据库快照… $size",
+    "compressing": "正在压缩… 已写入 $size",
+    "done": "备份完成",
+    "failedTitle": "自动备份失败",
+    "dismiss": "关闭"
   }
 }

@@ -40,5 +40,13 @@
       "updateComplete": "Doğrulama verisi güncellemesi tamamlandı.",
       "updateFailed": "Doğrulama verisi güncellemesi başarısız oldu: $error"
     }
+  },
+  "autoBackup": {
+    "title": "Otomatik yedekleme",
+    "snapshotting": "Veritabanı anlık görüntüsü alınıyor… $size",
+    "compressing": "Sıkıştırılıyor… $size yazıldı",
+    "done": "Yedekleme tamamlandı",
+    "failedTitle": "Otomatik yedekleme başarısız",
+    "dismiss": "Kapat"
   }
 }

@@ -40,5 +40,13 @@
       "updateComplete": "검증 데이터 업데이트가 완료되었습니다.",
       "updateFailed": "검증 데이터 업데이트에 실패했습니다: $error"
     }
+  },
+  "autoBackup": {
+    "title": "자동 백업",
+    "snapshotting": "데이터베이스 스냅샷 생성 중… $size",
+    "compressing": "압축 중… $size 기록됨",
+    "done": "백업 완료",
+    "failedTitle": "자동 백업 실패",
+    "dismiss": "닫기"
   }
 }
