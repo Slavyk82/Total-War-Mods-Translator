@@ -84,6 +84,12 @@ void main() {
     final destination = path.join(tmp.path, 'backup.zip');
 
     await build().createBackup(destination, onProgress: events.add);
+    // Positive precondition first: a successful backup compresses a 6 MB
+    // fake database, which takes long enough (isolate spawn alone costs
+    // several ms) that the immediate emission is reliably delivered before
+    // createBackup returns. Without this, a poller that emits nothing at all
+    // would pass the negative assertion below unchanged.
+    expect(events, isNotEmpty);
     final countAtReturn = events.length;
     await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -101,6 +107,14 @@ void main() {
     final result =
         await build().createBackup(destination, onProgress: events.add);
     expect(result.isErr, isTrue);
+    // No positive "at least one event" assertion here, deliberately: the
+    // worker fails almost as soon as the isolate spawns (opening a directory
+    // as a file), which genuinely races the immediate emission's own async
+    // file-stat hop. Either order is possible, so asserting events.isNotEmpty
+    // would itself be flaky. The generation guard in BackupProgressPoller
+    // (see backup_progress_poller_test.dart) already covers "a stale sample
+    // must not leak past stop()"; this test only needs the negative half:
+    // whatever did or didn't fire before the return, nothing fires after it.
     final countAtReturn = events.length;
     await Future<void>.delayed(const Duration(milliseconds: 50));
 

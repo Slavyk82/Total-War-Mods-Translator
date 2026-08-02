@@ -17,6 +17,18 @@ class BackupProgressPoller {
   Timer? _timer;
   int _lastValue = 0;
 
+  /// Bumped by every [start] and [stop]. A [sample] closure captures the
+  /// generation active when it was scheduled; if that generation is stale by
+  /// the time its `measure()` resolves, the result is discarded outright.
+  ///
+  /// Without this, a slow `measure()` call from a phase that has already
+  /// ended (e.g. `createBackup` calls `poller.stop()` then immediately
+  /// `poller.start()` for the next phase, with no `await` in between) can
+  /// resolve *after* the switch and deliver a stale [BackupPhase] — and,
+  /// combined with the floor below, permanently pin `_lastValue` at a value
+  /// that belongs to a different, unrelated phase.
+  int _generation = 0;
+
   BackupProgressPoller({this.interval = const Duration(milliseconds: 500)});
 
   /// Begin reporting [phase] progress.
@@ -30,27 +42,36 @@ class BackupProgressPoller {
   }) {
     stop();
     _lastValue = 0;
+    final generation = _generation;
 
     Future<void> sample() async {
+      int? measured;
       try {
-        final measured = await measure();
-        // Clamp to a floor of the last known value rather than assigning
-        // outright. The raw measurement is not perfectly monotonic: e.g. the
-        // compressing-phase measure sums a zip file plus in-flight `.deflate`
-        // scratch files, and there is a brief window, after an entry's bytes
-        // have been copied into the zip but before its now-redundant
-        // `.deflate` file is deleted, where the two would otherwise be
-        // double-counted and then drop back down. [BackupProgress.bytesDone]
-        // is documented as monotonically non-decreasing within a phase, so
-        // that guarantee is enforced here, once, for every measurement this
-        // poller is ever given — instead of requiring each `measure` callback
-        // to defend against its own underlying races.
-        if (measured > _lastValue) _lastValue = measured;
+        measured = await measure();
       } catch (_) {
         // Keep the last known value. Stat-ing a file another isolate holds
         // open can throw on Windows; a poll failure must never affect the
         // backup or the caller.
       }
+
+      // Discard a sample whose generation has already been superseded by a
+      // later start()/stop() call. This must happen before touching
+      // `_lastValue` or calling `onProgress` — both belong to whichever
+      // phase is current, not to the one this sample was measuring.
+      if (generation != _generation) return;
+
+      // Clamp to a floor of the last known value rather than assigning
+      // outright. The raw measurement is not perfectly monotonic: e.g. the
+      // compressing-phase measure sums a zip file plus in-flight `.deflate`
+      // scratch files, and there is a brief window, after an entry's bytes
+      // have been copied into the zip but before its now-redundant
+      // `.deflate` file is deleted, where the two would otherwise be
+      // double-counted and then drop back down. [BackupProgress.bytesDone]
+      // is documented as monotonically non-decreasing within a phase, so
+      // that guarantee is enforced here, once, for every measurement this
+      // poller is ever given — instead of requiring each `measure` callback
+      // to defend against its own underlying races.
+      if (measured != null && measured > _lastValue) _lastValue = measured;
       onProgress(BackupProgress(phase: phase, bytesDone: _lastValue));
     }
 
@@ -62,5 +83,9 @@ class BackupProgressPoller {
   void stop() {
     _timer?.cancel();
     _timer = null;
+    // Invalidate the current generation too: a sample already in flight
+    // (mid-`measure()`) when stop() is called must be discarded when it
+    // resolves, even if start() is never called again.
+    _generation++;
   }
 }
