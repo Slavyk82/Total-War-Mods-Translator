@@ -657,9 +657,12 @@ void main() {
   });
 
   test('surfaces a worker failure as Err rather than throwing', () async {
-    // A destination inside a path that cannot be created forces the worker's
-    // OutputFileStream to fail.
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    // NOT a non-existent parent directory: createBackup creates those
+    // recursively, so such a destination succeeds. Occupying the worker's temp
+    // path with a directory makes its very first OutputFileStream open throw,
+    // inside the isolate.
+    final destination = path.join(tmp.path, 'backup.zip');
+    await Directory('$destination.tmp').create();
 
     final result = await build().createBackup(destination);
 
@@ -667,9 +670,15 @@ void main() {
   });
 
   test('leaves no .tmp file behind when the backup fails', () async {
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    // The failure has to happen AFTER compression has written a real .tmp,
+    // otherwise this asserts nothing. Occupying the FINAL destination with a
+    // directory lets compression finish, then breaks the rename — so a genuine
+    // temp file exists at failure time and the finally block must delete it.
+    final destination = path.join(tmp.path, 'backup.zip');
+    await Directory(destination).create();
 
-    await build().createBackup(destination);
+    final result = await build().createBackup(destination);
+    expect(result.isErr, isTrue);
 
     final leftovers = tmp
         .listSync()
@@ -1034,7 +1043,11 @@ void main() {
 
   test('stops reporting when the backup fails', () async {
     final events = <BackupProgress>[];
-    final destination = path.join(tmp.path, 'missing dir', 'backup.zip');
+    // Occupy the worker's temp path with a directory so its first
+    // OutputFileStream open throws. A non-existent parent directory would NOT
+    // fail — createBackup creates those recursively.
+    final destination = path.join(tmp.path, 'backup.zip');
+    await Directory('$destination.tmp').create();
 
     final result =
         await build().createBackup(destination, onProgress: events.add);
