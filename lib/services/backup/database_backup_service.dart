@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:intl/intl.dart';
 import 'package:meta/meta.dart';
@@ -210,10 +211,20 @@ class DatabaseBackupService {
       // stream buffers instead of the full database size.
       _logging.debug('Writing backup archive');
       tempZipNeedsCleanup = true;
-      await writeBackupArchive(
-        tempZipPath: tempZipPath,
-        sources: sources,
-        workDirPath: workDir.path,
+      // Compression is CPU-bound and fully synchronous. Running it on the
+      // calling isolate froze the UI for tens of seconds on a large database
+      // (1.78 GB observed), which users read as a crash. Isolate.run keeps the
+      // event loop free; it rethrows a worker exception here, so the catch
+      // below still turns failures into Err(BackupException).
+      final capturedZipPath = tempZipPath;
+      final capturedSources = sources;
+      final capturedWorkDir = workDir.path;
+      await Isolate.run(
+        () => writeBackupArchive(
+          tempZipPath: capturedZipPath,
+          sources: capturedSources,
+          workDirPath: capturedWorkDir,
+        ),
       );
 
       await File(tempZipPath).rename(destinationPath);
