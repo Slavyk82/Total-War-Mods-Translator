@@ -32,7 +32,7 @@ import 'single_batch_processor.dart';
 class LlmTranslationHandler {
   final IPromptBuilderService _promptBuilder;
   final ILoggingService _logger;
-  final LlmTokenEstimator _tokenEstimator = LlmTokenEstimator();
+  final LlmTokenEstimator _tokenEstimator;
   late final LlmCacheManager _cacheManager;
   late final LlmRetryHandler _retryHandler;
   late final TranslationSplitter _translationSplitter;
@@ -43,8 +43,10 @@ class LlmTranslationHandler {
     required ILlmService llmService,
     required IPromptBuilderService promptBuilder,
     required ILoggingService logger,
+    LlmTokenEstimator? tokenEstimator,
   })  : _promptBuilder = promptBuilder,
-        _logger = logger {
+        _logger = logger,
+        _tokenEstimator = tokenEstimator ?? LlmTokenEstimator() {
     _cacheManager = LlmCacheManager(logger: logger);
     _retryHandler = LlmRetryHandler(llmService: llmService, logger: logger);
     _translationSplitter = TranslationSplitter(

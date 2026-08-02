@@ -2,15 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
 import 'package:twmt/services/llm/utils/token_calculator.dart';
 
-// Tests for TokenCalculator. TokenCalculator loads the tiktoken cl100k_base
-// encoding eagerly in its constructor. On a cold Flutter test VM this can
-// crash with `type 'List<dynamic>' is not a subtype of type 'String'`.
+// Tests for TokenCalculator. The constructor builds the cl100k_base encoding
+// by parsing the vendored ranks table; it is pre-warmed once in setUpAll so
+// the cost is paid a single time (TokenCalculator is a singleton, so every
+// later construction returns the cached instance).
 //
-// Strategy: initialise TestWidgetsFlutterBinding in setUpAll and then pre-warm
-// the singleton once. TokenCalculator is a singleton, so any subsequent
-// construction returns the cached instance. If the first construction blows
-// up, the crash is isolated to setUpAll and the file fails fast and loud
-// rather than reporting misleading per-test errors.
+// These tests use deliberately loose envelopes. Exact tokenization parity with
+// tiktoken is pinned separately, by the golden counts in
+// cl100k_base_ranks_test.dart.
 
 void main() {
   late TokenCalculator calc;

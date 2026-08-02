@@ -4,10 +4,10 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 
 /// Reusable `TokenCalculator` fake.
 ///
-/// The real `TokenCalculator` eagerly loads the tiktoken cl100k_base
-/// encoding in its constructor, which crashes with a type error unless
-/// another test in the run has already warmed it up. Provider tests never
-/// exercise `translate()`, so deterministic stand-ins are sufficient.
+/// The real `TokenCalculator` parses the full cl100k_base ranks table
+/// (100,256 entries) in its constructor. Provider tests never exercise
+/// `translate()`, so deterministic stand-ins are both sufficient and much
+/// cheaper than building the encoding in every suite.
 ///
 /// Defaults: token counts = `text.length ~/ 4` (a reasonable approximation
 /// of English/Latin tokenization ratios). Override specific methods in

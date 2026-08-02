@@ -1,13 +1,29 @@
+import 'dart:convert';
+
 import 'package:tiktoken/tiktoken.dart';
+// ignore: implementation_imports
+import 'package:tiktoken/src/common/byte_array.dart';
 import 'package:twmt/services/llm/models/llm_request.dart';
+
+import 'cl100k_base_ranks.dart';
 
 /// Token calculator for LLM requests
 ///
 /// Uses tiktoken with cl100k_base encoding (used by GPT-4, GPT-3.5, Claude)
 /// Provides accurate token counting for token estimation and batch sizing.
+///
+/// The encoding is assembled here rather than via tiktoken's `getEncoding`:
+/// that path initialises `package:tiktoken`'s ~100k-entry `cl100kBase` map
+/// literal, which the Dart VM intermittently fails to build inside a large
+/// program, throwing a bogus `is not a subtype of type 'String'` out of
+/// `Map._fromLiteral` (the reported type varies run to run). It made roughly
+/// half of all full-suite `flutter test` runs red and could equally break
+/// translation in the shipped app, since every LLM provider constructs this
+/// singleton and there is no fallback. Parsing the identical ranks from one
+/// const string ([cl100kBaseRanksData]) avoids the pathological literal.
 class TokenCalculator {
   /// Tiktoken encoding instance (cl100k_base)
-  late final dynamic _encoding;
+  late final Tiktoken _encoding;
 
   /// LRU cache for token counts (text -> token count)
   final Map<String, int> _cache = {};
@@ -33,9 +49,47 @@ class TokenCalculator {
   factory TokenCalculator() => _instance;
 
   TokenCalculator._internal() {
-    // Initialize tiktoken with cl100k_base encoding (used by GPT-4, GPT-3.5, Claude)
-    // Using encoding name directly instead of model name for flexibility
-    _encoding = getEncoding('cl100k_base');
+    _encoding = _buildCl100kBase();
+  }
+
+  /// Splitting pattern for cl100k_base.
+  ///
+  /// Copied verbatim from `CoreBPEConstructor.cl100kBase()` in tiktoken 1.0.3.
+  /// It must stay byte-for-byte identical to that source, or tokenization
+  /// silently diverges from the encoding OpenAI and Anthropic actually bill.
+  static const String _cl100kPatStr =
+      r"(\?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+";
+
+  /// Special tokens for cl100k_base, also verbatim from tiktoken 1.0.3.
+  static const Map<String, int> _cl100kSpecialTokens = {
+    '<|endoftext|>': 100257,
+    '<|fim_prefix|>': 100258,
+    '<|fim_middle|>': 100259,
+    '<|fim_suffix|>': 100260,
+    '<|endofprompt|>': 100276,
+  };
+
+  /// Build the cl100k_base encoding from the vendored ranks table.
+  ///
+  /// Produces exactly the same encoding as `getEncoding('cl100k_base')` —
+  /// same ranks, same pattern, same special tokens — without touching the
+  /// map literal described in the class doc.
+  static Tiktoken _buildCl100kBase() {
+    final mergeableRanks = <ByteArray, int>{};
+    for (final line in const LineSplitter().convert(cl100kBaseRanksData)) {
+      if (line.isEmpty) continue;
+      final separator = line.indexOf(' ');
+      mergeableRanks[ByteArray.fromList(
+        base64Decode(line.substring(0, separator)),
+      )] = int.parse(line.substring(separator + 1));
+    }
+
+    return Tiktoken(
+      name: 'cl100k_base',
+      patStr: _cl100kPatStr,
+      mergeableRanks: mergeableRanks,
+      specialTokens: _cl100kSpecialTokens,
+    );
   }
 
   /// Calculate tokens for a single text

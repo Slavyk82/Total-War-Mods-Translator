@@ -10,7 +10,15 @@ import 'package:twmt/services/translation/models/translation_context.dart';
 /// - Calculate optimal batch sizes to avoid token limits
 /// - Estimate total tokens for batches of translation units
 class LlmTokenEstimator {
-  final TokenCalculator _tokenCalculator = TokenCalculator();
+  final TokenCalculator _tokenCalculator;
+
+  /// Creates an estimator.
+  ///
+  /// [tokenCalculator] defaults to the shared [TokenCalculator] singleton.
+  /// It is injectable so callers — tests in particular — can substitute a
+  /// cheap stand-in instead of parsing the full cl100k_base ranks table.
+  LlmTokenEstimator({TokenCalculator? tokenCalculator})
+      : _tokenCalculator = tokenCalculator ?? TokenCalculator();
 
   /// Estimate maxTokens based on source text content, not just unit count.
   ///
