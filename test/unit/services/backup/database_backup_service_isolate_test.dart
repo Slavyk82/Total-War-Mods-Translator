@@ -117,9 +117,24 @@ void main() {
 
   test('leaves no .tmp file behind when the backup fails', () async {
     final destination = path.join(tmp.path, 'backup.zip');
-    await Directory('$destination.tmp').create(recursive: true);
+    // Block the FINAL destination (not the .tmp path) with a pre-existing
+    // directory. This lets compression run to completion and write a real,
+    // complete `$destination.tmp` file; only the final
+    // `File(tempZipPath).rename(destinationPath)` fails, because you cannot
+    // rename a file onto an existing directory. That failure is what the
+    // cleanup logic in createBackup's `finally` is actually meant to handle:
+    // a genuine leftover .tmp file, not a directory that blocked the write
+    // before any file existed (which is what a directory-at-.tmp blocker
+    // would give us — see the "surfaces a worker failure" test above, which
+    // is testing something else and does not need a real leftover file).
+    await Directory(destination).create();
 
-    await build().createBackup(destination);
+    final result = await build().createBackup(destination);
+
+    expect(result.isErr, isTrue);
+    // Pins that the failure really came from the rename, not from something
+    // earlier (e.g. the parent-directory check or the database-file check).
+    expect(await Directory(destination).exists(), isTrue);
 
     final leftovers = tmp
         .listSync()
