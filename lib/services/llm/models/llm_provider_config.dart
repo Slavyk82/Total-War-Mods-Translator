@@ -63,7 +63,8 @@ class LlmProviderConfig {
 
   /// OpenAI configuration
   /// API Documentation: https://developers.openai.com/api/docs/models
-  /// Models: gpt-5.5 (default), gpt-5.4 (1M context, 128K max output)
+  /// Models: gpt-5.5 (default), gpt-5.4, gpt-5.6-terra, gpt-5.4-nano
+  /// (1M+ context, 128K max output; gpt-5.4-nano caps at 400K context)
   static LlmProviderConfig get openai => LlmProviderConfig(
         providerCode: 'openai',
         providerName: 'OpenAI',
@@ -104,7 +105,8 @@ class LlmProviderConfig {
 
   /// Google Gemini configuration
   /// API Documentation: https://ai.google.dev/gemini-api/docs
-  /// Models: gemini-3-pro-preview, gemini-3-flash-preview
+  /// Models: gemini-3.6-flash (default), gemini-3.5-flash,
+  /// gemini-3.5-flash-lite
   static LlmProviderConfig get gemini => LlmProviderConfig(
         providerCode: 'gemini',
         providerName: 'Google Gemini',

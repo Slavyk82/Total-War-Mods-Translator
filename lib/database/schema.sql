@@ -944,7 +944,7 @@ INSERT OR IGNORE INTO translation_providers (id, code, name, api_endpoint, defau
 ('provider_deepl', 'deepl', 'DeepL', 'https://api-free.deepl.com/v2', 'deepl-free', NULL, 50, 100, NULL, 1, strftime('%s', 'now')),
 ('provider_openai', 'openai', 'OpenAI GPT', 'https://api.openai.com/v1', 'gpt-5.5', 1000000, 40, 60, 90000, 1, strftime('%s', 'now')),
 ('provider_deepseek', 'deepseek', 'DeepSeek', 'https://api.deepseek.com', 'deepseek-v4-flash', 1000000, 30, 60, 100000, 1, strftime('%s', 'now')),
-('provider_gemini', 'gemini', 'Google Gemini', 'https://generativelanguage.googleapis.com/v1beta', 'gemini-3-flash-preview', 1048576, 30, 60, 250000, 1, strftime('%s', 'now'));
+('provider_gemini', 'gemini', 'Google Gemini', 'https://generativelanguage.googleapis.com/v1beta', 'gemini-3.6-flash', 1048576, 30, 60, 250000, 1, strftime('%s', 'now'));
 
 -- Default settings
 INSERT OR IGNORE INTO settings (id, key, value, value_type, updated_at) VALUES
@@ -958,18 +958,22 @@ INSERT OR IGNORE INTO settings (id, key, value, value_type, updated_at) VALUES
 -- LLM MODELS SEED DATA
 -- ============================================================================
 
--- Anthropic models (Claude 4.x family)
+-- Anthropic models (Claude 5 + 4.x family)
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
 VALUES
 ('model_claude_sonnet_4_6', 'anthropic', 'claude-sonnet-4-6', 'Claude Sonnet 4.6', 1, 1, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
 ('model_claude_opus_4_7', 'anthropic', 'claude-opus-4-7', 'Claude Opus 4.7', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
-('model_claude_4_5_haiku', 'anthropic', 'claude-haiku-4-5-20251001', 'Claude Haiku 4.5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+('model_claude_4_5_haiku', 'anthropic', 'claude-haiku-4-5-20251001', 'Claude Haiku 4.5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_claude_sonnet_5', 'anthropic', 'claude-sonnet-5', 'Claude Sonnet 5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_claude_opus_5', 'anthropic', 'claude-opus-5', 'Claude Opus 5', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
 
--- OpenAI models (GPT-5.4 / 5.5 family — 1M context, 128K max output)
+-- OpenAI models (GPT-5.4 / 5.5 / 5.6 families — up to 1.05M context, 128K max output)
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
 VALUES
 ('model_gpt_5_5', 'openai', 'gpt-5.5', 'GPT-5.5', 1, 1, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
-('model_gpt_5_4', 'openai', 'gpt-5.4', 'GPT-5.4', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+('model_gpt_5_4', 'openai', 'gpt-5.4', 'GPT-5.4', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_gpt_5_6_terra', 'openai', 'gpt-5.6-terra', 'GPT-5.6 Terra', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_gpt_5_4_nano', 'openai', 'gpt-5.4-nano', 'GPT-5.4 nano', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
 
 -- DeepL models (plans)
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
@@ -984,8 +988,9 @@ VALUES
 ('model_deepseek_v4_pro', 'deepseek', 'deepseek-v4-pro', 'DeepSeek V4 Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
 ('model_deepseek_chat', 'deepseek', 'deepseek-chat', 'DeepSeek V3.2', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
 
--- Google Gemini models
+-- Google Gemini models (3.5 / 3.6 family — 1M context, 64K max output)
 INSERT OR IGNORE INTO llm_provider_models (id, provider_code, model_id, display_name, is_enabled, is_default, is_archived, created_at, updated_at, last_fetched_at)
 VALUES
-('model_gemini_3_pro', 'gemini', 'gemini-3-pro-preview', 'Gemini 3 Pro', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
-('model_gemini_3_flash', 'gemini', 'gemini-3-flash-preview', 'Gemini 3 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
+('model_gemini_3_6_flash', 'gemini', 'gemini-3.6-flash', 'Gemini 3.6 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_gemini_3_5_flash', 'gemini', 'gemini-3.5-flash', 'Gemini 3.5 Flash', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now')),
+('model_gemini_3_5_flash_lite', 'gemini', 'gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite', 1, 0, 0, strftime('%s', 'now'), strftime('%s', 'now'), strftime('%s', 'now'));
