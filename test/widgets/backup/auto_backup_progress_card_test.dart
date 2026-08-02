@@ -44,6 +44,7 @@ void main() {
     );
     await pumpCard(tester);
 
+    expect(find.textContaining('Snapshotting'), findsOneWidget);
     expect(find.textContaining('1.5 KB'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
@@ -58,6 +59,7 @@ void main() {
     );
     await pumpCard(tester);
 
+    expect(find.textContaining('Compressing'), findsOneWidget);
     expect(find.textContaining('5.0 MB'), findsOneWidget);
   });
 
@@ -115,5 +117,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(autoBackupStatusProvider), isA<AutoBackupIdle>());
+  });
+
+  testWidgets(
+      'cancels the "done" hold timer on dispose, so it never fires after '
+      'the widget tree is gone', (tester) async {
+    notifier().succeeded();
+    await pumpCard(tester);
+    expect(find.byKey(const Key('autoBackupCard')), findsOneWidget);
+
+    // Unmount while the ~1.5 s hold timer is still pending. If dispose()
+    // did not cancel it, flutter_test's own pending-timer invariant fails
+    // this test at tearDown with "A Timer is still pending even after the
+    // widget tree was disposed" -- no explicit expect needed.
+    await tester.pumpWidget(const SizedBox());
   });
 }

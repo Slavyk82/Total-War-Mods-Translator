@@ -74,7 +74,15 @@ class _AutoBackupProgressCardState
       bottom: 16,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
-        child: _card(context, state),
+        // Keyed by the state's *type* (not the whole card) so the switcher
+        // only cross-fades on a Running/Done/Error transition, not on every
+        // Running rebuild carrying a new BackupProgress. The Material inside
+        // keeps its own const Key('autoBackupCard') so existing find.byKey
+        // lookups in tests keep working across the transition.
+        child: KeyedSubtree(
+          key: ValueKey(state.runtimeType),
+          child: _card(context, state),
+        ),
       ),
     );
   }
