@@ -12,8 +12,9 @@ import 'package:twmt/services/llm/utils/token_calculator.dart';
 ///
 /// API Documentation: https://ai.google.dev/gemini-api/docs
 /// Models:
-/// - gemini-3-pro-preview: Most intelligent model
-/// - gemini-3-flash-preview: Fast and cost-efficient
+/// - gemini-3.6-flash: Best token efficiency, provider default
+/// - gemini-3.5-flash: Previous frontier-class Flash generation
+/// - gemini-3.5-flash-lite: Fastest and cheapest, for high-volume batches
 /// Max output: 65,536 tokens
 class GeminiProvider implements ILlmProvider {
   final Dio _dio;
@@ -49,7 +50,7 @@ class GeminiProvider implements ILlmProvider {
     final startTime = DateTime.now();
 
     try {
-      final modelName = request.modelName ?? 'gemini-3-flash-preview';
+      final modelName = request.modelName ?? 'gemini-3.6-flash';
       final payload = _buildRequestPayload(request);
 
       final response = await _dio.post(
@@ -101,7 +102,7 @@ class GeminiProvider implements ILlmProvider {
     String? model,
   }) async {
     try {
-      final modelName = model ?? 'gemini-3-flash-preview';
+      final modelName = model ?? 'gemini-3.6-flash';
       final payload = <String, dynamic>{
         'contents': [
           {
@@ -152,7 +153,7 @@ class GeminiProvider implements ILlmProvider {
     String apiKey,
   ) async* {
     try {
-      final modelName = request.modelName ?? 'gemini-3-flash-preview';
+      final modelName = request.modelName ?? 'gemini-3.6-flash';
       final payload = _buildRequestPayload(request);
 
       final response = await _dio.post(

@@ -13,7 +13,8 @@ import 'package:twmt/services/shared/i_logging_service.dart';
 /// Anthropic (Claude) provider implementation
 ///
 /// API Documentation: https://platform.claude.com/docs/en/home
-/// Models: claude-sonnet-4-6 (default), claude-opus-4-7, claude-haiku-4-5-20251001
+/// Models: claude-sonnet-4-6 (default), claude-opus-4-7,
+/// claude-haiku-4-5-20251001, claude-sonnet-5, claude-opus-5
 /// Rate Limits: 50 RPM default (configurable)
 class AnthropicProvider implements ILlmProvider {
   final Dio _dio;

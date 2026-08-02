@@ -18,7 +18,7 @@ import '../../../helpers/fakes/fake_token_calculator.dart';
 
 class _MockDio extends Mock implements Dio {}
 
-const _endpoint = '/models/gemini-3-flash-preview:generateContent';
+const _endpoint = '/models/gemini-3.6-flash:generateContent';
 
 LlmRequest _buildRequest({Map<String, String>? texts}) {
   return LlmRequest(
@@ -30,7 +30,7 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
           'ui_subtitle': 'Welcome back',
         },
     systemPrompt: 'Translate videogame UI strings.',
-    modelName: 'gemini-3-flash-preview',
+    modelName: 'gemini-3.6-flash',
     maxTokens: 512,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
@@ -428,7 +428,7 @@ void main() {
       final dio = _MockDio();
       stubPost(dio, _ok(<String, dynamic>{'candidates': <dynamic>[]}));
 
-      await build(dio).validateApiKey('k', model: 'gemini-3-pro-preview');
+      await build(dio).validateApiKey('k', model: 'gemini-3.5-flash-lite');
 
       final captured = verify(() => dio.post(
             captureAny(),
@@ -436,7 +436,7 @@ void main() {
             cancelToken: any(named: 'cancelToken'),
             options: any(named: 'options'),
           )).captured;
-      expect(captured[0], '/models/gemini-3-pro-preview:generateContent');
+      expect(captured[0], '/models/gemini-3.5-flash-lite:generateContent');
     });
 
     test('401 -> LlmAuthentication("Invalid API key")', () async {

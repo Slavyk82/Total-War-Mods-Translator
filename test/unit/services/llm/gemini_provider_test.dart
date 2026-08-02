@@ -27,7 +27,7 @@ LlmRequest _buildRequest({Map<String, String>? texts}) {
           'ui_subtitle': 'Welcome back',
         },
     systemPrompt: 'Translate videogame UI strings.',
-    modelName: 'gemini-3-flash-preview',
+    modelName: 'gemini-3.6-flash',
     maxTokens: 512,
     timestamp: DateTime(2026, 4, 14, 12, 0, 0),
   );
@@ -38,14 +38,14 @@ Response<dynamic> _successResponse(Map<String, dynamic> body) {
     data: body,
     statusCode: 200,
     requestOptions:
-        RequestOptions(path: '/models/gemini-3-flash-preview:generateContent'),
+        RequestOptions(path: '/models/gemini-3.6-flash:generateContent'),
   );
 }
 
 void main() {
   setUpAll(() {
     registerFallbackValue(
-        RequestOptions(path: '/models/gemini-3-flash-preview:generateContent'));
+        RequestOptions(path: '/models/gemini-3.6-flash:generateContent'));
     registerFallbackValue(Options());
     registerFallbackValue(CancelToken());
   });
@@ -105,7 +105,7 @@ void main() {
         'ui_title': 'Bonjour le monde',
         'ui_subtitle': 'Bon retour',
       });
-      expect(response.modelName, 'gemini-3-flash-preview');
+      expect(response.modelName, 'gemini-3.6-flash');
       expect(response.inputTokens, 55);
       expect(response.outputTokens, 21);
       expect(response.totalTokens, 76);
@@ -121,7 +121,7 @@ void main() {
             cancelToken: any(named: 'cancelToken'),
             options: captureAny(named: 'options'),
           )).captured;
-      expect(captured[0], '/models/gemini-3-flash-preview:generateContent');
+      expect(captured[0], '/models/gemini-3.6-flash:generateContent');
 
       final payload = captured[1] as Map<String, dynamic>;
       final contents = payload['contents'] as List;
@@ -164,7 +164,7 @@ void main() {
       final request = _buildRequest();
 
       final requestOptions = RequestOptions(
-          path: '/models/gemini-3-flash-preview:generateContent');
+          path: '/models/gemini-3.6-flash:generateContent');
       when(() => dio.post(
             any(),
             data: any(named: 'data'),
@@ -216,7 +216,7 @@ void main() {
             options: any(named: 'options'),
           )).thenThrow(DioException(
         requestOptions: RequestOptions(
-            path: '/models/gemini-3-flash-preview:generateContent'),
+            path: '/models/gemini-3.6-flash:generateContent'),
         type: DioExceptionType.cancel,
         message: 'The request was manually cancelled by the user.',
       ));
@@ -240,7 +240,7 @@ void main() {
       final request = _buildRequest();
 
       final requestOptions = RequestOptions(
-          path: '/models/gemini-3-flash-preview:generateContent');
+          path: '/models/gemini-3.6-flash:generateContent');
       when(() => dio.post(
             any(),
             data: any(named: 'data'),
@@ -371,7 +371,7 @@ void main() {
       final request = _buildRequest();
 
       final requestOptions = RequestOptions(
-          path: '/models/gemini-3-flash-preview:generateContent');
+          path: '/models/gemini-3.6-flash:generateContent');
       when(() => dio.post(
             any(),
             data: any(named: 'data'),
@@ -413,7 +413,7 @@ void main() {
       final request = _buildRequest();
 
       final requestOptions = RequestOptions(
-          path: '/models/gemini-3-flash-preview:generateContent');
+          path: '/models/gemini-3.6-flash:generateContent');
       when(() => dio.post(
             any(),
             data: any(named: 'data'),
@@ -453,7 +453,7 @@ void main() {
       final request = _buildRequest();
 
       final requestOptions = RequestOptions(
-          path: '/models/gemini-3-flash-preview:generateContent');
+          path: '/models/gemini-3.6-flash:generateContent');
       when(() => dio.post(
             any(),
             data: any(named: 'data'),
@@ -515,7 +515,7 @@ void main() {
             data: responseBody,
             statusCode: 200,
             requestOptions: RequestOptions(
-                path: '/models/gemini-3-flash-preview:streamGenerateContent'),
+                path: '/models/gemini-3.6-flash:streamGenerateContent'),
           ));
 
       final results =
