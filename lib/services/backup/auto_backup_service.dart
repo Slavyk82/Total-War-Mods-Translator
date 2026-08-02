@@ -2,16 +2,45 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 
+import '../../models/backup/backup_progress.dart';
 import '../../models/common/result.dart';
 import '../shared/i_logging_service.dart';
 import 'database_backup_service.dart';
+
+/// Result of an [AutoBackupService.runIfDue] attempt.
+///
+/// Exists so callers can distinguish "nothing to do" from "it broke": the two
+/// used to be indistinguishable (both returned null), which made a silently
+/// failing daily backup impossible to surface.
+sealed class AutoBackupOutcome {
+  const AutoBackupOutcome();
+}
+
+/// A recent backup already existed, so no new one was taken.
+class AutoBackupSkipped extends AutoBackupOutcome {
+  const AutoBackupSkipped();
+}
+
+/// A backup was written to [path].
+class AutoBackupCreated extends AutoBackupOutcome {
+  final String path;
+  const AutoBackupCreated(this.path);
+}
+
+/// The backup was attempted and failed. [message] is English, like all log
+/// content in this project; the UI pairs it with a localized title.
+class AutoBackupFailure extends AutoBackupOutcome {
+  final String message;
+  const AutoBackupFailure(this.message);
+}
 
 /// Creates rolling, timestamped database backups at application startup.
 ///
 /// [runIfDue] takes a fresh backup only when the newest existing auto-backup is
 /// older than [minInterval], then prunes the directory down to the most recent
 /// [retain] archives. It is intentionally best-effort: any failure is logged
-/// and swallowed so a backup problem can never block startup or the UI.
+/// and reported as [AutoBackupFailure] rather than thrown, so a backup problem
+/// can never block startup or the UI.
 ///
 /// Pure Dart by design (no Riverpod / Flutter imports) so it stays inside the
 /// services layer. It depends on small function types — not the concrete
@@ -20,8 +49,10 @@ import 'database_backup_service.dart';
 class AutoBackupService {
   final ILoggingService _logging;
   final Future<String> Function() _backupDirectoryProvider;
-  final Future<Result<String, BackupException>> Function(String destination)
-      _createBackup;
+  final Future<Result<String, BackupException>> Function(
+    String destination, {
+    void Function(BackupProgress)? onProgress,
+  }) _createBackup;
   final DateTime Function() _now;
 
   /// Minimum age of the newest backup before a new one is taken.
@@ -33,8 +64,10 @@ class AutoBackupService {
   AutoBackupService({
     required ILoggingService logging,
     required Future<String> Function() backupDirectoryProvider,
-    required Future<Result<String, BackupException>> Function(String destination)
-        createBackup,
+    required Future<Result<String, BackupException>> Function(
+      String destination, {
+      void Function(BackupProgress)? onProgress,
+    }) createBackup,
     DateTime Function()? now,
     this.minInterval = const Duration(days: 1),
     this.retain = 5,
@@ -50,9 +83,14 @@ class AutoBackupService {
   static final RegExp _backupNamePattern =
       RegExp(r'^TWMT_AutoBackup_.*\.zip$', caseSensitive: false);
 
-  /// Create a backup if one is due. Returns the created backup path, or null
-  /// when the run was skipped (recent backup exists) or failed.
-  Future<String?> runIfDue() async {
+  /// Create a backup if one is due.
+  ///
+  /// Best-effort by contract: every failure is caught and reported as
+  /// [AutoBackupFailure], never thrown, so a backup problem can never block
+  /// startup.
+  Future<AutoBackupOutcome> runIfDue({
+    void Function(BackupProgress)? onProgress,
+  }) async {
     try {
       final dirPath = await _backupDirectoryProvider();
       final dir = Directory(dirPath);
@@ -68,7 +106,7 @@ class AutoBackupService {
             'ageMinutes': age.inMinutes,
             'minIntervalMinutes': minInterval.inMinutes,
           });
-          return null;
+          return const AutoBackupSkipped();
         }
       }
 
@@ -77,21 +115,22 @@ class AutoBackupService {
         'destination': destination,
       });
 
-      final result = await _createBackup(destination);
+      final result =
+          await _createBackup(destination, onProgress: onProgress);
       if (result.isErr) {
         _logging.warning('Automatic backup failed', {
           'error': result.error.message,
         });
-        return null;
+        return AutoBackupFailure(result.error.message);
       }
 
       _logging.info('Automatic database backup created', {'path': result.value});
       await _pruneOldBackups(dir);
-      return result.value;
+      return AutoBackupCreated(result.value);
     } catch (e) {
       // Best-effort: never let a backup failure surface to the user/startup.
       _logging.warning('Automatic backup failed', {'error': e.toString()});
-      return null;
+      return AutoBackupFailure(e.toString());
     }
   }
 
