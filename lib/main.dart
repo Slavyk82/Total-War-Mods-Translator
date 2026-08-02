@@ -28,6 +28,8 @@ import 'package:twmt/widgets/dialogs/release_notes_dialog.dart';
 import 'package:twmt/providers/shared/service_providers.dart';
 import 'package:twmt/widgets/dialogs/data_migration_dialog.dart';
 import 'package:twmt/widgets/logs/log_console_overlay.dart';
+import 'providers/backup/auto_backup_progress_provider.dart';
+import 'widgets/backup/auto_backup_progress_card.dart';
 
 void main() async {
   // Everything that touches the Flutter bindings must run inside the same
@@ -170,6 +172,7 @@ class MyApp extends ConsumerWidget {
           children: [
             child!,
             const LogConsoleOverlay(),
+            const AutoBackupProgressCard(),
           ],
         ),
       ),
@@ -297,6 +300,7 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   }
 
   Future<void> _runAutoBackup() async {
+    final status = ref.read(autoBackupStatusProvider.notifier);
     try {
       final backupService = ref.read(databaseBackupServiceProvider);
       final autoBackup = AutoBackupService(
@@ -307,9 +311,26 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
         ),
         createBackup: backupService.createBackup,
       );
-      await autoBackup.runIfDue();
+      final outcome = await autoBackup.runIfDue(
+        onProgress: (progress) {
+          if (mounted) status.report(progress);
+        },
+      );
+      if (!mounted) return;
+      switch (outcome) {
+        // Nothing ran, so nothing to show.
+        case AutoBackupSkipped():
+          break;
+        case AutoBackupCreated():
+          status.succeeded();
+        case AutoBackupFailure(:final message):
+          status.failed(message);
+      }
     } catch (_) {
-      // Best-effort; AutoBackupService logs its own failures internally.
+      // Best-effort; AutoBackupService logs its own failures internally and
+      // returns AutoBackupFailure rather than throwing, so reaching here means
+      // the wiring itself broke. Leave the card idle rather than alarm the user
+      // about something they cannot act on.
     }
   }
 
