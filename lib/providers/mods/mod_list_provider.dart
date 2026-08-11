@@ -15,6 +15,27 @@ import 'package:twmt/features/mods/providers/mods_screen_providers.dart'
 
 part 'mod_list_provider.g.dart';
 
+/// Whether moving the selection from [previous] to [next] must trigger a fresh
+/// Workshop scan of the newly selected game's mods folder.
+///
+/// Mirrors the launch rule: a game is scanned once per session. [hasCachedScan]
+/// is the [modsSessionCacheProvider] lookup for [next] — when the session cache
+/// already holds that game's list, `DetectedMods.build` serves it instantly and
+/// no scan is due.
+///
+/// Returns false for the initial resolution at startup ([previous] is null —
+/// the bootstrap scan already covers it) and for reloads that land on the same
+/// game (e.g. a settings change rebuilding `configuredGamesProvider`).
+bool shouldRescanForGameChange({
+  required ConfiguredGame? previous,
+  required ConfiguredGame? next,
+  required bool hasCachedScan,
+}) {
+  if (next == null || previous == null) return false;
+  if (previous.code == next.code) return false;
+  return !hasCachedScan;
+}
+
 /// Provides list of detected mods after scanning Workshop folder (without creating projects)
 @riverpod
 class DetectedMods extends _$DetectedMods {

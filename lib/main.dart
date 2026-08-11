@@ -22,6 +22,11 @@ import 'package:path/path.dart' as path;
 import 'package:twmt/features/bootstrap/widgets/mod_scan_boot_dialog.dart';
 import 'package:twmt/features/bootstrap/widgets/validation_rescan_dialog.dart';
 import 'package:twmt/features/glossary/screens/glossary_migration_screen.dart';
+import 'package:twmt/features/mods/providers/mods_screen_providers.dart'
+    show modsSessionCacheProvider;
+import 'package:twmt/providers/mods/mod_list_provider.dart'
+    show shouldRescanForGameChange;
+import 'package:twmt/providers/selected_game_provider.dart';
 import 'package:twmt/providers/update_providers.dart';
 import 'package:twmt/providers/release_notes_providers.dart';
 import 'package:twmt/widgets/dialogs/release_notes_dialog.dart';
@@ -193,6 +198,10 @@ class _AppStartupTasks extends ConsumerStatefulWidget {
 class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
   bool _tasksTriggered = false;
 
+  /// Guards against stacking mod-scan popups when the user switches game
+  /// again while one is still running.
+  bool _modScanDialogOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -362,8 +371,59 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
     }
   }
 
+  /// Re-run the Workshop scan when the user switches game from the sidebar
+  /// dropdown, applying the exact same rule as at launch: a game is scanned
+  /// once per session, and the scan runs behind [ModScanBootDialog] (terminal
+  /// progress + subscriber-count refresh).
+  ///
+  /// Lives here rather than in `GameSelectorDropdown` for two reasons: the
+  /// dropdown sits in `lib/widgets/`, which must not import a feature (the
+  /// dialog is one), and hooking the provider instead of the widget covers
+  /// every path that changes the selection, not just that one menu.
+  ///
+  /// The scan itself is already wired: `detectedModsProvider` watches
+  /// `selectedGameProvider`, so it rebuilds on its own here — the dialog only
+  /// has to surface the progress and close when the rebuild settles.
+  void _onSelectedGameChanged(
+    AsyncValue<ConfiguredGame?>? previous,
+    AsyncValue<ConfiguredGame?> next,
+  ) {
+    if (_modScanDialogOpen) return;
+    // `AsyncValue.value` is the non-throwing getter and keeps the retained
+    // value across loading/error states, so a transient reload of
+    // `selectedGameProvider` still compares game-to-game rather than
+    // game-to-null (which would read as a change and rescan for nothing).
+    final nextGame = next.value;
+    final needsScan = shouldRescanForGameChange(
+      previous: previous?.value,
+      next: nextGame,
+      hasCachedScan: nextGame != null &&
+          ref.read(modsSessionCacheProvider.notifier).hasCachedMods(
+                nextGame.code,
+              ),
+    );
+    if (!needsScan) return;
+    unawaited(_showModScanDialog());
+  }
+
+  Future<void> _showModScanDialog() async {
+    _modScanDialogOpen = true;
+    try {
+      if (!mounted) return;
+      final scanContext = rootNavigatorKey.currentContext;
+      if (scanContext == null || !scanContext.mounted) return;
+      await ModScanBootDialog.showAndRun(scanContext, ref);
+    } finally {
+      _modScanDialogOpen = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<ConfiguredGame?>>(
+      selectedGameProvider,
+      _onSelectedGameChanged,
+    );
     return widget.child;
   }
 }

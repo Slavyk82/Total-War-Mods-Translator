@@ -571,4 +571,68 @@ void main() {
       expect(cachedM1.existingProjectId, 'proj-99');
     });
   });
+
+  // -------------------------------------------------------------------------
+  // shouldRescanForGameChange
+  // -------------------------------------------------------------------------
+
+  group('shouldRescanForGameChange', () {
+    const wh3 = ConfiguredGame(code: 'wh3', name: 'WH3', path: 'C:/wh3');
+    const rome2 = ConfiguredGame(code: 'rome2', name: 'Rome II', path: 'C:/r2');
+
+    test('switching to a game not scanned this session triggers a rescan', () {
+      expect(
+        shouldRescanForGameChange(
+          previous: wh3,
+          next: rome2,
+          hasCachedScan: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('switching to an already scanned game serves the session cache', () {
+      expect(
+        shouldRescanForGameChange(
+          previous: wh3,
+          next: rome2,
+          hasCachedScan: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('initial resolution at startup is left to the bootstrap scan', () {
+      expect(
+        shouldRescanForGameChange(
+          previous: null,
+          next: wh3,
+          hasCachedScan: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('a reload landing on the same game does not rescan', () {
+      expect(
+        shouldRescanForGameChange(
+          previous: wh3,
+          next: wh3,
+          hasCachedScan: false,
+        ),
+        isFalse,
+      );
+    });
+
+    test('losing the selection does not rescan', () {
+      expect(
+        shouldRescanForGameChange(
+          previous: wh3,
+          next: null,
+          hasCachedScan: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

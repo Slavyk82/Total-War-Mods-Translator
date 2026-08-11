@@ -25,6 +25,11 @@ import 'package:twmt/services/rpfm/models/rpfm_exceptions.dart';
 ///
 /// The dialog auto-closes once `detectedModsProvider` resolves to a value.
 /// It also no-ops when no game is selected (nothing to scan).
+///
+/// Also reused outside bootstrap: `main.dart` shows it again when the user
+/// switches game from the sidebar dropdown and that game has not been scanned
+/// yet in this session, so a game change gets the same visible scan as a cold
+/// start instead of a silent background refresh.
 class ModScanBootDialog extends ConsumerStatefulWidget {
   const ModScanBootDialog({super.key});
 
