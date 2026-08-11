@@ -55,7 +55,10 @@ class AutoBackupService {
   }) _createBackup;
   final DateTime Function() _now;
 
-  /// Minimum age of the newest backup before a new one is taken.
+  /// Minimum age of the newest backup before a new one is taken. Defaults to
+  /// 7 days: a backup on every launch is mostly noise (and I/O) for a user who
+  /// opens the app several times a day, while a week-old snapshot is still a
+  /// useful safety net. When no backup exists at all, one is taken immediately.
   final Duration minInterval;
 
   /// How many of the most recent auto-backups to keep.
@@ -69,7 +72,7 @@ class AutoBackupService {
       void Function(BackupProgress)? onProgress,
     }) createBackup,
     DateTime Function()? now,
-    this.minInterval = const Duration(days: 1),
+    this.minInterval = const Duration(days: 7),
     this.retain = 5,
   })  : _logging = logging,
         _backupDirectoryProvider = backupDirectoryProvider,

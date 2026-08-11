@@ -281,11 +281,12 @@ class _AppStartupTasksState extends ConsumerState<_AppStartupTasks> {
       ref.read(updateCheckerProvider.notifier).checkForUpdates(),
     );
 
-    // Take a rolling automatic database backup (best-effort, daily). Kicked
+    // Take a rolling automatic database backup (best-effort, weekly). Kicked
     // off FIRST, before the awaited release-notes network check below, so a
-    // slow or hung GitHub request can never suppress the daily safety backup.
+    // slow or hung GitHub request can never suppress the safety backup.
     // Runs in the background (fire-and-forget); AutoBackupService skips when a
-    // recent backup already exists and prunes old archives itself.
+    // backup younger than its minInterval (7 days) already exists, and prunes
+    // old archives itself.
     if (!mounted) return;
     unawaited(_runAutoBackup());
 

@@ -54,6 +54,17 @@ void main() {
     );
   }
 
+  /// Builds the service WITHOUT passing `minInterval`, so the tests using it
+  /// pin the production default instead of a value the test picked itself.
+  AutoBackupService buildWithDefaultInterval({DateTime Function()? now}) {
+    return AutoBackupService(
+      logging: NoopLogger(),
+      backupDirectoryProvider: () async => backupDir.path,
+      createBackup: fakeCreate,
+      now: now,
+    );
+  }
+
   Future<List<String>> backupFiles() async {
     final names = <String>[];
     await for (final e in backupDir.list()) {
@@ -104,6 +115,51 @@ void main() {
 
     expect(result, isA<AutoBackupCreated>());
     expect(createCalls, 1);
+  });
+
+  // The default interval is deliberately a week, not a day: a backup on every
+  // launch is pure noise for a user who opens the app several times a day.
+  group('default interval (7 days)', () {
+    test('is a week', () {
+      expect(buildWithDefaultInterval().minInterval, const Duration(days: 7));
+    });
+
+    test('still creates the very first backup when none exists', () async {
+      final result = await buildWithDefaultInterval().runIfDue();
+
+      expect(result, isA<AutoBackupCreated>());
+      expect(createCalls, 1);
+    });
+
+    test('skips when the newest backup is 3 days old', () async {
+      final recent = File(
+        path.join(backupDir.path, 'TWMT_AutoBackup_2026-06-11_120000.zip'),
+      );
+      await recent.writeAsString('zip');
+      await recent.setLastModified(DateTime(2026, 6, 11, 12));
+
+      final result = await buildWithDefaultInterval(
+        now: () => DateTime(2026, 6, 14, 12),
+      ).runIfDue();
+
+      expect(result, isA<AutoBackupSkipped>());
+      expect(createCalls, 0);
+    });
+
+    test('backs up when the newest backup is 8 days old', () async {
+      final stale = File(
+        path.join(backupDir.path, 'TWMT_AutoBackup_2026-06-06_120000.zip'),
+      );
+      await stale.writeAsString('zip');
+      await stale.setLastModified(DateTime(2026, 6, 6, 12));
+
+      final result = await buildWithDefaultInterval(
+        now: () => DateTime(2026, 6, 14, 12),
+      ).runIfDue();
+
+      expect(result, isA<AutoBackupCreated>());
+      expect(createCalls, 1);
+    });
   });
 
   test('prunes old backups beyond the retain count', () async {
